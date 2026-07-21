@@ -1,5 +1,5 @@
 /**
- * Re-export model pattern utilities from @knn_labs/conduit-common.
+ * Re-export model pattern utilities from the local shared utilities.
  * All business logic now lives in the SDK for cross-project reuse.
  */
 export {
@@ -9,4 +9,4 @@ export {
   validatePatternSyntax,
   normalizeModelPattern,
   getPatternSpecificity
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';

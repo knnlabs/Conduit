@@ -142,16 +142,16 @@ jobs:
           if ! git diff --exit-code -- \
             Services/ConduitLLM.Admin/openapi-admin.json \
             Services/ConduitLLM.Gateway/openapi-gateway.json \
-            SDKs/Node/Admin/src/generated/admin-api.ts \
             SDKs/Node/Gateway/src/generated/gateway-api.ts \
-            WebAdmin/src/generated/admin-api.ts; then
+            WebAdmin/src/generated/admin-api.ts \
+            WebAdmin/src/generated/gateway-api.ts; then
             echo "::error::OpenAPI contracts or generated SDK types are out of date. Run 'npm run generate:offline' in SDKs/Node/scripts and commit the changes."
             exit 1
           fi
         env:
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
 
-      - name: WebAdmin Lint & Type Check
+      - name: WebAdmin Lint, Type Check & Tests
         run: |
           cd WebAdmin
           npm ci
@@ -160,6 +160,7 @@ jobs:
           npm run lint
           npm run type-check
           npm run check:admin-boundary
+          npm test -- --runInBand
 
   # Two-host Wolverine listener assertion (#961): boots the REAL Gateway + Admin hosts
   # against real Postgres with ConduitLLM:Messaging:Backend=Wolverine and asserts that

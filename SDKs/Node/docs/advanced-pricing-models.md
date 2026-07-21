@@ -46,7 +46,7 @@ interface Usage {
 
 ## Model Cost Configuration
 
-The Admin SDK's `ModelCost` interfaces support flexible pricing models:
+The Admin API's model-cost DTOs support flexible pricing models:
 
 ```typescript
 interface ModelCost {
@@ -235,27 +235,9 @@ interface ChatCompletionResponse {
 
 ### Admin API - Model Cost Management
 
-```typescript
-import { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
-
-const admin = new ConduitAdminClient({ apiKey: 'admin-key' });
-
-// Create model cost with advanced pricing
-await admin.modelCosts.create({
-  modelId: 'claude-3-opus-20240229',
-  inputTokenCost: 15.00,
-  outputTokenCost: 75.00,
-  cachedInputTokenCost: 1.50,
-  cachedInputWriteCost: 18.75,
-  supportsBatchProcessing: false
-});
-
-// Update inference step pricing
-await admin.modelCosts.update('stable-diffusion-xl', {
-  costPerInferenceStep: 0.0005,
-  defaultInferenceSteps: 50
-});
-```
+Generate a client from `Services/ConduitLLM.Admin/openapi-admin.json`, or call the documented model
+cost operations directly with the canonical `X-Master-Key` header. The former Admin Node package is
+retired and receives no future releases.
 
 ## Backwards Compatibility
 

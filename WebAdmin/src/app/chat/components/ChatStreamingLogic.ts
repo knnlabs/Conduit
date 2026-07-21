@@ -6,7 +6,7 @@ import {
   type StreamingCallbacks,
   type StreamMessageOptions,
   type RetryInfo
-} from '@knn_labs/conduit-gateway-client';
+} from '@/lib/gateway-api';
 import type { FunctionConfigurationDto } from '@/lib/admin-api';
 import { SDKChatStreamingAdapter } from '@/lib/client/sdkChatStreamingAdapter';
 import {

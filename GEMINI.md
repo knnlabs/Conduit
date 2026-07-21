@@ -140,7 +140,6 @@ dotnet build ConduitLLM.Gateway    # Gateway API
 dotnet build ConduitLLM.Admin   # Admin API
 
 # Build SDKs
-cd SDKs/Node/Admin && npm run build
 cd SDKs/Node/Gateway && npm run build
 cd SDKs/Node/Common && npm run build
 ```

@@ -41,4 +41,4 @@ export {
 
   // Types
   type ErrorResponseFormat
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';

@@ -1,5 +1,5 @@
 // Import shared HTTP constants from Common package
-import { HTTP_HEADERS, CONTENT_TYPES, HTTP_STATUS as COMMON_HTTP_STATUS } from '@knn_labs/conduit-common';
+import { HTTP_HEADERS, CONTENT_TYPES, HTTP_STATUS as COMMON_HTTP_STATUS } from '@/lib/conduit-common';
 
 // Re-export for backward compatibility
 export { HTTP_HEADERS, CONTENT_TYPES };

@@ -1,5 +1,5 @@
 /**
- * Re-export error message utilities from @knn_labs/conduit-common.
+ * Re-export error message utilities from the local shared utilities.
  * All business logic now lives in the SDK for cross-project reuse.
  */
 export {
@@ -8,12 +8,12 @@ export {
   getErrorConfig,
   getErrorSeverity,
   extractRetryAfter
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';
 export type {
   ErrorMessageConfig,
   OpenAIError,
   OpenAIErrorResponse
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';
 
 /**
  * Determine the appropriate icon name for an error.

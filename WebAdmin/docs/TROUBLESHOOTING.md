@@ -77,27 +77,21 @@
    console.log('Admin API URL:', process.env.NEXT_PUBLIC_CONDUIT_ADMIN_API_URL);
    ```
 
-#### Problem: TypeScript errors with SDK hooks
+#### Problem: TypeScript errors in API boundary calls
 **Symptoms:**
-- Type errors when using SDK hooks
+- Type errors when using local Admin or Gateway clients
 - Parameter type mismatches
 
 **Solutions:**
-1. Update to latest SDK versions:
-   ```bash
-   npm update @knn_labs/conduit-gateway-client @knn_labs/conduit-admin-client
-   ```
+1. Regenerate the contract types with `npm run generate:offline` from `SDKs/Node/scripts`.
 
-2. Check for breaking changes in SDK changelog
-
-3. Use correct import paths:
+2. Use the local boundary imports:
    ```typescript
-   // Correct
-   import { useProviders } from '@knn_labs/conduit-admin-client/react-query';
-   
-   // Incorrect
-   import { useProviders } from '@knn_labs/conduit-admin-client';
+   import { ConduitAdminClient } from '@/lib/admin-api';
+   import { GatewayClient } from '@/lib/gateway-api';
    ```
+
+3. Run `npm run check:admin-boundary` to find forbidden SDK package or workspace imports.
 
 ### Rate Limiting Issues
 

@@ -4,4 +4,4 @@ export {
   isHttpMethod,
   type RequestOptions,
   type ApiResponse
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';

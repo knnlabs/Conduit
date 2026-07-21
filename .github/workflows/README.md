@@ -32,8 +32,8 @@ contains a hyphen (SemVer rule):
   only a stable tag becomes the repo's "Latest")
 - Builds and pushes the three versioned Docker images plus the channel tag
   (`:latest` / `:beta`)
-- Publishes the three npm packages — `@knn_labs/conduit-common`,
-  `@knn_labs/conduit-admin-client`, `@knn_labs/conduit-gateway-client` — at the tag
+- Publishes the two npm packages — `@knn_labs/conduit-common` and
+  `@knn_labs/conduit-gateway-client` — at the tag
   version on the channel dist-tag (`@latest` / `@beta`)
 
 All three artifact types share one unified product version, driven by the tag.

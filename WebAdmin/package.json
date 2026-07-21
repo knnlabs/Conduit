@@ -5,8 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:docker": "concurrently --kill-others-on-fail --names sdk-watch,webadmin --prefix-colors cyan,green \"npm run dev:docker:sdks\" \"npm run dev\"",
-    "dev:docker:sdks": "node scripts/watch-docker-sdks.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint src",
@@ -24,8 +22,6 @@
   "dependencies": {
     "@clerk/nextjs": "^6.37.1",
     "@hello-pangea/dnd": "^18.0.1",
-    "@knn_labs/conduit-common": "file:../SDKs/Node/Common",
-    "@knn_labs/conduit-gateway-client": "file:../SDKs/Node/Gateway",
     "@mantine/carousel": "^8.3.14",
     "@mantine/charts": "^8.3.14",
     "@mantine/code-highlight": "^8.3.14",
@@ -77,8 +73,6 @@
     "@types/react-dom": "^19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@types/video.js": "^7.3.58",
-    "chokidar": "^5.0.0",
-    "concurrently": "^10.0.3",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.6",
     "eslint-plugin-eslint-comments": "^3.2.0",

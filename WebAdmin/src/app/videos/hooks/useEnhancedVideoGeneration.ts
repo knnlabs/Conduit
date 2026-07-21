@@ -13,7 +13,7 @@ import {
   createToastErrorHandler, 
   shouldShowBalanceWarning,
   type VideoProgressCallbacks
-} from '@knn_labs/conduit-gateway-client';
+} from '@/lib/gateway-api';
 import { notify } from '@/lib/notifications';
 import { notifications } from '@mantine/notifications'; // Required by createToastErrorHandler SDK callback
 

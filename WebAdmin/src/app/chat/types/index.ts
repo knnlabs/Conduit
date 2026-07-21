@@ -1,5 +1,5 @@
-// ImageAttachment moved to SDK - import from @knn_labs/conduit-gateway-client
-import type { ImageAttachment } from '@knn_labs/conduit-gateway-client';
+// ImageAttachment moved to SDK - import from the local Gateway API boundary
+import type { ImageAttachment } from '@/lib/gateway-api';
 export type { ImageAttachment };
 
 // Content types for chat messages (similar to SDK types)
@@ -145,7 +145,7 @@ export interface ChatParameters {
 }
 
 // Re-export ChatPreset type from Core SDK
-export type { ChatPreset, ChatPresetParameters } from '@knn_labs/conduit-gateway-client';
+export type { ChatPreset, ChatPresetParameters } from '@/lib/gateway-api';
 
 export interface ConversationStarter {
   id: string;

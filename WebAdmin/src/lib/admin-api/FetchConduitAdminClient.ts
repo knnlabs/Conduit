@@ -36,7 +36,7 @@ import {
   isValidationError,
   isNotFoundError,
   isServerError
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';
 
 /**
  * Type-safe Conduit Admin Client using native fetch
@@ -119,37 +119,37 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
 
   /**
    * Type guard for checking if an error is a ConduitError
-   * Re-exported from @knn_labs/conduit-common for convenience
+   * Re-exported from the local shared utilities for convenience
    */
   isConduitError = isConduitError;
 
   /**
    * Type guard for checking if an error is an authentication error
-   * Re-exported from @knn_labs/conduit-common for convenience
+   * Re-exported from the local shared utilities for convenience
    */
   isAuthError = isAuthError;
 
   /**
    * Type guard for checking if an error is a rate limit error
-   * Re-exported from @knn_labs/conduit-common for convenience
+   * Re-exported from the local shared utilities for convenience
    */
   isRateLimitError = isRateLimitError;
 
   /**
    * Type guard for checking if an error is a validation error
-   * Re-exported from @knn_labs/conduit-common for convenience
+   * Re-exported from the local shared utilities for convenience
    */
   isValidationError = isValidationError;
 
   /**
    * Type guard for checking if an error is a not found error
-   * Re-exported from @knn_labs/conduit-common for convenience
+   * Re-exported from the local shared utilities for convenience
    */
   isNotFoundError = isNotFoundError;
 
   /**
    * Type guard for checking if an error is a server error
-   * Re-exported from @knn_labs/conduit-common for convenience
+   * Re-exported from the local shared utilities for convenience
    */
   isServerError = isServerError;
 }

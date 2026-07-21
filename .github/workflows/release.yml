@@ -132,19 +132,18 @@ jobs:
           npm ci
           npm run build
 
-          # Stamp the unified release version onto all three published packages.
+          # Stamp the unified release version onto both published packages.
           # `npm pkg set` writes the field directly (no same-version error, no git tag).
-          npm pkg set version="$VERSION" --workspace Common --workspace Admin --workspace Gateway
+          npm pkg set version="$VERSION" --workspace Common --workspace Gateway
 
           # Pin the published Common dependency to the exact release version. Editing
           # package.json directly avoids a registry fetch, so this works even though
           # Common@$VERSION has not been published yet.
-          npm pkg set "dependencies.@knn_labs/conduit-common=$VERSION" --workspace Admin --workspace Gateway
+          npm pkg set "dependencies.@knn_labs/conduit-common=$VERSION" --workspace Gateway
 
-          # Publish Common first — Admin and Gateway depend on it. Channel is
+          # Publish Common first — Gateway depends on it. Channel is
           # `latest` for stable tags, `beta` for pre-release tags.
           npm publish --workspace Common  --tag "$CHANNEL" --access public
-          npm publish --workspace Admin   --tag "$CHANNEL" --access public
           npm publish --workspace Gateway --tag "$CHANNEL" --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -17,14 +17,16 @@ const targets = {
     project: path.join(repoRoot, 'Services', 'ConduitLLM.Admin', 'ConduitLLM.Admin.csproj'),
     spec: path.join(repoRoot, 'Services', 'ConduitLLM.Admin', 'openapi-admin.json'),
     types: [
-      path.join(scriptsDir, '..', 'Admin', 'src', 'generated', 'admin-api.ts'),
       path.join(repoRoot, 'WebAdmin', 'src', 'generated', 'admin-api.ts'),
     ],
   },
   gateway: {
     project: path.join(repoRoot, 'Services', 'ConduitLLM.Gateway', 'ConduitLLM.Gateway.csproj'),
     spec: path.join(repoRoot, 'Services', 'ConduitLLM.Gateway', 'openapi-gateway.json'),
-    types: [path.join(scriptsDir, '..', 'Gateway', 'src', 'generated', 'gateway-api.ts')],
+    types: [
+      path.join(scriptsDir, '..', 'Gateway', 'src', 'generated', 'gateway-api.ts'),
+      path.join(repoRoot, 'WebAdmin', 'src', 'generated', 'gateway-api.ts'),
+    ],
   },
 };
 

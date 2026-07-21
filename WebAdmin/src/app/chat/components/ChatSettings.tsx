@@ -14,7 +14,7 @@ import {
 } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useChatStore } from '../hooks/useChatStore';
-import { CHAT_PRESETS, findMatchingPreset } from '@knn_labs/conduit-gateway-client';
+import { CHAT_PRESETS, findMatchingPreset } from '@/lib/gateway-api';
 import { getPresetIcon } from '../utils/presets';
 import { ChatParameters } from '../types';
 import type { FunctionConfigurationDto } from '@/lib/admin-api';

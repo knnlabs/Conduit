@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useDiscoveryModels, type DiscoveryModel, type DiscoveryResponse } from '@/app/chat/hooks/useDiscoveryModels';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
-import type { ModelCapability } from '@knn_labs/conduit-gateway-client';
+import type { ModelCapability } from '@/lib/gateway-api';
 
 interface UseMediaInterfaceOptions {
   /** The model capability to filter by (e.g., ImageGeneration, VideoGeneration) */

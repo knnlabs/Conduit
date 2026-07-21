@@ -5,7 +5,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { getBlockQuoteMetadata, cleanBlockQuoteContent } from '@knn_labs/conduit-gateway-client';
+import { getBlockQuoteMetadata, cleanBlockQuoteContent } from '@/lib/gateway-api';
 
 /**
  * Extract plain text from React children nodes.

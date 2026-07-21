@@ -12,7 +12,7 @@ interface EphemeralMasterKeyResponse {
 }
 
 /**
- * Creates a fresh Admin SDK client with ephemeral master key authentication
+ * Creates a fresh local Admin API client with ephemeral master-key authentication.
  * Each call generates a new single-use ephemeral key for maximum security
  */
 export async function createAdminClient(): Promise<ConduitAdminClient> {
@@ -34,7 +34,7 @@ export async function createAdminClient(): Promise<ConduitAdminClient> {
 
   const keyData = await response.json() as EphemeralMasterKeyResponse;
 
-  // Create Admin SDK client with ephemeral key
+  // Create the local Admin client with an ephemeral key.
   // IMPORTANT: No retries because ephemeral master keys are single-use!
   // If a request fails, a new ephemeral key must be generated
   return new ConduitAdminClient({
@@ -46,10 +46,10 @@ export async function createAdminClient(): Promise<ConduitAdminClient> {
 }
 
 /**
- * Executes an operation with a fresh Admin SDK client
+ * Executes an operation with a fresh local Admin client.
  * Automatically handles ephemeral key generation and client creation
  * 
- * @param operation - Function that uses the Admin SDK client
+ * @param operation - Function that uses the local Admin client
  * @returns Promise resolving to the operation result
  * 
  * @example
@@ -71,7 +71,7 @@ export async function withAdminClient<T>(
 }
 
 /**
- * Custom hook for using Admin SDK in React components
+ * Custom hook for using the local Admin client in React components.
  * Provides a function to execute operations with fresh ephemeral keys
  */
 export function useAdminClient() {

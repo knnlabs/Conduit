@@ -4,4 +4,4 @@
 export {
   type ExtendedRequestInit,
   ResponseParser
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';

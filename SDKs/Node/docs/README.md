@@ -4,14 +4,14 @@ This directory contains documentation for the Conduit Node.js SDKs.
 
 ## SDK Packages
 
-### [@knn_labs/conduit-gateway-client](../Core/README.md)
+### [@knn_labs/conduit-gateway-client](../Gateway/README.md)
 The Gateway API client for chat completions, embeddings, and other AI operations.
 
-### [@knn_labs/conduit-admin-client](../Admin/README.md) 
-The Admin API client for managing virtual keys, providers, and system configuration.
-
 ### [@knn_labs/conduit-common](../Common/README.md)
-Shared types and utilities used by both Core and Admin clients.
+Shared types and utilities used by the Gateway client and external consumers.
+
+The Admin package is retired. Its authoritative contract is
+`Services/ConduitLLM.Admin/openapi-admin.json`.
 
 ## Documentation
 

@@ -112,33 +112,12 @@ services:
             - package.json
             - package-lock.json
             - Dockerfile
-        - action: sync
-          path: ./SDKs/Node
-          target: /app/SDKs/Node
-          initial_sync: true
-          ignore:
-            - node_modules/
-            - "*/node_modules/"
-            - "*/dist/"
-            - package.json
-            - package-lock.json
-            - "*/package.json"
         - action: rebuild
           path: ./WebAdmin/package.json
         - action: rebuild
           path: ./WebAdmin/package-lock.json
         - action: rebuild
           path: ./WebAdmin/Dockerfile
-        - action: rebuild
-          path: ./SDKs/Node/package.json
-        - action: rebuild
-          path: ./SDKs/Node/package-lock.json
-        - action: rebuild
-          path: ./SDKs/Node/Common/package.json
-        - action: rebuild
-          path: ./SDKs/Node/Admin/package.json
-        - action: rebuild
-          path: ./SDKs/Node/Gateway/package.json
     depends_on:
       admin:
         condition: service_healthy

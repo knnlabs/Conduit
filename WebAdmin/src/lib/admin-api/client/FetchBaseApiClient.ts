@@ -14,7 +14,7 @@ import {
   type RetryStrategy,
   RetryStrategyType,
   handleApiError,
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';
 import type {
   ApiClientConfig,
   RetryConfig,

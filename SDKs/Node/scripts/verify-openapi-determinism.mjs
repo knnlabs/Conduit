@@ -10,9 +10,9 @@ const repoRoot = path.resolve(scriptsDir, '..', '..', '..');
 const generatedFiles = [
   'Services/ConduitLLM.Admin/openapi-admin.json',
   'Services/ConduitLLM.Gateway/openapi-gateway.json',
-  'SDKs/Node/Admin/src/generated/admin-api.ts',
   'SDKs/Node/Gateway/src/generated/gateway-api.ts',
   'WebAdmin/src/generated/admin-api.ts',
+  'WebAdmin/src/generated/gateway-api.ts',
 ];
 
 generate('all');

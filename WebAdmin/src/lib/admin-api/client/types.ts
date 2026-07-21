@@ -2,7 +2,7 @@
 import {
   RetryConfig as CommonRetryConfig,
   ResponseInfo as CommonResponseInfo
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';
 
 // Define types locally to avoid bundler issues with type-only exports
 /**

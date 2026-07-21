@@ -7,9 +7,8 @@ This directory contains SDKs for the Conduit API across multiple programming lan
 ```
 SDKs/
 ├── Node/                   # Node.js/TypeScript SDKs
-│   ├── Admin/             # Admin API SDK
-│   ├── Core/              # Gateway API SDK (planned)
-│   └── Realtime/          # Realtime/WebSocket SDK (planned)
+│   ├── Common/            # Shared public SDK utilities
+│   └── Gateway/           # Gateway API SDK
 ├── Python/                # Python SDKs (planned)
 │   ├── Admin/
 │   ├── Core/
@@ -28,13 +27,13 @@ SDKs/
 ## 🚀 Available SDKs
 
 ### Node.js/TypeScript
-- **Admin API SDK** (`SDKs/Node/Admin/`) - ✅ Available
-  - Full TypeScript support with comprehensive type definitions
-  - Automatic retry logic and error handling
-  - Caching support for improved performance
-  - Environment-based configuration
-  - **NPM Package**: `@conduit/admin-client`
-  - **Installation**: `npm install @conduit/admin-client`
+- **Gateway API SDK** (`SDKs/Node/Gateway/`) - ✅ Available
+  - **NPM Package**: `@knn_labs/conduit-gateway-client`
+  - **Installation**: `npm install @knn_labs/conduit-gateway-client`
+- **Common utilities** (`SDKs/Node/Common/`) - ✅ Available for SDK consumers
+
+The former Admin Node SDK is retired from future releases. Admin API consumers should generate a
+client from `Services/ConduitLLM.Admin/openapi-admin.json` or use the contract directly.
 
 ### Python (Planned)
 - **Admin API SDK** - 🔄 Coming Soon

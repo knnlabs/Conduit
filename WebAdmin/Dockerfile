@@ -9,29 +9,9 @@ RUN npm config set fetch-timeout 600000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set registry https://registry.npmjs.org/
 
-# Install the SDK workspace from its lockfile. Package manifests are copied
-# separately so source-only changes reuse this dependency layer.
-FROM node-base AS sdk-deps
-RUN mkdir -p /app/SDKs/Node && chown -R node:node /app/SDKs
-COPY --chown=node:node SDKs/Node/package.json SDKs/Node/package-lock.json ./SDKs/Node/
-COPY --chown=node:node SDKs/Node/Common/package.json ./SDKs/Node/Common/package.json
-COPY --chown=node:node SDKs/Node/Admin/package.json ./SDKs/Node/Admin/package.json
-COPY --chown=node:node SDKs/Node/Gateway/package.json ./SDKs/Node/Gateway/package.json
-WORKDIR /app/SDKs/Node
-USER node
-RUN --mount=type=cache,target=/home/node/.npm,uid=1000,gid=1000 npm ci --no-audit --no-fund
-
-# Build the local SDK packages consumed by WebAdmin.
-FROM sdk-deps AS sdk-builder
-COPY --chown=node:node SDKs/Node/Common ./Common
-COPY --chown=node:node SDKs/Node/Admin ./Admin
-COPY --chown=node:node SDKs/Node/Gateway ./Gateway
-RUN npm run build
-
-# Install WebAdmin dependencies after the local file: SDK dependencies exist.
+# Install WebAdmin dependencies from its standalone lockfile.
 FROM node-base AS webadmin-deps
-RUN mkdir -p /app/SDKs /app/WebAdmin && chown -R node:node /app/SDKs /app/WebAdmin
-COPY --chown=node:node --from=sdk-builder /app/SDKs /app/SDKs
+RUN mkdir -p /app/WebAdmin && chown -R node:node /app/WebAdmin
 COPY --chown=node:node WebAdmin/package.json WebAdmin/package-lock.json ./WebAdmin/
 WORKDIR /app/WebAdmin
 ENV HUSKY=0
@@ -43,7 +23,6 @@ RUN --mount=type=cache,target=/home/node/.npm,uid=1000,gid=1000 npm ci --no-audi
 # the Windows host filesystem.
 FROM webadmin-deps AS dev
 COPY --chown=node:node WebAdmin /app/WebAdmin
-COPY --chown=node:node --from=sdk-builder /app/SDKs /app/SDKs
 RUN mkdir -p /app/WebAdmin/.next
 WORKDIR /app/WebAdmin
 ENV NODE_ENV=development
@@ -53,9 +32,9 @@ USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=15s --start-period=90s --retries=5 \
   CMD node -e "require('http').get('http://localhost:3000/api/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
-CMD ["npm", "run", "dev:docker"]
+CMD ["npm", "run", "dev"]
 
-# Production build reuses the locked dependency and SDK layers.
+# Production build reuses the locked dependency layer.
 FROM webadmin-deps AS builder
 COPY --chown=node:node WebAdmin /app/WebAdmin
 WORKDIR /app/WebAdmin
@@ -70,10 +49,10 @@ ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next/static ./WebAdmin/.next/static
-COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./WebAdmin/public
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/WebAdmin/public ./public
 USER nextjs
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget -q -O /dev/null http://localhost:3000/api/health || exit 1
-CMD ["node", "WebAdmin/server.js"]
+CMD ["node", "server.js"]

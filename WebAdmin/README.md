@@ -4,11 +4,11 @@ Next.js-based web interface for the Conduit LLM Platform, built with React, Type
 
 ## Architecture Overview
 
-The WebAdmin uses SDK React Query hooks directly for all API operations:
+WebAdmin owns focused, contract-derived clients for its API operations:
 
-### Client-Side SDK Usage
-- **Core SDK**: Used for LLM operations (chat, images, video, audio) with virtual key authentication
-- **Admin SDK**: Used for admin operations (providers, keys, settings) with master key authentication
+### Local API boundaries
+- **Gateway boundary**: LLM operations use ephemeral virtual-key authentication
+- **Admin boundary**: Administrative operations use master-key authentication
 
 ### Authentication Flow
 1. Admin logs in through Clerk authentication
@@ -17,16 +17,16 @@ The WebAdmin uses SDK React Query hooks directly for all API operations:
 4. All admin operations use master key authentication server-side
 
 ### Key Benefits
-- 🚀 **Direct SDK Usage**: No proxy layer, reduced latency
+- 🚀 **Focused API clients**: No general-purpose package dependency in the application
 - 🔄 **React Query Integration**: Built-in caching, optimistic updates
 - 🔐 **Secure Authentication**: Virtual keys for client-side operations
 - 📦 **Simplified Codebase**: Less code to maintain
 
 ## Features
 
-- 🚀 **Next.js 15** with App Router and TypeScript
+- 🚀 **Next.js 16** with App Router and TypeScript
 - 🎨 **Mantine UI** component library with custom theme
-- 🔗 **Direct SDK Integration** with React Query hooks
+- 🔗 **Local API Integration** with focused Admin and Gateway clients
 - ⚡ **Real-time Updates** via SignalR
 - 📊 **State Management** with Zustand and React Query
 - 🎯 **Type Safety** throughout the application
@@ -81,7 +81,8 @@ src/
 │   ├── signalr/           # SignalR-specific hooks
 │   └── api/               # API integration hooks
 ├── lib/                   # Utilities and configurations
-│   ├── clients/           # SDK client configurations
+│   ├── admin-api/         # WebAdmin-owned Admin API boundary
+│   ├── gateway-api/       # WebAdmin-owned Gateway API boundary
 │   ├── auth/              # Authentication utilities
 │   ├── signalr/           # SignalR connection management
 │   └── utils/             # Helper functions
@@ -104,54 +105,13 @@ src/
 
 1. Create page component in `src/app/[page-name]/page.tsx`
 2. Add navigation links in the layout components
-3. Implement API integration using Conduit SDKs
+3. Implement API integration through `src/lib/admin-api` or `src/lib/gateway-api`
 
-### Using SDK React Query Hooks
+### API integration
 
-The WebAdmin now uses SDK React Query hooks directly in components:
-
-```typescript
-// Using Core SDK hooks
-import { useChatCompletion, useImageGeneration } from '@knn_labs/conduit-gateway-client/react-query';
-
-function ChatComponent() {
-  const { mutate: sendMessage } = useChatCompletion();
-  
-  const handleSend = (messages) => {
-    sendMessage({ messages });
-  };
-}
-
-// Using Admin SDK hooks
-import { useProviders, useCreateProvider } from '@knn_labs/conduit-admin-client/react-query';
-
-function ProvidersPage() {
-  const { data: providers } = useProviders();
-  const { mutate: createProvider } = useCreateProvider();
-}
-```
-
-### Provider Setup
-
-SDK providers are configured in the app layout:
-
-```typescript
-// lib/providers/ConduitProviders.tsx
-import { ConduitProvider } from '@knn_labs/conduit-gateway-client/react-query';
-import { ConduitAdminProvider } from '@knn_labs/conduit-admin-client/react-query';
-
-export function ConduitProviders({ children }) {
-  const { virtualKey } = useAuthStore();
-  
-  return (
-    <ConduitProvider virtualKey={virtualKey} baseUrl={coreApiUrl}>
-      <ConduitAdminProvider authKey={masterKey} baseUrl={adminApiUrl}>
-        {children}
-      </ConduitAdminProvider>
-    </ConduitProvider>
-  );
-}
-```
+Admin and Gateway calls use WebAdmin-owned clients and contract-generated wire types. See
+`docs/ADMIN_API_BOUNDARY.md` and `docs/GATEWAY_API_BOUNDARY.md`; do not add package or workspace SDK
+imports to application code.
 
 ### Real-time Features
 
@@ -163,7 +123,7 @@ SignalR connections are managed centrally and provide real-time updates for:
 
 ## Video Generation
 
-The WebAdmin provides a comprehensive video generation interface with real-time progress tracking through the SDK's unified interface.
+The WebAdmin provides a comprehensive video generation interface with real-time progress tracking through its local Gateway boundary.
 
 ### Features
 - ✨ Real-time progress updates via SignalR
@@ -219,7 +179,7 @@ Enable/disable progress tracking features:
 ```typescript
 // Use the enhanced video generation with progress tracking
 const { generateVideo } = useVideoGeneration({
-  useProgressTracking: true,  // Enable SDK progress tracking
+  useProgressTracking: true,  // Enable Gateway progress tracking
   fallbackToPolling: true,    // Enable polling fallback
 });
 ```
@@ -237,8 +197,8 @@ The WebAdmin maintains a queue of video generation tasks:
 The WebAdmin is configured to run as part of the ConduitLLM Docker stack:
 
 ```bash
-# Build and start all services from the root directory
-docker-compose up -d
+# Start the development stack from the repository root
+./scripts/dev/start-dev.ps1 -WebAdmin
 
 # The WebAdmin will be available at http://localhost:3000
 ```

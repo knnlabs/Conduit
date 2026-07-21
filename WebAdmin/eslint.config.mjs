@@ -166,5 +166,27 @@ export default tseslint.config(
         ...globals.jest,
       },
     },
+  },
+
+  // Localized shared primitives preserve the public Common package behavior.
+  {
+    files: ['src/lib/conduit-common/**/*.ts'],
+    rules: {
+      '@typescript-eslint/naming-convention': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/prefer-nullish-coalescing': 'off',
+    },
+  },
+
+  // These focused UI helpers were moved without semantic rewrites.
+  {
+    files: [
+      'src/lib/gateway-api/structured-content.ts',
+      'src/lib/gateway-api/token-estimator.ts',
+    ],
+    rules: {
+      '@typescript-eslint/naming-convention': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+    },
   }
 );

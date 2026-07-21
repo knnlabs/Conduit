@@ -1,5 +1,5 @@
 /**
- * Re-export validation utilities from @knn_labs/conduit-common.
+ * Re-export validation utilities from the local shared utilities.
  * All business logic now lives in the SDK for cross-project reuse.
  */
 export {
@@ -9,8 +9,8 @@ export {
   isValidUrl,
   isValidEnumValue,
   createValidator
-} from '@knn_labs/conduit-common';
-export type { FieldValidationError as ValidationError, ValidationResult } from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';
+export type { FieldValidationError as ValidationError, ValidationResult } from '@/lib/conduit-common';
 
 /**
  * Standard error response for validation failures

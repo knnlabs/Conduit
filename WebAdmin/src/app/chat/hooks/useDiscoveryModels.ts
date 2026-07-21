@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
-import { ModelCapability, type DiscoveredModel as SDKDiscoveredModel } from '@knn_labs/conduit-gateway-client';
+import { ModelCapability, type DiscoveredModel as SDKDiscoveredModel } from '@/lib/gateway-api';
 
 // Extend the SDK type to include backend fields not in the generated types
 export interface DiscoveryModel extends SDKDiscoveredModel {

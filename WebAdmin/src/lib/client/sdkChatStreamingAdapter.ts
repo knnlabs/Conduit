@@ -11,7 +11,7 @@ import {
   type StreamingCallbacks,
   type StreamMessageOptions,
   type StreamingError
-} from '@knn_labs/conduit-gateway-client';
+} from '@/lib/gateway-api';
 
 
 /**

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
                      'unknown';
     const userAgent = request.headers.get('user-agent') ?? 'unknown';
     
-    // Use Core SDK to generate ephemeral key
+    // Use the local Gateway boundary to generate an ephemeral key.
     const coreClient = await getServerCoreClient();
     const response = await coreClient.auth.generateEphemeralKey(webAdminVirtualKey, {
       metadata: {

@@ -2,198 +2,62 @@
 
 ## Overview
 
-The Conduit WebAdmin has been migrated from a proxy-based architecture to direct SDK usage, significantly simplifying the codebase and improving performance.
-
-## Architecture Evolution
-
-### Previous Architecture (Proxy-Based)
-```mermaid
-graph LR
-    A[Browser] -->|React Query| B[WebAdmin Hooks]
-    B -->|HTTP| C[Next.js API Routes]
-    C -->|SDK Client| D[Conduit APIs]
-    
-    subgraph "Client-Side"
-        A
-        B
-    end
-    
-    subgraph "Server-Side"
-        C
-    end
-    
-    subgraph "External"
-        D[Gateway API<br/>Admin API]
-    end
-```
-
-### Current Architecture (Direct SDK)
-```mermaid
-graph LR
-    A[Browser] -->|SDK React Query| B[Conduit APIs]
-    
-    subgraph "Client-Side"
-        C[Core SDK Hooks]
-        D[Admin SDK Hooks]
-        E[Virtual Key]
-    end
-    
-    subgraph "Server-Side (Auth Only)"
-        F[Auth Endpoints]
-        G[Virtual Key Management]
-    end
-    
-    A --> C
-    A --> D
-    C -->|Virtual Key| B
-    D -->|Master Key| B
-    F --> G
-    G -->|Creates| E
-```
-
-## Component Architecture
+WebAdmin owns focused TypeScript boundaries for the ConduitLLM Admin and Gateway APIs. Application
+code does not import the published Node SDK packages or source files from `SDKs/Node`.
 
 ```mermaid
-graph TB
-    A[App Layout] --> B[ConduitProviders]
-    B --> C[QueryProvider]
-    B --> D[ConduitProvider<br/>Core SDK]
-    B --> E[ConduitAdminProvider<br/>Admin SDK]
-    
-    D --> F[Core Operations<br/>- Chat<br/>- Images<br/>- Video<br/>- Audio]
-    E --> G[Admin Operations<br/>- Providers<br/>- Virtual Keys<br/>- Settings]
-    
-    C --> H[React Query<br/>- Caching<br/>- Mutations<br/>- Optimistic Updates]
-    
-    I[AuthProvider] --> J[Session Management]
-    J --> K[Virtual Key Storage]
-    K --> D
+flowchart LR
+    Browser[WebAdmin browser] --> AdminClient[Local Admin API boundary]
+    Browser --> GatewayClient[Local Gateway API boundary]
+    AdminClient -->|X-Master-Key\nephemeral master key| Admin[Admin API]
+    GatewayClient -->|Bearer\nephemeral virtual key| Gateway[Gateway API]
+    WebAdminServer[Next.js auth routes] --> Admin
+    WebAdminServer --> Gateway
+    Contract[Committed OpenAPI contracts] --> Generated[Generated wire types]
+    Generated --> AdminClient
+    Generated --> GatewayClient
 ```
 
-## Authentication Flow
+## API boundaries
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant B as Browser
-    participant A as Auth API
-    participant S as SDK
-    participant C as Conduit API
-    
-    U->>B: Enter WebAdmin Auth Key
-    B->>A: POST /api/auth/validate
-    A->>A: Validate CONDUIT_WEBADMIN_AUTH_KEY
-    A->>C: Check/Create Virtual Key
-    C->>A: Return Virtual Key
-    A->>B: Session + Virtual Key
-    B->>B: Store in Auth Store
-    B->>S: Initialize SDK with Virtual Key
-    S->>C: Direct API Calls
-    C->>S: API Responses
-    S->>B: Update UI
-```
+- `src/lib/admin-api` contains the local Admin client and service models.
+- `src/lib/gateway-api` contains the focused Gateway client used by chat, discovery, functions,
+  image generation, video generation, and media uploads.
+- `src/lib/conduit-common` contains the shared HTTP, validation, formatting, and error primitives
+  required by those local clients.
+- `src/generated/admin-api.ts` and `src/generated/gateway-api.ts` are generated from the committed
+  OpenAPI JSON contracts. They describe wire shapes; UI-facing models may adapt those shapes.
 
-## Data Flow
+The public Common and Gateway SDK packages remain available for external consumers. They are not a
+WebAdmin runtime or build dependency. The former public Admin SDK is retired; existing registry
+versions remain available but no new versions are published.
 
-```mermaid
-graph LR
-    A[Component] --> B{Hook Type}
-    B -->|Query| C[useQuery Hook]
-    B -->|Mutation| D[useMutation Hook]
-    
-    C --> E[SDK Query]
-    D --> F[SDK Mutation]
-    
-    E --> G[Gateway API]
-    F --> G
-    
-    G --> H[Response]
-    H --> I[React Query Cache]
-    I --> A
-    
-    J[Optimistic Updates] --> I
-    K[Cache Invalidation] --> I
-```
+## Authentication flow
 
-## Key Components
+Admin operations request a fresh, single-use ephemeral master key through
+`/api/auth/ephemeral-master-key`. The local Admin client sends it in `X-Master-Key` and disables
+retries because a retried request would need a new key.
 
-### 1. SDK Providers
-Located in `/lib/providers/ConduitProviders.tsx`
-- Wraps the application with SDK contexts
-- Provides virtual key to Core SDK
-- Provides master key to Admin SDK (server-side)
+Gateway operations request a short-lived ephemeral virtual key through `/api/auth/ephemeral-key`.
+The server obtains the WebAdmin virtual key from the Admin API and asks the Gateway to mint the
+ephemeral key. Browser Gateway requests send that opaque key as `Authorization: Bearer ...`.
 
-### 2. Authentication
-- `/stores/useAuthStore.ts` - Manages auth state and virtual key
-- `/lib/auth/` - Authentication utilities and validation
-- `/app/api/auth/` - Minimal auth endpoints
+## Streaming and long-running work
 
-### 3. SDK Hooks
-- Core SDK: Chat, Images, Video, Audio operations
-- Admin SDK: Provider, Virtual Keys, Model Mappings
+Chat completions use the local SSE parser. Video generation starts an asynchronous Gateway task,
+uses SignalR for progress when available, and polls as a fallback. Media uploads use the browser's
+upload progress events.
 
-### 4. Real-time Updates
-- SignalR integration for live updates
-- Navigation state, generation progress
-- Virtual key spend tracking
+## Contract workflow
 
-## Security Architecture
+Run `npm run generate:offline` from `SDKs/Node/scripts` to export both service contracts and
+regenerate the Admin/Gateway WebAdmin wire types plus the retained Gateway SDK wire type. CI repeats
+generation, validates both contracts, and fails on drift.
 
-```mermaid
-graph TB
-    A[WebAdmin Auth Key<br/>Server-Only] --> B[Admin Login]
-    B --> C[Create/Get Virtual Key]
-    C --> D[Virtual Key<br/>Client-Side]
-    
-    D --> E[Core SDK Operations]
-    E --> F[Rate Limited<br/>100 req/min]
-    
-    G[Master Key<br/>Server-Only] --> H[Admin SDK Operations]
-    
-    I[Security Headers] --> J[CSP<br/>X-Frame-Options<br/>X-Content-Type-Options]
-    
-    K[Session Management] --> L[24hr Expiry<br/>Auto Refresh<br/>Secure Cookies]
-```
+The boundary invariant is available as `npm run check:admin-boundary` from `WebAdmin`.
 
-## Deployment Architecture
+## Docker development
 
-```mermaid
-graph TB
-    A[Docker Compose] --> B[WebAdmin Container<br/>Port 3000]
-    A --> C[Gateway API Container<br/>Port 5000]
-    A --> D[Admin API Container<br/>Port 5002]
-    A --> E[Redis<br/>Session Storage]
-    
-    B --> F[Next.js Server]
-    F --> G[Static Assets]
-    F --> H[API Routes<br/>Auth Only]
-    
-    I[Browser] --> B
-    I --> C
-    I --> D
-    
-    B -.->|Internal| C
-    B -.->|Internal| D
-```
-
-## Benefits of New Architecture
-
-1. **Performance**
-   - Eliminated proxy layer reduces latency
-   - Direct API calls from browser
-   - Better caching with React Query
-
-2. **Simplicity**
-   - 80% reduction in API route code
-   - Direct SDK usage as designed
-   - Less code to maintain
-
-3. **Developer Experience**
-   - Better TypeScript support
-   - Easier debugging
-   - Standard React Query patterns
-
-4. **Security**
-   - Virtual keys scoped for WebAdmin
-   - Rate limiting per key
-   - Automatic key management
+The WebAdmin image installs only `WebAdmin/package.json` and its lockfile. Compose Watch syncs the
+WebAdmin tree and rebuilds only for WebAdmin manifest, lockfile, or Dockerfile changes; SDK workspace
+changes no longer trigger a WebAdmin rebuild.

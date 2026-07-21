@@ -6,7 +6,7 @@ import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useMediaInterface } from '@/app/hooks/useMediaInterface';
-import { ModelCapability } from '@knn_labs/conduit-gateway-client';
+import { ModelCapability } from '@/lib/gateway-api';
 import EnhancedVideoPromptInput from './EnhancedVideoPromptInput';
 import VideoGallery from './VideoGallery';
 import VideoQueue from './VideoQueue';

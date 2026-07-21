@@ -34,13 +34,13 @@ Built with .NET and designed for containerization (Docker), ConduitLLM streamlin
 - **SDKs**: Stable APIs for Node.js and other platforms
 
 ### ⚠️ **In Development**
-- **Core & Admin APIs**: May evolve without backward compatibility - use SDKs instead
+- **Gateway API**: May evolve without backward compatibility - use its SDK or OpenAI-compatible clients
+- **Admin API**: Integrate against the authoritative OpenAPI contract
 
 ### 💡 **Recommended Integration**
 ```bash
-# Use SDKs for stable integration
+# Use the public Gateway SDK for enhanced Gateway features
 npm install @knn_labs/conduit-gateway-client
-npm install @knn_labs/conduit-admin-client
 ```
 
 ## Key Features

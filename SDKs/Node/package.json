@@ -5,7 +5,6 @@
   "description": "Workspace for Conduit SDK packages",
   "workspaces": [
     "Common",
-    "Admin",
     "Gateway"
   ],
   "scripts": {
@@ -14,7 +13,7 @@
     "test:ci": "npm run test:ci --workspaces --if-present",
     "clean": "npm run clean --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "type-check": "npm run type-check --workspaces --if-present"
+    "type-check": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {},
   "engines": {

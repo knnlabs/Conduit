@@ -1,4 +1,4 @@
-import { ConduitGatewayClient } from '@knn_labs/conduit-gateway-client';
+import { ConduitGatewayClient } from '@/lib/gateway-api';
 import { ephemeralKeyClient } from './ephemeralKeyClient';
 
 let browserClient: InstanceType<typeof ConduitGatewayClient> | null = null;

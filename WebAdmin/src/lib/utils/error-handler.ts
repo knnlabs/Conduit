@@ -5,7 +5,7 @@ import {
   isAuthError,
   isRateLimitError,
   ConduitError
-} from '@knn_labs/conduit-gateway-client';
+} from '@/lib/gateway-api';
 
 /**
  * Global error handler for unhandled errors

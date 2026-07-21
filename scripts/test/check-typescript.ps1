@@ -371,7 +371,7 @@ function Write-Report {
         Write-Host ("{0,-20} | {1,-10} | {2,-10} | {3,-15}" -f "Project", "Errors", "Warnings", "Build Status")
         Write-Host ("{0} | {1} | {2} | {3}" -f ("-" * 20), ("-" * 10), ("-" * 10), ("-" * 15))
 
-        foreach ($project in @("WebAdmin", "Admin SDK", "Gateway SDK", "Common SDK")) {
+        foreach ($project in @("WebAdmin", "Gateway SDK", "Common SDK")) {
             if ($script:projectErrors.ContainsKey($project)) {
                 $errors = $script:projectErrors[$project]
                 $warnings = if ($script:projectWarnings[$project]) { $script:projectWarnings[$project] } else { 0 }
@@ -420,8 +420,7 @@ function Write-Report {
                 Write-Host ""
             }
 
-            if (($script:projectErrors["Admin SDK"] -and $script:projectErrors["Admin SDK"] -gt 0) -or
-                ($script:projectErrors["Gateway SDK"] -and $script:projectErrors["Gateway SDK"] -gt 0)) {
+            if ($script:projectErrors["Gateway SDK"] -and $script:projectErrors["Gateway SDK"] -gt 0) {
                 Write-Host "SDK fixes:"
                 Write-Host "  ./scripts/dev/fix-sdk-errors.ps1"
                 Write-Host ""
@@ -449,7 +448,6 @@ if (-not $Json) {
 Test-WebAdmin
 
 # Check SDKs
-Test-SDK -SdkPath "SDKs/Node/Admin" -SdkName "Admin SDK"
 Test-SDK -SdkPath "SDKs/Node/Gateway" -SdkName "Gateway SDK"
 Test-SDK -SdkPath "SDKs/Node/Common" -SdkName "Common SDK"
 

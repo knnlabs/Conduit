@@ -2,35 +2,33 @@
 
 ## Overview
 
-This directory contains comprehensive documentation for the Conduit WebAdmin, including architecture details, migration guides, and security considerations.
+This directory contains architecture, API-boundary, operations, and security documentation for WebAdmin.
 
 ## Documentation Index
 
 ### 📐 [Architecture](./ARCHITECTURE.md)
 Detailed overview of the WebAdmin architecture, including:
-- Architecture evolution from proxy-based to direct SDK
-- Component architecture and data flow
+- Local Admin and Gateway API boundaries
+- Contract-generated wire types and data flow
 - Authentication and security architecture
 - Deployment architecture with Docker
 
 ### 🔑 [Virtual Key Management](./VIRTUAL-KEY-MANAGEMENT.md)
 Complete guide to WebAdmin virtual key system:
-- How virtual keys work
-- Automatic key creation and management
+- How ephemeral virtual keys work
+- Server-side provisioning and browser caching
 - Security model and best practices
-- Key rotation and monitoring
 
-### 🔄 [Migration Guide](./MIGRATION-GUIDE.md)
-Step-by-step guide for migrating from API routes to SDK hooks:
-- Before and after code examples
-- Provider setup instructions
-- Common patterns and best practices
-- Rollback strategies
+### 🔌 [Admin API Boundary](./ADMIN_API_BOUNDARY.md)
+The contract-derived, WebAdmin-owned integration with the Admin service.
+
+### 🔌 [Gateway API Boundary](./GATEWAY_API_BOUNDARY.md)
+The focused local Gateway transport, streaming behavior, and generated wire types.
 
 ### 🔧 [Troubleshooting](./TROUBLESHOOTING.md)
 Solutions to common issues:
 - Authentication problems
-- SDK hook issues
+- API boundary issues
 - Network and CORS errors
 - Performance optimization
 - Debugging tools and techniques
@@ -52,7 +50,8 @@ Technical security implementation details:
 ## Quick Links
 
 ### For Developers
-- [Migration Guide](./MIGRATION-GUIDE.md) - Start here if migrating existing code
+- [Admin API Boundary](./ADMIN_API_BOUNDARY.md) - Admin integration rules
+- [Gateway API Boundary](./GATEWAY_API_BOUNDARY.md) - Gateway integration rules
 - [Architecture](./ARCHITECTURE.md) - Understand the system design
 - [Troubleshooting](./TROUBLESHOOTING.md) - Common issues and solutions
 
@@ -69,7 +68,7 @@ Technical security implementation details:
 ## Getting Started
 
 1. **New to WebAdmin?** Start with [Architecture](./ARCHITECTURE.md)
-2. **Migrating code?** Read the [Migration Guide](./MIGRATION-GUIDE.md)
+2. **Changing API calls?** Read the [Admin](./ADMIN_API_BOUNDARY.md) or [Gateway](./GATEWAY_API_BOUNDARY.md) boundary guide
 3. **Having issues?** Check [Troubleshooting](./TROUBLESHOOTING.md)
 4. **Security concerns?** Review [Security Considerations](./SECURITY-CONSIDERATIONS.md)
 
@@ -86,4 +85,4 @@ When adding new documentation:
 
 - [WebAdmin README](../README.md) - Main project documentation
 - [Conduit Documentation](https://github.com/nickna/Conduit/docs) - Platform documentation
-- [SDK Documentation](https://www.npmjs.com/package/@knn_labs/conduit-gateway-client) - SDK reference
+- [Gateway SDK Documentation](https://www.npmjs.com/package/@knn_labs/conduit-gateway-client) - External consumer SDK reference

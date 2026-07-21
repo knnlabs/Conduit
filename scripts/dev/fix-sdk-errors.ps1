@@ -6,16 +6,13 @@
 
 .DESCRIPTION
     Combined script to fix ESLint errors and build SDK clients.
-    Runs linting, auto-fix, build, and tests for Admin and Gateway SDKs.
+    Runs linting, auto-fix, build, and tests for the Gateway SDK.
 
 .PARAMETER Sdk
-    Which SDK to fix: admin, gateway, or all (default).
+    Which SDK to fix: gateway or all (default).
 
 .EXAMPLE
     ./scripts/dev/fix-sdk-errors.ps1
-
-.EXAMPLE
-    ./scripts/dev/fix-sdk-errors.ps1 -Sdk admin
 
 .EXAMPLE
     ./scripts/dev/fix-sdk-errors.ps1 gateway
@@ -24,7 +21,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('admin', 'gateway', 'all', '')]
+    [ValidateSet('gateway', 'all', '')]
     [string]$Sdk = 'all'
 )
 
@@ -36,10 +33,6 @@ Import-Module (Join-Path $scriptDir 'lib' 'Common.psm1') -Force
 
 # SDK configuration
 $sdkConfig = @{
-    'admin' = @{
-        Path = 'SDKs/Node/Admin'
-        DisplayName = 'Admin Client'
-    }
     'gateway' = @{
         Path = 'SDKs/Node/Gateway'
         DisplayName = 'Gateway Client'

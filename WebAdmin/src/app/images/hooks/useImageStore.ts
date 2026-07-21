@@ -11,7 +11,7 @@ import { STORAGE_CONFIG, IMAGE_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning
-} from '@knn_labs/conduit-gateway-client';
+} from '@/lib/gateway-api';
 // Needs raw notifications API: .show is passed as callback to SDK's createToastErrorHandler
 import { notifications } from '@mantine/notifications';
 

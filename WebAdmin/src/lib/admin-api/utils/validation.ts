@@ -3,7 +3,7 @@
  * Provides runtime validation for common use cases
  */
 
-import { ValidationError } from '@knn_labs/conduit-common';
+import { ValidationError } from '@/lib/conduit-common';
 
 /**
  * Validates that required fields are present and not null/undefined

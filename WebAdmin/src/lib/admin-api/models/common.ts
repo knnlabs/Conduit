@@ -8,9 +8,9 @@ export type {
   FilterOptions,
   DateRange,
   RequestOptions,
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';
 
 export {
   type SortDirection,
   type HttpMethod,
-} from '@knn_labs/conduit-common';
+} from '@/lib/conduit-common';

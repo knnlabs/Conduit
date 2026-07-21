@@ -2,199 +2,41 @@
 
 ## Overview
 
-The WebAdmin automatically manages a virtual key for Gateway API operations. This key is created on first login and reused for all subsequent sessions.
+WebAdmin uses short-lived ephemeral virtual keys for direct browser-to-Gateway requests. The
+long-lived WebAdmin virtual key stays behind the Next.js server boundary.
 
-## How It Works
+## Flow
 
-### 1. Initial Setup
-When an admin first logs into the WebAdmin:
-- System checks for existing "WebAdmin Admin Access" virtual key
-- If not found, creates a new virtual key automatically
-- Key is stored in encrypted storage when available
+1. Browser code calls `getBrowserGatewayClient()`.
+2. `ephemeralKeyClient` requests `/api/auth/ephemeral-key` when no unexpired key is cached.
+3. The server retrieves or provisions the WebAdmin virtual key through the local Admin API boundary.
+4. The server asks the Gateway to mint a short-lived key for that virtual key.
+5. The browser's local Gateway client sends the ephemeral key as an opaque Bearer token.
 
-### 2. Key Configuration
-The WebAdmin virtual key is configured with:
+The browser cache refreshes a key 30 seconds before expiration. Clearing the browser client also
+clears the ephemeral-key cache. A direct request that receives `401` obtains one fresh key and
+retries once.
+
+## Usage
+
+Components and hooks should use the WebAdmin-owned Gateway boundary:
+
 ```typescript
-{
-  name: "WebAdmin Admin Access",
-  description: "Automatically managed virtual key for WebAdmin Gateway API access",
-  providers: ["*"], // Access to all providers
-  rateLimits: {
-    requestsPerMinute: 100,
-    requestsPerHour: 2000,
-    tokensPerMinute: 100000,
-    tokensPerHour: 2000000
-  },
-  metadata: {
-    source: "WebAdmin",
-    autoCreated: true,
-    createdAt: new Date().toISOString()
-  }
-}
+import { getBrowserGatewayClient } from '@/lib/client/browserCoreClient';
+
+const client = await getBrowserGatewayClient();
+const models = await client.discovery.getModels();
 ```
 
-### 3. Storage and Retrieval
+Do not import a published Gateway/Common package or read the SDK workspace from WebAdmin code.
 
-#### Client-Side Storage
-```typescript
-// Stored in auth store (Zustand)
-interface AuthState {
-  virtualKey: string | null;
-  // ... other auth state
-}
+## Security properties
 
-// Encrypted in session/local storage when available
-const storedAuth = {
-  virtualKey: "vk_abc123...",
-  encryptedMasterKey: "...",
-  expiresAt: "2024-01-01T00:00:00Z"
-};
-```
+- The persistent WebAdmin virtual key is handled server-side.
+- Browser-visible keys are short-lived and limited to Gateway operations.
+- Gateway authentication uses `Authorization: Bearer <opaque-key>`.
+- Admin operations use a separate ephemeral master-key flow and `X-Master-Key`.
+- Browser-visible credentials should still be treated as sensitive and never logged.
 
-#### Server-Side Management
-```typescript
-// utils/virtualKeyManagement.ts
-export async function ensureWebAdminVirtualKey(adminClient: ConduitAdminClient) {
-  // Check for existing key
-  const existing = await getWebAdminVirtualKey(adminClient);
-  if (existing) return { key: existing, isNew: false };
-  
-  // Create new key
-  const newKey = await createWebAdminVirtualKey(adminClient);
-  return { key: newKey.key, isNew: true };
-}
-```
-
-## Security Model
-
-### Access Control
-- Virtual key only provides access to Gateway API operations
-- Cannot perform admin operations (provider management, etc.)
-- Rate limited to prevent abuse
-- Automatically cleared on logout
-
-### Key Visibility
-- Virtual keys are visible in browser DevTools
-- This is acceptable for admin tools
-- Not suitable for public-facing applications
-- Consider the security implications for your use case
-
-## Usage in Components
-
-### Direct SDK Usage
-```typescript
-// Automatically uses virtual key from auth store
-import { useChatCompletion } from '@knn_labs/conduit-gateway-client/react-query';
-
-function ChatComponent() {
-  const { mutate } = useChatCompletion();
-  
-  // Virtual key is automatically included by ConduitProvider
-  const handleSend = (messages) => {
-    mutate({ messages });
-  };
-}
-```
-
-### Manual Key Access
-```typescript
-import { useAuthStore } from '@/stores/useAuthStore';
-
-function MyComponent() {
-  const virtualKey = useAuthStore(state => state.virtualKey);
-  
-  if (!virtualKey) {
-    return <div>Not authenticated</div>;
-  }
-  
-  // Use virtual key for custom operations
-}
-```
-
-## Key Rotation
-
-### Manual Rotation
-If you need to rotate the virtual key:
-
-1. Delete the existing key through the Virtual Keys UI
-2. Log out and log back in
-3. A new key will be automatically created
-
-### Programmatic Rotation
-```typescript
-// In a server-side API route
-export async function rotateWebAdminVirtualKey() {
-  const adminClient = getServerAdminClient();
-  
-  // Delete existing key
-  const existing = await getWebAdminVirtualKey(adminClient);
-  if (existing) {
-    await adminClient.virtualKeys.delete(existing.id);
-  }
-  
-  // Create new key
-  const newKey = await createWebAdminVirtualKey(adminClient);
-  return newKey;
-}
-```
-
-## Monitoring and Debugging
-
-### Check Virtual Key Status
-```typescript
-// In browser console
-const authStore = window.__ZUSTAND_DEVTOOLS__.stores.get('authStore');
-console.log('Virtual Key:', authStore.getState().virtualKey);
-```
-
-### View Key in Admin UI
-1. Navigate to Virtual Keys page
-2. Look for "WebAdmin Admin Access" key
-3. Check usage statistics and rate limit status
-
-### Common Issues
-
-#### Key Not Found
-- **Symptom**: "No virtual key available" errors
-- **Solution**: Log out and log back in to recreate
-
-#### Rate Limit Exceeded
-- **Symptom**: 429 errors from API
-- **Solution**: Check rate limit configuration, adjust if needed
-
-#### Key Deleted Manually
-- **Symptom**: API calls fail with 401
-- **Solution**: Log out and log back in to recreate
-
-## Best Practices
-
-1. **Don't Share Keys**: Virtual keys are tied to the WebAdmin instance
-2. **Monitor Usage**: Regularly check key usage in the admin panel
-3. **Rotate Periodically**: Consider rotating keys monthly
-4. **Handle Errors**: Implement proper error handling for key failures
-5. **Secure Storage**: Ensure HTTPS in production
-
-## Configuration Options
-
-### Environment Variables
-```bash
-# Optional: Custom rate limits (defaults shown)
-WEBADMIN_VIRTUAL_KEY_RPM=100
-WEBADMIN_VIRTUAL_KEY_RPH=2000
-WEBADMIN_VIRTUAL_KEY_TPM=100000
-WEBADMIN_VIRTUAL_KEY_TPH=2000000
-```
-
-### Custom Key Name
-```typescript
-// In virtualKeyManagement.ts
-const WEBADMIN_VIRTUAL_KEY_NAME = process.env.WEBADMIN_KEY_NAME || "WebAdmin Admin Access";
-```
-
-## Future Enhancements
-
-1. **Automatic Rotation**: Rotate keys on a schedule
-2. **Multiple Keys**: Support for different permission levels
-3. **Key Metrics**: Dashboard for key usage analytics
-4. **Audit Logging**: Track all key operations
-5. **Backup Keys**: Fallback keys for high availability
+See [Gateway API Boundary](./GATEWAY_API_BOUNDARY.md) and
+[Admin API Boundary](./ADMIN_API_BOUNDARY.md) for maintenance rules.

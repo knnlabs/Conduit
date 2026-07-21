@@ -7,7 +7,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { ImagePreview } from './ImagePreview';
-import { processStructuredContent } from '@knn_labs/conduit-gateway-client';
+import { processStructuredContent } from '@/lib/gateway-api';
 import { MessageErrorCard } from './MessageErrorCard';
 import { ToolExecutionDisplay } from './ToolExecutionDisplay';
 import { CollapsibleThinking } from './CollapsibleThinking';

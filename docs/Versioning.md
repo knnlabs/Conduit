@@ -31,12 +31,11 @@ All version numbers are centrally defined in the `Directory.Build.props` file in
 ### Updating Versions
 
 The whole product shares one version — the .NET services (via `Directory.Build.props`)
-and all three npm SDK packages. When preparing a new release:
+and both npm SDK packages. When preparing a new release:
 
 1. Edit `Directory.Build.props` to set the new version number.
-2. Set the same version in the three SDK manifests —
-   `SDKs/Node/Common/package.json`, `SDKs/Node/Admin/package.json`, and
-   `SDKs/Node/Gateway/package.json` — then run `npm install --package-lock-only`
+2. Set the same version in the two SDK manifests —
+   `SDKs/Node/Common/package.json` and `SDKs/Node/Gateway/package.json` — then run `npm install --package-lock-only`
    in `SDKs/Node` to keep the lockfile in sync.
 3. Commit the change ("Update version to X.Y.Z") and merge to `master`.
 4. Cut the release by pushing a git tag — see [Release Channels](#release-channels).
@@ -47,7 +46,7 @@ The version in `Directory.Build.props` flows through to:
 - WebAdmin version display
 
 Published npm packages take their version from the git **tag** at release time (the
-workflow stamps it onto all three packages), so the `package.json` values above are
+workflow stamps it onto both packages), so the `package.json` values above are
 the development baseline — the tag is authoritative.
 
 ## Automated Version Checking
