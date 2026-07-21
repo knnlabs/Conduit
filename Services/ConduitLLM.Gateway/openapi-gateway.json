@@ -6,6 +6,92 @@
     "version": "v1"
   },
   "paths": {
+    "/v1/models": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "operationId": "Models_ListModels",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/models/{modelId}/metadata": {
+      "get": {
+        "tags": [
+          "Models"
+        ],
+        "operationId": "Models_GetModelMetadata",
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "VirtualKey": [ ]
+          }
+        ]
+      }
+    },
     "/v1/audio/transcriptions": {
       "post": {
         "tags": [
@@ -1751,138 +1837,6 @@
               "application/json": {
                 "schema": {
                   "type": "object"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "VirtualKey": [ ]
-          }
-        ]
-      }
-    },
-    "/v1/models": {
-      "get": {
-        "tags": [
-          "Models"
-        ],
-        "summary": "Lists available models.",
-        "description": "This endpoint maintains OpenAI API compatibility and returns all models without pagination.\r\nFor large deployments with many models, use the Admin API's paginated endpoints.",
-        "operationId": "Models_ListModels",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": { }
-              },
-              "application/json": {
-                "schema": { }
-              },
-              "text/json": {
-                "schema": { }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "VirtualKey": [ ]
-          }
-        ]
-      }
-    },
-    "/v1/models/{modelId}/metadata": {
-      "get": {
-        "tags": [
-          "Models"
-        ],
-        "summary": "Gets metadata for a specific model.",
-        "operationId": "Models_GetModelMetadata",
-        "parameters": [
-          {
-            "name": "modelId",
-            "in": "path",
-            "description": "The model ID.",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": { }
-              },
-              "application/json": {
-                "schema": { }
-              },
-              "text/json": {
-                "schema": { }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
@@ -5319,6 +5273,9 @@
   },
   "tags": [
     {
+      "name": "Models"
+    },
+    {
       "name": "Audio"
     },
     {
@@ -5350,9 +5307,6 @@
     },
     {
       "name": "Media"
-    },
-    {
-      "name": "Models"
     },
     {
       "name": "ProviderModels"

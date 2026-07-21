@@ -2,6 +2,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Providers.Extensions;
 
 namespace ConduitLLM.Admin;
@@ -19,6 +20,7 @@ public partial class Program
 
         // Add Core services
         builder.Services.AddCoreServices(builder.Configuration, startupLogger);
+        builder.Services.AddScoped<IEventPublisher, EventPublisher>();
 
         // Add Configuration services
         builder.Services.AddConfigurationServices(builder.Configuration);

@@ -7,6 +7,8 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Security.Middleware;
 
+using System.Text.Json;
+
 using JasperFx;
 
 using Scalar.AspNetCore;
@@ -40,19 +42,7 @@ public partial class Program
 
         // Add services to the container
         builder.Services.AddControllers()
-            .AddJsonOptions(options =>
-            {
-                // Configure JSON to use camelCase for compatibility with TypeScript clients
-                options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-                options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-
-                // IMPORTANT: Make JSON deserialization case-insensitive to prevent bugs
-                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-
-                // Ensure all DateTime values serialize as UTC with 'Z' suffix
-                options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
-                options.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
-            })
+            .AddJsonOptions(options => ConfigureAdminJson(options.JsonSerializerOptions))
             .ConfigureApiBehaviorOptions(options =>
             {
                 // Tier 2a (#904): return the Admin API's standard ErrorResponseDto for automatic
@@ -61,6 +51,13 @@ public partial class Program
                 // the Admin API (AdminExceptionMiddleware also emits ErrorResponseDto).
                 options.InvalidModelStateResponseFactory = InvalidModelStateResponse.Create;
             });
+
+        // Minimal APIs use Microsoft.AspNetCore.Http.Json.JsonOptions rather than MVC's
+        // JsonOptions. Keep both paths on the same configuration while controllers and endpoint
+        // groups coexist. This registration is before the codegen branch, so the metadata-only
+        // host and the production host use the same contract.
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            ConfigureAdminJson(options.SerializerOptions));
 
         // Operation-logging action filter — replaces the per-action success logging that used to
         // live in AdminControllerBase.ExecuteAsync. Applied per controller via [ServiceFilter]
@@ -84,6 +81,7 @@ public partial class Program
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ResponseContractOperationTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.NumericSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.TemporalSchemaTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.ModelCostResponseSchemaTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.GlobalSettingsResponseSchemaTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.IpFilterResponseSchemaTransformer>();
@@ -101,6 +99,12 @@ public partial class Program
             var openApiApp = builder.Build();
             openApiApp.MapControllers();
             openApiApp.MapModelAuthorEndpoints();
+            openApiApp.MapModelSeriesEndpoints();
+            openApiApp.MapNotificationsEndpoints();
+            openApiApp.MapAdminTasksEndpoints();
+            openApiApp.MapAdminAuthEndpoints();
+            openApiApp.MapSystemInfoEndpoints();
+            openApiApp.MapAdminMetricsEndpoints();
             await openApiApp.RunAsync();
             return 0;
         }
@@ -167,6 +171,12 @@ public partial class Program
 
         // Tier 3 pilot (#906): ModelAuthor served as Minimal-API endpoints (replaces ModelAuthorController).
         app.MapModelAuthorEndpoints();
+        app.MapModelSeriesEndpoints();
+        app.MapNotificationsEndpoints();
+        app.MapAdminTasksEndpoints();
+        app.MapAdminAuthEndpoints();
+        app.MapSystemInfoEndpoints();
+        app.MapAdminMetricsEndpoints();
 
         // Map SignalR hub with master key authentication
         app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
@@ -191,6 +201,15 @@ public partial class Program
         // location defects (the class that hid W2, #929) fail at build time rather than
         // first delivery.
         return await app.RunJasperFxCommands(args);
+    }
+
+    private static void ConfigureAdminJson(JsonSerializerOptions options)
+    {
+        options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+        options.PropertyNameCaseInsensitive = true;
+        options.Converters.Add(new UtcDateTimeConverter());
+        options.Converters.Add(new NullableUtcDateTimeConverter());
     }
 }
 

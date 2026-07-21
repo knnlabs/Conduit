@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Gateway.Endpoints;
 
 public partial class Program
 {
@@ -7,6 +8,8 @@ public partial class Program
     {
         // Get JsonSerializerOptions from DI
         var jsonSerializerOptions = app.Services.GetRequiredService<JsonSerializerOptions>();
+
+        app.MapModelsEndpoints();
 
         // Map SignalR hubs for real-time updates
 

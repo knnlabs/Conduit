@@ -24,7 +24,7 @@ public sealed class AuthoritativeContractTests : IDisposable
         Operation(_admin, "/api/ModelAuthor", "get").GetProperty("operationId").GetString()
             .Should().Be("ModelAuthors_List");
         Operation(_admin, "/api/ModelAuthor/{id}", "get").GetProperty("operationId").GetString()
-            .Should().Be("GetModelAuthorById", "explicit operation IDs must remain stable");
+            .Should().Be("ModelAuthors_GetById", "explicit operation IDs must follow Tag_Action");
     }
 
     [Fact]

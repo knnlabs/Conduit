@@ -31,7 +31,7 @@ namespace ConduitLLM.Admin.Endpoints
             group.MapGet("/", GetAll)
                 .WithName("ModelAuthors_List")
                 .Produces<IEnumerable<ModelAuthorDto>>(StatusCodes.Status200OK);
-            group.MapGet("/{id:int}", GetById).WithName("GetModelAuthorById")
+            group.MapGet("/{id:int}", GetById).WithName("ModelAuthors_GetById")
                 .Produces<ModelAuthorDto>(StatusCodes.Status200OK)
                 .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
             group.MapGet("/{id:int}/series", GetSeriesByAuthor)
@@ -67,7 +67,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             var author = await repository.GetByIdAsync(id);
             return author is null
-                ? NotFoundEntity("Model author", id)
+                ? AdminResults.NotFoundEntity("Model author", id)
                 : Results.Ok(author.ToDto());
         }
 
@@ -76,7 +76,7 @@ namespace ConduitLLM.Admin.Endpoints
             var series = await repository.GetSeriesByAuthorAsync(id);
             if (series is null)
             {
-                return NotFoundEntity("Model author", id);
+                return AdminResults.NotFoundEntity("Model author", id);
             }
 
             var dtos = series.Select(s => new SimpleModelSeriesDto
@@ -180,14 +180,6 @@ namespace ConduitLLM.Admin.Endpoints
                 $"Name: {LoggingSanitizer.S(author.Name)}");
 
             return Results.NoContent();
-        }
-
-        private static IResult NotFoundEntity(string entityType, object? entityId)
-        {
-            var message = entityId != null
-                ? $"{entityType} with ID '{entityId}' not found"
-                : $"{entityType} not found";
-            return Results.NotFound(new ErrorResponseDto(message) { Code = "not_found" });
         }
 
         private static ILogger Logger(ILoggerFactory factory)

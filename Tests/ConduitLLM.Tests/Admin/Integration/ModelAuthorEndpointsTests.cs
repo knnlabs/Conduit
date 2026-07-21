@@ -9,6 +9,7 @@ using ConduitLLM.Admin.Middleware;
 using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Converters;
 
 using FluentAssertions;
 
@@ -63,6 +64,14 @@ namespace ConduitLLM.Tests.Admin.Integration
                         services.AddLogging();
                         services.AddRouting();
                         services.AddSingleton(_repository.Object);
+                        services.ConfigureHttpJsonOptions(options =>
+                        {
+                            options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+                            options.SerializerOptions.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+                            options.SerializerOptions.PropertyNameCaseInsensitive = true;
+                            options.SerializerOptions.Converters.Add(new UtcDateTimeConverter());
+                            options.SerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
+                        });
 
                         services.AddAuthentication("Test")
                             .AddScheme<AuthenticationSchemeOptions, AlwaysAuthenticatedHandler>("Test", null);
@@ -121,6 +130,27 @@ namespace ConduitLLM.Tests.Admin.Integration
             var author = await response.Content.ReadFromJsonAsync<ModelAuthorDto>(Json);
             author!.Id.Should().Be(7);
             author.Name.Should().Be("Meta");
+        }
+
+        [Fact]
+        public async Task GetById_SerializesDtoDatesAsCamelCaseUtc()
+        {
+            _repository
+                .Setup(r => r.GetByIdAsync(7, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ModelAuthor
+                {
+                    Id = 7,
+                    Name = "Meta"
+                });
+
+            var response = await _client.GetAsync("/api/ModelAuthor/7");
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            body.RootElement.GetProperty("createdAt").GetString()
+                .Should().Be("0001-01-01T00:00:00Z");
+            body.RootElement.GetProperty("updatedAt").GetString()
+                .Should().Be("0001-01-01T00:00:00Z");
         }
 
         [Fact]

@@ -1,4 +1,5 @@
 using JasperFx;
+using ConduitLLM.Gateway.Endpoints;
 
 // "migrate" verb: run the standalone migrator (release-hook entry point) instead of
 // the web host — e.g. `dotnet ConduitLLM.Gateway.dll migrate`.
@@ -25,6 +26,7 @@ if (Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_GENERATION") == "true")
     builder.Services.AddAuthorization();
     var openApiApp = builder.Build();
     openApiApp.MapControllers();
+    openApiApp.MapModelsEndpoints();
     await openApiApp.RunAsync();
     return 0;
 }

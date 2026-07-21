@@ -14,6 +14,8 @@ public partial class Program
 {
     public static void ConfigureCoreServices(WebApplicationBuilder builder)
     {
+        builder.Services.AddScoped<ConduitLLM.Core.Services.IEventPublisher,
+            ConduitLLM.Core.Services.EventPublisher>();
         // ========== Core Infrastructure ==========
 
         // Add leader election service for distributed background service coordination

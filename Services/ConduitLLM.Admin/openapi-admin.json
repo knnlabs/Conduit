@@ -125,7 +125,7 @@
         "tags": [
           "ModelAuthor"
         ],
-        "operationId": "GetModelAuthorById",
+        "operationId": "ModelAuthors_GetById",
         "parameters": [
           {
             "name": "id",
@@ -395,6 +395,1499 @@
         ]
       }
     },
+    "/api/ModelSeries": {
+      "get": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "operationId": "ModelSeries_GetAll",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ModelSeriesDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "operationId": "ModelSeries_Create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateModelSeriesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelSeriesDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/ModelSeries/{id}": {
+      "get": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "operationId": "ModelSeries_GetById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelSeriesDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "operationId": "ModelSeries_Update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateModelSeriesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "operationId": "ModelSeries_Delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/ModelSeries/{id}/models": {
+      "get": {
+        "tags": [
+          "ModelSeries"
+        ],
+        "operationId": "ModelSeries_GetModels",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SeriesSimpleModelDto"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_GetAll",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_Create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotificationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Notifications/unread": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_GetUnread",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Notifications/{id}": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_GetById",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_Update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_Delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Notifications/{id}/read": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_MarkAsRead",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/Notifications/mark-all-read": {
+      "post": {
+        "tags": [
+          "Notifications"
+        ],
+        "operationId": "Notifications_MarkAllAsRead",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "integer",
+                  "format": "int32"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/admin/tasks/cleanup": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "Tasks_Cleanup",
+        "parameters": [
+          {
+            "name": "olderThanHours",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskCleanupResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/admin/tasks/{taskId}/resolve": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "operationId": "Tasks_ResolveIndeterminate",
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveIndeterminateTaskDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/admin/auth/ephemeral-master-key": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "operationId": "Auth_GenerateEphemeralMasterKey",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EphemeralMasterKeyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/SystemInfo/info": {
+      "get": {
+        "tags": [
+          "SystemInfo"
+        ],
+        "operationId": "SystemInfo_GetInfo",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SystemInfoDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/SystemInfo/health": {
+      "get": {
+        "tags": [
+          "SystemInfo"
+        ],
+        "operationId": "SystemInfo_GetHealth",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatusDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/SystemInfo/cache/invalidate-discovery": {
+      "post": {
+        "tags": [
+          "SystemInfo"
+        ],
+        "operationId": "SystemInfo_InvalidateDiscoveryCache",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/SystemInfo/cache/function-discovery/stats": {
+      "get": {
+        "tags": [
+          "SystemInfo"
+        ],
+        "operationId": "SystemInfo_GetFunctionDiscoveryCacheStats",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/SystemInfo/cache/invalidate-function-discovery": {
+      "post": {
+        "tags": [
+          "SystemInfo"
+        ],
+        "operationId": "SystemInfo_InvalidateFunctionDiscoveryCache",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": { }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/metrics/database/pool": {
+      "get": {
+        "tags": [
+          "Metrics"
+        ],
+        "operationId": "Metrics_GetDatabasePoolMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatabasePoolMetricsDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "Metrics"
+        ],
+        "operationId": "Metrics_GetAllMetrics",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AllMetricsDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
     "/api/Analytics/logs": {
       "get": {
         "tags": [
@@ -428,7 +1921,10 @@
             "in": "query",
             "description": "Optional filter by start date",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -437,7 +1933,10 @@
             "in": "query",
             "description": "Optional filter by end date",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -728,7 +2227,10 @@
             "in": "query",
             "description": "The start date for the summary",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -737,7 +2239,10 @@
             "in": "query",
             "description": "The end date for the summary",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           }
@@ -838,7 +2343,10 @@
             "in": "query",
             "description": "The start date for the trend",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -847,7 +2355,10 @@
             "in": "query",
             "description": "The end date for the trend",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           }
@@ -939,7 +2450,10 @@
             "in": "query",
             "description": "The start date for the analysis",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -948,7 +2462,10 @@
             "in": "query",
             "description": "The end date for the analysis",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -1030,7 +2547,10 @@
             "in": "query",
             "description": "The start date for the analysis",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -1039,7 +2559,10 @@
             "in": "query",
             "description": "The end date for the analysis",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -1130,7 +2653,10 @@
             "in": "query",
             "description": "The start date for the summary",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -1139,7 +2665,10 @@
             "in": "query",
             "description": "The end date for the summary",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           }
@@ -1242,7 +2771,10 @@
             "in": "query",
             "description": "The start date for the analysis",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -1251,7 +2783,10 @@
             "in": "query",
             "description": "The end date for the analysis",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           }
@@ -1332,7 +2867,10 @@
             "in": "query",
             "description": "The start date for the export",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -1341,7 +2879,10 @@
             "in": "query",
             "description": "The end date for the export",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -1633,87 +3174,6 @@
               "application/json": {
                 "schema": {
                   "type": "object"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/admin/auth/ephemeral-master-key": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Generate an ephemeral master key for Admin API authentication",
-        "operationId": "Auth_GenerateEphemeralMasterKey",
-        "responses": {
-          "200": {
-            "description": "Ephemeral master key generated successfully",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/EphemeralMasterKeyResponse"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EphemeralMasterKeyResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EphemeralMasterKeyResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Authentication failed - master key required",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -9409,128 +10869,6 @@
         ]
       }
     },
-    "/metrics/database/pool": {
-      "get": {
-        "tags": [
-          "Metrics"
-        ],
-        "summary": "Gets database connection pool metrics.",
-        "operationId": "Metrics_GetDatabasePoolMetrics",
-        "responses": {
-          "200": {
-            "description": "Connection pool metrics.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatabasePoolMetricsDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatabasePoolMetricsDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatabasePoolMetricsDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/metrics": {
-      "get": {
-        "tags": [
-          "Metrics"
-        ],
-        "summary": "Gets all application metrics including database, cache, and performance metrics.",
-        "operationId": "Metrics_GetAllMetrics",
-        "responses": {
-          "200": {
-            "description": "Comprehensive application metrics.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/AllMetricsDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AllMetricsDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AllMetricsDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
     "/api/Model": {
       "get": {
         "tags": [
@@ -13875,1282 +15213,6 @@
         ]
       }
     },
-    "/api/ModelSeries": {
-      "get": {
-        "tags": [
-          "ModelSeries"
-        ],
-        "summary": "Gets all model series",
-        "operationId": "ModelSeries_GetAll",
-        "responses": {
-          "200": {
-            "description": "List of all model series",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelSeriesDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelSeriesDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ModelSeriesDto"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "ModelSeries"
-        ],
-        "summary": "Creates a new model series",
-        "operationId": "ModelSeries_Create",
-        "requestBody": {
-          "description": "The model series to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateModelSeriesDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateModelSeriesDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateModelSeriesDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelSeriesDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelSeriesDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelSeriesDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/ModelSeries/{id}": {
-      "get": {
-        "tags": [
-          "ModelSeries"
-        ],
-        "summary": "Gets a specific model series by ID",
-        "operationId": "ModelSeries_GetById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The series ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelSeriesDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelSeriesDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ModelSeriesDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "ModelSeries"
-        ],
-        "summary": "Updates an existing model series",
-        "operationId": "ModelSeries_Update",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The series ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The updated model series data",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelSeriesDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelSeriesDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelSeriesDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "ModelSeries"
-        ],
-        "summary": "Deletes a model series",
-        "operationId": "ModelSeries_Delete",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The series ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/ModelSeries/{id}/models": {
-      "get": {
-        "tags": [
-          "ModelSeries"
-        ],
-        "summary": "Gets models in a series",
-        "operationId": "ModelSeries_GetModelsInSeries",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The series ID",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SeriesSimpleModelDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SeriesSimpleModelDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SeriesSimpleModelDto"
-                  }
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/Notifications": {
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Gets all notifications",
-        "operationId": "Notifications_GetAllNotifications",
-        "responses": {
-          "200": {
-            "description": "List of all notifications",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NotificationDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NotificationDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NotificationDto"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      },
-      "post": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Creates a new notification",
-        "operationId": "Notifications_CreateNotification",
-        "requestBody": {
-          "description": "The notification to create",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateNotificationDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateNotificationDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateNotificationDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "201": {
-            "description": "Created",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/Notifications/unread": {
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Gets all unread notifications",
-        "operationId": "Notifications_GetUnreadNotifications",
-        "responses": {
-          "200": {
-            "description": "List of unread notifications",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NotificationDto"
-                  }
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NotificationDto"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/NotificationDto"
-                  }
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/Notifications/{id}": {
-      "get": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Gets a notification by ID",
-        "operationId": "Notifications_GetNotificationById",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the notification to get",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/NotificationDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      },
-      "put": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Updates an existing notification",
-        "operationId": "Notifications_UpdateNotification",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the notification to update",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "requestBody": {
-          "description": "The updated notification data",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateNotificationDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateNotificationDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateNotificationDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      },
-      "delete": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Deletes a notification",
-        "operationId": "Notifications_DeleteNotification",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the notification to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/Notifications/{id}/read": {
-      "post": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Marks a notification as read",
-        "operationId": "Notifications_MarkAsRead",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "The ID of the notification to mark as read",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/Notifications/mark-all-read": {
-      "post": {
-        "tags": [
-          "Notifications"
-        ],
-        "summary": "Marks all notifications as read",
-        "operationId": "Notifications_MarkAllAsRead",
-        "responses": {
-          "200": {
-            "description": "The number of notifications marked as read",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "integer",
-                  "format": "int32"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
     "/api/Pricing/audit/query": {
       "post": {
         "tags": [
@@ -16130,7 +16192,10 @@
             "name": "from",
             "in": "query",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -16138,7 +16203,10 @@
             "name": "to",
             "in": "query",
             "schema": {
-              "type": "string",
+              "type": [
+                "null",
+                "string"
+              ],
               "format": "date-time"
             }
           },
@@ -19956,489 +20024,6 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ComplianceMetricsResponse"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/SystemInfo/info": {
-      "get": {
-        "tags": [
-          "SystemInfo"
-        ],
-        "summary": "Gets system information",
-        "operationId": "SystemInfo_GetSystemInfo",
-        "responses": {
-          "200": {
-            "description": "System information details",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/SystemInfoDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SystemInfoDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/SystemInfoDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/SystemInfo/health": {
-      "get": {
-        "tags": [
-          "SystemInfo"
-        ],
-        "summary": "Gets health status",
-        "operationId": "SystemInfo_GetHealthStatus",
-        "responses": {
-          "200": {
-            "description": "Health status information",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthStatusDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthStatusDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthStatusDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/SystemInfo/cache/invalidate-discovery": {
-      "post": {
-        "tags": [
-          "SystemInfo"
-        ],
-        "summary": "Invalidates all discovery cache entries by publishing an event to all Gateway API instances",
-        "operationId": "SystemInfo_InvalidateDiscoveryCache",
-        "responses": {
-          "200": {
-            "description": "Success response with cache invalidation details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/SystemInfo/cache/function-discovery/stats": {
-      "get": {
-        "tags": [
-          "SystemInfo"
-        ],
-        "summary": "Gets function discovery cache statistics",
-        "operationId": "SystemInfo_GetFunctionDiscoveryCacheStats",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/api/SystemInfo/cache/invalidate-function-discovery": {
-      "post": {
-        "tags": [
-          "SystemInfo"
-        ],
-        "summary": "Invalidates all function discovery cache entries by publishing an event to all Gateway API instances",
-        "operationId": "SystemInfo_InvalidateFunctionDiscoveryCache",
-        "responses": {
-          "200": {
-            "description": "Success response with cache invalidation details",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/v1/admin/tasks/cleanup": {
-      "post": {
-        "tags": [
-          "Tasks"
-        ],
-        "summary": "Cleans up old completed tasks system-wide.",
-        "description": "This is an administrative operation that affects all users' tasks.\r\nIt archives completed tasks older than the specified threshold and\r\npermanently deletes archived tasks older than 30 days.",
-        "operationId": "Tasks_CleanupOldTasks",
-        "parameters": [
-          {
-            "name": "olderThanHours",
-            "in": "query",
-            "description": "Remove tasks older than this many hours (default: 24, min: 1).",
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 24
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "The number of tasks cleaned up.",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/TaskCleanupResponseDto"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TaskCleanupResponseDto"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/TaskCleanupResponseDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "error": { },
-                    "details": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    },
-                    "code": {
-                      "type": [
-                        "null",
-                        "string"
-                      ]
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
-    "/v1/admin/tasks/{taskId}/resolve": {
-      "post": {
-        "tags": [
-          "Tasks"
-        ],
-        "summary": "Resolves a media task whose provider outcome required reconciliation.",
-        "operationId": "Tasks_ResolveIndeterminateTask",
-        "parameters": [
-          {
-            "name": "taskId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolveIndeterminateTaskDto"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolveIndeterminateTaskDto"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ResolveIndeterminateTaskDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -33039,10 +32624,25 @@
       "name": "ModelAuthor"
     },
     {
-      "name": "Analytics"
+      "name": "ModelSeries"
+    },
+    {
+      "name": "Notifications"
+    },
+    {
+      "name": "Tasks"
     },
     {
       "name": "Auth"
+    },
+    {
+      "name": "SystemInfo"
+    },
+    {
+      "name": "Metrics"
+    },
+    {
+      "name": "Analytics"
     },
     {
       "name": "BatchSpending"
@@ -33084,9 +32684,6 @@
       "name": "MediaRetention"
     },
     {
-      "name": "Metrics"
-    },
-    {
       "name": "Model"
     },
     {
@@ -33094,12 +32691,6 @@
     },
     {
       "name": "ModelProviderMapping"
-    },
-    {
-      "name": "ModelSeries"
-    },
-    {
-      "name": "Notifications"
     },
     {
       "name": "Pricing"
@@ -33121,12 +32712,6 @@
     },
     {
       "name": "SecurityMonitoring"
-    },
-    {
-      "name": "SystemInfo"
-    },
-    {
-      "name": "Tasks"
     },
     {
       "name": "VirtualKeyGroups"

@@ -4,6 +4,38 @@
  */
 
 export interface paths {
+  "/v1/models": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Models_ListModels"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/models/{modelId}/metadata": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Models_GetModelMetadata"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/audio/transcriptions": {
     parameters: {
       query?: never;
@@ -480,44 +512,6 @@ export interface paths {
     };
     /** Gets metadata information about a media file. */
     get: operations["Media_GetMediaInfo"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/models": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * Lists available models.
-     * @description This endpoint maintains OpenAI API compatibility and returns all models without pagination.
-     *     For large deployments with many models, use the Admin API's paginated endpoints.
-     */
-    get: operations["Models_ListModels"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/models/{modelId}/metadata": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** Gets metadata for a specific model. */
-    get: operations["Models_GetModelMetadata"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1484,6 +1478,75 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  Models_ListModels: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+    };
+  };
+  Models_GetModelMetadata: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        modelId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": unknown;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+    };
+  };
   Audio_CreateTranscription: {
     parameters: {
       query?: never;
@@ -2468,86 +2531,6 @@ export interface operations {
         };
         content: {
           "application/json": Record<string, never>;
-        };
-      };
-    };
-  };
-  Models_ListModels: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": unknown;
-          "application/json": unknown;
-          "text/json": unknown;
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
-          "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-        };
-      };
-    };
-  };
-  Models_GetModelMetadata: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        /** @description The model ID. */
-        modelId: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": unknown;
-          "application/json": unknown;
-          "text/json": unknown;
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["ProblemDetails"];
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
-          "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
