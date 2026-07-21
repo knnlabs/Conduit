@@ -28,7 +28,7 @@ describe('browser Admin API boundary', () => {
       }))
       .mockResolvedValueOnce(jsonResponse([]));
 
-    await withAdminClient((client) => client.virtualKeys.list(1, 10));
+    await withAdminClient((client) => client.modelAuthors.list());
 
     expect(mockFetch).toHaveBeenNthCalledWith(
       1,
@@ -37,7 +37,7 @@ describe('browser Admin API boundary', () => {
     );
     const secondCall = mockFetch.mock.calls[1];
     const request = secondCall?.[0] as Request;
-    expect(request.url).toBe('http://admin.example/api/VirtualKeys');
+    expect(request.url).toBe('http://admin.example/api/ModelAuthor');
     expect(request.method).toBe('GET');
     expect(request.headers.get('X-Master-Key')).toBe('ephemeral-key');
   });
@@ -53,7 +53,7 @@ describe('browser Admin API boundary', () => {
       .mockRejectedValueOnce(new Error('network failed'));
 
     await expect(
-      withAdminClient((client) => client.virtualKeys.list(1, 10)),
+      withAdminClient((client) => client.modelAuthors.list()),
     ).rejects.toThrow('network failed');
     expect(mockFetch).toHaveBeenCalledTimes(2);
   });

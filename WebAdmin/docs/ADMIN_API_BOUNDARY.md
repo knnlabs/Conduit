@@ -10,6 +10,12 @@ but ordinary HTTP requests flow through an `openapi-fetch` client parameterized 
 `paths` type. Contract route constants use `satisfies keyof paths`, so renamed or removed routes fail
 WebAdmin type-checking.
 
+The contract-native read pilot is complete for model authors and model series. Their six read methods
+invoke literal generated `GET` paths directly, including generated numeric path parameters, through a
+shared executor that retains the existing Admin request lifecycle. Their mutations and all unmigrated
+services continue to use the compatibility URL transport. The boundary check prevents these two
+services from returning to generic `client['get']` calls.
+
 Browser operations still obtain a fresh ephemeral master key from
 `/api/auth/ephemeral-master-key`, create a zero-retry Admin client, and call the externally reachable
 Admin URL. Server operations use `CONDUIT_API_TO_API_BACKEND_AUTH_KEY`. Both paths send
@@ -24,3 +30,6 @@ The retired Admin Node package is no longer built or published by this repositor
 versions remain available. Run `npm run check:api-boundary` to enforce the dependency boundary.
 Contract generation and CI also fail when the WebAdmin-local generated types drift from the
 authoritative Admin document.
+
+See [Admin contract-read migration](./ADMIN_CONTRACT_READ_MIGRATION.md) for completed and candidate
+slices.

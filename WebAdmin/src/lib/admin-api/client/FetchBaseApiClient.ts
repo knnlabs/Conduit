@@ -20,6 +20,7 @@ import { getRequestConstructor } from '@/lib/api-transport/request-constructor';
 import type { paths } from '../generated/admin-api';
 import type {
   ApiClientConfig,
+  RequestConfig,
   RetryConfig,
   RequestConfigInfo,
   ResponseInfo
@@ -27,11 +28,22 @@ import type {
 import { HTTP_HEADERS, CONTENT_TYPES, CLIENT_INFO } from '../constants';
 import { HttpMethod, RequestOptions } from './HttpMethod';
 
-interface ContractResult {
-  data?: unknown;
+interface ContractResult<TResponse = unknown> {
+  data?: TResponse;
   error?: unknown;
   response: Response;
 }
+
+interface ContractReadOptions {
+  [key: string]: unknown;
+  headers: Record<string, string>;
+  signal: AbortSignal;
+}
+
+type ContractOperation<TResponse> = (
+  client: Client<paths>,
+  options: ContractReadOptions,
+) => Promise<ContractResult<TResponse>>;
 
 /**
  * Admin contract transport extending the shared client lifecycle utilities.
@@ -252,12 +264,58 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
     url: string,
     options: RequestOptions<TRequest> & { method?: HttpMethod } = {}
   ): Promise<TResponse> {
+    const method = options.method ?? HttpMethod.GET;
+    return this.executeAdminRequest(url, { ...options, method }, (client, requestOptions) => {
+      const parseAs = options.responseType === 'arraybuffer'
+        ? 'arrayBuffer'
+        : options.responseType ?? 'json';
+      const request = client.request as unknown as (
+        requestMethod: string,
+        path: string,
+        init: Record<string, unknown>,
+      ) => Promise<ContractResult<TResponse>>;
+      return request(method.toLowerCase(), url, {
+        body: options.body,
+        headers: requestOptions.headers,
+        signal: requestOptions.signal,
+        parseAs,
+      });
+    });
+  }
+
+  /**
+   * Execute a generated, contract-native GET operation while preserving the
+   * Admin client's authentication, timeout, callback, retry, and error lifecycle.
+   * @internal Used by composed services as reads migrate off the URL transport.
+   */
+  protected async executeContractRead<TResponse>(
+    resolvedPath: string,
+    operation: ContractOperation<TResponse>,
+    config?: RequestConfig,
+  ): Promise<TResponse> {
+    return this.executeAdminRequest(resolvedPath, {
+      method: HttpMethod.GET,
+      headers: config?.headers,
+      signal: config?.signal,
+      timeout: config?.timeout,
+    }, operation);
+  }
+
+  /**
+   * Apply the shared Admin request lifecycle to a contract operation.
+   */
+  private async executeAdminRequest<TResponse, TRequest = unknown>(
+    url: string,
+    options: RequestOptions<TRequest> & { method: HttpMethod },
+    operation: ContractOperation<TResponse>,
+  ): Promise<TResponse> {
     const fullUrl = this.adminBuildUrl(url);
     const controller = new AbortController();
 
     // Set up timeout
-    const timeoutId = options.timeout ?? (this as unknown as { timeout: number }).timeout
-      ? setTimeout(() => controller.abort(), options.timeout ?? (this as unknown as { timeout: number }).timeout)
+    const timeout = options.timeout ?? (this as unknown as { timeout: number }).timeout;
+    const timeoutId = timeout
+      ? setTimeout(() => controller.abort(), timeout)
       : undefined;
 
     try {
@@ -278,12 +336,15 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
       const externalAbort = () => controller.abort(options.signal?.reason);
       options.signal?.addEventListener('abort', externalAbort, { once: true });
       try {
-        return await this.executeContractRequest<TResponse, TRequest>(url, {
-          ...options,
-          method: options.method ?? HttpMethod.GET,
-          headers: requestInfo.headers,
-          signal: controller.signal,
-        });
+        if (options.signal?.aborted) externalAbort();
+        return await this.executeContractRequest(
+          url,
+          options.method,
+          (client) => operation(client, {
+            headers: requestInfo.headers,
+            signal: controller.signal,
+          }),
+        );
       } finally {
         options.signal?.removeEventListener('abort', externalAbort);
       }
@@ -297,26 +358,14 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
   /**
    * Execute request with retry logic
    */
-  private async executeContractRequest<TResponse, TRequest = unknown>(
+  private async executeContractRequest<TResponse>(
     url: string,
-    options: RequestOptions<TRequest> & { method: HttpMethod },
+    method: HttpMethod,
+    operation: (client: Client<paths>) => Promise<ContractResult<TResponse>>,
     attempt: number = 1
   ): Promise<TResponse> {
     try {
-      const parseAs = options.responseType === 'arraybuffer'
-        ? 'arrayBuffer'
-        : options.responseType ?? 'json';
-      const request = this.contractClient.request as unknown as (
-        method: string,
-        path: string,
-        init: Record<string, unknown>,
-      ) => Promise<ContractResult>;
-      const result = await request(options.method.toLowerCase(), url, {
-        body: options.body,
-        headers: options.headers,
-        signal: options.signal,
-        parseAs,
-      });
+      const result = await operation(this.contractClient);
       const response = result.response;
 
       this.log('debug', `API Response: ${response.status} ${response.statusText}`);
@@ -334,7 +383,7 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
           statusText: response.statusText,
           headers,
           data: result.data,
-          config: { url: this.adminBuildUrl(url), method: options.method } as RequestConfigInfo,
+          config: { url: this.adminBuildUrl(url), method } as RequestConfigInfo,
         };
         await this.onResponse(responseInfo);
       }
@@ -382,7 +431,7 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
         this.log('debug', `Retrying request (attempt ${attempt + 1}) after ${delay}ms`);
 
         await this.adminSleep(delay);
-        return this.executeContractRequest<TResponse, TRequest>(url, options, attempt + 1);
+        return this.executeContractRequest(url, method, operation, attempt + 1);
       }
 
       if (this.onError && error instanceof Error) {

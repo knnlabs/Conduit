@@ -15,6 +15,11 @@ const forbidden = [
 ];
 const violations = [];
 const directFetchViolations = [];
+const genericModelReadViolations = [];
+const contractNativeModelReadServices = new Set([
+  'src/lib/admin-api/services/FetchModelAuthorService.ts',
+  'src/lib/admin-api/services/FetchModelSeriesService.ts',
+]);
 const retiredLocalNames = [
   'sdk-config',
   'sdkChatStreamingAdapter',
@@ -42,6 +47,12 @@ async function scan(directory) {
     ) {
       directFetchViolations.push(relative);
     }
+    if (
+      contractNativeModelReadServices.has(relative) &&
+      /\bclient\s*\[\s*['"]get['"]\s*\]/.test(contents)
+    ) {
+      genericModelReadViolations.push(relative);
+    }
     if (retiredLocalNames.some((value) => contents.includes(value))) {
       violations.push(relative);
     }
@@ -62,6 +73,13 @@ if (violations.length > 0) {
 if (directFetchViolations.length > 0) {
   console.error(
     `Admin services must use the contract transport; direct fetch found in:\n${directFetchViolations.join('\n')}`,
+  );
+  process.exit(1);
+}
+
+if (genericModelReadViolations.length > 0) {
+  console.error(
+    `Contract-native model-author and model-series reads must not use the generic GET transport:\n${genericModelReadViolations.join('\n')}`,
   );
   process.exit(1);
 }

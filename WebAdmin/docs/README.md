@@ -22,6 +22,9 @@ Complete guide to WebAdmin virtual key system:
 ### 🔌 [Admin API Boundary](./ADMIN_API_BOUNDARY.md)
 The contract-derived, WebAdmin-owned integration with the Admin service.
 
+### 🔄 [Admin Contract-Read Migration](./ADMIN_CONTRACT_READ_MIGRATION.md)
+Status and sequencing for moving Admin reads onto direct generated operations.
+
 ### 🔌 [Gateway API Boundary](./GATEWAY_API_BOUNDARY.md)
 The focused local Gateway transport, streaming behavior, and generated wire types.
 
@@ -51,6 +54,7 @@ Technical security implementation details:
 
 ### For Developers
 - [Admin API Boundary](./ADMIN_API_BOUNDARY.md) - Admin integration rules
+- [Admin Contract-Read Migration](./ADMIN_CONTRACT_READ_MIGRATION.md) - Completed and candidate read slices
 - [Gateway API Boundary](./GATEWAY_API_BOUNDARY.md) - Gateway integration rules
 - [Architecture](./ARCHITECTURE.md) - Understand the system design
 - [Troubleshooting](./TROUBLESHOOTING.md) - Common issues and solutions

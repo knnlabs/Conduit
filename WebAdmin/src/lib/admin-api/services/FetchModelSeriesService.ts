@@ -10,7 +10,7 @@ type UpdateModelSeriesDto = components['schemas']['UpdateModelSeriesDto'];
 type SeriesSimpleModelDto = components['schemas']['SeriesSimpleModelDto'];
 
 /**
- * Type-safe Model Series service using native fetch
+ * Type-safe Model Series service using the local Admin transport.
  */
 export class FetchModelSeriesService {
   constructor(private readonly client: FetchBaseApiClient) {}
@@ -19,13 +19,10 @@ export class FetchModelSeriesService {
    * Get all model series
    */
   async list(config?: RequestConfig): Promise<ModelSeriesDto[]> {
-    return this.client['get']<ModelSeriesDto[]>(
-      ENDPOINTS.MODEL_SERIES.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      '/api/ModelSeries',
+      (contractClient, options) => contractClient.GET('/api/ModelSeries', options),
+      config,
     );
   }
 
@@ -33,13 +30,13 @@ export class FetchModelSeriesService {
    * Get a specific model series by ID
    */
   async get(id: number, config?: RequestConfig): Promise<ModelSeriesDto> {
-    return this.client['get']<ModelSeriesDto>(
-      ENDPOINTS.MODEL_SERIES.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/ModelSeries/${id}`,
+      (contractClient, options) => contractClient.GET('/api/ModelSeries/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -47,13 +44,13 @@ export class FetchModelSeriesService {
    * Get models in a series
    */
   async getModels(id: number, config?: RequestConfig): Promise<SeriesSimpleModelDto[]> {
-    return this.client['get']<SeriesSimpleModelDto[]>(
-      ENDPOINTS.MODEL_SERIES.MODELS(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/ModelSeries/${id}/models`,
+      (contractClient, options) => contractClient.GET('/api/ModelSeries/{id}/models', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 

@@ -10,7 +10,7 @@ type UpdateModelAuthorDto = components['schemas']['UpdateModelAuthorDto'];
 type SimpleModelSeriesDto = components['schemas']['SimpleModelSeriesDto'];
 
 /**
- * Type-safe Model Author service using native fetch
+ * Type-safe Model Author service using the local Admin transport.
  */
 export class FetchModelAuthorService {
   constructor(private readonly client: FetchBaseApiClient) {}
@@ -19,13 +19,10 @@ export class FetchModelAuthorService {
    * Get all model authors
    */
   async list(config?: RequestConfig): Promise<ModelAuthorDto[]> {
-    return this.client['get']<ModelAuthorDto[]>(
-      ENDPOINTS.MODEL_AUTHORS.BASE,
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      '/api/ModelAuthor',
+      (contractClient, options) => contractClient.GET('/api/ModelAuthor', options),
+      config,
     );
   }
 
@@ -33,13 +30,13 @@ export class FetchModelAuthorService {
    * Get a specific model author by ID
    */
   async get(id: number, config?: RequestConfig): Promise<ModelAuthorDto> {
-    return this.client['get']<ModelAuthorDto>(
-      ENDPOINTS.MODEL_AUTHORS.BY_ID(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/ModelAuthor/${id}`,
+      (contractClient, options) => contractClient.GET('/api/ModelAuthor/{id}', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
@@ -47,13 +44,13 @@ export class FetchModelAuthorService {
    * Get series by author
    */
   async getSeries(id: number, config?: RequestConfig): Promise<SimpleModelSeriesDto[]> {
-    return this.client['get']<SimpleModelSeriesDto[]>(
-      ENDPOINTS.MODEL_AUTHORS.SERIES(id),
-      {
-        signal: config?.signal,
-        timeout: config?.timeout,
-        headers: config?.headers,
-      }
+    return this.client['executeContractRead'](
+      `/api/ModelAuthor/${id}/series`,
+      (contractClient, options) => contractClient.GET('/api/ModelAuthor/{id}/series', {
+        ...options,
+        params: { path: { id } },
+      }),
+      config,
     );
   }
 
