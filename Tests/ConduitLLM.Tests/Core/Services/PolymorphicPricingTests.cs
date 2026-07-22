@@ -496,9 +496,9 @@ namespace ConduitLLM.Tests.Core.Services
 
             var cost = await _service.CalculateCostAsync(modelId, usage);
 
-            // regular input .006 + cache read .0008 + cache write .003
+            // regular input .004 + cache read .0008 + cache write .003
             // regular output .004 + reasoning .009 + search .01
-            Assert.Equal(0.0328m, cost);
+            Assert.Equal(0.0308m, cost);
         }
 
         [Fact]

@@ -246,6 +246,9 @@ public partial class CostCalculationService
 
         if (usage.CachedWriteTokens is > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
         {
+            if (usage.CachedWriteTokensIncludedInPrompt)
+                regularInputTokens -= usage.CachedWriteTokens.Value;
+
             calculatedCost += usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value / 1_000_000m;
         }
 
