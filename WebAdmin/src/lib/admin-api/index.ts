@@ -166,6 +166,7 @@ export type {
   ProviderTool,
   CreateProviderTool,
   UpdateProviderTool,
+  ImportResult as ProviderToolImportResult,
   ProviderOption as ToolProviderOption
 } from './services/ProviderToolsService';
 // SignalR services removed - WebAdmin uses React Query instead of SignalR for data fetching

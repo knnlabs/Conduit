@@ -5,6 +5,7 @@ import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh } from '@tabler/icons-react';
 import { ProviderToolsTable } from '@/components/provider-tools/ProviderToolsTable';
 import { CreateProviderToolModal } from '@/components/provider-tools/CreateProviderToolModal';
+import { ImportProviderToolsModal } from '@/components/provider-tools/ImportProviderToolsModal';
 import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 
@@ -12,14 +13,10 @@ export default function ProviderToolsPage() {
   const { executeWithAdmin } = useAdminClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [createToolOpen, setCreateToolOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
-  };
-
-  const handleImport = async () => {
-    // TODO(#1077): Implement Provider Tools JSON import.
-    notify.info('Bulk import functionality will be available soon', 'Import Coming Soon');
   };
 
   const handleExport = async () => {
@@ -62,7 +59,7 @@ export default function ProviderToolsPage() {
             </Button>
             <Button
               variant="subtle"
-              onClick={() => void handleImport()}
+              onClick={() => setImportOpen(true)}
             >
               Import
             </Button>
@@ -95,6 +92,12 @@ export default function ProviderToolsPage() {
           setCreateToolOpen(false);
           handleRefresh();
         }}
+      />
+
+      <ImportProviderToolsModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={handleRefresh}
       />
     </Container>
   );
