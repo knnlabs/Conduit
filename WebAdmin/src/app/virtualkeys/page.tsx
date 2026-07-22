@@ -395,6 +395,7 @@ export default function VirtualKeysPage() {
         opened={viewModalOpened}
         onClose={closeViewModal}
         virtualKey={selectedKey}
+        virtualKeyGroup={virtualKeyGroups.find((group) => group.id === selectedKey?.virtualKeyGroupId)}
       />
     </Stack>
   );
