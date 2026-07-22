@@ -1238,19 +1238,13 @@ namespace ConduitLLM.Configuration.Services
                 var db = redis.GetDatabase();
                 var server = redis.GetServer(redis.GetEndPoints()[0]);
                 
-                // Count pending keys
-                var pattern = $"{_redisKeyPrefix}*";
+                // One total key is maintained per group by the current windowed write path.
+                var pattern = $"{_windowedPendingTotalUnitsPrefix}*";
                 var keys = server.Keys(pattern: pattern).ToList();
-                
-                decimal totalPending = 0;
-                foreach (var key in keys)
-                {
-                    var value = await db.StringGetAsync(key);
-                    if (value.HasValue && double.TryParse(value.ToString(), out var cost))
-                    {
-                        totalPending += (decimal)cost;
-                    }
-                }
+                var values = keys.Count == 0
+                    ? Array.Empty<RedisValue>()
+                    : await db.StringGetAsync(keys.ToArray());
+                var totalPending = values.Sum(ParseRedisUnits);
                 
                 return new Dictionary<string, object>
                 {
