@@ -126,11 +126,6 @@ namespace ConduitLLM.Gateway.Endpoints
                     }
                 }
 
-                // TODO: Revisit supported_parameters implementation after removing ApiParameters field
-                // Currently commented out as we're moving to full parameter pass-through
-                // and ApiParameters field is being deprecated. Parameters should be derived
-                // from the UI-focused Parameters JSON object instead.
-
                 // Use overrides from association first, then fall back to model defaults
                 var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
                 var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;

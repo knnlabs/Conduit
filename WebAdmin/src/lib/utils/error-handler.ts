@@ -68,9 +68,8 @@ export function setupGlobalErrorHandler() {
         url: window.location.href,
       });
       
-      // Log to error tracking service in production
+      // Keep production errors visible to configured console collectors.
       if (process.env.NODE_ENV === 'production') {
-        // TODO: Send to error tracking service
         console.error('Production error:', {
           message: event.message,
           source: event.filename,

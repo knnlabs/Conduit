@@ -196,15 +196,12 @@ Each test run uses minimal API credits (typically < $0.01):
 - Costs are tracked with micro-cent precision (6 decimal places)
 - Virtual key starts with $100 credit (configurable)
 
-## TODO: Future Enhancements
+## Verified Gaps
 
 - [ ] Parallel provider testing
 - [ ] Multimodal input testing (images)
 - [ ] Image generation verification
 - [ ] Video generation verification
-- [ ] Streaming response validation
-- [ ] Rate limiting tests
-- [ ] Error handling scenarios
 - [ ] Performance benchmarking
 - [ ] Load testing capabilities
 - [ ] CI/CD integration

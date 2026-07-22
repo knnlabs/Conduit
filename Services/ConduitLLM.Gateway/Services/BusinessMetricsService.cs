@@ -313,7 +313,7 @@ namespace ConduitLLM.Gateway.Services
                 // Count active model mappings by provider
                 var mappings = await modelMappingService.GetAllMappingsAsync();
                 // Group by provider type
-                // TODO: Fix IsEnabled check once we verify the return type
+                // TODO(#1076): Filter disabled mappings once the service projection exposes status.
                 var mappingsByProvider = mappings
                     // .Where(m => m.IsEnabled)
                     .GroupBy(m => m.ProviderId.ToString())

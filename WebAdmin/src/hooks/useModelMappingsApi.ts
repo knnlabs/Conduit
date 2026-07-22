@@ -139,7 +139,7 @@ export function useBulkDiscoverModels() {
         client.models.getByProvider(providerName.toLowerCase())
       );
 
-      // TODO: Use mapped aliases to check for conflicts
+      // TODO(#1071): Use mapped aliases to detect conflicts during discovery.
       // const mappedModelAliases = new Set(
       //   existingMappings
       //     .filter(m => m.providerId?.toString() === providerId)
@@ -159,7 +159,7 @@ export function useBulkDiscoverModels() {
             displayName: model.name ?? model.id?.toString() ?? '',
             providerId,
             providerModelId, // Store the provider-specific model ID
-            hasConflict: false, // TODO: Check against mapped aliases
+            hasConflict: false, // TODO(#1071): Check against mapped aliases.
             existingMapping: null,
             capabilities: {
               supportsVision: model.supportsVision ?? false,
@@ -178,7 +178,7 @@ export function useBulkDiscoverModels() {
           };
         }),
         totalModels: providerModels.length,
-        conflictCount: 0, // TODO: Implement proper conflict detection
+        conflictCount: 0, // TODO(#1071): Count conflicts detected from mapped aliases.
       };
 
       return result;
@@ -243,14 +243,14 @@ export function useBulkCreateMappings() {
     setIsCreating(true);
     try {
       // Transform request to Admin SDK format
-      // TODO: This needs to be updated to create/find ModelProviderTypeAssociations first
+      // TODO(#1071): Create or resolve ModelProviderTypeAssociations before bulk creation.
       // For now, using a placeholder value of 1 - this will need proper implementation
       const bulkRequest = {
         mappings: request.models.map(model => ({
           modelAlias: model.providerModelId ?? model.displayName,  // Use provider model ID as alias
           providerId: parseInt(model.providerId, 10),
           providerModelId: model.providerModelId ?? model.displayName,  // Provider-specific model identifier
-          modelProviderTypeAssociationId: 1, // TODO: Need to create/find association for each model
+          modelProviderTypeAssociationId: 1, // TODO(#1071): Resolve the association for each model.
           isEnabled: request.enableByDefault ?? true,
           priority: request.defaultPriority ?? 50,
         })),

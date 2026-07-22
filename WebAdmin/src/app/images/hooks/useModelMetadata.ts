@@ -39,7 +39,7 @@ export function useModelMetadata(modelId: string | null) {
       try {
         // Note: getMetadata method doesn't exist in Admin SDK
         // This is a placeholder implementation that returns null
-        // TODO: Implement metadata retrieval once SDK supports it
+        // TODO(#1079): Retrieve image metadata once the SDK exposes the contract.
         return Promise.resolve(null);
       } catch (error) {
         // If metadata not found, return null

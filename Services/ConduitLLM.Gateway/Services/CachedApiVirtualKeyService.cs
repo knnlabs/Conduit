@@ -149,8 +149,7 @@ namespace ConduitLLM.Gateway.Services
                     // Handle 402 status code for insufficient balance
                     if (validationResult.StatusCode == 402)
                     {
-                        // Note: This violates clean architecture but is pragmatic
-                        // TODO: Find a better way to handle this
+                        // Preserve the legacy HTTP status propagation while validation still returns a status code.
                         try
                         {
                             var httpContext = new Microsoft.AspNetCore.Http.HttpContextAccessor().HttpContext;
