@@ -116,7 +116,7 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
                 request.Parameters ?? new Dictionary<string, object>(),
                 request.IdempotencyKey,
                 request.Metadata,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
             // Store execution info for middleware billing
             HttpContext.Items["FunctionExecutionId"] = execution.Id;

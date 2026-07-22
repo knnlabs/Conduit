@@ -27,7 +27,7 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
     public async Task<AgenticExecutionResult> ExecuteToolCallsAsync(
         List<ToolCall> toolCalls,
         int virtualKeyId,
-        Dictionary<string, int> functionNameToIdMap,
+        Dictionary<string, FunctionRoute> functionRouteMap,
         string requestId,
         Guid chatCompletionId,
         int iterationNumber,
@@ -50,12 +50,12 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
         if (hasDependencies)
         {
             _logger.LogDebug("Dependencies detected, executing tool calls sequentially");
-            await ExecuteSequentiallyAsync(toolCalls, virtualKeyId, functionNameToIdMap, requestId, chatCompletionId, iterationNumber, result, cancellationToken);
+            await ExecuteSequentiallyAsync(toolCalls, virtualKeyId, functionRouteMap, requestId, chatCompletionId, iterationNumber, result, cancellationToken);
         }
         else
         {
             _logger.LogDebug("No dependencies detected, executing tool calls in parallel");
-            await ExecuteInParallelAsync(toolCalls, virtualKeyId, functionNameToIdMap, requestId, chatCompletionId, iterationNumber, result, cancellationToken);
+            await ExecuteInParallelAsync(toolCalls, virtualKeyId, functionRouteMap, requestId, chatCompletionId, iterationNumber, result, cancellationToken);
         }
 
         result.AllSucceeded = result.Errors.Count == 0;
@@ -102,7 +102,7 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
     private async Task ExecuteInParallelAsync(
         List<ToolCall> toolCalls,
         int virtualKeyId,
-        Dictionary<string, int> functionNameToIdMap,
+        Dictionary<string, FunctionRoute> functionRouteMap,
         string requestId,
         Guid chatCompletionId,
         int iterationNumber,
@@ -110,7 +110,7 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
         CancellationToken cancellationToken)
     {
         var tasks = toolCalls.Select(tc => ExecuteSingleToolCallAsync(
-            tc, virtualKeyId, functionNameToIdMap, requestId, chatCompletionId, iterationNumber, cancellationToken));
+            tc, virtualKeyId, functionRouteMap, requestId, chatCompletionId, iterationNumber, cancellationToken));
 
         var executionResults = await Task.WhenAll(tasks);
 
@@ -126,7 +126,7 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
     private async Task ExecuteSequentiallyAsync(
         List<ToolCall> toolCalls,
         int virtualKeyId,
-        Dictionary<string, int> functionNameToIdMap,
+        Dictionary<string, FunctionRoute> functionRouteMap,
         string requestId,
         Guid chatCompletionId,
         int iterationNumber,
@@ -136,7 +136,7 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
         foreach (var toolCall in toolCalls)
         {
             var execResult = await ExecuteSingleToolCallAsync(
-                toolCall, virtualKeyId, functionNameToIdMap, requestId, chatCompletionId, iterationNumber, cancellationToken);
+                toolCall, virtualKeyId, functionRouteMap, requestId, chatCompletionId, iterationNumber, cancellationToken);
 
             MergeExecutionResult(result, execResult);
         }
@@ -148,7 +148,7 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
     private async Task<SingleToolCallResult> ExecuteSingleToolCallAsync(
         ToolCall toolCall,
         int virtualKeyId,
-        Dictionary<string, int> functionNameToIdMap,
+        Dictionary<string, FunctionRoute> functionRouteMap,
         string requestId,
         Guid chatCompletionId,
         int iterationNumber,
@@ -162,8 +162,8 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
 
         try
         {
-            // Resolve function name to configuration ID
-            if (!functionNameToIdMap.TryGetValue(toolCall.Function.Name, out var functionConfigId))
+            // Resolve function name to its route (configuration id + optional provider tool name)
+            if (!functionRouteMap.TryGetValue(toolCall.Function.Name, out var route))
             {
                 var errorMsg = $"Function '{toolCall.Function.Name}' not found in available functions";
                 _logger.LogError(errorMsg);
@@ -189,11 +189,11 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
             }
 
             // Execute the function
-            _logger.LogDebug("Executing function {FunctionName} (config {ConfigId}) with tool call ID {ToolCallId}",
-                toolCall.Function.Name, functionConfigId, toolCall.Id);
+            _logger.LogDebug("Executing function {FunctionName} (config {ConfigId}, tool {ProviderTool}) with tool call ID {ToolCallId}",
+                toolCall.Function.Name, route.ConfigurationId, route.ProviderToolName ?? "(default)", toolCall.Id);
 
             var execution = await _functionExecutionService.ExecuteAsync(
-                functionConfigId,
+                route.ConfigurationId,
                 virtualKeyId,
                 parameters,
                 idempotencyKey: $"{chatCompletionId}_{toolCall.Id}",
@@ -204,6 +204,7 @@ public class AgenticOrchestrationService : IAgenticOrchestrationService
                     ["iteration_number"] = iterationNumber,
                     ["request_id"] = requestId
                 },
+                providerToolName: route.ProviderToolName,
                 cancellationToken);
 
             stopwatch.Stop();

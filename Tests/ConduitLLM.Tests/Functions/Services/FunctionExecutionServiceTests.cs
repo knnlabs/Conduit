@@ -2,6 +2,7 @@ using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Models;
+using ConduitLLM.Functions.Security;
 using ConduitLLM.Functions.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -10,6 +11,15 @@ namespace ConduitLLM.Tests.Functions.Services;
 
 public class FunctionExecutionServiceTests
 {
+    /// <summary>A protector that echoes its input, standing in for real encryption in tests.</summary>
+    private static IFunctionCredentialProtector PassThroughProtector()
+    {
+        var protector = new Mock<IFunctionCredentialProtector>();
+        protector.Setup(p => p.Reveal(It.IsAny<string?>())).Returns((string? s) => s);
+        protector.Setup(p => p.Protect(It.IsAny<string?>())).Returns((string? s) => s);
+        return protector.Object;
+    }
+
     [Fact]
     public async Task ExecuteAsync_WhenCostMappingIsMissing_DoesNotCallProvider()
     {
@@ -40,6 +50,7 @@ public class FunctionExecutionServiceTests
             Mock.Of<IFunctionExecutionRepository>(),
             costCalculationService.Object,
             clientFactory.Object,
+            PassThroughProtector(),
             Mock.Of<ILogger<FunctionExecutionService>>());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -130,6 +141,7 @@ public class FunctionExecutionServiceTests
             executionRepository.Object,
             costCalculationService.Object,
             clientFactory.Object,
+            PassThroughProtector(),
             Mock.Of<ILogger<FunctionExecutionService>>());
 
         var execution = await service.ExecuteAsync(7, 11, new Dictionary<string, object>());

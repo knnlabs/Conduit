@@ -53,6 +53,15 @@ export const FUNCTION_PROVIDER_REGISTRY: Record<number, FunctionProviderMetadata
     defaultTimeoutSeconds: 30,
     documentationUrl: 'https://docs.tavily.com/'
   },
+  [FunctionProviderType.Mcp]: {
+    value: FunctionProviderType.Mcp,
+    name: 'MCP',
+    label: 'MCP Server',
+    description: 'Model Context Protocol - expose a remote MCP server\'s tools (Streamable HTTP / SSE)',
+    supportsAsync: true,
+    defaultTimeoutSeconds: 30,
+    documentationUrl: 'https://modelcontextprotocol.io/'
+  },
   [FunctionProviderType.Custom]: {
     value: FunctionProviderType.Custom,
     name: 'Custom',
@@ -129,6 +138,7 @@ export function normalizeFunctionProviderType(provider: string | number): Functi
     'customrag': FunctionProviderType.CustomRAG,
     'custom-rag': FunctionProviderType.CustomRAG,
     'tavily': FunctionProviderType.Tavily,
+    'mcp': FunctionProviderType.Mcp,
     'custom': FunctionProviderType.Custom
   };
 

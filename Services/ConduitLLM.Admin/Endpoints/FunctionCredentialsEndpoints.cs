@@ -3,6 +3,7 @@ using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Security;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -61,9 +62,11 @@ public static class FunctionCredentialsEndpoints
     private static async Task<IResult> Create(
         [FromBody] FunctionCredential credential,
         [FromServices] IFunctionCredentialRepository repository,
+        [FromServices] IFunctionCredentialProtector protector,
         HttpContext httpContext,
         ILoggerFactory loggerFactory)
     {
+        EncryptScopedSecret(credential, protector);
         var id = await repository.CreateAsync(credential);
         var created = await repository.GetByIdAsync(id);
         Audit(httpContext, loggerFactory, "Created", id, credential);
@@ -74,6 +77,7 @@ public static class FunctionCredentialsEndpoints
         int id,
         [FromBody] FunctionCredential credential,
         [FromServices] IFunctionCredentialRepository repository,
+        [FromServices] IFunctionCredentialProtector protector,
         HttpContext httpContext,
         ILoggerFactory loggerFactory)
     {
@@ -81,6 +85,7 @@ public static class FunctionCredentialsEndpoints
         {
             return AdminResults.BadRequest("ID mismatch");
         }
+        EncryptScopedSecret(credential, protector);
         await repository.UpdateAsync(credential);
         var updated = await repository.GetByIdAsync(id) ?? throw new KeyNotFoundException();
         Audit(httpContext, loggerFactory, "Updated", id, credential);
@@ -110,14 +115,23 @@ public static class FunctionCredentialsEndpoints
         [FromBody] TestFunctionCredentialRequest testRequest,
         [FromServices] IFunctionCredentialRepository credentials,
         [FromServices] IFunctionConfigurationRepository configurations,
-        [FromServices] IFunctionClientFactory clientFactory)
+        [FromServices] IFunctionClientFactory clientFactory,
+        [FromServices] IFunctionCredentialProtector protector)
     {
         var credential = await credentials.GetByIdAsync(testRequest.CredentialId)
             ?? throw new KeyNotFoundException();
-        var configuration = (await configurations.GetByProviderTypeAsync(credential.ProviderType)).FirstOrDefault()
+
+        // Prefer the credential's own configuration (config-scoped/MCP); fall back to any config of
+        // the provider type (provider-global Exa/Tavily).
+        var configuration = (credential.FunctionConfigurationId is int scopedConfigId
+                ? await configurations.GetByIdAsync(scopedConfigId)
+                : null)
+            ?? (await configurations.GetByProviderTypeAsync(credential.ProviderType)).FirstOrDefault()
             ?? throw new KeyNotFoundException();
+
         var client = await clientFactory.GetClientAsync(credential.ProviderType, configuration.Id);
-        var result = await client.VerifyAuthenticationAsync(testRequest.ApiKeyOverride ?? credential.ApiKey);
+        var apiKey = testRequest.ApiKeyOverride ?? protector.Reveal(credential.ApiKey);
+        var result = await client.VerifyAuthenticationAsync(apiKey);
         return Results.Ok(new
         {
             success = result.IsSuccess,
@@ -125,6 +139,20 @@ public static class FunctionCredentialsEndpoints
             details = result.Details,
             durationMs = result.ResponseTimeMs
         });
+    }
+
+    /// <summary>
+    /// Encrypts the secret of a config-scoped credential (e.g. an MCP server token) at rest.
+    /// Provider-global credentials (Exa/Tavily) are left as-is pending a separate encryption pass.
+    /// <see cref="IFunctionCredentialProtector.Protect"/> is idempotent, so re-saving an already
+    /// encrypted value does not double-encrypt.
+    /// </summary>
+    private static void EncryptScopedSecret(FunctionCredential credential, IFunctionCredentialProtector protector)
+    {
+        if (credential.FunctionConfigurationId.HasValue)
+        {
+            credential.ApiKey = protector.Protect(credential.ApiKey);
+        }
     }
 
     private static void Audit(

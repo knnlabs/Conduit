@@ -4,6 +4,7 @@ export enum FunctionProviderType {
   Perplexity = 2,
   CustomRAG = 3,
   Tavily = 4,
+  Mcp = 5,
   Custom = 99
 }
 
@@ -71,6 +72,7 @@ export interface CreateFunctionConfigurationDto {
   defaultExecutionMode?: FunctionExecutionMode; // Default: Synchronous
   timeoutSeconds?: number; // Default: 30
   isEnabled?: boolean; // Default: true
+  baseUrl?: string; // Server URL — required for MCP (the remote MCP server endpoint)
   providerSettings?: string; // JSON
   parameterSchema?: string; // JSON Schema
 }
@@ -83,6 +85,7 @@ export interface UpdateFunctionConfigurationDto {
   defaultExecutionMode?: FunctionExecutionMode;
   timeoutSeconds?: number;
   isEnabled?: boolean;
+  baseUrl?: string; // Server URL — required for MCP
   providerSettings?: string; // JSON
   parameterSchema?: string; // JSON Schema
 }
@@ -94,6 +97,7 @@ export interface UpdateFunctionConfigurationDto {
 export interface FunctionCredentialDto {
   id: number;
   providerType: FunctionProviderType;
+  functionConfigurationId?: number | null;
   keyName?: string | null;
   apiKey?: string | null;
   baseUrl?: string | null;
@@ -109,6 +113,8 @@ export interface CreateFunctionCredentialDto {
   providerType: FunctionProviderType;
   keyName: string;
   apiKey: string;
+  baseUrl?: string; // Optional per-credential base URL override
+  functionConfigurationId?: number; // Set to scope this credential to a single config (MCP tokens)
   functionAccountGroup?: number; // Default: 0
   isPrimary?: boolean; // Default: false
   isEnabled?: boolean; // Default: true
@@ -118,6 +124,8 @@ export interface UpdateFunctionCredentialDto {
   id: number;
   keyName?: string;
   apiKey?: string;
+  baseUrl?: string | null;
+  organization?: string | null;
   functionAccountGroup?: number;
   isPrimary?: boolean;
   isEnabled?: boolean;

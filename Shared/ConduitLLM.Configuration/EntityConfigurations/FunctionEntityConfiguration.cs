@@ -41,18 +41,38 @@ public static class FunctionEntityConfiguration
             entity.HasIndex(e => e.ProviderType)
                 .HasDatabaseName("IX_FunctionCredential_ProviderType");
 
-            // Unique constraint: Only one primary credential per provider type
-            // This allows all function configurations of the same provider type to share credentials
+            // Optional owning configuration (config-scoped credentials, e.g. per-MCP-server tokens).
+            // Null = provider-global credential (Exa/Tavily). Deleting a configuration removes its
+            // scoped credentials.
+            entity.HasOne<FunctionConfiguration>()
+                .WithMany()
+                .HasForeignKey(e => e.FunctionConfigurationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasIndex(e => e.FunctionConfigurationId)
+                .HasDatabaseName("IX_FunctionCredential_FunctionConfigurationId");
+
+            // Unique constraint: only one primary GLOBAL credential per provider type
+            // (config-scoped credentials are excluded — they get their own rule below).
             entity.HasIndex(e => new { e.ProviderType, e.IsPrimary })
                 .IsUnique()
-                .HasFilter("\"IsPrimary\" = true")
+                .HasFilter("\"IsPrimary\" = true AND \"FunctionConfigurationId\" IS NULL")
                 .HasDatabaseName("IX_FunctionCredential_OnePrimaryPerProviderType");
 
-            // Unique constraint: Prevent duplicate API keys for the same provider type
+            // Unique constraint: only one primary credential per owning configuration
+            // (each MCP server has its own primary token).
+            entity.HasIndex(e => new { e.FunctionConfigurationId, e.IsPrimary })
+                .IsUnique()
+                .HasFilter("\"IsPrimary\" = true AND \"FunctionConfigurationId\" IS NOT NULL")
+                .HasDatabaseName("IX_FunctionCredential_OnePrimaryPerConfiguration");
+
+            // Unique constraint: prevent duplicate API keys among GLOBAL credentials of a provider
+            // type. Config-scoped tokens are excluded (they are encrypted non-deterministically and
+            // legitimately differ per server).
             entity.HasIndex(e => new { e.ProviderType, e.ApiKey })
                 .IsUnique()
                 .HasDatabaseName("IX_FunctionCredential_UniqueApiKeyPerProviderType")
-                .HasFilter("\"ApiKey\" IS NOT NULL");
+                .HasFilter("\"ApiKey\" IS NOT NULL AND \"FunctionConfigurationId\" IS NULL");
 
             // Configure check constraints
             entity.ToTable(t => {

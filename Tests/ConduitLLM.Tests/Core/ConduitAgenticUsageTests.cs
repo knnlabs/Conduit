@@ -178,13 +178,13 @@ public class ConduitAgenticUsageTests
             .ReturnsAsync(new List<Tool>());
         functionDiscovery.Setup(x => x.GetFunctionNameToIdMappingAsync(
                 It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Dictionary<string, int> { ["lookup"] = 1 });
+            .ReturnsAsync(new Dictionary<string, FunctionRoute> { ["lookup"] = new FunctionRoute(1) });
 
         var orchestration = new Mock<IAgenticOrchestrationService>();
         orchestration.Setup(x => x.ExecuteToolCallsAsync(
                 It.IsAny<List<ToolCall>>(),
                 It.IsAny<int>(),
-                It.IsAny<Dictionary<string, int>>(),
+                It.IsAny<Dictionary<string, FunctionRoute>>(),
                 It.IsAny<string>(),
                 It.IsAny<Guid>(),
                 It.IsAny<int>(),
