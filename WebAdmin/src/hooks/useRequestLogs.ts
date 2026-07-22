@@ -11,10 +11,26 @@ export interface RequestLogEntry {
   id: number;
   virtualKeyId: number;
   modelName: string;
+  providerId: number | null;
+  providerType: string | null;
+  modelProviderMappingId: number | null;
+  promptCachingEligible: boolean;
+  promptCachingPolicyApplied: boolean;
+  cachedReadSavings: number;
+  cacheWritePremium: number;
+  routingAffinityUsed: boolean;
+  routingDecisionReason: string | null;
+  routingFailoverCount: number;
   requestType: string;
   inputTokens: number;
   outputTokens: number;
+  cachedInputTokens: number | null;
+  cachedWriteTokens: number | null;
   cost: number;
+  billingMethod: number | null;
+  providerReportedCostUsd: number | null;
+  providerCostMarkupMultiplier: number | null;
+  billedAtUtc: string | null;
   responseTimeMs: number;
   userId: string | null;
   clientIp: string | null;
@@ -50,6 +66,7 @@ export interface FunctionCallResult {
  * Parsed metadata for different request types
  */
 export interface RequestLogMetadata {
+  [key: string]: unknown;
   type?: string;
   // Function-specific (for /functions/execute endpoint)
   functionConfigurationId?: number;
@@ -204,10 +221,26 @@ export function useRequestLogs({
           virtualKeyId?: number;
           model?: string;
           modelName?: string;
+          providerId?: number | null;
+          providerType?: string | null;
+          modelProviderMappingId?: number | null;
+          promptCachingEligible?: boolean;
+          promptCachingPolicyApplied?: boolean;
+          cachedReadSavings?: number;
+          cacheWritePremium?: number;
+          routingAffinityUsed?: boolean;
+          routingDecisionReason?: string | null;
+          routingFailoverCount?: number;
           requestType?: string;
           inputTokens?: number;
           outputTokens?: number;
+          cachedInputTokens?: number | null;
+          cachedWriteTokens?: number | null;
           cost?: number;
+          billingMethod?: number | null;
+          providerReportedCostUsd?: number | null;
+          providerCostMarkupMultiplier?: number | null;
+          billedAtUtc?: string | null;
           duration?: number;
           responseTimeMs?: number;
           userId?: string | null;
@@ -223,10 +256,26 @@ export function useRequestLogs({
           id: typeof rawItem.id === 'string' ? parseInt(rawItem.id, 10) : (rawItem.id ?? 0),
           virtualKeyId: rawItem.virtualKeyId ?? 0,
           modelName: rawItem.model ?? rawItem.modelName ?? '',
+          providerId: rawItem.providerId ?? null,
+          providerType: rawItem.providerType ?? null,
+          modelProviderMappingId: rawItem.modelProviderMappingId ?? null,
+          promptCachingEligible: rawItem.promptCachingEligible ?? false,
+          promptCachingPolicyApplied: rawItem.promptCachingPolicyApplied ?? false,
+          cachedReadSavings: rawItem.cachedReadSavings ?? 0,
+          cacheWritePremium: rawItem.cacheWritePremium ?? 0,
+          routingAffinityUsed: rawItem.routingAffinityUsed ?? false,
+          routingDecisionReason: rawItem.routingDecisionReason ?? null,
+          routingFailoverCount: rawItem.routingFailoverCount ?? 0,
           requestType: rawItem.requestType ?? '',
           inputTokens: rawItem.inputTokens ?? 0,
           outputTokens: rawItem.outputTokens ?? 0,
+          cachedInputTokens: rawItem.cachedInputTokens ?? null,
+          cachedWriteTokens: rawItem.cachedWriteTokens ?? null,
           cost: rawItem.cost ?? 0,
+          billingMethod: rawItem.billingMethod ?? null,
+          providerReportedCostUsd: rawItem.providerReportedCostUsd ?? null,
+          providerCostMarkupMultiplier: rawItem.providerCostMarkupMultiplier ?? null,
+          billedAtUtc: rawItem.billedAtUtc ?? null,
           responseTimeMs: rawItem.duration ?? rawItem.responseTimeMs ?? 0,
           userId: rawItem.userId ?? null,
           clientIp: rawItem.clientIp ?? rawItem.ipAddress ?? null,
