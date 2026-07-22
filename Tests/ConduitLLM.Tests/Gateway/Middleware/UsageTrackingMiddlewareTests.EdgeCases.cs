@@ -59,7 +59,16 @@ namespace ConduitLLM.Tests.Http.Middleware
             var context = new HttpContextBuilder().ForChatCompletions().WithVirtualKey(653).Build();
             Fixture.SetupCostForModel("gpt-test", 0.004m);
 
-            await Invoker.WithResponse(new
+            await Invoker
+                .WithProviderUsage("gpt-test", new Usage
+                {
+                    TotalTokens = 80,
+                    PromptTokens = 80,
+                    CompletionTokens = 0,
+                    PricingFallbackReason =
+                        "Provider reported total_tokens without prompt/completion breakdown; billed as input tokens"
+                })
+                .WithResponse(new
                 {
                     model = "gpt-test",
                     usage = new { total_tokens = 80 }
