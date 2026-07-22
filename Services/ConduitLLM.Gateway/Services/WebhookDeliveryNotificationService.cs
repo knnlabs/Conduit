@@ -128,13 +128,8 @@ namespace ConduitLLM.Gateway.Services
                     Timestamp = DateTime.UtcNow
                 };
                 
-                // Get the hub directly to use broadcast method
-                using var scope = _serviceProvider.CreateScope();
-                var hub = scope.ServiceProvider.GetService<WebhookDeliveryHub>();
-                if (hub != null)
-                {
-                    await hub.BroadcastDeliveryAttempt(webhookUrl, attempt);
-                }
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
+                await _hubContext.Clients.Group(groupName).SendAsync("DeliveryAttempted", attempt);
                 
                 // Record metrics if service is available
                 if (_metricsService != null)
