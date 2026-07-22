@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Core.Services;
 
@@ -121,7 +122,7 @@ namespace ConduitLLM.Gateway.Hubs
             // Join groups for these webhook URLs
             foreach (var url in webhookUrls)
             {
-                var groupName = GetWebhookGroupName(url);
+                var groupName = SignalRConstants.Groups.Webhook(url);
                 await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
             }
 
@@ -150,7 +151,7 @@ namespace ConduitLLM.Gateway.Hubs
                     webhooks.Remove(url);
                     
                     // Leave the group for this webhook URL
-                    var groupName = GetWebhookGroupName(url);
+                    var groupName = SignalRConstants.Groups.Webhook(url);
                     await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupName);
                 }
             }
@@ -190,7 +191,7 @@ namespace ConduitLLM.Gateway.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task BroadcastDeliveryAttempt(string webhookUrl, WebhookDeliveryAttempt attempt)
         {
-            var groupName = GetWebhookGroupName(webhookUrl);
+            var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
             
             await Clients.Group(groupName).SendAsync("DeliveryAttempted", attempt);
             
@@ -205,7 +206,7 @@ namespace ConduitLLM.Gateway.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task BroadcastDeliverySuccess(string webhookUrl, WebhookDeliverySuccess success)
         {
-            var groupName = GetWebhookGroupName(webhookUrl);
+            var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
             
             await Clients.Group(groupName).SendAsync("DeliverySucceeded", success);
             
@@ -220,7 +221,7 @@ namespace ConduitLLM.Gateway.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task BroadcastDeliveryFailure(string webhookUrl, WebhookDeliveryFailure failure)
         {
-            var groupName = GetWebhookGroupName(webhookUrl);
+            var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
             
             await Clients.Group(groupName).SendAsync("DeliveryFailed", failure);
             
@@ -235,23 +236,11 @@ namespace ConduitLLM.Gateway.Hubs
         /// <returns>A task representing the asynchronous operation.</returns>
         public async Task BroadcastRetryScheduled(string webhookUrl, WebhookRetryInfo retry)
         {
-            var groupName = GetWebhookGroupName(webhookUrl);
+            var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
             
             await Clients.Group(groupName).SendAsync("RetryScheduled", retry);
             
             RecordMetrics("retry_scheduled");
-        }
-
-        /// <summary>
-        /// Gets the group name for a webhook URL.
-        /// </summary>
-        /// <param name="webhookUrl">The webhook URL.</param>
-        /// <returns>The group name.</returns>
-        private static string GetWebhookGroupName(string webhookUrl)
-        {
-            // Create a safe group name from the URL
-            var uri = new Uri(webhookUrl);
-            return $"webhook-{uri.Host.Replace(".", "-")}-{uri.AbsolutePath.Replace("/", "-")}";
         }
 
         /// <summary>
