@@ -106,13 +106,10 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 });
             }
 
-            if (policy.Retry is not null || policy.DelayedRedeliveryIntervals is not null)
-            {
-                options.Policies.Add(new EndpointRetryHandlerPolicy(
-                    eventTypes,
-                    policy.Retry is { } retry ? ComputeRetryCooldowns(retry) : Array.Empty<TimeSpan>(),
-                    policy.DelayedRedeliveryIntervals?.ToArray()));
-            }
+            options.Policies.Add(new EndpointRetryHandlerPolicy(
+                eventTypes,
+                policy.Retry is { } retry ? ComputeRetryCooldowns(retry) : Array.Empty<TimeSpan>(),
+                policy.DelayedRedeliveryIntervals?.ToArray()));
         }
 
         /// <summary>
@@ -174,6 +171,8 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                     {
                         continue;
                     }
+
+                    chain.OnException<NonRetryableMessageException>().MoveToErrorQueue();
 
                     if (_cooldowns.Length > 0)
                     {

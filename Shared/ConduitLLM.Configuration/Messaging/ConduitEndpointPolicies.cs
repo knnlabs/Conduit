@@ -14,13 +14,13 @@ namespace ConduitLLM.Configuration.Messaging
     /// </remarks>
     public static class ConduitEndpointPolicies
     {
-        /// <summary>webhook-delivery: high-throughput, exponential retry, circuit breaker, rate limit.</summary>
+        /// <summary>webhook-delivery: high-throughput, consumer-managed retry, circuit breaker, rate limit.</summary>
         public static readonly EndpointPolicy WebhookDelivery = new(
             Name: "webhook-delivery",
             PrefetchCount: 100,
             ConcurrentMessageLimit: 75,
             QuorumQueue: true,
-            Retry: RetryPolicy.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(2)),
+            Retry: null,
             CircuitBreaker: new CircuitBreakerPolicy(TimeSpan.FromMinutes(1), TripThreshold: 15, ActiveThreshold: 10, TimeSpan.FromMinutes(5)),
             RateLimit: new RateLimitPolicy(100, TimeSpan.FromSeconds(1)),
             QueueArguments: new Dictionary<string, object>

@@ -25,7 +25,7 @@ namespace ConduitLLM.Tests.Messaging
             p.ConcurrentMessageLimit.Should().Be(75);
             p.QuorumQueue.Should().BeTrue();
             p.SingleActiveConsumer.Should().BeFalse();
-            p.Retry.Should().Be(RetryPolicy.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(2)));
+            p.Retry.Should().BeNull();
             p.CircuitBreaker.Should().Be(new CircuitBreakerPolicy(TimeSpan.FromMinutes(1), 15, 10, TimeSpan.FromMinutes(5)));
             p.RateLimit.Should().Be(new RateLimitPolicy(100, TimeSpan.FromSeconds(1)));
             p.QueueArguments!["x-delivery-limit"].Should().Be(10);

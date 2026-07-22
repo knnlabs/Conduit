@@ -41,9 +41,8 @@ namespace ConduitLLM.Tests.Messaging
         [Fact]
         public void ComputeRetryCooldowns_Exponential_DoublingCappedAtMax()
         {
-            // webhook-delivery: Exponential(3, 1s, 30s, 2s) → 1s, 3s, 7s (min + step·(2ⁿ−1))
             var cooldowns = WolverineEndpointPolicy.ComputeRetryCooldowns(
-                ConduitEndpointPolicies.WebhookDelivery.Retry!);
+                RetryPolicy.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(2)));
 
             cooldowns.Should().Equal(
                 TimeSpan.FromSeconds(1),
