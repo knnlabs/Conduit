@@ -42,8 +42,8 @@ namespace ConduitLLM.Gateway.Hubs
 
             // IMPORTANT: This hub is intentionally public (no connection-level auth) to allow browser clients
             // to connect without authentication. Each method validates ephemeral keys individually.
-            // We use GetKeyDataAsync instead of ValidateAndConsumeKeyAsync because SignalR connections
-            // are long-lived and the key needs to remain valid for the duration of the subscription.
+            // Gateway ephemeral keys are reusable until their TTL expires so long-lived SignalR
+            // connections can authenticate throughout the subscription.
             var keyData = await _ephemeralKeyService.GetKeyDataAsync(ephemeralKey);
             if (keyData == null)
             {

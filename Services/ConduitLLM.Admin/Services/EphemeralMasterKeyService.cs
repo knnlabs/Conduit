@@ -47,7 +47,7 @@ namespace ConduitLLM.Admin.Services
     /// <summary>
     /// Implementation of the ephemeral master key service for Admin API authentication
     /// </summary>
-    public class EphemeralMasterKeyService : EphemeralKeyServiceBase<EphemeralMasterKeyData>, IEphemeralMasterKeyService
+    public class EphemeralMasterKeyService : ConsumableEphemeralKeyServiceBase<EphemeralMasterKeyData>, IEphemeralMasterKeyService
     {
         private const int DefaultTTLSeconds = 300; // 5 minutes
 

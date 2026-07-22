@@ -8,6 +8,11 @@ namespace ConduitLLM.Admin.Models
     public class EphemeralMasterKeyData : EphemeralKeyDataBase
     {
         /// <summary>
+        /// Whether the single-use key has been consumed.
+        /// </summary>
+        public bool IsConsumed { get; set; }
+
+        /// <summary>
         /// Flag indicating this is a valid master key token
         /// </summary>
         public bool IsValid { get; set; } = true;
