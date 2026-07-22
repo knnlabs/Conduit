@@ -4172,6 +4172,8 @@ export interface components {
       /** Format: int32 */
       id?: number;
       providerType: components["schemas"]["FunctionProviderType"];
+      /** Format: int32 */
+      functionConfigurationId?: null | number;
       apiKey?: null | string;
       baseUrl?: null | string;
       organization?: null | string;
