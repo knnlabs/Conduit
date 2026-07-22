@@ -42,11 +42,11 @@ public class McpServerSettingsTests
     }
 
     [Fact]
-    public void Parse_EmptyAllowlist_MeansAllToolsPermitted()
+    public void Parse_EmptyAllowlist_DeniesAllTools()
     {
         var settings = McpServerSettings.Parse("""{ "allowedTools": [] }""");
 
-        // An empty list carries no restriction (null set => all permitted).
-        Assert.Null(settings.AllowedToolSet);
+        Assert.NotNull(settings.AllowedToolSet);
+        Assert.Empty(settings.AllowedToolSet!);
     }
 }
