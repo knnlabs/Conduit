@@ -19,10 +19,7 @@ export default function EnhancedVideoPromptInput({ models, dynamicParameters }: 
   const [prompt, setPrompt] = useState('');
   const { settings, currentTask, setError } = useVideoStore();
   
-  // Use enhanced hook with fallback to polling
-  const { generateVideo, isGenerating } = useEnhancedVideoGeneration({
-    fallbackToPolling: true,
-  });
+  const { generateVideo, isGenerating } = useEnhancedVideoGeneration();
 
   const handleSubmit = useCallback(async () => {
     if (!prompt.trim()) {
