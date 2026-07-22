@@ -14,6 +14,7 @@
     <PackageReference Include="MessagePack" Version="2.5.302" />
     <PackageReference Include="Polly" Version="8.7.0" />
     <PackageReference Include="prometheus-net" Version="8.2.1" />
+    <PackageReference Include="prometheus-net.AspNetCore" Version="8.2.1" />
     <!-- Explicit pin: the SignalR transitive floor is 2.7.27, which predates the
          Expiration StringSet API this project relies on. -->
     <PackageReference Include="StackExchange.Redis" Version="2.13.17" />

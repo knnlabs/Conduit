@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Security.Middleware;
 
 using System.Text.Json;
@@ -206,6 +207,9 @@ public partial class Program
         app.UseAdminMiddleware();
 
         app.UseAuthentication();
+        // Run before authorization so private-network scrapes are not captured by the
+        // authenticated JSON API route at /metrics/.
+        app.UseConduitPrometheusMetricsEndpoint();
         app.UseAuthorization();
 
 

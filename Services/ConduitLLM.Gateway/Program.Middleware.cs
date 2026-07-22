@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Data;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Middleware;
 using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Middleware;
@@ -61,6 +62,8 @@ public partial class Program
 
         // Add authentication and authorization middleware
         app.UseAuthentication();
+        // Private-network scrapes bypass authorization; external scrapes can authenticate.
+        app.UseConduitPrometheusMetricsEndpoint();
         app.UseAuthorization();
 
         // Add ephemeral key cleanup middleware (must be after authentication)
