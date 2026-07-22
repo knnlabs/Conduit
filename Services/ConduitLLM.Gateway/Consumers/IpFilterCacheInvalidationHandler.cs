@@ -42,6 +42,7 @@ namespace ConduitLLM.Gateway.Consumers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error invalidating IP filter rules cache");
+                throw;
             }
 
             return Task.CompletedTask;

@@ -134,7 +134,7 @@ namespace ConduitLLM.Tests.Http.Consumers
         }
 
         [Fact]
-        public async Task Consume_Should_Continue_With_Discovery_Cache_When_ModelMapping_Cache_Fails()
+        public async Task Consume_Should_Propagate_When_ModelMapping_Cache_Fails()
         {
             // Arrange
             var @event = new ModelMappingChanged
@@ -152,13 +152,12 @@ namespace ConduitLLM.Tests.Http.Consumers
                 .Setup(x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Redis connection failed"));
 
-            // Act - should NOT throw
-            await _consumer.HandleAsync(@event, new TestEventContext());
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _consumer.HandleAsync(@event, new TestEventContext()));
 
-            // Assert - Discovery cache should still be called despite model mapping cache failure
             _mockDiscoveryCacheService.Verify(
                 x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()),
-                Times.Once);
+                Times.Never);
 
             // Verify error was logged
             _mockLogger.Verify(
@@ -172,7 +171,7 @@ namespace ConduitLLM.Tests.Http.Consumers
         }
 
         [Fact]
-        public async Task Consume_Should_Not_Throw_When_Discovery_Cache_Fails()
+        public async Task Consume_Should_Propagate_When_Discovery_Cache_Fails()
         {
             // Arrange
             var @event = new ModelMappingChanged
@@ -194,8 +193,8 @@ namespace ConduitLLM.Tests.Http.Consumers
                 .Setup(x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Redis connection failed"));
 
-            // Act - should NOT throw
-            await _consumer.HandleAsync(@event, new TestEventContext());
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _consumer.HandleAsync(@event, new TestEventContext()));
 
             // Assert - Model mapping cache should have been called before the discovery failure
             _mockCacheManager.Verify(

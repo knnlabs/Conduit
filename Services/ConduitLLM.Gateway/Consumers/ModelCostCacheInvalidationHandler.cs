@@ -77,6 +77,7 @@ namespace ConduitLLM.Gateway.Consumers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error invalidating billing model cost cache");
+                throw;
             }
 
             // Invalidate pricing rules cache if available
@@ -92,6 +93,7 @@ namespace ConduitLLM.Gateway.Consumers
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error invalidating pricing rules cache for ModelCostId: {ModelCostId}", @event.ModelCostId);
+                    throw;
                 }
             }
         }

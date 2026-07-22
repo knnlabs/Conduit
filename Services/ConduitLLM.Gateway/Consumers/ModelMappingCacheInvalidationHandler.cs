@@ -101,12 +101,12 @@ namespace ConduitLLM.Gateway.Consumers
             }
             catch (Exception ex)
             {
-                // Log error but don't throw - cache invalidation failures shouldn't break the event flow
                 _logger.LogError(ex,
                     "Failed to invalidate model mapping cache: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",
                     @event.MappingId,
                     @event.ModelAlias,
                     @event.ChangeType);
+                throw;
             }
         }
 
@@ -125,12 +125,12 @@ namespace ConduitLLM.Gateway.Consumers
             }
             catch (Exception ex)
             {
-                // Log error but don't throw - cache invalidation failures shouldn't break the event flow
                 _logger.LogError(ex,
                     "Failed to invalidate discovery cache: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",
                     @event.MappingId,
                     @event.ModelAlias,
                     @event.ChangeType);
+                throw;
             }
         }
     }

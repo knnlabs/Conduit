@@ -40,6 +40,22 @@ public class ModelCostCacheInvalidationHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_BillingCacheFailure_PropagatesForTransportRetry()
+    {
+        var modelCostService = new Mock<IModelCostService>();
+        modelCostService
+            .Setup(service => service.ClearCacheAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("cache unavailable"));
+        var handler = new ModelCostCacheInvalidationHandler(
+            modelCostService.Object,
+            null,
+            Mock.Of<ILogger<ModelCostCacheInvalidationHandler>>());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            handler.HandleAsync(CreateEvent(), new TestEventContext()));
+    }
+
+    [Fact]
     public async Task HandleAsync_InvalidatesModelCostPromotedFromSharedCache()
     {
         const string modelId = "billing-model";
