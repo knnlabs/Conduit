@@ -27,6 +27,17 @@ The **WebAdmin** UI (port 3000) is not a third API tier. Administrators sign in 
 browser then talks to the Gateway and Admin APIs directly using short-lived *ephemeral* keys it
 mints on demand. Nothing else needs to hold the master key.
 
+### Audio support
+
+Audio is supported through the Gateway API: clients use `/v1/audio/transcriptions` for
+speech-to-text and `/v1/audio/speech` for text-to-speech. A model must advertise the matching
+`SupportsSpeechToText` or `SupportsTextToSpeech` capability; discovery exposes those flags and
+the Gateway rejects an unsupported model before invoking a provider.
+
+WebAdmin deliberately treats audio as API-only. Its chat page does not record, request browser
+microphone permission, or upload audio. Administrators can still view and configure the model
+capabilities used by API clients.
+
 ## The core objects
 
 Everything in Conduit is built from a small set of objects. Understanding how they relate is

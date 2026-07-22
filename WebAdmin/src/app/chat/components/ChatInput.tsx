@@ -19,7 +19,6 @@ import {
   IconSend,
   IconPlayerStop,
   IconTool,
-  IconMicrophone,
   IconX,
   IconTrash,
   IconHistory
@@ -212,13 +211,6 @@ export function ChatInput({
             </Tooltip>
           )}
 
-          {/* TODO(#1083): Align this audio-recording stub with supported capabilities. */}
-          <Tooltip label="Audio input - Coming soon">
-            <ActionIcon size="lg" variant="default" disabled>
-              <IconMicrophone size={20} />
-            </ActionIcon>
-          </Tooltip>
-          
           {isStreaming ? (
             <Button
               size="md"

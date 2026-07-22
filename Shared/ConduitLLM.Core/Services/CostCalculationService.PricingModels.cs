@@ -327,8 +327,6 @@ public partial class CostCalculationService
         return Task.FromResult(cost);
     }
 
-    // Audio calculation methods removed - audio functionality has been removed from the system
-
     private async Task<decimal> CalculateRulesBasedCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         if (_pricingRulesEvaluator == null)
