@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal, TextInput, Button, Stack, Group, Textarea, Alert, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notify } from '@/lib/notifications';
 import { IconAlertCircle } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelSeriesDto, UpdateModelSeriesDto } from '@/lib/admin-api';
 
@@ -18,7 +18,6 @@ interface EditModelSeriesModalProps {
 }
 
 export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: EditModelSeriesModalProps) {
-  const [loading, setLoading] = useState(false);
   const [jsonError, setJsonError] = useState<string | null>(null);
 
   const form = useForm<UpdateModelSeriesDto & { parameters?: string }>({
@@ -59,33 +58,31 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
   }, [series]);
 
 
-  const handleClose = () => {
-    form.reset();
-    setJsonError(null);
-    onClose();
-  };
-
-  const handleSubmit = async (values: typeof form.values) => {
-    try {
-      setLoading(true);
+  const submitAction = useCallback(
+    async (values: UpdateModelSeriesDto & { parameters?: string }) => {
+      if (!series.id) throw new Error('Series ID is required');
       const dto: UpdateModelSeriesDto = {
         name: values.name,
         description: values.description,
         parameters: values.parameters ?? null
       };
-      
-      if (!series.id) throw new Error('Series ID is required');
       await withAdminClient(client => client.modelSeries.update(series.id as number, dto));
-      notify.success('Model series updated successfully');
-      handleClose();
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to update model series:', error);
-      notify.error(error, 'Failed to update model series');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [series.id]
+  );
+
+  const { loading, handleSubmit, handleClose: baseHandleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction,
+    successMessage: 'Model series updated successfully',
+  });
+
+  const handleClose = useCallback(() => {
+    setJsonError(null);
+    baseHandleClose();
+  }, [baseHandleClose]);
 
   // Removed authorOptions as it's no longer used
 

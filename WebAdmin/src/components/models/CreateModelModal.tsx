@@ -5,6 +5,7 @@ import { Modal, TextInput, Select, Switch, Button, Stack, Group, NumberInput, Di
 import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
 import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
 import type { CreateModelDto, ModelSeriesDto } from '@/lib/admin-api';
 
@@ -16,7 +17,6 @@ interface CreateModelModalProps {
 
 
 export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModalProps) {
-  const [loading, setLoading] = useState(false);
   const [series, setSeries] = useState<ModelSeriesDto[]>([]);
   // Capabilities are now embedded in the Model, no need for separate capabilities
 
@@ -67,14 +67,11 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
     }
   };
 
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  const handleSubmit = async (values: typeof form.values) => {
-    try {
-      setLoading(true);
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction: async (values) => {
       const dto: CreateModelDto = {
         name: values.name,
         modelSeriesId: values.modelSeriesId ? parseInt(values.modelSeriesId) : undefined,
@@ -91,16 +88,9 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         maxOutputTokens: values.maxOutputTokens ?? undefined
       } as CreateModelDto;
       await withAdminClient(client => client.models.create(dto));
-      notify.success('Model created successfully');
-      form.reset();
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to create model:', error);
-      notify.error(error, 'Failed to create model');
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    successMessage: 'Model created successfully',
+  });
 
   const seriesOptions = series.map(s => ({
     value: s.id?.toString() ?? '',
