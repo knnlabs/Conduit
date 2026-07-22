@@ -167,6 +167,26 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
+        public async Task IsRequestAllowedAsync_RetiredHubPathIsNotAuthenticationExempt()
+        {
+            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", "configured-key");
+            try
+            {
+                var context = new DefaultHttpContext();
+                context.Request.Path = "/hubs/admin-notifications";
+
+                var result = await _securityService.IsRequestAllowedAsync(context);
+
+                Assert.False(result.IsAllowed);
+                Assert.Equal(401, result.StatusCode);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
+            }
+        }
+
+        [Fact]
         public async Task IsRequestAllowedAsync_ExcludedPath_ReturnsAllowed()
         {
             // Arrange

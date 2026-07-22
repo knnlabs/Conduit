@@ -132,7 +132,7 @@ namespace ConduitLLM.Tests.Admin.Security
         }
 
         [Fact]
-        public async Task HandleAuthenticateAsync_HubQueryToken_Succeeds()
+        public async Task HandleAuthenticateAsync_QueryTokenOnRetiredHubPath_IsRejected()
         {
             var result = await RunAuthenticationAsync("valid-key", ctx =>
             {
@@ -140,8 +140,7 @@ namespace ConduitLLM.Tests.Admin.Security
                 ctx.Request.QueryString = new QueryString("?access_token=valid-key");
             });
 
-            Assert.True(result.Succeeded);
-            Assert.True(result.Principal?.HasClaim("MasterKey", "true"));
+            Assert.False(result.Succeeded);
         }
 
         [Fact]

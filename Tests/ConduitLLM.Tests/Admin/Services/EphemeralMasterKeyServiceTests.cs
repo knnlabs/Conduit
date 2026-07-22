@@ -170,43 +170,6 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
-        public async Task ConsumeKeyAsync_ValidKey_ReturnsTrue()
-        {
-            // Arrange
-            var key = "emk_consume_key";
-            var keyData = new EphemeralMasterKeyData
-            {
-                Key = key,
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(4),
-                IsConsumed = false,
-                IsValid = true
-            };
-
-            var json = JsonSerializer.Serialize(keyData);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-
-            _cacheMock.Setup(x => x.GetAsync($"ephemeral:master:{key}", default))
-                .ReturnsAsync(bytes);
-
-            _cacheMock.Setup(x => x.RemoveAsync(
-                It.IsAny<string>(),
-                default))
-                .Returns(Task.CompletedTask);
-
-            // Act
-            var result = await _service.ConsumeKeyAsync(key);
-
-            // Assert
-            Assert.True(result);
-
-            // Verify key was deleted
-            _cacheMock.Verify(x => x.RemoveAsync(
-                $"ephemeral:master:{key}",
-                default), Times.Once);
-        }
-
-        [Fact]
         public async Task KeyExistsAsync_ExistingKey_ReturnsTrue()
         {
             // Arrange

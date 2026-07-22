@@ -62,15 +62,6 @@ public partial class Program
         // between the event handler (writer) and the dashboard endpoint (reader).
         builder.Services.AddSingleton<ConduitLLM.Admin.Interfaces.IServiceHeartbeatStore, ConduitLLM.Admin.Services.ServiceHeartbeatStore>();
 
-        // Add SignalR with shared configuration (MessagePack, Redis backplane)
-        var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
-        builder.Services.AddConduitSignalR(
-            builder.Environment,
-            signalRRedisConnectionString,
-            redisChannelPrefix: "conduit_admin_signalr:",
-            redisDatabase: 3,
-            serviceName: "ConduitLLM.Admin");
-
         // Add media lifecycle services (scheduler, storage, distributed locking)
         builder.Services.AddMediaLifecycleServices(builder.Configuration);
 

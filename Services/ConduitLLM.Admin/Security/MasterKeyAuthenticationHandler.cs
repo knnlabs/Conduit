@@ -68,24 +68,10 @@ namespace ConduitLLM.Admin.Security
                 return AuthenticateResult.Success(ticket);
             }
 
-            // Check for master key in headers and query string
+            // Check for master key in headers
             string? providedKey = null;
-            
-            // For SignalR hub requests, prioritize query string authentication
-            if (Context.Request.Path.StartsWithSegments("/hubs") && 
-                Context.Request.Query.TryGetValue("access_token", out var tokenValues))
-            {
-                providedKey = tokenValues.FirstOrDefault();
-                
-                // Log when query string auth is used for SignalR
-                if (!string.IsNullOrEmpty(providedKey))
-                {
-                    Logger.LogDebug("Using query string authentication for SignalR hub: {Path}", 
-                        LoggingSanitizer.S(Context.Request.Path.ToString()));
-                }
-            }
-            // If not a hub request or no query string token, check headers
-            else if (Context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyValues))
+
+            if (Context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyValues))
             {
                 providedKey = apiKeyValues.FirstOrDefault();
             }
@@ -93,7 +79,7 @@ namespace ConduitLLM.Admin.Security
             {
                 providedKey = masterKeyValues.FirstOrDefault();
             }
-            // Check Authorization header for Bearer token (SignalR support)
+            // Check Authorization header for Bearer token
             else if (Context.Request.Headers.TryGetValue("Authorization", out var authValues))
             {
                 var authHeader = authValues.FirstOrDefault();
@@ -116,62 +102,30 @@ namespace ConduitLLM.Admin.Security
             // Check if this is an ephemeral master key
             if (providedKey.StartsWith("emk_", StringComparison.Ordinal))
             {
-                // Check if this is a streaming request
-                bool isStreaming = Context.Request.Path.StartsWithSegments("/hubs");
-                
-                bool isValid;
-                if (isStreaming)
-                {
-                    // For streaming, consume and delete immediately
-                    isValid = await _ephemeralMasterKeyService.ConsumeKeyAsync(providedKey);
-                    
-                    if (!isValid)
-                    {
-                        var keyExists = await _ephemeralMasterKeyService.KeyExistsAsync(providedKey);
-                        if (!keyExists)
-                        {
-                            Logger.LogWarning("Ephemeral master key not found: {Key}", SanitizeKeyForLogging(providedKey));
-                            sw.Stop();
-                            AdminAuthMetrics.RecordFailure("EphemeralKey", "not_found");
-                            AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
-                            return AuthenticateResult.Fail("Ephemeral master key not found");
-                        }
+                // Validate and mark as consumed; cleanup middleware deletes it after the request.
+                var isValid = await _ephemeralMasterKeyService.ValidateAndConsumeKeyAsync(providedKey);
 
-                        Logger.LogWarning("Ephemeral master key already used or expired: {Key}", SanitizeKeyForLogging(providedKey));
-                        sw.Stop();
-                        AdminAuthMetrics.RecordFailure("EphemeralKey", "already_used");
-                        AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
-                        return AuthenticateResult.Fail("Ephemeral master key already used");
-                    }
-                }
-                else
+                if (!isValid)
                 {
-                    // For non-streaming, validate and mark as consumed (delete happens in middleware)
-                    isValid = await _ephemeralMasterKeyService.ValidateAndConsumeKeyAsync(providedKey);
-                    
-                    if (!isValid)
+                    var keyExists = await _ephemeralMasterKeyService.KeyExistsAsync(providedKey);
+                    if (!keyExists)
                     {
-                        var keyExists = await _ephemeralMasterKeyService.KeyExistsAsync(providedKey);
-                        if (!keyExists)
-                        {
-                            Logger.LogWarning("Ephemeral master key not found: {Key}", SanitizeKeyForLogging(providedKey));
-                            sw.Stop();
-                            AdminAuthMetrics.RecordFailure("EphemeralKey", "not_found");
-                            AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
-                            return AuthenticateResult.Fail("Ephemeral master key not found");
-                        }
-
-                        Logger.LogWarning("Ephemeral master key validation failed: {Key}", SanitizeKeyForLogging(providedKey));
+                        Logger.LogWarning("Ephemeral master key not found: {Key}", SanitizeKeyForLogging(providedKey));
                         sw.Stop();
-                        AdminAuthMetrics.RecordFailure("EphemeralKey", "expired");
+                        AdminAuthMetrics.RecordFailure("EphemeralKey", "not_found");
                         AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
-                        return AuthenticateResult.Fail("Ephemeral master key expired");
+                        return AuthenticateResult.Fail("Ephemeral master key not found");
                     }
-                    
-                    // Store for cleanup after request
-                    Context.Items["EphemeralMasterKey"] = providedKey;
-                    Context.Items["DeleteEphemeralMasterKey"] = true;
+
+                    Logger.LogWarning("Ephemeral master key validation failed: {Key}", SanitizeKeyForLogging(providedKey));
+                    sw.Stop();
+                    AdminAuthMetrics.RecordFailure("EphemeralKey", "expired");
+                    AdminAuthMetrics.RecordDuration("EphemeralKey", sw.Elapsed.TotalSeconds);
+                    return AuthenticateResult.Fail("Ephemeral master key expired");
                 }
+
+                Context.Items["EphemeralMasterKey"] = providedKey;
+                Context.Items["DeleteEphemeralMasterKey"] = true;
 
                 Logger.LogInformation("Authenticated via ephemeral master key");
 
