@@ -1,10 +1,11 @@
 'use client';
 
 import { useCallback } from 'react';
-import { Modal, TextInput, Switch, Button, Stack, Group } from '@mantine/core';
+import { TextInput, Switch } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 import type { CreateModelAuthorDto } from '@/lib/admin-api';
 
 
@@ -45,42 +46,32 @@ export function CreateModelAuthorModal({ isOpen, onClose, onSuccess }: CreateMod
   });
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
       onClose={handleClose}
       title="Create New Author"
       size="md"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Create Author"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Author Name"
-            placeholder="e.g., OpenAI"
-            required
-            {...form.getInputProps('name')}
-          />
+      <TextInput
+        label="Author Name"
+        placeholder="e.g., OpenAI"
+        required
+        {...form.getInputProps('name')}
+      />
 
-          <TextInput
-            label="Website URL"
-            placeholder="https://..."
-            {...form.getInputProps('websiteUrl')}
-          />
+      <TextInput
+        label="Website URL"
+        placeholder="https://..."
+        {...form.getInputProps('websiteUrl')}
+      />
 
-          <Switch
-            label="Active"
-            {...form.getInputProps('isActive', { type: 'checkbox' })}
-          />
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading}>
-              Create Author
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <Switch
+        label="Active"
+        {...form.getInputProps('isActive', { type: 'checkbox' })}
+      />
+    </EntityFormModal>
   );
 }
