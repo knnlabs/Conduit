@@ -52,7 +52,7 @@ namespace ConduitLLM.Admin.Services
             // Check API key authentication (unless excluded path)
             if (!IsPathExcluded(path, new List<string> { "/health", "/swagger", "/scalar", "/openapi", "/hubs" }))
             {
-                if (!IsApiKeyValid(context))
+                if (!await IsApiKeyValidAsync(context))
                 {
                     await RecordFailedAuthAsync(clientIp);
 
@@ -130,19 +130,15 @@ namespace ConduitLLM.Admin.Services
             return SecurityCheckResult.Allowed();
         }
 
-        private bool IsApiKeyValid(HttpContext context)
+        private async Task<bool> IsApiKeyValidAsync(HttpContext context)
         {
             // Check primary header
             if (context.Request.Headers.TryGetValue(_options.ApiAuth.ApiKeyHeader, out var apiKey))
             {
-                // Check if it's an ephemeral master key (starts with "emk_")
-                if (!string.IsNullOrEmpty(apiKey) && apiKey.ToString().StartsWith("emk_", StringComparison.Ordinal))
+                if (await IsProvidedKeyValidAsync(apiKey.ToString()))
                 {
                     return true;
                 }
-
-                if (ValidateApiKey(apiKey!))
-                    return true;
             }
 
             // Check alternative headers for backward compatibility
@@ -150,17 +146,31 @@ namespace ConduitLLM.Admin.Services
             {
                 if (context.Request.Headers.TryGetValue(header, out var altKey))
                 {
-                    if (!string.IsNullOrEmpty(altKey) && altKey.ToString().StartsWith("emk_", StringComparison.Ordinal))
+                    if (await IsProvidedKeyValidAsync(altKey.ToString()))
                     {
                         return true;
                     }
-
-                    if (ValidateApiKey(altKey!))
-                        return true;
                 }
             }
 
             return false;
+        }
+
+        private async Task<bool> IsProvidedKeyValidAsync(string providedKey)
+        {
+            if (!providedKey.StartsWith("emk_", StringComparison.Ordinal))
+            {
+                return ValidateApiKey(providedKey);
+            }
+
+            if (_serviceScopeFactory is null)
+            {
+                return false;
+            }
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            var ephemeralKeyService = scope.ServiceProvider.GetRequiredService<IEphemeralMasterKeyService>();
+            return await ephemeralKeyService.IsKeyValidAsync(providedKey);
         }
     }
 }
