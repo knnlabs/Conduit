@@ -18,23 +18,31 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Provides media storage using S3-compatible services (AWS S3, Cloudflare R2, MinIO, etc.).
     /// </summary>
-    public partial class S3MediaStorageService : IMediaStorageService
+    public partial class S3MediaStorageService : IMediaStorageService, IDisposable
     {
+        private static readonly TimeSpan MultipartSessionLifetime = TimeSpan.FromHours(24);
+        private static readonly TimeSpan MultipartCleanupInterval = TimeSpan.FromHours(1);
         private readonly IAmazonS3 _s3Client;
         private readonly S3StorageOptions _options;
         private readonly ILogger<S3MediaStorageService> _logger;
         private readonly string _bucketName;
         private readonly TransferUtility _transferUtility;
-        private readonly ConcurrentDictionary<string, InitiateMultipartUploadResponse> _multipartUploads = new();
+        private readonly ConcurrentDictionary<string, MultipartUploadState> _multipartUploads = new();
+        private readonly TimeProvider _timeProvider;
+        private readonly Timer _multipartCleanupTimer;
+        private readonly SemaphoreSlim _multipartCleanupLock = new(1, 1);
         private readonly SemaphoreSlim _initLock = new(1, 1);
         private bool _bucketInitialized;
+        private bool _disposed;
 
         public S3MediaStorageService(
             IOptions<S3StorageOptions> options,
-            ILogger<S3MediaStorageService> logger)
+            ILogger<S3MediaStorageService> logger,
+            TimeProvider? timeProvider = null)
         {
             _options = options.Value;
             _logger = logger;
+            _timeProvider = timeProvider ?? TimeProvider.System;
             
             // Validate required configuration
             if (string.IsNullOrEmpty(_options.AccessKey))
@@ -91,9 +99,30 @@ namespace ConduitLLM.Core.Services
 
             _s3Client = new AmazonS3Client(_options.AccessKey, _options.SecretKey, config);
             _transferUtility = new TransferUtility(_s3Client);
+            _multipartCleanupTimer = new Timer(
+                _ => _ = CleanupExpiredMultipartUploadsAsync(),
+                null,
+                MultipartCleanupInterval,
+                MultipartCleanupInterval);
 
             // Bucket initialization is now deferred to first use to avoid blocking startup
             _logger.LogInformation("S3MediaStorageService initialized (bucket check deferred to first use)");
+        }
+
+        /// <summary>
+        /// Stops multipart cleanup and releases tracked session state.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _multipartCleanupTimer.Dispose();
+            _multipartUploads.Clear();
+            GC.SuppressFinalize(this);
         }
 
         /// <summary>
