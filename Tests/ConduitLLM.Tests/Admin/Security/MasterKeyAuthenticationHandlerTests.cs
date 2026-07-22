@@ -132,6 +132,31 @@ namespace ConduitLLM.Tests.Admin.Security
         }
 
         [Fact]
+        public async Task HandleAuthenticateAsync_HubQueryToken_Succeeds()
+        {
+            var result = await RunAuthenticationAsync("valid-key", ctx =>
+            {
+                ctx.Request.Path = "/hubs/admin-notifications";
+                ctx.Request.QueryString = new QueryString("?access_token=valid-key");
+            });
+
+            Assert.True(result.Succeeded);
+            Assert.True(result.Principal?.HasClaim("MasterKey", "true"));
+        }
+
+        [Fact]
+        public async Task HandleAuthenticateAsync_NonHubQueryToken_IsRejected()
+        {
+            var result = await RunAuthenticationAsync("valid-key", ctx =>
+            {
+                ctx.Request.Path = "/api/test";
+                ctx.Request.QueryString = new QueryString("?access_token=valid-key");
+            });
+
+            Assert.False(result.Succeeded);
+        }
+
+        [Fact]
         public async Task HandleAuthenticateAsync_MasterKeyNotConfigured_LogsError()
         {
             var result = await RunAuthenticationAsync(null, ctx =>

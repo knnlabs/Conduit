@@ -1,25 +1,18 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Moq;
 using ConduitLLM.Admin.Security;
 
 namespace ConduitLLM.Tests.Admin.Security
 {
     public class MasterKeyAuthorizationHandlerTests
     {
-        private readonly Mock<IConfiguration> _configurationMock;
-        private readonly Mock<ILogger<MasterKeyAuthorizationHandler>> _loggerMock;
         private readonly MasterKeyAuthorizationHandler _handler;
         private readonly MasterKeyRequirement _requirement;
 
         public MasterKeyAuthorizationHandlerTests()
         {
-            _configurationMock = new Mock<IConfiguration>();
-            _loggerMock = new Mock<ILogger<MasterKeyAuthorizationHandler>>();
-            _handler = new MasterKeyAuthorizationHandler(_configurationMock.Object, _loggerMock.Object);
+            _handler = new MasterKeyAuthorizationHandler();
             _requirement = new MasterKeyRequirement();
         }
 
@@ -80,16 +73,12 @@ namespace ConduitLLM.Tests.Admin.Security
         }
 
         [Fact]
-        public async Task HandleRequirementAsync_UnauthenticatedUser_ChecksHeaders()
+        public async Task HandleRequirementAsync_UnauthenticatedUserWithMasterKeyHeader_Fails()
         {
-            // Arrange
-            var masterKey = "test-master-key";
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", masterKey);
-
             var principal = new ClaimsPrincipal(); // Unauthenticated
             var httpContext = new DefaultHttpContext();
             httpContext.User = principal;
-            httpContext.Request.Headers["X-API-Key"] = masterKey;
+            httpContext.Request.Headers["X-API-Key"] = "test-master-key";
 
             var authContext = new AuthorizationHandlerContext(
                 new[] { _requirement },
@@ -101,10 +90,7 @@ namespace ConduitLLM.Tests.Admin.Security
             await _handler.HandleAsync(authContext);
 
             // Assert
-            Assert.True(authContext.HasSucceeded);
-
-            // Cleanup
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
+            Assert.False(authContext.HasSucceeded);
         }
 
         [Fact]
@@ -112,8 +98,6 @@ namespace ConduitLLM.Tests.Admin.Security
         {
             // Arrange
             var ephemeralKey = "emk_testkey123456789";
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", "master-key");
-
             var principal = new ClaimsPrincipal(); // Unauthenticated
             var httpContext = new DefaultHttpContext();
             httpContext.User = principal;
@@ -131,9 +115,6 @@ namespace ConduitLLM.Tests.Admin.Security
             // Assert
             Assert.False(authContext.HasSucceeded);
             // Ephemeral keys should only succeed if the user is already authenticated with MasterKey claim
-
-            // Cleanup
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
         }
 
         [Fact]
@@ -167,43 +148,12 @@ namespace ConduitLLM.Tests.Admin.Security
         }
 
         [Fact]
-        public async Task HandleRequirementAsync_ValidMasterKeyInLegacyHeader_Succeeds()
+        public async Task HandleRequirementAsync_UnauthenticatedUserWithLegacyHeader_Fails()
         {
-            // Arrange
-            var masterKey = "test-master-key";
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", masterKey);
-
             var principal = new ClaimsPrincipal(); // Unauthenticated
             var httpContext = new DefaultHttpContext();
             httpContext.User = principal;
-            httpContext.Request.Headers["X-Master-Key"] = masterKey; // Legacy header
-
-            var authContext = new AuthorizationHandlerContext(
-                new[] { _requirement },
-                principal,
-                httpContext
-            );
-
-            // Act
-            await _handler.HandleAsync(authContext);
-
-            // Assert
-            Assert.True(authContext.HasSucceeded);
-
-            // Cleanup
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
-        }
-
-        [Fact]
-        public async Task HandleRequirementAsync_NoMasterKeyConfigured_Fails()
-        {
-            // Arrange
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
-
-            var principal = new ClaimsPrincipal();
-            var httpContext = new DefaultHttpContext();
-            httpContext.User = principal;
-            httpContext.Request.Headers["X-API-Key"] = "any-key";
+            httpContext.Request.Headers["X-Master-Key"] = "test-master-key";
 
             var authContext = new AuthorizationHandlerContext(
                 new[] { _requirement },
@@ -219,16 +169,12 @@ namespace ConduitLLM.Tests.Admin.Security
         }
 
         [Fact]
-        public async Task HandleRequirementAsync_BearerTokenWithMasterKey_Succeeds()
+        public async Task HandleRequirementAsync_UnauthenticatedUserWithBearerToken_Fails()
         {
-            // Arrange
-            var masterKey = "test-master-key";
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", masterKey);
-
             var principal = new ClaimsPrincipal();
             var httpContext = new DefaultHttpContext();
             httpContext.User = principal;
-            httpContext.Request.Headers["Authorization"] = $"Bearer {masterKey}";
+            httpContext.Request.Headers["Authorization"] = "Bearer test-master-key";
 
             var authContext = new AuthorizationHandlerContext(
                 new[] { _requirement },
@@ -240,24 +186,17 @@ namespace ConduitLLM.Tests.Admin.Security
             await _handler.HandleAsync(authContext);
 
             // Assert
-            Assert.True(authContext.HasSucceeded);
-
-            // Cleanup
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
+            Assert.False(authContext.HasSucceeded);
         }
 
         [Fact]
-        public async Task HandleRequirementAsync_QueryStringTokenForSignalR_Succeeds()
+        public async Task HandleRequirementAsync_UnauthenticatedUserWithQueryToken_Fails()
         {
-            // Arrange
-            var masterKey = "test-master-key";
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", masterKey);
-
             var principal = new ClaimsPrincipal();
             var httpContext = new DefaultHttpContext();
             httpContext.User = principal;
             httpContext.Request.Path = "/hubs/admin-notifications";
-            httpContext.Request.QueryString = new QueryString($"?access_token={masterKey}");
+            httpContext.Request.QueryString = new QueryString("?access_token=test-master-key");
 
             var authContext = new AuthorizationHandlerContext(
                 new[] { _requirement },
@@ -269,10 +208,7 @@ namespace ConduitLLM.Tests.Admin.Security
             await _handler.HandleAsync(authContext);
 
             // Assert
-            Assert.True(authContext.HasSucceeded);
-
-            // Cleanup
-            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
+            Assert.False(authContext.HasSucceeded);
         }
     }
 }
