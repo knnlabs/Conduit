@@ -63,6 +63,8 @@ namespace ConduitLLM.Gateway.Authentication
             invocationContext.Context.Items["VirtualKeyHash"] = keyEntity.KeyHash;
             invocationContext.Context.Items["VirtualKeyName"] = keyEntity.KeyName ?? "Unknown";
             invocationContext.Context.Items["VirtualKey"] = virtualKey;
+            invocationContext.Context.Items["VirtualKey.RateLimitRpm"] = keyEntity.RateLimitRpm;
+            invocationContext.Context.Items["VirtualKey.RateLimitRpd"] = keyEntity.RateLimitRpd;
 
             _logger.LogDebug("Authenticated Virtual Key {KeyName} for method {Method}",
                 LoggingSanitizer.S(keyEntity.KeyName), invocationContext.HubMethodName);
@@ -101,6 +103,8 @@ namespace ConduitLLM.Gateway.Authentication
             context.Context.Items["VirtualKeyHash"] = keyEntity.KeyHash;
             context.Context.Items["VirtualKeyName"] = keyEntity.KeyName ?? "Unknown";
             context.Context.Items["VirtualKey"] = virtualKey;
+            context.Context.Items["VirtualKey.RateLimitRpm"] = keyEntity.RateLimitRpm;
+            context.Context.Items["VirtualKey.RateLimitRpd"] = keyEntity.RateLimitRpd;
 
             // Store claims in context items instead of modifying User
             // (User is read-only in SignalR hub context)

@@ -8,7 +8,6 @@ using Xunit.Abstractions;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Authentication;
-using ConduitLLM.Gateway.Services;
 
 namespace ConduitLLM.Tests.Gateway.Authentication
 {
@@ -20,16 +19,12 @@ namespace ConduitLLM.Tests.Gateway.Authentication
     [Trait("Feature", "ConnectionLimiting")]
     public class VirtualKeySignalRRateLimitFilterConnectionLimitTests : TestBase
     {
-        private readonly Mock<VirtualKeyRateLimitCache> _mockRateLimitCache;
         private readonly Mock<ISignalRRateLimitService> _mockSignalRRateLimitService;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly Mock<ILogger<VirtualKeySignalRRateLimitFilter>> _mockLogger;
 
         public VirtualKeySignalRRateLimitFilterConnectionLimitTests(ITestOutputHelper output) : base(output)
         {
-            _mockRateLimitCache = new Mock<VirtualKeyRateLimitCache>(
-                Mock.Of<IServiceProvider>(),
-                Mock.Of<ILogger<VirtualKeyRateLimitCache>>());
             _mockSignalRRateLimitService = new Mock<ISignalRRateLimitService>();
             _mockServiceProvider = new Mock<IServiceProvider>();
             _mockLogger = CreateLogger<VirtualKeySignalRRateLimitFilter>();
@@ -48,7 +43,6 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             mockOptions.Setup(x => x.Value).Returns(options);
 
             return new VirtualKeySignalRRateLimitFilter(
-                _mockRateLimitCache.Object,
                 _mockSignalRRateLimitService.Object,
                 _mockLogger.Object,
                 _mockServiceProvider.Object,

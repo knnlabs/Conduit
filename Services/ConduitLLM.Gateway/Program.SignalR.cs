@@ -17,12 +17,6 @@ public partial class Program
         // Register VirtualKeyHubFilter for SignalR authentication
         builder.Services.AddScoped<ConduitLLM.Gateway.Authentication.VirtualKeyHubFilter>();
 
-        // Register rate limit cache service for SignalR - with leader election
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Services.VirtualKeyRateLimitCache>();
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.VirtualKeyRateLimitCache>(
-            provider => provider.GetRequiredService<ConduitLLM.Gateway.Services.VirtualKeyRateLimitCache>(),
-            "VirtualKeyRateLimitCache");
-
         // Register Redis-based distributed rate limiting services
         // Check if Redis is available
         if (!string.IsNullOrEmpty(redisConnectionString))
