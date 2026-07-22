@@ -38,7 +38,7 @@ namespace ConduitLLM.Gateway.Middleware
                     logger.LogWarning(ex,
                         "Redis batch queue failed for VirtualKey {VirtualKeyId} ({Cost:C}), falling back to direct DB update",
                         virtualKeyId, cost);
-                    BillingMetrics.RecordSpendUpdateFailure(virtualKeyId, "redis_queue_failed");
+                    BillingMetrics.RecordSpendUpdateFailure("redis_queue_failed");
                 }
             }
             else
@@ -60,7 +60,7 @@ namespace ConduitLLM.Gateway.Middleware
                 logger.LogError(
                     "Direct DB spend update returned false for VirtualKey {VirtualKeyId} ({Cost:C})",
                     virtualKeyId, cost);
-                BillingMetrics.RecordSpendUpdateFailure(virtualKeyId, "direct_db_failed");
+                BillingMetrics.RecordSpendUpdateFailure("direct_db_failed");
             }
             catch (Exception ex)
             {
@@ -68,7 +68,7 @@ namespace ConduitLLM.Gateway.Middleware
                 logger.LogError(ex,
                     "Direct DB spend update also failed for VirtualKey {VirtualKeyId} ({Cost:C}), queuing to in-memory fallback",
                     virtualKeyId, cost);
-                BillingMetrics.RecordSpendUpdateFailure(virtualKeyId, "direct_db_failed");
+                BillingMetrics.RecordSpendUpdateFailure("direct_db_failed");
             }
 
             // Tier 3: In-memory fallback queue (drained on next successful flush cycle)
