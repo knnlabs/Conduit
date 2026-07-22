@@ -22,8 +22,6 @@ const imageStoreConfig = createMediaStore<ImageTask, ImageGenerationSettings>({
   name: LOCAL_STORAGE_KEY,
   initialSettings: {
     model: '',
-    quality: 'standard',
-    style: 'vivid',
   },
   persistHistory: true,
   partializeState: (state) => ({
@@ -111,8 +109,6 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
       const result = await client.images.generate({
         prompt,
         model: settings.model,
-        quality: settings.quality,
-        style: settings.style,
         n: IMAGE_CONFIG.DEFAULTS.N,
         response_format: 'url',  // Always use URL for CDN storage
         // Include dynamic parameters if provided (overrides defaults)

@@ -34,8 +34,6 @@ export interface ImageGenerationResponse {
 // UI-specific interface
 export interface ImageGenerationSettings {
   model: string;
-  quality: Quality;  // Only for DALL-E models
-  style: Style;   // Only for DALL-E models
   // Size, N, and ResponseFormat removed - now handled by custom parameters
   [key: string]: unknown; // Allow additional properties
 }

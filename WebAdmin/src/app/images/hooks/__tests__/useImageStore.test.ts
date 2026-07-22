@@ -33,9 +33,7 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
   createMediaStore: jest.fn(() => (set: (fn: (state: MockState) => MockState) => void) => ({
     error: null,
     settings: {
-      model: '',
-      quality: 'standard',
-      style: 'vivid'
+      model: ''
     },
     currentTask: null,
     taskHistory: [],
@@ -107,9 +105,7 @@ describe('useImageStore', () => {
         settingsVisible: false,
         error: null,
         settings: {
-          model: '',
-          quality: 'standard',
-          style: 'vivid'
+          model: ''
         },
         currentTask: null,
         taskHistory: []
@@ -127,9 +123,7 @@ describe('useImageStore', () => {
       expect(result.current.settingsVisible).toBe(false);
       expect(result.current.error).toBeNull();
       expect(result.current.settings).toEqual({
-        model: '',
-        quality: 'standard',
-        style: 'vivid'
+        model: ''
       });
     });
   });
@@ -227,8 +221,6 @@ describe('useImageStore', () => {
       expect(mockClient.images.generate).toHaveBeenCalledWith({
         prompt: 'Generate a sunset',
         model: 'dall-e-3',
-        quality: 'standard',
-        style: 'vivid',
         n: 1,
         response_format: 'url'
       });
@@ -364,7 +356,7 @@ describe('useImageStore', () => {
         progress: 100,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        settings: { model: 'dall-e-3', quality: 'standard', style: 'vivid' },
+        settings: { model: 'dall-e-3' },
         retryCount: 0,
         retryHistory: [],
         result: {
@@ -406,15 +398,10 @@ describe('useImageStore', () => {
       const { result } = renderHook(() => useImageStore());
 
       act(() => {
-        result.current.updateSettings({
-          model: 'dall-e-2',
-          quality: 'hd'
-        });
+        result.current.updateSettings({ model: 'dall-e-2' });
       });
 
       expect(result.current.settings.model).toBe('dall-e-2');
-      expect(result.current.settings.quality).toBe('hd');
-      expect(result.current.settings.style).toBe('vivid'); // unchanged
     });
   });
 
@@ -461,7 +448,7 @@ describe('useImageStore', () => {
         progress: 100,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        settings: { model: 'dall-e-3', quality: 'standard', style: 'vivid' },
+        settings: { model: 'dall-e-3' },
         retryCount: 0,
         retryHistory: []
       };
