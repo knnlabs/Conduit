@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea } from '@mantine/core';
+import { TextInput, Select, Switch, Textarea } from '@mantine/core';
 import { CodeHighlight } from '@mantine/code-highlight';
 import { useForm } from '@mantine/form';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 import { JsonEditorField } from '@/components/common/JsonEditorField';
 import { notify } from '@/lib/notifications';
 import type { CreateModelSeriesDto, ModelAuthorDto } from '@/lib/admin-api';
@@ -110,70 +111,60 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
     }));
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
       onClose={handleClose}
       title="Create New Model Series"
-      size="lg"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Create Series"
+      submitDisabled={!jsonValid}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Series Name"
-            placeholder="e.g., GPT-4"
-            required
-            {...form.getInputProps('name')}
-          />
+      <TextInput
+        label="Series Name"
+        placeholder="e.g., GPT-4"
+        required
+        {...form.getInputProps('name')}
+      />
 
-          <TextInput
-            label="Display Name"
-            placeholder="e.g., GPT-4 Series"
-            {...form.getInputProps('displayName')}
-          />
+      <TextInput
+        label="Display Name"
+        placeholder="e.g., GPT-4 Series"
+        {...form.getInputProps('displayName')}
+      />
 
-          <Select
-            label="Author"
-            required
-            data={authorOptions}
-            placeholder="Select an author"
-            value={form.values.authorId?.toString()}
-            onChange={(value) => form.setFieldValue('authorId', value ? parseInt(value) : 0)}
-          />
+      <Select
+        label="Author"
+        required
+        data={authorOptions}
+        placeholder="Select an author"
+        value={form.values.authorId?.toString()}
+        onChange={(value) => form.setFieldValue('authorId', value ? parseInt(value) : 0)}
+      />
 
-          <Textarea
-            label="Description"
-            placeholder="Description of the model series..."
-            rows={3}
-            {...form.getInputProps('description')}
-          />
+      <Textarea
+        label="Description"
+        placeholder="Description of the model series..."
+        rows={3}
+        {...form.getInputProps('description')}
+      />
 
-          <JsonEditorField
-            label="Parameters (JSON)"
-            value={form.values.parameters ?? ''}
-            onChange={(v) => form.setFieldValue('parameters', v)}
-            onValidityChange={setJsonValid}
-            placeholder="JSON parameters for UI generation..."
-            collapsiblePreview
-            renderPreview={(v) => (
-              <CodeHighlight code={v} language="json" withCopyButton={false} />
-            )}
-          />
+      <JsonEditorField
+        label="Parameters (JSON)"
+        value={form.values.parameters ?? ''}
+        onChange={(v) => form.setFieldValue('parameters', v)}
+        onValidityChange={setJsonValid}
+        placeholder="JSON parameters for UI generation..."
+        collapsiblePreview
+        renderPreview={(v) => (
+          <CodeHighlight code={v} language="json" withCopyButton={false} />
+        )}
+      />
 
-          <Switch
-            label="Active"
-            {...form.getInputProps('isActive', { type: 'checkbox' })}
-          />
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading} disabled={!jsonValid}>
-              Create Series
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <Switch
+        label="Active"
+        {...form.getInputProps('isActive', { type: 'checkbox' })}
+      />
+    </EntityFormModal>
   );
 }

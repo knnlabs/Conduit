@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Modal, TextInput, Button, Stack, Group, Textarea } from '@mantine/core';
+import { TextInput, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 import { JsonEditorField } from '@/components/common/JsonEditorField';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelSeriesDto, UpdateModelSeriesDto } from '@/lib/admin-api';
@@ -82,57 +83,45 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
   }, [baseHandleClose]);
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
       onClose={handleClose}
       title="Edit Model Series"
-      size="lg"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Update Series"
+      submitDisabled={!jsonValid}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Series Name"
-            placeholder="e.g., GPT-4"
-            required
-            {...form.getInputProps('name')}
+      <TextInput
+        label="Series Name"
+        placeholder="e.g., GPT-4"
+        required
+        {...form.getInputProps('name')}
+      />
+
+      <Textarea
+        label="Description"
+        placeholder="Description of the model series..."
+        rows={3}
+        {...form.getInputProps('description')}
+      />
+
+      <JsonEditorField
+        label="Parameters (JSON)"
+        value={form.values.parameters ?? ''}
+        onChange={(v) => form.setFieldValue('parameters', v)}
+        onValidityChange={setJsonValid}
+        placeholder="JSON parameters for UI generation..."
+        previewPosition="above"
+        renderPreview={(v) => (
+          <ParameterPreview
+            parametersJson={v}
+            context="chat"
+            label="Preview UI Components"
+            maxHeight={300}
           />
-
-
-          <Textarea
-            label="Description"
-            placeholder="Description of the model series..."
-            rows={3}
-            {...form.getInputProps('description')}
-          />
-
-          <JsonEditorField
-            label="Parameters (JSON)"
-            value={form.values.parameters ?? ''}
-            onChange={(v) => form.setFieldValue('parameters', v)}
-            onValidityChange={setJsonValid}
-            placeholder="JSON parameters for UI generation..."
-            previewPosition="above"
-            renderPreview={(v) => (
-              <ParameterPreview
-                parametersJson={v}
-                context="chat"
-                label="Preview UI Components"
-                maxHeight={300}
-              />
-            )}
-          />
-
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading} disabled={!jsonValid}>
-              Update Series
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        )}
+      />
+    </EntityFormModal>
   );
 }
