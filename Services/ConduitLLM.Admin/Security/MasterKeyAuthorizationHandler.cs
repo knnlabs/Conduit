@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Security.Cryptography;
 using Microsoft.AspNetCore.Authorization;
 
 namespace ConduitLLM.Admin.Security;
@@ -72,7 +73,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                     }
 
                     // Check if the provided key matches the master key
-                    if (providedKey.ToString() == masterKey)
+                    if (ConstantTimeComparer.Equals(providedKey.ToString(), masterKey))
                     {
                         context.Succeed(requirement);
                         return Task.CompletedTask;
@@ -91,7 +92,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                         return Task.CompletedTask;
                     }
 
-                    if (legacyKey.ToString() == masterKey)
+                    if (ConstantTimeComparer.Equals(legacyKey.ToString(), masterKey))
                     {
                         context.Succeed(requirement);
                         return Task.CompletedTask;
@@ -105,7 +106,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                     if (authHeader?.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) == true)
                     {
                         var bearerToken = authHeader.Substring("Bearer ".Length).Trim();
-                        if (bearerToken == masterKey)
+                        if (ConstantTimeComparer.Equals(bearerToken, masterKey))
                         {
                             context.Succeed(requirement);
                             return Task.CompletedTask;
@@ -117,7 +118,7 @@ public class MasterKeyAuthorizationHandler : AuthorizationHandler<MasterKeyRequi
                 if (httpContext.Request.Query.TryGetValue("access_token", out var tokenValues))
                 {
                     var queryToken = tokenValues.FirstOrDefault();
-                    if (queryToken == masterKey)
+                    if (ConstantTimeComparer.Equals(queryToken, masterKey))
                     {
                         // Log when query string auth is used for SignalR
                         if (httpContext.Request.Path.StartsWithSegments("/hubs"))

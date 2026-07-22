@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using ConduitLLM.Security.Models;
 using ConduitLLM.Security.Options;
 using ConduitLLM.Security.Services;
+using ConduitLLM.Security.Cryptography;
 using ConduitLLM.Admin.Interfaces;
 
 namespace ConduitLLM.Admin.Services
@@ -106,7 +107,8 @@ namespace ConduitLLM.Admin.Services
             var masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY")
                            ?? _configuration["AdminApi:MasterKey"];
 
-            return !string.IsNullOrEmpty(masterKey) && providedKey == masterKey;
+            return !string.IsNullOrEmpty(masterKey) &&
+                   ConstantTimeComparer.Equals(providedKey, masterKey);
         }
 
         /// <inheritdoc/>
