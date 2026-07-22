@@ -195,5 +195,33 @@ export class VideoSignalRClient {
   }
 }
 
-// Export a singleton instance
-export const videoSignalRClient = new VideoSignalRClient();
+const activeVideoSignalRClients = new Map<string, VideoSignalRClient>();
+
+export function createVideoSignalRClient(taskId: string): VideoSignalRClient {
+  const client = new VideoSignalRClient();
+  const previousClient = activeVideoSignalRClients.get(taskId);
+  activeVideoSignalRClients.set(taskId, client);
+
+  if (previousClient) {
+    void previousClient.disconnect();
+  }
+
+  return client;
+}
+
+export async function disconnectVideoSignalRClient(
+  taskId: string,
+  expectedClient?: VideoSignalRClient
+): Promise<void> {
+  const activeClient = activeVideoSignalRClients.get(taskId);
+
+  if (activeClient && (!expectedClient || activeClient === expectedClient)) {
+    activeVideoSignalRClients.delete(taskId);
+    await activeClient.disconnect();
+    return;
+  }
+
+  if (expectedClient && activeClient !== expectedClient) {
+    await expectedClient.disconnect();
+  }
+}

@@ -1,5 +1,8 @@
 import { NetworkError } from "@/lib/conduit-common";
-import { videoSignalRClient } from "@/lib/client/videoSignalRClient";
+import {
+  createVideoSignalRClient,
+  disconnectVideoSignalRClient,
+} from "@/lib/client/videoSignalRClient";
 import createClient, { type Client } from "openapi-fetch";
 import type { paths } from "@/generated/gateway-api";
 import { getRequestConstructor } from "@/lib/api-transport/request-constructor";
@@ -298,17 +301,18 @@ export class GatewayClient {
       ));
       const taskId = initial.task_id;
       callbacks.onStarted?.(taskId, initial.estimated_time_to_completion);
+      const signalRClient = createVideoSignalRClient(taskId);
 
       const result = new Promise<VideoGenerationResponse>((resolve, reject) => {
         let settled = false;
         const finish = (callback: () => void) => {
           if (settled) return;
           settled = true;
-          void videoSignalRClient.disconnect();
+          void disconnectVideoSignalRClient(taskId, signalRClient);
           callback();
         };
 
-        void videoSignalRClient
+        void signalRClient
           .connect(taskId, undefined, {
             onProgress: (update) =>
               callbacks.onProgress?.({
@@ -335,7 +339,9 @@ export class GatewayClient {
                 reject(new Error(message));
               }),
           })
-          .catch(() => undefined);
+          .catch(() => {
+            void disconnectVideoSignalRClient(taskId, signalRClient);
+          });
 
         const started = Date.now();
         const poll = async (delay = 1_000): Promise<void> => {
