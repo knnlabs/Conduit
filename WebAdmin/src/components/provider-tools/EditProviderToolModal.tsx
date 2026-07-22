@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, NumberInput, Select, Switch, Button, Stack, Group, Textarea } from '@mantine/core';
+import { TextInput, NumberInput, Select, Switch, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 import type { ProviderTool, UpdateProviderTool } from '@/lib/admin-api';
 
 interface EditProviderToolModalProps {
@@ -71,71 +72,61 @@ export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: Edit
   }, [isOpen, tool, form]);
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
       onClose={handleClose}
       title={`Edit ${tool.toolName}`}
       size="md"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Update Tool"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Provider"
-            value={tool.providerName ?? 'Unknown'}
-            disabled
-          />
+      <TextInput
+        label="Provider"
+        value={tool.providerName ?? 'Unknown'}
+        disabled
+      />
 
-          <TextInput
-            label="Tool Name"
-            value={tool.toolName}
-            disabled
-          />
+      <TextInput
+        label="Tool Name"
+        value={tool.toolName}
+        disabled
+      />
 
-          <Textarea
-            label="Tool Parameters"
-            placeholder="Optional JSON parameters"
-            minRows={2}
-            {...form.getInputProps('toolParameters')}
-          />
+      <Textarea
+        label="Tool Parameters"
+        placeholder="Optional JSON parameters"
+        minRows={2}
+        {...form.getInputProps('toolParameters')}
+      />
 
-          <NumberInput
-            label="Cost Per Unit"
-            placeholder="0.0001"
-            min={0}
-            decimalScale={8}
-            step={0.0001}
-            {...form.getInputProps('costPerUnit')}
-          />
+      <NumberInput
+        label="Cost Per Unit"
+        placeholder="0.0001"
+        min={0}
+        decimalScale={8}
+        step={0.0001}
+        {...form.getInputProps('costPerUnit')}
+      />
 
-          <Select
-            label="Billing Unit"
-            placeholder="Select a billing unit"
-            data={billingUnits}
-            searchable
-            {...form.getInputProps('billingUnit')}
-          />
+      <Select
+        label="Billing Unit"
+        placeholder="Select a billing unit"
+        data={billingUnits}
+        searchable
+        {...form.getInputProps('billingUnit')}
+      />
 
-          <Textarea
-            label="Cost Description"
-            placeholder="Describe how the cost is calculated"
-            {...form.getInputProps('costDescription')}
-          />
+      <Textarea
+        label="Cost Description"
+        placeholder="Describe how the cost is calculated"
+        {...form.getInputProps('costDescription')}
+      />
 
-          <Switch
-            label="Active"
-            {...form.getInputProps('isActive', { type: 'checkbox' })}
-          />
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading}>
-              Update Tool
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <Switch
+        label="Active"
+        {...form.getInputProps('isActive', { type: 'checkbox' })}
+      />
+    </EntityFormModal>
   );
 }
