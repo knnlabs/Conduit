@@ -4,8 +4,8 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.Metrics;
 
 using FluentAssertions;
 
@@ -94,19 +94,58 @@ public sealed class PrometheusMetricsEndpointExtensionsTests
     }
 
     [Fact]
-    public void MeterAdapter_PreservesStreamingHistogramBuckets()
+    public void MeterAdapter_UsesSharedBucketsForStreamStartupLatency()
     {
         using var meter = new Meter("ConduitLLM.Tests.Issue1066.Buckets");
-        var providerFirstChunk = meter.CreateHistogram<double>("conduit.stream.time_to_provider_first_chunk");
-        var clientFirstFlush = meter.CreateHistogram<double>("conduit.stream.time_to_client_first_flush");
-        var accountingFinalization = meter.CreateHistogram<double>("conduit.stream.accounting_finalization");
+        var providerFirstChunk = meter.CreateHistogram<double>(
+            SseTransportMetrics.TimeToProviderFirstChunkInstrumentName);
+        var clientFirstFlush = meter.CreateHistogram<double>(
+            SseTransportMetrics.TimeToClientFirstFlushInstrumentName);
+        var unusedFallback = new Func<Instrument, double[]>(_ => []);
 
-        ObservabilityExtensions.ResolvePrometheusHistogramBuckets(providerFirstChunk)
-            .Should().Equal(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 15);
-        ObservabilityExtensions.ResolvePrometheusHistogramBuckets(clientFirstFlush)
-            .Should().Equal(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 2.5, 5, 7.5, 10, 15);
-        ObservabilityExtensions.ResolvePrometheusHistogramBuckets(accountingFinalization)
-            .Should().Equal(0.001, 0.002, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10);
+        var providerBuckets = PrometheusMeterAdapterConfiguration.ResolveHistogramBuckets(
+            providerFirstChunk,
+            unusedFallback);
+        var clientBuckets = PrometheusMeterAdapterConfiguration.ResolveHistogramBuckets(
+            clientFirstFlush,
+            unusedFallback);
+
+        clientBuckets.Should().BeSameAs(providerBuckets);
+        providerBuckets.Should().BeInAscendingOrder();
+        providerBuckets.First().Should().Be(TimeSpan.FromMilliseconds(5).TotalSeconds);
+        providerBuckets.Last().Should().Be(TimeSpan.FromSeconds(15).TotalSeconds);
+    }
+
+    [Fact]
+    public void MeterAdapter_UsesFinerBucketsForAccountingFinalization()
+    {
+        using var meter = new Meter("ConduitLLM.Tests.Issue1066.AccountingBuckets");
+        var accountingFinalization = meter.CreateHistogram<double>(
+            SseTransportMetrics.AccountingFinalizationInstrumentName);
+
+        var accountingBuckets = PrometheusMeterAdapterConfiguration.ResolveHistogramBuckets(
+            accountingFinalization,
+            _ => []);
+
+        accountingBuckets.Should().BeInAscendingOrder();
+        accountingBuckets.First().Should().Be(TimeSpan.FromMilliseconds(1).TotalSeconds);
+        accountingBuckets.Should().Contain(TimeSpan.FromMilliseconds(2).TotalSeconds);
+        accountingBuckets.Should().Contain(TimeSpan.FromMilliseconds(5).TotalSeconds);
+        accountingBuckets.Last().Should().Be(TimeSpan.FromSeconds(10).TotalSeconds);
+    }
+
+    [Fact]
+    public void MeterAdapter_UsesDefaultBucketsForOtherHistograms()
+    {
+        using var meter = new Meter("ConduitLLM.Tests.Issue1066.DefaultBuckets");
+        var unrelatedHistogram = meter.CreateHistogram<double>("unrelated.duration");
+        double[] defaultBuckets = [1, 2, 3];
+
+        var resolvedBuckets = PrometheusMeterAdapterConfiguration.ResolveHistogramBuckets(
+            unrelatedHistogram,
+            instrument => instrument == unrelatedHistogram ? defaultBuckets : []);
+
+        resolvedBuckets.Should().BeSameAs(defaultBuckets);
     }
 
     private static HttpRequestMessage CreateRequest(string path, string remoteIp, bool authenticated = false)

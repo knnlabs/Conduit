@@ -10,6 +10,13 @@ public static class SseTransportMetrics
 {
     public const string MeterName = "ConduitLLM.Gateway.Streaming";
 
+    internal const string TimeToProviderFirstChunkInstrumentName =
+        "conduit.stream.time_to_provider_first_chunk";
+    internal const string TimeToClientFirstFlushInstrumentName =
+        "conduit.stream.time_to_client_first_flush";
+    internal const string AccountingFinalizationInstrumentName =
+        "conduit.stream.accounting_finalization";
+
     private static readonly Meter Meter = new(MeterName, "1.0.0");
 
     public static readonly UpDownCounter<long> ActiveStreams = Meter.CreateUpDownCounter<long>(
@@ -21,12 +28,12 @@ public static class SseTransportMetrics
         description: "Total streams by terminal outcome");
 
     public static readonly Histogram<double> TimeToProviderFirstChunk = Meter.CreateHistogram<double>(
-        "conduit.stream.time_to_provider_first_chunk",
+        TimeToProviderFirstChunkInstrumentName,
         unit: "s",
         description: "Time from stream admission to the first provider chunk");
 
     public static readonly Histogram<double> TimeToClientFirstFlush = Meter.CreateHistogram<double>(
-        "conduit.stream.time_to_client_first_flush",
+        TimeToClientFirstFlushInstrumentName,
         unit: "s",
         description: "Time from stream admission to the first completed client flush");
 
@@ -43,7 +50,7 @@ public static class SseTransportMetrics
         description: "Client disconnects by stream phase");
 
     private static readonly Histogram<double> AccountingFinalization = Meter.CreateHistogram<double>(
-        "conduit.stream.accounting_finalization",
+        AccountingFinalizationInstrumentName,
         unit: "s",
         description: "Time spent finalizing stream accounting");
 
