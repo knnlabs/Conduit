@@ -81,5 +81,12 @@ public partial class Program
             options.MaxBatchDelay = TimeSpan.FromMilliseconds(100);
             options.ConcurrentPublishers = 3;
         });
+
+        // Gateway liveness heartbeat (#1067): every instance publishes a GatewayHeartbeat via
+        // IEventBus so the Admin health dashboard reports the Gateway's real status from
+        // staleness (keeps Admin↔Gateway event-only — no synchronous HTTP probe). Registered
+        // with a plain AddHostedService — NOT leader-elected — because a per-instance liveness
+        // signal must be emitted by every instance.
+        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.GatewayHeartbeatPublisher>();
     }
 }

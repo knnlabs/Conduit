@@ -15,6 +15,11 @@ public partial class Program
         // Backend-neutral: the shared cache-invalidation IEventHandler<T> implementations (#919).
         ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
 
+        // Gateway liveness heartbeat handler (#1067): records the Gateway's heartbeat so the
+        // health dashboard reports the Gateway's real status. The matching bridge is added in
+        // the AddConduitWolverine callback below.
+        builder.Services.AddEventHandler<ConduitLLM.Core.Events.GatewayHeartbeat, ConduitLLM.Admin.EventHandlers.GatewayHeartbeatHandler>();
+
         // Wolverine on the PostgreSQL transport is the only messaging backend as of I3.1
         // (#932, epic #909). Resolve still runs so a stale rollback backend value fails the
         // boot with a clear pointer to Wolverine (see MessagingBackendResolver) instead of
@@ -31,6 +36,11 @@ public partial class Program
         builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin", opts =>
         {
             ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
+
+            // Gateway liveness heartbeat bridge (#1067). Registered unconditionally (like the
+            // shared bridges above): on the in-memory transport the bridge alone routes the
+            // event; on Postgres the topology routing below delivers it to admin-events.
+            opts.AddEventBridge<ConduitLLM.Core.Events.GatewayHeartbeat>();
 
             // Event→queue topology (#926): the same publish routing as the Gateway
             // (so Admin publishes land on the Gateway's queues), listening only on

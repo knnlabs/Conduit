@@ -127,6 +127,16 @@ namespace ConduitLLM.Core.Messaging
             SharedCacheInvalidationMessagingExtensions.BridgedEventTypes;
 
         /// <summary>
+        /// Gateway→Admin liveness heartbeat (#1067). Admin-only, so it rides the default
+        /// <see cref="AdminEventsQueue"/> that Admin already listens on — no new queue or
+        /// listener needed.
+        /// </summary>
+        public static readonly IReadOnlyList<Type> AdminHeartbeatEvents = new[]
+        {
+            typeof(GatewayHeartbeat),
+        };
+
+        /// <summary>
         /// Declares the publish routing rules. Applied identically on every host so an
         /// event lands on its consumer's queue no matter which service publishes it.
         /// </summary>
@@ -141,6 +151,10 @@ namespace ConduitLLM.Core.Messaging
             // Fan-out: shared cache events go to both services' queues.
             RouteAll(options, SharedEvents, GatewayEventsQueue);
             RouteAll(options, SharedEvents, AdminEventsQueue);
+
+            // Gateway→Admin liveness heartbeat (#1067): published by the Gateway, consumed by
+            // Admin on its existing queue.
+            RouteAll(options, AdminHeartbeatEvents, AdminEventsQueue);
         }
 
         /// <summary>
