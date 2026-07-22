@@ -36,7 +36,10 @@ of the areas, not a copy of that file:
   finish first, or skips the step — the mechanism behind zero-downtime deploys.
 - **Cache (Redis)** — a Redis connection enables distributed caching and is **required for
   distributed rate limiting**; the Gateway will not start rate limiting without it. Redis also backs
-  the real-time backplane and ephemeral keys.
+  the real-time backplane and ephemeral keys. Redis 7.4 or newer enables per-connection field TTLs
+  for SignalR monitoring; older supported servers continue to use the periodic stale-connection
+  cleanup. The bundled Compose deployment pins Redis 7.4.2. Set
+  `SignalR__ConnectionMonitor__EnableHashFieldExpiration=false` to force the compatibility path.
 - **Messaging** — Conduit's internal events run on **Wolverine over PostgreSQL** (they reuse the
   database; there is no separate message broker to run). This replaced an earlier RabbitMQ-based
   transport — if you see RabbitMQ referenced in older material, it no longer applies.

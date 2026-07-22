@@ -121,6 +121,11 @@ namespace ConduitLLM.Gateway.Services
         
         private readonly TimeSpan _staleConnectionThreshold;
         private readonly TimeSpan _cleanupInterval;
+        private readonly TimeSpan _connectionFieldTtl;
+        private readonly bool _enableHashFieldExpiration;
+        private bool _hashFieldExpirationSupported;
+
+        private static readonly Version RedisHashFieldExpirationMinimumVersion = new(7, 4);
 
         public SignalRConnectionMonitor(
             ILogger<SignalRConnectionMonitor> logger,
@@ -139,6 +144,9 @@ namespace ConduitLLM.Gateway.Services
                 configuration.GetValue<int>("SignalR:ConnectionMonitor:StaleThresholdMinutes", 60));
             _cleanupInterval = TimeSpan.FromMinutes(
                 configuration.GetValue<int>("SignalR:ConnectionMonitor:CleanupIntervalMinutes", 5));
+            _connectionFieldTtl = _staleConnectionThreshold + (_cleanupInterval * 2);
+            _enableHashFieldExpiration = configuration.GetValue(
+                "SignalR:ConnectionMonitor:EnableHashFieldExpiration", true);
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -150,6 +158,9 @@ namespace ConduitLLM.Gateway.Services
                 var connection = await _redisConnectionFactory.GetConnectionAsync();
                 _redis = connection.GetDatabase();
                 _server = connection.GetPrimaryServer();
+                _hashFieldExpirationSupported = SupportsHashFieldExpiration(
+                    _server.Version,
+                    _enableHashFieldExpiration);
 
                 _cleanupTimer = new Timer(
                     CleanupStaleConnections,
@@ -157,7 +168,9 @@ namespace ConduitLLM.Gateway.Services
                     _cleanupInterval,
                     _cleanupInterval);
 
-                _logger.LogInformation("SignalR Connection Monitor started with Redis backend");
+                _logger.LogInformation(
+                    "SignalR Connection Monitor started with Redis backend; hash field expiration {HashFieldExpirationStatus}",
+                    _hashFieldExpirationSupported ? "enabled" : "unavailable (periodic cleanup fallback active)");
             }
             catch (Exception ex)
             {
@@ -205,11 +218,7 @@ namespace ConduitLLM.Gateway.Services
             {
                 var connectionData = JsonSerializer.Serialize(connectionInfo);
                 await _redis.HashSetAsync(_connectionsKey, connectionId, connectionData);
-
-                // Set expiration on the connection data to auto-cleanup stale connections
-                // Note: HashFieldExpireAsync might not be available in older Redis versions
-                // Instead, we rely on cleanup timer for now
-                // TODO(#1081): Replace timer-only cleanup with supported per-field TTL semantics.
+                await RefreshConnectionFieldExpirationAsync(connectionId);
 
                 _logger.LogDebug(
                     "Connection {ConnectionId} established on {HubName} from {IpAddress} using {Transport}",
@@ -301,6 +310,7 @@ namespace ConduitLLM.Gateway.Services
                         connectionInfo.LastActivityAt = DateTime.UtcNow;
                         var updatedData = JsonSerializer.Serialize(connectionInfo);
                         await _redis.HashSetAsync(_connectionsKey, connectionId, updatedData);
+                        await RefreshConnectionFieldExpirationAsync(connectionId);
                     }
                 }
             }
@@ -329,6 +339,7 @@ namespace ConduitLLM.Gateway.Services
                         connectionInfo.LastActivityAt = DateTime.UtcNow;
                         var updatedData = JsonSerializer.Serialize(connectionInfo);
                         await _redis.HashSetAsync(_connectionsKey, connectionId, updatedData);
+                        await RefreshConnectionFieldExpirationAsync(connectionId);
                     }
                 }
             }
@@ -357,6 +368,7 @@ namespace ConduitLLM.Gateway.Services
                         connectionInfo.LastActivityAt = DateTime.UtcNow;
                         var updatedData = JsonSerializer.Serialize(connectionInfo);
                         await _redis.HashSetAsync(_connectionsKey, connectionId, updatedData);
+                        await RefreshConnectionFieldExpirationAsync(connectionId);
                     }
                 }
             }
@@ -369,6 +381,44 @@ namespace ConduitLLM.Gateway.Services
         public void Dispose()
         {
             _cleanupTimer?.Dispose();
+        }
+
+        internal static bool SupportsHashFieldExpiration(Version serverVersion, bool enabled)
+        {
+            return enabled && serverVersion >= RedisHashFieldExpirationMinimumVersion;
+        }
+
+        private async Task RefreshConnectionFieldExpirationAsync(string connectionId)
+        {
+            if (!_hashFieldExpirationSupported || _redis == null)
+            {
+                return;
+            }
+
+            try
+            {
+                await _redis.HashFieldExpireAsync(
+                    _connectionsKey,
+                    [connectionId],
+                    _connectionFieldTtl,
+                    ExpireWhen.Always);
+            }
+            catch (RedisServerException ex) when (
+                ex.Message.Contains("unknown command", StringComparison.OrdinalIgnoreCase) ||
+                ex.Message.Contains("syntax", StringComparison.OrdinalIgnoreCase))
+            {
+                _hashFieldExpirationSupported = false;
+                _logger.LogWarning(
+                    ex,
+                    "Redis hash field expiration is not supported by this server; continuing with periodic cleanup");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(
+                    ex,
+                    "Failed to refresh expiration for SignalR connection {ConnectionId}; periodic cleanup remains active",
+                    connectionId);
+            }
         }
     }
 }
