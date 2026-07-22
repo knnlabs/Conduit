@@ -1,13 +1,8 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logging';
 import { 
-  HttpError, 
-  ValidationError,
-  AuthError,
-  NotFoundError,
-  ConflictError,
-  RateLimitError,
-  ServerError
+  HttpError,
+  ConduitError as SdkConduitError
 } from '@/lib/admin-api';
 import { 
   getErrorStatusCode, 
@@ -30,46 +25,16 @@ export function handleApiError(error: unknown): NextResponse {
   };
   logger.error('API operation failed', errorInfo);
 
-  // Handle specific API error types.
-  if (error instanceof ValidationError) {
+  // The SDK represents every backend response as a ConduitError. Preserve its
+  // status instead of maintaining an incomplete list of subclasses here.
+  if (error instanceof SdkConduitError) {
+    const responseStatusCode = statusCode && statusCode >= 100 && statusCode <= 599
+      ? statusCode
+      : 500;
+
     return NextResponse.json(
       { error: errorMessage },
-      { status: 400 }
-    );
-  }
-  
-  if (error instanceof AuthError) {
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 401 }
-    );
-  }
-  
-  if (error instanceof NotFoundError) {
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 404 }
-    );
-  }
-  
-  if (error instanceof ConflictError) {
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 409 }
-    );
-  }
-  
-  if (error instanceof RateLimitError) {
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 429 }
-    );
-  }
-  
-  if (error instanceof ServerError) {
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
+      { status: responseStatusCode }
     );
   }
 

@@ -4,11 +4,16 @@
  */
 
 import { HttpError } from '@/lib/admin-api';
+import { ConduitError } from '@/lib/conduit-common';
 
 /**
- * Safely extracts statusCode from an HttpError
+ * Safely extracts an HTTP status from SDK and legacy HTTP errors.
  */
 export function getErrorStatusCode(error: unknown): number | undefined {
+  if (error instanceof ConduitError) {
+    return error.statusCode;
+  }
+
   if (error instanceof HttpError && error.response) {
     return error.response.status;
   }
