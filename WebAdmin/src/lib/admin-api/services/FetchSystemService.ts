@@ -24,6 +24,10 @@ import { FetchSystemHelpers } from './FetchSystemHelpers';
 import { FetchSystemHealthService } from './FetchSystemHealthService';
 import { FetchSystemMetricsService } from './FetchSystemMetricsService';
 
+const WEBADMIN_SETTING_KEY = 'WebAdmin_VirtualKey';
+const WEBADMIN_GROUP_EXTERNAL_ID = 'webadmin-internal';
+let webAdminVirtualKeyPromise: Promise<string> | null = null;
+
 /**
  * Type-safe System service using native fetch
  */
@@ -205,6 +209,19 @@ export class FetchSystemService implements ISystemService {
    * @returns The actual (unhashed) virtual key value
    */
   async getWebAdminVirtualKey(config?: RequestConfig): Promise<string> {
+    webAdminVirtualKeyPromise ??= this.getOrCreateWebAdminVirtualKey(config);
+
+    const currentPromise = webAdminVirtualKeyPromise;
+    try {
+      return await currentPromise;
+    } finally {
+      if (webAdminVirtualKeyPromise === currentPromise) {
+        webAdminVirtualKeyPromise = null;
+      }
+    }
+  }
+
+  private async getOrCreateWebAdminVirtualKey(config?: RequestConfig): Promise<string> {
     // Import services we need
     const { FetchSettingsService } = await import('./FetchSettingsService');
     const { FetchVirtualKeyService } = await import('./FetchVirtualKeyService');
@@ -217,7 +234,7 @@ export class FetchSystemService implements ISystemService {
 
     try {
       // First try to get existing key from GlobalSettings
-      const setting = await settingsService.getGlobalSetting('WebAdmin_VirtualKey', config);
+      const setting = await settingsService.getGlobalSetting(WEBADMIN_SETTING_KEY, config);
       if (setting?.value) {
         existingKey = setting.value;
         console.warn('[API] Found WebAdmin virtual key in GlobalSettings, validating...');
@@ -247,15 +264,32 @@ export class FetchSystemService implements ISystemService {
     // If we don't have a valid key, create a new one
     console.warn('[API] Creating new WebAdmin virtual key with group and $1000 balance');
 
-    // First, create a virtual key group with $1000 initial balance
     const virtualKeyGroupService = new FetchVirtualKeyGroupService(this.client);
-    const group = await virtualKeyGroupService.create({
-      groupName: 'WebAdmin Internal Group',
-      externalGroupId: 'webadmin-internal',
-      initialBalance: 1000.00
-    }, config);
+    let group: components['schemas']['VirtualKeyGroupDto'] | undefined;
+    let createdGroup = false;
 
-    console.warn(`[API] Created WebAdmin virtual key group with ID ${group.id} and $1000 balance`);
+    try {
+      const firstPage = await virtualKeyGroupService.list({ page: 1, pageSize: 100 }, config);
+      group = firstPage.items.find(item => item.externalGroupId === WEBADMIN_GROUP_EXTERNAL_ID);
+      for (let page = 2; !group && page <= firstPage.totalPages; page++) {
+        const nextPage = await virtualKeyGroupService.list({ page, pageSize: 100 }, config);
+        group = nextPage.items.find(item => item.externalGroupId === WEBADMIN_GROUP_EXTERNAL_ID);
+      }
+    } catch (error) {
+      console.warn('[API] Failed to search for an existing WebAdmin virtual key group', error);
+    }
+
+    if (!group) {
+      group = await virtualKeyGroupService.create({
+        groupName: 'WebAdmin Internal Group',
+        externalGroupId: WEBADMIN_GROUP_EXTERNAL_ID,
+        initialBalance: 1000.00
+      }, config);
+      createdGroup = true;
+      console.warn(`[API] Created WebAdmin virtual key group with ID ${group.id} and $1000 balance`);
+    } else {
+      console.warn(`[API] Reusing WebAdmin virtual key group with ID ${group.id}`);
+    }
 
     // Create metadata
     const metadata = {
@@ -279,11 +313,35 @@ export class FetchSystemService implements ISystemService {
     }
 
     // Store the unhashed key in GlobalSettings
-    await settingsService.createGlobalSetting({
-      key: 'WebAdmin_VirtualKey',
-      value: response.virtualKey,
-      description: 'Virtual key for WebAdmin Gateway API access'
-    }, config);
+    try {
+      await settingsService.createGlobalSetting({
+        key: WEBADMIN_SETTING_KEY,
+        value: response.virtualKey,
+        description: 'Virtual key for WebAdmin Gateway API access'
+      }, config);
+    } catch (persistError) {
+      try {
+        const winner = await settingsService.getGlobalSetting(WEBADMIN_SETTING_KEY, config);
+        if (winner?.value) {
+          const validation = await virtualKeyService.validate(winner.value, config);
+          if (validation?.isValid) {
+            try {
+              await virtualKeyService.delete(String(response.keyInfo.id), config);
+              if (createdGroup) {
+                await virtualKeyGroupService.delete(group.id, config);
+              }
+            } catch (cleanupError) {
+              console.error('[API] Failed to clean up losing WebAdmin bootstrap resources', cleanupError);
+            }
+            return winner.value;
+          }
+        }
+      } catch {
+        // Preserve the original settings write error when no valid winner can be loaded.
+      }
+
+      throw persistError;
+    }
 
     console.warn('[API] Created new WebAdmin virtual key and stored in GlobalSettings');
     return response.virtualKey;
