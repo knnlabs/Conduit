@@ -12,7 +12,7 @@ if (ConduitLLM.Configuration.Data.MigrationCommand.Matches(args))
 
 // prometheus-net's Meter adapter owns the /metrics representation. Configure its
 // streaming histogram buckets before any application metrics can be initialized.
-ConduitLLM.Gateway.Extensions.ObservabilityExtensions.ConfigurePrometheusMeterAdapter();
+ConduitLLM.Gateway.Metrics.PrometheusMeterAdapterConfiguration.Configure();
 
 // DatabaseAwareLLMClientFactory now in Providers namespace
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
