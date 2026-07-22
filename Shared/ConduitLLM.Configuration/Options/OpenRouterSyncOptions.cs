@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.Providers;
+
 namespace ConduitLLM.Configuration.Options
 {
     /// <summary>
@@ -22,7 +24,8 @@ namespace ConduitLLM.Configuration.Options
         public int InitialDelaySeconds { get; set; } = 60;
 
         /// <summary>The OpenRouter models endpoint to fetch (public, unauthenticated).</summary>
-        public string ModelsEndpoint { get; set; } = "https://openrouter.ai/api/v1/models";
+        public string ModelsEndpoint { get; set; } =
+            $"{ProviderAdapterDefaultsRegistry.GetRequired(ProviderType.OpenRouter).DefaultBaseUrl}/models";
 
         /// <summary>HTTP timeout for the catalog fetch, in seconds.</summary>
         public int HttpTimeoutSeconds { get; set; } = 60;

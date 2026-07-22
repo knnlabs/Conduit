@@ -48,6 +48,13 @@ Conduit which API dialect to speak (OpenAI, Anthropic, and so on); you can run s
 of the same type side by side and Conduit keeps them distinct. When you see "which provider,"
 think of a specific instance you configured — never just "OpenAI."
 
+Provider configuration has three deliberately separate owners. The code-level adapter registry
+owns immutable protocol defaults such as standard endpoint shapes, authentication behavior, and
+the fallback base URL. A provider instance in the database owns operator settings; its `BaseUrl`
+overrides the adapter fallback when overrides are supported. OpenAI-compatible/custom providers
+always require that database URL. Model and provider-association records own capabilities, because
+support varies by model and must not be inferred from a provider-wide code constant.
+
 **Provider key** — the API key or keys Conduit uses to call a provider. A provider can hold
 **several** keys so it can spread load and fail over between them. Keys that belong to the same
 upstream account are grouped together, so Conduit knows which keys share a rate limit and which

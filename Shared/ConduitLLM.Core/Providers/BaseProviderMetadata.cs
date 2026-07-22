@@ -22,9 +22,6 @@ namespace ConduitLLM.Core.Providers
         public abstract string DefaultBaseUrl { get; }
 
         /// <inheritdoc />
-        public virtual ProviderCapabilities Capabilities { get; protected set; }
-
-        /// <inheritdoc />
         public virtual AuthenticationRequirements AuthRequirements { get; protected set; }
 
         /// <inheritdoc />
@@ -35,8 +32,6 @@ namespace ConduitLLM.Core.Providers
         /// </summary>
         protected BaseProviderMetadata()
         {
-            // Initialize with default capabilities
-            Capabilities = CreateDefaultCapabilities();
             AuthRequirements = CreateDefaultAuthRequirements();
             ConfigurationHints = CreateDefaultConfigurationHints();
         }
@@ -93,41 +88,6 @@ namespace ConduitLLM.Core.Providers
             return errors.Any()
                 ? new ValidationResult { IsValid = false, Errors = errors }
                 : ValidationResult.Success();
-        }
-
-        /// <summary>
-        /// Creates default capabilities. Override in derived classes to customize.
-        /// </summary>
-        protected virtual ProviderCapabilities CreateDefaultCapabilities()
-        {
-            return new ProviderCapabilities
-            {
-                Provider = ProviderType.ToString(),
-                ChatParameters = new ChatParameterSupport
-                {
-                    Temperature = true,
-                    MaxTokens = true,
-                    TopP = false,
-                    TopK = false,
-                    Stop = true,
-                    PresencePenalty = false,
-                    FrequencyPenalty = false,
-                    LogitBias = false,
-                    N = false,
-                    User = false,
-                    Seed = false,
-                    ResponseFormat = false,
-                    Tools = false
-                },
-                Features = new FeatureSupport
-                {
-                    Streaming = true,
-                    Embeddings = false,
-                    ImageGeneration = false,
-                    VisionInput = false,
-                    FunctionCalling = false
-                }
-            };
         }
 
         /// <summary>

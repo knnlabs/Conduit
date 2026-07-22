@@ -298,7 +298,6 @@ namespace ConduitLLM.Providers
                 LoggerFactory = _loggerFactory,
                 HttpClientFactory = _httpClientFactory,
                 CapabilityService = _capabilityService,
-                DefaultModels = null, // TODO(#1082): Load provider default models from database metadata.
                 ProviderOptionsJson = providerOptionsJson
             };
 

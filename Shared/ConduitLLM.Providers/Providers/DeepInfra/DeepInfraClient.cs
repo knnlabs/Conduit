@@ -38,14 +38,12 @@ namespace ConduitLLM.Providers.DeepInfra
         /// <param name="providerModelId">The model identifier to use (e.g., Qwen/Qwen3-235B-A22B-Thinking-2507).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
-        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public DeepInfraClient(
             Provider provider,
             ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger logger,
-            IHttpClientFactory? httpClientFactory = null,
-            ProviderDefaultModels? defaultModels = null)
+            IHttpClientFactory? httpClientFactory = null)
             : base(
                 provider,
                 keyCredential,
@@ -53,8 +51,7 @@ namespace ConduitLLM.Providers.DeepInfra
                 logger,
                 httpClientFactory,
                 "DeepInfra",
-                baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.DeepInfra),
-                defaultModels: defaultModels)
+                baseUrl: ProviderConfigurationRegistry.ResolveBaseUrl(provider))
         {
         }
     }

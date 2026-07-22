@@ -52,11 +52,6 @@ namespace ConduitLLM.Providers.Configuration
         public IModelCapabilityService? CapabilityService { get; init; }
 
         /// <summary>
-        /// Optional default models configuration.
-        /// </summary>
-        public ProviderDefaultModels? DefaultModels { get; init; }
-
-        /// <summary>
         /// Optional per-mapping provider options JSON (see ModelProviderMapping.ProviderOptions),
         /// merged into outgoing requests by providers that support it (currently OpenRouter).
         /// </summary>
@@ -166,8 +161,7 @@ namespace ConduitLLM.Providers.Configuration
                 modelId,
                 logger,
                 context.HttpClientFactory,
-                context.CapabilityService,
-                context.DefaultModels);
+                context.CapabilityService);
         }
 
         private static ILLMClient CreateGroqClient(
@@ -182,8 +176,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateReplicateClient(
@@ -198,8 +191,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateFireworksClient(
@@ -214,8 +206,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateOpenAICompatibleClient(
@@ -230,8 +221,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateMiniMaxClient(
@@ -246,8 +236,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateCerebrasClient(
@@ -262,8 +251,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateSambaNovaClient(
@@ -278,8 +266,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateDeepInfraClient(
@@ -294,8 +281,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateCloudflareClient(
@@ -310,8 +296,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateOpenRouterClient(
@@ -327,7 +312,6 @@ namespace ConduitLLM.Providers.Configuration
                 modelId,
                 logger,
                 context.HttpClientFactory,
-                context.DefaultModels,
                 context.ProviderOptionsJson);
         }
 
@@ -343,8 +327,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.DefaultModels);
+                context.HttpClientFactory);
         }
     }
 }

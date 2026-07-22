@@ -28,12 +28,6 @@ namespace ConduitLLM.Core.Interfaces
         string DefaultBaseUrl { get; }
 
         /// <summary>
-        /// Gets the detailed capabilities supported by this provider.
-        /// Includes supported parameters, features, and constraints.
-        /// </summary>
-        ProviderCapabilities Capabilities { get; }
-
-        /// <summary>
         /// Gets the authentication requirements for this provider.
         /// </summary>
         AuthenticationRequirements AuthRequirements { get; }

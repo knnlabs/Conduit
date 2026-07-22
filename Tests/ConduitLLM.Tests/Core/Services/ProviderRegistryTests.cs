@@ -32,7 +32,6 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.NotNull(metadata);
             Assert.Equal(ProviderType.OpenAI, metadata.ProviderType);
             Assert.Equal("OpenAI", metadata.DisplayName);
-            Assert.NotNull(metadata.Capabilities);
             Assert.NotNull(metadata.AuthRequirements);
         }
 
@@ -138,62 +137,6 @@ namespace ConduitLLM.Tests.Core.Services
 
         #endregion
 
-        #region GetProvidersByFeature Tests
-
-        [Fact]
-        public void GetProvidersByFeature_WithStreamingFilter_ReturnsCorrectProviders()
-        {
-            // Act
-            var streamingProviders = _registry.GetProvidersByFeature(f => f.Streaming).ToList();
-
-            // Assert
-            Assert.NotEmpty(streamingProviders);
-            Assert.All(streamingProviders, p => Assert.True(p.Capabilities.Features.Streaming));
-            
-            // Verify known streaming providers are included
-            Assert.Contains(streamingProviders, p => p.ProviderType == ProviderType.OpenAI);
-            Assert.Contains(streamingProviders, p => p.ProviderType == ProviderType.OpenAI);
-        }
-
-        [Fact]
-        public void GetProvidersByFeature_WithImageGenerationFilter_ReturnsCorrectProviders()
-        {
-            // Act
-            var imageProviders = _registry.GetProvidersByFeature(f => f.ImageGeneration).ToList();
-
-            // Assert
-            Assert.NotEmpty(imageProviders);
-            Assert.All(imageProviders, p => Assert.True(p.Capabilities.Features.ImageGeneration));
-            
-            // Verify known image generation providers
-            Assert.Contains(imageProviders, p => p.ProviderType == ProviderType.OpenAI);
-            Assert.Contains(imageProviders, p => p.ProviderType == ProviderType.Replicate);
-        }
-        [Fact]
-        public void GetProvidersByFeature_WithNullPredicate_ThrowsArgumentNullException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentNullException>(() => 
-                _registry.GetProvidersByFeature(null!));
-        }
-
-        [Fact]
-        public void GetProvidersByFeature_ResultsAreOrderedByDisplayName()
-        {
-            // Act
-            var providers = _registry.GetProvidersByFeature(f => f.Embeddings).ToList();
-
-            // Assert
-            Assert.NotEmpty(providers);
-            for (int i = 1; i < providers.Count; i++)
-            {
-                Assert.True(string.Compare(providers[i].DisplayName, providers[i - 1].DisplayName, 
-                    StringComparison.Ordinal) >= 0);
-            }
-        }
-
-        #endregion
-
         #region GetDiagnostics Tests
 
         [Fact]
@@ -206,26 +149,8 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.NotNull(diagnostics);
             Assert.True(diagnostics.TotalProviders > 0);
             Assert.NotEmpty(diagnostics.RegisteredProviders);
-            Assert.NotEmpty(diagnostics.ProvidersByCapability);
             Assert.True(diagnostics.GeneratedAt <= DateTime.UtcNow);
             Assert.True(diagnostics.GeneratedAt > DateTime.UtcNow.AddMinutes(-1));
-        }
-
-        [Fact]
-        public void GetDiagnostics_IncludesCapabilityGrouping()
-        {
-            // Act
-            var diagnostics = _registry.GetDiagnostics();
-
-            // Assert
-            // Verify standard capability groups exist
-            Assert.True(diagnostics.ProvidersByCapability.ContainsKey("Streaming"));
-            Assert.True(diagnostics.ProvidersByCapability.ContainsKey("Embeddings"));
-            Assert.True(diagnostics.ProvidersByCapability.ContainsKey("RequiresApiKey"));
-            
-            // Verify groupings contain providers
-            Assert.NotEmpty(diagnostics.ProvidersByCapability["Streaming"]);
-            Assert.NotEmpty(diagnostics.ProvidersByCapability["RequiresApiKey"]);
         }
 
         #endregion
@@ -240,10 +165,6 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.Equal("https://api.openai.com/v1", metadata.DefaultBaseUrl);
-            Assert.True(metadata.Capabilities.Features.Streaming);
-            Assert.True(metadata.Capabilities.Features.ImageGeneration);
-            Assert.True(metadata.Capabilities.Features.FunctionCalling);
-            Assert.True(metadata.Capabilities.ChatParameters.Tools);
             Assert.True(metadata.AuthRequirements.RequiresApiKey);
             Assert.Equal("Authorization", metadata.AuthRequirements.ApiKeyHeaderName);
         }
