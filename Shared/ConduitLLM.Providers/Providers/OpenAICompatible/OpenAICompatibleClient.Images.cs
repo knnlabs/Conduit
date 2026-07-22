@@ -89,12 +89,6 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     request.Prompt?.Substring(0, Math.Min(50, request.Prompt?.Length ?? 0)), 
                     openAiRequest.GetValueOrDefault("size"), openAiRequest.GetValueOrDefault("response_format"));
                     
-                // Log a warning about potential quota issues if using OpenAI
-                if (ProviderName.Equals("openai", StringComparison.OrdinalIgnoreCase))
-                {
-                    Logger.LogWarning("Note: OpenAI image generation errors with null messages often indicate quota/billing issues");
-                }
-
                 var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<Dictionary<string, object?>, ImageGenerationResponse>(
                     client,
                     HttpMethod.Post,
