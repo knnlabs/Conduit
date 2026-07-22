@@ -160,6 +160,28 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task GetOrCreateAsync_ConcurrentMisses_RunFactoryOncePerKey()
+        {
+            var cacheManager = new CacheManager(_memoryCache, null, _loggerMock.Object);
+            var factoryCalls = 0;
+
+            var requests = Enumerable.Range(0, 50).Select(_ => cacheManager.GetOrCreateAsync(
+                "contended-key",
+                async () =>
+                {
+                    Interlocked.Increment(ref factoryCalls);
+                    await Task.Delay(20);
+                    return "value";
+                },
+                CacheRegion.Default));
+
+            var results = await Task.WhenAll(requests);
+
+            Assert.Equal(1, factoryCalls);
+            Assert.All(results, result => Assert.Equal("value", result));
+        }
+
+        [Fact]
         public async Task RemoveAsync_RemovesFromBothCaches()
         {
             // Arrange

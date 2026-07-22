@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -14,8 +13,8 @@ namespace ConduitLLM.Core.Services
         private readonly IDistributedLockService _lockService;
         private readonly ILogger<DistributedCachePopulator> _logger;
 
-        // Local locks prevent same-instance stampedes (faster than distributed locks)
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _localLocks = new();
+        // Local striped locks prevent same-instance stampedes without per-key lifecycle races.
+        private readonly StripedAsyncLock _localLocks = new();
 
         // Configuration
         private static readonly TimeSpan LockExpiry = TimeSpan.FromSeconds(30);
@@ -52,12 +51,13 @@ namespace ConduitLLM.Core.Services
             }
 
             // Step 2: Acquire local lock to prevent same-instance stampede
-            var localLock = _localLocks.GetOrAdd(lockKey, _ => new SemaphoreSlim(1, 1));
+            IDisposable? localLock;
 
             try
             {
                 // Wait for local lock with timeout
-                if (!await localLock.WaitAsync(LockTimeout, cancellationToken))
+                localLock = await _localLocks.TryAcquireAsync(lockKey, LockTimeout, cancellationToken);
+                if (localLock == null)
                 {
                     _logger.LogWarning("Timeout waiting for local lock on {LockKey}, falling back to factory", lockKey);
                     return await factory();
@@ -154,15 +154,7 @@ namespace ConduitLLM.Core.Services
             }
             finally
             {
-                // Release local lock
-                localLock.Release();
-
-                // Cleanup: Remove semaphore from dictionary if no one is waiting
-                // This prevents memory leaks from accumulating semaphores
-                if (localLock.CurrentCount == 1)
-                {
-                    _localLocks.TryRemove(lockKey, out _);
-                }
+                localLock.Dispose();
             }
         }
     }
