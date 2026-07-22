@@ -190,7 +190,6 @@ namespace ConduitLLM.Gateway.Authentication
                 "/health",
                 "/health/ready",
                 "/health/live",
-                "/metrics",
                 "/v1/media/public"
             };
 

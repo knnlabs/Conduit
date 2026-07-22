@@ -1,5 +1,4 @@
 using System.Text.Json;
-using ConduitLLM.Core.Utilities;
 using ConduitLLM.Gateway.Endpoints;
 
 public partial class Program
@@ -74,13 +73,5 @@ public partial class Program
         {
             Predicate = check => check.Tags.Contains("ready") || check.Tags.Count == 0
         });
-
-        // Map Prometheus metrics endpoint for scraping
-        // Allow unauthenticated access from private networks (Docker internal, localhost)
-        // Require authentication for external/public network requests
-        app.UseOpenTelemetryPrometheusScrapingEndpoint(
-            context => context.Request.Path == "/metrics" &&
-                      (IpAddressHelper.IsPrivateNetworkRequest(context) ||
-                       context.User.Identity?.IsAuthenticated == true));
     }
 }

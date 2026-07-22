@@ -43,7 +43,6 @@
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
-    <PackageReference Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.15.3-beta.1" />
     <!-- 1.15.3 patches GHSA-4625-4j76-fww9, GHSA-mr8r-92fq-pj8p, GHSA-q834-8qmm-v933 -->
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />

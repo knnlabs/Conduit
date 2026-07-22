@@ -1,5 +1,4 @@
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Core.Utilities;
 
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
@@ -65,14 +64,12 @@ public partial class Program
                     .AddMeter("System.Runtime")
                     .AddMeter("Microsoft.AspNetCore.Hosting")
                     .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
-                    .AddMeter("ConduitLLM.Admin.Requests")
                     .AddMeter("ConduitLLM.Providers")
                     // Bus metrics (#931). Wolverine's meter is "Wolverine:{ServiceName}",
                     // so the wildcard is required; it emits sent/succeeded/failure
                     // counters, execution/effective-time histograms, and (on the Postgres
                     // transport) inbox/outbox/scheduled depth gauges + dead-letter counts.
-                    .AddMeter("Wolverine*")
-                    .AddPrometheusExporter();
+                    .AddMeter("Wolverine*");
             });
 
         // Add distributed tracing when enabled
@@ -112,7 +109,7 @@ public partial class Program
     }
 
     /// <summary>
-    /// Maps health check, metrics, and Prometheus endpoints.
+    /// Maps health check endpoints and enables Admin HTTP metric collection.
     /// </summary>
     private static void MapMonitoringEndpoints(WebApplication app)
     {
@@ -128,12 +125,6 @@ public partial class Program
         });
 
         app.Logger.LogInformation("Health check endpoints registered: /health, /health/live, /health/ready");
-
-        // Map Prometheus metrics endpoint
-        app.UseOpenTelemetryPrometheusScrapingEndpoint(
-            context => context.Request.Path == "/metrics" &&
-                      (IpAddressHelper.IsPrivateNetworkRequest(context) ||
-                       context.User.Identity?.IsAuthenticated == true));
 
         // For the prometheus-net library metrics
         app.UseHttpMetrics(options =>

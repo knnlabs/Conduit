@@ -204,7 +204,6 @@ namespace ConduitLLM.Tests.Http.Authentication
         [InlineData("/health")]
         [InlineData("/health/ready")]
         [InlineData("/health/live")]
-        [InlineData("/metrics")]
         [InlineData("/v1/media/public")]
         public async Task HandleAuthenticateAsync_WithExcludedPaths_SkipsAuthentication(string path)
         {
@@ -221,6 +220,28 @@ namespace ConduitLLM.Tests.Http.Authentication
             Assert.False(result.Principal.Identity.IsAuthenticated);
             
             _virtualKeyServiceMock.Verify(s => s.ValidateVirtualKeyForAuthenticationAsync(It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleAuthenticateAsync_WithMetricsPath_AuthenticatesVirtualKey()
+        {
+            var virtualKey = CreateValidVirtualKey();
+            var keyValue = "condt_metrics";
+
+            _httpContext.Request.Headers["Authorization"] = $"Bearer {keyValue}";
+            _httpContext.Request.Path = "/metrics";
+            _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
+                .ReturnsAsync(virtualKey);
+
+            await InitializeHandler();
+
+            var result = await _handler.AuthenticateAsync();
+
+            Assert.True(result.Succeeded);
+            Assert.True(result.Principal.Identity.IsAuthenticated);
+            _virtualKeyServiceMock.Verify(
+                s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null),
+                Times.Once);
         }
 
         [Fact]
