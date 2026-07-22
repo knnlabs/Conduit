@@ -171,26 +171,23 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
         await _lock.WaitAsync();
         try
         {
-            if (_cache.TryRemove(settingKey, out var oldValue))
+            var wasCached = _cache.TryRemove(settingKey, out var oldValue);
+            Interlocked.Increment(ref _invalidations);
+            if (wasCached)
             {
-                Interlocked.Increment(ref _invalidations);
                 _logger.LogInformation("Invalidated cached setting '{Key}' (old value: '{Value}')", settingKey, oldValue);
-
-                // Reload the setting from database immediately
-                using (var scope = _scopeFactory.CreateScope())
-                {
-                    var repository = scope.ServiceProvider.GetRequiredService<IGlobalSettingRepository>();
-                    var newSetting = await repository.GetByKeyAsync(settingKey);
-                    if (newSetting != null)
-                    {
-                        _cache.TryAdd(settingKey, newSetting.Value);
-                        _logger.LogInformation("Reloaded setting '{Key}' with new value: '{Value}'", settingKey, newSetting.Value);
-                    }
-                }
             }
-            else
+
+            // Always reload: a newly created setting was never present in this process's cache.
+            using (var scope = _scopeFactory.CreateScope())
             {
-                _logger.LogDebug("Attempted to invalidate non-cached setting '{Key}'", settingKey);
+                var repository = scope.ServiceProvider.GetRequiredService<IGlobalSettingRepository>();
+                var newSetting = await repository.GetByKeyAsync(settingKey);
+                if (newSetting != null)
+                {
+                    _cache[settingKey] = newSetting.Value;
+                    _logger.LogInformation("Reloaded setting '{Key}' with new value: '{Value}'", settingKey, newSetting.Value);
+                }
             }
         }
         catch (Exception ex)
