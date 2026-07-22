@@ -32,21 +32,44 @@ public class BillingAlertingServiceTests
     }
 
     [Fact]
-    public async Task SendCriticalAlertAsync_AcrossInstances_ThrottlesNotificationsGlobally()
+    public async Task SendCriticalAlertAsync_AcrossInstances_NotifiesForEachDistinctAlertKey()
     {
         var firstLogger = new Mock<ILogger<BillingAlertingService>>();
         var secondLogger = new Mock<ILogger<BillingAlertingService>>();
         var firstService = new BillingAlertingService(firstLogger.Object);
         var secondService = new BillingAlertingService(secondLogger.Object);
+        var uniqueFailure = Guid.NewGuid().ToString();
 
         await Task.WhenAll(
-            firstService.SendCriticalAlertAsync("first failure"),
-            secondService.SendCriticalAlertAsync("second failure"));
+            firstService.SendCriticalAlertAsync($"{uniqueFailure}: redis failure", 101),
+            secondService.SendCriticalAlertAsync($"{uniqueFailure}: database failure", 202));
 
         var criticalNotifications = CountLogs(firstLogger, LogLevel.Critical) +
             CountLogs(secondLogger, LogLevel.Critical);
 
-        Assert.True(criticalNotifications <= 1);
+        Assert.Equal(2, criticalNotifications);
+    }
+
+    [Fact]
+    public async Task SendCriticalAlertAsync_AcrossInstances_SuppressesRepeatedAlertKey()
+    {
+        var firstLogger = new Mock<ILogger<BillingAlertingService>>();
+        var secondLogger = new Mock<ILogger<BillingAlertingService>>();
+        var firstService = new BillingAlertingService(firstLogger.Object);
+        var secondService = new BillingAlertingService(secondLogger.Object);
+        var message = $"{Guid.NewGuid()}: repeated failure";
+
+        await Task.WhenAll(
+            firstService.SendCriticalAlertAsync(message, 101),
+            secondService.SendCriticalAlertAsync(message, 101));
+
+        var criticalNotifications = CountLogs(firstLogger, LogLevel.Critical) +
+            CountLogs(secondLogger, LogLevel.Critical);
+        var suppressedNotifications = CountLogs(firstLogger, LogLevel.Warning) +
+            CountLogs(secondLogger, LogLevel.Warning);
+
+        Assert.Equal(1, criticalNotifications);
+        Assert.Equal(1, suppressedNotifications);
     }
 
     private static int CountLogs(Mock<ILogger<BillingAlertingService>> logger, LogLevel level) =>
