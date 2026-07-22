@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 /**
@@ -168,8 +168,20 @@ export function useRequestLogs({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [stats, setStats] = useState<RequestLogStats | null>(null);
+  const requestSequence = useRef(0);
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const fetchLogs = useCallback(async () => {
+    const requestId = ++requestSequence.current;
+    const isCurrentRequest = () => isMounted.current && requestId === requestSequence.current;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -286,6 +298,8 @@ export function useRequestLogs({
         };
       });
 
+      if (!isCurrentRequest()) return;
+
       setLogs(mappedLogs);
       setTotalCount(result.totalCount ?? 0);
       setTotalPages(result.totalPages ?? Math.ceil((result.totalCount ?? 0) / pageSize));
@@ -323,6 +337,8 @@ export function useRequestLogs({
         });
       }
     } catch (err) {
+      if (!isCurrentRequest()) return;
+
       console.error('Error fetching request logs:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch request logs'));
       setLogs([]);
@@ -330,7 +346,9 @@ export function useRequestLogs({
       setTotalPages(0);
       setStats(null);
     } finally {
-      setIsLoading(false);
+      if (isCurrentRequest()) {
+        setIsLoading(false);
+      }
     }
   }, [page, pageSize, filters]);
 
