@@ -1,9 +1,14 @@
+using System.Reflection;
+using System.Text.Json;
+
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Models;
 using ConduitLLM.Functions.Providers.Mcp;
 
 using Microsoft.Extensions.Logging;
+
+using ModelContextProtocol.Protocol;
 
 using Moq;
 
@@ -36,6 +41,53 @@ public sealed class McpFunctionClientTests
         };
 
         await Assert.ThrowsAsync<ArgumentException>(() => client.ExecuteAsync(parameters));
+    }
+
+    [Fact]
+    public void BuildResponseJson_LargeText_ReturnsBoundedValidJsonWithMarker()
+    {
+        var client = CreateClient("{}");
+        var result = new CallToolResult
+        {
+            Content = [new TextContentBlock { Text = string.Concat(Enumerable.Repeat("😀", 75_000)) }]
+        };
+
+        var json = BuildResponseJson(client, result);
+
+        Assert.True(json.Length <= 100_000);
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.GetProperty("truncated").GetBoolean());
+        Assert.EndsWith(
+            "…[truncated]",
+            document.RootElement.GetProperty("content")[0].GetString());
+    }
+
+    [Fact]
+    public void BuildResponseJson_LargeStructuredContent_OmitsItAndReturnsValidJson()
+    {
+        var client = CreateClient("{}");
+        var result = new CallToolResult
+        {
+            Content = [],
+            StructuredContent = JsonSerializer.Deserialize<JsonElement>(
+                JsonSerializer.Serialize(new { value = new string('x', 150_000) }))
+        };
+
+        var json = BuildResponseJson(client, result);
+
+        Assert.True(json.Length <= 100_000);
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.GetProperty("truncated").GetBoolean());
+        Assert.True(document.RootElement.GetProperty("omittedStructuredContent").GetBoolean());
+        Assert.False(document.RootElement.TryGetProperty("structuredContent", out _));
+    }
+
+    private static string BuildResponseJson(McpFunctionClient client, CallToolResult result)
+    {
+        var method = typeof(McpFunctionClient).GetMethod(
+            "BuildResponseJson",
+            BindingFlags.Instance | BindingFlags.NonPublic)!;
+        return (string)method.Invoke(client, [result])!;
     }
 
     private static McpFunctionClient CreateClient(string providerSettings)
