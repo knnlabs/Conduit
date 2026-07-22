@@ -159,7 +159,7 @@ namespace ConduitLLM.Gateway.Services
                 };
 
                 // Cost by provider - dynamically get from database
-                // TODO: This should be data-driven from database configuration
+                // TODO(#1076): Populate provider cost metrics from enabled database providers.
                 // Provider cost metrics should be collected based on enabled providers
                 // not a hardcoded list. For now, leaving empty as metrics collection
                 // should be refactored to use actual provider repository data.

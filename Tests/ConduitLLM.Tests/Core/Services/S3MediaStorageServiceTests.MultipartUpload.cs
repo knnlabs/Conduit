@@ -227,6 +227,46 @@ namespace ConduitLLM.Tests.Core.Services
                 _service.UploadPartAsync(session.SessionId, 1, new MemoryStream()));
         }
 
+        [Fact]
+        public async Task CleanupExpiredMultipartUploadsAsync_AbortsAndRemovesAbandonedSession()
+        {
+            var initiateResponse = new InitiateMultipartUploadResponse
+            {
+                BucketName = _options.BucketName,
+                Key = "video/abandoned.mp4",
+                UploadId = "abandoned-upload-id"
+            };
+            _mockS3Client.Setup(x => x.InitiateMultipartUploadAsync(
+                    It.IsAny<InitiateMultipartUploadRequest>(), default))
+                .ReturnsAsync(initiateResponse);
+            _mockS3Client.Setup(x => x.AbortMultipartUploadAsync(
+                    It.IsAny<AbortMultipartUploadRequest>(), default))
+                .ReturnsAsync(new AbortMultipartUploadResponse());
+
+            var session = await _service.InitiateMultipartUploadAsync(new VideoMediaMetadata
+            {
+                ContentType = "video/mp4",
+                FileName = "abandoned.mp4"
+            });
+
+            await _service.CleanupExpiredMultipartUploadsAsync();
+            _mockS3Client.Verify(x => x.AbortMultipartUploadAsync(
+                It.IsAny<AbortMultipartUploadRequest>(), default), Times.Never);
+
+            _timeProvider.Advance(TimeSpan.FromHours(25));
+
+            await _service.CleanupExpiredMultipartUploadsAsync();
+
+            _mockS3Client.Verify(x => x.AbortMultipartUploadAsync(
+                It.Is<AbortMultipartUploadRequest>(request =>
+                    request.BucketName == _options.BucketName &&
+                    request.Key == "video/abandoned.mp4" &&
+                    request.UploadId == "abandoned-upload-id"),
+                default), Times.Once);
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                _service.UploadPartAsync(session.SessionId, 1, new MemoryStream()));
+        }
+
         #endregion
     }
 }

@@ -19,7 +19,7 @@ namespace ConduitLLM.Functions.Providers.Mcp;
 public sealed class McpServerSettings
 {
     /// <summary>
-    /// Allowlist of tool names to expose. Null means expose every tool the server advertises.
+    /// Allowlist of tool names to expose. Null means expose every advertised tool; an empty list exposes none.
     /// </summary>
     [JsonPropertyName("allowedTools")]
     public IReadOnlyList<string>? AllowedTools { get; init; }
@@ -63,7 +63,9 @@ public sealed class McpServerSettings
         }
     }
 
-    /// <summary>Case-sensitive allowlist set, or null when all tools are permitted.</summary>
+    /// <summary>
+    /// Case-sensitive allowlist set. Null permits all tools, while an empty set permits none.
+    /// </summary>
     public HashSet<string>? AllowedToolSet =>
-        AllowedTools is { Count: > 0 } ? new HashSet<string>(AllowedTools, StringComparer.Ordinal) : null;
+        AllowedTools is null ? null : new HashSet<string>(AllowedTools, StringComparer.Ordinal);
 }

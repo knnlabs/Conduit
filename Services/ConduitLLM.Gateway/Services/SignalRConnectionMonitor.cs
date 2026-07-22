@@ -209,7 +209,7 @@ namespace ConduitLLM.Gateway.Services
                 // Set expiration on the connection data to auto-cleanup stale connections
                 // Note: HashFieldExpireAsync might not be available in older Redis versions
                 // Instead, we rely on cleanup timer for now
-                // TODO: Implement per-field TTL when Redis version supports it
+                // TODO(#1081): Replace timer-only cleanup with supported per-field TTL semantics.
 
                 _logger.LogDebug(
                     "Connection {ConnectionId} established on {HubName} from {IpAddress} using {Transport}",

@@ -329,10 +329,7 @@ describe('VideoQueue', () => {
       cancelGeneration: mockCancelGeneration,
       retryGeneration: mockRetryGeneration,
       generateVideo: jest.fn(),
-      isGenerating: false,
-      isRetrying: false,
-      signalRConnected: false,
-      isProgressTrackingEnabled: false
+      isGenerating: false
     });
   });
 

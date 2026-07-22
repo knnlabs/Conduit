@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using ConduitLLM.Security.Cryptography;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -216,7 +217,7 @@ namespace ConduitLLM.Tests.Admin.Integration
 
             // Check regular master key
             var masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY");
-            if (providedKey == masterKey)
+            if (ConstantTimeComparer.Equals(providedKey, masterKey))
             {
                 var claims = new[]
                 {

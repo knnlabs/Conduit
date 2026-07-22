@@ -1,7 +1,15 @@
 using System.Text.Json;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.UsageTracking;
 
 namespace ConduitLLM.Tests.Http.Middleware.Builders
 {
+    public sealed record ProviderResponseFixture(
+        object Body,
+        string? Model,
+        Usage? Usage = null,
+        ProviderToolUsage? ToolUsage = null);
+
     /// <summary>
     /// Factory for creating common LLM provider response objects.
     /// </summary>
@@ -96,9 +104,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         }
 
         /// <summary>
-        /// Builds the response as an object.
+        /// Builds the response body with its typed accounting evidence.
         /// </summary>
-        public object Build()
+        public ProviderResponseFixture Build()
         {
             var message = new Dictionary<string, object>
             {
@@ -109,7 +117,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             if (_toolCalls.Count > 0)
                 message["tool_calls"] = _toolCalls;
 
-            return new
+            var body = new
             {
                 id = _id,
                 @object = "chat.completion",
@@ -123,12 +131,22 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
                     total_tokens = _promptTokens + _completionTokens
                 }
             };
+
+            return new ProviderResponseFixture(
+                body,
+                _model,
+                new Usage
+                {
+                    PromptTokens = _promptTokens,
+                    CompletionTokens = _completionTokens,
+                    TotalTokens = _promptTokens + _completionTokens
+                });
         }
 
         /// <summary>
         /// Builds the response as a JSON string.
         /// </summary>
-        public string BuildJson() => JsonSerializer.Serialize(Build());
+        public string BuildJson() => JsonSerializer.Serialize(Build().Body);
     }
 
     /// <summary>
@@ -190,29 +208,46 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         public AnthropicResponseBuilder WithStopReason(string reason) { _stopReason = reason; return this; }
 
         /// <summary>
-        /// Builds the response as an object.
+        /// Builds the response body with its typed accounting evidence.
         /// </summary>
-        public object Build() => new
+        public ProviderResponseFixture Build()
         {
-            id = _id,
-            type = "message",
-            role = "assistant",
-            model = _model,
-            content = new[] { new { type = "text", text = _content } },
-            stop_reason = _stopReason,
-            usage = new
+            var body = new
             {
-                input_tokens = _inputTokens,
-                output_tokens = _outputTokens,
-                cache_creation_input_tokens = _cacheCreationTokens,
-                cache_read_input_tokens = _cacheReadTokens
-            }
-        };
+                id = _id,
+                type = "message",
+                role = "assistant",
+                model = _model,
+                content = new[] { new { type = "text", text = _content } },
+                stop_reason = _stopReason,
+                usage = new
+                {
+                    input_tokens = _inputTokens,
+                    output_tokens = _outputTokens,
+                    cache_creation_input_tokens = _cacheCreationTokens,
+                    cache_read_input_tokens = _cacheReadTokens
+                }
+            };
+
+            return new ProviderResponseFixture(
+                body,
+                _model,
+                new Usage
+                {
+                    PromptTokens = _inputTokens,
+                    CompletionTokens = _outputTokens,
+                    TotalTokens = _inputTokens + _outputTokens,
+                    CachedWriteTokens = _cacheCreationTokens,
+                    CachedWriteTokensIncludedInPrompt = false,
+                    CachedInputTokens = _cacheReadTokens,
+                    CachedInputTokensIncludedInPrompt = false
+                });
+        }
 
         /// <summary>
         /// Builds the response as a JSON string.
         /// </summary>
-        public string BuildJson() => JsonSerializer.Serialize(Build());
+        public string BuildJson() => JsonSerializer.Serialize(Build().Body);
     }
 
     /// <summary>
@@ -276,9 +311,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         }
 
         /// <summary>
-        /// Builds the response as an object.
+        /// Builds the response body with its typed accounting evidence.
         /// </summary>
-        public object Build()
+        public ProviderResponseFixture Build()
         {
             var message = new Dictionary<string, object>
             {
@@ -307,13 +342,33 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
                 response["x_groq"] = new { usage = _toolUsage };
             }
 
-            return response;
+            var toolUsage = _toolUsage.Count == 0
+                ? null
+                : new ProviderToolUsage
+                {
+                    Tools = _toolUsage.Select(tool => new ProviderToolUsageItem
+                    {
+                        ToolName = tool.Key,
+                        Count = tool.Value
+                    }).ToList()
+                };
+
+            return new ProviderResponseFixture(
+                response,
+                _model,
+                new Usage
+                {
+                    PromptTokens = _promptTokens,
+                    CompletionTokens = _completionTokens,
+                    TotalTokens = _promptTokens + _completionTokens
+                },
+                toolUsage);
         }
 
         /// <summary>
         /// Builds the response as a JSON string.
         /// </summary>
-        public string BuildJson() => JsonSerializer.Serialize(Build());
+        public string BuildJson() => JsonSerializer.Serialize(Build().Body);
     }
 
     /// <summary>
@@ -361,9 +416,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         }
 
         /// <summary>
-        /// Builds the response as an object.
+        /// Builds the response body with its typed accounting evidence.
         /// </summary>
-        public object Build()
+        public ProviderResponseFixture Build()
         {
             var data = _urls.Count > 0
                 ? _urls.Select(url => new { url, revised_prompt = _revisedPrompt }).ToArray()
@@ -380,13 +435,16 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             if (_model != null) response["model"] = _model;
             if (_includeUsage) response["usage"] = new { images = _imageCount };
 
-            return response;
+            return new ProviderResponseFixture(
+                response,
+                _model,
+                _includeUsage ? new Usage { ImageCount = _imageCount } : null);
         }
 
         /// <summary>
         /// Builds the response as a JSON string.
         /// </summary>
-        public string BuildJson() => JsonSerializer.Serialize(Build());
+        public string BuildJson() => JsonSerializer.Serialize(Build().Body);
     }
 
     /// <summary>
@@ -436,9 +494,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         }
 
         /// <summary>
-        /// Builds the response as an object.
+        /// Builds the response body with its typed accounting evidence.
         /// </summary>
-        public object Build()
+        public ProviderResponseFixture Build()
         {
             var data = _urls.Count > 0
                 ? _urls.Select(url => new { url }).ToArray()
@@ -460,13 +518,20 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
 
             if (_model != null) response["model"] = _model;
 
-            return response;
+            return new ProviderResponseFixture(
+                response,
+                _model,
+                new Usage
+                {
+                    VideoDurationSeconds = _durationSeconds,
+                    VideoResolution = _resolution
+                });
         }
 
         /// <summary>
         /// Builds the response as a JSON string.
         /// </summary>
-        public string BuildJson() => JsonSerializer.Serialize(Build());
+        public string BuildJson() => JsonSerializer.Serialize(Build().Body);
     }
 
     /// <summary>
@@ -506,9 +571,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         public EmbeddingsResponseBuilder WithDimensions(int dims) { _dimensions = dims; return this; }
 
         /// <summary>
-        /// Builds the response as an object.
+        /// Builds the response body with its typed accounting evidence.
         /// </summary>
-        public object Build()
+        public ProviderResponseFixture Build()
         {
             var data = Enumerable.Range(0, _embeddingCount)
                 .Select(i => new
@@ -519,7 +584,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
                 })
                 .ToArray();
 
-            return new
+            var body = new
             {
                 @object = "list",
                 data,
@@ -530,11 +595,20 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
                     total_tokens = _totalTokens
                 }
             };
+
+            return new ProviderResponseFixture(
+                body,
+                _model,
+                new Usage
+                {
+                    PromptTokens = _promptTokens,
+                    TotalTokens = _totalTokens
+                });
         }
 
         /// <summary>
         /// Builds the response as a JSON string.
         /// </summary>
-        public string BuildJson() => JsonSerializer.Serialize(Build());
+        public string BuildJson() => JsonSerializer.Serialize(Build().Body);
     }
 }

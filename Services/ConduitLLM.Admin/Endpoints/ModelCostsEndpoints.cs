@@ -361,7 +361,7 @@ namespace ConduitLLM.Admin.Endpoints
                 // Use provided schema (for testing or when model schema is known)
                 parameterSchema = request.ParameterSchema;
             }
-            // TODO: In the future, we could look up the model's parameter schema from ModelSeries
+            // TODO(#1078): Validate pricing rules against the associated model parameter schema.
 
             // Validate the configuration
             var result = _pricingRulesValidator.ValidateJson(request.PricingConfiguration, parameterSchema);

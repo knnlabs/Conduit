@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Security.Cryptography;
 
 namespace ConduitLLM.Admin.Security
 {
@@ -202,7 +203,7 @@ namespace ConduitLLM.Admin.Security
                 return AuthenticateResult.Fail("Master key not configured");
             }
 
-            if (providedKey != _masterKey)
+            if (!ConstantTimeComparer.Equals(providedKey, _masterKey))
             {
                 Logger.LogWarning("Authentication failed: invalid master key provided for {Path} from {ClientIp}",
                     LoggingSanitizer.S(Context.Request.Path.ToString()),

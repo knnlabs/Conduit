@@ -158,7 +158,7 @@ namespace ConduitLLM.Gateway.Services
                 var taskService = scope.ServiceProvider.GetService<IAsyncTaskService>();
                 if (taskService == null) return;
 
-                // TODO: Implement task metrics collection when GetAllTasksAsync is available
+                // TODO(#1076): Collect task metrics once IAsyncTaskService exposes task enumeration.
                 // For now, we'll skip this as the IAsyncTaskService doesn't expose a method
                 // to get all tasks. This would need to be added to the interface.
                 

@@ -1,4 +1,3 @@
-// TODO: Update tests for new Model architecture where capabilities come from Model entity
 using FluentAssertions;
 using ConduitLLM.Configuration.Entities;
 

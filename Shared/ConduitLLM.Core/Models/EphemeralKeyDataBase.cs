@@ -20,9 +20,5 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         public DateTimeOffset ExpiresAt { get; set; }
 
-        /// <summary>
-        /// Whether the key has been consumed
-        /// </summary>
-        public bool IsConsumed { get; set; }
     }
 }

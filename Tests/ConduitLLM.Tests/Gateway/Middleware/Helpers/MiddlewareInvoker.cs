@@ -6,7 +6,7 @@ using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Core;
-using ConduitLLM.Configuration;
+using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Fixtures;
 
 namespace ConduitLLM.Tests.Http.Middleware.Helpers
@@ -21,6 +21,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Helpers
         private RequestDelegate? _nextDelegate;
         private string? _responseJson;
         private bool _isStreaming;
+        private Usage? _providerUsage;
+        private string? _providerModel;
+        private ProviderToolUsage? _providerToolUsage;
 
         /// <summary>
         /// Initializes a new middleware invoker with the given test fixture.
@@ -38,6 +41,37 @@ namespace ConduitLLM.Tests.Http.Middleware.Helpers
         public MiddlewareInvoker WithResponse(object responseData)
         {
             _responseJson = JsonSerializer.Serialize(responseData);
+            return this;
+        }
+
+        /// <summary>
+        /// Configures a response body together with the typed accounting evidence emitted by a provider client.
+        /// </summary>
+        public MiddlewareInvoker WithResponse(ProviderResponseFixture response)
+        {
+            _responseJson = JsonSerializer.Serialize(response.Body);
+            _providerUsage = response.Usage;
+            _providerModel = response.Model;
+            _providerToolUsage = response.ToolUsage;
+            return this;
+        }
+
+        /// <summary>
+        /// Configures typed provider usage for a raw response fixture.
+        /// </summary>
+        public MiddlewareInvoker WithProviderUsage(string model, Usage usage)
+        {
+            _providerModel = model;
+            _providerUsage = usage;
+            return this;
+        }
+
+        /// <summary>
+        /// Configures typed provider-hosted tool usage for a raw response fixture.
+        /// </summary>
+        public MiddlewareInvoker WithProviderToolUsage(params ProviderToolUsageItem[] tools)
+        {
+            _providerToolUsage = new ProviderToolUsage { Tools = tools.ToList() };
             return this;
         }
 
@@ -158,6 +192,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Helpers
             _nextDelegate = null;
             _responseJson = null;
             _isStreaming = false;
+            _providerUsage = null;
+            _providerModel = null;
+            _providerToolUsage = null;
             return this;
         }
 
@@ -206,9 +243,10 @@ namespace ConduitLLM.Tests.Http.Middleware.Helpers
                 using var document = JsonDocument.Parse(json);
                 var root = document.RootElement;
                 var usageContext = context.GetUsageContext();
-                var model = root.TryGetProperty("model", out var modelElement)
-                    ? modelElement.GetString()
-                    : usageContext?.Model;
+                var model = _providerModel ??
+                    (root.TryGetProperty("model", out var modelElement)
+                        ? modelElement.GetString()
+                        : usageContext?.Model);
                 model ??= "unknown";
                 accounting.SetOperation(operation, virtualKeyId, model);
 
@@ -239,9 +277,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Helpers
                     return;
                 }
 
-                Usage? usage = null;
-                if (root.TryGetProperty("usage", out var usageElement))
-                    usage = UsageExtractor.ExtractUsage(usageElement, _fixture.Logger.Object);
+                var usage = _providerUsage;
 
                 if (operation == RequestOperation.Image)
                 {
@@ -284,22 +320,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Helpers
                     accounting.RecordProviderCalls(providerCalls);
                 }
 
-                var providerType = context.Items.TryGetValue("ProviderType", out var providerTypeValue) &&
-                                   Enum.TryParse<ProviderType>(providerTypeValue?.ToString(), true, out var parsedProvider)
-                    ? parsedProvider
-                    : ProviderType.OpenAI;
-                var hostedTools = UsageExtractor.ExtractToolUsage(json, providerType, _fixture.Logger.Object);
-                if (hostedTools is not null)
+                if (_providerToolUsage is not null)
                 {
-                    accounting.RecordProviderToolUsage(new ProviderToolUsage
-                    {
-                        Tools = hostedTools.Tools.Select(tool => new ProviderToolUsageItem
-                        {
-                            ToolName = tool.ToolName,
-                            Count = tool.Count,
-                            DurationSeconds = tool.DurationSeconds
-                        }).ToList()
-                    });
+                    accounting.RecordProviderToolUsage(_providerToolUsage);
                 }
             }
             catch (JsonException)

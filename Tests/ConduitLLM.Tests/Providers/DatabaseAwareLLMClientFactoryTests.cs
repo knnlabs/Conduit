@@ -1,7 +1,9 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers;
+using ConduitLLM.Providers.OpenAI;
 using Microsoft.Extensions.Logging;
 using Moq;
 using ConduitLLM.Configuration.Interfaces;
@@ -27,6 +29,8 @@ namespace ConduitLLM.Tests.Providers
 
             _mockLoggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
                 .Returns(Mock.Of<ILogger>());
+            _mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>()))
+                .Returns(new HttpClient());
 
             var mockServiceProvider = new Mock<IServiceProvider>();
 
@@ -212,6 +216,78 @@ namespace ConduitLLM.Tests.Providers
             Assert.Equal($"No provider configured for type '{providerType}'.", exception.Message);
             Assert.Equal("provider_type_not_found", exception.ErrorCode);
             Assert.Equal("providerType", exception.Param);
+        }
+
+        [Fact]
+        public void CreateTestClient_WithNullProvider_ThrowsArgumentNullException()
+        {
+            var credential = new ProviderKeyCredential { ApiKey = "test-key" };
+
+            var exception = Assert.Throws<ArgumentNullException>(
+                () => _factory.CreateTestClient(null, credential));
+
+            Assert.Equal("provider", exception.ParamName);
+        }
+
+        [Fact]
+        public void CreateTestClient_WithNullCredential_ThrowsArgumentNullException()
+        {
+            var provider = new Provider { ProviderType = ProviderType.OpenAI };
+
+            var exception = Assert.Throws<ArgumentNullException>(
+                () => _factory.CreateTestClient(provider, null));
+
+            Assert.Equal("keyCredential", exception.ParamName);
+        }
+
+        [Fact]
+        public void CreateTestClient_WithBlankApiKey_ThrowsArgumentException()
+        {
+            var provider = new Provider { ProviderType = ProviderType.OpenAI };
+            var credential = new ProviderKeyCredential { ApiKey = " " };
+
+            var exception = Assert.Throws<ArgumentException>(
+                () => _factory.CreateTestClient(provider, credential));
+
+            Assert.Equal("keyCredential", exception.ParamName);
+        }
+
+        [Fact]
+        public void CreateTestClient_WithSupportedProvider_UsesSuppliedCredentialWithoutDatabaseLookup()
+        {
+            var provider = new Provider
+            {
+                Id = 17,
+                ProviderName = "CredentialTest",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+            var credential = new ProviderKeyCredential
+            {
+                Id = 23,
+                ProviderId = provider.Id,
+                ApiKey = "test-key",
+                IsEnabled = true
+            };
+
+            var client = _factory.CreateTestClient(provider, credential);
+
+            var contextClient = Assert.IsType<ContextAwareLLMClient>(client);
+            Assert.IsType<OpenAIClient>(contextClient.InnerClient);
+            _mockCredentialService.VerifyNoOtherCalls();
+            _mockMappingService.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public void CreateTestClient_WithUnsupportedProvider_ThrowsConfigurationException()
+        {
+            var provider = new Provider { ProviderType = (ProviderType)int.MaxValue };
+            var credential = new ProviderKeyCredential { ApiKey = "test-key" };
+
+            var exception = Assert.Throws<ConfigurationException>(
+                () => _factory.CreateTestClient(provider, credential));
+
+            Assert.Contains("Unsupported provider type", exception.Message);
         }
     }
 }

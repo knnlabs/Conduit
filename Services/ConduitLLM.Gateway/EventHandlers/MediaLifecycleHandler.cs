@@ -61,7 +61,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                     @event.StorageKey,
                     @event.FileSizeBytes);
 
-                // TODO: Future enhancement - implement automatic cleanup based on expiration
+                // TODO(#1073): Run expiration cleanup through the consolidated maintenance scheduler.
                 if (@event.ExpiresAt.HasValue)
                 {
                     _logger.LogInformation(

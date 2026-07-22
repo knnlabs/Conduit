@@ -27,7 +27,7 @@ namespace ConduitLLM.Gateway.Filters
             var virtualKeyId = GetVirtualKeyId(context);
             var correlationId = GetOrCreateCorrelationId(context);
 
-            // TODO: Protocol detection - Hub filters don't have direct access to the negotiated protocol
+            // TODO(#1081): Record the negotiated SignalR protocol instead of inferring it here.
             // The protocol is determined during connection negotiation but isn't exposed through HubLifetimeContext
             // For now, we default to "json" and rely on MessagePack being available for clients that request it
             // Future enhancement: Track protocol through a custom connection tracking service

@@ -1,145 +1,12 @@
 using System.Text.Json;
-using ConduitLLM.Core.Models;
-using ConduitLLM.Configuration;
 
 namespace ConduitLLM.Gateway.Middleware
 {
     /// <summary>
-    /// Static helper methods for extracting usage data from LLM API responses.
-    /// Supports multiple provider formats including OpenAI and Anthropic.
+    /// Helpers for classifying requests and serializing typed usage metadata.
     /// </summary>
     public static class UsageExtractor
     {
-        /// <summary>
-        /// Extracts usage data from a JSON response element.
-        /// </summary>
-        /// <param name="usageElement">The usage JSON element from the response</param>
-        /// <param name="logger">Logger for error reporting</param>
-        /// <returns>Extracted usage data or null if extraction fails</returns>
-        public static Usage? ExtractUsage(JsonElement usageElement, ILogger logger)
-        {
-            try
-            {
-                var usage = new Usage();
-
-                // Standard OpenAI fields
-                if (usageElement.TryGetProperty("prompt_tokens", out var promptTokens))
-                    usage.PromptTokens = promptTokens.GetInt32();
-
-                if (usageElement.TryGetProperty("completion_tokens", out var completionTokens))
-                    usage.CompletionTokens = completionTokens.GetInt32();
-
-                if (usageElement.TryGetProperty("total_tokens", out var totalTokens))
-                    usage.TotalTokens = totalTokens.GetInt32();
-
-                // Some OpenAI-compatible providers expose reasoning_tokens at the top level.
-                // Treat this as a fallback because OpenAI's canonical value is nested below.
-                if (usageElement.TryGetProperty("reasoning_tokens", out var reasoningTokens))
-                    usage.ReasoningTokens = reasoningTokens.GetInt32();
-
-                // OpenAI includes cached tokens in prompt_tokens and reasoning tokens in
-                // completion_tokens. The detail fields identify those subsets for pricing.
-                if (usageElement.TryGetProperty("prompt_tokens_details", out var promptTokenDetails) &&
-                    promptTokenDetails.ValueKind == JsonValueKind.Object)
-                {
-                    if (promptTokenDetails.TryGetProperty("cached_tokens", out var cachedTokens))
-                    {
-                        usage.CachedInputTokens = cachedTokens.GetInt32();
-                        usage.CachedInputTokensIncludedInPrompt = true;
-                    }
-                    if (promptTokenDetails.TryGetProperty("cache_write_tokens", out var nestedWriteTokens))
-                    {
-                        usage.CachedWriteTokens = nestedWriteTokens.GetInt32();
-                        usage.CachedWriteTokensIncludedInPrompt = true;
-                    }
-                }
-
-                if (usageElement.TryGetProperty("cached_input_tokens", out var normalizedCachedTokens))
-                    usage.CachedInputTokens = normalizedCachedTokens.GetInt32();
-                if (usageElement.TryGetProperty("cached_write_tokens", out var normalizedWriteTokens))
-                    usage.CachedWriteTokens = normalizedWriteTokens.GetInt32();
-                if (usageElement.TryGetProperty("prompt_cache_hit_tokens", out var deepSeekCachedTokens))
-                    usage.CachedInputTokens = deepSeekCachedTokens.GetInt32();
-
-                if (usageElement.TryGetProperty("completion_tokens_details", out var completionTokenDetails) &&
-                    completionTokenDetails.ValueKind == JsonValueKind.Object &&
-                    completionTokenDetails.TryGetProperty("reasoning_tokens", out var nestedReasoningTokens))
-                {
-                    usage.ReasoningTokens = nestedReasoningTokens.GetInt32();
-                }
-
-                // Anthropic format (uses input_tokens/output_tokens)
-                // Note: These will override OpenAI fields if both exist
-                if (usageElement.TryGetProperty("input_tokens", out var inputTokens))
-                {
-                    usage.PromptTokens = inputTokens.GetInt32();
-                    usage.CachedInputTokensIncludedInPrompt = false;
-                }
-
-                if (usageElement.TryGetProperty("output_tokens", out var outputTokens))
-                    usage.CompletionTokens = outputTokens.GetInt32();
-
-                // Some OpenAI-compatible providers report only the aggregate token count. Keep
-                // those responses billable by treating the aggregate as input tokens, which is
-                // the lower-priced side for supported model configurations. The pricing fallback
-                // reason causes the middleware to emit a UsageEstimated audit event.
-                if (usage.TotalTokens.HasValue &&
-                    usage.PromptTokens == null &&
-                    usage.CompletionTokens == null)
-                {
-                    usage.PromptTokens = usage.TotalTokens.Value;
-                    usage.CompletionTokens = 0;
-                    usage.PricingFallbackReason =
-                        "Provider reported total_tokens without prompt/completion breakdown; billed as input tokens";
-                }
-
-                // Anthropic cached tokens
-                if (usageElement.TryGetProperty("cache_creation_input_tokens", out var cacheWriteTokens))
-                {
-                    usage.CachedWriteTokens = cacheWriteTokens.GetInt32();
-                    usage.CachedWriteTokensIncludedInPrompt = false;
-                }
-
-                if (usageElement.TryGetProperty("cache_read_input_tokens", out var cacheReadTokens))
-                {
-                    usage.CachedInputTokens = cacheReadTokens.GetInt32();
-                    usage.CachedInputTokensIncludedInPrompt = false;
-                }
-
-                // Image generation
-                if (usageElement.TryGetProperty("images", out var imageCount))
-                    usage.ImageCount = imageCount.GetInt32();
-
-                // Rerank search units
-                if (usageElement.TryGetProperty("search_units", out var searchUnits) && searchUnits.TryGetInt32(out var su))
-                    usage.SearchUnits = su;
-
-                // Audio (speech-to-text duration / text-to-speech characters)
-                if (usageElement.TryGetProperty("audio_duration_seconds", out var audioSeconds) && audioSeconds.TryGetDouble(out var asec))
-                    usage.AudioDurationSeconds = asec;
-                if (usageElement.TryGetProperty("tts_characters", out var ttsChars) && ttsChars.TryGetInt32(out var tc))
-                    usage.TtsCharacters = tc;
-
-                // Validate we have at least some usage data
-                if (usage.PromptTokens == null &&
-                    usage.CompletionTokens == null &&
-                    usage.ImageCount == null &&
-                    usage.SearchUnits == null &&
-                    usage.AudioDurationSeconds == null &&
-                    usage.TtsCharacters == null)
-                {
-                    return null;
-                }
-
-                return usage;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to extract usage data from response");
-                return null;
-            }
-        }
-
         /// <summary>
         /// Determines the request type from the API path.
         /// </summary>
@@ -178,100 +45,13 @@ namespace ConduitLLM.Gateway.Middleware
         /// <returns>Response time in milliseconds</returns>
         public static double GetResponseTime(HttpContext context)
         {
-            if (context.Items.TryGetValue("RequestStartTime", out var startTimeObj) && 
+            if (context.Items.TryGetValue("RequestStartTime", out var startTimeObj) &&
                 startTimeObj is DateTime startTime)
             {
                 return (DateTime.UtcNow - startTime).TotalMilliseconds;
             }
-            
+
             return 0;
-        }
-
-        /// <summary>
-        /// Extracts tool_calls from a chat completion response (OpenAI-style format).
-        /// This captures function/tool calls made by the LLM in the response.
-        /// </summary>
-        /// <param name="responseBody">The full response body as a string</param>
-        /// <param name="logger">Logger for error reporting</param>
-        /// <returns>Chat tool call data or null if no tool calls were made</returns>
-        public static ChatToolCallData? ExtractChatToolCalls(string responseBody, ILogger logger)
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(responseBody);
-                var root = doc.RootElement;
-
-                // Check for choices array
-                if (!root.TryGetProperty("choices", out var choices) || choices.GetArrayLength() == 0)
-                    return null;
-
-                var toolCalls = new List<ChatToolCallItem>();
-
-                // Iterate through all choices
-                foreach (var choice in choices.EnumerateArray())
-                {
-                    // Get the message object
-                    if (!choice.TryGetProperty("message", out var message))
-                        continue;
-
-                    // Check for tool_calls array (modern format)
-                    if (message.TryGetProperty("tool_calls", out var toolCallsArray))
-                    {
-                        foreach (var toolCall in toolCallsArray.EnumerateArray())
-                        {
-                            var item = new ChatToolCallItem();
-
-                            if (toolCall.TryGetProperty("id", out var id))
-                                item.Id = id.GetString();
-
-                            if (toolCall.TryGetProperty("type", out var type))
-                                item.Type = type.GetString();
-
-                            if (toolCall.TryGetProperty("function", out var function))
-                            {
-                                if (function.TryGetProperty("name", out var name))
-                                    item.FunctionName = name.GetString();
-
-                                // Don't store arguments - they may contain sensitive data
-                                // Just note that arguments were present
-                                if (function.TryGetProperty("arguments", out _))
-                                    item.HasArguments = true;
-                            }
-
-                            toolCalls.Add(item);
-                        }
-                    }
-
-                    // Check for legacy function_call format
-                    if (message.TryGetProperty("function_call", out var functionCall))
-                    {
-                        var item = new ChatToolCallItem
-                        {
-                            Type = "function"
-                        };
-
-                        if (functionCall.TryGetProperty("name", out var name))
-                            item.FunctionName = name.GetString();
-
-                        if (functionCall.TryGetProperty("arguments", out _))
-                            item.HasArguments = true;
-
-                        toolCalls.Add(item);
-                    }
-                }
-
-                if (toolCalls.Count > 0)
-                {
-                    return new ChatToolCallData { ToolCalls = toolCalls };
-                }
-
-                return null;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to extract tool_calls from chat completion response");
-                return null;
-            }
         }
 
         /// <summary>
@@ -297,122 +77,10 @@ namespace ConduitLLM.Gateway.Middleware
                 })
             }, new JsonSerializerOptions { WriteIndented = false });
         }
-
-        /// <summary>
-        /// Extracts tool usage data from a provider response.
-        /// </summary>
-        /// <param name="responseBody">The full response body as a string</param>
-        /// <param name="providerType">The provider type to determine parsing strategy</param>
-        /// <param name="logger">Logger for error reporting</param>
-        /// <returns>Tool usage data or null if no tools were used</returns>
-        public static ToolUsageData? ExtractToolUsage(string responseBody, ProviderType providerType, ILogger logger)
-        {
-            try
-            {
-                return providerType switch
-                {
-                    ProviderType.Groq => ExtractGroqToolUsage(responseBody, logger),
-                    ProviderType.OpenAI => null, // OpenAI uses function calling, not hosted tools
-                    ProviderType.OpenAICompatible => null, // Most OpenAI-compatible providers don't host tools
-                    _ => null
-                };
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to extract tool usage data from {ProviderType} response", providerType);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Extracts tool usage from Groq API responses.
-        /// </summary>
-        /// <param name="responseBody">The response body JSON</param>
-        /// <param name="logger">Logger for error reporting</param>
-        /// <returns>Tool usage data specific to Groq tools</returns>
-        private static ToolUsageData? ExtractGroqToolUsage(string responseBody, ILogger logger)
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(responseBody);
-                var root = doc.RootElement;
-
-                // Groq returns tool usage in x_groq.usage field
-                if (!root.TryGetProperty("x_groq", out var xGroq))
-                    return null;
-
-                if (!xGroq.TryGetProperty("usage", out var usage))
-                    return null;
-
-                var toolUsageList = new List<ToolUsageItem>();
-
-                // Iterate through all properties in the usage object
-                foreach (var property in usage.EnumerateObject())
-                {
-                    var toolName = property.Name;
-
-                    // x_groq.usage also contains token counts, latency metrics, and the
-                    // duration fields consumed below. Only hosted-tool counters belong here.
-                    if (toolName is not ("code_interpreter" or "browser_search" or "python"))
-                        continue;
-
-                    // Map Groq's tool names to our billing names if needed
-                    // Currently Groq uses "code_interpreter" and "browser_search" directly
-                    var billingToolName = toolName switch
-                    {
-                        "python" => "code_interpreter", // In case they change to python
-                        _ => toolName
-                    };
-
-                    if (property.Value.ValueKind == JsonValueKind.Number)
-                    {
-                        var count = property.Value.GetInt32();
-                        if (count > 0)
-                        {
-                            toolUsageList.Add(new ToolUsageItem
-                            {
-                                ToolName = billingToolName,
-                                Count = count,
-                                Duration = null // Duration populated below from provider-specific fields
-                            });
-                        }
-                    }
-                }
-
-                // Extract duration data from Groq-specific fields (e.g., code_interpreter execution time)
-                // Groq may report duration in seconds as a separate field like "code_interpreter_duration_seconds"
-                foreach (var toolItem in toolUsageList)
-                {
-                    // Try provider-specific duration fields (seconds)
-                    var durationKey = $"{toolItem.ToolName}_duration_seconds";
-                    if (usage.TryGetProperty(durationKey, out var durationSeconds) &&
-                        durationSeconds.ValueKind == JsonValueKind.Number)
-                    {
-                        var seconds = durationSeconds.GetDecimal();
-                        // Convert seconds to hours for "hours" billing, or minutes for "minutes" billing
-                        // Store as raw seconds and let CalculateUsageAmount handle unit conversion
-                        toolItem.DurationSeconds = seconds;
-                        logger.LogDebug("Tool {ToolName} duration: {DurationSeconds}s", toolItem.ToolName, seconds);
-                    }
-                }
-
-                if (toolUsageList.Count > 0)
-                {
-                    return new ToolUsageData { Tools = toolUsageList };
-                }
-
-                return null;
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Failed to parse Groq tool usage from response");
-                return null;
-            }
-        }
     }
 
     /// <summary>
-    /// Represents tool usage data extracted from provider responses.
+    /// Represents tool usage data reported by a provider.
     /// </summary>
     public class ToolUsageData
     {
@@ -433,7 +101,7 @@ namespace ConduitLLM.Gateway.Middleware
         public string ToolName { get; set; } = string.Empty;
 
         /// <summary>
-        /// Number of times the tool was invoked
+        /// Number of times the tool was invoked.
         /// </summary>
         public int Count { get; set; }
 
@@ -451,7 +119,7 @@ namespace ConduitLLM.Gateway.Middleware
     }
 
     /// <summary>
-    /// Represents tool/function calls extracted from a chat completion response.
+    /// Represents tool/function calls captured from typed chat accounting evidence.
     /// </summary>
     public class ChatToolCallData
     {
@@ -462,7 +130,7 @@ namespace ConduitLLM.Gateway.Middleware
     }
 
     /// <summary>
-    /// Represents a single tool/function call from a chat completion response.
+    /// Represents a single tool/function call.
     /// </summary>
     public class ChatToolCallItem
     {
@@ -477,12 +145,12 @@ namespace ConduitLLM.Gateway.Middleware
         public string? Type { get; set; }
 
         /// <summary>
-        /// The name of the function being called
+        /// The name of the function being called.
         /// </summary>
         public string? FunctionName { get; set; }
 
         /// <summary>
-        /// Whether arguments were provided (we don't store actual arguments for privacy)
+        /// Whether arguments were provided (actual arguments are not stored for privacy).
         /// </summary>
         public bool HasArguments { get; set; }
     }

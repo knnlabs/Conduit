@@ -159,6 +159,24 @@ namespace ConduitLLM.Core.Services
             var data = await Cache.GetStringAsync(cacheKey);
             return !string.IsNullOrEmpty(data);
         }
+    }
+
+    /// <summary>
+    /// Base class for single-use ephemeral key services that validate and consume cached keys.
+    /// </summary>
+    /// <typeparam name="TKeyData">The type of key data stored in cache</typeparam>
+    public abstract class ConsumableEphemeralKeyServiceBase<TKeyData> : EphemeralKeyServiceBase<TKeyData>
+        where TKeyData : class
+    {
+        /// <summary>
+        /// Initializes a new instance of the consumable ephemeral key service base.
+        /// </summary>
+        /// <param name="cache">The distributed cache</param>
+        /// <param name="logger">The logger</param>
+        protected ConsumableEphemeralKeyServiceBase(IDistributedCache cache, ILogger logger)
+            : base(cache, logger)
+        {
+        }
 
         /// <summary>
         /// Checks if the key data indicates the key has been consumed

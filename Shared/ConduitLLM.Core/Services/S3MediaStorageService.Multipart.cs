@@ -8,6 +8,10 @@ namespace ConduitLLM.Core.Services
 {
     public partial class S3MediaStorageService
     {
+        private sealed record MultipartUploadState(
+            InitiateMultipartUploadResponse Upload,
+            DateTime ExpiresAtUtc);
+
         /// <inheritdoc/>
         public async Task<MultipartUploadSession> InitiateMultipartUploadAsync(VideoMediaMetadata metadata)
         {
@@ -36,18 +40,19 @@ namespace ConduitLLM.Core.Services
 
                 var response = await _s3Client.InitiateMultipartUploadAsync(initiateRequest);
                 
+                var now = _timeProvider.GetUtcNow().UtcDateTime;
                 var session = new MultipartUploadSession
                 {
                     SessionId = Guid.NewGuid().ToString(),
                     StorageKey = storageKey,
                     S3UploadId = response.UploadId,
-                    CreatedAt = DateTime.UtcNow,
-                    ExpiresAt = DateTime.UtcNow.AddHours(24),
+                    CreatedAt = now,
+                    ExpiresAt = now.Add(MultipartSessionLifetime),
                     MinimumPartSize = _options.MultipartChunkSizeBytes,
                     MaxParts = 10000 // S3 limit
                 };
 
-                _multipartUploads[session.SessionId] = response;
+                _multipartUploads[session.SessionId] = new MultipartUploadState(response, session.ExpiresAt);
                 
                 _logger.LogInformation("Initiated multipart upload session {SessionId} for key {StorageKey}", 
                     session.SessionId, storageKey);
@@ -66,10 +71,12 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                if (!_multipartUploads.TryGetValue(sessionId, out var uploadInfo))
+                if (!_multipartUploads.TryGetValue(sessionId, out var uploadState))
                 {
                     throw new InvalidOperationException($"Upload session {sessionId} not found");
                 }
+
+                var uploadInfo = uploadState.Upload;
 
                 var uploadRequest = new UploadPartRequest
                 {
@@ -104,10 +111,12 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                if (!_multipartUploads.TryRemove(sessionId, out var uploadInfo))
+                if (!_multipartUploads.TryRemove(sessionId, out var uploadState))
                 {
                     throw new InvalidOperationException($"Upload session {sessionId} not found");
                 }
+
+                var uploadInfo = uploadState.Upload;
 
                 var completeRequest = new CompleteMultipartUploadRequest
                 {
@@ -145,11 +154,13 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                if (!_multipartUploads.TryRemove(sessionId, out var uploadInfo))
+                if (!_multipartUploads.TryRemove(sessionId, out var uploadState))
                 {
                     // Already removed or doesn't exist
                     return;
                 }
+
+                var uploadInfo = uploadState.Upload;
 
                 var abortRequest = new AbortMultipartUploadRequest
                 {
@@ -165,6 +176,61 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to abort multipart upload for session {SessionId}", sessionId);
+            }
+        }
+
+        internal async Task CleanupExpiredMultipartUploadsAsync(CancellationToken cancellationToken = default)
+        {
+            if (_disposed || !await _multipartCleanupLock.WaitAsync(0, cancellationToken))
+            {
+                return;
+            }
+
+            try
+            {
+                var now = _timeProvider.GetUtcNow().UtcDateTime;
+                foreach (var (sessionId, state) in _multipartUploads)
+                {
+                    if (state.ExpiresAtUtc > now ||
+                        !_multipartUploads.TryRemove(sessionId, out var expiredState))
+                    {
+                        continue;
+                    }
+
+                    try
+                    {
+                        await _s3Client.AbortMultipartUploadAsync(
+                            new AbortMultipartUploadRequest
+                            {
+                                BucketName = _bucketName,
+                                Key = expiredState.Upload.Key,
+                                UploadId = expiredState.Upload.UploadId
+                            },
+                            cancellationToken);
+                        _logger.LogInformation(
+                            "Aborted expired multipart upload session {SessionId}",
+                            sessionId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(
+                            ex,
+                            "Failed to abort expired multipart upload session {SessionId}",
+                            sessionId);
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                // Normal during shutdown or caller cancellation.
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clean up expired multipart upload sessions");
+            }
+            finally
+            {
+                _multipartCleanupLock.Release();
             }
         }
     }

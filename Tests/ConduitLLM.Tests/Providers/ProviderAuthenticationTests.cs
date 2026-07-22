@@ -299,11 +299,5 @@ namespace ConduitLLM.Tests.Providers
 
         #endregion
 
-        #region Factory Test Client Creation Tests
-
-        // TODO: These tests were removed when LLMClientFactory was deleted in favor of DatabaseAwareLLMClientFactory
-        // Consider adding similar tests for DatabaseAwareLLMClientFactory if needed
-
-        #endregion
     }
 }

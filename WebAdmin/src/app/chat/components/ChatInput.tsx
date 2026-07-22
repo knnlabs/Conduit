@@ -212,7 +212,7 @@ export function ChatInput({
             </Tooltip>
           )}
 
-          {/* Audio input stub - TODO: Implement audio recording */}
+          {/* TODO(#1083): Align this audio-recording stub with supported capabilities. */}
           <Tooltip label="Audio input - Coming soon">
             <ActionIcon size="lg" variant="default" disabled>
               <IconMicrophone size={20} />

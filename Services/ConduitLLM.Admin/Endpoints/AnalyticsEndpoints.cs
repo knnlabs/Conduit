@@ -328,7 +328,7 @@ public class AnalyticsEndpoints
     /// <returns>Success response</returns>
     public async Task<IResult> InvalidateCache(string reason = "Manual invalidation")
     {
-        // TODO: Implement cache invalidation logic
+        // TODO(#1075): Make analytics cache invalidation functional or remove this endpoint.
         _analyticsMetrics?.RecordCacheInvalidation(reason, 0);
         await Task.CompletedTask;
         LogAdminAudit("Invalidated", "AnalyticsCache", detail: $"Reason: {reason}");

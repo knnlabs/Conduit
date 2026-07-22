@@ -36,7 +36,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.10m); // Base token cost
 
             // Act
-            await Invoker
+            await WithGroqEvidence(new ProviderToolUsageItem
+                {
+                    ToolName = "code_interpreter",
+                    Count = 3
+                })
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -66,7 +70,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.15m);
 
             // Act
-            await Invoker
+            await WithGroqEvidence(
+                    new ProviderToolUsageItem { ToolName = "code_interpreter", Count = 2 },
+                    new ProviderToolUsageItem { ToolName = "browser_search", Count = 2 })
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -94,7 +100,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0m); // Zero base cost to trigger zero cost path
 
             // Act
-            await Invoker
+            await WithGroqEvidence(new ProviderToolUsageItem
+                {
+                    ToolName = "code_interpreter",
+                    Count = 3
+                })
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -121,7 +131,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.10m);
 
             // Act
-            await Invoker
+            await WithGroqEvidence()
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -149,7 +159,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.10m); // base token cost
 
             // Act
-            await Invoker
+            await WithGroqEvidence()
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -174,7 +184,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.10m);
 
             // Act
-            await Invoker
+            await WithGroqEvidence()
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -205,7 +215,7 @@ namespace ConduitLLM.Tests.Http.Middleware
                 .ReturnsAsync((string _, Usage usage, CancellationToken _) =>
                     usage.PromptTokens.GetValueOrDefault() / 1000m);
 
-            await Invoker.WithTestResponseBodyDelegate().InvokeWithRealToolServiceAsync(context);
+            await WithGroqEvidence().WithTestResponseBodyDelegate().InvokeWithRealToolServiceAsync(context);
 
             var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
             Assert.Equal(0.35m, billingEvent.CalculatedCost);
@@ -259,6 +269,20 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         #region Helper Methods for Tool Usage Tests
+
+        private MiddlewareInvoker WithGroqEvidence(params ProviderToolUsageItem[] tools)
+        {
+            var invoker = Invoker.WithProviderUsage(
+                "llama-3.1-70b-versatile",
+                new Usage
+                {
+                    PromptTokens = 100,
+                    CompletionTokens = 50,
+                    TotalTokens = 150
+                });
+
+            return tools.Length == 0 ? invoker : invoker.WithProviderToolUsage(tools);
+        }
 
         private static string CreateGroqResponseWithToolUsage(string toolName, int count)
         {

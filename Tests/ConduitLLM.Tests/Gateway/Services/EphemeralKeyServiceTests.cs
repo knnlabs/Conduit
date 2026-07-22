@@ -90,166 +90,10 @@ namespace ConduitLLM.Tests.Http.Services
             Assert.NotNull(storedKeyData);
             Assert.Equal(result.EphemeralKey, storedKeyData.Key);
             Assert.Equal(virtualKeyId, storedKeyData.VirtualKeyId);
-            Assert.False(storedKeyData.IsConsumed);
             Assert.Equal(result.ExpiresAt, storedKeyData.ExpiresAt);
             Assert.NotNull(storedKeyData.EncryptedVirtualKey); // New: verify encrypted key is stored
             Assert.NotEmpty(storedKeyData.EncryptedVirtualKey);
             Assert.NotEqual(virtualKey, storedKeyData.EncryptedVirtualKey); // Should be encrypted
-        }
-
-        [Fact]
-        public async Task ValidateAndConsumeKeyAsync_Should_Return_Null_For_Empty_Key()
-        {
-            // Act
-            var result = await _service.ValidateAndConsumeKeyAsync("");
-
-            // Assert
-            Assert.Null(result);
-            _mockCache.Verify(x => x.GetAsync(It.IsAny<string>(), default), Times.Never);
-        }
-
-        [Fact]
-        public async Task ValidateAndConsumeKeyAsync_Should_Return_Null_For_NonExistent_Key()
-        {
-            // Arrange
-            var ephemeralKey = "ek_nonexistent";
-            _mockCache.Setup(x => x.GetAsync($"ephemeral:{ephemeralKey}", default))
-                .ReturnsAsync((byte[])null!);
-
-            // Act
-            var result = await _service.ValidateAndConsumeKeyAsync(ephemeralKey);
-
-            // Assert
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task ValidateAndConsumeKeyAsync_Should_Return_VirtualKeyId_For_Valid_Key()
-        {
-            // Arrange
-            var ephemeralKey = "ek_valid_key";
-            var virtualKeyId = 789;
-            var keyData = new EphemeralKeyData
-            {
-                Key = ephemeralKey,
-                VirtualKeyId = virtualKeyId,
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(4),
-                IsConsumed = false,
-                Metadata = null
-            };
-
-            var json = JsonSerializer.Serialize(keyData);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-
-            _mockCache.Setup(x => x.GetAsync($"ephemeral:{ephemeralKey}", default))
-                .ReturnsAsync(bytes);
-
-            // Act
-            var result = await _service.ValidateAndConsumeKeyAsync(ephemeralKey);
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKeyId, result.Value);
-
-            // Verify the key was marked as consumed
-            _mockCache.Verify(x => x.SetAsync(
-                $"ephemeral:{ephemeralKey}",
-                It.IsAny<byte[]>(),
-                It.IsAny<DistributedCacheEntryOptions>(),
-                default), Times.Once);
-        }
-
-        [Fact]
-        public async Task ValidateAndConsumeKeyAsync_Should_Return_Null_For_Already_Consumed_Key()
-        {
-            // Arrange
-            var ephemeralKey = "ek_consumed_key";
-            var keyData = new EphemeralKeyData
-            {
-                Key = ephemeralKey,
-                VirtualKeyId = 123,
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(4),
-                IsConsumed = true, // Already consumed
-                Metadata = null
-            };
-
-            var json = JsonSerializer.Serialize(keyData);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-
-            _mockCache.Setup(x => x.GetAsync($"ephemeral:{ephemeralKey}", default))
-                .ReturnsAsync(bytes);
-
-            // Act
-            var result = await _service.ValidateAndConsumeKeyAsync(ephemeralKey);
-
-            // Assert
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public async Task ValidateAndConsumeKeyAsync_Should_Return_Null_For_Expired_Key()
-        {
-            // Arrange
-            var ephemeralKey = "ek_expired_key";
-            var keyData = new EphemeralKeyData
-            {
-                Key = ephemeralKey,
-                VirtualKeyId = 123,
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-10),
-                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-5), // Expired
-                IsConsumed = false,
-                Metadata = null
-            };
-
-            var json = JsonSerializer.Serialize(keyData);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-
-            _mockCache.Setup(x => x.GetAsync($"ephemeral:{ephemeralKey}", default))
-                .ReturnsAsync(bytes);
-
-            // Act
-            var result = await _service.ValidateAndConsumeKeyAsync(ephemeralKey);
-
-            // Assert
-            Assert.Null(result);
-
-            // Verify the expired key was removed
-            _mockCache.Verify(x => x.RemoveAsync($"ephemeral:{ephemeralKey}", default), Times.Once);
-        }
-
-        [Fact]
-        public async Task ConsumeKeyAsync_Should_Delete_Key_After_Validation()
-        {
-            // Arrange
-            var ephemeralKey = "ek_streaming_key";
-            var virtualKeyId = 999;
-            var keyData = new EphemeralKeyData
-            {
-                Key = ephemeralKey,
-                VirtualKeyId = virtualKeyId,
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(4),
-                IsConsumed = false,
-                Metadata = null
-            };
-
-            var json = JsonSerializer.Serialize(keyData);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-
-            _mockCache.Setup(x => x.GetAsync($"ephemeral:{ephemeralKey}", default))
-                .ReturnsAsync(bytes);
-
-            // Act
-            var result = await _service.ConsumeKeyAsync(ephemeralKey);
-
-            // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKeyId, result.Value);
-
-            // Verify the key was deleted immediately
-            _mockCache.Verify(x => x.RemoveAsync($"ephemeral:{ephemeralKey}", default), Times.Once);
         }
 
         [Fact]
@@ -378,8 +222,7 @@ namespace ConduitLLM.Tests.Http.Services
                 Key = ephemeralKey,
                 VirtualKeyId = 789,
                 ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-1), // Expired
-                EncryptedVirtualKey = "encrypted_data",
-                IsConsumed = false
+                EncryptedVirtualKey = "encrypted_data"
             };
             
             var serializedData = JsonSerializer.Serialize(expiredData);
@@ -391,6 +234,34 @@ namespace ConduitLLM.Tests.Http.Services
 
             // Assert
             Assert.Null(result);
+        }
+
+        [Fact]
+        public async Task GetKeyDataAsync_Should_Allow_Repeated_Reads_Until_CacheExpiry()
+        {
+            var ephemeralKey = "ek_reusable";
+            var keyData = new EphemeralKeyData
+            {
+                Key = ephemeralKey,
+                VirtualKeyId = 789,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5)
+            };
+            var bytes = System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(keyData));
+
+            _mockCache.Setup(x => x.GetAsync($"ephemeral:{ephemeralKey}", default))
+                .ReturnsAsync(bytes);
+
+            var firstRead = await _service.GetKeyDataAsync(ephemeralKey);
+            var secondRead = await _service.GetKeyDataAsync(ephemeralKey);
+
+            Assert.Equal(keyData.VirtualKeyId, firstRead?.VirtualKeyId);
+            Assert.Equal(keyData.VirtualKeyId, secondRead?.VirtualKeyId);
+            _mockCache.Verify(
+                x => x.GetAsync($"ephemeral:{ephemeralKey}", default),
+                Times.Exactly(2));
+            _mockCache.Verify(
+                x => x.RemoveAsync(It.IsAny<string>(), default),
+                Times.Never);
         }
 
         [Fact]

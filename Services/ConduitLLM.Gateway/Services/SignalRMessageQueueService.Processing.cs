@@ -34,7 +34,7 @@ namespace ConduitLLM.Gateway.Services
                     ">",
                     count: _processingBatchSize);
 
-                // TODO: Add pending message recovery in future iteration
+                // TODO(#1072): Recover pending stream messages before reading new entries.
                 // For now, focus on basic streaming functionality
 
                 if (streamEntries.Length == 0)

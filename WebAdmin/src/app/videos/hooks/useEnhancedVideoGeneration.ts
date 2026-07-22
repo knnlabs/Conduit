@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useVideoStore } from './useVideoStore';
 import { videoSignalRClient } from '@/lib/client/videoSignalRClient';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
@@ -8,7 +8,6 @@ import type {
   VideoGenerationResult
 } from '../types';
 import { MediaGenerationStatus, mapLegacyStatus } from '@/app/types/media';
-import { REALTIME_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning,
@@ -23,45 +22,19 @@ interface GenerateVideoParams {
   dynamicParameters?: Record<string, unknown>;
 }
 
-interface UseEnhancedVideoGenerationOptions {
-  /** Fallback to polling if SignalR fails */
-  fallbackToPolling?: boolean;
-}
-
 /**
- * Enhanced video generation hook that uses the new SDK progress tracking
- * Falls back to polling-based approach if SignalR is not available
+ * Video generation hook that delegates progress transport, including SignalR and polling
+ * fallback behavior, to the SDK's generateWithProgress implementation.
  */
-export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOptions = {}) {
-  const {
-    // fallbackToPolling is reserved for future use
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    fallbackToPolling = true,
-  } = options;
-
+export function useEnhancedVideoGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isRetrying] = useState(false);
-  const [signalRConnected] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { addTask, updateTask, setError } = useVideoStore();
-
-  // Track SignalR connection errors
-  const signalRErrorCount = useRef(0);
-  const maxSignalRErrors = REALTIME_CONFIG.MAX_SIGNALR_ERRORS;
   
   // Create error handler with toast notifications
   const handleError = createToastErrorHandler(notifications.show);
 
   useEffect(() => {
-    // Store ref in closure to avoid stale closure warning
-    const intervalRef = pollingIntervalRef;
-    
-    // Cleanup on unmount
     return () => {
-      const intervalId = intervalRef.current;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
       void videoSignalRClient.disconnect();
     };
   }, []);
@@ -245,8 +218,5 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     cancelGeneration,
     retryGeneration,
     isGenerating,
-    isRetrying,
-    signalRConnected,
-    isProgressTrackingEnabled: signalRErrorCount.current < maxSignalRErrors,
   };
 }

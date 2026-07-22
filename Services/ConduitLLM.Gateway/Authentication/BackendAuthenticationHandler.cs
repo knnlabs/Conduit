@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Security.Cryptography;
 
 namespace ConduitLLM.Gateway.Authentication
 {
@@ -56,7 +57,7 @@ namespace ConduitLLM.Gateway.Authentication
             }
 
             // Validate the key
-            if (providedKey != _backendAuthKey)
+            if (!ConstantTimeComparer.Equals(providedKey, _backendAuthKey))
             {
                 Logger.LogWarning("Invalid backend authentication key provided");
                 GatewayAuthMetrics.RecordFailure("Backend", "invalid_key");

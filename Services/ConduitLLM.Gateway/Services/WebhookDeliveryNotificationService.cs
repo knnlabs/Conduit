@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Core.Services;
@@ -176,7 +177,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("DeliverySucceeded", success);
                 
                 // Record metrics if service is available
@@ -222,7 +223,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("DeliveryFailed", failure);
                 
                 // Record metrics if service is available
@@ -267,7 +268,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("RetryScheduled", retry);
                 
                 _logger.LogInformation(
@@ -301,7 +302,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group and all clients
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("CircuitBreakerStateChanged", stateChange);
                 await _hubContext.Clients.All.SendAsync("CircuitBreakerStateChanged", stateChange);
                 
@@ -379,10 +380,5 @@ namespace ConduitLLM.Gateway.Services
             return $"{taskId}_{webhookUrl.GetHashCode():X8}";
         }
 
-        private static string GetWebhookGroupName(string webhookUrl)
-        {
-            var uri = new Uri(webhookUrl);
-            return $"webhook-{uri.Host.Replace(".", "-")}-{uri.AbsolutePath.Replace("/", "-")}";
-        }
     }
 }

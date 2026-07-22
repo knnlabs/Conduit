@@ -8,7 +8,8 @@ using ConduitLLM.Gateway.Models;
 namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
-    /// Service for managing ephemeral API keys for direct browser-to-API communication
+    /// Service for managing reusable, short-lived API keys for direct browser-to-API communication.
+    /// Keys remain valid until their cache TTL expires or they are explicitly deleted.
     /// </summary>
     public interface IEphemeralKeyService
     {
@@ -20,20 +21,6 @@ namespace ConduitLLM.Gateway.Services
         /// <param name="metadata">Optional metadata about the request</param>
         /// <returns>The ephemeral key response with token and expiration</returns>
         Task<EphemeralKeyResponse> CreateEphemeralKeyAsync(int virtualKeyId, string virtualKey, EphemeralKeyMetadata? metadata = null);
-
-        /// <summary>
-        /// Validates and consumes an ephemeral key
-        /// </summary>
-        /// <param name="key">The ephemeral key to validate</param>
-        /// <returns>The virtual key ID if valid, null otherwise</returns>
-        Task<int?> ValidateAndConsumeKeyAsync(string key);
-
-        /// <summary>
-        /// Marks an ephemeral key as consumed without deleting it (for streaming)
-        /// </summary>
-        /// <param name="key">The ephemeral key to mark as consumed</param>
-        /// <returns>The virtual key ID if valid, null otherwise</returns>
-        Task<int?> ConsumeKeyAsync(string key);
 
         /// <summary>
         /// Deletes an ephemeral key after use
@@ -105,15 +92,6 @@ namespace ConduitLLM.Gateway.Services
         }
 
         /// <inheritdoc />
-        protected override bool IsKeyConsumed(EphemeralKeyData keyData) => keyData.IsConsumed;
-
-        /// <inheritdoc />
-        protected override DateTimeOffset GetKeyExpiration(EphemeralKeyData keyData) => keyData.ExpiresAt;
-
-        /// <inheritdoc />
-        protected override void MarkKeyAsConsumed(EphemeralKeyData keyData) => keyData.IsConsumed = true;
-
-        /// <inheritdoc />
         public async Task<EphemeralKeyResponse> CreateEphemeralKeyAsync(int virtualKeyId, string virtualKey, EphemeralKeyMetadata? metadata = null)
         {
             var key = GenerateSecureToken();
@@ -128,7 +106,6 @@ namespace ConduitLLM.Gateway.Services
                 VirtualKeyId = virtualKeyId,
                 CreatedAt = DateTimeOffset.UtcNow,
                 ExpiresAt = expiresAt,
-                IsConsumed = false,
                 Metadata = metadata,
                 EncryptedVirtualKey = encryptedVirtualKey
             };
@@ -144,33 +121,6 @@ namespace ConduitLLM.Gateway.Services
                 ExpiresAt = expiresAt,
                 ExpiresInSeconds = TTLSeconds
             };
-        }
-
-        /// <inheritdoc />
-        public async Task<int?> ValidateAndConsumeKeyAsync(string key)
-        {
-            var keyData = await ValidateAndConsumeKeyInternalAsync(key);
-            if (keyData == null)
-            {
-                return null;
-            }
-
-            Logger.LogInformation("Consumed ephemeral key for virtual key {VirtualKeyId}", keyData.VirtualKeyId);
-            return keyData.VirtualKeyId;
-        }
-
-        /// <inheritdoc />
-        public async Task<int?> ConsumeKeyAsync(string key)
-        {
-            var keyData = await ConsumeKeyInternalAsync(key);
-            if (keyData == null)
-            {
-                return null;
-            }
-
-            Logger.LogInformation("Consumed and deleted ephemeral key for streaming, virtual key {VirtualKeyId}",
-                keyData.VirtualKeyId);
-            return keyData.VirtualKeyId;
         }
 
         /// <inheritdoc />

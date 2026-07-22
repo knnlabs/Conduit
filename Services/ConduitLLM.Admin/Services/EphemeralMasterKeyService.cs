@@ -24,6 +24,13 @@ namespace ConduitLLM.Admin.Services
         Task<bool> ValidateAndConsumeKeyAsync(string key);
 
         /// <summary>
+        /// Validates an ephemeral master key without consuming it.
+        /// </summary>
+        /// <param name="key">The ephemeral master key to validate.</param>
+        /// <returns>True when the key exists, is unexpired, valid, and unconsumed.</returns>
+        Task<bool> IsKeyValidAsync(string key);
+
+        /// <summary>
         /// Marks an ephemeral master key as consumed without deleting it (for streaming)
         /// </summary>
         /// <param name="key">The ephemeral master key to mark as consumed</param>
@@ -47,7 +54,7 @@ namespace ConduitLLM.Admin.Services
     /// <summary>
     /// Implementation of the ephemeral master key service for Admin API authentication
     /// </summary>
-    public class EphemeralMasterKeyService : EphemeralKeyServiceBase<EphemeralMasterKeyData>, IEphemeralMasterKeyService
+    public class EphemeralMasterKeyService : ConsumableEphemeralKeyServiceBase<EphemeralMasterKeyData>, IEphemeralMasterKeyService
     {
         private const int DefaultTTLSeconds = 300; // 5 minutes
 
@@ -124,6 +131,12 @@ namespace ConduitLLM.Admin.Services
 
             Logger.LogInformation("Consumed ephemeral master key");
             return true;
+        }
+
+        /// <inheritdoc />
+        public async Task<bool> IsKeyValidAsync(string key)
+        {
+            return await ValidateKeyAsync(key) is not null;
         }
 
         /// <inheritdoc />

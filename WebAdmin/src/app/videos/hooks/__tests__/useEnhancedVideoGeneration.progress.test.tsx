@@ -95,12 +95,8 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
   });
 
   describe('Enhanced video generation with progress tracking', () => {
-    it('should use progress tracking when enabled', async () => {
-      const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          fallbackToPolling: true,
-        })
-      );
+    it('should delegate progress tracking to the SDK', async () => {
+      const hook = renderHook(() => useEnhancedVideoGeneration());
 
       await act(async () => {
         await hook.result.current.generateVideo({

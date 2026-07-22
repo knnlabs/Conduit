@@ -54,9 +54,9 @@ export class FetchModelAuthorService {
     );
   }
 
-  // TODO: Add getModelCount(id: number) method for efficient model counting
-  // Currently requires multiple API calls: getSeries() then modelSeries.getModels() for each series
-  // This should be a single backend endpoint that returns the total model count for an author
+  // Author-management views fetch authors, series, and models once each and derive counts locally.
+  // If list payload size becomes material, add aggregate counts to the list DTOs rather than an
+  // author-specific endpoint that would reintroduce per-author requests.
 
   /**
    * Create a new model author
