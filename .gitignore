@@ -434,6 +434,11 @@ secrets.json
 # (the broad *credentials* rule above would otherwise silently drop the whole route).
 !WebAdmin/src/app/functions/credentials/
 !WebAdmin/src/app/functions/credentials/**
+# CredentialSelector is credential *selection* logic, not a secret. On Windows
+# (core.ignorecase=true) the *credentials* rule matches "credentialSelector"
+# case-insensitively, so it would silently drop this source file and its tests.
+!Shared/ConduitLLM.Functions/Services/CredentialSelector.cs
+!Tests/ConduitLLM.Tests/Functions/Services/CredentialSelectorTests.cs
 *secret*
 *token*.txt
 *token*.json
