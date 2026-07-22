@@ -15,7 +15,6 @@ import { FetchMediaService } from './services/FetchMediaService';
 import { FetchModelService } from './services/FetchModelService';
 import { FetchModelSeriesService } from './services/FetchModelSeriesService';
 import { FetchModelAuthorService } from './services/FetchModelAuthorService';
-// import { FetchModelCapabilitiesService } from './services/FetchModelCapabilitiesService'; // Disabled - capabilities now embedded in Model
 import { FetchProviderErrorsService } from './services/FetchProviderErrorsService';
 import { ProviderToolsService } from './services/ProviderToolsService';
 import { FetchMetricsService } from './services/FetchMetricsService';
@@ -72,7 +71,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly models: FetchModelService;
   public readonly modelSeries: FetchModelSeriesService;
   public readonly modelAuthors: FetchModelAuthorService;
-  // public readonly modelCapabilities: FetchModelCapabilitiesService; // Disabled - capabilities now embedded in Model
   public readonly providerErrors: FetchProviderErrorsService;
   public readonly providerTools: ProviderToolsService;
   public readonly metrics: FetchMetricsService;
@@ -104,7 +102,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.models = new FetchModelService(this);
     this.modelSeries = new FetchModelSeriesService(this);
     this.modelAuthors = new FetchModelAuthorService(this);
-    // this.modelCapabilities = new FetchModelCapabilitiesService(this); // Disabled - capabilities now embedded in Model
     this.providerErrors = new FetchProviderErrorsService(this);
     this.providerTools = new ProviderToolsService(this);
     this.metrics = new FetchMetricsService(this);
