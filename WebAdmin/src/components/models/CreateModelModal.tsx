@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group, NumberInput, Divider } from '@mantine/core';
+import { TextInput, Select, Switch, Group, NumberInput, Divider } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
 import type { CreateModelDto, ModelSeriesDto } from '@/lib/admin-api';
 
@@ -100,113 +101,102 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
   // Capabilities are now embedded in the Model, no separate selection needed
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
       onClose={handleClose}
       title="Create New Model"
-      size="lg"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Create Model"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Model Name"
-            placeholder="e.g., gpt-4-turbo"
-            required
-            {...form.getInputProps('name')}
-          />
+      <TextInput
+        label="Model Name"
+        placeholder="e.g., gpt-4-turbo"
+        required
+        {...form.getInputProps('name')}
+      />
 
-          <Select
-            label="Model Series"
-            data={seriesOptions}
-            placeholder="Select a series (optional)"
-            {...form.getInputProps('modelSeriesId')}
-          />
+      <Select
+        label="Model Series"
+        data={seriesOptions}
+        placeholder="Select a series (optional)"
+        {...form.getInputProps('modelSeriesId')}
+      />
 
-          <Select
-            label="Tokenizer Type"
-            data={TOKENIZER_SELECT_OPTIONS}
-            placeholder="Select tokenizer type"
-            value={form.values.tokenizerType.toString()}
-            onChange={(value) => form.setFieldValue('tokenizerType', value ? parseInt(value) : TokenizerType.Cl100KBase)}
-            required
-            searchable
-            error={form.errors.tokenizerType}
-          />
+      <Select
+        label="Tokenizer Type"
+        data={TOKENIZER_SELECT_OPTIONS}
+        placeholder="Select tokenizer type"
+        value={form.values.tokenizerType.toString()}
+        onChange={(value) => form.setFieldValue('tokenizerType', value ? parseInt(value) : TokenizerType.Cl100KBase)}
+        required
+        searchable
+        error={form.errors.tokenizerType}
+      />
 
-          <Divider label="Model Capabilities" labelPosition="center" my="md" />
-          
-          <Group grow>
-            <Switch
-              label="Supports Chat"
-              {...form.getInputProps('supportsChat', { type: 'checkbox' })}
-            />
-            <Switch
-              label="Supports Vision"
-              {...form.getInputProps('supportsVision', { type: 'checkbox' })}
-            />
-          </Group>
+      <Divider label="Model Capabilities" labelPosition="center" my="md" />
 
-          <Group grow>
-            <Switch
-              label="Supports Function Calling"
-              {...form.getInputProps('supportsFunctionCalling', { type: 'checkbox' })}
-            />
-            <Switch
-              label="Supports Streaming"
-              {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
-            />
-          </Group>
+      <Group grow>
+        <Switch
+          label="Supports Chat"
+          {...form.getInputProps('supportsChat', { type: 'checkbox' })}
+        />
+        <Switch
+          label="Supports Vision"
+          {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+        />
+      </Group>
 
-          <Group grow>
-            <Switch
-              label="Supports Image Generation"
-              {...form.getInputProps('supportsImageGeneration', { type: 'checkbox' })}
-            />
-            <Switch
-              label="Supports Video Generation"
-              {...form.getInputProps('supportsVideoGeneration', { type: 'checkbox' })}
-            />
-          </Group>
+      <Group grow>
+        <Switch
+          label="Supports Function Calling"
+          {...form.getInputProps('supportsFunctionCalling', { type: 'checkbox' })}
+        />
+        <Switch
+          label="Supports Streaming"
+          {...form.getInputProps('supportsStreaming', { type: 'checkbox' })}
+        />
+      </Group>
 
-          <Switch
-            label="Supports Embeddings"
-            {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
-          />
+      <Group grow>
+        <Switch
+          label="Supports Image Generation"
+          {...form.getInputProps('supportsImageGeneration', { type: 'checkbox' })}
+        />
+        <Switch
+          label="Supports Video Generation"
+          {...form.getInputProps('supportsVideoGeneration', { type: 'checkbox' })}
+        />
+      </Group>
 
-          <Divider label="Token Limits" labelPosition="center" my="md" />
+      <Switch
+        label="Supports Embeddings"
+        {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
+      />
 
-          <Group grow>
-            <NumberInput
-              label="Max Input Tokens"
-              placeholder="e.g., 128000"
-              min={0}
-              {...form.getInputProps('maxInputTokens')}
-            />
-            <NumberInput
-              label="Max Output Tokens"
-              placeholder="e.g., 4096"
-              min={0}
-              {...form.getInputProps('maxOutputTokens')}
-            />
-          </Group>
+      <Divider label="Token Limits" labelPosition="center" my="md" />
 
-          <Divider my="md" />
+      <Group grow>
+        <NumberInput
+          label="Max Input Tokens"
+          placeholder="e.g., 128000"
+          min={0}
+          {...form.getInputProps('maxInputTokens')}
+        />
+        <NumberInput
+          label="Max Output Tokens"
+          placeholder="e.g., 4096"
+          min={0}
+          {...form.getInputProps('maxOutputTokens')}
+        />
+      </Group>
 
-          <Switch
-            label="Active"
-            {...form.getInputProps('isActive', { type: 'checkbox' })}
-          />
+      <Divider my="md" />
 
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading}>
-              Create Model
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <Switch
+        label="Active"
+        {...form.getInputProps('isActive', { type: 'checkbox' })}
+      />
+    </EntityFormModal>
   );
 }

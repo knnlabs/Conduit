@@ -1,11 +1,9 @@
 'use client';
 
 import {
-  Modal,
   Stack,
   NumberInput,
   TextInput,
-  Button,
   Group,
   Text,
   Alert,
@@ -18,6 +16,7 @@ import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyGroupDto, AdjustBalanceDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 
 interface AddCreditsModalProps {
   opened: boolean;
@@ -64,7 +63,7 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
   };
 
   return (
-    <Modal
+    <EntityFormModal
       opened={opened}
       onClose={handleClose}
       title={
@@ -74,73 +73,60 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
         </Group>
       }
       size="md"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Add Credits"
+      submitLeftSection={<IconCash size={16} />}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
-          <Card withBorder>
-            <Stack gap="sm">
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">Group</Text>
-                <Text fw={500}>{group.groupName}</Text>
-              </Group>
+      <Card withBorder>
+        <Stack gap="sm">
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">Group</Text>
+            <Text fw={500}>{group.groupName}</Text>
+          </Group>
 
-              <Group justify="space-between">
-                <Text size="sm" c="dimmed">Current Balance</Text>
-                <Badge
-                  color={getBalanceColor(group.balance)}
-                  variant={group.balance <= 0 ? 'filled' : 'light'}
-                >
-                  {formatters.currency(group.balance)}
-                </Badge>
-              </Group>
-            </Stack>
-          </Card>
-
-          <NumberInput
-            label="Amount to Add"
-            placeholder="0.00"
-            prefix="$"
-            min={0.01}
-            max={1000000}
-            decimalScale={2}
-            fixedDecimalScale
-            thousandSeparator=","
-            required
-            autoFocus
-            {...form.getInputProps('amount')}
-          />
-
-          <TextInput
-            label="Description"
-            placeholder="Reason for adding credits (optional)"
-            {...form.getInputProps('description')}
-          />
-
-          {form.values.amount > 0 && (
-            <Alert icon={<IconAlertCircle size={16} />} color="blue">
-              <Stack gap={4}>
-                <Text size="sm">New balance after adding credits:</Text>
-                <Text size="lg" fw={700} c={getBalanceColor(newBalance)}>
-                  {formatters.currency(newBalance)}
-                </Text>
-              </Stack>
-            </Alert>
-          )}
-
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={handleClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              loading={loading}
-              leftSection={<IconCash size={16} />}
+          <Group justify="space-between">
+            <Text size="sm" c="dimmed">Current Balance</Text>
+            <Badge
+              color={getBalanceColor(group.balance)}
+              variant={group.balance <= 0 ? 'filled' : 'light'}
             >
-              Add Credits
-            </Button>
+              {formatters.currency(group.balance)}
+            </Badge>
           </Group>
         </Stack>
-      </form>
-    </Modal>
+      </Card>
+
+      <NumberInput
+        label="Amount to Add"
+        placeholder="0.00"
+        prefix="$"
+        min={0.01}
+        max={1000000}
+        decimalScale={2}
+        fixedDecimalScale
+        thousandSeparator=","
+        required
+        autoFocus
+        {...form.getInputProps('amount')}
+      />
+
+      <TextInput
+        label="Description"
+        placeholder="Reason for adding credits (optional)"
+        {...form.getInputProps('description')}
+      />
+
+      {form.values.amount > 0 && (
+        <Alert icon={<IconAlertCircle size={16} />} color="blue">
+          <Stack gap={4}>
+            <Text size="sm">New balance after adding credits:</Text>
+            <Text size="lg" fw={700} c={getBalanceColor(newBalance)}>
+              {formatters.currency(newBalance)}
+            </Text>
+          </Stack>
+        </Alert>
+      )}
+    </EntityFormModal>
   );
 }

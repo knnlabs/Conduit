@@ -1,11 +1,8 @@
 'use client';
 
 import {
-  Modal,
-  Stack,
   TextInput,
   NumberInput,
-  Button,
   Group,
   Text,
   Alert,
@@ -15,6 +12,7 @@ import { IconAlertCircle, IconLayersLinked } from '@tabler/icons-react';
 import type { CreateVirtualKeyGroupRequestDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 
 interface CreateVirtualKeyGroupModalProps {
   opened: boolean;
@@ -54,7 +52,7 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
   });
 
   return (
-    <Modal
+    <EntityFormModal
       opened={opened}
       onClose={handleClose}
       title={
@@ -64,50 +62,40 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
         </Group>
       }
       size="md"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Create Group"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
-          <TextInput
-            label="Group Name"
-            placeholder="Enter a name for this group"
-            required
-            {...form.getInputProps('groupName')}
-          />
+      <TextInput
+        label="Group Name"
+        placeholder="Enter a name for this group"
+        required
+        {...form.getInputProps('groupName')}
+      />
 
-          <TextInput
-            label="External Group ID"
-            placeholder="Optional external identifier"
-            {...form.getInputProps('externalGroupId')}
-          />
+      <TextInput
+        label="External Group ID"
+        placeholder="Optional external identifier"
+        {...form.getInputProps('externalGroupId')}
+      />
 
-          <NumberInput
-            label="Initial Balance"
-            placeholder="0.00"
-            prefix="$"
-            min={0}
-            decimalScale={2}
-            fixedDecimalScale
-            thousandSeparator=","
-            {...form.getInputProps('initialBalance')}
-          />
+      <NumberInput
+        label="Initial Balance"
+        placeholder="0.00"
+        prefix="$"
+        min={0}
+        decimalScale={2}
+        fixedDecimalScale
+        thousandSeparator=","
+        {...form.getInputProps('initialBalance')}
+      />
 
-          <Alert icon={<IconAlertCircle size={16} />} color="blue">
-            <Text size="sm">
-              Virtual keys in this group will share the group&apos;s balance.
-              You can add more credits later.
-            </Text>
-          </Alert>
-
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={handleClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading}>
-              Create Group
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <Alert icon={<IconAlertCircle size={16} />} color="blue">
+        <Text size="sm">
+          Virtual keys in this group will share the group&apos;s balance.
+          You can add more credits later.
+        </Text>
+      </Alert>
+    </EntityFormModal>
   );
 }

@@ -20,6 +20,8 @@ interface EntityFormModalProps {
   submitLabel: ReactNode;
   /** Whether the submit button is disabled. */
   submitDisabled?: boolean;
+  /** Optional icon/element rendered in the submit button's left section. */
+  submitLeftSection?: ReactNode;
   /** Cancel button label. Default: 'Cancel'. */
   cancelLabel?: ReactNode;
   /** Form fields. */
@@ -41,6 +43,7 @@ export function EntityFormModal({
   loading,
   submitLabel,
   submitDisabled,
+  submitLeftSection,
   cancelLabel = 'Cancel',
   children,
 }: EntityFormModalProps) {
@@ -50,10 +53,10 @@ export function EntityFormModal({
         <Stack>
           {children}
           <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
+            <Button variant="subtle" onClick={onClose} disabled={loading}>
               {cancelLabel}
             </Button>
-            <Button type="submit" loading={loading} disabled={submitDisabled}>
+            <Button type="submit" loading={loading} disabled={submitDisabled} leftSection={submitLeftSection}>
               {submitLabel}
             </Button>
           </Group>
