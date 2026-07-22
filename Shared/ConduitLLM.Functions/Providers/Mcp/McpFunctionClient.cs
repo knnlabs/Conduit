@@ -120,6 +120,14 @@ public sealed partial class McpFunctionClient : IFunctionClient, IDynamicToolPro
                 nameof(parameters));
         }
 
+        var allow = _settings.AllowedToolSet;
+        if (allow is not null && !allow.Contains(toolName))
+        {
+            throw new ArgumentException(
+                $"MCP tool '{toolName}' is not in the configured allowlist.",
+                nameof(parameters));
+        }
+
         var stopwatch = Stopwatch.StartNew();
         try
         {
