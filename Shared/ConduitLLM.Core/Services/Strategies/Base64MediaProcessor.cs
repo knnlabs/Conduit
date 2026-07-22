@@ -132,6 +132,7 @@ namespace ConduitLLM.Core.Services.Strategies
                 FileSizeBytes = storageResult.SizeBytes,
                 ContentType = metadata.ContentType,
                 GeneratedByModel = context.ModelInfo?.ModelId ?? "",
+                Provider = context.ModelInfo?.ProviderName ?? "",
                 GenerationPrompt = context.Prompt,
                 GeneratedAt = DateTime.UtcNow,
                 Metadata = new Dictionary<string, object>

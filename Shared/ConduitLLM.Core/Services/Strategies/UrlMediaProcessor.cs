@@ -323,6 +323,7 @@ namespace ConduitLLM.Core.Services.Strategies
                 FileSizeBytes = contentLength,
                 ContentType = metadata.ContentType,
                 GeneratedByModel = context.ModelInfo?.ModelId ?? "",
+                Provider = context.ModelInfo?.ProviderName ?? "",
                 GenerationPrompt = context.Prompt,
                 GeneratedAt = DateTime.UtcNow,
                 Metadata = eventMetadata,

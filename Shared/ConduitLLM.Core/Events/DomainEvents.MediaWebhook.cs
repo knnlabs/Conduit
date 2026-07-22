@@ -46,6 +46,11 @@ namespace ConduitLLM.Core.Events
         public string GeneratedByModel { get; init; } = string.Empty;
 
         /// <summary>
+        /// Provider used to generate this media.
+        /// </summary>
+        public string Provider { get; init; } = string.Empty;
+
+        /// <summary>
         /// Prompt used to generate this media
         /// </summary>
         public string GenerationPrompt { get; init; } = string.Empty;
