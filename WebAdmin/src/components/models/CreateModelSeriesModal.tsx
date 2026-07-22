@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text } from '@mantine/core';
+import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea } from '@mantine/core';
 import { CodeHighlight } from '@mantine/code-highlight';
 import { useForm } from '@mantine/form';
-import { IconAlertCircle } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { JsonEditorField } from '@/components/common/JsonEditorField';
 import { notify } from '@/lib/notifications';
 import type { CreateModelSeriesDto, ModelAuthorDto } from '@/lib/admin-api';
 
@@ -33,8 +33,7 @@ const DEFAULT_PARAMETERS = JSON.stringify({
 
 export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateModelSeriesModalProps) {
   const [authors, setAuthors] = useState<ModelAuthorDto[]>([]);
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const [showJsonPreview, setShowJsonPreview] = useState(false);
+  const [jsonValid, setJsonValid] = useState(true);
 
   const form = useForm<CreateModelSeriesDto & { parameters?: string }>({
     initialValues: {
@@ -52,12 +51,9 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
         if (value) {
           try {
             JSON.parse(value);
-            setJsonError(null);
             return null;
           } catch {
-            const error = 'Invalid JSON format';
-            setJsonError(error);
-            return error;
+            return 'Invalid JSON format';
           }
         }
         return null;
@@ -87,7 +83,7 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
   });
 
   const handleClose = useCallback(() => {
-    setJsonError(null);
+    setJsonValid(true);
     baseHandleClose();
   }, [baseHandleClose]);
 
@@ -112,17 +108,6 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
       value: String(a.id),
       label: a.name ?? 'Unknown Author'
     }));
-
-  const validateJson = (value: string) => {
-    try {
-      if (value) {
-        JSON.parse(value);
-        setJsonError(null);
-      }
-    } catch {
-      setJsonError('Invalid JSON format');
-    }
-  };
 
   return (
     <Modal
@@ -162,46 +147,17 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
             {...form.getInputProps('description')}
           />
 
-          <Stack gap="xs">
-            <Group justify="space-between">
-              <Text size="sm" fw={500}>
-                Parameters (JSON)
-              </Text>
-              <Button
-                size="xs"
-                variant="subtle"
-                onClick={() => setShowJsonPreview(!showJsonPreview)}
-              >
-                {showJsonPreview ? 'Hide' : 'Show'} Preview
-              </Button>
-            </Group>
-
-            <Textarea
-              placeholder="JSON parameters for UI generation..."
-              rows={8}
-              style={{ fontFamily: 'monospace' }}
-              {...form.getInputProps('parameters')}
-              onChange={(e) => {
-                form.setFieldValue('parameters', e.currentTarget.value);
-                validateJson(e.currentTarget.value);
-              }}
-              error={jsonError}
-            />
-
-            {showJsonPreview && form.values.parameters && !jsonError && (
-              <CodeHighlight
-                code={form.values.parameters}
-                language="json"
-                withCopyButton={false}
-              />
+          <JsonEditorField
+            label="Parameters (JSON)"
+            value={form.values.parameters ?? ''}
+            onChange={(v) => form.setFieldValue('parameters', v)}
+            onValidityChange={setJsonValid}
+            placeholder="JSON parameters for UI generation..."
+            collapsiblePreview
+            renderPreview={(v) => (
+              <CodeHighlight code={v} language="json" withCopyButton={false} />
             )}
-
-            {jsonError && (
-              <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
-                {jsonError}
-              </Alert>
-            )}
-          </Stack>
+          />
 
           <Switch
             label="Active"
@@ -212,7 +168,7 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
             <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" loading={loading} disabled={!!jsonError}>
+            <Button type="submit" loading={loading} disabled={!jsonValid}>
               Create Series
             </Button>
           </Group>

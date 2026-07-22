@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Modal, TextInput, Button, Stack, Group, Textarea, Alert, Text } from '@mantine/core';
+import { Modal, TextInput, Button, Stack, Group, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconAlertCircle } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { JsonEditorField } from '@/components/common/JsonEditorField';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 import type { ModelSeriesDto, UpdateModelSeriesDto } from '@/lib/admin-api';
 
@@ -18,7 +18,7 @@ interface EditModelSeriesModalProps {
 }
 
 export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: EditModelSeriesModalProps) {
-  const [jsonError, setJsonError] = useState<string | null>(null);
+  const [jsonValid, setJsonValid] = useState(true);
 
   const form = useForm<UpdateModelSeriesDto & { parameters?: string }>({
     initialValues: {
@@ -33,12 +33,9 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
         if (value) {
           try {
             JSON.parse(value);
-            setJsonError(null);
             return null;
           } catch {
-            const error = 'Invalid JSON format';
-            setJsonError(error);
-            return error;
+            return 'Invalid JSON format';
           }
         }
         return null;
@@ -80,22 +77,9 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
   });
 
   const handleClose = useCallback(() => {
-    setJsonError(null);
+    setJsonValid(true);
     baseHandleClose();
   }, [baseHandleClose]);
-
-  // Removed authorOptions as it's no longer used
-
-  const validateJson = (value: string) => {
-    try {
-      if (value) {
-        JSON.parse(value);
-        setJsonError(null);
-      }
-    } catch {
-      setJsonError('Invalid JSON format');
-    }
-  };
 
   return (
     <Modal
@@ -121,43 +105,29 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
             {...form.getInputProps('description')}
           />
 
-          <Stack gap="xs">
-            <Text size="sm" fw={500}>
-              Parameters (JSON)
-            </Text>
-            
-            <ParameterPreview 
-              parametersJson={form.values.parameters ?? ''}
-              context="chat"
-              label="Preview UI Components"
-              maxHeight={300}
-            />
-            
-            <Textarea
-              placeholder="JSON parameters for UI generation..."
-              rows={8}
-              style={{ fontFamily: 'monospace' }}
-              {...form.getInputProps('parameters')}
-              onChange={(e) => {
-                form.setFieldValue('parameters', e.currentTarget.value);
-                validateJson(e.currentTarget.value);
-              }}
-              error={jsonError}
-            />
-
-            {jsonError && (
-              <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
-                {jsonError}
-              </Alert>
+          <JsonEditorField
+            label="Parameters (JSON)"
+            value={form.values.parameters ?? ''}
+            onChange={(v) => form.setFieldValue('parameters', v)}
+            onValidityChange={setJsonValid}
+            placeholder="JSON parameters for UI generation..."
+            previewPosition="above"
+            renderPreview={(v) => (
+              <ParameterPreview
+                parametersJson={v}
+                context="chat"
+                label="Preview UI Components"
+                maxHeight={300}
+              />
             )}
-          </Stack>
+          />
 
 
           <Group justify="flex-end">
             <Button variant="subtle" onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="submit" loading={loading} disabled={!!jsonError}>
+            <Button type="submit" loading={loading} disabled={!jsonValid}>
               Update Series
             </Button>
           </Group>
