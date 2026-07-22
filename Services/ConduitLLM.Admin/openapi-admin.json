@@ -23951,11 +23951,6 @@
             "description": "System health percentage (100 minus error rate).",
             "format": "double"
           },
-          "providerHealth": {
-            "type": "integer",
-            "description": "Provider health percentage.",
-            "format": "int32"
-          },
           "responseTime": {
             "type": "number",
             "description": "Average response time in milliseconds for the interval.",
@@ -28821,6 +28816,11 @@
             "description": "Number of unhealthy services.",
             "format": "int32"
           },
+          "unknown": {
+            "type": "integer",
+            "description": "Number of services whose status could not be determined.",
+            "format": "int32"
+          },
           "total": {
             "type": "integer",
             "description": "Total number of monitored services.",
@@ -28846,8 +28846,11 @@
           },
           "uptime": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
-            "type": "string",
-            "description": "How long the service has been running."
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "How long the service has been running, or `null` when it is not known\r\n(e.g. a service reporting via heartbeat that has not been seen yet)."
           },
           "lastCheck": {
             "type": "string",
@@ -28855,8 +28858,11 @@
             "format": "date-time"
           },
           "responseTime": {
-            "type": "integer",
-            "description": "Health check response time in milliseconds.",
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Health check response time in milliseconds, or `null` when a response time is\r\nnot applicable (e.g. liveness derived from a heartbeat rather than a probe).",
             "format": "int32"
           },
           "details": {

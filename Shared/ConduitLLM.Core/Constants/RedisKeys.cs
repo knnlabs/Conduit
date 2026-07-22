@@ -184,4 +184,22 @@ public static class RedisKeys
     }
 
     #endregion
+
+    #region Service Health
+
+    /// <summary>
+    /// Keys for cross-service liveness heartbeats (#1067). The Gateway publishes a heartbeat
+    /// event; the Admin records the last-seen snapshot under these keys so the health dashboard
+    /// can report a service's real status from staleness. Used by ServiceHeartbeatStore.
+    /// </summary>
+    public static class ServiceHeartbeat
+    {
+        /// <summary>Logical service id for the Gateway ("core-api") heartbeat.</summary>
+        public const string GatewayServiceId = "gateway";
+
+        /// <summary>Last-seen heartbeat snapshot for a service, keyed by its logical service id.</summary>
+        public static string For(string serviceId) => $"health:heartbeat:{serviceId}";
+    }
+
+    #endregion
 }

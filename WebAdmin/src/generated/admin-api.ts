@@ -4283,11 +4283,6 @@ export interface components {
        */
       systemHealth?: number;
       /**
-       * Format: int32
-       * @description Provider health percentage.
-       */
-      providerHealth?: number;
-      /**
        * Format: double
        * @description Average response time in milliseconds for the interval.
        */
@@ -6399,6 +6394,11 @@ export interface components {
       unhealthy?: number;
       /**
        * Format: int32
+       * @description Number of services whose status could not be determined.
+       */
+      unknown?: number;
+      /**
+       * Format: int32
        * @description Total number of monitored services.
        */
       total?: number;
@@ -6411,8 +6411,9 @@ export interface components {
       name?: string;
       /** @description Health status of the service (healthy, degraded, or unhealthy). */
       status?: string;
-      /** @description How long the service has been running. */
-      uptime?: string;
+      /** @description How long the service has been running, or `null` when it is not known
+       *     (e.g. a service reporting via heartbeat that has not been seen yet). */
+      uptime?: null | string;
       /**
        * Format: date-time
        * @description Timestamp of the last health check (UTC).
@@ -6420,9 +6421,10 @@ export interface components {
       lastCheck?: string;
       /**
        * Format: int32
-       * @description Health check response time in milliseconds.
+       * @description Health check response time in milliseconds, or `null` when a response time is
+       *     not applicable (e.g. liveness derived from a heartbeat rather than a probe).
        */
-      responseTime?: number;
+      responseTime?: null | number;
       /** @description Service-specific detail values (shape varies per service). */
       details?: unknown;
     };

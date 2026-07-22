@@ -66,6 +66,11 @@ namespace ConduitLLM.Admin.DTOs
         public int Unhealthy { get; set; }
 
         /// <summary>
+        /// Number of services whose status could not be determined.
+        /// </summary>
+        public int Unknown { get; set; }
+
+        /// <summary>
         /// Total number of monitored services.
         /// </summary>
         public int Total { get; set; }
@@ -92,9 +97,10 @@ namespace ConduitLLM.Admin.DTOs
         public string Status { get; set; } = string.Empty;
 
         /// <summary>
-        /// How long the service has been running.
+        /// How long the service has been running, or <c>null</c> when it is not known
+        /// (e.g. a service reporting via heartbeat that has not been seen yet).
         /// </summary>
-        public TimeSpan Uptime { get; set; }
+        public TimeSpan? Uptime { get; set; }
 
         /// <summary>
         /// Timestamp of the last health check (UTC).
@@ -102,9 +108,10 @@ namespace ConduitLLM.Admin.DTOs
         public DateTime LastCheck { get; set; }
 
         /// <summary>
-        /// Health check response time in milliseconds.
+        /// Health check response time in milliseconds, or <c>null</c> when a response time is
+        /// not applicable (e.g. liveness derived from a heartbeat rather than a probe).
         /// </summary>
-        public int ResponseTime { get; set; }
+        public int? ResponseTime { get; set; }
 
         /// <summary>
         /// Service-specific detail values (shape varies per service).
@@ -297,11 +304,6 @@ namespace ConduitLLM.Admin.DTOs
         /// System health percentage (100 minus error rate).
         /// </summary>
         public double SystemHealth { get; set; }
-
-        /// <summary>
-        /// Provider health percentage.
-        /// </summary>
-        public int ProviderHealth { get; set; }
 
         /// <summary>
         /// Average response time in milliseconds for the interval.

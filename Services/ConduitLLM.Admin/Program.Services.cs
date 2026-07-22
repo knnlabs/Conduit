@@ -56,6 +56,12 @@ public partial class Program
             startupLogger.LogWarning("Using in-memory cache — ephemeral keys will not work across instances");
         }
 
+        // Cross-service liveness heartbeat store (#1067): records the Gateway heartbeat the
+        // Admin consumes over the event bus so the health dashboard reports the Gateway's real
+        // status. Singleton so its in-process fallback (used when Redis is absent) is shared
+        // between the event handler (writer) and the dashboard endpoint (reader).
+        builder.Services.AddSingleton<ConduitLLM.Admin.Interfaces.IServiceHeartbeatStore, ConduitLLM.Admin.Services.ServiceHeartbeatStore>();
+
         // Add SignalR with shared configuration (MessagePack, Redis backplane)
         var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
         builder.Services.AddConduitSignalR(
