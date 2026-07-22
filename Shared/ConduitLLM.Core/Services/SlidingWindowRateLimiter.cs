@@ -29,7 +29,7 @@ namespace ConduitLLM.Core.Services
         // ARGV[2] = window size in milliseconds
         // ARGV[3] = max allowed requests in the window
         // Returns {isAllowed (0/1), currentCount, limit}
-        private const string SLIDING_WINDOW_SCRIPT = @"
+        private const string SlidingWindowScript = @"
             local key = KEYS[1]
             local now = tonumber(ARGV[1])
             local window = tonumber(ARGV[2])
@@ -49,8 +49,10 @@ namespace ConduitLLM.Core.Services
             -- Add new entry with unique member (timestamp:sequence)
             redis.call('ZADD', key, now, now .. ':' .. redis.call('INCR', key .. ':seq'))
 
-            -- Set expiry to window size (converted from ms to seconds) + buffer
-            redis.call('EXPIRE', key, math.ceil(window / 1000) + 60)
+            -- Expire both the window and its sequence counter after the same idle period.
+            local expiry = math.ceil(window / 1000) + 60
+            redis.call('EXPIRE', key, expiry)
+            redis.call('EXPIRE', key .. ':seq', expiry)
 
             -- Return allowed, current count + 1, limit
             return {1, current + 1, limit}
@@ -77,7 +79,7 @@ namespace ConduitLLM.Core.Services
             {
                 var db = _redis.GetDatabase();
                 var result = await db.ScriptEvaluateAsync(
-                    SLIDING_WINDOW_SCRIPT,
+                    SlidingWindowScript,
                     new RedisKey[] { key },
                     new RedisValue[] { nowMs, windowMs, limit });
 
