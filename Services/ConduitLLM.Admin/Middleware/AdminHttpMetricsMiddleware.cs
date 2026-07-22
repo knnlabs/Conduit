@@ -1,4 +1,4 @@
-using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Routing;
 using ConduitLLM.Core.Middleware;
 using Prometheus;
 
@@ -10,6 +10,8 @@ namespace ConduitLLM.Admin.Middleware
     /// </summary>
     public class AdminHttpMetricsMiddleware : HttpMetricsMiddlewareBase
     {
+        private const string UnmatchedEndpointLabel = "__unmatched__";
+
         // Core HTTP metrics
         private static readonly Counter RequestsTotal = Prometheus.Metrics
             .CreateCounter("conduit_admin_http_requests_total", "Total number of HTTP requests to Admin API",
@@ -56,10 +58,6 @@ namespace ConduitLLM.Admin.Middleware
                     LabelNames = new[] { "method", "endpoint", "status_code", "error_type" }
                 });
 
-        // Regex patterns for path normalization
-        private static readonly Regex GuidPattern = new(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", RegexOptions.Compiled);
-        private static readonly Regex NumberPattern = new(@"\b\d+\b", RegexOptions.Compiled);
-
         public AdminHttpMetricsMiddleware(RequestDelegate next, ILogger<AdminHttpMetricsMiddleware> logger)
             : base(next, logger) { }
 
@@ -67,35 +65,20 @@ namespace ConduitLLM.Admin.Middleware
 
         protected override string GetNormalizedPath(HttpContext context)
         {
-            var path = context.Request.Path.Value ?? "/";
-
-            if (string.IsNullOrEmpty(path))
-                return "/";
-
-            path = path.ToLowerInvariant();
-            path = GuidPattern.Replace(path, "{id}");
-            path = NumberPattern.Replace(path, "{id}");
-
-            // Specific normalization for Admin API endpoints
-            var normalizations = new Dictionary<string, string>
+            if (context.GetEndpoint() is RouteEndpoint routeEndpoint)
             {
-                { "/api/virtualkeys/{id}", "/api/virtualkeys/{id}" },
-                { "/api/providerhealth/{id}", "/api/providerhealth/{id}" },
-                { "/api/modelmappings/{id}", "/api/modelmappings/{id}" },
-                { "/api/providers/{id}", "/api/providers/{id}" },
-                { "/api/providers/{id}/test", "/api/providers/{id}/test" },
-                { "/api/providerhealth/providers/{id}", "/api/providerhealth/providers/{id}" }
-            };
-
-            foreach (var (pattern, normalized) in normalizations)
-            {
-                if (path.StartsWith(pattern.Replace("{id}", "")))
+                var routeTemplate = routeEndpoint.RoutePattern.RawText;
+                if (!string.IsNullOrWhiteSpace(routeTemplate))
                 {
-                    return normalized;
+                    return routeTemplate.StartsWith('/')
+                        ? routeTemplate.ToLowerInvariant()
+                        : $"/{routeTemplate.ToLowerInvariant()}";
                 }
             }
 
-            return path;
+            // Never put the raw request path into a label. Prometheus retains every label tuple
+            // for the process lifetime, so arbitrary 404 paths must share one bounded bucket.
+            return UnmatchedEndpointLabel;
         }
 
         protected override void IncrementActiveRequests(string method, string path)
