@@ -336,7 +336,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             }
         }
 
-        private static CoreModels.ProviderToolUsage? MapGroqHostedToolUsage(
+        internal static CoreModels.ProviderToolUsage? MapGroqHostedToolUsage(
             System.Text.Json.JsonElement? groqExtension)
         {
             if (groqExtension is not { ValueKind: System.Text.Json.JsonValueKind.Object } extension ||

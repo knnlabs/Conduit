@@ -1,169 +1,69 @@
 using System.Text.Json;
 
-using ConduitLLM.Core.Models;
+namespace ConduitLLM.Providers.Streaming;
 
-namespace ConduitLLM.Providers.Streaming
+/// <summary>
+/// Transforms Groq-specific streaming usage data into the OpenAI-compatible shape.
+/// </summary>
+public static class GroqChunkConverter
 {
     /// <summary>
-    /// Chunk converter for Groq streaming responses.
+    /// Transforms a Groq chunk to expose <c>x_groq.usage</c> as the standard usage field.
     /// </summary>
-    /// <remarks>
-    /// Groq uses a non-standard location for usage data. Instead of the standard OpenAI
-    /// 'usage' field, Groq places usage information in 'x_groq.usage'. This converter
-    /// extracts and maps that data to the standard format.
-    ///
-    /// All other fields follow the standard OpenAI streaming format.
-    /// </remarks>
-    public sealed class GroqChunkConverter : SseChunkConverterBase, IChunkConverter<JsonElement>
+    /// <param name="chunk">The original Groq chunk.</param>
+    /// <returns>JSON with usage data in the standard location.</returns>
+    public static string ExtractGroqUsageJson(JsonElement chunk)
     {
-        /// <summary>
-        /// Singleton instance for reuse.
-        /// </summary>
-        public static readonly GroqChunkConverter Instance = new();
-
-        private static readonly JsonSerializerOptions DefaultJsonOptions = new()
+        if (!chunk.TryGetProperty("x_groq", out var xGroq) ||
+            !xGroq.TryGetProperty("usage", out var xGroqUsage))
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
-
-        /// <inheritdoc />
-        public ChatCompletionChunk? Convert(JsonElement providerChunk, string modelId)
-        {
-            try
-            {
-                // Transform the chunk to extract x_groq.usage into standard usage field
-                var transformedJson = ExtractGroqUsageJson(providerChunk);
-                var chunk = JsonSerializer.Deserialize<ChatCompletionChunk>(transformedJson, DefaultJsonOptions);
-
-                if (chunk != null && !string.IsNullOrEmpty(modelId))
-                {
-                    chunk.Model = modelId;
-                    chunk.OriginalModelAlias = modelId;
-                }
-
-                if (chunk is not null)
-                {
-                    chunk.ProviderToolUsage = ExtractHostedToolUsage(providerChunk);
-                }
-
-                return chunk;
-            }
-            catch (JsonException)
-            {
-                return null;
-            }
+            return chunk.GetRawText();
         }
 
-        /// <inheritdoc />
-        public bool IsErrorChunk(JsonElement chunk, out string? errorMessage)
-            => IsOpenAIStyleErrorChunk(chunk, out errorMessage);
-
-        /// <inheritdoc />
-        public bool IsFinalChunk(JsonElement chunk)
-            => IsOpenAIStyleFinalChunk(chunk);
-
-        /// <summary>
-        /// Transforms a Groq chunk to extract x_groq.usage into the standard usage field.
-        /// Shared by this converter and <c>GroqClient</c>'s raw-chunk transform.
-        /// </summary>
-        /// <param name="chunk">The original Groq chunk.</param>
-        /// <returns>JSON string with usage data in the standard location.</returns>
-        public static string ExtractGroqUsageJson(JsonElement chunk)
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
         {
-            // Check if x_groq.usage exists
-            if (!chunk.TryGetProperty("x_groq", out var xGroq) ||
-                !xGroq.TryGetProperty("usage", out var xGroqUsage))
+            writer.WriteStartObject();
+
+            foreach (var property in chunk.EnumerateObject())
             {
-                // No transformation needed
-                return chunk.GetRawText();
+                if (property.Name != "x_groq")
+                {
+                    property.WriteTo(writer);
+                }
             }
 
-            // Create a new JSON object with usage extracted from x_groq
-            using var stream = new MemoryStream();
-            using (var writer = new Utf8JsonWriter(stream))
+            writer.WritePropertyName("usage");
+            writer.WriteStartObject();
+
+            if (xGroqUsage.TryGetProperty("prompt_tokens", out var promptTokens))
             {
-                writer.WriteStartObject();
-
-                // Copy all existing properties except x_groq
-                foreach (var property in chunk.EnumerateObject())
-                {
-                    if (property.Name != "x_groq")
-                    {
-                        property.WriteTo(writer);
-                    }
-                }
-
-                // Add usage field with data from x_groq.usage
-                writer.WritePropertyName("usage");
-                writer.WriteStartObject();
-
-                if (xGroqUsage.TryGetProperty("prompt_tokens", out var promptTokens))
-                {
-                    writer.WriteNumber("prompt_tokens", promptTokens.GetInt32());
-                }
-
-                if (xGroqUsage.TryGetProperty("completion_tokens", out var completionTokens))
-                {
-                    writer.WriteNumber("completion_tokens", completionTokens.GetInt32());
-                }
-
-                if (xGroqUsage.TryGetProperty("total_tokens", out var totalTokens))
-                {
-                    writer.WriteNumber("total_tokens", totalTokens.GetInt32());
-                }
-
-                writer.WriteEndObject(); // End usage
-                writer.WriteEndObject(); // End root
+                writer.WriteNumber("prompt_tokens", promptTokens.GetInt32());
             }
 
-            return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+            if (xGroqUsage.TryGetProperty("completion_tokens", out var completionTokens))
+            {
+                writer.WriteNumber("completion_tokens", completionTokens.GetInt32());
+            }
+
+            if (xGroqUsage.TryGetProperty("total_tokens", out var totalTokens))
+            {
+                writer.WriteNumber("total_tokens", totalTokens.GetInt32());
+            }
+
+            writer.WriteEndObject();
+            writer.WriteEndObject();
         }
 
-        /// <summary>
-        /// Checks if the chunk contains Groq-specific usage data.
-        /// </summary>
-        /// <param name="chunk">The chunk to check.</param>
-        /// <returns>True if the chunk contains x_groq.usage data.</returns>
-        public static bool HasGroqUsage(JsonElement chunk)
-        {
-            return chunk.TryGetProperty("x_groq", out var xGroq) &&
-                   xGroq.TryGetProperty("usage", out _);
-        }
+        return System.Text.Encoding.UTF8.GetString(stream.ToArray());
+    }
 
-        private static ProviderToolUsage? ExtractHostedToolUsage(JsonElement chunk)
-        {
-            if (!chunk.TryGetProperty("x_groq", out var xGroq) ||
-                !xGroq.TryGetProperty("usage", out var usage))
-            {
-                return null;
-            }
-
-            var tools = new List<ProviderToolUsageItem>();
-            foreach (var toolName in new[] { "code_interpreter", "browser_search", "python" })
-            {
-                if (!usage.TryGetProperty(toolName, out var countElement) ||
-                    !countElement.TryGetInt32(out var count) || count <= 0)
-                {
-                    continue;
-                }
-
-                decimal? durationSeconds = null;
-                if (usage.TryGetProperty($"{toolName}_duration_seconds", out var durationElement) &&
-                    durationElement.TryGetDecimal(out var duration))
-                {
-                    durationSeconds = duration;
-                }
-
-                tools.Add(new ProviderToolUsageItem
-                {
-                    ToolName = toolName == "python" ? "code_interpreter" : toolName,
-                    Count = count,
-                    DurationSeconds = durationSeconds
-                });
-            }
-
-            return tools.Count == 0 ? null : new ProviderToolUsage { Tools = tools };
-        }
+    /// <summary>
+    /// Checks whether a chunk contains Groq-specific usage data.
+    /// </summary>
+    public static bool HasGroqUsage(JsonElement chunk)
+    {
+        return chunk.TryGetProperty("x_groq", out var xGroq) &&
+               xGroq.TryGetProperty("usage", out _);
     }
 }

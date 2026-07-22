@@ -14,6 +14,37 @@ namespace ConduitLLM.Tests.Providers;
 public class OpenAICompatibleMappingTests
 {
     [Fact]
+    public void MapGroqHostedToolUsage_MapsServerOnlyEvidence()
+    {
+        using var document = JsonDocument.Parse("""
+        {
+          "usage": {
+            "code_interpreter": 2,
+            "code_interpreter_duration_seconds": 3.5
+          }
+        }
+        """);
+
+        var usage = OpenAICompatibleClient.MapGroqHostedToolUsage(document.RootElement);
+
+        var tool = Assert.Single(usage!.Tools);
+        Assert.Equal("code_interpreter", tool.ToolName);
+        Assert.Equal(2, tool.Count);
+        Assert.Equal(3.5m, tool.DurationSeconds);
+
+        var response = new ChatCompletionResponse
+        {
+            Id = "response-1",
+            Choices = [],
+            Created = 1,
+            Model = "model",
+            Object = "chat.completion",
+            ProviderToolUsage = usage
+        };
+        Assert.DoesNotContain("ProviderToolUsage", JsonSerializer.Serialize(response));
+    }
+
+    [Fact]
     public void ExtractProviderUsage_OpenAIFormat_MapsCachedInputTokens()
     {
         // Arrange — OpenAI returns prompt_tokens_details.cached_tokens
