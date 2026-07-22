@@ -3,6 +3,8 @@ using System.Text.Json;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Models;
+using ConduitLLM.Functions.Security;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Functions.Services;
@@ -27,6 +29,7 @@ public class FunctionExecutionService : IFunctionExecutionService
     private readonly IFunctionExecutionRepository _executionRepository;
     private readonly IFunctionCostCalculationService _costCalculationService;
     private readonly IFunctionClientFactory _clientFactory;
+    private readonly IFunctionCredentialProtector _credentialProtector;
     private readonly ILogger<FunctionExecutionService> _logger;
     private readonly JsonSerializerOptions _jsonOptions;
 
@@ -36,6 +39,7 @@ public class FunctionExecutionService : IFunctionExecutionService
         IFunctionExecutionRepository executionRepository,
         IFunctionCostCalculationService costCalculationService,
         IFunctionClientFactory clientFactory,
+        IFunctionCredentialProtector credentialProtector,
         ILogger<FunctionExecutionService> logger)
     {
         _functionConfigurationRepository = functionConfigurationRepository ?? throw new ArgumentNullException(nameof(functionConfigurationRepository));
@@ -43,6 +47,7 @@ public class FunctionExecutionService : IFunctionExecutionService
         _executionRepository = executionRepository ?? throw new ArgumentNullException(nameof(executionRepository));
         _costCalculationService = costCalculationService ?? throw new ArgumentNullException(nameof(costCalculationService));
         _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+        _credentialProtector = credentialProtector ?? throw new ArgumentNullException(nameof(credentialProtector));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
         _jsonOptions = new JsonSerializerOptions
@@ -60,6 +65,7 @@ public class FunctionExecutionService : IFunctionExecutionService
         Dictionary<string, object> parameters,
         string? idempotencyKey = null,
         Dictionary<string, object>? metadata = null,
+        string? providerToolName = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(parameters);
@@ -87,7 +93,7 @@ public class FunctionExecutionService : IFunctionExecutionService
                 configuration.ConfigurationName, functionConfigurationId, virtualKeyId);
 
             // 2. Estimate cost conservatively (for logging and execution record)
-            var estimatedCost = await _costCalculationService.EstimateCostAsync(functionConfigurationId, parameters, cancellationToken);
+            var estimatedCost = await EstimateCostForConfigAsync(configuration, functionConfigurationId, parameters, cancellationToken);
 
             _logger.LogDebug("Estimated cost for function {ConfigName}: ${EstimatedCost:F4}",
                 configuration.ConfigurationName, estimatedCost);
@@ -131,13 +137,17 @@ public class FunctionExecutionService : IFunctionExecutionService
                     $"No credentials configured for provider type {configuration.ProviderType}");
             }
 
-            // Use first enabled credential for now (could implement rotation/load balancing later)
-            var credential = credentials.FirstOrDefault(c => c.IsEnabled);
+            // Prefer a config-scoped credential (MCP each server has its own token), falling back
+            // to a provider-global credential (the Exa/Tavily model).
+            var credential = CredentialSelector.SelectForConfiguration(credentials, functionConfigurationId);
             if (credential == null)
             {
                 throw new InvalidOperationException(
                     $"No enabled credentials found for provider type {configuration.ProviderType}");
             }
+
+            // Reveal the (possibly encrypted) secret before use.
+            var apiKey = _credentialProtector.Reveal(credential.ApiKey);
 
             // 5. Execute function via provider client
             var client = await _clientFactory.GetClientAsync(configuration.ProviderType, functionConfigurationId);
@@ -145,7 +155,19 @@ public class FunctionExecutionService : IFunctionExecutionService
             _logger.LogInformation("Executing {ProviderType} function via client...",
                 configuration.ProviderType);
 
-            var result = await client.ExecuteAsync(parameters, credential.ApiKey, cancellationToken);
+            // For dynamic multi-tool providers (MCP), thread the target tool name to the client via
+            // a reserved parameter key without disturbing the model-supplied arguments used for
+            // usage calculation.
+            var executeParameters = parameters;
+            if (!string.IsNullOrWhiteSpace(providerToolName))
+            {
+                executeParameters = new Dictionary<string, object>(parameters)
+                {
+                    [McpReservedParameterKeys.ToolName] = providerToolName
+                };
+            }
+
+            var result = await client.ExecuteAsync(executeParameters, apiKey, cancellationToken);
 
             stopwatch.Stop();
             providerExecutionCompleted = true;
@@ -160,8 +182,8 @@ public class FunctionExecutionService : IFunctionExecutionService
 
             // 6. Calculate actual usage and cost
             var usage = client.CalculateUsageFromResponse(parameters, result);
-            var actualCost = await _costCalculationService.CalculateCostAsync(
-                functionConfigurationId, usage, cancellationToken);
+            var actualCost = await CalculateCostForConfigAsync(
+                configuration, functionConfigurationId, usage, cancellationToken);
             incurredCost = actualCost;
 
             _logger.LogInformation("Function execution completed. Estimated: ${Estimated:F4}, Actual: ${Actual:F4}, Duration: {Duration}ms",
@@ -251,6 +273,51 @@ public class FunctionExecutionService : IFunctionExecutionService
             }
 
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Estimates cost, defaulting to $0 for MCP configurations that have no cost mapping (MCP tool
+    /// pricing is optional). Non-MCP providers keep the strict "cost required" behavior.
+    /// </summary>
+    private async Task<decimal> EstimateCostForConfigAsync(
+        FunctionConfiguration configuration,
+        int functionConfigurationId,
+        Dictionary<string, object> parameters,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _costCalculationService.EstimateCostAsync(functionConfigurationId, parameters, cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (configuration.ProviderType == FunctionProviderType.Mcp)
+        {
+            _logger.LogWarning(ex,
+                "No usable cost configuration for MCP function {ConfigId}; reserving $0. Add a FunctionCost to bill MCP calls.",
+                functionConfigurationId);
+            return 0m;
+        }
+    }
+
+    /// <summary>
+    /// Calculates actual cost, defaulting to $0 for MCP configurations that have no cost mapping.
+    /// </summary>
+    private async Task<decimal> CalculateCostForConfigAsync(
+        FunctionConfiguration configuration,
+        int functionConfigurationId,
+        Models.FunctionExecutionUsage usage,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _costCalculationService.CalculateCostAsync(functionConfigurationId, usage, cancellationToken);
+        }
+        catch (InvalidOperationException ex) when (configuration.ProviderType == FunctionProviderType.Mcp)
+        {
+            _logger.LogWarning(ex,
+                "No usable cost configuration for MCP function {ConfigId}; charging $0.",
+                functionConfigurationId);
+            return 0m;
         }
     }
 

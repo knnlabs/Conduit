@@ -1,7 +1,10 @@
+using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Providers.Exa;
+using ConduitLLM.Functions.Providers.Mcp;
 using ConduitLLM.Functions.Providers.Tavily;
+using ConduitLLM.Functions.Security;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Functions.Services;
@@ -17,17 +20,20 @@ public class FunctionClientFactory : IFunctionClientFactory
 {
     private readonly IFunctionConfigurationRepository _configurationRepository;
     private readonly IFunctionCredentialRepository _credentialRepository;
+    private readonly IFunctionCredentialProtector _credentialProtector;
     private readonly IHttpClientFactory? _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
 
     public FunctionClientFactory(
         IFunctionConfigurationRepository configurationRepository,
         IFunctionCredentialRepository credentialRepository,
+        IFunctionCredentialProtector credentialProtector,
         ILoggerFactory loggerFactory,
         IHttpClientFactory? httpClientFactory = null)
     {
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));
         _credentialRepository = credentialRepository ?? throw new ArgumentNullException(nameof(credentialRepository));
+        _credentialProtector = credentialProtector ?? throw new ArgumentNullException(nameof(credentialProtector));
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
         _httpClientFactory = httpClientFactory;
     }
@@ -51,18 +57,23 @@ public class FunctionClientFactory : IFunctionClientFactory
         // Get credentials for this provider type
         var credentials = await _credentialRepository.GetByProviderTypeAsync(configuration.ProviderType);
 
-        var credential = credentials.FirstOrDefault(c => c.IsEnabled);
+        var credential = CredentialSelector.SelectForConfiguration(credentials, functionConfigurationId);
         if (credential == null)
         {
             throw new InvalidOperationException(
                 $"No enabled credentials found for provider type {configuration.ProviderType}");
         }
 
+        // Reveal the (possibly encrypted) secret in-memory before handing it to the client. The
+        // credential is a fresh, untracked read, so mutating it here does not persist.
+        credential.ApiKey = _credentialProtector.Reveal(credential.ApiKey);
+
         // Create provider-specific client
         return providerType switch
         {
             FunctionProviderType.Exa => CreateExaClient(configuration, credential),
             FunctionProviderType.Tavily => CreateTavilyClient(configuration, credential),
+            FunctionProviderType.Mcp => CreateMcpClient(configuration, credential),
             _ => throw new NotSupportedException($"Function provider type '{providerType}' is not supported")
         };
     }
@@ -71,8 +82,8 @@ public class FunctionClientFactory : IFunctionClientFactory
     /// Creates an Exa client instance.
     /// </summary>
     private ExaClient CreateExaClient(
-        ConduitLLM.Functions.Entities.FunctionConfiguration configuration,
-        ConduitLLM.Functions.Entities.FunctionCredential credential)
+        FunctionConfiguration configuration,
+        FunctionCredential credential)
     {
         var logger = _loggerFactory.CreateLogger<ExaClient>();
 
@@ -87,8 +98,8 @@ public class FunctionClientFactory : IFunctionClientFactory
     /// Creates a Tavily client instance.
     /// </summary>
     private TavilyClient CreateTavilyClient(
-        ConduitLLM.Functions.Entities.FunctionConfiguration configuration,
-        ConduitLLM.Functions.Entities.FunctionCredential credential)
+        FunctionConfiguration configuration,
+        FunctionCredential credential)
     {
         var logger = _loggerFactory.CreateLogger<TavilyClient>();
 
@@ -97,5 +108,19 @@ public class FunctionClientFactory : IFunctionClientFactory
             credential,
             _httpClientFactory,
             logger);
+    }
+
+    /// <summary>
+    /// Creates an MCP (Model Context Protocol) client instance.
+    /// </summary>
+    private McpFunctionClient CreateMcpClient(
+        FunctionConfiguration configuration,
+        FunctionCredential credential)
+    {
+        return new McpFunctionClient(
+            configuration,
+            credential,
+            _httpClientFactory,
+            _loggerFactory);
     }
 }

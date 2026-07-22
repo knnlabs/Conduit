@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Security;
 using ConduitLLM.Functions.Services;
 
 namespace ConduitLLM.Gateway.Extensions;
@@ -22,6 +23,7 @@ public static class FunctionServicesExtensions
         // Register Function services
         services.AddScoped<IFunctionCostService, FunctionCostService>();
         services.AddScoped<IFunctionCostCalculationService, FunctionCostCalculationService>();
+        services.AddSingleton<IFunctionCredentialProtector, FunctionCredentialProtector>();
         services.AddScoped<IFunctionClientFactory, FunctionClientFactory>();
         services.AddScoped<IFunctionExecutionService, FunctionExecutionService>();
         services.AddScoped<FunctionParameterValidationService>();

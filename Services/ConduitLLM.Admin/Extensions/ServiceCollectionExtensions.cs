@@ -136,6 +136,7 @@ public static class ServiceCollectionExtensions
         // Register Function services
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostService, ConduitLLM.Functions.Services.FunctionCostService>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostCalculationService, ConduitLLM.Functions.Services.FunctionCostCalculationService>();
+        services.AddSingleton<ConduitLLM.Functions.Security.IFunctionCredentialProtector, ConduitLLM.Functions.Security.FunctionCredentialProtector>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionClientFactory, ConduitLLM.Functions.Services.FunctionClientFactory>();
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionExecutionService, ConduitLLM.Functions.Services.FunctionExecutionService>();
 

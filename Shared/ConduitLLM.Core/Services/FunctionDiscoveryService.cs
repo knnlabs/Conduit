@@ -15,15 +15,18 @@ namespace ConduitLLM.Core.Services;
 public class FunctionDiscoveryService : IFunctionDiscoveryService
 {
     private readonly IFunctionConfigurationRepository _functionConfigRepository;
+    private readonly IFunctionClientFactory _clientFactory;
     private readonly IFunctionDiscoveryCacheService? _cacheService;
     private readonly ILogger<FunctionDiscoveryService> _logger;
 
     public FunctionDiscoveryService(
         IFunctionConfigurationRepository functionConfigRepository,
+        IFunctionClientFactory clientFactory,
         IFunctionDiscoveryCacheService? cacheService,
         ILogger<FunctionDiscoveryService> logger)
     {
         _functionConfigRepository = functionConfigRepository ?? throw new ArgumentNullException(nameof(functionConfigRepository));
+        _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
         _cacheService = cacheService; // Nullable - caching is optional
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -74,14 +77,25 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
             throw new ArgumentException($"Function configurations are disabled: {string.Join(", ", disabledIds)}");
         }
 
-        // Convert to Tools
+        // Convert to Tools. A fixed-schema configuration (Exa, Tavily) yields exactly one tool;
+        // a dynamic provider (MCP) expands into one tool per server-advertised tool.
         var tools = new List<Tool>();
         foreach (var config in configurations)
         {
             try
             {
-                var tool = ConvertConfigurationToTool(config);
-                tools.Add(tool);
+                if (IsDynamicProvider(config))
+                {
+                    var discovered = await DiscoverDynamicToolsAsync(config, cancellationToken);
+                    foreach (var dynamicTool in discovered)
+                    {
+                        tools.Add(BuildDynamicTool(config, dynamicTool));
+                    }
+                }
+                else
+                {
+                    tools.Add(ConvertConfigurationToTool(config));
+                }
             }
             catch (Exception ex)
             {
@@ -113,25 +127,118 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
         return tools;
     }
 
-    public async Task<Dictionary<string, int>> GetFunctionNameToIdMappingAsync(
+    public async Task<Dictionary<string, FunctionRoute>> GetFunctionNameToIdMappingAsync(
         List<int> functionConfigurationIds,
         CancellationToken cancellationToken = default)
     {
         if (functionConfigurationIds == null || functionConfigurationIds.Count == 0)
         {
-            return new Dictionary<string, int>();
+            return new Dictionary<string, FunctionRoute>();
         }
 
         var configurations = await _functionConfigRepository.GetByIdsAsync(functionConfigurationIds, cancellationToken);
 
-        var mapping = new Dictionary<string, int>();
+        var mapping = new Dictionary<string, FunctionRoute>();
         foreach (var config in configurations)
         {
-            var functionName = GetFunctionNameForConfiguration(config);
-            mapping[functionName] = config.Id;
+            if (IsDynamicProvider(config))
+            {
+                // One route per server-advertised tool. The LLM-facing name is derived
+                // deterministically (see BuildDynamicToolName) so it matches the tool emitted by
+                // GetToolsForFunctionConfigurationsAsync, and the route carries the original tool
+                // name for execution routing.
+                var discovered = await DiscoverDynamicToolsAsync(config, cancellationToken);
+                foreach (var dynamicTool in discovered)
+                {
+                    var name = BuildDynamicToolName(config, dynamicTool.Name);
+                    mapping[name] = new FunctionRoute(config.Id, dynamicTool.Name);
+                }
+            }
+            else
+            {
+                var functionName = GetFunctionNameForConfiguration(config);
+                mapping[functionName] = new FunctionRoute(config.Id);
+            }
         }
 
         return mapping;
+    }
+
+    /// <summary>
+    /// Whether a configuration's provider discovers its tools dynamically at runtime (MCP) rather
+    /// than exposing a single static schema. Gating on provider type keeps the fixed-schema
+    /// providers on their original path (no client construction, no credential requirement during
+    /// discovery); the client is still verified to implement <see cref="IDynamicToolProvider"/>.
+    /// </summary>
+    private static bool IsDynamicProvider(ConduitLLM.Functions.Entities.FunctionConfiguration config)
+        => config.ProviderType == ConduitLLM.Functions.Enums.FunctionProviderType.Mcp;
+
+    /// <summary>
+    /// Enumerates a dynamic provider's tools by constructing its client and asking it to list them.
+    /// </summary>
+    private async Task<IReadOnlyList<ConduitLLM.Functions.Models.DiscoveredTool>> DiscoverDynamicToolsAsync(
+        ConduitLLM.Functions.Entities.FunctionConfiguration config,
+        CancellationToken cancellationToken)
+    {
+        var client = await _clientFactory.GetClientAsync(config.ProviderType, config.Id);
+        if (client is not IDynamicToolProvider dynamicProvider)
+        {
+            _logger.LogWarning(
+                "Configuration {ConfigId} ({Provider}) was treated as dynamic but its client does not support tool discovery; exposing no tools.",
+                config.Id, config.ProviderType);
+            return Array.Empty<ConduitLLM.Functions.Models.DiscoveredTool>();
+        }
+
+        return await dynamicProvider.ListToolsAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Builds an LLM Tool from a dynamically-discovered tool, namespacing the name under its
+    /// configuration.
+    /// </summary>
+    private Tool BuildDynamicTool(
+        ConduitLLM.Functions.Entities.FunctionConfiguration config,
+        ConduitLLM.Functions.Models.DiscoveredTool dynamicTool)
+    {
+        return new Tool
+        {
+            Type = "function",
+            Function = new FunctionDefinition
+            {
+                Name = BuildDynamicToolName(config, dynamicTool.Name),
+                Description = string.IsNullOrWhiteSpace(dynamicTool.Description)
+                    ? $"{GetProviderDisplayName(config.ProviderType)} tool '{dynamicTool.Name}'"
+                    : dynamicTool.Description,
+                Parameters = dynamicTool.ParametersSchema
+            }
+        };
+    }
+
+    /// <summary>
+    /// Deterministically derives the LLM-facing function name for a dynamic tool:
+    /// <c>{sanitized_config_name}__{sanitized_tool_name}</c>, constrained to the 64-char limit and
+    /// required to start with a letter. Determinism lets the tool list and the routing map be built
+    /// independently and still agree.
+    /// </summary>
+    private static string BuildDynamicToolName(
+        ConduitLLM.Functions.Entities.FunctionConfiguration config,
+        string toolName)
+    {
+        var prefix = SanitizeToSnakeCase(config.ConfigurationName);
+        var suffix = SanitizeToSnakeCase(toolName);
+        var combined = $"{prefix}__{suffix}";
+
+        if (combined.Length == 0 || !char.IsLetter(combined[0]))
+        {
+            combined = "fn_" + combined;
+        }
+
+        if (combined.Length > 64)
+        {
+            combined = combined.Substring(0, 64);
+        }
+
+        return combined;
     }
 
     /// <summary>
@@ -175,16 +282,10 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
     {
         // Convert configuration name to snake_case for LLM compatibility
         // Example: "Production Exa Search" -> "production_exa_search"
-        var name = config.ConfigurationName
-            .ToLowerInvariant()
-            .Replace(" ", "_")
-            .Replace("-", "_");
-
-        // Remove any non-alphanumeric characters except underscores
-        name = new string(name.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
+        var name = SanitizeToSnakeCase(config.ConfigurationName);
 
         // Ensure it starts with a letter (LLM requirement)
-        if (!char.IsLetter(name[0]))
+        if (name.Length == 0 || !char.IsLetter(name[0]))
         {
             name = "func_" + name;
         }
@@ -196,6 +297,25 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
         }
 
         return name;
+    }
+
+    /// <summary>
+    /// Lower-cases and reduces an arbitrary label to snake_case: spaces/hyphens become underscores
+    /// and all other non-alphanumeric characters are dropped.
+    /// </summary>
+    private static string SanitizeToSnakeCase(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+
+        var lowered = value
+            .ToLowerInvariant()
+            .Replace(" ", "_")
+            .Replace("-", "_");
+
+        return new string(lowered.Where(c => char.IsLetterOrDigit(c) || c == '_').ToArray());
     }
 
     /// <summary>
@@ -225,6 +345,7 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
         {
             FunctionProviderType.Exa => "Exa.ai Search",
             FunctionProviderType.Tavily => "Tavily Search",
+            FunctionProviderType.Mcp => "MCP Server",
             _ => providerType.ToString()
         };
     }

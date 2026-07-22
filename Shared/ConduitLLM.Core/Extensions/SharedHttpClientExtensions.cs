@@ -47,7 +47,34 @@ public static class SharedHttpClientExtensions
         AddFunctionProviderHttpClient(services, "ExaFunctionClient");
         AddFunctionProviderHttpClient(services, "TavilyFunctionClient");
 
+        // MCP uses Streamable HTTP / SSE: it manages its own Accept negotiation, keeps long-lived
+        // streams open, and must not be wrapped in a request-level retry policy, so it gets a
+        // dedicated client distinct from the fixed-Accept, 30s-timeout, retrying one above.
+        AddMcpFunctionHttpClient(services, "MCPFunctionClient");
+
         return services;
+    }
+
+    /// <summary>
+    /// Registers the HTTP client used by the MCP function provider. No default Accept header (the
+    /// MCP transport negotiates application/json vs text/event-stream itself), no request timeout
+    /// (SSE streams are long-lived; connect timeouts are governed by the transport), and no retry
+    /// policy (MCP sessions are stateful).
+    /// </summary>
+    private static void AddMcpFunctionHttpClient(IServiceCollection services, string clientName)
+    {
+        services.AddHttpClient(clientName, client =>
+        {
+            client.Timeout = Timeout.InfiniteTimeSpan;
+            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions-MCP");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 10,
+            EnableMultipleHttp2Connections = true
+        });
     }
 
     /// <summary>

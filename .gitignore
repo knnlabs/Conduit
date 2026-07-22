@@ -430,6 +430,10 @@ secrets.json
 *credentials*
 !Services/ConduitLLM.Admin/Endpoints/*CredentialsEndpoints*.cs
 !Tests/ConduitLLM.Tests/Admin/**/*CredentialsEndpointsTests.cs
+# WebAdmin function-credentials UI page is source, not a secret file — re-include it
+# (the broad *credentials* rule above would otherwise silently drop the whole route).
+!WebAdmin/src/app/functions/credentials/
+!WebAdmin/src/app/functions/credentials/**
 *secret*
 *token*.txt
 *token*.json

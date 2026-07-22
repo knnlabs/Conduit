@@ -29,9 +29,20 @@ public class FunctionCredential : ICredentialEntity, IIdentifiableEntity<int>
     public FunctionProviderType ProviderType { get; set; }
 
     /// <summary>
-    /// API key for authentication (stored encrypted at rest)
+    /// Optional owning function configuration. When set, this credential is scoped to a single
+    /// configuration (each MCP server has its own token); when null, the credential is shared by
+    /// all configurations of <see cref="ProviderType"/> (the Exa/Tavily behavior).
     /// </summary>
-    [MaxLength(500)]
+    public int? FunctionConfigurationId { get; set; }
+
+    /// <summary>
+    /// API key / token for authentication.
+    /// May be stored encrypted at rest (config-scoped MCP tokens are protected via
+    /// ASP.NET Core Data Protection and carry an <c>enc:v1:</c> prefix); legacy provider-global
+    /// credentials remain plaintext until a separate encryption pass migrates them.
+    /// Widened from 500 to accommodate the expansion of encrypted payloads.
+    /// </summary>
+    [MaxLength(2000)]
     public string? ApiKey { get; set; }
 
     /// <summary>

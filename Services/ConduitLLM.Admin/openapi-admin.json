@@ -23618,8 +23618,15 @@
           "providerType": {
             "$ref": "#/components/schemas/FunctionProviderType"
           },
+          "functionConfigurationId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "apiKey": {
-            "maxLength": 500,
+            "maxLength": 2000,
             "type": [
               "null",
               "string"

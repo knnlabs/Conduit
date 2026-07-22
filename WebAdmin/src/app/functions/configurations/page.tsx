@@ -67,9 +67,12 @@ export default function FunctionConfigurationsPage() {
     defaultExecutionMode: FunctionExecutionMode.Synchronous,
     timeoutSeconds: 30,
     isEnabled: true,
+    baseUrl: '',
     providerSettings: '',
     parameterSchema: '',
   });
+
+  const isMcp = formData.providerType === FunctionProviderType.Mcp;
 
   const loadConfigurations = useCallback(async () => {
     try {
@@ -122,6 +125,7 @@ export default function FunctionConfigurationsPage() {
         defaultExecutionMode: formData.defaultExecutionMode,
         timeoutSeconds: formData.timeoutSeconds,
         isEnabled: formData.isEnabled,
+        baseUrl: formData.baseUrl,
         providerSettings: formData.providerSettings,
         parameterSchema: formData.parameterSchema,
       };
@@ -184,6 +188,7 @@ export default function FunctionConfigurationsPage() {
       defaultExecutionMode: config.defaultExecutionMode,
       timeoutSeconds: config.timeoutSeconds ?? undefined,
       isEnabled: config.isEnabled,
+      baseUrl: config.baseUrl ?? '',
       providerSettings: config.providerSettings ?? '',
       parameterSchema: config.parameterSchema ?? '',
     });
@@ -204,6 +209,7 @@ export default function FunctionConfigurationsPage() {
       defaultExecutionMode: FunctionExecutionMode.Synchronous,
       timeoutSeconds: 30,
       isEnabled: true,
+      baseUrl: '',
       providerSettings: '',
       parameterSchema: '',
     });
@@ -412,6 +418,17 @@ export default function FunctionConfigurationsPage() {
             </Alert>
           )}
 
+          {isMcp && (
+            <TextInput
+              label="MCP Server URL"
+              placeholder="https://mcp.example.com/sse"
+              value={formData.baseUrl ?? ''}
+              onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
+              description="Remote MCP server endpoint (Streamable HTTP / SSE). Its tools are discovered automatically."
+              required
+            />
+          )}
+
           <Select
             label="Purpose"
             value={formData.purpose.toString()}
@@ -457,23 +474,30 @@ export default function FunctionConfigurationsPage() {
           />
 
           <Textarea
-            label="Metadata (JSON)"
-            placeholder="{}"
+            label={isMcp ? 'MCP Settings (JSON)' : 'Metadata (JSON)'}
+            placeholder={isMcp
+              ? '{"allowedTools": null, "authScheme": "Bearer", "authHeader": "Authorization", "allowPrivateNetwork": false}'
+              : '{}'}
             value={formData.providerSettings}
             onChange={(e) => setFormData({ ...formData, providerSettings: e.target.value })}
             rows={4}
             styles={{ input: { fontFamily: 'monospace' } }}
+            description={isMcp
+              ? 'Optional. "allowedTools": null exposes every tool the server advertises, or list names to restrict. Configure the server token in Function Credentials (scoped to this configuration).'
+              : undefined}
           />
 
-          <Textarea
-            label="Parameter Schema (JSON Schema)"
-            placeholder='{"type": "object", "properties": {...}, "required": [...]}'
-            value={formData.parameterSchema ?? ''}
-            onChange={(e) => setFormData({ ...formData, parameterSchema: e.target.value })}
-            rows={8}
-            styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
-            description="JSON Schema defining the function parameters that the LLM can use"
-          />
+          {!isMcp && (
+            <Textarea
+              label="Parameter Schema (JSON Schema)"
+              placeholder='{"type": "object", "properties": {...}, "required": [...]}'
+              value={formData.parameterSchema ?? ''}
+              onChange={(e) => setFormData({ ...formData, parameterSchema: e.target.value })}
+              rows={8}
+              styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+              description="JSON Schema defining the function parameters that the LLM can use"
+            />
+          )}
 
           <Group justify="flex-end" mt="md">
             <Button

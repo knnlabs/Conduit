@@ -84,25 +84,27 @@ public class FunctionCredentialRepository : RepositoryBase<FunctionCredential, i
             credential.CreatedAt = DateTime.UtcNow;
             credential.UpdatedAt = DateTime.UtcNow;
 
-            // Auto-primary: If first enabled credential, set as primary
+            // Auto-primary: If first enabled credential in its scope, set as primary.
+            // "Scope" is the owning configuration for config-scoped credentials (each MCP server),
+            // otherwise the provider type for provider-global credentials.
             if (credential.IsEnabled && !credential.IsPrimary)
             {
-                var enabledCount = await GetDbSet(db)
-                    .CountAsync(c => c.ProviderType == credential.ProviderType && c.IsEnabled, cancellationToken);
+                var enabledCount = await ScopeQuery(GetDbSet(db), credential.ProviderType, credential.FunctionConfigurationId)
+                    .CountAsync(c => c.IsEnabled, cancellationToken);
 
                 if (enabledCount == 0)
                 {
                     credential.IsPrimary = true;
-                    Logger.LogInformation("Automatically setting credential as primary since it's the only enabled credential for provider type {ProviderType}",
-                        LoggingSanitizer.S(credential.ProviderType));
+                    Logger.LogInformation("Automatically setting credential as primary since it's the only enabled credential in its scope (ProviderType {ProviderType}, ConfigurationId {ConfigId})",
+                        LoggingSanitizer.S(credential.ProviderType), LoggingSanitizer.S(credential.FunctionConfigurationId));
                 }
             }
 
-            // If setting as primary, unset existing primary
+            // If setting as primary, unset any existing primary in the same scope.
             if (credential.IsPrimary)
             {
-                var existingPrimary = await GetDbSet(db)
-                    .Where(c => c.ProviderType == credential.ProviderType && c.IsPrimary)
+                var existingPrimary = await ScopeQuery(GetDbSet(db), credential.ProviderType, credential.FunctionConfigurationId)
+                    .Where(c => c.IsPrimary)
                     .ToListAsync(cancellationToken);
 
                 foreach (var existing in existingPrimary)
@@ -148,29 +150,25 @@ public class FunctionCredentialRepository : RepositoryBase<FunctionCredential, i
             existingCredential.IsEnabled = credential.IsEnabled;
             existingCredential.UpdatedAt = DateTime.UtcNow;
 
-            // Auto-primary: If being enabled and will be the only enabled credential
+            // Auto-primary: If being enabled and will be the only enabled credential in its scope.
             if (!wasEnabled && willBeEnabled && !existingCredential.IsPrimary)
             {
-                var enabledCount = await GetDbSet(db)
-                    .CountAsync(c => c.ProviderType == existingCredential.ProviderType
-                        && c.IsEnabled
-                        && c.Id != existingCredential.Id, cancellationToken);
+                var enabledCount = await ScopeQuery(GetDbSet(db), existingCredential.ProviderType, existingCredential.FunctionConfigurationId)
+                    .CountAsync(c => c.IsEnabled && c.Id != existingCredential.Id, cancellationToken);
 
                 if (enabledCount == 0)
                 {
                     existingCredential.IsPrimary = true;
-                    Logger.LogInformation("Automatically setting credential {CredentialId} as primary since it's the only enabled credential for provider type {ProviderType}",
-                        LoggingSanitizer.S(existingCredential.Id), LoggingSanitizer.S(existingCredential.ProviderType));
+                    Logger.LogInformation("Automatically setting credential {CredentialId} as primary since it's the only enabled credential in its scope (ProviderType {ProviderType}, ConfigurationId {ConfigId})",
+                        LoggingSanitizer.S(existingCredential.Id), LoggingSanitizer.S(existingCredential.ProviderType), LoggingSanitizer.S(existingCredential.FunctionConfigurationId));
                 }
             }
 
-            // If setting as primary, unset existing primary
+            // If setting as primary, unset any existing primary in the same scope.
             if (existingCredential.IsPrimary)
             {
-                var existingPrimary = await GetDbSet(db)
-                    .Where(c => c.ProviderType == existingCredential.ProviderType
-                        && c.IsPrimary
-                        && c.Id != existingCredential.Id)
+                var existingPrimary = await ScopeQuery(GetDbSet(db), existingCredential.ProviderType, existingCredential.FunctionConfigurationId)
+                    .Where(c => c.IsPrimary && c.Id != existingCredential.Id)
                     .ToListAsync(cancellationToken);
 
                 foreach (var existing in existingPrimary)
@@ -183,6 +181,19 @@ public class FunctionCredentialRepository : RepositoryBase<FunctionCredential, i
             return await db.SaveChangesAsync(cancellationToken) > 0;
         }, cancellationToken, "UpdateAsync");
     }
+
+    /// <summary>
+    /// Restricts a query to the credentials that share the given credential's "primary scope":
+    /// the owning configuration for config-scoped credentials (e.g. each MCP server), otherwise all
+    /// provider-global credentials of the provider type.
+    /// </summary>
+    private static IQueryable<FunctionCredential> ScopeQuery(
+        IQueryable<FunctionCredential> source,
+        FunctionProviderType providerType,
+        int? functionConfigurationId)
+        => functionConfigurationId.HasValue
+            ? source.Where(c => c.FunctionConfigurationId == functionConfigurationId)
+            : source.Where(c => c.ProviderType == providerType && c.FunctionConfigurationId == null);
 
     public async Task SetAsPrimaryAsync(int credentialId, FunctionProviderType providerType, CancellationToken cancellationToken = default)
     {
