@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,13 +12,18 @@ namespace ConduitLLM.Tests.Http.Services
     {
         private readonly Mock<IDistributedCache> _mockCache;
         private readonly Mock<ILogger<EphemeralKeyService>> _mockLogger;
+        private readonly IDataProtectionProvider _dataProtectionProvider;
         private readonly EphemeralKeyService _service;
 
         public EphemeralKeyServiceTests()
         {
             _mockCache = new Mock<IDistributedCache>();
             _mockLogger = new Mock<ILogger<EphemeralKeyService>>();
-            _service = new EphemeralKeyService(_mockCache.Object, _mockLogger.Object);
+            _dataProtectionProvider = new EphemeralDataProtectionProvider();
+            _service = new EphemeralKeyService(
+                _mockCache.Object,
+                _dataProtectionProvider,
+                _mockLogger.Object);
         }
 
         [Fact]
@@ -297,6 +303,37 @@ namespace ConduitLLM.Tests.Http.Services
 
             // Assert
             Assert.Equal(originalVirtualKey, retrievedKey);
+        }
+
+        [Fact]
+        public async Task GetVirtualKeyAsync_WithDifferentKeyRing_ShouldFailClosed()
+        {
+            const string originalVirtualKey = "condt_deployment_specific_secret";
+            byte[]? storedData = null;
+            string? cacheKey = null;
+            _mockCache.Setup(x => x.SetAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<byte[]>(),
+                    It.IsAny<DistributedCacheEntryOptions>(),
+                    default))
+                .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>(
+                    (key, data, _, _) =>
+                    {
+                        cacheKey = key;
+                        storedData = data;
+                    })
+                .Returns(Task.CompletedTask);
+
+            var created = await _service.CreateEphemeralKeyAsync(987, originalVirtualKey);
+            _mockCache.Setup(x => x.GetAsync(cacheKey!, default)).ReturnsAsync(storedData!);
+            var serviceWithDifferentKeyRing = new EphemeralKeyService(
+                _mockCache.Object,
+                new EphemeralDataProtectionProvider(),
+                _mockLogger.Object);
+
+            var result = await serviceWithDifferentKeyRing.GetVirtualKeyAsync(created.EphemeralKey);
+
+            Assert.Null(result);
         }
     }
 }

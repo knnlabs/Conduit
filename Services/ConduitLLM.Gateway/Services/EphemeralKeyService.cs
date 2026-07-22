@@ -1,5 +1,4 @@
-using System.Security.Cryptography;
-using System.Text;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Caching.Distributed;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Services;
@@ -63,12 +62,10 @@ namespace ConduitLLM.Gateway.Services
     public class EphemeralKeyService : EphemeralKeyServiceBase<EphemeralKeyData>, IEphemeralKeyService
     {
         private const int DefaultTTLSeconds = 900; // 15 minutes - longer for video generation which can take several minutes
+        private const string ProtectorPurpose = "ConduitLLM.Gateway.EphemeralVirtualKey.v1";
+        private const string ProtectedValuePrefix = "dp:v1:";
 
-        // Use a static key for encryption - in production this should come from configuration
-        // This is just for data protection at rest in Redis
-        // AES-256 requires exactly 32 bytes (256 bits)
-        // This base64 string decodes to exactly 32 bytes: "ThisIsA32ByteKeyForAES256Encrypt"
-        private static readonly byte[] EncryptionKey = Convert.FromBase64String("VGhpc0lzQTMyQnl0ZUtleUZvckFFUzI1NkVuY3J5cHQ=");
+        private readonly IDataProtector _protector;
 
         /// <inheritdoc />
         protected override string KeyPrefix => CacheKeys.Ephemeral.Prefix;
@@ -83,12 +80,16 @@ namespace ConduitLLM.Gateway.Services
         /// Initializes a new instance of the <see cref="EphemeralKeyService"/> class.
         /// </summary>
         /// <param name="cache">The distributed cache</param>
+        /// <param name="dataProtectionProvider">The application Data Protection provider</param>
         /// <param name="logger">The logger</param>
         public EphemeralKeyService(
             IDistributedCache cache,
+            IDataProtectionProvider dataProtectionProvider,
             ILogger<EphemeralKeyService> logger)
             : base(cache, logger)
         {
+            ArgumentNullException.ThrowIfNull(dataProtectionProvider);
+            _protector = dataProtectionProvider.CreateProtector(ProtectorPurpose);
         }
 
         /// <inheritdoc />
@@ -98,7 +99,7 @@ namespace ConduitLLM.Gateway.Services
             var expiresAt = DateTimeOffset.UtcNow.AddSeconds(TTLSeconds);
 
             // Encrypt the virtual key for storage
-            var encryptedVirtualKey = EncryptString(virtualKey);
+            var encryptedVirtualKey = ProtectString(virtualKey);
 
             var keyData = new EphemeralKeyData
             {
@@ -150,7 +151,7 @@ namespace ConduitLLM.Gateway.Services
             // Decrypt and return the virtual key
             try
             {
-                return DecryptString(keyData.EncryptedVirtualKey);
+                return UnprotectString(keyData.EncryptedVirtualKey);
             }
             catch (Exception ex)
             {
@@ -177,43 +178,19 @@ namespace ConduitLLM.Gateway.Services
             return await GetKeyDataFromCacheAsync(key);
         }
 
-        private static string EncryptString(string plainText)
+        private string ProtectString(string plainText)
         {
-            using var aes = Aes.Create();
-            aes.Key = EncryptionKey;
-            aes.GenerateIV();
-
-            using var encryptor = aes.CreateEncryptor();
-            var plainBytes = Encoding.UTF8.GetBytes(plainText);
-            var cipherBytes = encryptor.TransformFinalBlock(plainBytes, 0, plainBytes.Length);
-
-            // Combine IV and cipher text
-            var result = new byte[aes.IV.Length + cipherBytes.Length];
-            Array.Copy(aes.IV, 0, result, 0, aes.IV.Length);
-            Array.Copy(cipherBytes, 0, result, aes.IV.Length, cipherBytes.Length);
-
-            return Convert.ToBase64String(result);
+            return ProtectedValuePrefix + _protector.Protect(plainText);
         }
 
-        private static string DecryptString(string cipherText)
+        private string UnprotectString(string protectedValue)
         {
-            var fullCipher = Convert.FromBase64String(cipherText);
+            if (!protectedValue.StartsWith(ProtectedValuePrefix, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Unsupported ephemeral key protection format.");
+            }
 
-            using var aes = Aes.Create();
-            aes.Key = EncryptionKey;
-
-            // Extract IV from the beginning
-            var iv = new byte[aes.IV.Length];
-            var cipher = new byte[fullCipher.Length - aes.IV.Length];
-            Array.Copy(fullCipher, 0, iv, 0, iv.Length);
-            Array.Copy(fullCipher, iv.Length, cipher, 0, cipher.Length);
-
-            aes.IV = iv;
-
-            using var decryptor = aes.CreateDecryptor();
-            var plainBytes = decryptor.TransformFinalBlock(cipher, 0, cipher.Length);
-
-            return Encoding.UTF8.GetString(plainBytes);
+            return _protector.Unprotect(protectedValue[ProtectedValuePrefix.Length..]);
         }
     }
 }
