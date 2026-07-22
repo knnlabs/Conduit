@@ -3,6 +3,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Alert, Button, Code, Container, Stack, Text } from '@mantine/core';
 import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
+import { reportError } from '@/lib/utils/logging';
 
 interface Props {
   children: ReactNode;
@@ -31,8 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log error details to console
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    reportError(error, 'react-error-boundary', { componentStack: errorInfo.componentStack });
   }
 
   handleReset = () => {

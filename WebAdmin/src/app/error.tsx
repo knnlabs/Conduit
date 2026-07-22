@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { Container, Title, Text, Button, Stack, Code, Paper, Group } from '@mantine/core';
 import { IconAlertTriangle, IconRefresh, IconHome } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
-import { safeLog } from '@/lib/utils/logging';
+import { reportError } from '@/lib/utils/logging';
 
 export default function Error({
   error,
@@ -16,12 +16,7 @@ export default function Error({
   const router = useRouter();
 
   useEffect(() => {
-    // Log the error to console and any error reporting service
-    safeLog('Application error occurred', {
-      error: error.message,
-      stack: error.stack,
-      digest: error.digest,
-    });
+    reportError(error, 'next-route-error-boundary', { digest: error.digest });
   }, [error]);
 
   return (
@@ -37,20 +32,12 @@ export default function Error({
             </Text>
           </div>
 
-          {/* ALWAYS SHOW ERROR DETAILS */}
-          <Code block p="md" style={{ width: '100%', textAlign: 'left', maxHeight: '400px', overflow: 'auto' }}>
-            ERROR MESSAGE: {error.message}
-            {error.stack && (
-              <>
-                {'\n\n'}
-                STACK TRACE:
-                {'\n'}
-                {error.stack}
-              </>
-            )}
-            {'\n\n'}
-            ERROR OBJECT: {JSON.stringify(error, null, 2)}
-          </Code>
+          {process.env.NODE_ENV === 'development' && (
+            <Code block p="md" style={{ width: '100%', textAlign: 'left', maxHeight: '400px', overflow: 'auto' }}>
+              {error.message}
+              {error.stack && `\n\n${error.stack}`}
+            </Code>
+          )}
 
           <Group>
             <Button

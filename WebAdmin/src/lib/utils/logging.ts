@@ -5,6 +5,8 @@
 
 /* global performance */
 
+import { buildErrorReport, reportClientError } from './error-reporting';
+
 // Sensitive keys that should never be logged
 const SENSITIVE_KEYS = [
   'masterkey', 'master_key', 'password', 'secret', 'apikey', 'api_key',
@@ -124,23 +126,20 @@ export function createPerfTimer(operation: string) {
  */
 export function reportError(error: unknown, context?: string, metadata?: unknown) {
   const errorObj = error instanceof Error ? error : new Error(String(error));
-  const sanitizedMetadata = metadata ? sanitizeObject(metadata) : undefined;
+  const safeReport = buildErrorReport(errorObj, context, metadata);
   
   safeError(
     context ? `Error in ${context}` : 'Unexpected error',
     {
-      message: errorObj.message,
-      name: errorObj.name,
-      stack: process.env.NODE_ENV === 'development' ? errorObj.stack : '[Stack trace hidden in production]',
-      metadata: sanitizedMetadata
+      message: safeReport.message,
+      name: safeReport.name,
+      stack: process.env.NODE_ENV === 'development' ? safeReport.stack : '[Stack trace hidden in production]',
+      correlationId: safeReport.correlationId,
+      metadata: safeReport.metadata,
     }
   );
   
-  // In production, you might want to send this to an error reporting service
-  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_ERROR_REPORTING_URL) {
-    // Send to error reporting service (implementation depends on your service)
-    // Example: Sentry, LogRocket, etc.
-  }
+  void reportClientError(errorObj, context, metadata);
 }
 
 /**

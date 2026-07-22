@@ -67,6 +67,20 @@ remain stable.
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk publishable key for authentication | Required |
 | `CLERK_SECRET_KEY` | Clerk secret key for authentication | Required |
 | `NEXT_PUBLIC_ENABLE_REAL_TIME_UPDATES` | Enable SignalR features | `true` |
+| `ERROR_REPORTING_URL` | Server-side ingestion URL for scrubbed browser errors; empty disables reporting | Disabled |
+| `ERROR_REPORTING_TOKEN` | Optional bearer token used only by the same-origin reporting proxy | None |
+| `ERROR_REPORTING_SAMPLE_RATE` | Deterministic fraction of unique errors forwarded (`0`-`1`) | `1` |
+| `ERROR_REPORTING_RELEASE` | Release/build identifier attached by the server proxy | `unknown` |
+| `ERROR_REPORTING_ENVIRONMENT` | Deployment environment attached by the server proxy | `NODE_ENV` |
+
+Browser errors are deduplicated and scrubbed before being posted to `/api/error-reports`; the
+proxy scrubs them again and never exposes its backend URL or token to the browser. Prompts,
+generated content, request/response bodies, credentials, authorization data, and URL query strings
+are removed. Reporting and transport failures are best-effort and never interrupt the UI.
+
+Production builds emit browser source maps for operator symbolication. The bundled Nginx
+edge denies public `.map` requests; retain or upload the maps from the build artifact to the
+configured reporting system under the same `ERROR_REPORTING_RELEASE` value.
 
 ## Project Structure
 
