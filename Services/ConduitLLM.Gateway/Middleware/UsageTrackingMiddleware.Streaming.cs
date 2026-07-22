@@ -60,6 +60,25 @@ namespace ConduitLLM.Gateway.Middleware
                     _logger.LogInformation(
                         "Billed known streaming function cost for VirtualKey {VirtualKeyId} despite missing token usage: {Cost:C}",
                         functionVirtualKeyId, functionCost);
+
+                    var functionUsage = new Usage
+                    {
+                        PromptTokens = 0,
+                        CompletionTokens = 0,
+                        TotalTokens = 0
+                    };
+                    var functionMetadata = accountingSnapshot?.FunctionExecutions.Count > 0
+                        ? FunctionExecutionSerializer.SerializeFunctionExecutionResults(
+                            accountingSnapshot.FunctionExecutions.ToList())
+                        : null;
+                    await LogRequestAsync(
+                        context,
+                        functionVirtualKeyId,
+                        accountingSnapshot?.ProviderUsage?.Model ?? "unknown",
+                        functionUsage,
+                        functionCost,
+                        requestLogService,
+                        functionMetadata);
                 }
 
                 _logger.LogDebug("No streaming usage data found for {Path}", LoggingSanitizer.S(context.Request.Path.ToString()));
