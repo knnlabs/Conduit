@@ -34,6 +34,8 @@ namespace ConduitLLM.Gateway.Services
         private Timer? _heartbeatTimer;
         private Timer? _cleanupTimer;
         private readonly Channel<HealthAlert> _alertChannel;
+        private readonly CancellationTokenSource _shutdownCts = new();
+        private Task? _alertStreamTask;
 
         public DistributedAlertManagementService(
             IConnectionMultiplexer redis,
@@ -74,7 +76,7 @@ namespace ConduitLLM.Gateway.Services
                 TimeSpan.FromMinutes(5));
 
             // Start alert stream processor
-            _ = Task.Run(ProcessAlertStreamAsync, cancellationToken);
+            _alertStreamTask = ProcessAlertStreamAsync(_shutdownCts.Token);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
@@ -83,6 +85,23 @@ namespace ConduitLLM.Gateway.Services
 
             _heartbeatTimer?.Change(Timeout.Infinite, 0);
             _cleanupTimer?.Change(Timeout.Infinite, 0);
+
+            _shutdownCts.Cancel();
+            if (_alertStreamTask != null)
+            {
+                try
+                {
+                    await _alertStreamTask.WaitAsync(TimeSpan.FromSeconds(5), cancellationToken);
+                }
+                catch (TimeoutException)
+                {
+                    _logger.LogWarning("Alert stream processor did not stop within the shutdown timeout");
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    _logger.LogWarning("Shutdown was cancelled while waiting for the alert stream processor");
+                }
+            }
 
             await UnregisterInstanceAsync();
         }
@@ -571,14 +590,14 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
-        private async Task ProcessAlertStreamAsync()
+        private async Task ProcessAlertStreamAsync(CancellationToken cancellationToken)
         {
             try
             {
                 // Process alerts from Redis stream for cross-instance coordination
                 var lastId = "0-0";
                 
-                while (true)
+                while (!cancellationToken.IsCancellationRequested)
                 {
                     try
                     {
@@ -597,17 +616,21 @@ namespace ConduitLLM.Gateway.Services
                         
                         if (entries.Length == 0)
                         {
-                            await Task.Delay(1000); // Wait if no new entries
+                            await Task.Delay(1000, cancellationToken); // Wait if no new entries
                         }
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error processing alert stream, backing off for 5s");
-                        await Task.Delay(5000); // Back off on errors
+                        await Task.Delay(5000, cancellationToken); // Back off on errors
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
                 _logger.LogInformation("Alert stream processor stopped");
             }
@@ -661,9 +684,11 @@ namespace ConduitLLM.Gateway.Services
 
         public void Dispose()
         {
+            _shutdownCts.Cancel();
             _heartbeatTimer?.Dispose();
             _cleanupTimer?.Dispose();
             _alertChannel.Writer.Complete();
+            _shutdownCts.Dispose();
         }
     }
 }
