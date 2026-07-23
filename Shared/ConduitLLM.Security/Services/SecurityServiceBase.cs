@@ -59,7 +59,7 @@ namespace ConduitLLM.Security.Services
             var key = $"{FailedLoginPrefix}{ipAddress}";
             var banKey = $"{BanPrefix}{ipAddress}";
 
-            var attempts = await GetCacheValueAsync<int>(key);
+            var attempts = (await GetCacheObjectAsync<FailedAuthData>(key))?.Attempts ?? 0;
             attempts++;
 
             var maskedKey = MaskKey(attemptedKey);
@@ -152,7 +152,7 @@ namespace ConduitLLM.Security.Services
         protected async Task<SecurityCheckResult> CheckIpRateLimitAsync(string ipAddress)
         {
             var key = $"{RateLimitPrefix}{ServiceName}:{ipAddress}";
-            var requestCount = await GetCacheValueAsync<int>(key);
+            var requestCount = (await GetCacheObjectAsync<RateLimitData>(key))?.Count ?? 0;
             requestCount++;
 
             if (requestCount > Options.RateLimiting.MaxRequests)
