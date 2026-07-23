@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.DTOs
@@ -8,29 +9,22 @@ namespace ConduitLLM.Configuration.DTOs
     /// </summary>
     public class UpdateModelProviderMappingDto
     {
-        [Required(ErrorMessage = "Model Alias is required")]
-        public string ModelAlias { get; set; } = string.Empty;
+        public string? ModelAlias { get; set; }
 
-        [Required(ErrorMessage = "Provider Model ID is required")]
-        public string ProviderModelId { get; set; } = string.Empty;
+        public string? ProviderModelId { get; set; }
 
-        [Required(ErrorMessage = "Provider ID is required")]
-        public int ProviderId { get; set; }
+        public int? ProviderId { get; set; }
 
-        [Required(ErrorMessage = "Model Provider Type Association is required")]
-        public int ModelProviderTypeAssociationId { get; set; }
+        public int? ModelProviderTypeAssociationId { get; set; }
 
-        [Required]
-        public int Priority { get; set; }
+        public int? Priority { get; set; }
 
         [Range(0.1, 2.0)]
-        [Required]
-        public decimal Weight { get; set; }
+        public decimal? Weight { get; set; }
 
-        [Required]
-        public bool IsEnabled { get; set; }
+        public bool? IsEnabled { get; set; }
 
-        public string? ProviderOptions { get; set; }
+        public Dictionary<string, JsonElement>? ProviderOptions { get; set; }
     }
 
     /// <summary>
@@ -108,7 +102,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional provider-specific request options as a JSON object (OpenRouter: provider/plugins/
         /// transforms/models/route), merged into outgoing requests routed through this mapping.
         /// </summary>
-        public string? ProviderOptions { get; set; }
+        public Dictionary<string, JsonElement>? ProviderOptions { get; set; }
 
         /// <summary>
         /// Model capability flags (populated from Model entity)

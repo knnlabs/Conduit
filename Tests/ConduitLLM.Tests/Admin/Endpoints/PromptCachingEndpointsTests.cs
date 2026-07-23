@@ -34,7 +34,7 @@ public sealed class PromptCachingEndpointsTests : IDisposable
     {
         _cache.Setup(cache => cache.GetSettingValueAsync("PromptCaching.Config"))
             .ReturnsAsync((string?)null);
-        var response = await _host.Client.GetAsync("/api/prompt-caching/config");
+        var response = await _host.Client.GetAsync("/v1/admin/prompt-cache-settings/config");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var dto = await response.Content.ReadFromJsonAsync<PromptCachingConfigDto>();
         Assert.Equal(3, dto!.SchemaVersion);
@@ -46,7 +46,7 @@ public sealed class PromptCachingEndpointsTests : IDisposable
     {
         _cache.Setup(cache => cache.GetSettingValueAsync("PromptCaching.Config"))
             .ReturnsAsync("{\"auto_inject_enabled\":true}");
-        var response = await _host.Client.GetAsync("/api/prompt-caching/config");
+        var response = await _host.Client.GetAsync("/v1/admin/prompt-cache-settings/config");
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
@@ -67,7 +67,7 @@ public sealed class PromptCachingEndpointsTests : IDisposable
                 Ttl = "5m"
             }]
         };
-        var response = await _host.Client.PutAsJsonAsync("/api/prompt-caching/config", input);
+        var response = await _host.Client.PutAsJsonAsync("/v1/admin/prompt-cache-settings/config", input);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         _settings.Verify(settings => settings.UpdateSettingByKeyAsync(
             It.Is<UpdateGlobalSettingByKeyDto>(setting => setting.Value.Contains("schema_version"))), Times.Once);
@@ -77,7 +77,7 @@ public sealed class PromptCachingEndpointsTests : IDisposable
     [Fact]
     public async Task UpdateConfig_UnsupportedProvider_ReturnsBadRequest()
     {
-        var response = await _host.Client.PutAsJsonAsync("/api/prompt-caching/config",
+        var response = await _host.Client.PutAsJsonAsync("/v1/admin/prompt-cache-settings/config",
             new UpdatePromptCachingConfigDto
             {
                 Enabled = true,
@@ -95,12 +95,13 @@ public sealed class PromptCachingEndpointsTests : IDisposable
     [Fact]
     public async Task GetCapabilities_IncludesManagedAndProviderManagedEntries()
     {
-        var response = await _host.Client.GetAsync("/api/prompt-caching/capabilities");
+        var response = await _host.Client.GetAsync("/v1/admin/prompt-cache-settings/capabilities");
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        Assert.Contains(document.RootElement.EnumerateArray(), item =>
+        var capabilities = document.RootElement.GetProperty("data").EnumerateArray();
+        Assert.Contains(capabilities, item =>
             item.GetProperty("modelPattern").GetString() == "anthropic/*"
             && !item.GetProperty("providerManaged").GetBoolean());
-        Assert.Contains(document.RootElement.EnumerateArray(), item =>
+        Assert.Contains(document.RootElement.GetProperty("data").EnumerateArray(), item =>
             item.GetProperty("providerManaged").GetBoolean());
     }
 

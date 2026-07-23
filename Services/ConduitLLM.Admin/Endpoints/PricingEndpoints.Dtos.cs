@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace ConduitLLM.Admin.Endpoints
 {
     /// <summary>
@@ -6,9 +8,9 @@ namespace ConduitLLM.Admin.Endpoints
     public class PricingValidationRequest
     {
         /// <summary>
-        /// The pricing configuration JSON to validate
+        /// The structured pricing configuration to validate.
         /// </summary>
-        public string PricingConfiguration { get; set; } = string.Empty;
+        public Dictionary<string, JsonElement> PricingConfiguration { get; set; } = new();
     }
 
     /// <summary>
@@ -38,9 +40,9 @@ namespace ConduitLLM.Admin.Endpoints
     public class PricingSimulationRequest
     {
         /// <summary>
-        /// The pricing configuration JSON
+        /// The structured pricing configuration.
         /// </summary>
-        public string PricingConfiguration { get; set; } = string.Empty;
+        public Dictionary<string, JsonElement> PricingConfiguration { get; set; } = new();
 
         /// <summary>
         /// Parameters for the simulation
@@ -261,8 +263,8 @@ namespace ConduitLLM.Admin.Endpoints
         public int ModelCostId { get; set; }
         /// <summary>The type of pricing applied (e.g., token, image, audio).</summary>
         public string PricingType { get; set; } = string.Empty;
-        /// <summary>JSON representation of input parameters used for pricing calculation.</summary>
-        public string InputParameters { get; set; } = string.Empty;
+        /// <summary>Input parameters used for pricing calculation.</summary>
+        public Dictionary<string, JsonElement> InputParameters { get; set; } = new();
         /// <summary>The pricing rule that matched, if any.</summary>
         public string? MatchedRule { get; set; }
         /// <summary>Whether the default rate was used instead of a specific rule.</summary>

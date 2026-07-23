@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 
@@ -91,17 +92,37 @@ namespace ConduitLLM.Configuration.Utilities
                 Id = virtualKey.Id,
                 KeyName = virtualKey.KeyName,
                 KeyPrefix = GenerateKeyPrefix(virtualKey.KeyHash),
-                AllowedModels = virtualKey.AllowedModels,
+                AllowedModels = ParseAllowedModels(virtualKey.AllowedModels),
                 VirtualKeyGroupId = virtualKey.VirtualKeyGroupId,
                 IsEnabled = virtualKey.IsEnabled,
                 ExpiresAt = virtualKey.ExpiresAt,
                 CreatedAt = virtualKey.CreatedAt,
                 UpdatedAt = virtualKey.UpdatedAt,
-                Metadata = virtualKey.Metadata,
+                Metadata = ParseMetadata(virtualKey.Metadata),
                 RateLimitRpm = virtualKey.RateLimitRpm,
                 RateLimitRpd = virtualKey.RateLimitRpd,
                 Description = virtualKey.Description,
             };
+        }
+
+        public static List<string>? ParseAllowedModels(string? allowedModels) =>
+            string.IsNullOrWhiteSpace(allowedModels)
+                ? null
+                : allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+        private static Dictionary<string, JsonElement>? ParseMetadata(string? metadata)
+        {
+            if (string.IsNullOrWhiteSpace(metadata))
+                return null;
+
+            try
+            {
+                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadata);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
 
         /// <summary>

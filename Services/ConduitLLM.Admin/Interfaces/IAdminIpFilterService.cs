@@ -43,9 +43,10 @@ public interface IAdminIpFilterService
     /// <summary>
     /// Updates an existing IP filter
     /// </summary>
+    /// <param name="id">The route ID of the filter to update</param>
     /// <param name="filter">The filter to update</param>
     /// <returns>Success result with error message if failed</returns>
-    Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(UpdateIpFilterDto filter);
+    Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(int id, UpdateIpFilterDto filter);
 
     /// <summary>
     /// Deletes an IP filter

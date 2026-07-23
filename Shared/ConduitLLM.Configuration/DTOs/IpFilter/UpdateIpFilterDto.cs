@@ -9,32 +9,29 @@ namespace ConduitLLM.Configuration.DTOs.IpFilter;
 /// </summary>
 public class UpdateIpFilterDto
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public int Id { get; set; }
     /// <summary>
     /// Unique identifier for the IP filter to update
     /// </summary>
-    [Required]
-    public int Id { get; set; }
-
     /// <summary>
     /// Type of the IP filter (whitelist or blacklist)
     /// </summary>
-    [Required]
     [StringLength(10)]
-    public string FilterType { get; set; } = IpFilterConstants.BLACKLIST;
+    public string? FilterType { get; set; }
 
     /// <summary>
     /// The IP address or subnet in CIDR notation (e.g., "192.168.1.1" or "192.168.1.0/24")
     /// </summary>
-    [Required]
     [StringLength(50)]
-    public string IpAddressOrCidr { get; set; } = string.Empty;
+    public string? IpAddressOrCidr { get; set; }
 
 
     /// <summary>
     /// Name of the IP filter rule
     /// </summary>
     [StringLength(100)]
-    public string Name { get; set; } = string.Empty;
+    public string? Name { get; set; }
 
     /// <summary>
     /// Optional description of the filter
@@ -45,5 +42,5 @@ public class UpdateIpFilterDto
     /// <summary>
     /// Whether the filter is currently active
     /// </summary>
-    public bool IsEnabled { get; set; } = true;
+    public bool? IsEnabled { get; set; }
 }

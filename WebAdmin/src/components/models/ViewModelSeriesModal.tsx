@@ -18,6 +18,9 @@ interface ViewModelSeriesModalProps {
 export function ViewModelSeriesModal({ isOpen, series, onClose }: ViewModelSeriesModalProps) {
   const [models, setModels] = useState<SeriesSimpleModelDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const parametersJson = series.parameters
+    ? JSON.stringify(series.parameters, null, 2)
+    : '';
 
   useEffect(() => {
     if (isOpen && series?.id) {
@@ -78,20 +81,14 @@ export function ViewModelSeriesModal({ isOpen, series, onClose }: ViewModelSerie
             <Stack gap="xs">
               <Text fw={500}>UI Parameters:</Text>
               <ParameterPreview 
-                parametersJson={series.parameters}
+                parametersJson={parametersJson}
                 context="chat"
                 label="Preview UI Components"
                 maxHeight={300}
               />
               <ScrollArea h={200}>
                 <CodeHighlight
-                  code={(() => {
-                    try {
-                      return JSON.stringify(JSON.parse(series.parameters), null, 2);
-                    } catch {
-                      return series.parameters;
-                    }
-                  })()}
+                  code={parametersJson}
                   language="json"
                   withCopyButton={false}
                 />

@@ -39,14 +39,14 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapProviderToolsEndpoints(IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/admin/provider-tools")
+            var group = app.MapGroup("/v1/admin/provider-tools")
                 .AddEndpointFilter<ValidationEndpointFilter>()
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("Provider Tools");
             group.MapGet("/", ([FromServices] ProviderToolsEndpoints e, ProviderType? provider = null, bool? isActive = null) => e.GetProviderTools(provider, isActive)).WithName("ProviderTools_GetAll").Produces<IEnumerable<ProviderToolDto>>();
             group.MapGet("/{id}", ([FromServices] ProviderToolsEndpoints e, int id) => e.GetProviderTool(id)).WithName("ProviderTools_GetById").Produces<ProviderToolDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/", ([FromServices] ProviderToolsEndpoints e, CreateProviderToolDto dto) => e.CreateProviderTool(dto)).WithName("ProviderTools_Create").Produces<ProviderToolDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-            group.MapPut("/{id}", ([FromServices] ProviderToolsEndpoints e, int id, UpdateProviderToolDto dto) => e.UpdateProviderTool(id, dto)).WithName("ProviderTools_Update").Produces<ProviderToolDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            group.MapPatch("/{id}", ([FromServices] ProviderToolsEndpoints e, int id, UpdateProviderToolDto dto) => e.UpdateProviderTool(id, dto)).WithName("ProviderTools_Update").Produces<ProviderToolDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id}", ([FromServices] ProviderToolsEndpoints e, int id) => e.DeleteProviderTool(id)).WithName("ProviderTools_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             group.MapGet("/providers", ([FromServices] ProviderToolsEndpoints e) => e.GetToolProviders()).WithName("ProviderTools_GetProviders").Produces<IEnumerable<ToolProviderDto>>();
             group.MapGet("/billing-units", ([FromServices] ProviderToolsEndpoints e) => e.GetBillingUnits()).WithName("ProviderTools_GetBillingUnits").Produces<IEnumerable<string>>();
@@ -141,7 +141,7 @@ namespace ConduitLLM.Admin.Endpoints
             await PublishToolChangedEventAsync(tool, "Created");
 
             var result = ProviderToolDto.FromEntity(tool);
-            return Results.Created($"/api/admin/provider-tools/{result.Id}", result);
+            return Results.Created($"/v1/admin/provider-tools/{result.Id}", result);
         }
 
         /// <summary>

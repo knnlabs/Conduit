@@ -33,7 +33,7 @@ public sealed class ModelCostsEndpointsTests
         var result = await ValidateAsync(
             host,
             CreatePricingConfiguration("quality", "hd"),
-            """{"quality":{"type":"select","options":[{"value":"standard","label":"Standard"}]}}""");
+            ParseObject("""{"quality":{"type":"select","options":[{"value":"standard","label":"Standard"}]}}"""));
 
         Assert.True(result.IsValid);
         Assert.Empty(result.Errors);
@@ -45,12 +45,12 @@ public sealed class ModelCostsEndpointsTests
     {
         using var host = CreateHost();
         var response = await host.Client.PostAsJsonAsync(
-            "/api/ModelCosts/validate-pricing-rules",
+            "/v1/admin/model-costs/validate-pricing-rules",
             new ValidatePricingRulesRequest
             {
                 PricingConfiguration = CreatePricingConfiguration("quality", "hd"),
                 ParameterSchema =
-                    """{"quality":{"type":"select","options":[{"value":"standard","label":"Standard"}]}}"""
+                    ParseObject("""{"quality":{"type":"select","options":[{"value":"standard","label":"Standard"}]}}""")
             });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -215,11 +215,11 @@ public sealed class ModelCostsEndpointsTests
 
     private static async Task<ValidationResult> ValidateAsync(
         AdminEndpointTestHost host,
-        string pricingConfiguration,
-        string? callerSchema = null)
+        Dictionary<string, JsonElement> pricingConfiguration,
+        Dictionary<string, JsonElement>? callerSchema = null)
     {
         var response = await host.Client.PostAsJsonAsync(
-            $"/api/ModelCosts/{ModelCostId}/validate-pricing-rules",
+            $"/v1/admin/model-costs/{ModelCostId}/validate-pricing-rules",
             new ValidatePricingRulesRequest
             {
                 PricingConfiguration = pricingConfiguration,
@@ -231,8 +231,8 @@ public sealed class ModelCostsEndpointsTests
             await response.Content.ReadFromJsonAsync<ValidationResult>());
     }
 
-    private static string CreatePricingConfiguration(string parameter, object value) =>
-        JsonSerializer.Serialize(new
+    private static Dictionary<string, JsonElement> CreatePricingConfiguration(string parameter, object value) =>
+        ParseObject(JsonSerializer.Serialize(new
         {
             version = "1.0",
             pricingType = "per_unit",
@@ -247,7 +247,10 @@ public sealed class ModelCostsEndpointsTests
                     rate = 1m
                 }
             }
-        });
+        }));
+
+    private static Dictionary<string, JsonElement> ParseObject(string json) =>
+        JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 
     private sealed record ModelSeed(
         int Id,

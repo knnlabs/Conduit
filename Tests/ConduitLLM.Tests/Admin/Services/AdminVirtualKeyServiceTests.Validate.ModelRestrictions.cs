@@ -76,7 +76,7 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.Null(result.ErrorMessage);
             Assert.Equal(1, result.VirtualKeyId);
             Assert.Equal("Test Key", result.KeyName);
-            Assert.Equal("gpt-3.5-turbo,gpt-4,claude-3-opus", result.AllowedModels);
+            Assert.Equal(["gpt-3.5-turbo", "gpt-4", "claude-3-opus"], result.AllowedModels);
         }
 
         [Fact]

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
@@ -123,6 +125,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional metadata as JSON for request-type-specific details.
         /// Used for functions, images, video, audio, and other execution types.
         /// </summary>
-        public string? Metadata { get; set; }
+        public Dictionary<string, JsonElement>? Metadata { get; set; }
     }
 }

@@ -50,7 +50,7 @@ namespace ConduitLLM.Admin.Extensions
                 Name = series.Name,
                 Description = series.Description,
                 TokenizerType = series.TokenizerType,
-                Parameters = series.Parameters
+                Parameters = StructuredJson.ParseObject(series.Parameters) ?? new()
             };
         }
 
@@ -69,7 +69,7 @@ namespace ConduitLLM.Admin.Extensions
                 CreatedAt = model.CreatedAt,
                 UpdatedAt = model.UpdatedAt,
                 Series = model.Series?.ToDto(),
-                ModelParameters = model.ModelParameters,
+                ModelParameters = StructuredJson.ParseObject(model.ModelParameters),
                 InputModalities = capabilities.InputModalities,
                 OutputModalities = capabilities.OutputModalities,
                 CapabilitySource = capabilities.Source,

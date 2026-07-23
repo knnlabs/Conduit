@@ -37,7 +37,10 @@ describe('FetchSystemService.getWebAdminVirtualKey', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetGlobalSetting.mockRejectedValue(new Error('not found'));
-    mockListGroups.mockResolvedValue({ items: [], totalPages: 1 });
+    mockListGroups.mockResolvedValue({
+      data: [],
+      pagination: { page: 1, pageSize: 100, totalItems: 0, totalPages: 0 },
+    });
     mockCreateGroup.mockResolvedValue({ id: 7, externalGroupId: 'webadmin-internal' });
     mockCreateVirtualKey.mockResolvedValue({
       virtualKey: 'vk_webadmin',
@@ -65,8 +68,8 @@ describe('FetchSystemService.getWebAdminVirtualKey', () => {
 
   it('reuses an existing internal group instead of funding another one', async () => {
     mockListGroups.mockResolvedValue({
-      items: [{ id: 42, externalGroupId: 'webadmin-internal' }],
-      totalPages: 1,
+      data: [{ id: 42, externalGroupId: 'webadmin-internal' }],
+      pagination: { page: 1, pageSize: 100, totalItems: 1, totalPages: 1 },
     });
     const service = new FetchSystemService({} as FetchBaseApiClient);
 

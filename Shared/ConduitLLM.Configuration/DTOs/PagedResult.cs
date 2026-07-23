@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
@@ -9,44 +7,35 @@ namespace ConduitLLM.Configuration.DTOs
     public class PagedResult<T>
     {
         /// <summary>
-        /// List of items for the current page
+        /// Items for the current page.
         /// </summary>
-        [Required]
-        public List<T> Items { get; set; } = new();
+        public List<T> Data { get; set; } = new();
 
         /// <summary>
-        /// Total number of items across all pages
+        /// Pagination metadata.
         /// </summary>
-        [Required]
-        public int TotalCount { get; set; }
+        public PaginationMetadata Pagination { get; set; } = new();
 
-        /// <summary>
-        /// Current page number (1-based)
-        /// </summary>
-        [Required]
-        public int CurrentPage { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public List<T> Items { get => Data; set => Data = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int CurrentPage { get => Pagination.Page; set => Pagination.Page = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int PageSize { get => Pagination.PageSize; set => Pagination.PageSize = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int TotalCount { get => Pagination.TotalItems; set => Pagination.TotalItems = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int TotalPages { get => Pagination.TotalPages; set => Pagination.TotalPages = value; }
+    }
 
-        /// <summary>
-        /// Number of items per page
-        /// </summary>
-        [Required]
+    /// <summary>
+    /// Canonical Admin API pagination metadata.
+    /// </summary>
+    public class PaginationMetadata
+    {
+        public int Page { get; set; }
         public int PageSize { get; set; }
-
-        /// <summary>
-        /// Total number of pages
-        /// </summary>
-        [Required]
+        public int TotalItems { get; set; }
         public int TotalPages { get; set; }
-
-        /// <summary>
-        /// Whether there is a previous page
-        /// </summary>
-        public bool HasPreviousPage => CurrentPage > 1;
-
-        /// <summary>
-        /// Whether there is a next page
-        /// </summary>
-        public bool HasNextPage => CurrentPage < TotalPages;
-
     }
 }

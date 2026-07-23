@@ -85,9 +85,8 @@ namespace ConduitLLM.Core.Services.BatchOperations
                     KeyName = virtualKeyInfo.KeyName,
                     IsEnabled = item.IsEnabled ?? virtualKeyInfo.IsEnabled,
                     ExpiresAt = item.ExpiresAt ?? virtualKeyInfo.ExpiresAt,
-                    // Convert List<string> to comma-separated string
-                    AllowedModels = item.AllowedModels != null 
-                        ? string.Join(",", item.AllowedModels) 
+                    AllowedModels = item.AllowedModels != null
+                        ? [.. item.AllowedModels]
                         : virtualKeyInfo.AllowedModels,
                     // Handle rate limits
                     RateLimitRpm = item.RateLimits?.ContainsKey("rpm") == true 

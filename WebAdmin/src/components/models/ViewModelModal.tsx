@@ -204,6 +204,9 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
           const parametersToShow = model.modelParameters ?? seriesParameters;
           
           if (parametersToShow) {
+            const parametersJson = typeof parametersToShow === 'string'
+              ? parametersToShow
+              : JSON.stringify(parametersToShow, null, 2);
             return (
               <>
                 <Divider />
@@ -220,20 +223,14 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
                     </Text>
                   )}
                   <ParameterPreview 
-                    parametersJson={parametersToShow}
+                    parametersJson={parametersJson}
                     context="chat"
                     label="Preview UI Components"
                     maxHeight={300}
                   />
                   <ScrollArea h={200}>
                     <CodeHighlight
-                      code={(() => {
-                        try {
-                          return JSON.stringify(JSON.parse(parametersToShow), null, 2);
-                        } catch {
-                          return parametersToShow;
-                        }
-                      })()}
+                      code={parametersJson}
                       language="json"
                       withCopyButton={false}
                     />

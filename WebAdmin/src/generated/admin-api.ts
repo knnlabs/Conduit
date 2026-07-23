@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-  "/api/ModelAuthor": {
+  "/v1/admin/model-authors": {
     parameters: {
       query?: never;
       header?: never;
@@ -20,7 +20,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelAuthor/{id}": {
+  "/v1/admin/model-authors/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -28,15 +28,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["ModelAuthors_GetById"];
-    put: operations["ModelAuthors_Update"];
+    put?: never;
     post?: never;
     delete: operations["ModelAuthors_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["ModelAuthors_Update"];
     trace?: never;
   };
-  "/api/ModelAuthor/{id}/series": {
+  "/v1/admin/model-authors/{id}/series": {
     parameters: {
       query?: never;
       header?: never;
@@ -52,7 +52,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelSeries": {
+  "/v1/admin/model-series": {
     parameters: {
       query?: never;
       header?: never;
@@ -68,7 +68,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelSeries/{id}": {
+  "/v1/admin/model-series/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -76,15 +76,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["ModelSeries_GetById"];
-    put: operations["ModelSeries_Update"];
+    put?: never;
     post?: never;
     delete: operations["ModelSeries_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["ModelSeries_Update"];
     trace?: never;
   };
-  "/api/ModelSeries/{id}/models": {
+  "/v1/admin/model-series/{id}/models": {
     parameters: {
       query?: never;
       header?: never;
@@ -100,7 +100,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Notifications": {
+  "/v1/admin/notifications": {
     parameters: {
       query?: never;
       header?: never;
@@ -116,7 +116,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Notifications/unread": {
+  "/v1/admin/notifications/unread": {
     parameters: {
       query?: never;
       header?: never;
@@ -132,7 +132,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Notifications/{id}": {
+  "/v1/admin/notifications/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -140,15 +140,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["Notifications_GetById"];
-    put: operations["Notifications_Update"];
+    put?: never;
     post?: never;
     delete: operations["Notifications_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["Notifications_Update"];
     trace?: never;
   };
-  "/api/Notifications/{id}/read": {
+  "/v1/admin/notifications/{id}/read": {
     parameters: {
       query?: never;
       header?: never;
@@ -164,7 +164,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Notifications/mark-all-read": {
+  "/v1/admin/notifications/mark-all-read": {
     parameters: {
       query?: never;
       header?: never;
@@ -212,7 +212,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/auth/ephemeral-master-key": {
+  "/v1/admin/auth-tokens/ephemeral-master-key": {
     parameters: {
       query?: never;
       header?: never;
@@ -228,7 +228,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/SystemInfo/info": {
+  "/v1/admin/system-metadata/info": {
     parameters: {
       query?: never;
       header?: never;
@@ -244,7 +244,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/SystemInfo/health": {
+  "/v1/admin/system-metadata/health": {
     parameters: {
       query?: never;
       header?: never;
@@ -260,7 +260,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/SystemInfo/cache/invalidate-discovery": {
+  "/v1/admin/system-metadata/cache/invalidate-discovery": {
     parameters: {
       query?: never;
       header?: never;
@@ -276,7 +276,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/SystemInfo/cache/function-discovery/stats": {
+  "/v1/admin/system-metadata/cache/function-discovery/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -292,7 +292,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/SystemInfo/cache/invalidate-function-discovery": {
+  "/v1/admin/system-metadata/cache/invalidate-function-discovery": {
     parameters: {
       query?: never;
       header?: never;
@@ -302,22 +302,6 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["SystemInfo_InvalidateFunctionDiscoveryCache"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/metrics/database/pool": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["Metrics_GetDatabasePoolMetrics"];
-    put?: never;
-    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -340,7 +324,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/routing": {
+  "/v1/admin/database-pool-metrics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["Metrics_GetDatabasePoolMetrics"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/routing-configurations/routing": {
     parameters: {
       query?: never;
       header?: never;
@@ -356,7 +356,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/routing/defaults": {
+  "/v1/admin/routing-configurations/routing/defaults": {
     parameters: {
       query?: never;
       header?: never;
@@ -372,7 +372,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/config/routing/aliases/{alias}": {
+  "/v1/admin/routing-configurations/routing/aliases/{alias}": {
     parameters: {
       query?: never;
       header?: never;
@@ -388,7 +388,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/bundled-catalog/import": {
+  "/v1/admin/model-catalogs/import": {
     parameters: {
       query?: never;
       header?: never;
@@ -404,7 +404,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionExecutions/{id}": {
+  "/v1/admin/function-executions/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -420,7 +420,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionExecutions/virtualkey/{virtualKeyId}": {
+  "/v1/admin/function-executions/virtual-keys/{virtualKeyId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -436,7 +436,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionExecutions/configuration/{functionConfigurationId}": {
+  "/v1/admin/function-executions/configuration/{functionConfigurationId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -452,7 +452,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionExecutions/state/{state}": {
+  "/v1/admin/function-executions/state/{state}": {
     parameters: {
       query?: never;
       header?: never;
@@ -468,7 +468,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionExecutions/expired-leases": {
+  "/v1/admin/function-executions/expired-leases": {
     parameters: {
       query?: never;
       header?: never;
@@ -484,7 +484,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionExecutions/ready-for-retry": {
+  "/v1/admin/function-executions/ready-for-retry": {
     parameters: {
       query?: never;
       header?: never;
@@ -500,7 +500,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionExecutions/cleanup": {
+  "/v1/admin/function-executions/cleanup": {
     parameters: {
       query?: never;
       header?: never;
@@ -516,7 +516,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionCosts": {
+  "/v1/admin/function-costs": {
     parameters: {
       query?: never;
       header?: never;
@@ -532,7 +532,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionCosts/{id}": {
+  "/v1/admin/function-costs/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -540,15 +540,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["FunctionCosts_GetById"];
-    put: operations["FunctionCosts_Update"];
+    put?: never;
     post?: never;
     delete: operations["FunctionCosts_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["FunctionCosts_Update"];
     trace?: never;
   };
-  "/api/FunctionCosts/configuration/{functionConfigurationId}": {
+  "/v1/admin/function-costs/configuration/{functionConfigurationId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -564,7 +564,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionCosts/cache/clear": {
+  "/v1/admin/function-costs/cache/clear": {
     parameters: {
       query?: never;
       header?: never;
@@ -580,7 +580,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionCredentials": {
+  "/v1/admin/function-credentials": {
     parameters: {
       query?: never;
       header?: never;
@@ -596,7 +596,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionCredentials/configuration/{functionConfigurationId}": {
+  "/v1/admin/function-credentials/configuration/{functionConfigurationId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -612,7 +612,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionCredentials/{id}": {
+  "/v1/admin/function-credentials/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -620,15 +620,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["FunctionCredentials_GetById"];
-    put: operations["FunctionCredentials_Update"];
+    put?: never;
     post?: never;
     delete: operations["FunctionCredentials_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["FunctionCredentials_Update"];
     trace?: never;
   };
-  "/api/FunctionCredentials/test": {
+  "/v1/admin/function-credentials/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -644,7 +644,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/batch-spending/flush": {
+  "/v1/admin/batch-spending-jobs/flush": {
     parameters: {
       query?: never;
       header?: never;
@@ -660,7 +660,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/batch-spending/status": {
+  "/v1/admin/batch-spending-jobs/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -676,7 +676,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/batch-spending/info": {
+  "/v1/admin/batch-spending-jobs/info": {
     parameters: {
       query?: never;
       header?: never;
@@ -692,7 +692,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/prompt-caching/config": {
+  "/v1/admin/prompt-cache-settings/config": {
     parameters: {
       query?: never;
       header?: never;
@@ -708,7 +708,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/prompt-caching/capabilities": {
+  "/v1/admin/prompt-cache-settings/capabilities": {
     parameters: {
       query?: never;
       header?: never;
@@ -724,7 +724,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/prompt-caching/analytics": {
+  "/v1/admin/prompt-cache-settings/analytics": {
     parameters: {
       query?: never;
       header?: never;
@@ -740,7 +740,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/drift": {
+  "/v1/admin/provider-sync-jobs/drift": {
     parameters: {
       query?: never;
       header?: never;
@@ -756,7 +756,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/drift/{id}": {
+  "/v1/admin/provider-sync-jobs/drift/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -772,7 +772,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/drift/{id}/apply": {
+  "/v1/admin/provider-sync-jobs/drift/{id}/apply": {
     parameters: {
       query?: never;
       header?: never;
@@ -788,7 +788,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/drift/{id}/dismiss": {
+  "/v1/admin/provider-sync-jobs/drift/{id}/dismiss": {
     parameters: {
       query?: never;
       header?: never;
@@ -804,7 +804,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/drift/bulk/apply": {
+  "/v1/admin/provider-sync-jobs/drift/bulk/apply": {
     parameters: {
       query?: never;
       header?: never;
@@ -820,7 +820,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/drift/bulk/dismiss": {
+  "/v1/admin/provider-sync-jobs/drift/bulk/dismiss": {
     parameters: {
       query?: never;
       header?: never;
@@ -836,7 +836,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/run": {
+  "/v1/admin/provider-sync-jobs/run": {
     parameters: {
       query?: never;
       header?: never;
@@ -852,7 +852,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderSync/runs": {
+  "/v1/admin/provider-sync-jobs/runs": {
     parameters: {
       query?: never;
       header?: never;
@@ -868,7 +868,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/GlobalSettings": {
+  "/v1/admin/global-settings": {
     parameters: {
       query?: never;
       header?: never;
@@ -884,7 +884,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/GlobalSettings/{id}": {
+  "/v1/admin/global-settings/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -892,15 +892,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["GlobalSettings_GetById"];
-    put: operations["GlobalSettings_Update"];
+    put?: never;
     post?: never;
     delete: operations["GlobalSettings_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["GlobalSettings_Update"];
     trace?: never;
   };
-  "/api/GlobalSettings/by-key/{key}": {
+  "/v1/admin/global-settings/by-key/{key}": {
     parameters: {
       query?: never;
       header?: never;
@@ -916,7 +916,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/GlobalSettings/by-key": {
+  "/v1/admin/global-settings/by-key": {
     parameters: {
       query?: never;
       header?: never;
@@ -932,7 +932,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/GlobalSettings/cache/stats": {
+  "/v1/admin/global-settings/cache/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -948,7 +948,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/GlobalSettings/cache/reload": {
+  "/v1/admin/global-settings/cache/reload": {
     parameters: {
       query?: never;
       header?: never;
@@ -964,7 +964,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/GlobalSettings/cache/invalidate/{key}": {
+  "/v1/admin/global-settings/cache/invalidate/{key}": {
     parameters: {
       query?: never;
       header?: never;
@@ -980,7 +980,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/stats": {
+  "/v1/admin/media-assets/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -996,7 +996,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/stats/virtual-key/{virtualKeyId}": {
+  "/v1/admin/media-assets/stats/virtual-key/{virtualKeyId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1012,7 +1012,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/stats/by-provider": {
+  "/v1/admin/media-assets/stats/by-provider": {
     parameters: {
       query?: never;
       header?: never;
@@ -1028,7 +1028,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/stats/by-type": {
+  "/v1/admin/media-assets/stats/by-type": {
     parameters: {
       query?: never;
       header?: never;
@@ -1044,7 +1044,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/virtual-key/{virtualKeyId}": {
+  "/v1/admin/media-assets/virtual-key/{virtualKeyId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1060,7 +1060,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/search": {
+  "/v1/admin/media-assets/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -1076,7 +1076,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/{mediaId}": {
+  "/v1/admin/media-assets/{mediaId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1092,7 +1092,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/cleanup/expired": {
+  "/v1/admin/media-assets/cleanup/expired": {
     parameters: {
       query?: never;
       header?: never;
@@ -1108,7 +1108,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/cleanup/orphaned": {
+  "/v1/admin/media-assets/cleanup/orphaned": {
     parameters: {
       query?: never;
       header?: never;
@@ -1124,7 +1124,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/Media/cleanup/prune": {
+  "/v1/admin/media-assets/cleanup/prune": {
     parameters: {
       query?: never;
       header?: never;
@@ -1140,7 +1140,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/media-cleanup/status": {
+  "/v1/admin/media-cleanup-jobs/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -1156,7 +1156,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/media-cleanup/enabled": {
+  "/v1/admin/media-cleanup-jobs/enabled": {
     parameters: {
       query?: never;
       header?: never;
@@ -1172,7 +1172,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/media-cleanup/simple-retention": {
+  "/v1/admin/media-cleanup-jobs/simple-retention": {
     parameters: {
       query?: never;
       header?: never;
@@ -1188,7 +1188,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials": {
+  "/v1/admin/providers": {
     parameters: {
       query?: never;
       header?: never;
@@ -1204,7 +1204,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials/{id}": {
+  "/v1/admin/providers/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1212,15 +1212,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["ProviderCredentials_GetById"];
-    put: operations["ProviderCredentials_Update"];
+    put?: never;
     post?: never;
     delete: operations["ProviderCredentials_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["ProviderCredentials_Update"];
     trace?: never;
   };
-  "/api/ProviderCredentials/{providerId}/keys": {
+  "/v1/admin/providers/{providerId}/keys": {
     parameters: {
       query?: never;
       header?: never;
@@ -1236,7 +1236,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials/{providerId}/keys/{keyId}": {
+  "/v1/admin/providers/{providerId}/keys/{keyId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1244,15 +1244,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["ProviderCredentials_GetKey"];
-    put: operations["ProviderCredentials_UpdateKey"];
+    put?: never;
     post?: never;
     delete: operations["ProviderCredentials_DeleteKey"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["ProviderCredentials_UpdateKey"];
     trace?: never;
   };
-  "/api/ProviderCredentials/{providerId}/keys/{keyId}/set-primary": {
+  "/v1/admin/providers/{providerId}/keys/{keyId}/set-primary": {
     parameters: {
       query?: never;
       header?: never;
@@ -1268,7 +1268,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials/{id}/test": {
+  "/v1/admin/providers/{id}/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -1284,7 +1284,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials/test": {
+  "/v1/admin/providers/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -1300,7 +1300,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials/{providerId}/keys/{keyId}/test": {
+  "/v1/admin/providers/{providerId}/keys/{keyId}/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -1316,7 +1316,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model": {
+  "/v1/admin/models": {
     parameters: {
       query?: never;
       header?: never;
@@ -1332,7 +1332,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/paged": {
+  "/v1/admin/models/paged": {
     parameters: {
       query?: never;
       header?: never;
@@ -1348,7 +1348,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/{id}": {
+  "/v1/admin/models/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1356,15 +1356,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["Model_GetById"];
-    put: operations["Model_Update"];
+    put?: never;
     post?: never;
     delete: operations["Model_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["Model_Update"];
     trace?: never;
   };
-  "/api/Model/search": {
+  "/v1/admin/models/search": {
     parameters: {
       query?: never;
       header?: never;
@@ -1380,7 +1380,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/provider/models/{provider}": {
+  "/v1/admin/models/provider/models/{provider}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1396,7 +1396,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/{id}/identifiers": {
+  "/v1/admin/models/{id}/identifiers": {
     parameters: {
       query?: never;
       header?: never;
@@ -1412,7 +1412,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/{id}/available-providers": {
+  "/v1/admin/models/{id}/available-providers": {
     parameters: {
       query?: never;
       header?: never;
@@ -1428,7 +1428,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/{id}/identifiers/{identifierId}": {
+  "/v1/admin/models/{id}/identifiers/{identifierId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1436,15 +1436,15 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    put: operations["Model_UpdateIdentifier"];
+    put?: never;
     post?: never;
     delete: operations["Model_DeleteIdentifier"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["Model_UpdateIdentifier"];
     trace?: never;
   };
-  "/api/Model/{id}/provider-mappings": {
+  "/v1/admin/models/{id}/provider-mappings": {
     parameters: {
       query?: never;
       header?: never;
@@ -1460,7 +1460,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/{id}/provider-mappings/{mappingId}": {
+  "/v1/admin/models/{id}/provider-mappings/{mappingId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1468,15 +1468,15 @@ export interface paths {
       cookie?: never;
     };
     get?: never;
-    put: operations["Model_UpdateProviderMapping"];
+    put?: never;
     post?: never;
     delete: operations["Model_DeleteProviderMapping"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["Model_UpdateProviderMapping"];
     trace?: never;
   };
-  "/api/VirtualKeyGroups": {
+  "/v1/admin/virtual-key-groups": {
     parameters: {
       query?: never;
       header?: never;
@@ -1492,7 +1492,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeyGroups/{id}": {
+  "/v1/admin/virtual-key-groups/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1500,15 +1500,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["VirtualKeyGroups_GetById"];
-    put: operations["VirtualKeyGroups_Update"];
+    put?: never;
     post?: never;
     delete: operations["VirtualKeyGroups_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["VirtualKeyGroups_Update"];
     trace?: never;
   };
-  "/api/VirtualKeyGroups/{id}/adjust-balance": {
+  "/v1/admin/virtual-key-groups/{id}/adjust-balance": {
     parameters: {
       query?: never;
       header?: never;
@@ -1524,7 +1524,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeyGroups/{id}/transactions": {
+  "/v1/admin/virtual-key-groups/{id}/transactions": {
     parameters: {
       query?: never;
       header?: never;
@@ -1540,7 +1540,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeyGroups/{id}/keys": {
+  "/v1/admin/virtual-key-groups/{id}/keys": {
     parameters: {
       query?: never;
       header?: never;
@@ -1556,7 +1556,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeyGroups/{id}/refund": {
+  "/v1/admin/virtual-key-groups/{id}/refund": {
     parameters: {
       query?: never;
       header?: never;
@@ -1572,7 +1572,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys": {
+  "/v1/admin/virtual-keys": {
     parameters: {
       query?: never;
       header?: never;
@@ -1588,7 +1588,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys/{id}": {
+  "/v1/admin/virtual-keys/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1596,15 +1596,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["VirtualKeys_GetById"];
-    put: operations["VirtualKeys_Update"];
+    put?: never;
     post?: never;
     delete: operations["VirtualKeys_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["VirtualKeys_Update"];
     trace?: never;
   };
-  "/api/VirtualKeys/validate": {
+  "/v1/admin/virtual-keys/validate": {
     parameters: {
       query?: never;
       header?: never;
@@ -1620,7 +1620,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys/{id}/validation-info": {
+  "/v1/admin/virtual-keys/{id}/validation-info": {
     parameters: {
       query?: never;
       header?: never;
@@ -1636,7 +1636,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys/maintenance": {
+  "/v1/admin/virtual-keys/maintenance": {
     parameters: {
       query?: never;
       header?: never;
@@ -1652,7 +1652,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys/{id}/discovery-preview": {
+  "/v1/admin/virtual-keys/{id}/discovery-preview": {
     parameters: {
       query?: never;
       header?: never;
@@ -1668,7 +1668,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys/{id}/group": {
+  "/v1/admin/virtual-keys/{id}/group": {
     parameters: {
       query?: never;
       header?: never;
@@ -1684,7 +1684,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/VirtualKeys/usage/by-key/{key}": {
+  "/v1/admin/virtual-keys/usage/by-key/{key}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1700,7 +1700,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/IpFilter": {
+  "/v1/admin/ip-filters": {
     parameters: {
       query?: never;
       header?: never;
@@ -1716,7 +1716,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/IpFilter/enabled": {
+  "/v1/admin/ip-filters/enabled": {
     parameters: {
       query?: never;
       header?: never;
@@ -1732,7 +1732,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/IpFilter/by-virtual-key/{virtualKeyId}": {
+  "/v1/admin/ip-filters/by-virtual-key/{virtualKeyId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1748,7 +1748,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/IpFilter/{id}": {
+  "/v1/admin/ip-filters/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1756,15 +1756,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["IpFilter_GetById"];
-    put: operations["IpFilter_Update"];
+    put?: never;
     post?: never;
     delete: operations["IpFilter_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["IpFilter_Update"];
     trace?: never;
   };
-  "/api/IpFilter/settings": {
+  "/v1/admin/ip-filters/settings": {
     parameters: {
       query?: never;
       header?: never;
@@ -1780,7 +1780,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/IpFilter/check/{ipAddress}": {
+  "/v1/admin/ip-filters/check/{ipAddress}": {
     parameters: {
       query?: never;
       header?: never;
@@ -1796,7 +1796,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/health/services": {
+  "/v1/admin/health-status/services": {
     parameters: {
       query?: never;
       header?: never;
@@ -1812,7 +1812,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/health/incidents": {
+  "/v1/admin/health-status/incidents": {
     parameters: {
       query?: never;
       header?: never;
@@ -1828,7 +1828,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/health/history": {
+  "/v1/admin/health-status/history": {
     parameters: {
       query?: never;
       header?: never;
@@ -1844,7 +1844,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/security/events": {
+  "/v1/admin/security-reports/events": {
     parameters: {
       query?: never;
       header?: never;
@@ -1860,7 +1860,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/security/threats": {
+  "/v1/admin/security-reports/threats": {
     parameters: {
       query?: never;
       header?: never;
@@ -1876,7 +1876,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/security/compliance": {
+  "/v1/admin/security-reports/compliance": {
     parameters: {
       query?: never;
       header?: never;
@@ -1892,23 +1892,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/audit/billing/query": {
+  "/v1/admin/billing-audits": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    get: operations["BillingAudit_QueryAuditEvents"];
     put?: never;
-    post: operations["BillingAudit_QueryAuditEvents"];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/api/audit/billing/summary": {
+  "/v1/admin/billing-audits/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -1924,7 +1924,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/audit/billing/anomalies": {
+  "/v1/admin/billing-audits/anomalies": {
     parameters: {
       query?: never;
       header?: never;
@@ -1940,7 +1940,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/audit/billing/revenue-loss": {
+  "/v1/admin/billing-audits/revenue-loss": {
     parameters: {
       query?: never;
       header?: never;
@@ -1956,7 +1956,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/audit/billing/export": {
+  "/v1/admin/billing-audits/export": {
     parameters: {
       query?: never;
       header?: never;
@@ -1972,7 +1972,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/audit/billing/event-types": {
+  "/v1/admin/billing-audits/event-types": {
     parameters: {
       query?: never;
       header?: never;
@@ -1988,7 +1988,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/logs": {
+  "/v1/admin/analytics/logs": {
     parameters: {
       query?: never;
       header?: never;
@@ -2004,7 +2004,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/logs/{id}": {
+  "/v1/admin/analytics/logs/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2020,7 +2020,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/logs/models": {
+  "/v1/admin/analytics/logs/models": {
     parameters: {
       query?: never;
       header?: never;
@@ -2036,7 +2036,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/costs/summary": {
+  "/v1/admin/analytics/costs/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -2052,7 +2052,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/costs/trends": {
+  "/v1/admin/analytics/costs/trends": {
     parameters: {
       query?: never;
       header?: never;
@@ -2068,7 +2068,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/costs/models": {
+  "/v1/admin/analytics/costs/models": {
     parameters: {
       query?: never;
       header?: never;
@@ -2084,7 +2084,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/costs/virtualkeys": {
+  "/v1/admin/analytics/costs/virtualkeys": {
     parameters: {
       query?: never;
       header?: never;
@@ -2100,7 +2100,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/summary": {
+  "/v1/admin/analytics/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -2116,7 +2116,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/virtualkeys/{virtualKeyId}/usage": {
+  "/v1/admin/analytics/virtual-keys/{virtualKeyId}/usage": {
     parameters: {
       query?: never;
       header?: never;
@@ -2132,7 +2132,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/export": {
+  "/v1/admin/analytics/export": {
     parameters: {
       query?: never;
       header?: never;
@@ -2148,7 +2148,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/metrics/cache": {
+  "/v1/admin/analytics/metrics/cache": {
     parameters: {
       query?: never;
       header?: never;
@@ -2164,7 +2164,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/metrics/operations": {
+  "/v1/admin/analytics/metrics/operations": {
     parameters: {
       query?: never;
       header?: never;
@@ -2180,7 +2180,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Analytics/cache/invalidate": {
+  "/v1/admin/analytics/cache/invalidate": {
     parameters: {
       query?: never;
       header?: never;
@@ -2196,7 +2196,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionConfigurations": {
+  "/v1/admin/function-configurations": {
     parameters: {
       query?: never;
       header?: never;
@@ -2212,7 +2212,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionConfigurations/{id}": {
+  "/v1/admin/function-configurations/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2220,15 +2220,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["FunctionConfigurations_GetById"];
-    put: operations["FunctionConfigurations_Update"];
+    put?: never;
     post?: never;
     delete: operations["FunctionConfigurations_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["FunctionConfigurations_Update"];
     trace?: never;
   };
-  "/api/FunctionConfigurations/provider/{providerType}": {
+  "/v1/admin/function-configurations/provider/{providerType}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2244,7 +2244,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/FunctionConfigurations/purpose/{purpose}": {
+  "/v1/admin/function-configurations/purpose/{purpose}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2260,13 +2260,14 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-errors/recent": {
+  "/v1/admin/provider-errors/recent": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
+    /** @description Returns a bounded tail window of the most recent provider errors; this is intentionally not a paged collection. */
     get: operations["ProviderErrors_GetRecent"];
     put?: never;
     post?: never;
@@ -2276,7 +2277,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-errors/summary": {
+  "/v1/admin/provider-errors/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -2292,7 +2293,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-errors/keys/{keyId}": {
+  "/v1/admin/provider-errors/keys/{keyId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2308,7 +2309,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-errors/keys/{keyId}/clear": {
+  "/v1/admin/provider-errors/keys/{keyId}/clear": {
     parameters: {
       query?: never;
       header?: never;
@@ -2324,7 +2325,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-errors/stats": {
+  "/v1/admin/provider-errors/stats": {
     parameters: {
       query?: never;
       header?: never;
@@ -2340,7 +2341,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-errors/providers/{providerId}/key-errors": {
+  "/v1/admin/provider-errors/providers/{providerId}/key-errors": {
     parameters: {
       query?: never;
       header?: never;
@@ -2356,7 +2357,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/provider-errors/keys/{keyId}/disable": {
+  "/v1/admin/provider-errors/keys/{keyId}/disable": {
     parameters: {
       query?: never;
       header?: never;
@@ -2372,7 +2373,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/media-retention/policies": {
+  "/v1/admin/media-retention-policies": {
     parameters: {
       query?: never;
       header?: never;
@@ -2388,7 +2389,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/media-retention/policies/{id}": {
+  "/v1/admin/media-retention-policies/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2396,15 +2397,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["MediaRetention_GetPolicy"];
-    put: operations["MediaRetention_UpdatePolicy"];
+    put?: never;
     post?: never;
     delete: operations["MediaRetention_DeletePolicy"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["MediaRetention_UpdatePolicy"];
     trace?: never;
   };
-  "/api/admin/media-retention/assign/{groupId}/{policyId}": {
+  "/v1/admin/media-retention-policies/{policyId}/group-assignments/{groupId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2420,7 +2421,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/media-retention/policies/{id}/set-default": {
+  "/v1/admin/media-retention-policies/{id}/set-default": {
     parameters: {
       query?: never;
       header?: never;
@@ -2436,7 +2437,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/media-retention/cleanup/{groupId}": {
+  "/v1/admin/media-retention-policies/{groupId}/cleanup-jobs": {
     parameters: {
       query?: never;
       header?: never;
@@ -2452,7 +2453,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/provider-tools": {
+  "/v1/admin/provider-tools": {
     parameters: {
       query?: never;
       header?: never;
@@ -2468,7 +2469,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/provider-tools/{id}": {
+  "/v1/admin/provider-tools/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2476,15 +2477,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["ProviderTools_GetById"];
-    put: operations["ProviderTools_Update"];
+    put?: never;
     post?: never;
     delete: operations["ProviderTools_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["ProviderTools_Update"];
     trace?: never;
   };
-  "/api/admin/provider-tools/providers": {
+  "/v1/admin/provider-tools/providers": {
     parameters: {
       query?: never;
       header?: never;
@@ -2500,7 +2501,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/provider-tools/billing-units": {
+  "/v1/admin/provider-tools/billing-units": {
     parameters: {
       query?: never;
       header?: never;
@@ -2516,7 +2517,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/provider-tools/import": {
+  "/v1/admin/provider-tools/import": {
     parameters: {
       query?: never;
       header?: never;
@@ -2532,7 +2533,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/admin/provider-tools/export": {
+  "/v1/admin/provider-tools/export": {
     parameters: {
       query?: never;
       header?: never;
@@ -2548,7 +2549,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/types": {
+  "/v1/admin/pricing-tools/types": {
     parameters: {
       query?: never;
       header?: never;
@@ -2564,7 +2565,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/operators": {
+  "/v1/admin/pricing-tools/operators": {
     parameters: {
       query?: never;
       header?: never;
@@ -2580,7 +2581,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/template": {
+  "/v1/admin/pricing-tools/template": {
     parameters: {
       query?: never;
       header?: never;
@@ -2596,7 +2597,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/validate": {
+  "/v1/admin/pricing-tools/validate": {
     parameters: {
       query?: never;
       header?: never;
@@ -2612,7 +2613,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/simulate": {
+  "/v1/admin/pricing-tools/simulate": {
     parameters: {
       query?: never;
       header?: never;
@@ -2628,23 +2629,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/audit/query": {
+  "/v1/admin/pricing-tools/audit/events": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    get: operations["Pricing_QueryAudit"];
     put?: never;
-    post: operations["Pricing_QueryAudit"];
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/audit/summary": {
+  "/v1/admin/pricing-tools/audit/summary": {
     parameters: {
       query?: never;
       header?: never;
@@ -2660,7 +2661,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Pricing/audit/request/{requestId}": {
+  "/v1/admin/pricing-tools/audit/request/{requestId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2676,7 +2677,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping": {
+  "/v1/admin/model-provider-mappings": {
     parameters: {
       query?: never;
       header?: never;
@@ -2692,7 +2693,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/{id}": {
+  "/v1/admin/model-provider-mappings/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2700,15 +2701,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["ModelProviderMapping_GetById"];
-    put: operations["ModelProviderMapping_Update"];
+    put?: never;
     post?: never;
     delete: operations["ModelProviderMapping_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["ModelProviderMapping_Update"];
     trace?: never;
   };
-  "/api/ModelProviderMapping/providers": {
+  "/v1/admin/model-provider-mappings/providers": {
     parameters: {
       query?: never;
       header?: never;
@@ -2724,7 +2725,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/bulk/preview": {
+  "/v1/admin/model-provider-mappings/bulk/preview": {
     parameters: {
       query?: never;
       header?: never;
@@ -2740,7 +2741,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/bulk": {
+  "/v1/admin/model-provider-mappings/bulk": {
     parameters: {
       query?: never;
       header?: never;
@@ -2756,7 +2757,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/bulk/delete": {
+  "/v1/admin/model-provider-mappings/bulk/delete": {
     parameters: {
       query?: never;
       header?: never;
@@ -2772,7 +2773,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/bulk/enable": {
+  "/v1/admin/model-provider-mappings/bulk/enable": {
     parameters: {
       query?: never;
       header?: never;
@@ -2788,7 +2789,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelProviderMapping/bulk/disable": {
+  "/v1/admin/model-provider-mappings/bulk/disable": {
     parameters: {
       query?: never;
       header?: never;
@@ -2804,7 +2805,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts": {
+  "/v1/admin/model-costs": {
     parameters: {
       query?: never;
       header?: never;
@@ -2820,7 +2821,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/{id}": {
+  "/v1/admin/model-costs/{id}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2828,15 +2829,15 @@ export interface paths {
       cookie?: never;
     };
     get: operations["ModelCosts_GetById"];
-    put: operations["ModelCosts_Update"];
+    put?: never;
     post?: never;
     delete: operations["ModelCosts_Delete"];
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["ModelCosts_Update"];
     trace?: never;
   };
-  "/api/ModelCosts/provider/costs/{providerId}": {
+  "/v1/admin/model-costs/provider/costs/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2852,7 +2853,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/name/costs/{costName}": {
+  "/v1/admin/model-costs/name/costs/{costName}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2868,7 +2869,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/overview": {
+  "/v1/admin/model-costs/overview": {
     parameters: {
       query?: never;
       header?: never;
@@ -2884,7 +2885,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/import": {
+  "/v1/admin/model-costs/import": {
     parameters: {
       query?: never;
       header?: never;
@@ -2900,7 +2901,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/export/csv": {
+  "/v1/admin/model-costs/export/csv": {
     parameters: {
       query?: never;
       header?: never;
@@ -2916,7 +2917,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/export/json": {
+  "/v1/admin/model-costs/export/json": {
     parameters: {
       query?: never;
       header?: never;
@@ -2932,7 +2933,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/import/csv": {
+  "/v1/admin/model-costs/import/csv": {
     parameters: {
       query?: never;
       header?: never;
@@ -2948,7 +2949,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/import/json": {
+  "/v1/admin/model-costs/import/json": {
     parameters: {
       query?: never;
       header?: never;
@@ -2964,7 +2965,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/{id}/validate-pricing-rules": {
+  "/v1/admin/model-costs/{id}/validate-pricing-rules": {
     parameters: {
       query?: never;
       header?: never;
@@ -2980,7 +2981,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/validate-pricing-rules": {
+  "/v1/admin/model-costs/validate-pricing-rules": {
     parameters: {
       query?: never;
       header?: never;
@@ -3340,65 +3341,6 @@ export interface components {
        */
       virtualKeyGroupId?: null | number;
       eventType?: null | components["schemas"]["BillingAuditEventType"];
-    };
-    /** @description Request DTO for querying billing audit events */
-    BillingAuditQueryRequest: {
-      /**
-       * Format: date-time
-       * @description Start date for the query (inclusive)
-       */
-      from?: string;
-      /**
-       * Format: date-time
-       * @description End date for the query (inclusive)
-       */
-      to?: string;
-      eventType?: null | components["schemas"]["BillingAuditEventType"];
-      /**
-       * Format: int32
-       * @description Optional virtual key ID filter
-       */
-      virtualKeyId?: null | number;
-      /**
-       * Format: int32
-       * @description Optional virtual key group ID filter.
-       */
-      virtualKeyGroupId?: null | number;
-      /**
-       * Format: int32
-       * @description Page number (1-based)
-       */
-      pageNumber?: number;
-      /**
-       * Format: int32
-       * @description Page size (max 1000)
-       */
-      pageSize?: number;
-    };
-    /** @description Response DTO for billing audit event queries */
-    BillingAuditResponse: {
-      /** @description List of audit events */
-      events?: components["schemas"]["BillingAuditEventDto"][];
-      /**
-       * Format: int32
-       * @description Total count of matching events
-       */
-      totalCount?: number;
-      /**
-       * Format: int32
-       * @description Current page number
-       */
-      pageNumber?: number;
-      /**
-       * Format: int32
-       * @description Page size
-       */
-      pageSize?: number;
-      /**
-       * Format: int32
-       * @description Total pages available
-       */
-      totalPages?: number;
     };
     BillingAuditSummary: {
       /** Format: int64 */
@@ -3780,6 +3722,19 @@ export interface components {
       /** Format: date-time */
       expiryDate?: null | string;
     };
+    CreateFunctionCredentialRequest: {
+      providerType: components["schemas"]["FunctionProviderType"];
+      /** Format: int32 */
+      functionConfigurationId?: null | number;
+      apiKey?: null | string;
+      baseUrl?: null | string;
+      organization?: null | string;
+      /** Format: int16 */
+      functionAccountGroup?: number;
+      isPrimary?: boolean;
+      isEnabled?: boolean;
+      keyName?: null | string;
+    };
     CreateGlobalSettingDto: {
       key: string;
       value: string;
@@ -3847,7 +3802,9 @@ export interface components {
     CreateModelCostDto: {
       costName: string;
       pricingModel: components["schemas"]["PricingModel"];
-      pricingConfiguration?: null | string;
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
       modelProviderTypeAssociationIds?: number[];
       modelType: string;
       /** Format: int32 */
@@ -3934,7 +3891,9 @@ export interface components {
       isActive?: null | boolean;
       /** @description Gets or sets the model-specific parameter configuration for UI generation.
        *     JSON string containing parameter definitions, or null to use series defaults. */
-      modelParameters?: null | string;
+      modelParameters?: {
+        [key: string]: unknown;
+      };
     };
     /** @description DTO for creating a model identifier */
     CreateModelIdentifierDto: {
@@ -3949,7 +3908,9 @@ export interface components {
       /** @description Whether this is the primary identifier */
       isPrimary?: null | boolean;
       /** @description Optional metadata as JSON */
-      metadata?: null | string;
+      metadata?: {
+        [key: string]: unknown;
+      };
       /**
        * Format: int32
        * @description Provider-specific override for maximum input tokens
@@ -3993,7 +3954,9 @@ export interface components {
       /** Format: double */
       weight?: number;
       isEnabled?: boolean;
-      providerOptions?: null | string;
+      providerOptions?: {
+        [key: string]: unknown;
+      };
     };
     /** @description Data transfer object for creating a new model series in the system. */
     CreateModelSeriesDto: {
@@ -4014,7 +3977,9 @@ export interface components {
       tokenizerType?: components["schemas"]["TokenizerType"];
       /** @description Gets or sets optional UI parameter configuration for the series.
        *     JSON string with UI parameters, or null for default. */
-      parameters?: null | string;
+      parameters?: {
+        [key: string]: unknown;
+      };
     };
     CreateNotificationDto: {
       /** Format: int32 */
@@ -4061,12 +4026,14 @@ export interface components {
     };
     CreateVirtualKeyRequestDto: {
       keyName: string;
-      allowedModels?: null | string;
+      allowedModels?: null | string[];
       /** Format: int32 */
       virtualKeyGroupId: number;
       /** Format: date-time */
       expiresAt?: null | string;
-      metadata?: null | string;
+      metadata?: {
+        [key: string]: unknown;
+      };
       /** Format: int32 */
       rateLimitRpm?: null | number;
       /** Format: int32 */
@@ -4259,10 +4226,14 @@ export interface components {
       openRouterModelId: string;
       driftType: string;
       status: string;
-      /** @description Conduit's current values at detection time (JSON; shape depends on DriftType). */
-      currentValuesJson: string;
-      /** @description The provider's proposed values (JSON; shape depends on DriftType). */
-      proposedValuesJson: string;
+      /** @description Conduit's current values at detection time (shape depends on DriftType). */
+      currentValues: {
+        [key: string]: unknown;
+      };
+      /** @description The provider's proposed values (shape depends on DriftType). */
+      proposedValues: {
+        [key: string]: unknown;
+      };
       /** Format: date-time */
       firstDetectedAt: string;
       /** Format: date-time */
@@ -4437,24 +4408,23 @@ export interface components {
       /** Format: date-time */
       updatedAt?: string;
     };
-    FunctionCredential: {
+    FunctionCredentialDto: {
       /** Format: int32 */
       id?: number;
-      providerType: components["schemas"]["FunctionProviderType"];
       /** Format: int32 */
-      functionConfigurationId?: null | number;
-      apiKey?: null | string;
+      functionConfigurationId?: number;
+      maskedApiKey?: null | string;
       baseUrl?: null | string;
       organization?: null | string;
       /** Format: int16 */
-      functionAccountGroup: number;
-      isPrimary: boolean;
-      isEnabled: boolean;
+      functionAccountGroup?: number;
+      isPrimary?: boolean;
+      isEnabled?: boolean;
       keyName?: null | string;
       /** Format: date-time */
-      createdAt: string;
+      createdAt?: string;
       /** Format: date-time */
-      updatedAt: string;
+      updatedAt?: string;
     };
     /** @description Result returned after testing a function credential. */
     FunctionCredentialTestResultDto: {
@@ -4862,7 +4832,9 @@ export interface components {
       statusCode?: null | number;
       /** Format: date-time */
       timestamp?: string;
-      metadata?: null | string;
+      metadata?: {
+        [key: string]: unknown;
+      };
     };
     /** @description Information about a matched pricing rule */
     MatchedRuleInfo: {
@@ -5223,7 +5195,9 @@ export interface components {
       id: number;
       costName: string;
       pricingModel: components["schemas"]["PricingModel"];
-      pricingConfiguration: null | string;
+      pricingConfiguration: {
+        [key: string]: unknown;
+      };
       associatedModelAliases: string[];
       modelProviderTypeAssociationIds: number[];
       /** Format: double */
@@ -5358,7 +5332,9 @@ export interface components {
       series?: null | components["schemas"]["ModelSeriesDto"];
       /** @description Gets or sets the model-specific parameter configuration for UI generation.
        *     JSON string containing parameter definitions, or null to use series defaults. */
-      modelParameters?: null | string;
+      modelParameters?: {
+        [key: string]: unknown;
+      };
       /** @description Gets or sets the provider type associations (identifiers) for this model. */
       identifiers?: null | components["schemas"]["ModelIdentifierDto"][];
     };
@@ -5489,7 +5465,9 @@ export interface components {
       createdAt: string;
       /** Format: date-time */
       updatedAt: string;
-      providerOptions?: null | string;
+      providerOptions?: {
+        [key: string]: unknown;
+      };
       capabilities?: null | components["schemas"]["ModelCapabilitiesDto"];
     };
     /** @description Data transfer object representing a series or family of related AI models. */
@@ -5520,7 +5498,9 @@ export interface components {
       tokenizerType?: components["schemas"]["TokenizerType"];
       /** @description Gets or sets the UI parameters configuration for this series.
        *     JSON string containing UI parameter configuration. */
-      parameters?: string;
+      parameters?: {
+        [key: string]: unknown;
+      };
     };
     ModelUsage: {
       /** Format: int32 */
@@ -5661,7 +5641,9 @@ export interface components {
       series?: null | components["schemas"]["ModelSeriesDto"];
       /** @description Gets or sets the model-specific parameter configuration for UI generation.
        *     JSON string containing parameter definitions, or null to use series defaults. */
-      modelParameters?: null | string;
+      modelParameters?: {
+        [key: string]: unknown;
+      };
       /** @description Gets or sets the provider type associations (identifiers) for this model. */
       identifiers?: null | components["schemas"]["ModelIdentifierDto"][];
     };
@@ -5712,83 +5694,47 @@ export interface components {
         [key: string]: components["schemas"]["MediaTypeStats"];
       };
     };
+    PagedResultOfBillingAuditEventDto: {
+      data?: components["schemas"]["BillingAuditEventDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
+    };
     PagedResultOfLogRequestDto: {
-      items: components["schemas"]["LogRequestDto"][];
-      /** Format: int32 */
-      totalCount: number;
-      /** Format: int32 */
-      currentPage: number;
-      /** Format: int32 */
-      pageSize: number;
-      /** Format: int32 */
-      totalPages: number;
-      hasPreviousPage?: boolean;
-      hasNextPage?: boolean;
+      data?: components["schemas"]["LogRequestDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
     };
     PagedResultOfModelCostDto: {
-      items: components["schemas"]["ModelCostDto"][];
-      /** Format: int32 */
-      totalCount: number;
-      /** Format: int32 */
-      currentPage: number;
-      /** Format: int32 */
-      pageSize: number;
-      /** Format: int32 */
-      totalPages: number;
-      hasPreviousPage: boolean;
-      hasNextPage: boolean;
+      data: components["schemas"]["ModelCostDto"][];
+      pagination: components["schemas"]["PaginationMetadata"];
     };
     PagedResultOfModelDto: {
-      items: components["schemas"]["ModelDto"][];
-      /** Format: int32 */
-      totalCount: number;
-      /** Format: int32 */
-      currentPage: number;
-      /** Format: int32 */
-      pageSize: number;
-      /** Format: int32 */
-      totalPages: number;
-      hasPreviousPage?: boolean;
-      hasNextPage?: boolean;
+      data?: components["schemas"]["ModelDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
+    };
+    PagedResultOfPricingAuditEventDto: {
+      data?: components["schemas"]["PricingAuditEventDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
     };
     PagedResultOfProviderDto: {
-      items: components["schemas"]["ProviderDto"][];
-      /** Format: int32 */
-      totalCount: number;
-      /** Format: int32 */
-      currentPage: number;
-      /** Format: int32 */
-      pageSize: number;
-      /** Format: int32 */
-      totalPages: number;
-      hasPreviousPage?: boolean;
-      hasNextPage?: boolean;
+      data?: components["schemas"]["ProviderDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
     };
     PagedResultOfVirtualKeyGroupDto: {
-      items: components["schemas"]["VirtualKeyGroupDto"][];
-      /** Format: int32 */
-      totalCount: number;
-      /** Format: int32 */
-      currentPage: number;
-      /** Format: int32 */
-      pageSize: number;
-      /** Format: int32 */
-      totalPages: number;
-      hasPreviousPage?: boolean;
-      hasNextPage?: boolean;
+      data?: components["schemas"]["VirtualKeyGroupDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
     };
     PagedResultOfVirtualKeyGroupTransactionDto: {
-      items: components["schemas"]["VirtualKeyGroupTransactionDto"][];
+      data?: components["schemas"]["VirtualKeyGroupTransactionDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
+    };
+    PaginationMetadata: {
       /** Format: int32 */
-      totalCount: number;
+      page?: number;
       /** Format: int32 */
-      currentPage: number;
+      pageSize?: number;
       /** Format: int32 */
-      pageSize: number;
+      totalItems?: number;
       /** Format: int32 */
-      totalPages: number;
-      hasPreviousPage?: boolean;
-      hasNextPage?: boolean;
+      totalPages?: number;
     };
     /** @description Period comparison for trend analysis */
     PeriodComparison: {
@@ -5849,8 +5795,10 @@ export interface components {
       modelCostId?: number;
       /** @description The type of pricing applied (e.g., token, image, audio). */
       pricingType?: string;
-      /** @description JSON representation of input parameters used for pricing calculation. */
-      inputParameters?: string;
+      /** @description Input parameters used for pricing calculation. */
+      inputParameters?: {
+        [key: string]: unknown;
+      };
       /** @description The pricing rule that matched, if any. */
       matchedRule?: null | string;
       /** @description Whether the default rate was used instead of a specific rule. */
@@ -5872,58 +5820,6 @@ export interface components {
       calculatedCost?: number;
       /** @description The request ID for correlation, if available. */
       requestId?: null | string;
-    };
-    /** @description Request to query pricing audit events */
-    PricingAuditQueryRequest: {
-      /**
-       * Format: date-time
-       * @description Start date
-       */
-      from?: string;
-      /**
-       * Format: date-time
-       * @description End date
-       */
-      to?: string;
-      /**
-       * Format: int32
-       * @description Optional virtual key ID filter
-       */
-      virtualKeyId?: null | number;
-      /** @description Optional model ID filter */
-      modelId?: null | string;
-      /** @description Optional pricing type filter */
-      pricingType?: null | string;
-      /**
-       * Format: int32
-       * @description Page number (1-based)
-       */
-      pageNumber?: number;
-      /**
-       * Format: int32
-       * @description Page size
-       */
-      pageSize?: number;
-    };
-    /** @description Response from pricing audit query */
-    PricingAuditQueryResponse: {
-      /** @description The audit events */
-      events?: components["schemas"]["PricingAuditEventDto"][];
-      /**
-       * Format: int32
-       * @description Total count of matching events
-       */
-      totalCount?: number;
-      /**
-       * Format: int32
-       * @description Current page number
-       */
-      pageNumber?: number;
-      /**
-       * Format: int32
-       * @description Page size
-       */
-      pageSize?: number;
     };
     PricingAuditSummary: {
       /** Format: int64 */
@@ -5983,8 +5879,10 @@ export interface components {
     };
     /** @description Request to simulate pricing calculation */
     PricingSimulationRequest: {
-      /** @description The pricing configuration JSON */
-      pricingConfiguration?: string;
+      /** @description The structured pricing configuration. */
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
       /** @description Parameters for the simulation */
       parameters?: null | Record<string, never>;
       /**
@@ -6060,8 +5958,10 @@ export interface components {
     };
     /** @description Request to validate pricing configuration */
     PricingValidationRequest: {
-      /** @description The pricing configuration JSON to validate */
-      pricingConfiguration?: string;
+      /** @description The structured pricing configuration to validate. */
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
     };
     /** @description Response from pricing validation */
     PricingValidationResponse: {
@@ -7009,24 +6909,32 @@ export interface components {
       description?: null | string;
     };
     UpdateFunctionCostDto: {
-      /** Format: int32 */
-      id?: number;
-      costName: string;
+      costName?: null | string;
       purpose?: null | components["schemas"]["FunctionPurpose"];
       description?: null | string;
       /** Format: double */
       baseCost?: null | number;
-      pricingModel?: components["schemas"]["FunctionPricingModel"];
+      pricingModel?: null | components["schemas"]["FunctionPricingModel"];
       pricingConfiguration?: {
         [key: string]: unknown;
       };
-      isActive?: boolean;
+      isActive?: null | boolean;
       /** Format: int32 */
-      priority?: number;
+      priority?: null | number;
       /** Format: date-time */
-      effectiveDate?: string;
+      effectiveDate?: null | string;
       /** Format: date-time */
       expiryDate?: null | string;
+    };
+    UpdateFunctionCredentialRequest: {
+      apiKey?: null | string;
+      baseUrl?: null | string;
+      organization?: null | string;
+      /** Format: int16 */
+      functionAccountGroup?: null | number;
+      isPrimary?: null | boolean;
+      isEnabled?: null | boolean;
+      keyName?: null | string;
     };
     UpdateGlobalSettingByKeyDto: {
       key: string;
@@ -7034,19 +6942,15 @@ export interface components {
       description?: null | string;
     };
     UpdateGlobalSettingDto: {
-      /** Format: int32 */
-      id?: number;
-      value: string;
+      value?: null | string;
       description?: null | string;
     };
     UpdateIpFilterDto: {
-      /** Format: int32 */
-      id: number;
-      filterType: string;
-      ipAddressOrCidr: string;
-      name?: string;
+      filterType?: null | string;
+      ipAddressOrCidr?: null | string;
+      name?: null | string;
       description?: null | string;
-      isEnabled?: boolean;
+      isEnabled?: null | boolean;
     };
     /** @description Request model for updating a key credential */
     UpdateKeyRequest: {
@@ -7097,12 +7001,7 @@ export interface components {
     };
     /** @description Data transfer object for updating an existing model author/organization. */
     UpdateModelAuthorDto: {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the author to update.
-       */
-      id?: number;
-      /** @description Gets or sets the new name for the author. */
+      /** @description Gets or sets the ID of the author to update. */
       name?: null | string;
       /** @description Gets or sets the new website URL. */
       websiteUrl?: null | string;
@@ -7110,24 +7009,26 @@ export interface components {
       description?: null | string;
     };
     UpdateModelCostDto: {
-      costName: string;
-      pricingModel: components["schemas"]["PricingModel"];
-      pricingConfiguration?: null | string;
+      costName?: null | string;
+      pricingModel?: null | components["schemas"]["PricingModel"];
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
       modelProviderTypeAssociationIds?: null | number[];
-      modelType: string;
+      modelType?: null | string;
       /** Format: int32 */
-      priority?: number;
+      priority?: null | number;
       description?: null | string;
-      isActive?: boolean;
+      isActive?: null | boolean;
       /** Format: double */
-      inputCostPerMillionTokens?: number;
+      inputCostPerMillionTokens?: null | number;
       /** Format: double */
-      outputCostPerMillionTokens?: number;
+      outputCostPerMillionTokens?: null | number;
       /** Format: double */
       embeddingCostPerMillionTokens?: null | number;
       /** Format: double */
       batchProcessingMultiplier?: null | number;
-      supportsBatchProcessing?: boolean;
+      supportsBatchProcessing?: null | boolean;
       /** Format: double */
       cachedInputCostPerMillionTokens?: null | number;
       /** Format: double */
@@ -7141,14 +7042,8 @@ export interface components {
     };
     /** @description Data transfer object for updating an existing AI model in the system. */
     UpdateModelDto: {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the model to update.
-       *     The unique identifier of the model to update.
-       */
-      id?: number;
-      /** @description Gets or sets the new canonical name for the model.
-       *     The new model name, or null to keep existing. */
+      /** @description Gets or sets the ID of the model to update.
+       *     The unique identifier of the model to update. */
       name?: null | string;
       /**
        * Format: int32
@@ -7213,7 +7108,9 @@ export interface components {
       isActive?: null | boolean;
       /** @description Gets or sets the model-specific parameter configuration for UI generation.
        *     JSON string containing parameter definitions, or null to use series defaults. */
-      modelParameters?: null | string;
+      modelParameters?: {
+        [key: string]: unknown;
+      };
     };
     /** @description DTO for updating a model identifier */
     UpdateModelIdentifierDto: {
@@ -7228,7 +7125,9 @@ export interface components {
       /** @description Whether this is the primary identifier */
       isPrimary?: null | boolean;
       /** @description Optional metadata as JSON */
-      metadata?: null | string;
+      metadata?: {
+        [key: string]: unknown;
+      };
       /**
        * Format: int32
        * @description Provider-specific override for maximum input tokens
@@ -7261,29 +7160,25 @@ export interface components {
       capabilitiesLastVerifiedAt?: null | string;
     };
     UpdateModelProviderMappingDto: {
-      modelAlias: string;
-      providerModelId: string;
+      modelAlias?: null | string;
+      providerModelId?: null | string;
       /** Format: int32 */
-      providerId: number;
+      providerId?: null | number;
       /** Format: int32 */
-      modelProviderTypeAssociationId: number;
+      modelProviderTypeAssociationId?: null | number;
       /** Format: int32 */
-      priority: number;
+      priority?: null | number;
       /** Format: double */
-      weight: number;
-      isEnabled: boolean;
-      providerOptions?: null | string;
+      weight?: null | number;
+      isEnabled?: null | boolean;
+      providerOptions?: {
+        [key: string]: unknown;
+      };
     };
     /** @description Data transfer object for updating an existing model series. */
     UpdateModelSeriesDto: {
-      /**
-       * Format: int32
-       * @description Gets or sets the ID of the series to update.
-       *     The unique identifier of the series to update.
-       */
-      id?: number;
-      /** @description Gets or sets the new name for the series.
-       *     The new series name, or null to keep existing. */
+      /** @description Gets or sets the ID of the series to update.
+       *     The unique identifier of the series to update. */
       name?: null | string;
       /** @description Gets or sets the new description for the series.
        *     The new description, or null to keep existing. */
@@ -7291,11 +7186,11 @@ export interface components {
       tokenizerType?: null | components["schemas"]["TokenizerType"];
       /** @description Gets or sets the new UI parameters configuration.
        *     The new parameters JSON string, or null to keep existing. */
-      parameters?: null | string;
+      parameters?: {
+        [key: string]: unknown;
+      };
     };
     UpdateNotificationDto: {
-      /** Format: int32 */
-      id?: number;
       isRead?: boolean;
       message?: null | string;
     };
@@ -7345,13 +7240,15 @@ export interface components {
     };
     UpdateVirtualKeyRequestDto: {
       keyName?: null | string;
-      allowedModels?: null | string;
+      allowedModels?: null | string[];
       /** Format: int32 */
       virtualKeyGroupId?: null | number;
       isEnabled?: null | boolean;
       /** Format: date-time */
       expiresAt?: null | string;
-      metadata?: null | string;
+      metadata?: {
+        [key: string]: unknown;
+      };
       /** Format: int32 */
       rateLimitRpm?: null | number;
       /** Format: int32 */
@@ -7404,10 +7301,14 @@ export interface components {
     /** @description Request model for validating pricing rules */
     ValidatePricingRulesRequest: {
       /** @description The pricing configuration JSON to validate */
-      pricingConfiguration?: string;
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
       /** @description Optional parameter schema JSON for standalone validation. The model-cost-scoped
        *     endpoint ignores this value and uses persisted associated-model schemas. */
-      parameterSchema?: null | string;
+      parameterSchema?: {
+        [key: string]: unknown;
+      };
     };
     ValidateVirtualKeyRequest: {
       key: string;
@@ -7466,7 +7367,7 @@ export interface components {
       id: number;
       keyName: string;
       keyPrefix?: null | string;
-      allowedModels?: null | string;
+      allowedModels?: null | string[];
       /** Format: int32 */
       virtualKeyGroupId: number;
       isEnabled: boolean;
@@ -7476,7 +7377,9 @@ export interface components {
       createdAt: string;
       /** Format: date-time */
       updatedAt: string;
-      metadata?: null | string;
+      metadata?: {
+        [key: string]: unknown;
+      };
       /** Format: int32 */
       rateLimitRpm?: null | number;
       /** Format: int32 */
@@ -7556,7 +7459,7 @@ export interface components {
       rateLimitRpm?: null | number;
       /** Format: int32 */
       rateLimitRpd?: null | number;
-      allowedModels?: null | string;
+      allowedModels?: null | string[];
     };
     /** @description Virtual key usage summary */
     VirtualKeyUsageSummary: {
@@ -7589,7 +7492,7 @@ export interface components {
       /** Format: int32 */
       id?: number;
       keyName?: string;
-      allowedModels?: null | string;
+      allowedModels?: null | string[];
       /** Format: int32 */
       virtualKeyGroupId?: number;
       isEnabled?: boolean;
@@ -7605,7 +7508,7 @@ export interface components {
       /** Format: int32 */
       virtualKeyId?: null | number;
       keyName?: null | string;
-      allowedModels?: null | string;
+      allowedModels?: null | string[];
       errorMessage?: null | string;
     };
     /** @description DTO for warning error information */
@@ -7631,7 +7534,12 @@ export type $defs = Record<string, never>;
 export interface operations {
   ModelAuthors_List: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -7646,7 +7554,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelAuthorDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelAuthorDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -7756,65 +7676,6 @@ export interface operations {
       };
     };
   };
-  ModelAuthors_Update: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateModelAuthorDto"];
-      };
-    };
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   ModelAuthors_Delete: {
     parameters: {
       query?: never;
@@ -7870,9 +7731,75 @@ export interface operations {
       };
     };
   };
-  ModelAuthors_ListSeries: {
+  ModelAuthors_Update: {
     parameters: {
       query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateModelAuthorDto"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ModelAuthorDto"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  ModelAuthors_ListSeries: {
+    parameters: {
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         id: number;
@@ -7889,7 +7816,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SimpleModelSeriesDto"][];
+          "application/json": {
+            data: components["schemas"]["SimpleModelSeriesDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -7918,7 +7857,12 @@ export interface operations {
   };
   ModelSeries_GetAll: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -7933,7 +7877,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelSeriesDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelSeriesDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -8054,76 +8010,6 @@ export interface operations {
       };
     };
   };
-  ModelSeries_Update: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateModelSeriesDto"];
-      };
-    };
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   ModelSeries_Delete: {
     parameters: {
       query?: never;
@@ -8179,9 +8065,86 @@ export interface operations {
       };
     };
   };
-  ModelSeries_GetModels: {
+  ModelSeries_Update: {
     parameters: {
       query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateModelSeriesDto"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ModelSeriesDto"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  ModelSeries_GetModels: {
+    parameters: {
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         id: number;
@@ -8198,7 +8161,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["SeriesSimpleModelDto"][];
+          "application/json": {
+            data: components["schemas"]["SeriesSimpleModelDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -8227,7 +8202,12 @@ export interface operations {
   };
   Notifications_GetAll: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -8242,7 +8222,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["NotificationDto"][];
+          "application/json": {
+            data: components["schemas"]["NotificationDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -8308,7 +8300,12 @@ export interface operations {
   };
   Notifications_GetUnread: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -8323,7 +8320,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["NotificationDto"][];
+          "application/json": {
+            data: components["schemas"]["NotificationDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -8385,6 +8394,50 @@ export interface operations {
       };
     };
   };
+  Notifications_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   Notifications_Update: {
     parameters: {
       query?: never;
@@ -8419,50 +8472,6 @@ export interface operations {
         content: {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  Notifications_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
       };
       /** @description Not Found */
       404: {
@@ -8879,39 +8888,6 @@ export interface operations {
       };
     };
   };
-  Metrics_GetDatabasePoolMetrics: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DatabasePoolMetricsDto"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   Metrics_GetAllMetrics: {
     parameters: {
       query?: never;
@@ -8930,6 +8906,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AllMetricsDto"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  Metrics_GetDatabasePoolMetrics: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["DatabasePoolMetricsDto"];
         };
       };
       /** @description Internal Server Error */
@@ -9247,7 +9256,12 @@ export interface operations {
   };
   FunctionExecutions_GetByVirtualKey: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         virtualKeyId: number;
@@ -9264,7 +9278,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
+          "application/json": {
+            data: components["schemas"]["AdminFunctionExecutionDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -9282,7 +9308,12 @@ export interface operations {
   };
   FunctionExecutions_GetByConfiguration: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         functionConfigurationId: number;
@@ -9299,7 +9330,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
+          "application/json": {
+            data: components["schemas"]["AdminFunctionExecutionDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -9317,7 +9360,12 @@ export interface operations {
   };
   FunctionExecutions_GetByState: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         state: string;
@@ -9334,7 +9382,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
+          "application/json": {
+            data: components["schemas"]["AdminFunctionExecutionDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Bad Request */
@@ -9363,7 +9423,12 @@ export interface operations {
   };
   FunctionExecutions_GetExpiredLeases: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -9378,7 +9443,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
+          "application/json": {
+            data: components["schemas"]["AdminFunctionExecutionDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -9396,7 +9473,12 @@ export interface operations {
   };
   FunctionExecutions_GetReadyForRetry: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -9411,7 +9493,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
+          "application/json": {
+            data: components["schemas"]["AdminFunctionExecutionDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -9475,7 +9569,12 @@ export interface operations {
   };
   FunctionCosts_List: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -9490,7 +9589,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionCostDto"][];
+          "application/json": {
+            data: components["schemas"]["FunctionCostDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -9600,6 +9711,50 @@ export interface operations {
       };
     };
   };
+  FunctionCosts_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   FunctionCosts_Update: {
     parameters: {
       query?: never;
@@ -9636,50 +9791,6 @@ export interface operations {
         content: {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  FunctionCosts_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
       };
       /** @description Not Found */
       404: {
@@ -9786,7 +9897,12 @@ export interface operations {
   };
   FunctionCredentials_List: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -9801,7 +9917,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionCredential"][];
+          "application/json": {
+            data: components["schemas"]["FunctionCredentialDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -9826,7 +9954,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["FunctionCredential"];
+        "application/json": components["schemas"]["CreateFunctionCredentialRequest"];
       };
     };
     responses: {
@@ -9838,7 +9966,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionCredential"];
+          "application/json": components["schemas"]["FunctionCredentialDto"];
         };
       };
       /** @description Bad Request */
@@ -9867,7 +9995,12 @@ export interface operations {
   };
   FunctionCredentials_GetByConfiguration: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         functionConfigurationId: number;
@@ -9884,7 +10017,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionCredential"][];
+          "application/json": {
+            data: components["schemas"]["FunctionCredentialDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -9930,68 +10075,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionCredential"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  FunctionCredentials_Update: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["FunctionCredential"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["FunctionCredential"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+          "application/json": components["schemas"]["FunctionCredentialDto"];
         };
       };
       /** @description Not Found */
@@ -10037,6 +10121,67 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  FunctionCredentials_Update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateFunctionCredentialRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FunctionCredentialDto"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
       };
       /** @description Not Found */
       404: {
@@ -10319,7 +10464,12 @@ export interface operations {
   };
   PromptCaching_GetCapabilities: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -10334,7 +10484,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PromptCachingCapabilityDto"][];
+          "application/json": {
+            data: components["schemas"]["PromptCachingCapabilityDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -10434,7 +10596,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["DriftItemDto"][];
+          "application/json": {
+            data: components["schemas"]["DriftItemDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -10726,7 +10900,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProviderSyncRunDto"][];
+          "application/json": {
+            data: components["schemas"]["ProviderSyncRunDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -10744,7 +10930,12 @@ export interface operations {
   };
   GlobalSettings_List: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -10759,7 +10950,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GlobalSettingDto"][];
+          "application/json": {
+            data: components["schemas"]["GlobalSettingDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -10869,6 +11072,50 @@ export interface operations {
       };
     };
   };
+  GlobalSettings_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   GlobalSettings_Update: {
     parameters: {
       query?: never;
@@ -10903,50 +11150,6 @@ export interface operations {
         content: {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  GlobalSettings_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
       };
       /** @description Not Found */
       404: {
@@ -11347,7 +11550,12 @@ export interface operations {
   };
   Media_GetByVirtualKey: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         virtualKeyId: number;
@@ -11364,7 +11572,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["MediaRecordResponse"][];
+          "application/json": {
+            data: components["schemas"]["MediaRecordResponse"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -11384,6 +11604,10 @@ export interface operations {
     parameters: {
       query?: {
         pattern?: string;
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
       };
       header?: never;
       path?: never;
@@ -11399,7 +11623,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["MediaRecordResponse"][];
+          "application/json": {
+            data: components["schemas"]["MediaRecordResponse"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Bad Request */
@@ -11889,6 +12125,50 @@ export interface operations {
       };
     };
   };
+  ProviderCredentials_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   ProviderCredentials_Update: {
     parameters: {
       query?: never;
@@ -11950,53 +12230,14 @@ export interface operations {
       };
     };
   };
-  ProviderCredentials_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   ProviderCredentials_GetKeys: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         providerId: number;
@@ -12013,7 +12254,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProviderKeyCredentialDto"][];
+          "application/json": {
+            data: components["schemas"]["ProviderKeyCredentialDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -12148,6 +12401,51 @@ export interface operations {
       };
     };
   };
+  ProviderCredentials_DeleteKey: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        providerId: number;
+        keyId: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   ProviderCredentials_UpdateKey: {
     parameters: {
       query?: never;
@@ -12185,51 +12483,6 @@ export interface operations {
         content: {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  ProviderCredentials_DeleteKey: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        providerId: number;
-        keyId: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
       };
       /** @description Not Found */
       404: {
@@ -12458,6 +12711,10 @@ export interface operations {
         search?: string;
         capability?: string;
         hasProviders?: boolean;
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
       };
       header?: never;
       path?: never;
@@ -12473,7 +12730,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -12633,6 +12902,61 @@ export interface operations {
       };
     };
   };
+  Model_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   Model_Update: {
     parameters: {
       query?: never;
@@ -12705,65 +13029,14 @@ export interface operations {
       };
     };
   };
-  Model_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Conflict */
-      409: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   Model_Search: {
     parameters: {
       query?: {
         query?: string;
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
       };
       header?: never;
       path?: never;
@@ -12779,7 +13052,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -12797,7 +13082,12 @@ export interface operations {
   };
   Model_GetByProvider: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         provider: string;
@@ -12814,7 +13104,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelWithProviderIdDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelWithProviderIdDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Bad Request */
@@ -12843,7 +13145,12 @@ export interface operations {
   };
   Model_GetIdentifiers: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         id: number;
@@ -12860,7 +13167,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelIdentifierDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelIdentifierDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -12961,7 +13280,12 @@ export interface operations {
   };
   Model_GetAvailableProviders: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         id: number;
@@ -12978,82 +13302,23 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelProviderAvailabilityDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelProviderAvailabilityDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
       404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  Model_UpdateIdentifier: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-        identifierId: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateModelIdentifierDto"];
-      };
-    };
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Conflict */
-      409: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -13121,9 +13386,87 @@ export interface operations {
       };
     };
   };
-  Model_GetProviderMappings: {
+  Model_UpdateIdentifier: {
     parameters: {
       query?: never;
+      header?: never;
+      path: {
+        id: number;
+        identifierId: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateModelIdentifierDto"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ModelIdentifierDto"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  Model_GetProviderMappings: {
+    parameters: {
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         id: number;
@@ -13140,7 +13483,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelProviderMappingDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelProviderMappingDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -13239,7 +13594,7 @@ export interface operations {
       };
     };
   };
-  Model_UpdateProviderMapping: {
+  Model_DeleteProviderMapping: {
     parameters: {
       query?: never;
       header?: never;
@@ -13249,11 +13604,7 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ModelProviderMappingDto"];
-      };
-    };
+    requestBody?: never;
     responses: {
       /** @description No Content */
       204: {
@@ -13263,17 +13614,6 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
       };
       /** @description Not Found */
       404: {
@@ -13299,7 +13639,7 @@ export interface operations {
       };
     };
   };
-  Model_DeleteProviderMapping: {
+  Model_UpdateProviderMapping: {
     parameters: {
       query?: never;
       header?: never;
@@ -13309,16 +13649,33 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateModelProviderMappingDto"];
+      };
+    };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ModelProviderMappingDto"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
       };
       /** @description Not Found */
       404: {
@@ -13431,6 +13788,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
@@ -13463,58 +13822,13 @@ export interface operations {
       };
     };
   };
-  VirtualKeyGroups_Update: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
-      };
-    };
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   VirtualKeyGroups_Delete: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
+      };
       path: {
         id: number;
       };
@@ -13553,6 +13867,101 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  VirtualKeyGroups_Update: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
+      };
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
       /** @description Internal Server Error */
       500: {
         headers: {
@@ -13569,7 +13978,10 @@ export interface operations {
   VirtualKeyGroups_AdjustBalance: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
+      };
       path: {
         id: number;
       };
@@ -13614,6 +14026,28 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
       /** @description Internal Server Error */
       500: {
         headers: {
@@ -13644,6 +14078,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
@@ -13678,7 +14114,12 @@ export interface operations {
   };
   VirtualKeyGroups_GetKeys: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         id: number;
@@ -13690,12 +14131,26 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["VirtualKeyDto"][];
+          "application/json": {
+            data: components["schemas"]["VirtualKeyDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -13725,8 +14180,10 @@ export interface operations {
   VirtualKeyGroups_Refund: {
     parameters: {
       query?: never;
-      header?: {
+      header: {
         "Idempotency-Key"?: string;
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
       };
       path: {
         id: number;
@@ -13783,6 +14240,28 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
       /** @description Internal Server Error */
       500: {
         headers: {
@@ -13800,6 +14279,10 @@ export interface operations {
     parameters: {
       query?: {
         virtualKeyGroupId?: number;
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
       };
       header?: never;
       path?: never;
@@ -13815,7 +14298,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["VirtualKeyDto"][];
+          "application/json": {
+            data: components["schemas"]["VirtualKeyDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -13915,6 +14410,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
@@ -13947,10 +14444,104 @@ export interface operations {
       };
     };
   };
+  VirtualKeys_Delete: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
+      };
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   VirtualKeys_Update: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
+      };
       path: {
         id: number;
       };
@@ -14015,8 +14606,8 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal Server Error */
-      500: {
+      /** @description Precondition Failed */
+      412: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -14026,52 +14617,8 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-    };
-  };
-  VirtualKeys_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Not Found */
-      404: {
+      /** @description Precondition Required */
+      428: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -14156,6 +14703,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
@@ -14257,6 +14806,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
@@ -14303,6 +14854,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
@@ -14416,7 +14969,12 @@ export interface operations {
   };
   IpFilter_GetAll: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -14431,7 +14989,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["IpFilterDto"][];
+          "application/json": {
+            data: components["schemas"]["IpFilterDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -14519,7 +15089,12 @@ export interface operations {
   };
   IpFilter_GetEnabled: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -14534,7 +15109,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["IpFilterDto"][];
+          "application/json": {
+            data: components["schemas"]["IpFilterDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -14552,7 +15139,12 @@ export interface operations {
   };
   IpFilter_GetByVirtualKey: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         virtualKeyId: number;
@@ -14569,7 +15161,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["IpFilterDto"][];
+          "application/json": {
+            data: components["schemas"]["IpFilterDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -14599,6 +15203,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
@@ -14631,10 +15237,104 @@ export interface operations {
       };
     };
   };
+  IpFilter_Delete: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
+      };
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Failed */
+      412: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Precondition Required */
+      428: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   IpFilter_Update: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        /** @description ETag returned by the latest resource read. Use * only when any current version is acceptable. */
+        "If-Match": string;
+      };
       path: {
         id: number;
       };
@@ -14699,8 +15399,8 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal Server Error */
-      500: {
+      /** @description Precondition Failed */
+      412: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -14710,52 +15410,8 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-    };
-  };
-  IpFilter_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Forbidden */
-      403: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Not Found */
-      404: {
+      /** @description Precondition Required */
+      428: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -15131,16 +15787,20 @@ export interface operations {
   };
   BillingAudit_QueryAuditEvents: {
     parameters: {
-      query?: never;
+      query: {
+        from: string;
+        to: string;
+        eventType?: components["schemas"]["BillingAuditEventType"];
+        virtualKeyId?: number;
+        virtualKeyGroupId?: number;
+        page?: number;
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["BillingAuditQueryRequest"];
-      };
-    };
+    requestBody?: never;
     responses: {
       /** @description OK */
       200: {
@@ -15150,7 +15810,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["BillingAuditResponse"];
+          "application/json": components["schemas"]["PagedResultOfBillingAuditEventDto"];
         };
       };
       /** @description Bad Request */
@@ -15230,6 +15890,10 @@ export interface operations {
       query?: {
         from?: string;
         to?: string;
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
       };
       header?: never;
       path?: never;
@@ -15245,7 +15909,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["BillingAnomaly"][];
+          "application/json": {
+            data: components["schemas"]["BillingAnomaly"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Bad Request */
@@ -15370,7 +16046,12 @@ export interface operations {
   };
   BillingAudit_GetEventTypes: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -15385,7 +16066,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["BillingAuditEventTypeResponse"][];
+          "application/json": {
+            data: components["schemas"]["BillingAuditEventTypeResponse"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -15501,7 +16194,12 @@ export interface operations {
   };
   Analytics_GetDistinctModels: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -15516,7 +16214,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": string[];
+          "application/json": {
+            data: string[];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -15966,7 +16676,12 @@ export interface operations {
   };
   FunctionConfigurations_GetAll: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -15981,7 +16696,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionConfigurationDto"][];
+          "application/json": {
+            data: components["schemas"]["FunctionConfigurationDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -16091,6 +16818,50 @@ export interface operations {
       };
     };
   };
+  FunctionConfigurations_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   FunctionConfigurations_Update: {
     parameters: {
       query?: never;
@@ -16152,53 +16923,14 @@ export interface operations {
       };
     };
   };
-  FunctionConfigurations_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   FunctionConfigurations_GetByProvider: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         providerType: string;
@@ -16215,7 +16947,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionConfigurationDto"][];
+          "application/json": {
+            data: components["schemas"]["FunctionConfigurationDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -16233,7 +16977,12 @@ export interface operations {
   };
   FunctionConfigurations_GetByPurpose: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         purpose: string;
@@ -16250,7 +16999,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionConfigurationDto"][];
+          "application/json": {
+            data: components["schemas"]["FunctionConfigurationDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -16305,7 +17066,12 @@ export interface operations {
   };
   ProviderErrors_GetSummary: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -16320,7 +17086,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProviderErrorSummaryDto"][];
+          "application/json": {
+            data: components["schemas"]["ProviderErrorSummaryDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -16560,7 +17338,12 @@ export interface operations {
   };
   MediaRetention_GetPolicies: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -16575,7 +17358,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["MediaRetentionPolicyDto"][];
+          "application/json": {
+            data: components["schemas"]["MediaRetentionPolicyDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -16685,7 +17480,7 @@ export interface operations {
       };
     };
   };
-  MediaRetention_UpdatePolicy: {
+  MediaRetention_DeletePolicy: {
     parameters: {
       query?: never;
       header?: never;
@@ -16694,22 +17489,16 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
-      };
-    };
+    requestBody?: never;
     responses: {
-      /** @description OK */
-      200: {
+      /** @description No Content */
+      204: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content: {
-          "application/json": components["schemas"]["MediaRetentionPolicyDto"];
-        };
+        content?: never;
       };
       /** @description Bad Request */
       400: {
@@ -16746,7 +17535,7 @@ export interface operations {
       };
     };
   };
-  MediaRetention_DeletePolicy: {
+  MediaRetention_UpdatePolicy: {
     parameters: {
       query?: never;
       header?: never;
@@ -16755,16 +17544,22 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
+      };
+    };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["MediaRetentionPolicyDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -16947,6 +17742,10 @@ export interface operations {
       query?: {
         provider?: components["schemas"]["ProviderType"];
         isActive?: boolean;
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
       };
       header?: never;
       path?: never;
@@ -16962,7 +17761,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProviderToolDto"][];
+          "application/json": {
+            data: components["schemas"]["ProviderToolDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -17072,6 +17883,50 @@ export interface operations {
       };
     };
   };
+  ProviderTools_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   ProviderTools_Update: {
     parameters: {
       query?: never;
@@ -17133,53 +17988,14 @@ export interface operations {
       };
     };
   };
-  ProviderTools_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   ProviderTools_GetProviders: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -17194,7 +18010,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ToolProviderDto"][];
+          "application/json": {
+            data: components["schemas"]["ToolProviderDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -17212,7 +18040,12 @@ export interface operations {
   };
   ProviderTools_GetBillingUnits: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -17227,7 +18060,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": string[];
+          "application/json": {
+            data: string[];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -17282,7 +18127,12 @@ export interface operations {
   };
   ProviderTools_Export: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -17297,7 +18147,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProviderToolDto"][];
+          "application/json": {
+            data: components["schemas"]["ProviderToolDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -17315,7 +18177,12 @@ export interface operations {
   };
   Pricing_GetTypes: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -17330,7 +18197,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PricingTypeInfo"][];
+          "application/json": {
+            data: components["schemas"]["PricingTypeInfo"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -17348,7 +18227,12 @@ export interface operations {
   };
   Pricing_GetOperators: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -17363,7 +18247,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["OperatorInfo"][];
+          "application/json": {
+            data: components["schemas"]["OperatorInfo"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -17512,16 +18408,20 @@ export interface operations {
   };
   Pricing_QueryAudit: {
     parameters: {
-      query?: never;
+      query: {
+        from: string;
+        to: string;
+        virtualKeyId?: number;
+        modelId?: string;
+        pricingType?: string;
+        page?: number;
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["PricingAuditQueryRequest"];
-      };
-    };
+    requestBody?: never;
     responses: {
       /** @description OK */
       200: {
@@ -17531,7 +18431,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PricingAuditQueryResponse"];
+          "application/json": components["schemas"]["PagedResultOfPricingAuditEventDto"];
         };
       };
       /** @description Bad Request */
@@ -17607,7 +18507,12 @@ export interface operations {
   };
   Pricing_GetAuditByRequestId: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         requestId: string;
@@ -17624,7 +18529,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PricingAuditEventDto"][];
+          "application/json": {
+            data: components["schemas"]["PricingAuditEventDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Not Found */
@@ -17653,7 +18570,12 @@ export interface operations {
   };
   ModelProviderMapping_GetAll: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -17668,7 +18590,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelProviderMappingDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelProviderMappingDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -17789,6 +18723,50 @@ export interface operations {
       };
     };
   };
+  ModelProviderMapping_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   ModelProviderMapping_Update: {
     parameters: {
       query?: never;
@@ -17804,14 +18782,16 @@ export interface operations {
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["ModelProviderMappingDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -17859,53 +18839,14 @@ export interface operations {
       };
     };
   };
-  ModelProviderMapping_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   ModelProviderMapping_GetProviders: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -17920,7 +18861,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProviderDto"][];
+          "application/json": {
+            data: components["schemas"]["ProviderDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -18309,6 +19262,50 @@ export interface operations {
       };
     };
   };
+  ModelCosts_Delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   ModelCosts_Update: {
     parameters: {
       query?: never;
@@ -18370,53 +19367,14 @@ export interface operations {
       };
     };
   };
-  ModelCosts_Delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        id: number;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description No Content */
-      204: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Not Found */
-      404: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
   ModelCosts_GetByProvider: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
       header?: never;
       path: {
         providerId: number;
@@ -18433,7 +19391,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelCostDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelCostDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Internal Server Error */
@@ -18500,6 +19470,10 @@ export interface operations {
       query?: {
         startDate?: string;
         endDate?: string;
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
       };
       header?: never;
       path?: never;
@@ -18515,7 +19489,19 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ModelCostOverviewDto"][];
+          "application/json": {
+            data: components["schemas"]["ModelCostOverviewDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
         };
       };
       /** @description Bad Request */

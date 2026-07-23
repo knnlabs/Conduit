@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -38,7 +39,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// - InferenceSteps: {"costPerStep": 0.00013, "defaultSteps": 30}
         /// - TieredTokens: {"tiers": [{"maxContext": 200000, "inputCost": 400}]}
         /// </remarks>
-        public string? PricingConfiguration { get; set; }
+        public Dictionary<string, JsonElement>? PricingConfiguration { get; set; }
 
         /// <summary>
         /// List of model aliases that use this cost configuration

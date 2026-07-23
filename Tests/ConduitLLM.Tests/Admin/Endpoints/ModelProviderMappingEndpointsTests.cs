@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Admin.Endpoints;
@@ -37,17 +38,18 @@ public sealed class ModelProviderMappingEndpointsTests
                 weight: 1.1m,
                 providerOptions: """{"temperature":0.2}""");
 
-            var post = await host.Client.PostAsJsonAsync("/api/ModelProviderMapping", create);
+            var post = await host.Client.PostAsJsonAsync("/v1/admin/model-provider-mappings", create);
 
             Assert.Equal(HttpStatusCode.Created, post.StatusCode);
             var created = Assert.IsType<ModelProviderMappingDto>(
                 await post.Content.ReadFromJsonAsync<ModelProviderMappingDto>());
-            Assert.Equal($"/api/ModelProviderMapping/{created.Id}", post.Headers.Location?.OriginalString);
+            Assert.Equal($"/v1/admin/model-provider-mappings/{created.Id}", post.Headers.Location?.OriginalString);
             Assert.Equal(create.ModelAlias, created.ModelAlias);
             Assert.Equal(create.ProviderId, created.ProviderId);
             Assert.Equal(create.ModelProviderTypeAssociationId, created.ModelProviderTypeAssociationId);
             Assert.Equal(create.Weight, created.Weight);
-            Assert.Equal(create.ProviderOptions, created.ProviderOptions);
+            Assert.Equal(create.ProviderOptions!.Keys, created.ProviderOptions!.Keys);
+            Assert.Equal(0.2, created.ProviderOptions["temperature"].GetDouble());
 
             var update = new UpdateModelProviderMappingDto
             {
@@ -58,14 +60,14 @@ public sealed class ModelProviderMappingEndpointsTests
                 Priority = 3,
                 Weight = 1.8m,
                 IsEnabled = false,
-                ProviderOptions = null
+                ProviderOptions = new()
             };
-            var put = await host.Client.PutAsJsonAsync(
-                $"/api/ModelProviderMapping/{created.Id}", update);
+            var patch = await host.Client.PatchAsJsonAsync(
+                $"/v1/admin/model-provider-mappings/{created.Id}", update);
 
-            Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
 
-            var get = await host.Client.GetAsync($"/api/ModelProviderMapping/{created.Id}");
+            var get = await host.Client.GetAsync($"/v1/admin/model-provider-mappings/{created.Id}");
             Assert.Equal(HttpStatusCode.OK, get.StatusCode);
             var response = Assert.IsType<ModelProviderMappingDto>(
                 await get.Content.ReadFromJsonAsync<ModelProviderMappingDto>());
@@ -76,7 +78,7 @@ public sealed class ModelProviderMappingEndpointsTests
             Assert.Equal(update.Priority, response.Priority);
             Assert.Equal(update.Weight, response.Weight);
             Assert.Equal(update.IsEnabled, response.IsEnabled);
-            Assert.Null(response.ProviderOptions);
+            Assert.Empty(response.ProviderOptions!);
 
             await using var verification = database.CreateContext();
             var persisted = await verification.ModelProviderMappings.AsNoTracking().SingleAsync();
@@ -84,7 +86,7 @@ public sealed class ModelProviderMappingEndpointsTests
             Assert.Equal(update.ProviderId, persisted.ProviderId);
             Assert.Equal(update.ModelProviderTypeAssociationId, persisted.ModelProviderTypeAssociationId);
             Assert.Equal(update.Weight, persisted.RoutingWeight);
-            Assert.Null(persisted.ProviderOptions);
+            Assert.Equal("{}", persisted.ProviderOptions);
             Assert.Equal(3, await verification.Providers.CountAsync());
             Assert.Equal(4, await verification.ModelProviderTypeAssociations.CountAsync());
         }
@@ -97,7 +99,7 @@ public sealed class ModelProviderMappingEndpointsTests
         using (host)
         {
             var first = await host.Client.PostAsJsonAsync(
-                "/api/ModelProviderMapping",
+                "/v1/admin/model-provider-mappings",
                 CreateRequest(
                     "Shared-Alias",
                     seed.OpenAiProviderId,
@@ -106,7 +108,7 @@ public sealed class ModelProviderMappingEndpointsTests
             Assert.Equal(HttpStatusCode.Created, first.StatusCode);
 
             var duplicate = await host.Client.PostAsJsonAsync(
-                "/api/ModelProviderMapping",
+                "/v1/admin/model-provider-mappings",
                 CreateRequest(
                     "shared-alias",
                     seed.OpenAiProviderId,
@@ -115,7 +117,7 @@ public sealed class ModelProviderMappingEndpointsTests
             Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
 
             var secondProvider = await host.Client.PostAsJsonAsync(
-                "/api/ModelProviderMapping",
+                "/v1/admin/model-provider-mappings",
                 CreateRequest(
                     "shared-alias",
                     seed.GroqProviderId,
@@ -139,7 +141,7 @@ public sealed class ModelProviderMappingEndpointsTests
         using (host)
         {
             var firstResponse = await host.Client.PostAsJsonAsync(
-                "/api/ModelProviderMapping",
+                "/v1/admin/model-provider-mappings",
                 CreateRequest(
                     "first",
                     seed.OpenAiProviderId,
@@ -148,7 +150,7 @@ public sealed class ModelProviderMappingEndpointsTests
             var first = Assert.IsType<ModelProviderMappingDto>(
                 await firstResponse.Content.ReadFromJsonAsync<ModelProviderMappingDto>());
             var secondResponse = await host.Client.PostAsJsonAsync(
-                "/api/ModelProviderMapping",
+                "/v1/admin/model-provider-mappings",
                 CreateRequest(
                     "target",
                     seed.GroqProviderId,
@@ -156,8 +158,8 @@ public sealed class ModelProviderMappingEndpointsTests
                     seed.GroqAssociationId));
             Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
 
-            var response = await host.Client.PutAsJsonAsync(
-                $"/api/ModelProviderMapping/{first.Id}",
+            var response = await host.Client.PatchAsJsonAsync(
+                $"/v1/admin/model-provider-mappings/{first.Id}",
                 new UpdateModelProviderMappingDto
                 {
                     ModelAlias = "TARGET",
@@ -179,8 +181,8 @@ public sealed class ModelProviderMappingEndpointsTests
     }
 
     [Theory]
-    [InlineData("{ invalid", "valid JSON")]
-    [InlineData("[]", "JSON object")]
+    [InlineData("{ invalid", null)]
+    [InlineData("[]", null)]
     [InlineData("""{"MODEL":"override"}""", "reserved key")]
     public async Task Post_InvalidProviderOptions_ReturnsBadRequestWithoutMutation(
         string providerOptions,
@@ -189,18 +191,28 @@ public sealed class ModelProviderMappingEndpointsTests
         var (host, database, seed) = CreateHost();
         using (host)
         {
-            var response = await host.Client.PostAsJsonAsync(
-                "/api/ModelProviderMapping",
-                CreateRequest(
-                    "invalid-options",
-                    seed.OpenAiProviderId,
-                    ModelMappingSeed.OpenAiModelId,
-                    seed.OpenAiAssociationId,
-                    providerOptions: providerOptions));
+            var body = $$"""
+                {
+                  "modelAlias": "invalid-options",
+                  "providerId": {{seed.OpenAiProviderId}},
+                  "providerModelId": "{{ModelMappingSeed.OpenAiModelId}}",
+                  "modelProviderTypeAssociationId": {{seed.OpenAiAssociationId}},
+                  "priority": 100,
+                  "weight": 1,
+                  "isEnabled": true,
+                  "providerOptions": {{providerOptions}}
+                }
+                """;
+            var response = await host.Client.PostAsync(
+                "/v1/admin/model-provider-mappings",
+                new StringContent(body, Encoding.UTF8, "application/json"));
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            Assert.Contains(expectedError, await response.Content.ReadAsStringAsync(),
-                StringComparison.OrdinalIgnoreCase);
+            if (expectedError is not null)
+            {
+                Assert.Contains(expectedError, await response.Content.ReadAsStringAsync(),
+                    StringComparison.OrdinalIgnoreCase);
+            }
             await using var verification = database.CreateContext();
             Assert.Empty(await verification.ModelProviderMappings.AsNoTracking().ToListAsync());
         }
@@ -219,7 +231,7 @@ public sealed class ModelProviderMappingEndpointsTests
                 seed.OpenAiAssociationId,
                 weight: 0.09m);
 
-            var response = await host.Client.PostAsJsonAsync("/api/ModelProviderMapping", invalid);
+            var response = await host.Client.PostAsJsonAsync("/v1/admin/model-provider-mappings", invalid);
 
             Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
             await using var verification = database.CreateContext();
@@ -270,6 +282,8 @@ public sealed class ModelProviderMappingEndpointsTests
             Priority = priority,
             Weight = weight,
             IsEnabled = true,
-            ProviderOptions = providerOptions
+            ProviderOptions = providerOptions is null
+                ? null
+                : JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(providerOptions)
         };
 }

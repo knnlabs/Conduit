@@ -20,6 +20,8 @@ namespace ConduitLLM.Admin.Models.ModelSeries
     /// </remarks>
     public class UpdateModelSeriesDto
     {
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Id { get; set; }
         /// <summary>
         /// Gets or sets the ID of the series to update.
         /// </summary>
@@ -28,8 +30,6 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         /// Identifies which series record will be modified.
         /// </remarks>
         /// <value>The unique identifier of the series to update.</value>
-        public int Id { get; set; }
-        
         /// <summary>
         /// Gets or sets the new name for the series.
         /// </summary>
@@ -105,6 +105,6 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         /// Leave null to keep the existing parameters.
         /// </remarks>
         /// <value>The new parameters JSON string, or null to keep existing.</value>
-        public string? Parameters { get; set; }
+        public Dictionary<string, System.Text.Json.JsonElement>? Parameters { get; set; }
     }
 }

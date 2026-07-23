@@ -9,7 +9,7 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAdminAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/admin/auth")
+        var group = app.MapGroup("/v1/admin/auth-tokens")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Auth");

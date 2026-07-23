@@ -9,10 +9,11 @@ namespace ConduitLLM.Admin.Models.ModelAuthors
     /// </remarks>
     public class UpdateModelAuthorDto
     {
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Id { get; set; }
         /// <summary>
         /// Gets or sets the ID of the author to update.
         /// </summary>
-        public int Id { get; set; }
 
         /// <summary>
         /// Gets or sets the new name for the author.

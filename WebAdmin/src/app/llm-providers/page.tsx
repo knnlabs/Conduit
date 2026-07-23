@@ -66,7 +66,7 @@ export default function ProvidersPage() {
         client.providers.list(1, 1000)
       );
       
-      const providersList = result.items;
+      const providersList = result.data ?? [];
       
       // Fetch key counts for each provider
       const providersWithKeyCount = await Promise.all(

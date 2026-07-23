@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Functions.Utilities;
 namespace ConduitLLM.Admin.Extensions
 {
     /// <summary>
@@ -182,8 +183,8 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            entity.Value = dto.Value;
-            entity.Description = dto.Description;
+            if (dto.Value is not null) entity.Value = dto.Value;
+            if (dto.Description is not null) entity.Description = dto.Description;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;
@@ -215,7 +216,7 @@ namespace ConduitLLM.Admin.Extensions
                     .Select(mpta => mpta.Id)
                     .ToList() ?? new List<int>(),
                 PricingModel = modelCost.PricingModel,
-                PricingConfiguration = modelCost.PricingConfiguration,
+                PricingConfiguration = StructuredJson.ParseObject(modelCost.PricingConfiguration),
                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
@@ -253,7 +254,7 @@ namespace ConduitLLM.Admin.Extensions
             {
                 CostName = dto.CostName,
                 PricingModel = dto.PricingModel,
-                PricingConfiguration = dto.PricingConfiguration,
+                PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration),
                 InputCostPerMillionTokens = dto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens,
@@ -287,23 +288,32 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            entity.CostName = dto.CostName;
-            entity.PricingModel = dto.PricingModel;
-            entity.PricingConfiguration = dto.PricingConfiguration;
-            entity.ModelType = dto.ModelType;
-            entity.IsActive = dto.IsActive;
-            entity.Priority = dto.Priority;
-            entity.Description = dto.Description;
-            entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens;
-            entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens;
-            entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
-            entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
-            entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
-            entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
-            entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
-            entity.CostPerSearchUnit = dto.CostPerSearchUnit;
-            entity.AudioCostPerMinute = dto.AudioCostPerMinute;
-            entity.AudioCostPerThousandCharacters = dto.AudioCostPerThousandCharacters;
+            if (dto.CostName is not null) entity.CostName = dto.CostName;
+            if (dto.PricingModel.HasValue) entity.PricingModel = dto.PricingModel.Value;
+            if (dto.PricingConfiguration is not null)
+                entity.PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration);
+            if (dto.ModelType is not null) entity.ModelType = dto.ModelType;
+            if (dto.IsActive.HasValue) entity.IsActive = dto.IsActive.Value;
+            if (dto.Priority.HasValue) entity.Priority = dto.Priority.Value;
+            if (dto.Description is not null) entity.Description = dto.Description;
+            if (dto.InputCostPerMillionTokens.HasValue)
+                entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens.Value;
+            if (dto.OutputCostPerMillionTokens.HasValue)
+                entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens.Value;
+            if (dto.EmbeddingCostPerMillionTokens.HasValue)
+                entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
+            if (dto.BatchProcessingMultiplier.HasValue)
+                entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
+            if (dto.SupportsBatchProcessing.HasValue)
+                entity.SupportsBatchProcessing = dto.SupportsBatchProcessing.Value;
+            if (dto.CachedInputCostPerMillionTokens.HasValue)
+                entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
+            if (dto.CachedInputWriteCostPerMillionTokens.HasValue)
+                entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
+            if (dto.CostPerSearchUnit.HasValue) entity.CostPerSearchUnit = dto.CostPerSearchUnit;
+            if (dto.AudioCostPerMinute.HasValue) entity.AudioCostPerMinute = dto.AudioCostPerMinute;
+            if (dto.AudioCostPerThousandCharacters.HasValue)
+                entity.AudioCostPerThousandCharacters = dto.AudioCostPerThousandCharacters;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

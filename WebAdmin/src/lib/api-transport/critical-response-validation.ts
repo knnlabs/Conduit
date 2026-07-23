@@ -33,7 +33,7 @@ export const virtualKeyValidationSchema = z.object({
   isValid: z.boolean(),
   virtualKeyId: z.number().int().positive().nullish(),
   keyName: z.string().nullish(),
-  allowedModels: z.string().nullish(),
+  allowedModels: z.array(z.string()).nullish(),
   errorMessage: z.string().nullish(),
 });
 

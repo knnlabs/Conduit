@@ -1,5 +1,7 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Functions.Utilities;
 using Microsoft.AspNetCore.Mvc;
 using Prometheus;
 
@@ -17,9 +19,9 @@ namespace ConduitLLM.Admin.Endpoints
                 return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
-            if (request.PageSize > 1000)
+            if (request.PageSize is < 1 or > 100)
             {
-                return AdminResults.BadRequest("Page size cannot exceed 1000");
+                return AdminResults.BadRequest("Page size must be between 1 and 100");
             }
 
             using var timer = PricingOperationDuration.WithLabels("audit_query").NewTimer();
@@ -34,9 +36,9 @@ namespace ConduitLLM.Admin.Endpoints
                 request.PageSize);
 
             LogAdminAudit("Queried", "PricingAudit", detail: $"From: {request.From:O}, To: {request.To:O}, Results: {totalCount}");
-            return Results.Ok(new PricingAuditQueryResponse
+            return Results.Ok(new PagedResult<PricingAuditEventDto>
             {
-                Events = events.Select(e => new PricingAuditEventDto
+                Data = events.Select(e => new PricingAuditEventDto
                 {
                     Id = e.Id,
                     Timestamp = e.Timestamp,
@@ -44,7 +46,7 @@ namespace ConduitLLM.Admin.Endpoints
                     ModelId = e.ModelId,
                     ModelCostId = e.ModelCostId,
                     PricingType = e.PricingType,
-                    InputParameters = e.InputParameters,
+                    InputParameters = StructuredJson.ParseObject(e.InputParameters) ?? new(),
                     MatchedRule = e.MatchedRule,
                     UsedDefaultRate = e.UsedDefaultRate,
                     AppliedRate = e.AppliedRate,
@@ -52,9 +54,13 @@ namespace ConduitLLM.Admin.Endpoints
                     CalculatedCost = e.CalculatedCost,
                     RequestId = e.RequestId
                 }).ToList(),
-                TotalCount = totalCount,
-                PageNumber = request.PageNumber,
-                PageSize = request.PageSize
+                Pagination = new PaginationMetadata
+                {
+                    Page = request.PageNumber,
+                    PageSize = request.PageSize,
+                    TotalItems = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize)
+                }
             });
         }
 
@@ -97,7 +103,7 @@ namespace ConduitLLM.Admin.Endpoints
                 ModelId = e.ModelId,
                 ModelCostId = e.ModelCostId,
                 PricingType = e.PricingType,
-                InputParameters = e.InputParameters,
+                InputParameters = StructuredJson.ParseObject(e.InputParameters) ?? new(),
                 MatchedRule = e.MatchedRule,
                 UsedDefaultRate = e.UsedDefaultRate,
                 AppliedRate = e.AppliedRate,

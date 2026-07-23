@@ -18,11 +18,15 @@ public static class MetricsEndpoints
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Metrics");
-        group.MapGet("/database/pool", GetDatabasePoolMetrics)
-            .WithName("Metrics_GetDatabasePoolMetrics")
-            .Produces<DatabasePoolMetricsDto>(StatusCodes.Status200OK);
         group.MapGet("/", GetAllMetrics).WithName("Metrics_GetAllMetrics")
             .Produces<AllMetricsDto>(StatusCodes.Status200OK);
+
+        app.MapGet("/v1/admin/database-pool-metrics", GetDatabasePoolMetrics)
+            .RequireAuthorization("MasterKeyPolicy")
+            .AddEndpointFilter<OperationLoggingEndpointFilter>()
+            .WithTags("Metrics")
+            .WithName("Metrics_GetDatabasePoolMetrics")
+            .Produces<DatabasePoolMetricsDto>(StatusCodes.Status200OK);
         return app;
     }
 

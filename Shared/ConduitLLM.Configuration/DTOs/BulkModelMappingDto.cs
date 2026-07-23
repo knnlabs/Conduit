@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -101,7 +102,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Optional provider-specific request options as a JSON object.
         /// </summary>
-        public string? ProviderOptions { get; set; }
+        public Dictionary<string, JsonElement>? ProviderOptions { get; set; }
     }
 
     /// <summary>

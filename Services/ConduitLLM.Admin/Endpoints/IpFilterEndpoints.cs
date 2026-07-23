@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 
 using Microsoft.AspNetCore.Authorization;
@@ -32,8 +33,9 @@ public class IpFilterEndpoints : AdminEndpointHandlerBase
 
     public static IEndpointRouteBuilder MapIpFilterEndpoints(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/IpFilter")
+        var group = app.MapGroup("/v1/admin/ip-filters")
             .RequireAuthorization("MasterKeyPolicy")
+            .AddEndpointFilter<VersionedResourceEndpointFilter>()
             .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("IP Filters");
@@ -49,7 +51,7 @@ public class IpFilterEndpoints : AdminEndpointHandlerBase
         group.MapPost("/", ([FromServices] IpFilterEndpoints endpoints, CreateIpFilterDto filter) => endpoints.CreateFilter(filter))
             .WithName("IpFilter_Create").Produces<IpFilterDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden);
-        group.MapPut("/{id}", ([FromServices] IpFilterEndpoints endpoints, int id, UpdateIpFilterDto filter) => endpoints.UpdateFilter(id, filter))
+        group.MapPatch("/{id}", ([FromServices] IpFilterEndpoints endpoints, int id, UpdateIpFilterDto filter) => endpoints.UpdateFilter(id, filter))
             .WithName("IpFilter_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden).Produces(StatusCodes.Status404NotFound);
         group.MapDelete("/{id}", ([FromServices] IpFilterEndpoints endpoints, int id) => endpoints.DeleteFilter(id))
@@ -126,7 +128,7 @@ public class IpFilterEndpoints : AdminEndpointHandlerBase
         }
 
         LogAdminAudit("Created", "IpFilter", createdFilter!.Id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
-        return Results.Created($"/api/IpFilter/{createdFilter.Id}", createdFilter);
+        return Results.Created($"/v1/admin/ip-filters/{createdFilter.Id}", createdFilter);
     }
 
     /// <summary>
@@ -137,13 +139,7 @@ public class IpFilterEndpoints : AdminEndpointHandlerBase
     /// <returns>No content if successful</returns>
     public async Task<IResult> UpdateFilter(int id, UpdateIpFilterDto filter)
     {
-        // Ensure ID in route matches ID in body
-        if (id != filter.Id)
-        {
-            return BadRequest("ID in route must match ID in body");
-        }
-
-        var (success, errorMessage) = await _ipFilterService.UpdateFilterAsync(filter);
+        var (success, errorMessage) = await _ipFilterService.UpdateFilterAsync(id, filter);
 
         if (!success)
         {
@@ -156,7 +152,7 @@ public class IpFilterEndpoints : AdminEndpointHandlerBase
         }
 
         LogAdminAudit("Updated", "IpFilter", id, $"CIDR: {LoggingSanitizer.S(filter.IpAddressOrCidr)}, Type: {filter.FilterType}");
-        return NoContent();
+        return Ok(await _ipFilterService.GetFilterByIdAsync(id) ?? throw new KeyNotFoundException());
     }
 
     /// <summary>

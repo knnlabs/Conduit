@@ -81,78 +81,82 @@ describe('contract-native model-family mutations', () => {
     invoke: (client: ConduitAdminClient) => Promise<unknown>;
   }> = [
     {
-      name: 'modelAuthors.create', method: 'POST', path: '/api/ModelAuthor',
+      name: 'modelAuthors.create', method: 'POST', path: '/v1/admin/model-authors',
       body: { name: 'Acme' }, payload: { id: 17, name: 'Acme' }, status: 201,
       invoke: client => client.modelAuthors.create({ name: 'Acme' }),
     },
     {
-      name: 'modelAuthors.update', method: 'PUT', path: '/api/ModelAuthor/17',
-      body: { id: 17, name: 'Acme Labs' }, status: 204,
-      invoke: client => client.modelAuthors.update(17, { id: 17, name: 'Acme Labs' }),
+      name: 'modelAuthors.update', method: 'PATCH', path: '/v1/admin/model-authors/17',
+      body: { name: 'Acme Labs' }, payload: { id: 17, name: 'Acme Labs' }, status: 200,
+      invoke: client => client.modelAuthors.update(17, { name: 'Acme Labs' }),
     },
     {
-      name: 'modelAuthors.delete', method: 'DELETE', path: '/api/ModelAuthor/17', status: 204,
+      name: 'modelAuthors.delete', method: 'DELETE', path: '/v1/admin/model-authors/17', status: 204,
       invoke: client => client.modelAuthors.delete(17),
     },
     {
-      name: 'modelSeries.create', method: 'POST', path: '/api/ModelSeries',
+      name: 'modelSeries.create', method: 'POST', path: '/v1/admin/model-series',
       body: { authorId: 17, name: 'Nova' }, payload: { id: 29, authorId: 17, name: 'Nova' }, status: 201,
       invoke: client => client.modelSeries.create({ authorId: 17, name: 'Nova' }),
     },
     {
-      name: 'modelSeries.update', method: 'PUT', path: '/api/ModelSeries/29',
-      body: { id: 29, name: 'Nova 2' }, status: 204,
-      invoke: client => client.modelSeries.update(29, { id: 29, name: 'Nova 2' }),
+      name: 'modelSeries.update', method: 'PATCH', path: '/v1/admin/model-series/29',
+      body: { name: 'Nova 2' }, payload: { id: 29, authorId: 17, name: 'Nova 2' }, status: 200,
+      invoke: client => client.modelSeries.update(29, { name: 'Nova 2' }),
     },
     {
-      name: 'modelSeries.delete', method: 'DELETE', path: '/api/ModelSeries/29', status: 204,
+      name: 'modelSeries.delete', method: 'DELETE', path: '/v1/admin/model-series/29', status: 204,
       invoke: client => client.modelSeries.delete(29),
     },
     {
-      name: 'models.create', method: 'POST', path: '/api/Model',
+      name: 'models.create', method: 'POST', path: '/v1/admin/models',
       body: { name: 'nova-chat', modelSeriesId: 29 }, payload: model, status: 201,
       invoke: client => client.models.create({ name: 'nova-chat', modelSeriesId: 29 }),
     },
     {
-      name: 'models.update', method: 'PUT', path: '/api/Model/41',
+      name: 'models.update', method: 'PATCH', path: '/v1/admin/models/41',
       body: { name: 'nova-chat-2' }, payload: { ...model, name: 'nova-chat-2' }, status: 200,
       invoke: client => client.models.update(41, { name: 'nova-chat-2' }),
     },
     {
-      name: 'models.delete', method: 'DELETE', path: '/api/Model/41', status: 204,
+      name: 'models.delete', method: 'DELETE', path: '/v1/admin/models/41', status: 204,
       invoke: client => client.models.delete(41),
     },
     {
-      name: 'models.createProviderMapping', method: 'POST', path: '/api/Model/41/provider-mappings',
+      name: 'models.createProviderMapping', method: 'POST', path: '/v1/admin/models/41/provider-mappings',
       body: mapping, payload: mapping, status: 201,
       invoke: client => client.models.createProviderMapping(41, mapping),
     },
     {
-      name: 'models.updateProviderMapping', method: 'PUT', path: '/api/Model/41/provider-mappings/7',
-      body: mapping, status: 204,
+      name: 'models.updateProviderMapping', method: 'PATCH', path: '/v1/admin/models/41/provider-mappings/7',
+      body: mapping, payload: mapping, status: 200,
       invoke: client => client.models.updateProviderMapping(41, 7, mapping),
     },
     {
-      name: 'models.deleteProviderMapping', method: 'DELETE', path: '/api/Model/41/provider-mappings/7', status: 204,
+      name: 'models.deleteProviderMapping', method: 'DELETE', path: '/v1/admin/models/41/provider-mappings/7', status: 204,
       invoke: client => client.models.deleteProviderMapping(41, 7),
     },
     {
-      name: 'models.updateIdentifier', method: 'PUT', path: '/api/Model/41/identifiers/17',
+      name: 'models.updateIdentifier', method: 'PATCH', path: '/v1/admin/models/41/identifiers/17',
       body: {
         identifier: 'provider/nova-chat', provider: 2, isPrimary: true,
         maxInputTokens: 32768, maxOutputTokens: 8192,
       },
-      status: 204,
+      payload: {
+        id: 17, identifier: 'provider/nova-chat', provider: 2, isPrimary: true,
+        maxInputTokens: 32768, maxOutputTokens: 8192,
+      },
+      status: 200,
       invoke: client => client.models.updateIdentifier(41, 17, {
         identifier: 'provider/nova-chat', provider: 'Groq', isPrimary: true,
       }),
     },
     {
-      name: 'models.deleteIdentifier', method: 'DELETE', path: '/api/Model/41/identifiers/17', status: 204,
+      name: 'models.deleteIdentifier', method: 'DELETE', path: '/v1/admin/models/41/identifiers/17', status: 204,
       invoke: client => client.models.deleteIdentifier(41, 17),
     },
     {
-      name: 'models.importBundledCatalog', method: 'POST', path: '/api/Model/bundled-catalog/import',
+      name: 'models.importBundledCatalog', method: 'POST', path: '/v1/admin/model-catalogs/import',
       payload: catalogResult, status: 200,
       invoke: client => client.models.importBundledCatalog(),
     },
@@ -203,7 +207,7 @@ describe('contract-native model-family mutations', () => {
     });
 
     const request = mockFetch.mock.calls[0]?.[0] as Request;
-    expect(request.url).toBe('https://admin.test/api/Model/41/identifiers');
+    expect(request.url).toBe('https://admin.test/v1/admin/models/41/identifiers');
     expect(request.headers.get(TEST_HEADER)).toBe('identifier-create');
     expect(requestBody(request)).toEqual({
       identifier: 'provider/nova-chat',
@@ -227,8 +231,9 @@ describe('contract-native model-family mutations', () => {
     const onResponse = jest.fn<void, [ResponseInfo]>();
     const onError = jest.fn<void, [Error]>();
     const logger = { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() };
-    const body = { id: 17, name: 'Acme Labs' };
-    mockFetch.mockRejectedValueOnce(new Error('network failed')).mockResolvedValueOnce(response(undefined, 204));
+    const body = { name: 'Acme Labs' };
+    const updated = { id: 17, name: 'Acme Labs' };
+    mockFetch.mockRejectedValueOnce(new Error('network failed')).mockResolvedValueOnce(response(updated, 200));
 
     const client = createClient({
       baseUrl: 'https://admin.test', masterKey: 'master-key',
@@ -237,14 +242,14 @@ describe('contract-native model-family mutations', () => {
     });
     await expect(client.modelAuthors.update(17, body, {
       headers: { [TRACE_HEADER]: 'trace-1' },
-    })).resolves.toBeUndefined();
+    })).resolves.toEqual(updated);
 
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(onRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: 'PUT', url: 'https://admin.test/api/ModelAuthor/17', data: body,
+      method: 'PATCH', url: 'https://admin.test/v1/admin/model-authors/17', data: body,
     }));
     expect(onRequest.mock.calls[0]?.[0].headers[TRACE_HEADER]).toBe('trace-1');
-    expect(onResponse).toHaveBeenCalledWith(expect.objectContaining({ status: 204 }));
+    expect(onResponse).toHaveBeenCalledWith(expect.objectContaining({ status: 200 }));
     expect(onError).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('Retrying request'));
   });

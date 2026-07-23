@@ -112,11 +112,14 @@ public partial class AnalyticsService : IAnalyticsService
 
             return new PagedResult<LogRequestDto>
             {
-                CurrentPage = page,
-                PageSize = pageSize,
-                TotalCount = totalCount,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                Items = pagedLogs
+                Data = pagedLogs,
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
             };
         }
         catch (Exception ex)
@@ -126,11 +129,14 @@ public partial class AnalyticsService : IAnalyticsService
             
             return new PagedResult<LogRequestDto>
             {
-                CurrentPage = page,
-                PageSize = pageSize,
-                TotalCount = 0,
-                TotalPages = 0,
-                Items = new List<LogRequestDto>()
+                Data = new List<LogRequestDto>(),
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = 0,
+                    TotalPages = 0
+                }
             };
         }
     }

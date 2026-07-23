@@ -18,6 +18,12 @@ interface CreateModelSeriesModalProps {
   onSuccess: () => void;
 }
 
+type CreateModelSeriesFormValues = Omit<CreateModelSeriesDto, 'parameters'> & {
+  parameters?: string;
+  displayName?: string;
+  isActive?: boolean;
+};
+
 const DEFAULT_PARAMETERS = JSON.stringify({
   temperature: {
     min: 0,
@@ -36,7 +42,7 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
   const [authors, setAuthors] = useState<ModelAuthorDto[]>([]);
   const [jsonValid, setJsonValid] = useState(true);
 
-  const form = useForm<CreateModelSeriesDto & { parameters?: string }>({
+  const form = useForm<CreateModelSeriesFormValues>({
     initialValues: {
       name: '',
       // displayName field doesn't exist in CreateModelSeriesDto
@@ -63,12 +69,12 @@ export function CreateModelSeriesModal({ isOpen, onClose, onSuccess }: CreateMod
   });
 
   const submitAction = useCallback(
-    async (values: CreateModelSeriesDto & { parameters?: string; displayName?: string; isActive?: boolean }) => {
+    async (values: CreateModelSeriesFormValues) => {
       const dto: CreateModelSeriesDto = {
         name: values.name,
         authorId: values.authorId,
         description: values.description,
-        parameters: values.parameters ?? null
+        parameters: values.parameters ? JSON.parse(values.parameters) as Record<string, unknown> : undefined
       };
       await withAdminClient(client => client.modelSeries.create(dto));
     },

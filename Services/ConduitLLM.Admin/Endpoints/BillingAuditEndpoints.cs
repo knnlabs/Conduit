@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -61,13 +62,23 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapBillingAuditEndpoints(IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/audit/billing")
+            var group = app.MapGroup("/v1/admin/billing-audits")
                 .RequireAuthorization()
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("Billing Audit");
-            group.MapPost("/query", ([FromServices] BillingAuditEndpoints endpoints, BillingAuditQueryRequest request) => endpoints.QueryAuditEvents(request))
+            group.MapGet("/", ([FromServices] BillingAuditEndpoints endpoints, DateTime from, DateTime to, BillingAuditEventType? eventType = null, int? virtualKeyId = null, int? virtualKeyGroupId = null, int page = 1, int pageSize = 50) =>
+                    endpoints.QueryAuditEvents(new BillingAuditQueryRequest
+                    {
+                        From = from,
+                        To = to,
+                        EventType = eventType,
+                        VirtualKeyId = virtualKeyId,
+                        VirtualKeyGroupId = virtualKeyGroupId,
+                        PageNumber = page,
+                        PageSize = pageSize
+                    }))
                 .WithName("BillingAudit_QueryAuditEvents")
-                .Produces<BillingAuditResponse>()
+                .Produces<PagedResult<BillingAuditEventDto>>()
                 .Produces(StatusCodes.Status400BadRequest);
             group.MapGet("/summary", ([FromServices] BillingAuditEndpoints endpoints, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null, [FromQuery] int? virtualKeyId = null) => endpoints.GetSummary(from ?? default, to ?? default, virtualKeyId))
                 .WithName("BillingAudit_GetSummary")
@@ -103,9 +114,9 @@ namespace ConduitLLM.Admin.Endpoints
                 return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
-            if (request.PageSize > 1000)
+            if (request.PageSize is < 1 or > 100)
             {
-                return AdminResults.BadRequest("Page size cannot exceed 1000");
+                return AdminResults.BadRequest("Page size must be between 1 and 100");
             }
 
             using var timer = BillingAuditQueryDuration.WithLabels("query").NewTimer();
@@ -119,12 +130,16 @@ namespace ConduitLLM.Admin.Endpoints
                 request.PageSize,
                 request.VirtualKeyGroupId);
 
-            var response = new BillingAuditResponse
+            var response = new PagedResult<BillingAuditEventDto>
             {
-                Events = events.Select(e => MapToDto(e)).ToList(),
-                TotalCount = totalCount,
-                PageNumber = request.PageNumber,
-                PageSize = request.PageSize
+                Data = events.Select(e => MapToDto(e)).ToList(),
+                Pagination = new PaginationMetadata
+                {
+                    Page = request.PageNumber,
+                    PageSize = request.PageSize,
+                    TotalItems = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize)
+                }
             };
 
             _logger.LogDebug("Billing audit query returned {TotalCount} events (page {Page}/{PageSize})",

@@ -19,16 +19,16 @@ export class FetchConfigurationService {
 
   async getRoutingConfiguration(config?: RequestConfig): Promise<RoutingConfigurationDto> {
     return this.client['executeContractRead'](
-      '/api/config/routing',
-      (client, options) => client.GET('/api/config/routing', options),
+      '/v1/admin/routing-configurations/routing',
+      (client, options) => client.GET('/v1/admin/routing-configurations/routing', options),
       config,
     );
   }
 
   async getRoutingDefaults(config?: RequestConfig): Promise<RoutingDefaultsDto> {
     return this.client['executeContractRead'](
-      '/api/config/routing/defaults',
-      (client, options) => client.GET('/api/config/routing/defaults', options),
+      '/v1/admin/routing-configurations/routing/defaults',
+      (client, options) => client.GET('/v1/admin/routing-configurations/routing/defaults', options),
       config,
     );
   }
@@ -38,9 +38,9 @@ export class FetchConfigurationService {
     config?: RequestConfig,
   ): Promise<RoutingDefaultsDto> {
     return this.client['executeContractOperation'](
-      '/api/config/routing/defaults',
+      '/v1/admin/routing-configurations/routing/defaults',
       HttpMethod.PUT,
-      (client, options) => client.PUT('/api/config/routing/defaults', { ...options, body: data }),
+      (client, options) => client.PUT('/v1/admin/routing-configurations/routing/defaults', { ...options, body: data }),
       config,
       data,
     );
@@ -48,8 +48,8 @@ export class FetchConfigurationService {
 
   async getAliasRouting(alias: string, config?: RequestConfig): Promise<RoutePolicyDto> {
     return this.client['executeContractRead'](
-      `/api/config/routing/aliases/${encodeURIComponent(alias)}`,
-      (client, options) => client.GET('/api/config/routing/aliases/{alias}', {
+      `/v1/admin/routing-configurations/routing/aliases/${encodeURIComponent(alias)}`,
+      (client, options) => client.GET('/v1/admin/routing-configurations/routing/aliases/{alias}', {
         ...options,
         params: { path: { alias } },
       }),
@@ -63,9 +63,9 @@ export class FetchConfigurationService {
     config?: RequestConfig,
   ): Promise<RoutePolicyDto> {
     return this.client['executeContractOperation'](
-      `/api/config/routing/aliases/${encodeURIComponent(alias)}`,
+      `/v1/admin/routing-configurations/routing/aliases/${encodeURIComponent(alias)}`,
       HttpMethod.PUT,
-      (client, options) => client.PUT('/api/config/routing/aliases/{alias}', {
+      (client, options) => client.PUT('/v1/admin/routing-configurations/routing/aliases/{alias}', {
         ...options,
         params: { path: { alias } },
         body: data,
@@ -77,8 +77,8 @@ export class FetchConfigurationService {
 
   async getPromptCachingConfig(config?: RequestConfig): Promise<PromptCachingConfigDto> {
     return this.client['executeContractRead'](
-      '/api/prompt-caching/config',
-      (client, options) => client.GET('/api/prompt-caching/config', options),
+      '/v1/admin/prompt-cache-settings/config',
+      (client, options) => client.GET('/v1/admin/prompt-cache-settings/config', options),
       config,
     ) as Promise<PromptCachingConfigDto>;
   }
@@ -88,20 +88,21 @@ export class FetchConfigurationService {
     config?: RequestConfig,
   ): Promise<PromptCachingConfigDto> {
     return this.client['executeContractOperation'](
-      '/api/prompt-caching/config',
+      '/v1/admin/prompt-cache-settings/config',
       HttpMethod.PUT,
-      (client, options) => client.PUT('/api/prompt-caching/config', { ...options, body: data }),
+      (client, options) => client.PUT('/v1/admin/prompt-cache-settings/config', { ...options, body: data }),
       config,
       data,
     ) as Promise<PromptCachingConfigDto>;
   }
 
   async getPromptCachingCapabilities(config?: RequestConfig): Promise<PromptCachingCapabilityDto[]> {
-    return this.client['executeContractRead'](
-      '/api/prompt-caching/capabilities',
-      (client, options) => client.GET('/api/prompt-caching/capabilities', options),
+    const result = await this.client['executeContractRead'](
+      '/v1/admin/prompt-cache-settings/capabilities',
+      (client, options) => client.GET('/v1/admin/prompt-cache-settings/capabilities', options),
       config,
-    ) as Promise<PromptCachingCapabilityDto[]>;
+    );
+    return result.data as PromptCachingCapabilityDto[];
   }
 
   async getPromptCachingAnalytics(
@@ -113,8 +114,8 @@ export class FetchConfigurationService {
     );
     const search = new URLSearchParams(Object.entries(query).map(([key, value]) => [key, String(value)]));
     return this.client['executeContractRead'](
-      `/api/prompt-caching/analytics${search.size ? `?${search}` : ''}`,
-      (client, options) => client.GET('/api/prompt-caching/analytics', {
+      `/v1/admin/prompt-cache-settings/analytics${search.size ? `?${search}` : ''}`,
+      (client, options) => client.GET('/v1/admin/prompt-cache-settings/analytics', {
         ...options,
         params: { query },
       }),

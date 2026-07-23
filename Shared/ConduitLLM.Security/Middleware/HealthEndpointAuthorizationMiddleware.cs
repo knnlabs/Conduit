@@ -30,7 +30,8 @@ public class HealthEndpointAuthorizationMiddleware
     private static readonly string[] HealthPathPrefixes = new[]
     {
         "/health",
-        "/api/health"
+        "/api/health",
+        "/v1/admin/health-status"
     };
 
     /// <summary>

@@ -72,6 +72,7 @@ function contractName(file) {
 }
 
 function routeStyleProblem(route) {
+  if (route === '/metrics') return null;
   if (!route.startsWith('/v1/admin/')) return 'must be under /v1/admin';
   const segments = route.split('/').slice(3);
   const literals = segments.filter((segment) => segment && !segment.startsWith('{'));

@@ -11,6 +11,7 @@ using ConduitLLM.Core.Extensions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace ConduitLLM.Admin.Endpoints;
 
@@ -45,11 +46,11 @@ public class ModelProviderMappingEndpoints
 
     public static IEndpointRouteBuilder MapModelProviderMappingEndpoints(IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/api/ModelProviderMapping").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Model Provider Mappings");
+        var g = app.MapGroup("/v1/admin/model-provider-mappings").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Model Provider Mappings");
         g.MapGet("/", ([FromServices] ModelProviderMappingEndpoints e) => e.GetAllMappings()).WithName("ModelProviderMapping_GetAll").Produces<IEnumerable<ModelProviderMappingDto>>();
         g.MapGet("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id) => e.GetMappingById(id)).WithName("ModelProviderMapping_GetById").Produces<ModelProviderMappingDto>().Produces(StatusCodes.Status404NotFound);
         g.MapPost("/", ([FromServices] ModelProviderMappingEndpoints e, CreateModelProviderMappingDto dto) => e.CreateMapping(dto)).WithName("ModelProviderMapping_Create").Produces<ModelProviderMappingDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status409Conflict);
-        g.MapPut("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id, UpdateModelProviderMappingDto dto) => e.UpdateMapping(id, dto)).WithName("ModelProviderMapping_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
+        g.MapPatch("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id, UpdateModelProviderMappingDto dto) => e.UpdateMapping(id, dto)).WithName("ModelProviderMapping_Update").Produces<ModelProviderMappingDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
         g.MapDelete("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id) => e.DeleteMapping(id)).WithName("ModelProviderMapping_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
         g.MapGet("/providers", ([FromServices] ModelProviderMappingEndpoints e) => e.GetProviders()).WithName("ModelProviderMapping_GetProviders").Produces<IEnumerable<ProviderDto>>();
         g.MapPost("/bulk/preview", ([FromServices] ModelProviderMappingEndpoints e, BulkModelMappingPreviewRequest d) => e.PreviewBulkMappings(d)).WithName("ModelProviderMapping_PreviewBulk").Produces<BulkModelMappingPreviewResponse>().Produces(StatusCodes.Status400BadRequest);
@@ -121,7 +122,7 @@ public class ModelProviderMappingEndpoints
         AdminOperationsMetricsService.RecordModelMappingOperation("create", "success");
         AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "create");
 
-        return Results.Created($"/api/ModelProviderMapping/{createdMapping?.Id}", createdMapping?.ToDto());
+        return Results.Created($"/v1/admin/model-provider-mappings/{createdMapping?.Id}", createdMapping?.ToDto());
     }
 
     /// <summary>
@@ -138,14 +139,16 @@ public class ModelProviderMappingEndpoints
             throw new KeyNotFoundException($"Model provider mapping with ID '{id}' not found");
         }
 
+        var effectiveAlias = mappingDto.ModelAlias ?? existingMapping.ModelAlias;
+        var effectiveProviderId = mappingDto.ProviderId ?? existingMapping.ProviderId;
         var mappings = await _mappingService.GetAllMappingsAsync();
         if (mappings.Any(mapping =>
             mapping.Id != id &&
-            mapping.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase) &&
-            mapping.ProviderId == mappingDto.ProviderId))
+            mapping.ModelAlias.Equals(effectiveAlias, StringComparison.OrdinalIgnoreCase) &&
+            mapping.ProviderId == effectiveProviderId))
         {
             return AdminResults.Conflict(
-                $"A mapping for alias '{mappingDto.ModelAlias}' and provider {mappingDto.ProviderId} already exists");
+                $"A mapping for alias '{effectiveAlias}' and provider {effectiveProviderId} already exists");
         }
 
         var optionsError = ValidateProviderOptions(mappingDto.ProviderOptions);
@@ -166,7 +169,7 @@ public class ModelProviderMappingEndpoints
         AdminOperationsMetricsService.RecordModelMappingOperation("update", "success");
         AdminOperationsMetricsService.RecordConfigurationChange("modelmapping", "update");
 
-        return Results.NoContent();
+        return Results.Ok((await _mappingService.GetMappingByIdAsync(id) ?? throw new KeyNotFoundException()).ToDto());
     }
 
     private static readonly string[] ForbiddenProviderOptionKeys = { "model", "messages", "stream", "stream_options" };
@@ -176,36 +179,18 @@ public class ModelProviderMappingEndpoints
     /// The value must be a JSON object and may not contain keys that would hijack the request
     /// (model/messages/stream/stream_options).
     /// </summary>
-    private static string? ValidateProviderOptions(string? providerOptions)
+    private static string? ValidateProviderOptions(Dictionary<string, JsonElement>? providerOptions)
     {
-        if (string.IsNullOrWhiteSpace(providerOptions))
+        if (providerOptions is null)
         {
             return null;
         }
 
-        System.Text.Json.JsonDocument doc;
-        try
+        foreach (var key in providerOptions.Keys)
         {
-            doc = System.Text.Json.JsonDocument.Parse(providerOptions);
-        }
-        catch (System.Text.Json.JsonException)
-        {
-            return "ProviderOptions must be valid JSON.";
-        }
-
-        using (doc)
-        {
-            if (doc.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+            if (ForbiddenProviderOptionKeys.Contains(key, StringComparer.OrdinalIgnoreCase))
             {
-                return "ProviderOptions must be a JSON object.";
-            }
-
-            foreach (var prop in doc.RootElement.EnumerateObject())
-            {
-                if (ForbiddenProviderOptionKeys.Contains(prop.Name, StringComparer.OrdinalIgnoreCase))
-                {
-                    return $"ProviderOptions may not contain the reserved key '{prop.Name}'.";
-                }
+                return $"ProviderOptions may not contain the reserved key '{key}'.";
             }
         }
 

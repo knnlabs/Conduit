@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs.VirtualKey;
 
@@ -27,10 +28,10 @@ public class VirtualKeyDto
     public string? KeyPrefix { get; set; }
 
     /// <summary>
-    /// Comma-separated list of model IDs that this key is allowed to access.
+    /// Model IDs that this key is allowed to access.
     /// Empty or null means all models are allowed.
     /// </summary>
-    public string? AllowedModels { get; set; }
+    public List<string>? AllowedModels { get; set; }
 
     /// <summary>
     /// ID of the virtual key group this key belongs to.
@@ -59,10 +60,10 @@ public class VirtualKeyDto
     [Required] public DateTime UpdatedAt { get; set; }
 
     /// <summary>
-    /// Optional JSON-formatted metadata associated with this key.
+    /// Optional structured metadata associated with this key.
     /// Can be used to store additional information about the key's purpose or owner.
     /// </summary>
-    public string? Metadata { get; set; }
+    public Dictionary<string, JsonElement>? Metadata { get; set; }
 
     /// <summary>
     /// Optional rate limit in requests per minute.

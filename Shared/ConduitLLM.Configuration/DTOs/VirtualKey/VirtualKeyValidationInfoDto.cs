@@ -18,7 +18,7 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// Comma-separated list of allowed models or model patterns
         /// </summary>
-        public string? AllowedModels { get; set; }
+        public List<string>? AllowedModels { get; set; }
 
         /// <summary>
         /// Virtual key group ID

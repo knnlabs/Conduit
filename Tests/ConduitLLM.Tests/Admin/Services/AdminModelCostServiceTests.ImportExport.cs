@@ -68,7 +68,12 @@ public partial class AdminModelCostServiceTests
         imported.Should().NotBeNull();
         imported!.CostName.Should().Be(source.CostName);
         imported.PricingModel.Should().Be(source.PricingModel);
-        imported.PricingConfiguration.Should().Be(pricingConfiguration);
+        using (var expectedPricing = JsonDocument.Parse(pricingConfiguration))
+        using (var actualPricing = JsonDocument.Parse(imported.PricingConfiguration!))
+        {
+            JsonElement.DeepEquals(actualPricing.RootElement, expectedPricing.RootElement)
+                .Should().BeTrue();
+        }
         imported.InputCostPerMillionTokens.Should().Be(1.25m);
         imported.OutputCostPerMillionTokens.Should().Be(2.5m);
         imported.EmbeddingCostPerMillionTokens.Should().Be(0.125m);

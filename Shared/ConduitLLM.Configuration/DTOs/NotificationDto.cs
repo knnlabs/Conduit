@@ -79,11 +79,11 @@ namespace ConduitLLM.Configuration.DTOs
     /// </summary>
     public class UpdateNotificationDto
     {
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Id { get; set; }
         /// <summary>
         /// ID of the notification to update
         /// </summary>
-        public int Id { get; set; }
-
         /// <summary>
         /// Whether the notification has been read
         /// </summary>

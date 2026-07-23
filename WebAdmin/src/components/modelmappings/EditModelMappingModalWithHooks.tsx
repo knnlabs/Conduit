@@ -84,7 +84,9 @@ export function EditModelMappingModal({
         modelProviderTypeAssociationId: mapping.modelProviderTypeAssociationId,
         priority: mapping.priority ?? 100,
         isEnabled: mapping.isEnabled,
-        providerOptions: mapping.providerOptions ?? undefined,
+        providerOptions: mapping.providerOptions
+          ? JSON.stringify(mapping.providerOptions, null, 2)
+          : undefined,
       });
       form.resetDirty();
     }
@@ -109,7 +111,9 @@ export function EditModelMappingModal({
       priority: values.priority,
       weight: mapping.weight,
       isEnabled: values.isEnabled,
-      providerOptions: values.providerOptions?.trim() ? values.providerOptions : null,
+      providerOptions: values.providerOptions?.trim()
+        ? JSON.parse(values.providerOptions) as Record<string, unknown>
+        : {},
     };
 
     try {

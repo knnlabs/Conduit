@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using ConduitLLM.Core.Models.Pricing;
 using Microsoft.AspNetCore.Mvc;
 using Prometheus;
@@ -17,7 +19,8 @@ namespace ConduitLLM.Admin.Endpoints
 
             using var timer = PricingOperationDuration.WithLabels("validate").NewTimer();
 
-            if (!TryDeserializePricingConfig<PricingRulesConfig>(request.PricingConfiguration, out var config, out var errorMessage))
+            var serializedConfiguration = JsonSerializer.Serialize(request.PricingConfiguration);
+            if (!TryDeserializePricingConfig<PricingRulesConfig>(serializedConfiguration, out var config, out var errorMessage))
             {
                 PricingValidations.WithLabels(errorMessage!.StartsWith("Invalid JSON") ? "invalid_json" : "null_config").Inc();
                 return Results.Ok(new PricingValidationResponse
@@ -51,7 +54,8 @@ namespace ConduitLLM.Admin.Endpoints
             using var timer = PricingOperationDuration.WithLabels("simulate").NewTimer();
 
             // Parse pricing configuration
-            if (!TryDeserializePricingConfig<PricingRulesConfig>(request.PricingConfiguration, out var config, out var errorMessage))
+            var serializedConfiguration = JsonSerializer.Serialize(request.PricingConfiguration);
+            if (!TryDeserializePricingConfig<PricingRulesConfig>(serializedConfiguration, out var config, out var errorMessage))
             {
                 PricingSimulations.WithLabels(errorMessage!.StartsWith("Invalid JSON") ? "invalid_json" : "null_config").Inc();
                 throw new ArgumentException($"Invalid pricing configuration JSON: {errorMessage}");

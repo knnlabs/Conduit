@@ -14,7 +14,7 @@ public static class GlobalSettingsEndpoints
 {
     public static IEndpointRouteBuilder MapGlobalSettingsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/GlobalSettings")
+        var group = app.MapGroup("/v1/admin/global-settings")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("GlobalSettings");
@@ -26,7 +26,7 @@ public static class GlobalSettingsEndpoints
         group.MapPost("/", Create).WithName("GlobalSettings_Create")
             .Produces<GlobalSettingDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPut("/{id:int}", Update).WithName("GlobalSettings_Update")
+        group.MapPatch("/{id:int}", Update).WithName("GlobalSettings_Update")
             .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPut("/by-key", UpdateByKey).WithName("GlobalSettings_UpdateByKey")
@@ -69,7 +69,7 @@ public static class GlobalSettingsEndpoints
         AdminAudit.Log(context, Logger(loggerFactory), "Created", "GlobalSetting", created.Id,
             $"Key: {LoggingSanitizer.S(setting.Key)}");
         AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "create");
-        return Results.Created($"/api/GlobalSettings/{created.Id}", created);
+        return Results.Created($"/v1/admin/global-settings/{created.Id}", created);
     }
 
     private static async Task<IResult> Update(
@@ -79,12 +79,8 @@ public static class GlobalSettingsEndpoints
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
-        if (id != setting.Id)
-        {
-            return AdminResults.BadRequest("ID in route must match ID in body");
-        }
         var preState = await service.GetSettingByIdAsync(id) ?? throw new KeyNotFoundException();
-        if (!await service.UpdateSettingAsync(setting))
+        if (!await service.UpdateSettingAsync(id, setting))
         {
             throw new KeyNotFoundException();
         }
@@ -103,7 +99,7 @@ public static class GlobalSettingsEndpoints
             AdminAudit.Log(context, Logger(loggerFactory), "Updated", "GlobalSetting", id);
         }
         AdminOperationsMetricsService.RecordConfigurationChange("globalsetting", "update");
-        return Results.NoContent();
+        return Results.Ok(await service.GetSettingByIdAsync(id) ?? throw new KeyNotFoundException());
     }
 
     private static async Task<IResult> UpdateByKey(

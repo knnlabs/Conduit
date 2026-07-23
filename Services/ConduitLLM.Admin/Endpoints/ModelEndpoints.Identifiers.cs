@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Models;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -152,7 +153,7 @@ namespace ConduitLLM.Admin.Endpoints
                 Identifier = dto.Identifier,
                 Provider = providerType,
                 IsPrimary = dto.IsPrimary ?? false,
-                Metadata = dto.Metadata,
+                Metadata = dto.Metadata is null ? null : JsonSerializer.Serialize(dto.Metadata),
                 MaxInputTokens = dto.MaxInputTokens,
                 MaxOutputTokens = dto.MaxOutputTokens,
                 SpeedScore = dto.SpeedScore,
@@ -172,7 +173,7 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAudit("Created", "ModelIdentifier", identifier.Id,
                 $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
 
-            return Results.Created($"/api/Model/{id}/identifiers", new CreatedModelIdentifierDto
+            return Results.Created($"/v1/admin/models/{id}/identifiers", new CreatedModelIdentifierDto
             {
                 Id = identifier.Id,
                 Identifier = identifier.Identifier,
@@ -236,7 +237,7 @@ namespace ConduitLLM.Admin.Endpoints
             identifier.Identifier = dto.Identifier;
             identifier.Provider = providerType;
             identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
-            identifier.Metadata = dto.Metadata;
+            identifier.Metadata = dto.Metadata is null ? null : JsonSerializer.Serialize(dto.Metadata);
             identifier.MaxInputTokens = dto.MaxInputTokens;
             identifier.MaxOutputTokens = dto.MaxOutputTokens;
             identifier.SpeedScore = dto.SpeedScore;
@@ -255,7 +256,24 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAudit("Updated", "ModelIdentifier", identifierId,
                 $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
 
-            return NoContent();
+            return Ok(new ModelIdentifierDto
+            {
+                Id = identifier.Id,
+                Identifier = identifier.Identifier,
+                Provider = (int?)identifier.Provider,
+                IsPrimary = identifier.IsPrimary,
+                MaxInputTokens = identifier.MaxInputTokens,
+                MaxOutputTokens = identifier.MaxOutputTokens,
+                SpeedScore = identifier.SpeedScore,
+                QualityScore = identifier.QualityScore,
+                ProviderVariation = identifier.ProviderVariation,
+                ModelCostId = identifier.ModelCostId,
+                InputModalities = ModelModalities.Parse(identifier.InputModalitiesJson),
+                OutputModalities = ModelModalities.Parse(identifier.OutputModalitiesJson),
+                OperationalCapabilities = ModelCapabilityResolver.DeserializeOverrides(identifier.OperationalCapabilitiesJson),
+                CapabilitySource = identifier.CapabilitySource,
+                CapabilitiesLastVerifiedAt = identifier.CapabilitiesLastVerifiedAt
+            });
         }
 
         /// <summary>

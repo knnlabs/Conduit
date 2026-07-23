@@ -12,7 +12,7 @@ public static class BatchSpendingEndpoints
 {
     public static IEndpointRouteBuilder MapBatchSpendingEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/batch-spending")
+        var group = app.MapGroup("/v1/admin/batch-spending-jobs")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("BatchSpending");

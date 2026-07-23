@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using System.Text.Json;
 
 using FluentAssertions;
 
@@ -149,17 +150,11 @@ namespace ConduitLLM.Tests.Admin.Services
         [Fact]
         public async Task CreateModelCostAsync_WithMalformedPricingConfiguration_ShouldRejectBeforeSave()
         {
-            var createDto = new CreateModelCostDto
-            {
-                CostName = "Broken video pricing",
-                PricingModel = ConduitLLM.Configuration.PricingModel.PerVideo,
-                PricingConfiguration = "{not-json"
-            };
+            var act = () => JsonSerializer.Deserialize<CreateModelCostDto>(
+                """{"costName":"Broken video pricing","pricingModel":3,"pricingConfiguration":"{not-json"}""",
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
 
-            var act = () => _service.CreateModelCostAsync(createDto);
-
-            await act.Should().ThrowAsync<ArgumentException>()
-                .WithMessage("*Invalid PerVideo pricing configuration JSON*");
+            act.Should().Throw<JsonException>();
             _mockModelCostRepository.Verify(
                 x => x.CreateAsync(It.IsAny<ModelCost>(), It.IsAny<CancellationToken>()), Times.Never);
         }

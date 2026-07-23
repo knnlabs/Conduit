@@ -138,17 +138,17 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> UpdateSettingAsync(UpdateGlobalSettingDto setting)
+        public async Task<bool> UpdateSettingAsync(int id, UpdateGlobalSettingDto setting)
         {
             try
             {
-                _logger.LogDebug("Updating global setting with ID: {Id}", setting.Id);
+                _logger.LogDebug("Updating global setting with ID: {Id}", id);
 
                 // Get the existing setting
-                var existingSetting = await _globalSettingRepository.GetByIdAsync(setting.Id);
+                var existingSetting = await _globalSettingRepository.GetByIdAsync(id);
                 if (existingSetting == null)
                 {
-                    _logger.LogWarning("Global setting with ID {Id} not found", setting.Id);
+                    _logger.LogWarning("Global setting with ID {Id} not found", id);
                     return false;
                 }
 
@@ -170,7 +170,7 @@ namespace ConduitLLM.Admin.Services
                 // Only proceed if there are actual changes
                 if (!changedProperties.Any())
                 {
-                    _logger.LogDebug("No changes detected for global setting {Id} - skipping update", setting.Id);
+                    _logger.LogDebug("No changes detected for global setting {Id} - skipping update", id);
                     return true;
                 }
 
@@ -192,7 +192,7 @@ namespace ConduitLLM.Admin.Services
                             ChangedProperties = changedProperties.ToArray(),
                             CorrelationId = Guid.NewGuid().ToString()
                         },
-                        $"update global setting {setting.Id}",
+                        $"update global setting {id}",
                         new { SettingKey = originalKey, ChangedProperties = string.Join(", ", changedProperties) });
                 }
                 
@@ -200,10 +200,13 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating global setting with ID {Id}", setting.Id);
+                _logger.LogError(ex, "Error updating global setting with ID {Id}", id);
                 throw;
             }
         }
+
+        public Task<bool> UpdateSettingAsync(UpdateGlobalSettingDto setting) =>
+            UpdateSettingAsync(setting.Id, setting);
 
         /// <inheritdoc />
         public async Task<bool> UpdateSettingByKeyAsync(UpdateGlobalSettingByKeyDto setting)

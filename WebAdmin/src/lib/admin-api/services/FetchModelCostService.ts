@@ -34,6 +34,22 @@ type ContractModelCost = components['schemas']['ModelCostDto'];
 type ContractCreateModelCost = components['schemas']['CreateModelCostDto'];
 type ContractUpdateModelCost = components['schemas']['UpdateModelCostDto'];
 
+const parsePricingConfiguration = (
+  value: string | undefined,
+): Record<string, unknown> | undefined => {
+  if (!value?.trim()) return undefined;
+  const parsed: unknown = JSON.parse(value);
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new ValidationError('pricingConfiguration must be a valid JSON object');
+  }
+  return parsed as Record<string, unknown>;
+};
+
+const modelCostFromWire = (value: ContractModelCost): ModelCostDto => ({
+  ...value,
+  pricingConfiguration: JSON.stringify(value.pricingConfiguration ?? {}),
+}) as unknown as ModelCostDto;
+
 /**
  * Validates create model cost request
  */
@@ -94,19 +110,24 @@ export class FetchModelCostService {
       isActive: params?.isActive, modelType: params?.modelType };
     const queryString = new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)])).toString();
     const result: ContractPagedModelCosts = await this.client['executeContractRead'](
-      `/api/ModelCosts${queryString ? `?${queryString}` : ''}`,
-      (contractClient, options) => contractClient.GET('/api/ModelCosts', { ...options, params: { query } }), config);
-    return { items: result.items ?? [], totalCount: result.totalCount ?? 0,
-      page: result.currentPage ?? 1, pageSize: result.pageSize ?? 50,
-      totalPages: result.totalPages ?? 0 } as PagedResult<ModelCostDto>;
+      `/v1/admin/model-costs${queryString ? `?${queryString}` : ''}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-costs', { ...options, params: { query } }), config);
+    return {
+      items: result.data.map(modelCostFromWire),
+      totalCount: result.pagination?.totalItems ?? result.data.length,
+      page: result.pagination?.page ?? params?.page ?? 1,
+      pageSize: result.pagination?.pageSize ?? params?.pageSize ?? 50,
+      totalPages: result.pagination?.totalPages ?? 1,
+    };
   }
 
   /**
    * Get a specific model cost by ID
    */
   async getById(id: number, config?: RequestConfig): Promise<ModelCostDto> {
-    return this.client['executeContractRead'](`/api/ModelCosts/${id}`,
-      (contractClient, options) => contractClient.GET('/api/ModelCosts/{id}', { ...options, params: { path: { id } } }), config) as Promise<ModelCostDto>;
+    const result = await this.client['executeContractRead'](`/v1/admin/model-costs/${id}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-costs/{id}', { ...options, params: { path: { id } } }), config);
+    return modelCostFromWire(result);
   }
 
 
@@ -119,9 +140,13 @@ export class FetchModelCostService {
   ): Promise<ModelCostDto> {
     validateCreateModelCostRequest(data);
 
-    const body = data as ContractCreateModelCost;
-    return this.client['executeContractOperation']<ContractModelCost, ContractCreateModelCost>('/api/ModelCosts', HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelCosts', { ...options, body }), config, body) as Promise<ModelCostDto>;
+    const body = {
+      ...data,
+      pricingConfiguration: parsePricingConfiguration(data.pricingConfiguration) ?? {},
+    } as unknown as ContractCreateModelCost;
+    const result = await this.client['executeContractOperation']<ContractModelCost, ContractCreateModelCost>('/v1/admin/model-costs', HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/v1/admin/model-costs', { ...options, body }), config, body);
+    return modelCostFromWire(result);
   }
 
   /**
@@ -132,17 +157,21 @@ export class FetchModelCostService {
     data: UpdateModelCostDto,
     config?: RequestConfig
   ): Promise<ModelCostDto> {
-    const body = data as ContractUpdateModelCost;
-    return this.client['executeContractOperation']<ContractModelCost, ContractUpdateModelCost>(`/api/ModelCosts/${id}`, HttpMethod.PUT,
-      (contractClient, options) => contractClient.PUT('/api/ModelCosts/{id}', { ...options, params: { path: { id } }, body }), config, body) as Promise<ModelCostDto>;
+    const body = {
+      ...data,
+      pricingConfiguration: parsePricingConfiguration(data.pricingConfiguration),
+    } as unknown as ContractUpdateModelCost;
+    const result = await this.client['executeContractOperation']<ContractModelCost, ContractUpdateModelCost>(`/v1/admin/model-costs/${id}`, HttpMethod.PATCH,
+      (contractClient, options) => contractClient.PATCH('/v1/admin/model-costs/{id}', { ...options, params: { path: { id } }, body }), config, body);
+    return modelCostFromWire(result);
   }
 
   /**
    * Delete a model cost configuration
    */
   async deleteById(id: number, config?: RequestConfig): Promise<void> {
-    return this.client['executeContractOperation']<void>(`/api/ModelCosts/${id}`, HttpMethod.DELETE,
-      (contractClient, options) => contractClient.DELETE('/api/ModelCosts/{id}', { ...options, params: { path: { id } } }), config);
+    return this.client['executeContractOperation']<void>(`/v1/admin/model-costs/${id}`, HttpMethod.DELETE,
+      (contractClient, options) => contractClient.DELETE('/v1/admin/model-costs/{id}', { ...options, params: { path: { id } } }), config);
   }
 
   /**
@@ -152,8 +181,8 @@ export class FetchModelCostService {
     modelCosts: CreateModelCostDto[],
     config?: RequestConfig
   ): Promise<ImportResult> {
-    const result: ContractBulkImportResult = await this.client['executeContractOperation']('/api/ModelCosts/import', HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelCosts/import', { ...options, body: modelCosts as ContractCreateModelCost[] }), config, modelCosts);
+    const result: ContractBulkImportResult = await this.client['executeContractOperation']('/v1/admin/model-costs/import', HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/v1/admin/model-costs/import', { ...options, body: modelCosts as ContractCreateModelCost[] }), config, modelCosts);
     return { success: result.successCount ?? 0, failed: result.failureCount ?? 0,
       errors: (result.errors ?? []).map((error, index) => ({ row: index + 1, error })) };
   }
@@ -174,8 +203,9 @@ export class FetchModelCostService {
   ): Promise<ContractModelCostOverview[]> {
     const query = { startDate: params.startDate, endDate: params.endDate };
     const queryString = new URLSearchParams(query).toString();
-    return this.client['executeContractRead'](`/api/ModelCosts/overview?${queryString}`,
-      (contractClient, options) => contractClient.GET('/api/ModelCosts/overview', { ...options, params: { query } }), config);
+    const result = await this.client['executeContractRead'](`/v1/admin/model-costs/overview?${queryString}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-costs/overview', { ...options, params: { query } }), config);
+    return result.data;
   }
 
 

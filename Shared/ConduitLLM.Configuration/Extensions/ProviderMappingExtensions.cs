@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Models;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.Extensions
 {
@@ -46,7 +47,7 @@ namespace ConduitLLM.Configuration.Extensions
                 IsEnabled = mapping.IsEnabled,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
-                ProviderOptions = mapping.ProviderOptions,
+                ProviderOptions = ParseOptions(mapping.ProviderOptions),
                 Capabilities = capabilities is not null ? new ModelCapabilitiesDto
                 {
                     InputModalities = capabilities.InputModalities,
@@ -84,7 +85,7 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.ProviderId = dto.ProviderId;
             mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId;
             mapping.IsEnabled = dto.IsEnabled;
-            mapping.ProviderOptions = dto.ProviderOptions;
+            mapping.ProviderOptions = SerializeOptions(dto.ProviderOptions);
             mapping.RoutingPriority = dto.Priority;
             mapping.RoutingWeight = dto.Weight;
             mapping.UpdatedAt = System.DateTime.UtcNow;
@@ -92,14 +93,15 @@ namespace ConduitLLM.Configuration.Extensions
 
         public static void UpdateFromDto(this ModelProviderMapping mapping, UpdateModelProviderMappingDto dto)
         {
-            mapping.ModelAlias = dto.ModelAlias;
-            mapping.ProviderModelId = dto.ProviderModelId;
-            mapping.ProviderId = dto.ProviderId;
-            mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId;
-            mapping.IsEnabled = dto.IsEnabled;
-            mapping.ProviderOptions = dto.ProviderOptions;
-            mapping.RoutingPriority = dto.Priority;
-            mapping.RoutingWeight = dto.Weight;
+            if (dto.ModelAlias is not null) mapping.ModelAlias = dto.ModelAlias;
+            if (dto.ProviderModelId is not null) mapping.ProviderModelId = dto.ProviderModelId;
+            if (dto.ProviderId.HasValue) mapping.ProviderId = dto.ProviderId.Value;
+            if (dto.ModelProviderTypeAssociationId.HasValue)
+                mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId.Value;
+            if (dto.IsEnabled.HasValue) mapping.IsEnabled = dto.IsEnabled.Value;
+            if (dto.ProviderOptions is not null) mapping.ProviderOptions = SerializeOptions(dto.ProviderOptions);
+            if (dto.Priority.HasValue) mapping.RoutingPriority = dto.Priority.Value;
+            if (dto.Weight.HasValue) mapping.RoutingWeight = dto.Weight.Value;
             mapping.UpdatedAt = System.DateTime.UtcNow;
         }
 
@@ -124,12 +126,29 @@ namespace ConduitLLM.Configuration.Extensions
                 ProviderId = dto.ProviderId,
                 ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId,
                 IsEnabled = dto.IsEnabled,
-                ProviderOptions = dto.ProviderOptions,
+                ProviderOptions = SerializeOptions(dto.ProviderOptions),
                 RoutingPriority = dto.Priority,
                 RoutingWeight = dto.Weight,
                 CreatedAt = System.DateTime.UtcNow,
                 UpdatedAt = System.DateTime.UtcNow
             };
+        }
+
+        private static string? SerializeOptions(Dictionary<string, JsonElement>? options) =>
+            options is null ? null : JsonSerializer.Serialize(options);
+
+        private static Dictionary<string, JsonElement>? ParseOptions(string? options)
+        {
+            if (string.IsNullOrWhiteSpace(options))
+                return null;
+            try
+            {
+                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(options);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
     }
 }

@@ -68,7 +68,7 @@ namespace ConduitLLM.Admin.Services
                 result.IsValid = true;
                 result.VirtualKeyId = virtualKey.Id;
                 result.KeyName = virtualKey.KeyName;
-                result.AllowedModels = virtualKey.AllowedModels;
+                result.AllowedModels = VirtualKeyUtilities.ParseAllowedModels(virtualKey.AllowedModels);
                 // Budget info is now at group level, not included in validation result
 
                 return result;
@@ -98,7 +98,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     Id = key.Id,
                     KeyName = key.KeyName,
-                    AllowedModels = key.AllowedModels,
+                    AllowedModels = VirtualKeyUtilities.ParseAllowedModels(key.AllowedModels),
                     VirtualKeyGroupId = key.VirtualKeyGroupId,
                     IsEnabled = key.IsEnabled,
                     ExpiresAt = key.ExpiresAt,

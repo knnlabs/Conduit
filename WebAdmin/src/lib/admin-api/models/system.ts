@@ -300,7 +300,7 @@ export interface SystemResourceMetricsDto {
   uptime: number;
 }
 
-// Client-side per-service health map produced by transforming the /api/health/services
+// Client-side per-service health map produced by transforming the /v1/admin/health-status/services
 // response. Distinct from the wire `ServiceStatusDto` (a single per-service record), so it is
 // intentionally named differently to avoid a false type-drift pairing. See issue #1038.
 export interface ServiceStatusMapDto {

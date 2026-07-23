@@ -117,6 +117,6 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         /// If not provided, defaults to "{}" (empty configuration).
         /// </remarks>
         /// <value>JSON string with UI parameters, or null for default.</value>
-        public string? Parameters { get; set; }
+        public Dictionary<string, System.Text.Json.JsonElement>? Parameters { get; set; }
     }
 }

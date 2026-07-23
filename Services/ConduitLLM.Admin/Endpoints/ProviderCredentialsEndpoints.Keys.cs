@@ -89,7 +89,7 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(keyCredential.KeyName)}");
             AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "create");
 
-            return Results.Created($"/api/ProviderCredentials/{providerId}/keys/{createdKeyId}", ToKeyDto(keyCredential));
+            return Results.Created($"/v1/admin/providers/{providerId}/keys/{createdKeyId}", ToKeyDto(keyCredential));
         }
 
         /// <summary>

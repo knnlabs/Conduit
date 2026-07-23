@@ -12,7 +12,7 @@ export function useProviders() {
       const result = await withAdminClient(client =>
         client.providers.list(1, 1000)
       );
-      return result.items;
+      return result.data ?? [];
     },
   });
 

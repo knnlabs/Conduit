@@ -76,8 +76,10 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         keyName: values.keyName.trim(),
         virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
         isEnabled: values.isEnabled,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-        metadata: values.description?.trim() ?? undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
+        metadata: values.description?.trim()
+          ? JSON.parse(values.description) as Record<string, unknown>
+          : undefined,
       };
 
       return withAdminClient(client =>
@@ -102,10 +104,7 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     if (lastVirtualKeyId.current === virtualKey.id) return;
     lastVirtualKeyId.current = virtualKey.id;
 
-    // Parse allowedModels from string to array (it's stored as comma-separated in the DTO)
-    const models = virtualKey.allowedModels
-      ? virtualKey.allowedModels.split(',').map(m => m.trim()).filter(m => m)
-      : ['*']; // Default to all models if none specified
+    const models = virtualKey.allowedModels?.filter((model) => model.trim()) ?? ['*'];
 
     const newFormValues: EditVirtualKeyForm = {
       keyName: virtualKey.keyName,

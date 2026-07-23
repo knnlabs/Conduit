@@ -41,7 +41,7 @@ public class AnalyticsEndpoints
 
     public static IEndpointRouteBuilder MapAnalyticsEndpoints(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/Analytics")
+        var group = app.MapGroup("/v1/admin/analytics")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Analytics");
@@ -61,7 +61,7 @@ public class AnalyticsEndpoints
             .WithName("Analytics_GetVirtualKeyCosts").Produces<VirtualKeyCostBreakdownDto>();
         group.MapGet("/summary", ([FromServices] AnalyticsEndpoints e, string timeframe = "daily", DateTime? startDate = null, DateTime? endDate = null) => e.GetAnalyticsSummary(timeframe, startDate, endDate))
             .WithName("Analytics_GetAnalyticsSummary").Produces<AnalyticsSummaryDto>().Produces(StatusCodes.Status400BadRequest);
-        group.MapGet("/virtualkeys/{virtualKeyId:int}/usage", ([FromServices] AnalyticsEndpoints e, int virtualKeyId, DateTime? startDate = null, DateTime? endDate = null) => e.GetVirtualKeyUsage(virtualKeyId, startDate, endDate))
+        group.MapGet("/virtual-keys/{virtualKeyId:int}/usage", ([FromServices] AnalyticsEndpoints e, int virtualKeyId, DateTime? startDate = null, DateTime? endDate = null) => e.GetVirtualKeyUsage(virtualKeyId, startDate, endDate))
             .WithName("Analytics_GetVirtualKeyUsage").Produces<UsageStatisticsDto>();
         group.MapGet("/export", ([FromServices] AnalyticsEndpoints e, string format = "csv", DateTime? startDate = null, DateTime? endDate = null, string? model = null, int? virtualKeyId = null) => e.ExportAnalytics(format, startDate, endDate, model, virtualKeyId))
             .WithName("Analytics_ExportAnalytics").Produces(StatusCodes.Status200OK, typeof(void), "text/csv", "application/json").Produces(StatusCodes.Status400BadRequest);

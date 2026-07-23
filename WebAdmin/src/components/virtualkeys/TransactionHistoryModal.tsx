@@ -71,9 +71,9 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
         )
       );
 
-      setTransactions(data.items);
-      setTotalPages(data.totalPages);
-      setTotalCount(data.totalCount);
+      setTransactions(data.data ?? []);
+      setTotalPages(data.pagination?.totalPages ?? 1);
+      setTotalCount(data.pagination?.totalItems ?? 0);
       setPage(pageNumber);
     } catch (error) {
       console.error('Failed to fetch transactions:', error);

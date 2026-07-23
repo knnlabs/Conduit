@@ -124,7 +124,7 @@ it('updates with the existing association and weight and explicitly clears provi
     isLoading: false,
   } as ReturnType<typeof useModelMappings>);
   const editedMapping = mapping({
-    providerOptions: '{"route":"old"}',
+    providerOptions: { route: 'old' },
     weight: 1.4,
   });
 
@@ -152,7 +152,7 @@ it('updates with the existing association and weight and explicitly clears provi
       priority: 100,
       weight: 1.4,
       isEnabled: true,
-      providerOptions: null,
+      providerOptions: {},
     },
   }));
 });
@@ -174,7 +174,7 @@ function mappingBase(): ModelProviderMappingDto {
     createdAt: '2026-01-01T00:00:00Z',
     updatedAt: '2026-01-02T00:00:00Z',
     provider: null,
-    providerOptions: null,
+    providerOptions: undefined,
     capabilities: null,
   };
 }

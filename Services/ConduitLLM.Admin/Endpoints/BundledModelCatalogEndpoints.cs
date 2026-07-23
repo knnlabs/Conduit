@@ -9,7 +9,7 @@ public static class BundledModelCatalogEndpoints
 {
     public static IEndpointRouteBuilder MapBundledModelCatalogEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/Model/bundled-catalog")
+        var group = app.MapGroup("/v1/admin/model-catalogs")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("BundledModelCatalog");

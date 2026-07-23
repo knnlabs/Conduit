@@ -51,7 +51,7 @@ describe('single mapping mutations', () => {
       priority: 25,
       weight: 1,
       isEnabled: true,
-      providerOptions: '{"temperature":0.2}',
+      providerOptions: { temperature: 0.2 },
     };
     create.mockResolvedValue({ id: 7 });
 
@@ -77,7 +77,7 @@ describe('single mapping mutations', () => {
       priority: 5,
       weight: 1.4,
       isEnabled: false,
-      providerOptions: null,
+      providerOptions: undefined,
     };
     update.mockResolvedValue();
 

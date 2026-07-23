@@ -101,7 +101,7 @@ export class FetchSystemService implements ISystemService {
    */
   async invalidateDiscoveryCache(config?: RequestConfig): Promise<{ message: string; timestamp: string; note?: string }> {
     const response = await this.client['post']<{ message: string; timestamp: string; note?: string }>(
-      '/api/SystemInfo/cache/invalidate-discovery',
+      '/v1/admin/system-metadata/cache/invalidate-discovery',
       {},
       {
         signal: config?.signal,
@@ -270,10 +270,10 @@ export class FetchSystemService implements ISystemService {
 
     try {
       const firstPage = await virtualKeyGroupService.list({ page: 1, pageSize: 100 }, config);
-      group = firstPage.items.find(item => item.externalGroupId === WEBADMIN_GROUP_EXTERNAL_ID);
-      for (let page = 2; !group && page <= firstPage.totalPages; page++) {
+      group = firstPage.data?.find(item => item.externalGroupId === WEBADMIN_GROUP_EXTERNAL_ID);
+      for (let page = 2; !group && page <= (firstPage.pagination?.totalPages ?? 1); page++) {
         const nextPage = await virtualKeyGroupService.list({ page, pageSize: 100 }, config);
-        group = nextPage.items.find(item => item.externalGroupId === WEBADMIN_GROUP_EXTERNAL_ID);
+        group = nextPage.data?.find(item => item.externalGroupId === WEBADMIN_GROUP_EXTERNAL_ID);
       }
     } catch (error) {
       console.warn('[API] Failed to search for an existing WebAdmin virtual key group', error);
@@ -302,7 +302,7 @@ export class FetchSystemService implements ISystemService {
     // Create the virtual key and associate it with the group
     const virtualKeyRequest = {
       keyName: 'WebAdmin Internal Key',
-      metadata: JSON.stringify(metadata),
+      metadata,
       virtualKeyGroupId: group.id
     } as components['schemas']['CreateVirtualKeyRequestDto'];
 

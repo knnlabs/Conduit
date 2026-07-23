@@ -15,14 +15,14 @@ public static class FunctionExecutionsEndpoints
 {
     public static IEndpointRouteBuilder MapFunctionExecutionsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/FunctionExecutions")
+        var group = app.MapGroup("/v1/admin/function-executions")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("FunctionExecutions");
 
         group.MapGet("/{id:guid}", GetById).WithName("FunctionExecutions_GetById")
             .Produces<AdminFunctionExecutionDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
-        group.MapGet("/virtualkey/{virtualKeyId:int}", GetByVirtualKey)
+        group.MapGet("/virtual-keys/{virtualKeyId:int}", GetByVirtualKey)
             .WithName("FunctionExecutions_GetByVirtualKey").Produces<List<AdminFunctionExecutionDto>>();
         group.MapGet("/configuration/{functionConfigurationId:int}", GetByConfiguration)
             .WithName("FunctionExecutions_GetByConfiguration").Produces<List<AdminFunctionExecutionDto>>();

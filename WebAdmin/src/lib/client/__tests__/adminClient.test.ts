@@ -37,7 +37,7 @@ describe('browser Admin API boundary', () => {
     );
     const secondCall = mockFetch.mock.calls[1];
     const request = secondCall?.[0] as Request;
-    expect(request.url).toBe('http://admin.example/api/ModelAuthor');
+    expect(request.url).toBe('http://admin.example/v1/admin/model-authors');
     expect(request.method).toBe('GET');
     expect(request.headers.get('X-Master-Key')).toBe('ephemeral-key');
   });

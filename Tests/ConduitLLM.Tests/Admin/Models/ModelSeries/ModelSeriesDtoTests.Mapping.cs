@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
+using System.Text.Json;
 
 using FluentAssertions;
 
@@ -43,7 +44,8 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
             dto.Name.Should().Be(entity.Name);
             dto.Description.Should().Be(entity.Description);
             dto.TokenizerType.Should().Be(entity.TokenizerType);
-            dto.Parameters.Should().Be(entity.Parameters);
+            JsonSerializer.Serialize(dto.Parameters).Should()
+                .Be(JsonSerializer.Serialize(ParseParameters(entity.Parameters)));
         }
 
         [Fact]
@@ -80,7 +82,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "Claude",
                 Description = "Anthropic's Claude series",
                 TokenizerType = TokenizerType.Claude,
-                Parameters = "{\"safetyLevel\":\"high\"}"
+                Parameters = ParseParameters("{\"safetyLevel\":\"high\"}")
             };
 
             // Act - simulate controller logic
@@ -90,7 +92,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = createDto.Name,
                 Description = createDto.Description,
                 TokenizerType = createDto.TokenizerType,
-                Parameters = createDto.Parameters ?? "{}"
+                Parameters = SerializeParameters(createDto.Parameters)
             };
 
             // Assert
@@ -132,7 +134,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
             if (updateDto.TokenizerType.HasValue)
                 existingEntity.TokenizerType = updateDto.TokenizerType.Value;
             if (updateDto.Parameters != null)
-                existingEntity.Parameters = updateDto.Parameters;
+                existingEntity.Parameters = SerializeParameters(updateDto.Parameters);
 
             // Assert
             existingEntity.Name.Should().Be("updated-name");
@@ -254,7 +256,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = createDto.Name,
                 Description = createDto.Description,
                 TokenizerType = createDto.TokenizerType,
-                Parameters = createDto.Parameters ?? "{}" // Default to empty JSON
+                Parameters = SerializeParameters(createDto.Parameters) // Default to empty JSON
             };
 
             // Assert
@@ -328,8 +330,14 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = entity.Name,
                 Description = entity.Description,
                 TokenizerType = entity.TokenizerType,
-                Parameters = entity.Parameters
+                Parameters = ParseParameters(entity.Parameters)
             };
         }
+
+        private static Dictionary<string, JsonElement> ParseParameters(string json) =>
+            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
+
+        private static string SerializeParameters(Dictionary<string, JsonElement>? parameters) =>
+            JsonSerializer.Serialize(parameters ?? new Dictionary<string, JsonElement>());
     }
 }

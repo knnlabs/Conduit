@@ -19,11 +19,11 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Contracts_PublishStableGeneratedAndExplicitOperationIds()
     {
-        Operation(_admin, "/api/VirtualKeys", "get").GetProperty("operationId").GetString()
+        Operation(_admin, "/v1/admin/virtual-keys", "get").GetProperty("operationId").GetString()
             .Should().Be("VirtualKeys_GetAll");
-        Operation(_admin, "/api/ModelAuthor", "get").GetProperty("operationId").GetString()
+        Operation(_admin, "/v1/admin/model-authors", "get").GetProperty("operationId").GetString()
             .Should().Be("ModelAuthors_List");
-        Operation(_admin, "/api/ModelAuthor/{id}", "get").GetProperty("operationId").GetString()
+        Operation(_admin, "/v1/admin/model-authors/{id}", "get").GetProperty("operationId").GetString()
             .Should().Be("ModelAuthors_GetById", "explicit operation IDs must follow Tag_Action");
     }
 
@@ -59,8 +59,8 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Theory]
-    [InlineData("admin", "/api/VirtualKeys/validate", "post")]
-    [InlineData("admin", "/api/IpFilter/check/{ipAddress}", "get")]
+    [InlineData("admin", "/v1/admin/virtual-keys/validate", "post")]
+    [InlineData("admin", "/v1/admin/ip-filters/check/{ipAddress}", "get")]
     [InlineData("gateway", "/v1/conduit/media/{storageKey}", "get")]
     [InlineData("gateway", "/v1/conduit/media/{storageKey}", "head")]
     public void AnonymousOperations_PublishAnExplicitEmptySecurityRequirement(
@@ -74,7 +74,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Theory]
-    [InlineData("admin", "/api/VirtualKeys", "get", "MasterKey")]
+    [InlineData("admin", "/v1/admin/virtual-keys", "get", "MasterKey")]
     [InlineData("gateway", "/v1/chat/completions", "post", "VirtualKey")]
     public void AuthenticatedOperations_ReferenceTheirCanonicalScheme(
         string contract,
@@ -112,7 +112,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Admin_Universal500UsesTheStandardErrorShape()
     {
-        var schema = Operation(_admin, "/api/VirtualKeys", "get")
+        var schema = Operation(_admin, "/v1/admin/virtual-keys", "get")
             .GetProperty("responses").GetProperty("500").GetProperty("content")
             .GetProperty("application/problem+json").GetProperty("schema");
 
@@ -268,23 +268,25 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Admin_ModelReadsPublishTypedResponseContracts()
     {
-        var flatOperation = Operation(_admin, "/api/Model", "get");
+        var flatOperation = Operation(_admin, "/v1/admin/models", "get");
         var flatSchema = flatOperation.GetProperty("responses").GetProperty("200")
             .GetProperty("content").GetProperty("application/json").GetProperty("schema");
-        flatSchema.GetProperty("type").GetString().Should().Be("array");
-        flatSchema.GetProperty("items").GetProperty("$ref").GetString()
+        flatSchema.GetProperty("properties").GetProperty("data")
+            .GetProperty("items").GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/ModelDto");
         flatOperation.GetProperty("parameters").EnumerateArray()
             .Select(parameter => parameter.GetProperty("name").GetString())
-            .Should().NotContain(["page", "pageSize"]);
+            .Should().Contain(["page", "pageSize"]);
 
-        ResponseSchema(_admin, "/api/Model/paged")
+        ResponseSchema(_admin, "/v1/admin/models/paged")
             .GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/PagedResultOfModelDto");
-        ResponseSchema(_admin, "/api/Model/{id}/identifiers")
+        ResponseSchema(_admin, "/v1/admin/models/{id}/identifiers")
+            .GetProperty("properties").GetProperty("data")
             .GetProperty("items").GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/ModelIdentifierDto");
-        ResponseSchema(_admin, "/api/Model/{id}/available-providers")
+        ResponseSchema(_admin, "/v1/admin/models/{id}/available-providers")
+            .GetProperty("properties").GetProperty("data")
             .GetProperty("items").GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/ModelProviderAvailabilityDto");
     }
@@ -292,7 +294,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Admin_ModelIdentifierCreationPublishesTypedResponseContract()
     {
-        Operation(_admin, "/api/Model/{id}/identifiers", "post")
+        Operation(_admin, "/v1/admin/models/{id}/identifiers", "post")
             .GetProperty("responses").GetProperty("201")
             .GetProperty("content").GetProperty("application/json")
             .GetProperty("schema").GetProperty("$ref").GetString()
@@ -300,22 +302,22 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/api/ModelAuthor", "post", "CreateModelAuthorDto", "201", "ModelAuthorDto")]
-    [InlineData("/api/ModelAuthor/{id}", "put", "UpdateModelAuthorDto", "204", null)]
-    [InlineData("/api/ModelAuthor/{id}", "delete", null, "204", null)]
-    [InlineData("/api/ModelSeries", "post", "CreateModelSeriesDto", "201", "ModelSeriesDto")]
-    [InlineData("/api/ModelSeries/{id}", "put", "UpdateModelSeriesDto", "204", null)]
-    [InlineData("/api/ModelSeries/{id}", "delete", null, "204", null)]
-    [InlineData("/api/Model", "post", "CreateModelDto", "201", "ModelDto")]
-    [InlineData("/api/Model/{id}", "put", "UpdateModelDto", "200", "ModelDto")]
-    [InlineData("/api/Model/{id}", "delete", null, "204", null)]
-    [InlineData("/api/Model/{id}/identifiers", "post", "CreateModelIdentifierDto", "201", "CreatedModelIdentifierDto")]
-    [InlineData("/api/Model/{id}/identifiers/{identifierId}", "put", "UpdateModelIdentifierDto", "204", null)]
-    [InlineData("/api/Model/{id}/identifiers/{identifierId}", "delete", null, "204", null)]
-    [InlineData("/api/Model/{id}/provider-mappings", "post", "ModelProviderMappingDto", "201", "ModelProviderMappingDto")]
-    [InlineData("/api/Model/{id}/provider-mappings/{mappingId}", "put", "ModelProviderMappingDto", "204", null)]
-    [InlineData("/api/Model/{id}/provider-mappings/{mappingId}", "delete", null, "204", null)]
-    [InlineData("/api/Model/bundled-catalog/import", "post", null, "200", "BundledModelCatalogImportResult")]
+    [InlineData("/v1/admin/model-authors", "post", "CreateModelAuthorDto", "201", "ModelAuthorDto")]
+    [InlineData("/v1/admin/model-authors/{id}", "patch", "UpdateModelAuthorDto", "200", "ModelAuthorDto")]
+    [InlineData("/v1/admin/model-authors/{id}", "delete", null, "204", null)]
+    [InlineData("/v1/admin/model-series", "post", "CreateModelSeriesDto", "201", "ModelSeriesDto")]
+    [InlineData("/v1/admin/model-series/{id}", "patch", "UpdateModelSeriesDto", "200", "ModelSeriesDto")]
+    [InlineData("/v1/admin/model-series/{id}", "delete", null, "204", null)]
+    [InlineData("/v1/admin/models", "post", "CreateModelDto", "201", "ModelDto")]
+    [InlineData("/v1/admin/models/{id}", "patch", "UpdateModelDto", "200", "ModelDto")]
+    [InlineData("/v1/admin/models/{id}", "delete", null, "204", null)]
+    [InlineData("/v1/admin/models/{id}/identifiers", "post", "CreateModelIdentifierDto", "201", "CreatedModelIdentifierDto")]
+    [InlineData("/v1/admin/models/{id}/identifiers/{identifierId}", "patch", "UpdateModelIdentifierDto", "200", "ModelIdentifierDto")]
+    [InlineData("/v1/admin/models/{id}/identifiers/{identifierId}", "delete", null, "204", null)]
+    [InlineData("/v1/admin/models/{id}/provider-mappings", "post", "ModelProviderMappingDto", "201", "ModelProviderMappingDto")]
+    [InlineData("/v1/admin/models/{id}/provider-mappings/{mappingId}", "patch", "UpdateModelProviderMappingDto", "200", "ModelProviderMappingDto")]
+    [InlineData("/v1/admin/models/{id}/provider-mappings/{mappingId}", "delete", null, "204", null)]
+    [InlineData("/v1/admin/model-catalogs/import", "post", null, "200", "BundledModelCatalogImportResult")]
     public void Admin_ModelFamilyMutationsPublishConcreteContracts(
         string path,
         string method,
@@ -353,16 +355,17 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Admin_TopLevelModelMappingsPublishConcreteContracts()
     {
-        ResponseSchema(_admin, "/api/ModelProviderMapping")
+        ResponseSchema(_admin, "/v1/admin/model-provider-mappings")
+            .GetProperty("properties").GetProperty("data")
             .GetProperty("items").GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/ModelProviderMappingDto");
-        ResponseSchema(_admin, "/api/ModelProviderMapping/{id}")
+        ResponseSchema(_admin, "/v1/admin/model-provider-mappings/{id}")
             .GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/ModelProviderMappingDto");
 
-        RequestSchema(_admin, "/api/ModelProviderMapping", "post")
+        RequestSchema(_admin, "/v1/admin/model-provider-mappings", "post")
             .GetProperty("$ref").GetString().Should().Be("#/components/schemas/CreateModelProviderMappingDto");
-        RequestSchema(_admin, "/api/ModelProviderMapping/{id}", "put")
+        RequestSchema(_admin, "/v1/admin/model-provider-mappings/{id}", "patch")
             .GetProperty("$ref").GetString().Should().Be("#/components/schemas/UpdateModelProviderMappingDto");
         foreach (var schemaName in new[]
         {
@@ -375,20 +378,20 @@ public sealed class AuthoritativeContractTests : IDisposable
                 .GetProperty(schemaName).GetProperty("properties")
                 .TryGetProperty("notes", out _).Should().BeFalse();
         }
-        RequestSchema(_admin, "/api/ModelProviderMapping/bulk", "post")
+        RequestSchema(_admin, "/v1/admin/model-provider-mappings/bulk", "post")
             .GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/BulkModelMappingCreateRequest");
-        RequestSchema(_admin, "/api/ModelProviderMapping/bulk/preview", "post")
+        RequestSchema(_admin, "/v1/admin/model-provider-mappings/bulk/preview", "post")
             .GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/BulkModelMappingPreviewRequest");
 
         foreach (var (path, responseSchema) in new[]
         {
-            ("/api/ModelProviderMapping/bulk/preview", "BulkModelMappingPreviewResponse"),
-            ("/api/ModelProviderMapping/bulk", "BulkModelMappingCreateResponse"),
-            ("/api/ModelProviderMapping/bulk/delete", "BulkDeleteResult"),
-            ("/api/ModelProviderMapping/bulk/enable", "BulkUpdateResult"),
-            ("/api/ModelProviderMapping/bulk/disable", "BulkUpdateResult")
+            ("/v1/admin/model-provider-mappings/bulk/preview", "BulkModelMappingPreviewResponse"),
+            ("/v1/admin/model-provider-mappings/bulk", "BulkModelMappingCreateResponse"),
+            ("/v1/admin/model-provider-mappings/bulk/delete", "BulkDeleteResult"),
+            ("/v1/admin/model-provider-mappings/bulk/enable", "BulkUpdateResult"),
+            ("/v1/admin/model-provider-mappings/bulk/disable", "BulkUpdateResult")
         })
         {
             Operation(_admin, path, "post").GetProperty("responses").GetProperty("200")
@@ -396,16 +399,17 @@ public sealed class AuthoritativeContractTests : IDisposable
                 .GetProperty("$ref").GetString().Should().Be($"#/components/schemas/{responseSchema}");
         }
 
-        foreach (var method in new[] { "put", "delete" })
-        {
-            Operation(_admin, "/api/ModelProviderMapping/{id}", method)
-                .GetProperty("responses").GetProperty("204")
-                .TryGetProperty("content", out _).Should().BeFalse();
-        }
-        Operation(_admin, "/api/ModelProviderMapping/{id}", "put")
+        Operation(_admin, "/v1/admin/model-provider-mappings/{id}", "patch")
+            .GetProperty("responses").GetProperty("200").GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema").GetProperty("$ref")
+            .GetString().Should().Be("#/components/schemas/ModelProviderMappingDto");
+        Operation(_admin, "/v1/admin/model-provider-mappings/{id}", "delete")
+            .GetProperty("responses").GetProperty("204")
+            .TryGetProperty("content", out _).Should().BeFalse();
+        Operation(_admin, "/v1/admin/model-provider-mappings/{id}", "patch")
             .GetProperty("responses").TryGetProperty("409", out _).Should().BeTrue();
 
-        Operation(_admin, "/api/ModelProviderMapping/{id}", "get").GetProperty("parameters")[0]
+        Operation(_admin, "/v1/admin/model-provider-mappings/{id}", "get").GetProperty("parameters")[0]
             .GetProperty("schema").GetProperty("format").GetString().Should().Be("int32");
     }
 
@@ -449,21 +453,22 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/api/FunctionConfigurations", "FunctionConfigurationDto")]
-    [InlineData("/api/FunctionCredentials", "FunctionCredential")]
-    [InlineData("/api/FunctionCosts", "FunctionCostDto")]
-    [InlineData("/api/FunctionExecutions/expired-leases", "AdminFunctionExecutionDto")]
+    [InlineData("/v1/admin/function-configurations", "FunctionConfigurationDto")]
+    [InlineData("/v1/admin/function-credentials", "FunctionCredentialDto")]
+    [InlineData("/v1/admin/function-costs", "FunctionCostDto")]
+    [InlineData("/v1/admin/function-executions/expired-leases", "AdminFunctionExecutionDto")]
     public void Admin_FunctionListsPublishTypedItems(string path, string schema)
     {
-        ResponseSchema(_admin, path).GetProperty("items").GetProperty("$ref").GetString()
+        ResponseSchema(_admin, path).GetProperty("properties").GetProperty("data")
+            .GetProperty("items").GetProperty("$ref").GetString()
             .Should().Be($"#/components/schemas/{schema}");
     }
 
     [Theory]
-    [InlineData("/api/FunctionConfigurations/{id}", "FunctionConfigurationDto")]
-    [InlineData("/api/FunctionCredentials/{id}", "FunctionCredential")]
-    [InlineData("/api/FunctionCosts/{id}", "FunctionCostDto")]
-    [InlineData("/api/FunctionExecutions/{id}", "AdminFunctionExecutionDto")]
+    [InlineData("/v1/admin/function-configurations/{id}", "FunctionConfigurationDto")]
+    [InlineData("/v1/admin/function-credentials/{id}", "FunctionCredentialDto")]
+    [InlineData("/v1/admin/function-costs/{id}", "FunctionCostDto")]
+    [InlineData("/v1/admin/function-executions/{id}", "AdminFunctionExecutionDto")]
     public void Admin_FunctionEntityReadsPublishTypedResponses(string path, string schema)
     {
         ResponseSchema(_admin, path).GetProperty("$ref").GetString()
@@ -471,9 +476,9 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/api/FunctionCredentials/test", "post", "FunctionCredentialTestResultDto")]
-    [InlineData("/api/FunctionCosts/cache/clear", "post", "FunctionCostCacheClearResultDto")]
-    [InlineData("/api/FunctionExecutions/cleanup", "delete", "FunctionExecutionCleanupResultDto")]
+    [InlineData("/v1/admin/function-credentials/test", "post", "FunctionCredentialTestResultDto")]
+    [InlineData("/v1/admin/function-costs/cache/clear", "post", "FunctionCostCacheClearResultDto")]
+    [InlineData("/v1/admin/function-executions/cleanup", "delete", "FunctionExecutionCleanupResultDto")]
     public void Admin_FunctionAnonymousResultsUseNamedSchemas(string path, string method, string schema)
     {
         Operation(_admin, path, method).GetProperty("responses").GetProperty("200")
@@ -512,10 +517,10 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Admin_FunctionConfigurationContractsUseBoundaryDtos()
     {
-        RequestSchema(_admin, "/api/FunctionConfigurations", "post")
+        RequestSchema(_admin, "/v1/admin/function-configurations", "post")
             .GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/CreateFunctionConfigurationRequest");
-        RequestSchema(_admin, "/api/FunctionConfigurations/{id}", "put")
+        RequestSchema(_admin, "/v1/admin/function-configurations/{id}", "patch")
             .GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/UpdateFunctionConfigurationRequest");
 
@@ -575,6 +580,116 @@ public sealed class AuthoritativeContractTests : IDisposable
                 .Should().BeTrue();
             schemas.GetProperty("FunctionExecutionCostDto").GetProperty("properties")
                 .GetProperty("breakdown").GetProperty("type").ToString().Should().Contain("object");
+        }
+    }
+
+    [Fact]
+    public void AdminRoutesUseCanonicalResourceStyle()
+    {
+        foreach (var path in _admin.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            if (path.Name == "/metrics")
+                continue;
+
+            path.Name.Should().StartWith("/v1/admin/");
+            foreach (var segment in path.Name["/v1/admin/".Length..].Split('/'))
+            {
+                if (segment.StartsWith('{') && segment.EndsWith('}'))
+                    continue;
+                segment.Should().MatchRegex("^[a-z0-9-]+$");
+            }
+        }
+    }
+
+    [Fact]
+    public void AdminCollectionsUseCanonicalPaginationEnvelope()
+    {
+        var onlyArrayException = new List<string>();
+        foreach (var (_, path, operation) in Operations(_admin).Where(item => item.Method == "GET"))
+        {
+            if (!operation.GetProperty("responses").TryGetProperty("200", out var response) ||
+                !response.TryGetProperty("content", out var content) ||
+                !content.TryGetProperty("application/json", out var json))
+                continue;
+
+            var schema = ResolveSchema(_admin, json.GetProperty("schema"));
+            if (schema.TryGetProperty("type", out var type) && type.GetString() == "array")
+                onlyArrayException.Add(path);
+        }
+
+        onlyArrayException.Should().Equal("/v1/admin/provider-errors/recent");
+
+        var models = ResolveSchema(_admin, ResponseSchema(_admin, "/v1/admin/models"));
+        models.GetProperty("required").EnumerateArray().Select(item => item.GetString())
+            .Should().BeEquivalentTo("data", "pagination");
+        models.GetProperty("properties").GetProperty("pagination").GetProperty("required")
+            .EnumerateArray().Select(item => item.GetString())
+            .Should().BeEquivalentTo("page", "pageSize", "totalItems", "totalPages");
+    }
+
+    [Fact]
+    public void AdminPatchBodiesArePartialAndDoNotRepeatPathIdentifiers()
+    {
+        foreach (var (method, path, operation) in Operations(_admin).Where(item => item.Method == "PATCH"))
+        {
+            var schema = ResolveSchema(_admin,
+                operation.GetProperty("requestBody").GetProperty("content")
+                    .GetProperty("application/json").GetProperty("schema"));
+
+            if (schema.TryGetProperty("required", out var required))
+                required.GetArrayLength().Should().Be(0, $"{method} {path} must be partial");
+            schema.GetProperty("properties").TryGetProperty("id", out _)
+                .Should().BeFalse($"{method} {path} already carries its identifier in the path");
+        }
+    }
+
+    [Theory]
+    [InlineData("/v1/admin/virtual-keys/{id}")]
+    [InlineData("/v1/admin/virtual-key-groups/{id}")]
+    [InlineData("/v1/admin/ip-filters/{id}")]
+    public void VersionedResourcesPublishConditionalRequestContracts(string path)
+    {
+        Operation(_admin, path, "get").GetProperty("responses").GetProperty("200")
+            .GetProperty("headers").TryGetProperty("ETag", out _).Should().BeTrue();
+
+        foreach (var method in new[] { "patch", "delete" })
+        {
+            var operation = Operation(_admin, path, method);
+            operation.GetProperty("parameters").EnumerateArray()
+                .Should().Contain(parameter =>
+                    parameter.GetProperty("name").GetString() == "If-Match" &&
+                    parameter.GetProperty("required").GetBoolean());
+            operation.GetProperty("responses").TryGetProperty("412", out _).Should().BeTrue();
+            operation.GetProperty("responses").TryGetProperty("428", out _).Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public void AdminStructuredFieldsAreObjectsInsteadOfSerializedJsonStrings()
+    {
+        var schemas = _admin.RootElement.GetProperty("components").GetProperty("schemas");
+        foreach (var schema in schemas.EnumerateObject())
+        {
+            if (!schema.Value.TryGetProperty("properties", out var properties))
+                continue;
+            foreach (var property in properties.EnumerateObject())
+                property.Name.Should().NotEndWith("Json");
+        }
+
+        foreach (var (schema, property) in new[]
+        {
+            ("VirtualKeyDto", "metadata"),
+            ("ModelDto", "modelParameters"),
+            ("ModelSeriesDto", "parameters"),
+            ("ModelProviderMappingDto", "providerOptions"),
+            ("ModelCostDto", "pricingConfiguration"),
+            ("PricingAuditEventDto", "inputParameters"),
+            ("DriftItemDto", "currentValues"),
+            ("DriftItemDto", "proposedValues")
+        })
+        {
+            ResolveSchema(_admin, schemas.GetProperty(schema).GetProperty("properties").GetProperty(property))
+                .GetProperty("type").ToString().Should().Contain("object");
         }
     }
 

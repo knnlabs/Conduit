@@ -40,7 +40,7 @@ public sealed class BundledModelCatalogEndpointsTests : IDisposable
         _importer.Setup(importer => importer.ImportAsync(false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(expected);
 
-        var response = await _host.Client.PostAsync("/api/Model/bundled-catalog/import", null);
+        var response = await _host.Client.PostAsync("/v1/admin/model-catalogs/import", null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var result = await response.Content.ReadFromJsonAsync<BundledModelCatalogImportResult>();

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -13,20 +14,18 @@ namespace ConduitLLM.Configuration.DTOs
         /// <remarks>
         /// Examples: "GPT-4 Standard Pricing", "Llama 3 Unified Cost", "Embedding Models - Ada"
         /// </remarks>
-        [Required]
         [MaxLength(255)]
-        public string CostName { get; set; } = string.Empty;
+        public string? CostName { get; set; }
 
         /// <summary>
         /// The pricing model type that determines how costs are calculated
         /// </summary>
-        [Required]
-        public PricingModel PricingModel { get; set; } = PricingModel.Standard;
+        public PricingModel? PricingModel { get; set; }
 
         /// <summary>
         /// JSON configuration for complex pricing models
         /// </summary>
-        public string? PricingConfiguration { get; set; }
+        public Dictionary<string, JsonElement>? PricingConfiguration { get; set; }
 
         /// <summary>
         /// List of model provider type association IDs to associate with this cost
@@ -42,14 +41,13 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Model type for categorization
         /// </summary>
-        [Required]
         [MaxLength(50)]
-        public string ModelType { get; set; } = "chat";
+        public string? ModelType { get; set; }
 
         /// <summary>
         /// Priority value for pattern matching
         /// </summary>
-        public int Priority { get; set; } = 0;
+        public int? Priority { get; set; }
 
         /// <summary>
         /// Optional description
@@ -60,19 +58,19 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Indicates whether this cost configuration is active
         /// </summary>
-        public bool IsActive { get; set; } = true;
+        public bool? IsActive { get; set; }
 
         /// <summary>
         /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal InputCostPerMillionTokens { get; set; } = 0;
+        public decimal? InputCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per million output tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal OutputCostPerMillionTokens { get; set; } = 0;
+        public decimal? OutputCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per million tokens for embedding requests in USD, if applicable
@@ -95,7 +93,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <remarks>
         /// When true, requests can be processed through batch endpoints with the BatchProcessingMultiplier discount applied.
         /// </remarks>
-        public bool SupportsBatchProcessing { get; set; }
+        public bool? SupportsBatchProcessing { get; set; }
 
         /// <summary>
         /// Cost per million cached input tokens for prompt caching in USD, if applicable

@@ -1,3 +1,5 @@
+using System.Collections;
+using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
@@ -37,7 +39,42 @@ namespace ConduitLLM.Admin.Endpoints
                 _logger.LogDebug("{Method} {Path} completed successfully", request.Method, request.Path);
             }
 
-            return result;
+            return WrapCollectionResponse(request, result);
         }
+
+        private static object? WrapCollectionResponse(HttpRequest request, object? result)
+        {
+            if (request.Method != "GET" ||
+                request.Path.Equals("/v1/admin/provider-errors/recent", StringComparison.OrdinalIgnoreCase) ||
+                result is not IValueHttpResult { Value: IEnumerable values } ||
+                values is string or IDictionary ||
+                result is IStatusCodeHttpResult { StatusCode: not (null or StatusCodes.Status200OK) })
+            {
+                return result;
+            }
+
+            var allItems = values.Cast<object?>().ToList();
+            var page = ParsePositive(request.Query["page"].ToString(), 1);
+            var pageSize = Math.Clamp(ParsePositive(request.Query["pageSize"].ToString(), 50), 1, 100);
+            var offset = ((long)page - 1) * pageSize;
+            var data = offset >= allItems.Count
+                ? new List<object?>()
+                : allItems.Skip((int)offset).Take(pageSize).ToList();
+
+            return Results.Ok(new PagedResult<object?>
+            {
+                Data = data,
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = allItems.Count,
+                    TotalPages = (int)Math.Ceiling(allItems.Count / (double)pageSize)
+                }
+            });
+        }
+
+        private static int ParsePositive(string value, int fallback) =>
+            int.TryParse(value, out var parsed) && parsed > 0 ? parsed : fallback;
     }
 }

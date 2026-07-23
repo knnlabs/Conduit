@@ -19,11 +19,12 @@ export class FetchModelSeriesService {
    * Get all model series
    */
   async list(config?: RequestConfig): Promise<ModelSeriesDto[]> {
-    return this.client['executeContractRead'](
-      '/api/ModelSeries',
-      (contractClient, options) => contractClient.GET('/api/ModelSeries', options),
+    const result = await this.client['executeContractRead'](
+      '/v1/admin/model-series',
+      (contractClient, options) => contractClient.GET('/v1/admin/model-series', options),
       config,
     );
+    return result.data;
   }
 
   /**
@@ -31,8 +32,8 @@ export class FetchModelSeriesService {
    */
   async get(id: number, config?: RequestConfig): Promise<ModelSeriesDto> {
     return this.client['executeContractRead'](
-      `/api/ModelSeries/${id}`,
-      (contractClient, options) => contractClient.GET('/api/ModelSeries/{id}', {
+      `/v1/admin/model-series/${id}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-series/{id}', {
         ...options,
         params: { path: { id } },
       }),
@@ -44,14 +45,15 @@ export class FetchModelSeriesService {
    * Get models in a series
    */
   async getModels(id: number, config?: RequestConfig): Promise<SeriesSimpleModelDto[]> {
-    return this.client['executeContractRead'](
-      `/api/ModelSeries/${id}/models`,
-      (contractClient, options) => contractClient.GET('/api/ModelSeries/{id}/models', {
+    const result = await this.client['executeContractRead'](
+      `/v1/admin/model-series/${id}/models`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-series/{id}/models', {
         ...options,
         params: { path: { id } },
       }),
       config,
     );
+    return result.data;
   }
 
   /**
@@ -62,9 +64,9 @@ export class FetchModelSeriesService {
     config?: RequestConfig
   ): Promise<ModelSeriesDto> {
     return this.client['executeContractOperation']<ModelSeriesDto, CreateModelSeriesDto>(
-      '/api/ModelSeries',
+      '/v1/admin/model-series',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelSeries', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-series', {
         ...options,
         body: data,
       }),
@@ -80,11 +82,11 @@ export class FetchModelSeriesService {
     id: number,
     data: UpdateModelSeriesDto,
     config?: RequestConfig
-  ): Promise<void> {
-    return this.client['executeContractOperation']<void, UpdateModelSeriesDto>(
-      `/api/ModelSeries/${id}`,
-      HttpMethod.PUT,
-      (contractClient, options) => contractClient.PUT('/api/ModelSeries/{id}', {
+  ): Promise<ModelSeriesDto> {
+    return this.client['executeContractOperation']<ModelSeriesDto, UpdateModelSeriesDto>(
+      `/v1/admin/model-series/${id}`,
+      HttpMethod.PATCH,
+      (contractClient, options) => contractClient.PATCH('/v1/admin/model-series/{id}', {
         ...options,
         params: { path: { id } },
         body: data,
@@ -99,9 +101,9 @@ export class FetchModelSeriesService {
    */
   async delete(id: number, config?: RequestConfig): Promise<void> {
     return this.client['executeContractOperation']<void>(
-      `/api/ModelSeries/${id}`,
+      `/v1/admin/model-series/${id}`,
       HttpMethod.DELETE,
-      (contractClient, options) => contractClient.DELETE('/api/ModelSeries/{id}', {
+      (contractClient, options) => contractClient.DELETE('/v1/admin/model-series/{id}', {
         ...options,
         params: { path: { id } },
       }),

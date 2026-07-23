@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Models;
+using System.Text.Json;
 
 namespace ConduitLLM.Admin.Models.Models
 {
@@ -318,7 +319,7 @@ namespace ConduitLLM.Admin.Models.Models
         /// This allows for model-specific customization while maintaining series defaults.
         /// </remarks>
         /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
-        public string? ModelParameters { get; set; }
+        public Dictionary<string, JsonElement>? ModelParameters { get; set; }
 
         /// <summary>
         /// Gets or sets the provider type associations (identifiers) for this model.

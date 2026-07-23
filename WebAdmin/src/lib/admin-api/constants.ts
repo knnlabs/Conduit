@@ -30,57 +30,57 @@ export const DATE_FORMATS = {
 export const ENDPOINTS = {
   // Model Provider Mappings
   MODEL_MAPPINGS: {
-    BASE: '/api/ModelProviderMapping',
-    BY_ID: (id: number) => `/api/ModelProviderMapping/${id}`,
-    PROVIDERS: '/api/ModelProviderMapping/providers',
-    BULK: '/api/ModelProviderMapping/bulk',
-    BULK_DELETE: '/api/ModelProviderMapping/bulk/delete',
-    BULK_ENABLE: '/api/ModelProviderMapping/bulk/enable',
-    BULK_DISABLE: '/api/ModelProviderMapping/bulk/disable',
+    BASE: '/v1/admin/model-provider-mappings',
+    BY_ID: (id: number) => `/v1/admin/model-provider-mappings/${id}`,
+    PROVIDERS: '/v1/admin/model-provider-mappings/providers',
+    BULK: '/v1/admin/model-provider-mappings/bulk',
+    BULK_DELETE: '/v1/admin/model-provider-mappings/bulk/delete',
+    BULK_ENABLE: '/v1/admin/model-provider-mappings/bulk/enable',
+    BULK_DISABLE: '/v1/admin/model-provider-mappings/bulk/disable',
   },
 
   // Model Costs
   MODEL_COSTS: {
-    BASE: '/api/ModelCosts',
-    BY_ID: (id: number) => `/api/ModelCosts/${id}`,
-    BY_NAME: (costName: string) => `/api/ModelCosts/name/costs/${costName}`,
-    BY_PROVIDER: (providerId: number) => `/api/ModelCosts/provider/costs/${providerId}`,
-    IMPORT: '/api/ModelCosts/import',
-    IMPORT_CSV: '/api/ModelCosts/import/csv',
-    IMPORT_JSON: '/api/ModelCosts/import/json',
-    EXPORT_CSV: '/api/ModelCosts/export/csv',
-    EXPORT_JSON: '/api/ModelCosts/export/json',
-    OVERVIEW: '/api/ModelCosts/overview',
+    BASE: '/v1/admin/model-costs',
+    BY_ID: (id: number) => `/v1/admin/model-costs/${id}`,
+    BY_NAME: (costName: string) => `/v1/admin/model-costs/name/costs/${costName}`,
+    BY_PROVIDER: (providerId: number) => `/v1/admin/model-costs/provider/costs/${providerId}`,
+    IMPORT: '/v1/admin/model-costs/import',
+    IMPORT_CSV: '/v1/admin/model-costs/import/csv',
+    IMPORT_JSON: '/v1/admin/model-costs/import/json',
+    EXPORT_CSV: '/v1/admin/model-costs/export/csv',
+    EXPORT_JSON: '/v1/admin/model-costs/export/json',
+    OVERVIEW: '/v1/admin/model-costs/overview',
   },
 
   // Model Management
   MODELS: {
-    BASE: '/api/Model',
-    IMPORT_BUNDLED_CATALOG: '/api/Model/bundled-catalog/import',
-    BY_ID: (id: number) => `/api/Model/${id}`,
-    BY_PROVIDER: (provider: string) => `/api/Model/provider/models/${provider}`,
-    SEARCH: '/api/Model/search',
+    BASE: '/v1/admin/models',
+    IMPORT_BUNDLED_CATALOG: '/v1/admin/model-catalogs/import',
+    BY_ID: (id: number) => `/v1/admin/models/${id}`,
+    BY_PROVIDER: (provider: string) => `/v1/admin/models/provider/models/${provider}`,
+    SEARCH: '/v1/admin/models/search',
   },
 
   // Model Series Management
   MODEL_SERIES: {
-    BASE: '/api/ModelSeries',
-    BY_ID: (id: number) => `/api/ModelSeries/${id}`,
-    MODELS: (id: number) => `/api/ModelSeries/${id}/models`,
+    BASE: '/v1/admin/model-series',
+    BY_ID: (id: number) => `/v1/admin/model-series/${id}`,
+    MODELS: (id: number) => `/v1/admin/model-series/${id}/models`,
   },
 
   // Model Author Management
   MODEL_AUTHORS: {
-    BASE: '/api/ModelAuthor',
-    BY_ID: (id: number) => `/api/ModelAuthor/${id}`,
-    SERIES: (id: number) => `/api/ModelAuthor/${id}/series`,
+    BASE: '/v1/admin/model-authors',
+    BY_ID: (id: number) => `/v1/admin/model-authors/${id}`,
+    SERIES: (id: number) => `/v1/admin/model-authors/${id}/series`,
   },
 
   // Model Capabilities Management
   MODEL_CAPABILITIES: {
-    BASE: '/api/ModelCapabilities',
-    BY_ID: (id: number) => `/api/ModelCapabilities/${id}`,
-    MODELS: (id: number) => `/api/ModelCapabilities/${id}/models`,
+    BASE: '/v1/admin/modelsCapabilities',
+    BY_ID: (id: number) => `/v1/admin/modelsCapabilities/${id}`,
+    MODELS: (id: number) => `/v1/admin/modelsCapabilities/${id}/models`,
   },
 
   // Unified Analytics endpoints
@@ -142,11 +142,11 @@ export const ENDPOINTS = {
 
   // Notifications endpoints
   NOTIFICATIONS: {
-    BASE: '/api/Notifications',
-    BY_ID: (id: number) => `/api/Notifications/${id}`,
-    UNREAD: '/api/Notifications/unread',
-    MARK_READ: (id: number) => `/api/Notifications/${id}/read`,
-    MARK_ALL_READ: '/api/Notifications/mark-all-read',
+    BASE: '/v1/admin/notifications',
+    BY_ID: (id: number) => `/v1/admin/notifications/${id}`,
+    UNREAD: '/v1/admin/notifications/unread',
+    MARK_READ: (id: number) => `/v1/admin/notifications/${id}/read`,
+    MARK_ALL_READ: '/v1/admin/notifications/mark-all-read',
   },
 
   // Router endpoints
@@ -160,13 +160,13 @@ export const ENDPOINTS = {
 
   // System
   SYSTEM: {
-    INFO: '/api/SystemInfo/info',
-    HEALTH: '/api/SystemInfo/health',
-    SERVICES: '/api/health/services',
-    NOTIFICATIONS: '/api/Notifications',
-    NOTIFICATION_BY_ID: (id: number) => `/api/Notifications/${id}`,
-    HEALTH_INCIDENTS: '/api/health/incidents',
-    HEALTH_HISTORY: '/api/health/history',
+    INFO: '/v1/admin/system-metadata/info',
+    HEALTH: '/v1/admin/system-metadata/health',
+    SERVICES: '/v1/admin/health-status/services',
+    NOTIFICATIONS: '/v1/admin/notifications',
+    NOTIFICATION_BY_ID: (id: number) => `/v1/admin/notifications/${id}`,
+    HEALTH_INCIDENTS: '/v1/admin/health-status/incidents',
+    HEALTH_HISTORY: '/v1/admin/health-status/history',
   },
 
   // Comprehensive Metrics

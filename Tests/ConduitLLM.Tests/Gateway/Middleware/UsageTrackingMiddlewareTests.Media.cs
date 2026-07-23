@@ -194,7 +194,8 @@ namespace ConduitLLM.Tests.Http.Middleware
                 Assert.Equal(0m, dto.Cost);
                 Assert.Equal(202, dto.StatusCode);
                 Assert.NotNull(dto.Metadata);
-                Assert.Contains("\"taskId\":\"task_video_983\"", dto.Metadata);
+                Assert.True(dto.Metadata.TryGetValue("taskId", out var taskId));
+                Assert.Equal("task_video_983", taskId.GetString());
             });
         }
 

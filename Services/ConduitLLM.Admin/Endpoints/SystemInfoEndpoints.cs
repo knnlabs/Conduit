@@ -13,7 +13,7 @@ public static class SystemInfoEndpoints
 {
     public static IEndpointRouteBuilder MapSystemInfoEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/SystemInfo")
+        var group = app.MapGroup("/v1/admin/system-metadata")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("SystemInfo");

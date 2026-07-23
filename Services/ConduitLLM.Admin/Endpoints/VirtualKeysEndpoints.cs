@@ -2,6 +2,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Admin.Filters;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 
@@ -34,7 +35,8 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
 
     public static IEndpointRouteBuilder MapVirtualKeysEndpoints(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/VirtualKeys")
+        var group = app.MapGroup("/v1/admin/virtual-keys")
+            .AddEndpointFilter<VersionedResourceEndpointFilter>()
             .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Virtual Keys");
@@ -47,7 +49,7 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             .WithName("VirtualKeys_GetAll").Produces<List<VirtualKeyDto>>().RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/{id}", ([FromServices] VirtualKeysEndpoints endpoints, int id) => endpoints.GetKeyById(id))
             .WithName("VirtualKeys_GetById").Produces<VirtualKeyDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
-        group.MapPut("/{id}", ([FromServices] VirtualKeysEndpoints endpoints, int id, UpdateVirtualKeyRequestDto request) => endpoints.UpdateKey(id, request))
+        group.MapPatch("/{id}", ([FromServices] VirtualKeysEndpoints endpoints, int id, UpdateVirtualKeyRequestDto request) => endpoints.UpdateKey(id, request))
             .WithName("VirtualKeys_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden).Produces(StatusCodes.Status404NotFound)
             .RequireAuthorization("MasterKeyPolicy");
@@ -83,7 +85,7 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
         LogAdminAudit("Created", "VirtualKey", response.KeyInfo.Id, $"Name: {LoggingSanitizer.S(request.KeyName)}");
         AdminOperationsMetricsService.RecordVirtualKeyOperation("create", "success");
         AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "create");
-        return Results.Created($"/api/VirtualKeys/{response.KeyInfo.Id}", response);
+        return Results.Created($"/v1/admin/virtual-keys/{response.KeyInfo.Id}", response);
     }
 
     /// <summary>
@@ -135,8 +137,14 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             changes.Add(("KeyName", preState.KeyName, request.KeyName));
         if (request.IsEnabled.HasValue && preState.IsEnabled != request.IsEnabled.Value)
             changes.Add(("IsEnabled", preState.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
-        if (request.AllowedModels != null && preState.AllowedModels != request.AllowedModels)
-            changes.Add(("AllowedModels", preState.AllowedModels ?? "null", request.AllowedModels));
+        if (request.AllowedModels != null &&
+            !(preState.AllowedModels ?? []).SequenceEqual(request.AllowedModels))
+        {
+            changes.Add((
+                "AllowedModels",
+                preState.AllowedModels is null ? "null" : string.Join(',', preState.AllowedModels),
+                string.Join(',', request.AllowedModels)));
+        }
         if (request.ExpiresAt.HasValue && preState.ExpiresAt != request.ExpiresAt)
             changes.Add(("ExpiresAt", preState.ExpiresAt?.ToString("o") ?? "null", request.ExpiresAt?.ToString("o") ?? "null"));
         if (request.RateLimitRpm.HasValue && preState.RateLimitRpm != request.RateLimitRpm)
@@ -156,7 +164,7 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
         }
         AdminOperationsMetricsService.RecordVirtualKeyOperation("update", "success");
         AdminOperationsMetricsService.RecordConfigurationChange("virtualkey", "update");
-        return NoContent();
+        return Ok(await _virtualKeyService.GetVirtualKeyInfoAsync(id) ?? throw new KeyNotFoundException());
     }
 
     /// <summary>

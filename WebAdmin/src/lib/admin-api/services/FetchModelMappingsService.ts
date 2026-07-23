@@ -27,11 +27,12 @@ export class FetchModelMappingsService {
   async list(
     config?: RequestConfig
   ): Promise<ModelProviderMappingDto[]> {
-    return this.client['executeContractRead'](
-      '/api/ModelProviderMapping',
-      (contractClient, options) => contractClient.GET('/api/ModelProviderMapping', options),
+    const result = await this.client['executeContractRead'](
+      '/v1/admin/model-provider-mappings',
+      (contractClient, options) => contractClient.GET('/v1/admin/model-provider-mappings', options),
       config,
     );
+    return result.data;
   }
 
   /**
@@ -39,8 +40,8 @@ export class FetchModelMappingsService {
    */
   async getById(id: number, config?: RequestConfig): Promise<ModelProviderMappingDto> {
     return this.client['executeContractRead'](
-      `/api/ModelProviderMapping/${id}`,
-      (contractClient, options) => contractClient.GET('/api/ModelProviderMapping/{id}', {
+      `/v1/admin/model-provider-mappings/${id}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-provider-mappings/{id}', {
         ...options,
         params: { path: { id } },
       }),
@@ -56,9 +57,9 @@ export class FetchModelMappingsService {
     config?: RequestConfig
   ): Promise<ModelProviderMappingDto> {
     return this.client['executeContractOperation']<ModelProviderMappingDto, CreateModelProviderMappingDto>(
-      '/api/ModelProviderMapping',
+      '/v1/admin/model-provider-mappings',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-provider-mappings', {
         ...options,
         body: data,
       }),
@@ -74,11 +75,11 @@ export class FetchModelMappingsService {
     id: number,
     data: UpdateModelProviderMappingDto,
     config?: RequestConfig
-  ): Promise<void> {
-    await this.client['executeContractOperation']<void, UpdateModelProviderMappingDto>(
-      `/api/ModelProviderMapping/${id}`,
-      HttpMethod.PUT,
-      (contractClient, options) => contractClient.PUT('/api/ModelProviderMapping/{id}', {
+  ): Promise<ModelProviderMappingDto> {
+    return this.client['executeContractOperation']<ModelProviderMappingDto, UpdateModelProviderMappingDto>(
+      `/v1/admin/model-provider-mappings/${id}`,
+      HttpMethod.PATCH,
+      (contractClient, options) => contractClient.PATCH('/v1/admin/model-provider-mappings/{id}', {
         ...options,
         params: { path: { id } },
         body: data,
@@ -93,9 +94,9 @@ export class FetchModelMappingsService {
    */
   async deleteById(id: number, config?: RequestConfig): Promise<void> {
     return this.client['executeContractOperation']<void>(
-      `/api/ModelProviderMapping/${id}`,
+      `/v1/admin/model-provider-mappings/${id}`,
       HttpMethod.DELETE,
-      (contractClient, options) => contractClient.DELETE('/api/ModelProviderMapping/{id}', {
+      (contractClient, options) => contractClient.DELETE('/v1/admin/model-provider-mappings/{id}', {
         ...options,
         params: { path: { id } },
       }),
@@ -114,9 +115,9 @@ export class FetchModelMappingsService {
     config?: RequestConfig
   ): Promise<BulkModelMappingPreviewResponse> {
     return this.client['executeContractOperation']<BulkModelMappingPreviewResponse, BulkModelMappingPreviewRequest>(
-      '/api/ModelProviderMapping/bulk/preview',
+      '/v1/admin/model-provider-mappings/bulk/preview',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/preview', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-provider-mappings/bulk/preview', {
         ...options,
         body: request,
       }),
@@ -133,9 +134,9 @@ export class FetchModelMappingsService {
     config?: RequestConfig
   ): Promise<BulkMappingResponse> {
     return this.client['executeContractOperation']<BulkMappingResponse, BulkMappingRequest>(
-      '/api/ModelProviderMapping/bulk',
+      '/v1/admin/model-provider-mappings/bulk',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-provider-mappings/bulk', {
         ...options,
         body: request,
       }),
@@ -152,9 +153,9 @@ export class FetchModelMappingsService {
     config?: RequestConfig
   ): Promise<BulkDeleteResult> {
     return this.client['executeContractOperation']<BulkDeleteResult, number[]>(
-      '/api/ModelProviderMapping/bulk/delete',
+      '/v1/admin/model-provider-mappings/bulk/delete',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/delete', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-provider-mappings/bulk/delete', {
         ...options,
         body: ids,
       }),
@@ -171,9 +172,9 @@ export class FetchModelMappingsService {
     config?: RequestConfig
   ): Promise<BulkUpdateResult> {
     return this.client['executeContractOperation']<BulkUpdateResult, number[]>(
-      '/api/ModelProviderMapping/bulk/enable',
+      '/v1/admin/model-provider-mappings/bulk/enable',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/enable', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-provider-mappings/bulk/enable', {
         ...options,
         body: ids,
       }),
@@ -190,9 +191,9 @@ export class FetchModelMappingsService {
     config?: RequestConfig
   ): Promise<BulkUpdateResult> {
     return this.client['executeContractOperation']<BulkUpdateResult, number[]>(
-      '/api/ModelProviderMapping/bulk/disable',
+      '/v1/admin/model-provider-mappings/bulk/disable',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/disable', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-provider-mappings/bulk/disable', {
         ...options,
         body: ids,
       }),

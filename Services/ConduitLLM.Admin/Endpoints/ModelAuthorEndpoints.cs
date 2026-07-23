@@ -24,7 +24,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <summary>Maps the ModelAuthor endpoint group.</summary>
         public static IEndpointRouteBuilder MapModelAuthorEndpoints(this IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/ModelAuthor")
+            var group = app.MapGroup("/v1/admin/model-authors")
                 .RequireAuthorization("MasterKeyPolicy")
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("ModelAuthor");
@@ -43,9 +43,9 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("ModelAuthors_Create")
                 .Produces<ModelAuthorDto>(StatusCodes.Status201Created)
                 .Produces(StatusCodes.Status400BadRequest);
-            group.MapPut("/{id:int}", Update)
+            group.MapPatch("/{id:int}", Update)
                 .WithName("ModelAuthors_Update")
-                .Produces(StatusCodes.Status204NoContent)
+                .Produces<ModelAuthorDto>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest)
                 .Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id:int}", Delete)
@@ -113,7 +113,7 @@ namespace ConduitLLM.Admin.Endpoints
             AdminAudit.Log(httpContext, Logger(loggerFactory), "Created", "ModelAuthor", author.Id,
                 $"Name: {LoggingSanitizer.S(author.Name)}");
 
-            return Results.Created($"/api/ModelAuthor/{author.Id}", author.ToDto());
+            return Results.Created($"/v1/admin/model-authors/{author.Id}", author.ToDto());
         }
 
         private static async Task<IResult> Update(
@@ -123,11 +123,6 @@ namespace ConduitLLM.Admin.Endpoints
             HttpContext httpContext,
             ILoggerFactory loggerFactory)
         {
-            if (id != dto.Id)
-            {
-                return AdminResults.BadRequest("ID mismatch");
-            }
-
             var author = await repository.GetByIdAsync(id);
             if (author == null)
             {
@@ -154,7 +149,7 @@ namespace ConduitLLM.Admin.Endpoints
             AdminAudit.Log(httpContext, Logger(loggerFactory), "Updated", "ModelAuthor", id,
                 $"Name: {LoggingSanitizer.S(author.Name)}");
 
-            return Results.NoContent();
+            return Results.Ok(author.ToDto());
         }
 
         private static async Task<IResult> Delete(

@@ -82,7 +82,7 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         const data = await withAdminClient(client =>
           client.virtualKeyGroups.list()
         );
-        setGroups(data.items);
+        setGroups(data.data ?? []);
       } catch (error) {
         console.warn('Failed to fetch virtual key groups:', error);
       } finally {
@@ -143,8 +143,8 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         description: values.description?.trim() ?? undefined,
         virtualKeyGroupId: values.virtualKeyGroupId, // Now guaranteed to be number
         rateLimitRpm: values.rateLimitPerMinute ?? undefined,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-        metadata: values.metadata?.trim() ? values.metadata : undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
+        metadata: values.metadata?.trim() ? JSON.parse(values.metadata) as Record<string, unknown> : undefined,
         isEnabled: values.isEnabled,
       };
 

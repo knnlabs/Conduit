@@ -50,7 +50,7 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapModelCostsEndpoints(IEndpointRouteBuilder app)
         {
-            var g = app.MapGroup("/api/ModelCosts").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Model Costs");
+            var g = app.MapGroup("/v1/admin/model-costs").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Model Costs");
             g.MapGet("/", ([FromServices] ModelCostsEndpoints e, int? page=null, int? pageSize=null, string? modelType=null, int? providerId=null, bool? isActive=null) => e.GetAllModelCosts(page,pageSize,modelType,providerId,isActive)).WithName("ModelCosts_GetAll").Produces<PagedResult<ModelCostDto>>();
             g.MapGet("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id)=>e.GetModelCostById(id)).WithName("ModelCosts_GetById").Produces<ModelCostDto>().Produces(StatusCodes.Status404NotFound);
             g.MapGet("/provider/costs/{providerId:int}", ([FromServices] ModelCostsEndpoints e,int providerId)=>e.GetModelCostsByProvider(providerId)).WithName("ModelCosts_GetByProvider").Produces<IEnumerable<ModelCostDto>>();
@@ -58,7 +58,7 @@ namespace ConduitLLM.Admin.Endpoints
             g.MapGet("/name/costs/{costName}", ([FromServices] ModelCostsEndpoints e,string costName)=>e.GetModelCostByCostName(costName)).WithName("ModelCosts_GetByName").Produces<ModelCostDto>().Produces(StatusCodes.Status404NotFound);
             g.MapGet("/name/{costName}", ([FromServices] ModelCostsEndpoints e,string costName)=>e.GetModelCostByCostName(costName)).ExcludeFromDescription();
             g.MapPost("/", ([FromServices] ModelCostsEndpoints e,CreateModelCostDto d)=>e.CreateModelCost(d)).WithName("ModelCosts_Create").Produces<ModelCostDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-            g.MapPut("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id,UpdateModelCostDto d)=>e.UpdateModelCost(id,d)).WithName("ModelCosts_Update").Produces<ModelCostDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            g.MapPatch("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id,UpdateModelCostDto d)=>e.UpdateModelCost(id,d)).WithName("ModelCosts_Update").Produces<ModelCostDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             g.MapDelete("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id)=>e.DeleteModelCost(id)).WithName("ModelCosts_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             g.MapGet("/overview", ([FromServices] ModelCostsEndpoints e,DateTime? startDate=null,DateTime? endDate=null)=>e.GetModelCostOverview(startDate ?? default,endDate ?? default)).WithName("ModelCosts_GetOverview").Produces<IEnumerable<ModelCostOverviewDto>>().Produces(StatusCodes.Status400BadRequest);
             g.MapPost("/import", ([FromServices] ModelCostsEndpoints e,IEnumerable<CreateModelCostDto> d)=>e.ImportModelCosts(d)).WithName("ModelCosts_Import").Accepts<IEnumerable<CreateModelCostDto>>("application/json").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
@@ -106,11 +106,14 @@ namespace ConduitLLM.Admin.Endpoints
             var totalCount = modelCosts.Count();
             return Results.Ok(new PagedResult<ModelCostDto>
             {
-                Items = modelCosts.Skip((effectivePage - 1) * effectivePageSize).Take(effectivePageSize).ToList(),
-                TotalCount = totalCount,
-                CurrentPage = effectivePage,
-                PageSize = effectivePageSize,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)effectivePageSize)
+                Data = modelCosts.Skip((effectivePage - 1) * effectivePageSize).Take(effectivePageSize).ToList(),
+                Pagination = new PaginationMetadata
+                {
+                    Page = effectivePage,
+                    PageSize = effectivePageSize,
+                    TotalItems = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)effectivePageSize)
+                }
             });
         }
 
@@ -164,7 +167,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             var result = await _modelCostService.CreateModelCostAsync(modelCost);
             LogAdminAudit("Created", "ModelCost", result.Id, $"CostName: {LoggingSanitizer.S(result.CostName)}");
-            return Results.Created($"/api/ModelCosts/{result.Id}", result);
+            return Results.Created($"/v1/admin/model-costs/{result.Id}", result);
         }
 
         /// <summary>
@@ -353,7 +356,7 @@ namespace ConduitLLM.Admin.Endpoints
             int id,
             [FromBody] ValidatePricingRulesRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.PricingConfiguration))
+            if (request?.PricingConfiguration is null)
             {
                 return AdminResults.BadRequest("Pricing configuration is required");
             }
@@ -368,7 +371,7 @@ namespace ConduitLLM.Admin.Endpoints
             // Validate the pricing document once before adding diagnostics from every distinct
             // persisted model schema. Caller-provided schemas are intentionally ignored here:
             // the model-cost-scoped endpoint treats the database associations as authoritative.
-            var result = _pricingRulesValidator.ValidateJson(request.PricingConfiguration);
+            var result = _pricingRulesValidator.ValidateJson(JsonSerializer.Serialize(request.PricingConfiguration));
             if (result.ParsedConfig == null)
             {
                 return Results.Ok(result);
@@ -496,7 +499,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <returns>Validation result with errors and warnings</returns>
         public async Task<IResult> ValidatePricingRulesStandalone(ValidatePricingRulesRequest request)
         {
-            if (request == null || string.IsNullOrWhiteSpace(request.PricingConfiguration))
+            if (request?.PricingConfiguration is null)
             {
                 return AdminResults.BadRequest("Pricing configuration is required");
             }
@@ -504,8 +507,8 @@ namespace ConduitLLM.Admin.Endpoints
             await Task.CompletedTask;
 
             var result = _pricingRulesValidator.ValidateJson(
-                request.PricingConfiguration,
-                request.ParameterSchema);
+                JsonSerializer.Serialize(request.PricingConfiguration),
+                request.ParameterSchema is null ? null : JsonSerializer.Serialize(request.ParameterSchema));
             return Results.Ok(result);
         }
 
@@ -521,12 +524,12 @@ namespace ConduitLLM.Admin.Endpoints
         /// <summary>
         /// The pricing configuration JSON to validate
         /// </summary>
-        public string PricingConfiguration { get; set; } = string.Empty;
+        public Dictionary<string, JsonElement> PricingConfiguration { get; set; } = new();
 
         /// <summary>
         /// Optional parameter schema JSON for standalone validation. The model-cost-scoped
         /// endpoint ignores this value and uses persisted associated-model schemas.
         /// </summary>
-        public string? ParameterSchema { get; set; }
+        public Dictionary<string, JsonElement>? ParameterSchema { get; set; }
     }
 }

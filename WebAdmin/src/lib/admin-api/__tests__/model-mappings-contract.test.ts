@@ -66,32 +66,33 @@ describe('contract-native top-level model mappings', () => {
   const bulkUpdate = { updated: [mapping], errors: [], totalProcessed: 1, successCount: 1, failureCount: 0 };
 
   const cases = [
-    ['list', 'GET', '/api/ModelProviderMapping', undefined, [mapping], 200,
+    ['list', 'GET', '/v1/admin/model-provider-mappings', undefined, { data: [mapping], pagination: { page: 1, pageSize: 100, totalItems: 1, totalPages: 1 } }, 200,
       (api: ConduitAdminClient) => api.modelMappings.list()],
-    ['getById', 'GET', '/api/ModelProviderMapping/7', undefined, mapping, 200,
+    ['getById', 'GET', '/v1/admin/model-provider-mappings/7', undefined, mapping, 200,
       (api: ConduitAdminClient) => api.modelMappings.getById(7)],
-    ['create', 'POST', '/api/ModelProviderMapping', createRequest, mapping, 201,
+    ['create', 'POST', '/v1/admin/model-provider-mappings', createRequest, mapping, 201,
       (api: ConduitAdminClient) => api.modelMappings.create(createRequest)],
-    ['update', 'PUT', '/api/ModelProviderMapping/7', updateRequest, undefined, 204,
+    ['update', 'PATCH', '/v1/admin/model-provider-mappings/7', updateRequest, mapping, 200,
       (api: ConduitAdminClient) => api.modelMappings.update(7, updateRequest)],
-    ['deleteById', 'DELETE', '/api/ModelProviderMapping/7', undefined, undefined, 204,
+    ['deleteById', 'DELETE', '/v1/admin/model-provider-mappings/7', undefined, undefined, 204,
       (api: ConduitAdminClient) => api.modelMappings.deleteById(7)],
-    ['previewBulk', 'POST', '/api/ModelProviderMapping/bulk/preview', bulkRequest, bulkPreview, 200,
+    ['previewBulk', 'POST', '/v1/admin/model-provider-mappings/bulk/preview', bulkRequest, bulkPreview, 200,
       (api: ConduitAdminClient) => api.modelMappings.previewBulk(bulkRequest)],
-    ['bulkCreate', 'POST', '/api/ModelProviderMapping/bulk', bulkRequest, bulkCreate, 200,
+    ['bulkCreate', 'POST', '/v1/admin/model-provider-mappings/bulk', bulkRequest, bulkCreate, 200,
       (api: ConduitAdminClient) => api.modelMappings.bulkCreate(bulkRequest)],
-    ['bulkDelete', 'POST', '/api/ModelProviderMapping/bulk/delete', [7], bulkDelete, 200,
+    ['bulkDelete', 'POST', '/v1/admin/model-provider-mappings/bulk/delete', [7], bulkDelete, 200,
       (api: ConduitAdminClient) => api.modelMappings.bulkDelete([7])],
-    ['bulkEnable', 'POST', '/api/ModelProviderMapping/bulk/enable', [7], bulkUpdate, 200,
+    ['bulkEnable', 'POST', '/v1/admin/model-provider-mappings/bulk/enable', [7], bulkUpdate, 200,
       (api: ConduitAdminClient) => api.modelMappings.bulkEnable([7])],
-    ['bulkDisable', 'POST', '/api/ModelProviderMapping/bulk/disable', [7], bulkUpdate, 200,
+    ['bulkDisable', 'POST', '/v1/admin/model-provider-mappings/bulk/disable', [7], bulkUpdate, 200,
       (api: ConduitAdminClient) => api.modelMappings.bulkDisable([7])],
   ] as const;
 
   it.each(cases)('%s uses its generated operation', async (name, method, path, requestBody, payload, status, invoke) => {
     void name;
     mockFetch.mockResolvedValueOnce(response(payload, status));
-    await expect(invoke(client())).resolves.toEqual(payload);
+    const expected = name === 'list' ? [mapping] : payload;
+    await expect(invoke(client())).resolves.toEqual(expected);
 
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe(method);
@@ -101,29 +102,29 @@ describe('contract-native top-level model mappings', () => {
   });
 
   it('fans bulkUpdate out through the migrated update operation', async () => {
-    mockFetch.mockResolvedValue(response(undefined, 204));
+    mockFetch.mockResolvedValue(response(mapping));
     await expect(client().modelMappings.bulkUpdate([
       { id: 7, data: updateRequest }, { id: 8, data: { ...updateRequest, modelAlias: 'nova-2' } },
     ])).resolves.toBeUndefined();
     expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect((mockFetch.mock.calls[0]?.[0] as Request).url).toBe('https://admin.test/api/ModelProviderMapping/7');
-    expect((mockFetch.mock.calls[1]?.[0] as Request).url).toBe('https://admin.test/api/ModelProviderMapping/8');
+    expect((mockFetch.mock.calls[0]?.[0] as Request).url).toBe('https://admin.test/v1/admin/model-provider-mappings/7');
+    expect((mockFetch.mock.calls[1]?.[0] as Request).url).toBe('https://admin.test/v1/admin/model-provider-mappings/8');
   });
 
   it('preserves headers, callbacks, request payloads, and retries', async () => {
     const onRequest = jest.fn<void, [RequestConfigInfo]>();
     const onResponse = jest.fn<void, [ResponseInfo]>();
-    mockFetch.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(response(undefined, 204));
+    mockFetch.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce(response(mapping));
     const api = client({
       retries: { maxRetries: 1, retryDelay: 0, retryCondition: () => true }, onRequest, onResponse,
     });
     await api.modelMappings.update(7, updateRequest, { headers: { [TRACE_HEADER]: 'mapping' } });
     expect(mockFetch).toHaveBeenCalledTimes(2);
     expect(onRequest).toHaveBeenCalledWith(expect.objectContaining({
-      method: 'PUT', url: 'https://admin.test/api/ModelProviderMapping/7', data: updateRequest,
+      method: 'PATCH', url: 'https://admin.test/v1/admin/model-provider-mappings/7', data: updateRequest,
     }));
     expect(onRequest.mock.calls[0]?.[0].headers['X-Trace']).toBe('mapping');
-    expect(onResponse).toHaveBeenCalledWith(expect.objectContaining({ status: 204 }));
+    expect(onResponse).toHaveBeenCalledWith(expect.objectContaining({ status: 200 }));
   });
 
   it('preserves structured errors', async () => {

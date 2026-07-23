@@ -75,7 +75,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       name: model?.name ?? '',
       modelSeriesId: (model?.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
       isActive: model?.isActive ?? true,
-      modelParameters: model?.modelParameters ?? '',
+      modelParameters: model?.modelParameters
+        ? JSON.stringify(model.modelParameters, null, 2)
+        : '',
       tokenizerType: model?.tokenizerType ?? TokenizerType.Cl100KBase,
       capabilitiesKnown: model?.inputModalities !== null && model?.outputModalities !== null,
       inputModalities: model?.inputModalities ?? [],
@@ -136,7 +138,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         name: model.name ?? '',
         modelSeriesId: (model.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
         isActive: model.isActive ?? true,
-        modelParameters: model.modelParameters ?? '',
+        modelParameters: model.modelParameters
+          ? JSON.stringify(model.modelParameters, null, 2)
+          : '',
         tokenizerType: model.tokenizerType ?? TokenizerType.Cl100KBase,
         capabilitiesKnown: model.inputModalities !== null && model.outputModalities !== null,
         inputModalities: model.inputModalities ?? [],
@@ -221,7 +225,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       
       // Only include optional string fields if they have content
       if (values.modelParameters && values.modelParameters.trim() !== '') {
-        dto.modelParameters = values.modelParameters;
+        dto.modelParameters = JSON.parse(values.modelParameters) as Record<string, unknown>;
       }
       
       // Include token fields - null means "clear the value"

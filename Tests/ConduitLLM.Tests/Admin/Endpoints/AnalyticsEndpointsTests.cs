@@ -28,7 +28,7 @@ public sealed class AnalyticsEndpointsTests
         }, endpoints => AnalyticsEndpoints.MapAnalyticsEndpoints(endpoints));
 
         var response = await host.Client.PostAsync(
-            "/api/Analytics/cache/invalidate?reason=Data%20repair",
+            "/v1/admin/analytics/cache/invalidate?reason=Data%20repair",
             content: null);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

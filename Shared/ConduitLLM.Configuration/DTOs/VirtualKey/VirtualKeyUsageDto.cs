@@ -83,6 +83,6 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// Comma-separated list of allowed model IDs, if restricted
         /// </summary>
-        public string? AllowedModels { get; set; }
+        public List<string>? AllowedModels { get; set; }
     }
 }

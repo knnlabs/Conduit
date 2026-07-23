@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Functions.Utilities;
 
 using ConduitLLM.Configuration.Messaging;
 
@@ -57,7 +58,9 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                ModelPricingConfigurationValidator.Validate(modelCost.PricingModel, modelCost.PricingConfiguration);
+                ModelPricingConfigurationValidator.Validate(
+                    modelCost.PricingModel,
+                    StructuredJson.SerializeObject(modelCost.PricingConfiguration));
 
                 // Check if a model cost with the same name already exists
                 var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
@@ -285,8 +288,6 @@ namespace ConduitLLM.Admin.Services
 
             try
             {
-                ModelPricingConfigurationValidator.Validate(modelCost.PricingModel, modelCost.PricingConfiguration);
-
                 // Get existing model cost
                 var existingModelCost = await _modelCostRepository.GetByIdAsync(id);
                 if (existingModelCost == null)
@@ -296,8 +297,17 @@ namespace ConduitLLM.Admin.Services
                     return null;
                 }
 
+                var effectivePricingModel = modelCost.PricingModel ?? existingModelCost.PricingModel;
+                var effectivePricingConfiguration = modelCost.PricingConfiguration is null
+                    ? existingModelCost.PricingConfiguration
+                    : StructuredJson.SerializeObject(modelCost.PricingConfiguration);
+                ModelPricingConfigurationValidator.Validate(
+                    effectivePricingModel,
+                    effectivePricingConfiguration);
+
                 // Check if the cost name is being changed and a model cost with the new name already exists
-                if (existingModelCost.CostName != modelCost.CostName)
+                if (modelCost.CostName is not null &&
+                    existingModelCost.CostName != modelCost.CostName)
                 {
                     var nameExists = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
                     if (nameExists != null && nameExists.Id != id)
@@ -308,23 +318,26 @@ namespace ConduitLLM.Admin.Services
 
                 // Track changes for event publishing (compare before UpdateFrom mutates the entity)
                 var changedProperties = new List<string>();
-                if (existingModelCost.CostName != modelCost.CostName)
+                if (modelCost.CostName is not null && existingModelCost.CostName != modelCost.CostName)
                     changedProperties.Add(nameof(modelCost.CostName));
-                if (existingModelCost.PricingModel != modelCost.PricingModel)
+                if (modelCost.PricingModel.HasValue && existingModelCost.PricingModel != modelCost.PricingModel)
                     changedProperties.Add(nameof(modelCost.PricingModel));
-                if (existingModelCost.PricingConfiguration != modelCost.PricingConfiguration)
+                if (modelCost.PricingConfiguration is not null &&
+                    existingModelCost.PricingConfiguration != effectivePricingConfiguration)
                     changedProperties.Add(nameof(modelCost.PricingConfiguration));
-                if (existingModelCost.ModelType != modelCost.ModelType)
+                if (modelCost.ModelType is not null && existingModelCost.ModelType != modelCost.ModelType)
                     changedProperties.Add(nameof(modelCost.ModelType));
-                if (existingModelCost.IsActive != modelCost.IsActive)
+                if (modelCost.IsActive.HasValue && existingModelCost.IsActive != modelCost.IsActive)
                     changedProperties.Add(nameof(modelCost.IsActive));
-                if (existingModelCost.Priority != modelCost.Priority)
+                if (modelCost.Priority.HasValue && existingModelCost.Priority != modelCost.Priority)
                     changedProperties.Add(nameof(modelCost.Priority));
-                if (existingModelCost.Description != modelCost.Description)
+                if (modelCost.Description is not null && existingModelCost.Description != modelCost.Description)
                     changedProperties.Add(nameof(modelCost.Description));
-                if (existingModelCost.InputCostPerMillionTokens != modelCost.InputCostPerMillionTokens)
+                if (modelCost.InputCostPerMillionTokens.HasValue &&
+                    existingModelCost.InputCostPerMillionTokens != modelCost.InputCostPerMillionTokens)
                     changedProperties.Add(nameof(modelCost.InputCostPerMillionTokens));
-                if (existingModelCost.OutputCostPerMillionTokens != modelCost.OutputCostPerMillionTokens)
+                if (modelCost.OutputCostPerMillionTokens.HasValue &&
+                    existingModelCost.OutputCostPerMillionTokens != modelCost.OutputCostPerMillionTokens)
                     changedProperties.Add(nameof(modelCost.OutputCostPerMillionTokens));
                 if (existingModelCost.EmbeddingCostPerMillionTokens != modelCost.EmbeddingCostPerMillionTokens)
                     changedProperties.Add(nameof(modelCost.EmbeddingCostPerMillionTokens));

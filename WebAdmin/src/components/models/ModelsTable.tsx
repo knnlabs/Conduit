@@ -113,7 +113,9 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
       const seriesNamesMap: Record<number, string> = {};
       for (const series of allSeries) {
         if (series.id) {
-          seriesParametersMap[series.id] = series.parameters ?? null;
+          seriesParametersMap[series.id] = series.parameters
+            ? JSON.stringify(series.parameters)
+            : null;
           seriesNamesMap[series.id] = series.name ?? `Series ${series.id}`;
         }
       }

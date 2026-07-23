@@ -18,6 +18,18 @@ function jsonResponse(body: unknown, status = 200): Response {
   } as Response;
 }
 
+function page(data: unknown[], pageNumber = 1, pageSize = 100, totalItems = data.length) {
+  return {
+    data,
+    pagination: {
+      page: pageNumber,
+      pageSize,
+      totalItems,
+      totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / pageSize),
+    },
+  };
+}
+
 function createClient(overrides: ConstructorParameters<typeof ConduitAdminClient>[0] = {
   baseUrl: 'https://admin.test',
   masterKey: 'master-key',
@@ -38,42 +50,42 @@ describe('contract-native model author and series reads', () => {
   }> = [
     {
       name: 'modelAuthors.list',
-      path: '/api/ModelAuthor',
+      path: '/v1/admin/model-authors',
       customHeader: 'authors-list',
       payload: [{ id: 1, name: 'Acme' }],
       invoke: (client) => client.modelAuthors.list({ headers: { [TEST_HEADER]: 'authors-list' } }),
     },
     {
       name: 'modelAuthors.get',
-      path: '/api/ModelAuthor/17',
+      path: '/v1/admin/model-authors/17',
       customHeader: 'authors-get',
       payload: { id: 17, name: 'Acme' },
       invoke: (client) => client.modelAuthors.get(17, { headers: { [TEST_HEADER]: 'authors-get' } }),
     },
     {
       name: 'modelAuthors.getSeries',
-      path: '/api/ModelAuthor/17/series',
+      path: '/v1/admin/model-authors/17/series',
       customHeader: 'authors-series',
       payload: [{ id: 29, name: 'Nova' }],
       invoke: (client) => client.modelAuthors.getSeries(17, { headers: { [TEST_HEADER]: 'authors-series' } }),
     },
     {
       name: 'modelSeries.list',
-      path: '/api/ModelSeries',
+      path: '/v1/admin/model-series',
       customHeader: 'series-list',
       payload: [{ id: 29, name: 'Nova', modelAuthorId: 17 }],
       invoke: (client) => client.modelSeries.list({ headers: { [TEST_HEADER]: 'series-list' } }),
     },
     {
       name: 'modelSeries.get',
-      path: '/api/ModelSeries/29',
+      path: '/v1/admin/model-series/29',
       customHeader: 'series-get',
       payload: { id: 29, name: 'Nova', modelAuthorId: 17 },
       invoke: (client) => client.modelSeries.get(29, { headers: { [TEST_HEADER]: 'series-get' } }),
     },
     {
       name: 'modelSeries.getModels',
-      path: '/api/ModelSeries/29/models',
+      path: '/v1/admin/model-series/29/models',
       customHeader: 'series-models',
       payload: [{ id: 41, name: 'nova-chat' }],
       invoke: (client) => client.modelSeries.getModels(29, { headers: { [TEST_HEADER]: 'series-models' } }),
@@ -81,7 +93,8 @@ describe('contract-native model author and series reads', () => {
   ];
 
   it.each(cases)('$name uses the generated GET operation and returns its payload unchanged', async ({ path, customHeader, payload, invoke }) => {
-    mockFetch.mockResolvedValueOnce(jsonResponse(payload));
+    const wirePayload = Array.isArray(payload) ? page(payload) : payload;
+    mockFetch.mockResolvedValueOnce(jsonResponse(wirePayload));
 
     await expect(invoke(createClient())).resolves.toEqual(payload);
 
@@ -170,7 +183,7 @@ describe('contract-native model author and series reads', () => {
     const payload = [{ id: 29, name: 'Nova' }];
     mockFetch
       .mockRejectedValueOnce(new Error('network failed'))
-      .mockResolvedValueOnce(jsonResponse(payload));
+      .mockResolvedValueOnce(jsonResponse(page(payload)));
     const client = createClient({
       baseUrl: 'https://admin.test',
       masterKey: 'master-key',
@@ -192,18 +205,18 @@ describe('contract-native model author and series reads', () => {
     const requestInfo = onRequest.mock.calls[0]?.[0];
     expect(requestInfo).toMatchObject({
       method: 'GET',
-      url: 'https://admin.test/api/ModelSeries',
+      url: 'https://admin.test/v1/admin/model-series',
     });
     expect(requestInfo?.headers['X-Master-Key']).toBe('master-key');
     expect(requestInfo?.headers[TRACE_HEADER]).toBe('trace-1');
     const responseInfo = onResponse.mock.calls[0]?.[0];
     expect(responseInfo).toMatchObject({
       status: 200,
-      data: payload,
+      data: page(payload),
     });
     expect(responseInfo?.config).toMatchObject({
       method: 'GET',
-      url: 'https://admin.test/api/ModelSeries',
+      url: 'https://admin.test/v1/admin/model-series',
     });
     expect(onError).not.toHaveBeenCalled();
     expect(logger.debug).toHaveBeenCalledWith(expect.stringContaining('API Request'));
@@ -221,31 +234,31 @@ describe('contract-native model reads', () => {
   }> = [
     {
       name: 'models.list',
-      url: 'https://admin.test/api/Model',
+      url: 'https://admin.test/v1/admin/models',
       payload: [{ id: 41, name: 'nova-chat' }],
       invoke: (client) => client.models.list({ headers: { [TEST_HEADER]: 'model-read' } }),
     },
     {
       name: 'models.get',
-      url: 'https://admin.test/api/Model/41',
+      url: 'https://admin.test/v1/admin/models/41',
       payload: { id: 41, name: 'nova-chat' },
       invoke: (client) => client.models.get(41, { headers: { [TEST_HEADER]: 'model-read' } }),
     },
     {
       name: 'models.search',
-      url: 'https://admin.test/api/Model/search?query=nova%20%26%20vision',
+      url: 'https://admin.test/v1/admin/models/search?query=nova%20%26%20vision',
       payload: [{ id: 41, name: 'nova & vision' }],
       invoke: (client) => client.models.search('nova & vision', { headers: { [TEST_HEADER]: 'model-read' } }),
     },
     {
       name: 'models.getByProvider',
-      url: 'https://admin.test/api/Model/provider/models/open%20ai%2Fcompatible',
+      url: 'https://admin.test/v1/admin/models/provider/models/open%20ai%2Fcompatible',
       payload: [{ id: 41, name: 'nova-chat', providerModelId: 'provider/nova-chat' }],
       invoke: (client) => client.models.getByProvider('open ai/compatible', { headers: { [TEST_HEADER]: 'model-read' } }),
     },
     {
       name: 'models.getModelProviders',
-      url: 'https://admin.test/api/Model/41/available-providers',
+      url: 'https://admin.test/v1/admin/models/41/available-providers',
       payload: [{
         associationId: 17,
         identifier: 'provider/nova-chat',
@@ -262,7 +275,7 @@ describe('contract-native model reads', () => {
     },
     {
       name: 'models.getProviderMappings',
-      url: 'https://admin.test/api/Model/41/provider-mappings',
+      url: 'https://admin.test/v1/admin/models/41/provider-mappings',
       payload: [{
         id: 7,
         modelAlias: 'nova',
@@ -275,7 +288,8 @@ describe('contract-native model reads', () => {
   ];
 
   it.each(cases)('$name resolves the generated request and preserves its payload', async ({ url, payload, invoke }) => {
-    mockFetch.mockResolvedValueOnce(jsonResponse(payload));
+    const wirePayload = Array.isArray(payload) ? page(payload) : payload;
+    mockFetch.mockResolvedValueOnce(jsonResponse(wirePayload));
 
     await expect(invoke(createClient())).resolves.toEqual(payload);
 
@@ -288,7 +302,7 @@ describe('contract-native model reads', () => {
   });
 
   it('models.getIdentifiers uses numeric path parameters and preserves identifier normalization', async () => {
-    mockFetch.mockResolvedValueOnce(jsonResponse([{
+    mockFetch.mockResolvedValueOnce(jsonResponse(page([{
       id: 17,
       identifier: 'provider/nova-chat',
       provider: 2,
@@ -299,7 +313,7 @@ describe('contract-native model reads', () => {
       qualityScore: 0.8,
       providerVariation: 'fast',
       modelCostId: 12,
-    }]));
+    }])));
 
     await expect(createClient().models.getIdentifiers(41, {
       headers: { [TEST_HEADER]: 'identifiers' },
@@ -319,13 +333,13 @@ describe('contract-native model reads', () => {
     }]);
 
     const request = mockFetch.mock.calls[0]?.[0] as Request;
-    expect(request.url).toBe('https://admin.test/api/Model/41/identifiers');
+    expect(request.url).toBe('https://admin.test/v1/admin/models/41/identifiers');
     expect(request.headers.get(TEST_HEADER)).toBe('identifiers');
   });
 
   it('models.listPaginated sends typed numeric and filter queries and preserves provider enrichment', async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({
-      items: [{
+      data: [{
         id: 41,
         name: 'nova-chat',
         identifiers: [{
@@ -335,12 +349,12 @@ describe('contract-native model reads', () => {
           isPrimary: true,
         }],
       }],
-      totalCount: 51,
-      currentPage: 2,
-      pageSize: 25,
-      totalPages: 3,
-      hasPreviousPage: true,
-      hasNextPage: true,
+      pagination: {
+        page: 2,
+        pageSize: 25,
+        totalItems: 51,
+        totalPages: 3,
+      },
     }));
 
     await expect(createClient().models.listPaginated({
@@ -378,7 +392,7 @@ describe('contract-native model reads', () => {
 
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.url).toBe(
-      'https://admin.test/api/Model/paged?page=2&pageSize=25&search=nova%20%26%20vision&capability=vision&hasProviders=true',
+      'https://admin.test/v1/admin/models/paged?page=2&pageSize=25&search=nova%20%26%20vision&capability=vision&hasProviders=true',
     );
     expect(request.headers.get(TEST_HEADER)).toBe('paged');
   });

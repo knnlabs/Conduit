@@ -19,7 +19,7 @@ namespace ConduitLLM.Admin.Endpoints
     {
         public static IEndpointRouteBuilder MapHealthMonitoringEndpoints(this IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/health")
+            var group = app.MapGroup("/v1/admin/health-status")
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("Health Monitoring");
             group.MapGet("/services", GetServiceHealth)

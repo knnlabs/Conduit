@@ -9,6 +9,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
 namespace ConduitLLM.Core.Services
@@ -79,11 +80,13 @@ namespace ConduitLLM.Core.Services
             {
                 KeyName = request.KeyName ?? string.Empty,
                 KeyHash = keyHash,
-                AllowedModels = request.AllowedModels,
+                AllowedModels = request.AllowedModels is { Count: > 0 }
+                    ? string.Join(',', request.AllowedModels)
+                    : null,
                 VirtualKeyGroupId = existingGroup.Id,
                 IsEnabled = true,
                 ExpiresAt = request.ExpiresAt,
-                Metadata = request.Metadata,
+                Metadata = request.Metadata is null ? null : JsonSerializer.Serialize(request.Metadata),
                 RateLimitRpm = request.RateLimitRpm,
                 RateLimitRpd = request.RateLimitRpd,
                 CreatedAt = DateTime.UtcNow,
@@ -163,10 +166,16 @@ namespace ConduitLLM.Core.Services
                 changedProperties.Add(nameof(key.KeyName));
             }
 
-            if (request.AllowedModels != null && key.AllowedModels != request.AllowedModels)
+            if (request.AllowedModels != null)
             {
-                key.AllowedModels = string.IsNullOrEmpty(request.AllowedModels) ? null : request.AllowedModels;
-                changedProperties.Add(nameof(key.AllowedModels));
+                var allowedModels = request.AllowedModels.Count == 0
+                    ? null
+                    : string.Join(',', request.AllowedModels);
+                if (key.AllowedModels != allowedModels)
+                {
+                    key.AllowedModels = allowedModels;
+                    changedProperties.Add(nameof(key.AllowedModels));
+                }
             }
 
             if (request.VirtualKeyGroupId.HasValue && key.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
@@ -193,10 +202,16 @@ namespace ConduitLLM.Core.Services
                 changedProperties.Add(nameof(key.ExpiresAt));
             }
 
-            if (request.Metadata != null && key.Metadata != request.Metadata)
+            if (request.Metadata != null)
             {
-                key.Metadata = string.IsNullOrEmpty(request.Metadata) ? null : request.Metadata;
-                changedProperties.Add(nameof(key.Metadata));
+                var metadata = request.Metadata.Count == 0
+                    ? null
+                    : JsonSerializer.Serialize(request.Metadata);
+                if (key.Metadata != metadata)
+                {
+                    key.Metadata = metadata;
+                    changedProperties.Add(nameof(key.Metadata));
+                }
             }
 
             if (request.RateLimitRpm.HasValue && key.RateLimitRpm != request.RateLimitRpm)

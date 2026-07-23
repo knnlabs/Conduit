@@ -126,19 +126,13 @@ namespace ConduitLLM.Gateway.Endpoints
             // Check if user has admin permissions
             var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoAsync(virtualKeyId);
             bool isAdmin = false;
-            if (virtualKeyInfo != null && !string.IsNullOrEmpty(virtualKeyInfo.Metadata))
+            if (virtualKeyInfo?.Metadata is { Count: > 0 })
             {
-                try
+                if (virtualKeyInfo.Metadata.TryGetValue("isAdmin", out var isAdminValue))
                 {
-                    var metadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(virtualKeyInfo.Metadata);
-                    if (metadata != null && metadata.TryGetValue("isAdmin", out var isAdminValue))
-                    {
-                        isAdmin = isAdminValue?.ToString()?.ToLower() == "true";
-                    }
-                }
-                catch
-                {
-                    // Invalid metadata format
+                    isAdmin = isAdminValue.ValueKind == System.Text.Json.JsonValueKind.True ||
+                        (isAdminValue.ValueKind == System.Text.Json.JsonValueKind.String &&
+                         bool.TryParse(isAdminValue.GetString(), out var parsed) && parsed);
                 }
             }
 

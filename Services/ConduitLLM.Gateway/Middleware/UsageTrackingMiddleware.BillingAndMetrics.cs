@@ -8,6 +8,7 @@ using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.Utilities;
 using ConduitLLM.Gateway.UsageTracking;
+using System.Text.Json;
 
 namespace ConduitLLM.Gateway.Middleware
 {
@@ -160,7 +161,9 @@ namespace ConduitLLM.Gateway.Middleware
                     ClientIp = context.Connection.RemoteIpAddress?.ToString(),
                     RequestPath = context.Request.Path.ToString(),
                     StatusCode = context.Response.StatusCode,
-                    Metadata = metadata
+                    Metadata = string.IsNullOrWhiteSpace(metadata)
+                        ? null
+                        : JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadata)
                 };
 
                 await requestLogService.LogRequestAsync(logRequest);

@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Security;
@@ -13,22 +14,22 @@ public static class FunctionCredentialsEndpoints
 {
     public static IEndpointRouteBuilder MapFunctionCredentialsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/FunctionCredentials")
+        var group = app.MapGroup("/v1/admin/function-credentials")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("FunctionCredentials");
 
-        group.MapGet("/", List).WithName("FunctionCredentials_List").Produces<List<FunctionCredential>>();
+        group.MapGet("/", List).WithName("FunctionCredentials_List").Produces<List<FunctionCredentialDto>>();
         group.MapGet("/configuration/{functionConfigurationId:int}", GetByConfiguration)
-            .WithName("FunctionCredentials_GetByConfiguration").Produces<List<FunctionCredential>>()
+            .WithName("FunctionCredentials_GetByConfiguration").Produces<List<FunctionCredentialDto>>()
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/{id:int}", GetById).WithName("FunctionCredentials_GetById")
-            .Produces<FunctionCredential>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
+            .Produces<FunctionCredentialDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/", Create).WithName("FunctionCredentials_Create")
-            .Produces<FunctionCredential>(StatusCodes.Status201Created)
+            .Produces<FunctionCredentialDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPut("/{id:int}", Update).WithName("FunctionCredentials_Update")
-            .Produces<FunctionCredential>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+        group.MapPatch("/{id:int}", Update).WithName("FunctionCredentials_Update")
+            .Produces<FunctionCredentialDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapDelete("/{id:int}", Delete).WithName("FunctionCredentials_Delete")
             .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
@@ -39,7 +40,7 @@ public static class FunctionCredentialsEndpoints
     }
 
     private static async Task<IResult> List([FromServices] IFunctionCredentialRepository repository) =>
-        Results.Ok(await repository.GetAllUnboundedAsync());
+        Results.Ok((await repository.GetAllUnboundedAsync()).Select(ToDto).ToList());
 
     private static async Task<IResult> GetByConfiguration(
         int functionConfigurationId,
@@ -48,7 +49,7 @@ public static class FunctionCredentialsEndpoints
     {
         var configuration = await configurations.GetByIdAsync(functionConfigurationId)
             ?? throw new KeyNotFoundException();
-        return Results.Ok(await credentials.GetByProviderTypeAsync(configuration.ProviderType));
+        return Results.Ok((await credentials.GetByProviderTypeAsync(configuration.ProviderType)).Select(ToDto).ToList());
     }
 
     private static async Task<IResult> GetById(int id, [FromServices] IFunctionCredentialRepository repository)
@@ -56,41 +57,72 @@ public static class FunctionCredentialsEndpoints
         var credential = await repository.GetByIdAsync(id);
         return credential is null
             ? AdminResults.NotFoundEntity("Function credential", id)
-            : Results.Ok(credential);
+            : Results.Ok(ToDto(credential));
     }
 
     private static async Task<IResult> Create(
-        [FromBody] FunctionCredential credential,
+        [FromBody] CreateFunctionCredentialRequest request,
         [FromServices] IFunctionCredentialRepository repository,
         [FromServices] IFunctionCredentialProtector protector,
         HttpContext httpContext,
         ILoggerFactory loggerFactory)
     {
+        var credential = new FunctionCredential
+        {
+            ProviderType = request.ProviderType,
+            FunctionConfigurationId = request.FunctionConfigurationId,
+            ApiKey = request.ApiKey,
+            BaseUrl = request.BaseUrl,
+            Organization = request.Organization,
+            FunctionAccountGroup = request.FunctionAccountGroup,
+            IsPrimary = request.IsPrimary,
+            IsEnabled = request.IsEnabled,
+            KeyName = request.KeyName
+        };
         EncryptScopedSecret(credential, protector);
         var id = await repository.CreateAsync(credential);
         var created = await repository.GetByIdAsync(id);
         Audit(httpContext, loggerFactory, "Created", id, credential);
-        return Results.Created($"/api/FunctionCredentials/{id}", created);
+        return Results.Created($"/v1/admin/function-credentials/{id}", created is null ? null : ToDto(created));
     }
 
     private static async Task<IResult> Update(
         int id,
-        [FromBody] FunctionCredential credential,
+        [FromBody] UpdateFunctionCredentialRequest request,
         [FromServices] IFunctionCredentialRepository repository,
         [FromServices] IFunctionCredentialProtector protector,
         HttpContext httpContext,
         ILoggerFactory loggerFactory)
     {
-        if (id != credential.Id)
-        {
-            return AdminResults.BadRequest("ID mismatch");
-        }
+        var credential = await repository.GetByIdAsync(id) ?? throw new KeyNotFoundException();
+        if (request.ApiKey is not null) credential.ApiKey = request.ApiKey;
+        if (request.BaseUrl is not null) credential.BaseUrl = request.BaseUrl;
+        if (request.Organization is not null) credential.Organization = request.Organization;
+        if (request.FunctionAccountGroup.HasValue) credential.FunctionAccountGroup = request.FunctionAccountGroup.Value;
+        if (request.IsPrimary.HasValue) credential.IsPrimary = request.IsPrimary.Value;
+        if (request.IsEnabled.HasValue) credential.IsEnabled = request.IsEnabled.Value;
+        if (request.KeyName is not null) credential.KeyName = request.KeyName;
         EncryptScopedSecret(credential, protector);
         await repository.UpdateAsync(credential);
         var updated = await repository.GetByIdAsync(id) ?? throw new KeyNotFoundException();
         Audit(httpContext, loggerFactory, "Updated", id, credential);
-        return Results.Ok(updated);
+        return Results.Ok(ToDto(updated));
     }
+
+    private static FunctionCredentialDto ToDto(FunctionCredential credential) => new()
+    {
+        Id = credential.Id,
+        FunctionConfigurationId = credential.FunctionConfigurationId ?? 0,
+        MaskedApiKey = string.IsNullOrEmpty(credential.ApiKey) ? null : "********",
+        BaseUrl = credential.BaseUrl,
+        Organization = credential.Organization,
+        FunctionAccountGroup = credential.FunctionAccountGroup,
+        IsPrimary = credential.IsPrimary,
+        IsEnabled = credential.IsEnabled,
+        KeyName = credential.KeyName,
+        CreatedAt = credential.CreatedAt,
+        UpdatedAt = credential.UpdatedAt
+    };
 
     private static async Task<IResult> Delete(
         int id,

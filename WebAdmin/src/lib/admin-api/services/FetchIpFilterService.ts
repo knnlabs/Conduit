@@ -65,8 +65,8 @@ export class FetchIpFilterService {
   async create(request: CreateIpFilterDto): Promise<IpFilterDto> {
     validateCreateIpFilterRequest(request);
     const body: components['schemas']['CreateIpFilterDto'] = request;
-    const response = await this.client['executeContractOperation']('/api/IpFilter', HttpMethod.POST,
-      (client, options) => client.POST('/api/IpFilter', { ...options, body }), undefined, body);
+    const response = await this.client['executeContractOperation']('/v1/admin/ip-filters', HttpMethod.POST,
+      (client, options) => client.POST('/v1/admin/ip-filters', { ...options, body }), undefined, body);
     await this.invalidateCache();
     return response as unknown as IpFilterDto;
   }
@@ -83,73 +83,84 @@ export class FetchIpFilterService {
     const query = Object.fromEntries(entries);
     const suffix = entries.length ? `?${new URLSearchParams(entries.map(([key, value]) => [key, String(value)])).toString()}` : '';
     const cacheKey = this.client['getCacheKey']('ip-filters', params);
-    return this.client['withCache'](cacheKey, () =>
-      this.client['executeContractRead'](`/api/IpFilter${suffix}`, (client, options) => {
+    return this.client['withCache'](cacheKey, async () => {
+      const result = await this.client['executeContractRead'](`/v1/admin/ip-filters${suffix}`, (client, options) => {
         // These compatibility filters are intentionally passed through even though the API
         // neither documents nor applies them today.
-        return client.GET('/api/IpFilter', {
+        return client.GET('/v1/admin/ip-filters', {
           ...options, params: { query },
         } as never);
-      }) as Promise<IpFilterDto[]>, CACHE_TTL.SHORT);
+      });
+      return (result as unknown as { data: IpFilterDto[] }).data;
+    }, CACHE_TTL.SHORT);
   }
 
   async getById(id: number): Promise<IpFilterDto> {
     const cacheKey = this.client['getCacheKey']('ip-filter', id);
-    return this.client['withCache'](cacheKey, () => this.client['executeContractRead'](`/api/IpFilter/${id}`,
-      (client, options) => client.GET('/api/IpFilter/{id}', { ...options, params: { path: { id } } })) as Promise<IpFilterDto>, CACHE_TTL.SHORT);
+    return this.client['withCache'](cacheKey, () => this.client['executeContractRead'](`/v1/admin/ip-filters/${id}`,
+      (client, options) => client.GET('/v1/admin/ip-filters/{id}', { ...options, params: { path: { id } } })) as Promise<IpFilterDto>, CACHE_TTL.SHORT);
   }
 
   async getEnabled(): Promise<IpFilterDto[]> {
-    return this.client['withCache']('ip-filters-enabled', () => this.client['executeContractRead']('/api/IpFilter/enabled',
-      (client, options) => client.GET('/api/IpFilter/enabled', options)) as Promise<IpFilterDto[]>, CACHE_TTL.SHORT);
+    return this.client['withCache']('ip-filters-enabled', async () => {
+      const result = await this.client['executeContractRead']('/v1/admin/ip-filters/enabled',
+        (client, options) => client.GET('/v1/admin/ip-filters/enabled', options));
+      return result.data as IpFilterDto[];
+    }, CACHE_TTL.SHORT);
   }
 
   async listByVirtualKey(virtualKeyId: number): Promise<IpFilterDto[]> {
     const cacheKey = this.client['getCacheKey']('ip-filters-by-vkey', virtualKeyId);
-    return this.client['withCache'](cacheKey, () => this.client['executeContractRead'](`/api/IpFilter/by-virtual-key/${virtualKeyId}`,
-      (client, options) => client.GET('/api/IpFilter/by-virtual-key/{virtualKeyId}', {
+    return this.client['withCache'](cacheKey, async () => {
+      const result = await this.client['executeContractRead'](`/v1/admin/ip-filters/by-virtual-key/${virtualKeyId}`,
+      (client, options) => client.GET('/v1/admin/ip-filters/by-virtual-key/{virtualKeyId}', {
         ...options, params: { path: { virtualKeyId } },
-      })) as Promise<IpFilterDto[]>, CACHE_TTL.SHORT);
+      }));
+      return result.data as IpFilterDto[];
+    }, CACHE_TTL.SHORT);
   }
 
   async update(id: number, request: UpdateIpFilterDto): Promise<void> {
-    request.id = id;
     const body = request as unknown as components['schemas']['UpdateIpFilterDto'];
-    await this.client['executeContractOperation'](`/api/IpFilter/${id}`, HttpMethod.PUT,
-      (client, options) => client.PUT('/api/IpFilter/{id}', { ...options, params: { path: { id } }, body }), undefined, body);
+    await this.client['executeContractOperation'](`/v1/admin/ip-filters/${id}`, HttpMethod.PATCH,
+      (client, options) => client.PATCH('/v1/admin/ip-filters/{id}', {
+        ...options, params: { path: { id }, header: { ['If-Match']: '*' } }, body,
+      }), undefined, body);
     await this.invalidateCache();
   }
 
   async deleteById(id: number): Promise<void> {
-    await this.client['executeContractOperation'](`/api/IpFilter/${id}`, HttpMethod.DELETE,
-      (client, options) => client.DELETE('/api/IpFilter/{id}', { ...options, params: { path: { id } } }));
+    await this.client['executeContractOperation'](`/v1/admin/ip-filters/${id}`, HttpMethod.DELETE,
+      (client, options) => client.DELETE('/v1/admin/ip-filters/{id}', {
+        ...options, params: { path: { id }, header: { ['If-Match']: '*' } },
+      }));
     await this.invalidateCache();
   }
 
   async getSettings(): Promise<IpFilterSettingsDto> {
-    return this.client['withCache']('ip-filter-settings', () => this.client['executeContractRead']('/api/IpFilter/settings',
-      (client, options) => client.GET('/api/IpFilter/settings', options)) as Promise<IpFilterSettingsDto>, CACHE_TTL.SHORT);
+    return this.client['withCache']('ip-filter-settings', () => this.client['executeContractRead']('/v1/admin/ip-filters/settings',
+      (client, options) => client.GET('/v1/admin/ip-filters/settings', options)) as Promise<IpFilterSettingsDto>, CACHE_TTL.SHORT);
   }
 
   async updateSettings(request: UpdateIpFilterSettingsDto): Promise<void> {
-    type SettingsBody = paths['/api/IpFilter/settings']['put']['requestBody']['content']['application/json'];
+    type SettingsBody = paths['/v1/admin/ip-filters/settings']['put']['requestBody']['content']['application/json'];
     // Preserve the partial facade until the backend stops binding the full settings response model.
     const body = request as SettingsBody;
-    await this.client['executeContractOperation']('/api/IpFilter/settings', HttpMethod.PUT,
-      (client, options) => client.PUT('/api/IpFilter/settings', { ...options, body }), undefined, body);
+    await this.client['executeContractOperation']('/v1/admin/ip-filters/settings', HttpMethod.PUT,
+      (client, options) => client.PUT('/v1/admin/ip-filters/settings', { ...options, body }), undefined, body);
     await this.invalidateCache();
   }
 
   async checkIp(ipAddress: string): Promise<IpCheckResult> {
     validateIpAddress(ipAddress);
-    return this.client['executeContractRead'](`/api/IpFilter/check/${encodeURIComponent(ipAddress)}`,
-      (client, options) => client.GET('/api/IpFilter/check/{ipAddress}', {
+    return this.client['executeContractRead'](`/v1/admin/ip-filters/check/${encodeURIComponent(ipAddress)}`,
+      (client, options) => client.GET('/v1/admin/ip-filters/check/{ipAddress}', {
         ...options, params: { path: { ipAddress } },
       })) as Promise<IpCheckResult>;
   }
 
-  async enableFilter(id: number): Promise<void> { await this.update(id, { id, isEnabled: true }); }
-  async disableFilter(id: number): Promise<void> { await this.update(id, { id, isEnabled: false }); }
+  async enableFilter(id: number): Promise<void> { await this.update(id, { isEnabled: true }); }
+  async disableFilter(id: number): Promise<void> { await this.update(id, { isEnabled: false }); }
 
   private async invalidateCache(): Promise<void> {
     if (this.client['cache']) await this.client['cache'].clear();

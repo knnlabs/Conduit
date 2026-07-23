@@ -5,6 +5,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -78,7 +79,7 @@ namespace ConduitLLM.Admin.Services
                 {
                     CostName = d.CostName,
                     PricingModel = d.PricingModel,
-                    PricingConfiguration = d.PricingConfiguration,
+                    PricingConfiguration = StructuredJson.ParseObject(d.PricingConfiguration),
                     InputCostPerMillionTokens = d.InputCostPerMillionTokens,
                     OutputCostPerMillionTokens = d.OutputCostPerMillionTokens,
                     EmbeddingCostPerMillionTokens = d.EmbeddingCostPerMillionTokens,
@@ -131,7 +132,7 @@ namespace ConduitLLM.Admin.Services
                     {
                         CostName = parts[0],
                         PricingModel = ParsePricingModel(parts[1], row.LineNumber),
-                        PricingConfiguration = string.IsNullOrEmpty(parts[2]) ? null : parts[2],
+                        PricingConfiguration = StructuredJson.ParseObject(parts[2]),
                         InputCostPerMillionTokens = ParseRequiredDecimal(parts[3], "input cost", row.LineNumber),
                         OutputCostPerMillionTokens = ParseRequiredDecimal(parts[4], "output cost", row.LineNumber),
                         EmbeddingCostPerMillionTokens = ParseOptionalDecimal(parts[5], "embedding cost", row.LineNumber),

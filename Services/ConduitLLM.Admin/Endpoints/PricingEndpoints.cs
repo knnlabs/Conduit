@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Core.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -68,13 +69,23 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapPricingEndpoints(IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/Pricing").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Pricing");
+            var group = app.MapGroup("/v1/admin/pricing-tools").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Pricing");
             group.MapGet("/types", ([FromServices] PricingEndpoints e) => e.GetPricingTypes()).WithName("Pricing_GetTypes").Produces<IEnumerable<PricingTypeInfo>>();
             group.MapGet("/operators", ([FromServices] PricingEndpoints e) => e.GetConditionOperators()).WithName("Pricing_GetOperators").Produces<IEnumerable<OperatorInfo>>();
             group.MapGet("/template", ([FromServices] PricingEndpoints e, string? pricingType = "per_second") => e.GetPricingTemplate(pricingType)).WithName("Pricing_GetTemplate").Produces<PricingTemplateResponse>();
             group.MapPost("/validate", ([FromServices] PricingEndpoints e, PricingValidationRequest request) => e.ValidatePricingConfiguration(request)).WithName("Pricing_Validate").Produces<PricingValidationResponse>().Produces(StatusCodes.Status400BadRequest);
             group.MapPost("/simulate", ([FromServices] PricingEndpoints e, PricingSimulationRequest request) => e.SimulatePricing(request)).WithName("Pricing_Simulate").Produces<PricingSimulationResponse>().Produces(StatusCodes.Status400BadRequest);
-            group.MapPost("/audit/query", ([FromServices] PricingEndpoints e, PricingAuditQueryRequest request) => e.QueryPricingAuditEvents(request)).WithName("Pricing_QueryAudit").Produces<PricingAuditQueryResponse>().Produces(StatusCodes.Status400BadRequest);
+            group.MapGet("/audit/events", ([FromServices] PricingEndpoints e, DateTime from, DateTime to, int? virtualKeyId = null, string? modelId = null, string? pricingType = null, int page = 1, int pageSize = 50) =>
+                e.QueryPricingAuditEvents(new PricingAuditQueryRequest
+                {
+                    From = from,
+                    To = to,
+                    VirtualKeyId = virtualKeyId,
+                    ModelId = modelId,
+                    PricingType = pricingType,
+                    PageNumber = page,
+                    PageSize = pageSize
+                })).WithName("Pricing_QueryAudit").Produces<PagedResult<PricingAuditEventDto>>().Produces(StatusCodes.Status400BadRequest);
             group.MapGet("/audit/summary", ([FromServices] PricingEndpoints e, DateTime? from = null, DateTime? to = null) => e.GetPricingAuditSummary(from ?? default, to ?? default)).WithName("Pricing_GetAuditSummary").Produces<PricingAuditSummary>().Produces(StatusCodes.Status400BadRequest);
             group.MapGet("/audit/request/{requestId}", ([FromServices] PricingEndpoints e, string requestId) => e.GetPricingAuditByRequestId(requestId)).WithName("Pricing_GetAuditByRequestId").Produces<IEnumerable<PricingAuditEventDto>>().Produces(StatusCodes.Status404NotFound);
             return app;

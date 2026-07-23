@@ -45,7 +45,7 @@ namespace ConduitLLM.Tests.Admin.Services
             {
                 KeyName = "Test Key", // Same name
                 IsEnabled = true, // Same status
-                AllowedModels = "gpt-4" // Same models
+                AllowedModels = ["gpt-4"] // Same models
             };
 
             // Act
@@ -78,7 +78,7 @@ namespace ConduitLLM.Tests.Admin.Services
             {
                 KeyName = "New Name",
                 IsEnabled = false,
-                AllowedModels = "gpt-4"
+                AllowedModels = ["gpt-4"]
             };
 
             // Act

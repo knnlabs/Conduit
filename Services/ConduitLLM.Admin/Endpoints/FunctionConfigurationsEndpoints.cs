@@ -42,7 +42,7 @@ public class FunctionConfigurationsEndpoints
 
     public static IEndpointRouteBuilder MapFunctionConfigurationsEndpoints(IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/FunctionConfigurations")
+        var group = app.MapGroup("/v1/admin/function-configurations")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
@@ -57,7 +57,7 @@ public class FunctionConfigurationsEndpoints
             .WithName("FunctionConfigurations_GetByPurpose").Produces<List<FunctionConfigurationDto>>();
         group.MapPost("/", ([FromServices] FunctionConfigurationsEndpoints e, CreateFunctionConfigurationRequest request) => e.CreateConfiguration(request))
             .WithName("FunctionConfigurations_Create").Produces<FunctionConfigurationDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-        group.MapPut("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id, UpdateFunctionConfigurationRequest request) => e.UpdateConfiguration(id, request))
+        group.MapPatch("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id, UpdateFunctionConfigurationRequest request) => e.UpdateConfiguration(id, request))
             .WithName("FunctionConfigurations_Update").Produces<FunctionConfigurationDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
         group.MapDelete("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id) => e.DeleteConfiguration(id))
             .WithName("FunctionConfigurations_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -178,7 +178,7 @@ public class FunctionConfigurationsEndpoints
                 StatusCodes.Status500InternalServerError,
                 "Function configuration was created but could not be reloaded.",
                 "function_configuration_reload_failed")
-            : Results.Created($"/api/FunctionConfigurations/{id}", ToDto(created));
+            : Results.Created($"/v1/admin/function-configurations/{id}", ToDto(created));
     }
 
     /// <summary>

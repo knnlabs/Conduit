@@ -43,7 +43,7 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapProviderCredentialsEndpoints(IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/ProviderCredentials")
+            var group = app.MapGroup("/v1/admin/providers")
                 .RequireAuthorization("MasterKeyPolicy")
                 .AddEndpointFilter<ValidationEndpointFilter>()
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
@@ -57,7 +57,7 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("ProviderCredentials_GetById").Produces<ProviderDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/", ([FromServices] ProviderCredentialsEndpoints endpoints, CreateProviderRequest request) => endpoints.CreateProvider(request))
                 .WithName("ProviderCredentials_Create").Produces<ProviderDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-            group.MapPut("/{id:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int id, UpdateProviderRequest request) => endpoints.UpdateProvider(id, request))
+            group.MapPatch("/{id:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int id, UpdateProviderRequest request) => endpoints.UpdateProvider(id, request))
                 .WithName("ProviderCredentials_Update").Produces<ProviderDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int id) => endpoints.DeleteProvider(id))
                 .WithName("ProviderCredentials_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -67,7 +67,7 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("ProviderCredentials_GetKey").Produces<ProviderKeyCredentialDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{providerId:int}/keys", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, CreateKeyRequest request) => endpoints.CreateProviderKeyCredential(providerId, request))
                 .WithName("ProviderCredentials_CreateKey").Produces<ProviderKeyCredentialDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
-            group.MapPut("/{providerId:int}/keys/{keyId:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, int keyId, UpdateKeyRequest request) => endpoints.UpdateProviderKeyCredential(providerId, keyId, request))
+            group.MapPatch("/{providerId:int}/keys/{keyId:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, int keyId, UpdateKeyRequest request) => endpoints.UpdateProviderKeyCredential(providerId, keyId, request))
                 .WithName("ProviderCredentials_UpdateKey").Produces<ProviderKeyCredentialDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{providerId:int}/keys/{keyId:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, int keyId) => endpoints.DeleteProviderKeyCredential(providerId, keyId))
                 .WithName("ProviderCredentials_DeleteKey").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -106,11 +106,14 @@ namespace ConduitLLM.Admin.Endpoints
 
             var result = new Configuration.DTOs.PagedResult<ProviderDto>
             {
-                Items = items,
-                TotalCount = totalCount,
-                CurrentPage = page,
-                PageSize = pageSize,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                Data = items,
+                Pagination = new Configuration.DTOs.PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
             };
 
             return Ok(result);
@@ -174,7 +177,7 @@ namespace ConduitLLM.Admin.Endpoints
             AdminOperationsMetricsService.RecordProviderOperation("create", provider.ProviderType.ToString(), "success");
             AdminOperationsMetricsService.RecordConfigurationChange("provider", "create");
 
-            return Results.Created($"/api/ProviderCredentials/{provider.Id}", ToProviderDto(provider));
+            return Results.Created($"/v1/admin/providers/{provider.Id}", ToProviderDto(provider));
         }
 
         /// <summary>

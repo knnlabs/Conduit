@@ -23,7 +23,7 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// Models allowed for this key
         /// </summary>
-        public string? AllowedModels { get; set; }
+        public List<string>? AllowedModels { get; set; }
 
         /// <summary>
         /// Error message if validation failed

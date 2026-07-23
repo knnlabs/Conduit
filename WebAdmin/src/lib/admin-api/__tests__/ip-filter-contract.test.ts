@@ -32,17 +32,22 @@ const filter = {
   updatedAt: '2026-02-01T00:00:00Z', createdBy: null, updatedBy: null, virtualKeyId: null,
 };
 
+const filterPage = {
+  data: [filter],
+  pagination: { page: 1, pageSize: 100, totalItems: 1, totalPages: 1 },
+};
+
 beforeEach(() => mockFetch.mockReset());
 
 describe('IP filter generated operations', () => {
   it.each([
-    ['list', '/api/IpFilter', (c: ConduitAdminClient) => c.ipFilters.list()],
-    ['enabled list', '/api/IpFilter/enabled', (c: ConduitAdminClient) => c.ipFilters.getEnabled()],
-    ['virtual-key list', '/api/IpFilter/by-virtual-key/42', (c: ConduitAdminClient) => c.ipFilters.listByVirtualKey(42)],
-    ['get', '/api/IpFilter/7', (c: ConduitAdminClient) => c.ipFilters.getById(7)],
+    ['list', '/v1/admin/ip-filters', (c: ConduitAdminClient) => c.ipFilters.list()],
+    ['enabled list', '/v1/admin/ip-filters/enabled', (c: ConduitAdminClient) => c.ipFilters.getEnabled()],
+    ['virtual-key list', '/v1/admin/ip-filters/by-virtual-key/42', (c: ConduitAdminClient) => c.ipFilters.listByVirtualKey(42)],
+    ['get', '/v1/admin/ip-filters/7', (c: ConduitAdminClient) => c.ipFilters.getById(7)],
   ])('performs the %s read with master-key authentication', async (name, path, invoke) => {
     expect(name).toBeTruthy();
-    mockFetch.mockResolvedValueOnce(response(path.endsWith('/7') ? filter : [filter]));
+    mockFetch.mockResolvedValueOnce(response(path.endsWith('/7') ? filter : filterPage));
     await invoke(client());
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('GET');
@@ -51,10 +56,10 @@ describe('IP filter generated operations', () => {
   });
 
   it('preserves the optional list query facade', async () => {
-    mockFetch.mockResolvedValueOnce(response([filter]));
+    mockFetch.mockResolvedValueOnce(response(filterPage));
     await client().ipFilters.list({ filterType: 'whitelist', isEnabled: true, nameContains: 'Office space' });
     expect((mockFetch.mock.calls[0]?.[0] as Request).url)
-      .toBe('https://admin.test/api/IpFilter?filterType=whitelist&isEnabled=true&nameContains=Office%20space');
+      .toBe('https://admin.test/v1/admin/ip-filters?filterType=whitelist&isEnabled=true&nameContains=Office%20space');
   });
 
   it('creates with the exact request body and accepts 201', async () => {
@@ -69,14 +74,15 @@ describe('IP filter generated operations', () => {
   it('preserves partial update and settings bodies and accepts 204', async () => {
     mockFetch.mockResolvedValue(response(undefined, 204));
     const api = client();
-    const update = { id: 99, isEnabled: false };
+    const update = { isEnabled: false };
     await api.ipFilters.update(7, update);
     await api.ipFilters.updateSettings({ defaultAllow: false });
     const first = mockFetch.mock.calls[0]?.[0] as Request;
     const second = mockFetch.mock.calls[1]?.[0] as Request;
-    expect(first.url).toBe('https://admin.test/api/IpFilter/7');
-    expect(body(first)).toEqual({ id: 7, isEnabled: false });
-    expect(second.url).toBe('https://admin.test/api/IpFilter/settings');
+    expect(first.url).toBe('https://admin.test/v1/admin/ip-filters/7');
+    expect(first.method).toBe('PATCH');
+    expect(body(first)).toEqual({ isEnabled: false });
+    expect(second.url).toBe('https://admin.test/v1/admin/ip-filters/settings');
     expect(body(second)).toEqual({ defaultAllow: false });
   });
 
@@ -85,7 +91,7 @@ describe('IP filter generated operations', () => {
     await client().ipFilters.deleteById(7);
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('DELETE');
-    expect(request.url).toBe('https://admin.test/api/IpFilter/7');
+    expect(request.url).toBe('https://admin.test/v1/admin/ip-filters/7');
   });
 
   it('reads settings and URL-encodes IPv4 and IPv6 checks', async () => {
@@ -95,8 +101,8 @@ describe('IP filter generated operations', () => {
     await expect(api.ipFilters.getSettings()).resolves.toEqual(settings);
     await api.ipFilters.checkIp('192.168.1.1');
     await api.ipFilters.checkIp('2001:db8::1');
-    expect((mockFetch.mock.calls[1]?.[0] as Request).url).toBe('https://admin.test/api/IpFilter/check/192.168.1.1');
-    expect((mockFetch.mock.calls[2]?.[0] as Request).url).toBe('https://admin.test/api/IpFilter/check/2001%3Adb8%3A%3A1');
+    expect((mockFetch.mock.calls[1]?.[0] as Request).url).toBe('https://admin.test/v1/admin/ip-filters/check/192.168.1.1');
+    expect((mockFetch.mock.calls[2]?.[0] as Request).url).toBe('https://admin.test/v1/admin/ip-filters/check/2001%3Adb8%3A%3A1');
   });
 
   it('caches reads and clears the cache after active enable/disable mutations', async () => {
@@ -108,7 +114,7 @@ describe('IP filter generated operations', () => {
       async delete(key: string): Promise<void> { values.delete(key); },
       clear: clearMock,
     };
-    mockFetch.mockResolvedValueOnce(response([filter]));
+    mockFetch.mockResolvedValueOnce(response(filterPage));
     const api = client(cache);
     await api.ipFilters.list();
     await api.ipFilters.list();
@@ -118,7 +124,7 @@ describe('IP filter generated operations', () => {
     await api.ipFilters.enableFilter(7);
     await api.ipFilters.disableFilter(7);
     expect(clearMock).toHaveBeenCalledTimes(2);
-    expect(body(mockFetch.mock.calls[1]?.[0] as Request)).toEqual({ id: 7, isEnabled: true });
-    expect(body(mockFetch.mock.calls[2]?.[0] as Request)).toEqual({ id: 7, isEnabled: false });
+    expect(body(mockFetch.mock.calls[1]?.[0] as Request)).toEqual({ isEnabled: true });
+    expect(body(mockFetch.mock.calls[2]?.[0] as Request)).toEqual({ isEnabled: false });
   });
 });

@@ -15,7 +15,7 @@ public static class ProviderSyncEndpoints
 
     public static IEndpointRouteBuilder MapProviderSyncEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/ProviderSync")
+        var group = app.MapGroup("/v1/admin/provider-sync-jobs")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("ProviderSync");

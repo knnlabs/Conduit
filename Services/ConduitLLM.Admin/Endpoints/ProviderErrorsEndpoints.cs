@@ -44,13 +44,15 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapProviderErrorsEndpoints(IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/provider-errors")
+            var group = app.MapGroup("/v1/admin/provider-errors")
                 .RequireAuthorization("MasterKeyPolicy")
                 .AddEndpointFilter<ValidationEndpointFilter>()
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("Provider Errors");
             group.MapGet("/recent", ([FromServices] ProviderErrorsEndpoints e, int? providerId = null, int? keyId = null, int limit = 100) => e.GetRecentErrors(providerId, keyId, limit))
-                .WithName("ProviderErrors_GetRecent").Produces<List<ProviderErrorDto>>();
+                .WithName("ProviderErrors_GetRecent")
+                .WithDescription("Returns a bounded tail window of the most recent provider errors; this is intentionally not a paged collection.")
+                .Produces<List<ProviderErrorDto>>();
             group.MapGet("/summary", ([FromServices] ProviderErrorsEndpoints e) => e.GetErrorSummary())
                 .WithName("ProviderErrors_GetSummary").Produces<List<ProviderErrorSummaryDto>>();
             group.MapGet("/keys/{keyId}", ([FromServices] ProviderErrorsEndpoints e, int keyId) => e.GetKeyErrors(keyId))

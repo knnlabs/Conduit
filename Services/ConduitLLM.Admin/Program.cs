@@ -83,6 +83,8 @@ public partial class Program
             options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.AdminApiDocumentTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ConditionalRequestOperationTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.CollectionPaginationOperationTransformer>();
             // Tier 2b (#905): document the universal 500 once, so controllers can drop the per-action
             // per-endpoint 500-response boilerplate.
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();

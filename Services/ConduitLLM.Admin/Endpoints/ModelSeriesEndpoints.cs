@@ -7,6 +7,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
 using Microsoft.AspNetCore.Mvc;
+using System.Text.Json;
 
 namespace ConduitLLM.Admin.Endpoints;
 
@@ -14,7 +15,7 @@ public static class ModelSeriesEndpoints
 {
     public static IEndpointRouteBuilder MapModelSeriesEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/ModelSeries")
+        var group = app.MapGroup("/v1/admin/model-series")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .AddEndpointFilter<ValidationEndpointFilter>()
@@ -32,8 +33,8 @@ public static class ModelSeriesEndpoints
             .Produces<ModelSeriesDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
-        group.MapPut("/{id}", Update).WithName("ModelSeries_Update")
-            .Produces(StatusCodes.Status204NoContent)
+        group.MapPatch("/{id}", Update).WithName("ModelSeries_Update")
+            .Produces<ModelSeriesDto>(StatusCodes.Status200OK)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
@@ -86,14 +87,14 @@ public static class ModelSeriesEndpoints
             Name = dto.Name,
             Description = dto.Description,
             TokenizerType = dto.TokenizerType,
-            Parameters = dto.Parameters ?? "{}"
+            Parameters = dto.Parameters is null ? "{}" : JsonSerializer.Serialize(dto.Parameters)
         };
         await repository.CreateAsync(series);
         var reloaded = await repository.GetByIdWithAuthorAsync(series.Id)
             ?? throw new InvalidOperationException("Failed to reload created series");
         AdminAudit.Log(context, Logger(loggerFactory), "Created", "ModelSeries", reloaded.Id,
             $"Name: {LoggingSanitizer.S(reloaded.Name)}");
-        return Results.Created($"/api/ModelSeries/{reloaded.Id}", reloaded.ToDto());
+        return Results.Created($"/v1/admin/model-series/{reloaded.Id}", reloaded.ToDto());
     }
 
     private static async Task<IResult> Update(
@@ -103,10 +104,6 @@ public static class ModelSeriesEndpoints
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
-        if (id != dto.Id)
-        {
-            return AdminResults.BadRequest("ID mismatch");
-        }
         var series = await repository.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Model series with ID {id} not found");
         if (!string.IsNullOrEmpty(dto.Name) && dto.Name != series.Name)
@@ -121,11 +118,11 @@ public static class ModelSeriesEndpoints
         }
         if (dto.Description is not null) series.Description = dto.Description;
         if (dto.TokenizerType.HasValue) series.TokenizerType = dto.TokenizerType.Value;
-        if (dto.Parameters is not null) series.Parameters = dto.Parameters;
+        if (dto.Parameters is not null) series.Parameters = JsonSerializer.Serialize(dto.Parameters);
         await repository.UpdateAsync(series);
         AdminAudit.Log(context, Logger(loggerFactory), "Updated", "ModelSeries", id,
             $"Name: {LoggingSanitizer.S(series.Name)}");
-        return Results.NoContent();
+        return Results.Ok(series.ToDto());
     }
 
     private static async Task<IResult> Delete(

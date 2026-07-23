@@ -200,17 +200,17 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc />
-        public async Task<bool> UpdateNotificationAsync(UpdateNotificationDto notification)
+        public async Task<bool> UpdateNotificationAsync(int id, UpdateNotificationDto notification)
         {
             try
             {
-                _logger.LogDebug("Updating notification with ID: {Id}", notification.Id);
+                _logger.LogDebug("Updating notification with ID: {Id}", id);
 
                 // Get the existing notification
-                var existingNotification = await _notificationRepository.GetByIdAsync(notification.Id);
+                var existingNotification = await _notificationRepository.GetByIdAsync(id);
                 if (existingNotification == null)
                 {
-                    _logger.LogWarning("Notification with ID {Id} not found", notification.Id);
+                    _logger.LogWarning("Notification with ID {Id} not found", id);
                     return false;
                 }
 
@@ -226,10 +226,13 @@ namespace ConduitLLM.Admin.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error updating notification with ID {Id}", notification.Id);
+                _logger.LogError(ex, "Error updating notification with ID {Id}", id);
                 throw;
             }
         }
+
+        public Task<bool> UpdateNotificationAsync(UpdateNotificationDto notification) =>
+            UpdateNotificationAsync(notification.Id, notification);
 
         /// <inheritdoc />
         public async Task<bool> MarkNotificationAsReadAsync(int id)

@@ -19,7 +19,9 @@ export function useModelSeriesById(seriesId: number | null | undefined) {
 
   return {
     seriesName: series?.name ?? (seriesId ? `Series ${seriesId}` : null),
-    seriesParameters: series?.parameters ?? null,
+    seriesParameters: series?.parameters
+      ? JSON.stringify(series.parameters)
+      : null,
     loading,
     error,
   };

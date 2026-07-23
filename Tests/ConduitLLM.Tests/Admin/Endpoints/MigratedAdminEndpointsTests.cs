@@ -29,9 +29,9 @@ public sealed class MigratedAdminEndpointsTests
         }, endpoints => VirtualKeysEndpoints.MapVirtualKeysEndpoints(endpoints));
         host.Client.DefaultRequestHeaders.Add("X-Test-Anonymous", "true");
 
-        var validation = await host.Client.PostAsJsonAsync("/api/VirtualKeys/validate",
+        var validation = await host.Client.PostAsJsonAsync("/v1/admin/virtual-keys/validate",
             new ValidateVirtualKeyRequest { Key = "condt_test" });
-        var management = await host.Client.GetAsync("/api/VirtualKeys");
+        var management = await host.Client.GetAsync("/v1/admin/virtual-keys");
 
         Assert.Equal(HttpStatusCode.OK, validation.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, management.StatusCode);
@@ -52,8 +52,8 @@ public sealed class MigratedAdminEndpointsTests
         }, endpoints => IpFilterEndpoints.MapIpFilterEndpoints(endpoints));
         host.Client.DefaultRequestHeaders.Add("X-Test-Anonymous", "true");
 
-        var check = await host.Client.GetAsync("/api/IpFilter/check/127.0.0.1");
-        var settings = await host.Client.GetAsync("/api/IpFilter/settings");
+        var check = await host.Client.GetAsync("/v1/admin/ip-filters/check/127.0.0.1");
+        var settings = await host.Client.GetAsync("/v1/admin/ip-filters/settings");
 
         Assert.Equal(HttpStatusCode.OK, check.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, settings.StatusCode);

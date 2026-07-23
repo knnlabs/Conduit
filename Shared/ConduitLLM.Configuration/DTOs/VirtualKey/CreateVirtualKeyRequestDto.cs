@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs.VirtualKey;
 
@@ -11,7 +12,7 @@ public class CreateVirtualKeyRequestDto
     [MaxLength(100, ErrorMessage = "Key name cannot exceed 100 characters.")]
     public string KeyName { get; set; } = string.Empty;
 
-    public string? AllowedModels { get; set; } // Comma-separated
+    public List<string>? AllowedModels { get; set; }
 
     /// <summary>
     /// Required ID of an existing virtual key group to add this key to.
@@ -23,7 +24,7 @@ public class CreateVirtualKeyRequestDto
 
     public DateTime? ExpiresAt { get; set; }
 
-    public string? Metadata { get; set; } // Optional JSON metadata
+    public Dictionary<string, JsonElement>? Metadata { get; set; }
 
     public int? RateLimitRpm { get; set; }
     public int? RateLimitRpd { get; set; }

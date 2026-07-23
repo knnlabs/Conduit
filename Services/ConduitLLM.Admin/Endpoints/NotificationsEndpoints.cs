@@ -11,7 +11,7 @@ public static class NotificationsEndpoints
 {
     public static IEndpointRouteBuilder MapNotificationsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/Notifications")
+        var group = app.MapGroup("/v1/admin/notifications")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .AddEndpointFilter<ValidationEndpointFilter>()
@@ -26,7 +26,7 @@ public static class NotificationsEndpoints
         group.MapPost("/", Create).WithName("Notifications_Create")
             .Produces<NotificationDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPut("/{id}", Update).WithName("Notifications_Update")
+        group.MapPatch("/{id}", Update).WithName("Notifications_Update")
             .Produces(StatusCodes.Status204NoContent)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
@@ -59,7 +59,7 @@ public static class NotificationsEndpoints
         var result = await service.CreateNotificationAsync(notification);
         AdminAudit.Log(context, Logger(loggerFactory), "Created", "Notification", result.Id,
             $"Type: {result.Type}, Message: {LoggingSanitizer.S(result.Message)}");
-        return Results.Created($"/api/Notifications/{result.Id}", result);
+        return Results.Created($"/v1/admin/notifications/{result.Id}", result);
     }
     private static async Task<IResult> Update(
         int id,
@@ -68,11 +68,10 @@ public static class NotificationsEndpoints
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
-        if (id != notification.Id) return AdminResults.BadRequest("ID in route must match ID in body");
-        if (!await service.UpdateNotificationAsync(notification)) throw new KeyNotFoundException();
+        if (!await service.UpdateNotificationAsync(id, notification)) throw new KeyNotFoundException();
         AdminAudit.Log(context, Logger(loggerFactory), "Updated", "Notification", id,
             notification.Message is null ? null : $"Message: {LoggingSanitizer.S(notification.Message)}");
-        return Results.NoContent();
+        return Results.Ok(await service.GetNotificationByIdAsync(id) ?? throw new KeyNotFoundException());
     }
     private static async Task<IResult> MarkAsRead(
         int id, [FromServices] IAdminNotificationService service, HttpContext context, ILoggerFactory loggerFactory)

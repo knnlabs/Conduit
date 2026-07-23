@@ -14,7 +14,7 @@ public static class MediaEndpoints
 {
     public static IEndpointRouteBuilder MapMediaEndpoints(this IEndpointRouteBuilder app)
     {
-        var media = app.MapGroup("/api/admin/Media")
+        var media = app.MapGroup("/v1/admin/media-assets")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
@@ -44,7 +44,7 @@ public static class MediaEndpoints
             .Produces<MediaCleanupResponseDto>()
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
 
-        var cleanup = app.MapGroup("/api/admin/media-cleanup")
+        var cleanup = app.MapGroup("/v1/admin/media-cleanup-jobs")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()

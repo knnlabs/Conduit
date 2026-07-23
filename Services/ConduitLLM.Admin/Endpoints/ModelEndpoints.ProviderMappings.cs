@@ -68,7 +68,7 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAudit("Created", "ModelProviderMapping", createdMapping?.Id,
                 $"ModelId: {id}, ProviderId: {mappingDto.ProviderId}");
 
-            return Results.Created($"/api/Model/{id}/provider-mappings", createdMapping?.ToDto());
+            return Results.Created($"/v1/admin/models/{id}/provider-mappings", createdMapping?.ToDto());
         }
 
         /// <summary>
@@ -78,13 +78,8 @@ namespace ConduitLLM.Admin.Endpoints
         /// <param name="mappingId">The mapping ID</param>
         /// <param name="mappingDto">The updated provider mapping data</param>
         /// <returns>No content on success</returns>
-        public async Task<IResult> UpdateModelProviderMapping(int id, int mappingId, ModelProviderMappingDto mappingDto)
+        public async Task<IResult> UpdateModelProviderMapping(int id, int mappingId, UpdateModelProviderMappingDto mappingDto)
         {
-            if (mappingDto.Id != mappingId)
-            {
-                return BadRequest("Mapping ID in URL does not match Mapping ID in request body");
-            }
-
             // Skip ModelId validation since it's no longer on the DTO
             // The ModelProviderTypeAssociationId provides the model relationship
 
@@ -117,7 +112,7 @@ namespace ConduitLLM.Admin.Endpoints
 
             LogAdminAudit("Updated", "ModelProviderMapping", mappingId, $"ModelId: {id}");
 
-            return NoContent();
+            return Ok((await _mappingService.GetMappingByIdAsync(mappingId) ?? throw new KeyNotFoundException()).ToDto());
         }
 
         /// <summary>

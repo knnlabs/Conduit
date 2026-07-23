@@ -90,10 +90,10 @@ export default function RequestLogsPage() {
       try {
         const groups = await withAdminClient(async (client) => {
           const firstPage = await client.virtualKeyGroups.list({ page: 1, pageSize: 100 });
-          const allGroups = [...firstPage.items];
-          for (let groupPage = 2; groupPage <= firstPage.totalPages; groupPage += 1) {
+          const allGroups = [...(firstPage.data ?? [])];
+          for (let groupPage = 2; groupPage <= (firstPage.pagination?.totalPages ?? 1); groupPage += 1) {
             const result = await client.virtualKeyGroups.list({ page: groupPage, pageSize: 100 });
-            allGroups.push(...result.items);
+            allGroups.push(...(result.data ?? []));
           }
           return allGroups;
         });

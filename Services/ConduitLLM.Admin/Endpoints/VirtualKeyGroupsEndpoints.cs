@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
@@ -9,6 +10,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Filters;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -42,8 +44,9 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapVirtualKeyGroupsEndpoints(IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/VirtualKeyGroups")
+            var group = app.MapGroup("/v1/admin/virtual-key-groups")
                 .RequireAuthorization()
+                .AddEndpointFilter<VersionedResourceEndpointFilter>()
                 .AddEndpointFilter<ValidationEndpointFilter>()
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("Virtual Key Groups");
@@ -54,7 +57,7 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("VirtualKeyGroups_GetById").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/", ([FromServices] VirtualKeyGroupsEndpoints endpoints, CreateVirtualKeyGroupRequestDto request) => endpoints.CreateGroup(request))
                 .WithName("VirtualKeyGroups_Create").Produces<VirtualKeyGroupDto>(StatusCodes.Status201Created);
-            group.MapPut("/{id}", ([FromServices] VirtualKeyGroupsEndpoints endpoints, int id, UpdateVirtualKeyGroupRequestDto request) => endpoints.UpdateGroup(id, request))
+            group.MapPatch("/{id}", ([FromServices] VirtualKeyGroupsEndpoints endpoints, int id, UpdateVirtualKeyGroupRequestDto request) => endpoints.UpdateGroup(id, request))
                 .WithName("VirtualKeyGroups_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id}/adjust-balance", ([FromServices] VirtualKeyGroupsEndpoints endpoints, int id, AdjustBalanceDto request) => endpoints.AdjustBalance(id, request))
                 .WithName("VirtualKeyGroups_AdjustBalance").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
@@ -102,11 +105,14 @@ namespace ConduitLLM.Admin.Endpoints
 
             return Ok(new PagedResult<VirtualKeyGroupDto>
             {
-                Items = dtos,
-                TotalCount = totalCount,
-                CurrentPage = page,
-                PageSize = pageSize,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                Data = dtos,
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
             });
         }
 
@@ -168,7 +174,7 @@ namespace ConduitLLM.Admin.Endpoints
                 VirtualKeyCount = 0
             };
 
-            return Results.Created($"/api/VirtualKeyGroups/{group.Id}", dto);
+            return Results.Created($"/v1/admin/virtual-key-groups/{group.Id}", dto);
         }
 
         /// <summary>
@@ -199,7 +205,18 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAuditWithChanges("VirtualKeyGroup", id, changes);
             AdminOperationsMetricsService.RecordConfigurationChange("virtualkeygroup", "update");
 
-            return NoContent();
+            return Ok(new VirtualKeyGroupDto
+            {
+                Id = group.Id,
+                ExternalGroupId = group.ExternalGroupId,
+                GroupName = group.GroupName,
+                Balance = group.Balance,
+                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
+                LifetimeSpent = group.LifetimeSpent,
+                CreatedAt = group.CreatedAt,
+                UpdatedAt = group.UpdatedAt,
+                VirtualKeyCount = group.VirtualKeys?.Count ?? 0
+            });
         }
 
         /// <summary>
@@ -310,11 +327,14 @@ namespace ConduitLLM.Admin.Endpoints
 
             return Ok(new PagedResult<VirtualKeyGroupTransactionDto>
             {
-                Items = transactions,
-                TotalCount = totalCount,
-                CurrentPage = page,
-                PageSize = pageSize,
-                TotalPages = totalPages
+                Data = transactions,
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalCount,
+                    TotalPages = totalPages
+                }
             });
         }
 
@@ -334,13 +354,13 @@ namespace ConduitLLM.Admin.Endpoints
                 Id = k.Id,
                 KeyName = k.KeyName,
                 KeyPrefix = k.KeyHash?.Length > 10 ? k.KeyHash.Substring(0, 10) + "..." : k.KeyHash,
-                AllowedModels = k.AllowedModels,
+                AllowedModels = VirtualKeyUtilities.ParseAllowedModels(k.AllowedModels),
                 VirtualKeyGroupId = k.VirtualKeyGroupId,
                 IsEnabled = k.IsEnabled,
                 ExpiresAt = k.ExpiresAt,
                 CreatedAt = k.CreatedAt,
                 UpdatedAt = k.UpdatedAt,
-                Metadata = k.Metadata,
+                Metadata = VirtualKeyUtilities.MapToDto(k).Metadata,
                 RateLimitRpm = k.RateLimitRpm,
                 RateLimitRpd = k.RateLimitRpd,
                 Description = k.Description

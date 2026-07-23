@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Models;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Functions.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -302,7 +303,7 @@ namespace ConduitLLM.Admin.Services
         {
             CostName = cost.CostName,
             PricingModel = cost.PricingModel,
-            PricingConfiguration = cost.PricingConfiguration,
+            PricingConfiguration = StructuredJson.ParseObject(cost.PricingConfiguration),
             ModelType = cost.ModelType,
             IsActive = cost.IsActive,
             Priority = cost.Priority,
@@ -350,8 +351,8 @@ namespace ConduitLLM.Admin.Services
             OpenRouterModelId = item.OpenRouterModelId,
             DriftType = item.DriftType.ToString(),
             Status = item.Status.ToString(),
-            CurrentValuesJson = item.CurrentValuesJson,
-            ProposedValuesJson = item.ProposedValuesJson,
+            CurrentValues = StructuredJson.ParseObject(item.CurrentValuesJson) ?? new(),
+            ProposedValues = StructuredJson.ParseObject(item.ProposedValuesJson) ?? new(),
             FirstDetectedAt = item.FirstDetectedAt,
             LastDetectedAt = item.LastDetectedAt,
             ResolvedAt = item.ResolvedAt,

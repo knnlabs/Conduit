@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text.Json;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -51,7 +52,7 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapModelEndpoints(IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/Model")
+            var group = app.MapGroup("/v1/admin/models")
                 .RequireAuthorization("MasterKeyPolicy")
                 .AddEndpointFilter<ValidationEndpointFilter>()
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
@@ -73,7 +74,7 @@ namespace ConduitLLM.Admin.Endpoints
                 .ExcludeFromDescription();
             group.MapPost("/", ([FromServices] ModelEndpoints endpoints, CreateModelDto dto) => endpoints.CreateModel(dto))
                 .WithName("Model_Create").Produces<ModelDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status409Conflict);
-            group.MapPut("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id, UpdateModelDto dto) => endpoints.UpdateModel(id, dto))
+            group.MapPatch("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id, UpdateModelDto dto) => endpoints.UpdateModel(id, dto))
                 .WithName("Model_Update").Produces<ModelDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
             group.MapDelete("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.DeleteModel(id))
                 .WithName("Model_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
@@ -84,8 +85,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("Model_GetAvailableProviders").Produces<IEnumerable<ModelProviderAvailabilityDto>>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id:int}/identifiers", ([FromServices] ModelEndpoints endpoints, int id, CreateModelIdentifierDto dto) => endpoints.CreateModelIdentifier(id, dto))
                 .WithName("Model_CreateIdentifier").Produces<CreatedModelIdentifierDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapPut("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, UpdateModelIdentifierDto dto) => endpoints.UpdateModelIdentifier(id, identifierId, dto))
-                .WithName("Model_UpdateIdentifier").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
+            group.MapPatch("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, UpdateModelIdentifierDto dto) => endpoints.UpdateModelIdentifier(id, identifierId, dto))
+                .WithName("Model_UpdateIdentifier").Produces<ModelIdentifierDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
             group.MapDelete("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId) => endpoints.DeleteModelIdentifier(id, identifierId))
                 .WithName("Model_DeleteIdentifier").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
 
@@ -93,8 +94,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("Model_GetProviderMappings").Produces<IEnumerable<ModelProviderMappingDto>>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id:int}/provider-mappings", ([FromServices] ModelEndpoints endpoints, int id, ModelProviderMappingDto dto) => endpoints.CreateModelProviderMapping(id, dto))
                 .WithName("Model_CreateProviderMapping").Produces<ModelProviderMappingDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapPut("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId, ModelProviderMappingDto dto) => endpoints.UpdateModelProviderMapping(id, mappingId, dto))
-                .WithName("Model_UpdateProviderMapping").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            group.MapPatch("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId, UpdateModelProviderMappingDto dto) => endpoints.UpdateModelProviderMapping(id, mappingId, dto))
+                .WithName("Model_UpdateProviderMapping").Produces<ModelProviderMappingDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId) => endpoints.DeleteModelProviderMapping(id, mappingId))
                 .WithName("Model_DeleteProviderMapping").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             return app;
@@ -145,11 +146,14 @@ namespace ConduitLLM.Admin.Endpoints
 
             return Ok(new PagedResult<ModelDto>
             {
-                Items = models.Select(m => m.ToDto()).ToList(),
-                TotalCount = totalCount,
-                CurrentPage = page,
-                PageSize = pageSize,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                Data = models.Select(m => m.ToDto()).ToList(),
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = totalCount,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+                }
             });
         }
 
@@ -289,7 +293,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 Name = dto.Name,
                 ModelSeriesId = dto.ModelSeriesId,
-                ModelParameters = dto.ModelParameters,
+                ModelParameters = dto.ModelParameters is null ? null : JsonSerializer.Serialize(dto.ModelParameters),
                 InputModalitiesJson = ModelModalities.Serialize(dto.InputModalities),
                 OutputModalitiesJson = ModelModalities.Serialize(dto.OutputModalities),
                 CapabilitySource = dto.CapabilitySource ??
@@ -328,7 +332,7 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAudit("Created", "Model", model.Id, $"Name: {LoggingSanitizer.S(model.Name)}");
             AdminOperationsMetricsService.RecordConfigurationChange("model", "create");
 
-            return Results.Created($"/api/Model/{model.Id}", model.ToDto());
+            return Results.Created($"/v1/admin/models/{model.Id}", model.ToDto());
         }
 
         /// <summary>
@@ -393,7 +397,9 @@ namespace ConduitLLM.Admin.Endpoints
 
             if (dto.ModelParameters != null)
             {
-                var newParams = string.IsNullOrWhiteSpace(dto.ModelParameters) ? null : dto.ModelParameters;
+                var newParams = dto.ModelParameters.Count == 0
+                    ? null
+                    : JsonSerializer.Serialize(dto.ModelParameters);
                 if (model.ModelParameters != newParams)
                     changes.Add(("ModelParameters", model.ModelParameters ?? "null", newParams ?? "null"));
                 model.ModelParameters = newParams;

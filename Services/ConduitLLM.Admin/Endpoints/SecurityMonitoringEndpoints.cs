@@ -15,7 +15,7 @@ namespace ConduitLLM.Admin.Endpoints
     {
         public static IEndpointRouteBuilder MapSecurityMonitoringEndpoints(this IEndpointRouteBuilder app)
         {
-            var group = app.MapGroup("/api/security")
+            var group = app.MapGroup("/v1/admin/security-reports")
                 .RequireAuthorization("MasterKeyPolicy")
                 .AddEndpointFilter<OperationLoggingEndpointFilter>()
                 .WithTags("Security Monitoring");

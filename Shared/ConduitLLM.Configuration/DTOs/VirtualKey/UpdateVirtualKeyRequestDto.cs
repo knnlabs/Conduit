@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs.VirtualKey;
 
@@ -11,7 +12,7 @@ public class UpdateVirtualKeyRequestDto
     [MaxLength(100, ErrorMessage = "Key name cannot exceed 100 characters.")]
     public string? KeyName { get; set; }
 
-    public string? AllowedModels { get; set; } // Comma-separated. Empty string clears the list, null leaves unchanged.
+    public List<string>? AllowedModels { get; set; }
 
     /// <summary>
     /// Optional ID of a different virtual key group to move this key to.
@@ -24,7 +25,7 @@ public class UpdateVirtualKeyRequestDto
     // For now, passing null leaves it unchanged, passing a date sets/updates it.
     public DateTime? ExpiresAt { get; set; }
 
-    public string? Metadata { get; set; } // Optional JSON metadata. Empty string clears, null leaves unchanged.
+    public Dictionary<string, JsonElement>? Metadata { get; set; }
 
     public int? RateLimitRpm { get; set; }
     public int? RateLimitRpd { get; set; }

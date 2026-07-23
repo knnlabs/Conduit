@@ -12,10 +12,9 @@ using FluentAssertions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 using Moq;
-
-using System.Text.Json;
 
 namespace ConduitLLM.Tests.Admin.Services
 {
@@ -181,7 +180,7 @@ namespace ConduitLLM.Tests.Admin.Services
             var seeded = SeedCostWithAssociatedModel();
             var getDto = await _service.GetModelCostByIdAsync(seeded.CostId);
             var updateDto = ToRoundTripUpdateDto(getDto!);
-            updateDto.PricingConfiguration = "{\"baseRate\":0.25}";
+            updateDto.PricingConfiguration = ParsePricing("{\"baseRate\":0.25}");
             updateDto.ModelType = "video";
             updateDto.Description = "updated description";
             updateDto.Priority = 7;
@@ -194,7 +193,7 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             result.Should().NotBeNull();
             var afterDto = await _service.GetModelCostByIdAsync(seeded.CostId);
-            afterDto!.PricingConfiguration.Should().Be("{\"baseRate\":0.25}");
+            afterDto!.PricingConfiguration!["baseRate"].GetDecimal().Should().Be(0.25m);
             afterDto.ModelType.Should().Be("video");
             afterDto.Description.Should().Be("updated description");
             afterDto.Priority.Should().Be(7);
@@ -209,7 +208,7 @@ namespace ConduitLLM.Tests.Admin.Services
             var seeded = SeedCostWithAssociatedModel();
             var getDto = await _service.GetModelCostByIdAsync(seeded.CostId);
             var updateDto = ToRoundTripUpdateDto(getDto!);
-            updateDto.PricingConfiguration = "{\"baseRate\":0.5}";
+            updateDto.PricingConfiguration = ParsePricing("{\"baseRate\":0.5}");
 
             // Act
             await _service.UpdateModelCostAsync(seeded.CostId, updateDto);
@@ -255,5 +254,8 @@ namespace ConduitLLM.Tests.Admin.Services
                     It.IsAny<CancellationToken>()),
                 Times.Once);
         }
+
+        private static Dictionary<string, JsonElement> ParsePricing(string json) =>
+            JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
     }
 }

@@ -7,6 +7,7 @@ using System.Text.Json;
 using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Middleware;
 using ConduitLLM.Admin.Models.ModelAuthors;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Converters;
@@ -107,12 +108,12 @@ namespace ConduitLLM.Tests.Admin.Integration
                     new() { Id = 2, Name = "Anthropic" }
                 }, 2));
 
-            var response = await _client.GetAsync("/api/ModelAuthor");
+            var response = await _client.GetAsync("/v1/admin/model-authors");
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
-            var authors = await response.Content.ReadFromJsonAsync<List<ModelAuthorDto>>(Json);
-            authors.Should().HaveCount(2);
-            authors!.Select(a => a.Name).Should().Contain(new[] { "OpenAI", "Anthropic" });
+            var page = await response.Content.ReadFromJsonAsync<PagedResult<ModelAuthorDto>>(Json);
+            page!.Data.Should().HaveCount(2);
+            page.Data.Select(a => a.Name).Should().Contain(new[] { "OpenAI", "Anthropic" });
         }
 
         // ---- GetById ------------------------------------------------------------------------
@@ -124,7 +125,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetByIdAsync(7, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ModelAuthor { Id = 7, Name = "Meta", WebsiteUrl = "https://ai.meta.com" });
 
-            var response = await _client.GetAsync("/api/ModelAuthor/7");
+            var response = await _client.GetAsync("/v1/admin/model-authors/7");
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             var author = await response.Content.ReadFromJsonAsync<ModelAuthorDto>(Json);
@@ -143,7 +144,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                     Name = "Meta"
                 });
 
-            var response = await _client.GetAsync("/api/ModelAuthor/7");
+            var response = await _client.GetAsync("/v1/admin/model-authors/7");
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
             using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -160,7 +161,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetByIdAsync(999, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ModelAuthor?)null);
 
-            var response = await _client.GetAsync("/api/ModelAuthor/999");
+            var response = await _client.GetAsync("/v1/admin/model-authors/999");
 
             response.StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await ReadCodeAsync(response)).Should().Be("not_found");
@@ -178,11 +179,11 @@ namespace ConduitLLM.Tests.Admin.Integration
                     new() { Id = 10, Name = "GPT", Description = "d", TokenizerType = TokenizerType.None }
                 });
 
-            var response = await _client.GetAsync("/api/ModelAuthor/3/series");
+            var response = await _client.GetAsync("/v1/admin/model-authors/3/series");
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
-            var series = await response.Content.ReadFromJsonAsync<List<SimpleModelSeriesDto>>(Json);
-            series.Should().ContainSingle(s => s.Name == "GPT" && s.Id == 10);
+            var page = await response.Content.ReadFromJsonAsync<PagedResult<SimpleModelSeriesDto>>(Json);
+            page!.Data.Should().ContainSingle(s => s.Name == "GPT" && s.Id == 10);
         }
 
         [Fact]
@@ -192,7 +193,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetSeriesByAuthorAsync(999, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((List<ModelSeries>?)null);
 
-            var response = await _client.GetAsync("/api/ModelAuthor/999/series");
+            var response = await _client.GetAsync("/v1/admin/model-authors/999/series");
 
             response.StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await ReadCodeAsync(response)).Should().Be("not_found");
@@ -211,11 +212,11 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Callback<ModelAuthor, CancellationToken>((a, _) => a.Id = 42)
                 .ReturnsAsync(42);
 
-            var response = await _client.PostAsJsonAsync("/api/ModelAuthor",
+            var response = await _client.PostAsJsonAsync("/v1/admin/model-authors",
                 new CreateModelAuthorDto { Name = "Mistral AI", WebsiteUrl = "https://mistral.ai" });
 
             response.StatusCode.Should().Be(HttpStatusCode.Created);
-            response.Headers.Location!.ToString().Should().EndWith("/api/ModelAuthor/42");
+            response.Headers.Location!.ToString().Should().EndWith("/v1/admin/model-authors/42");
             var author = await response.Content.ReadFromJsonAsync<ModelAuthorDto>(Json);
             author!.Id.Should().Be(42);
             author.Name.Should().Be("Mistral AI");
@@ -229,7 +230,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetByNameAsync("OpenAI", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ModelAuthor { Id = 1, Name = "OpenAI" });
 
-            var response = await _client.PostAsJsonAsync("/api/ModelAuthor",
+            var response = await _client.PostAsJsonAsync("/v1/admin/model-authors",
                 new CreateModelAuthorDto { Name = "OpenAI" });
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -240,13 +241,25 @@ namespace ConduitLLM.Tests.Admin.Integration
         // ---- Update -------------------------------------------------------------------------
 
         [Fact]
-        public async Task Update_WhenIdMismatch_Returns400()
+        public async Task Update_WhenOnlyDescriptionProvided_UsesRouteId()
         {
-            var response = await _client.PutAsJsonAsync("/api/ModelAuthor/1",
-                new UpdateModelAuthorDto { Id = 2, Name = "X" });
+            _repository
+                .Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ModelAuthor { Id = 1, Name = "Existing" });
+            _repository
+                .Setup(r => r.UpdateAsync(It.IsAny<ModelAuthor>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
 
-            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-            _repository.Verify(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            var response = await _client.PatchAsJsonAsync("/v1/admin/model-authors/1",
+                new UpdateModelAuthorDto { Description = "Updated" });
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            _repository.Verify(r => r.UpdateAsync(
+                It.Is<ModelAuthor>(author =>
+                    author.Id == 1 &&
+                    author.Name == "Existing" &&
+                    author.Description == "Updated"),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
@@ -256,15 +269,15 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetByIdAsync(5, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ModelAuthor?)null);
 
-            var response = await _client.PutAsJsonAsync("/api/ModelAuthor/5",
-                new UpdateModelAuthorDto { Id = 5, Name = "X" });
+            var response = await _client.PatchAsJsonAsync("/v1/admin/model-authors/5",
+                new UpdateModelAuthorDto { Name = "X" });
 
             response.StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await ReadCodeAsync(response)).Should().Be("not_found");
         }
 
         [Fact]
-        public async Task Update_WhenValid_Returns204_AndPersists()
+        public async Task Update_WhenValid_ReturnsUpdatedResource_AndPersists()
         {
             _repository
                 .Setup(r => r.GetByIdAsync(8, It.IsAny<CancellationToken>()))
@@ -274,10 +287,12 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .ReturnsAsync(true);
 
             // Same name → skips the name-conflict branch; only Description changes.
-            var response = await _client.PutAsJsonAsync("/api/ModelAuthor/8",
-                new UpdateModelAuthorDto { Id = 8, Name = "Cohere", Description = "Enterprise LLMs" });
+            var response = await _client.PatchAsJsonAsync("/v1/admin/model-authors/8",
+                new UpdateModelAuthorDto { Name = "Cohere", Description = "Enterprise LLMs" });
 
-            response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            (await response.Content.ReadFromJsonAsync<ModelAuthorDto>())!.Description
+                .Should().Be("Enterprise LLMs");
             _repository.Verify(r => r.UpdateAsync(
                 It.Is<ModelAuthor>(a => a.Id == 8 && a.Description == "Enterprise LLMs"),
                 It.IsAny<CancellationToken>()), Times.Once);
@@ -292,7 +307,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetByIdAsync(404, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ModelAuthor?)null);
 
-            var response = await _client.DeleteAsync("/api/ModelAuthor/404");
+            var response = await _client.DeleteAsync("/v1/admin/model-authors/404");
 
             response.StatusCode.Should().Be(HttpStatusCode.NotFound);
             (await ReadCodeAsync(response)).Should().Be("not_found");
@@ -308,7 +323,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetSeriesByAuthorAsync(6, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new List<ModelSeries> { new() { Id = 1, Name = "Llama" } });
 
-            var response = await _client.DeleteAsync("/api/ModelAuthor/6");
+            var response = await _client.DeleteAsync("/v1/admin/model-authors/6");
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
             (await ReadCodeAsync(response)).Should().Be("invalid_operation");
@@ -328,7 +343,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.DeleteAsync(9, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            var response = await _client.DeleteAsync("/api/ModelAuthor/9");
+            var response = await _client.DeleteAsync("/v1/admin/model-authors/9");
 
             response.StatusCode.Should().Be(HttpStatusCode.NoContent);
             _repository.Verify(r => r.DeleteAsync(9, It.IsAny<CancellationToken>()), Times.Once);

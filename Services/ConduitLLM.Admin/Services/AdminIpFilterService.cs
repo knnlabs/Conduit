@@ -184,21 +184,22 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     }
 
     /// <inheritdoc/>
-    public async Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(UpdateIpFilterDto updateFilter)
+    public async Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(int id, UpdateIpFilterDto updateFilter)
     {
         try
         {
-            _logger.LogDebug("Updating IP filter with ID: {FilterId}", updateFilter.Id);
+            _logger.LogDebug("Updating IP filter with ID: {FilterId}", id);
 
             // Check if the filter exists
-            var existingFilter = await _ipFilterRepository.GetByIdAsync(updateFilter.Id);
+            var existingFilter = await _ipFilterRepository.GetByIdAsync(id);
             if (existingFilter == null)
             {
-                return (false, $"IP filter with ID {updateFilter.Id} not found");
+                return (false, $"IP filter with ID {id} not found");
             }
 
             // Validate the IP address format
-            if (!IsValidIpAddressOrCidr(updateFilter.IpAddressOrCidr))
+            if (updateFilter.IpAddressOrCidr is not null &&
+                !IsValidIpAddressOrCidr(updateFilter.IpAddressOrCidr))
             {
                 return (false, "Invalid IP address or CIDR format");
             }
@@ -206,13 +207,15 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             // Track changes for event publishing
             var changedProperties = new List<string>();
 
-            if (existingFilter.FilterType != updateFilter.FilterType)
+            if (updateFilter.FilterType is not null &&
+                existingFilter.FilterType != updateFilter.FilterType)
             {
                 existingFilter.FilterType = updateFilter.FilterType;
                 changedProperties.Add(nameof(existingFilter.FilterType));
             }
 
-            if (existingFilter.IpAddressOrCidr != updateFilter.IpAddressOrCidr)
+            if (updateFilter.IpAddressOrCidr is not null &&
+                existingFilter.IpAddressOrCidr != updateFilter.IpAddressOrCidr)
             {
                 existingFilter.IpAddressOrCidr = updateFilter.IpAddressOrCidr;
                 changedProperties.Add(nameof(existingFilter.IpAddressOrCidr));
@@ -220,28 +223,31 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             // Normalize null vs empty so a null-named legacy row and an unset ("") DTO field are not
             // treated as a change (which would break the no-op-skip path).
-            if ((existingFilter.Name ?? string.Empty) != updateFilter.Name)
+            if (updateFilter.Name is not null &&
+                (existingFilter.Name ?? string.Empty) != updateFilter.Name)
             {
                 existingFilter.Name = updateFilter.Name;
                 changedProperties.Add(nameof(existingFilter.Name));
             }
 
-            if (existingFilter.Description != updateFilter.Description)
+            if (updateFilter.Description is not null &&
+                existingFilter.Description != updateFilter.Description)
             {
                 existingFilter.Description = updateFilter.Description;
                 changedProperties.Add(nameof(existingFilter.Description));
             }
 
-            if (existingFilter.IsEnabled != updateFilter.IsEnabled)
+            if (updateFilter.IsEnabled.HasValue &&
+                existingFilter.IsEnabled != updateFilter.IsEnabled.Value)
             {
-                existingFilter.IsEnabled = updateFilter.IsEnabled;
+                existingFilter.IsEnabled = updateFilter.IsEnabled.Value;
                 changedProperties.Add(nameof(existingFilter.IsEnabled));
             }
 
             // Only proceed if there are actual changes
             if (!changedProperties.Any())
             {
-                _logger.LogDebug("No changes detected for IP filter {FilterId} - skipping update", updateFilter.Id);
+                _logger.LogDebug("No changes detected for IP filter {FilterId} - skipping update", id);
                 return (true, null);
             }
 
@@ -275,16 +281,19 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             else
             {
-                _logger.LogWarning("Failed to update IP filter {FilterId} in database", updateFilter.Id);
+                _logger.LogWarning("Failed to update IP filter {FilterId} in database", id);
                 return (false, "Failed to update the IP filter");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating IP filter with ID {FilterId}", updateFilter.Id);
+            _logger.LogError(ex, "Error updating IP filter with ID {FilterId}", id);
             return (false, "An unexpected error occurred");
         }
     }
+
+    public Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(UpdateIpFilterDto updateFilter) =>
+        UpdateFilterAsync(updateFilter.Id, updateFilter);
 
     /// <inheritdoc/>
     public async Task<(bool Success, string? ErrorMessage)> DeleteFilterAsync(int id)

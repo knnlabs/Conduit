@@ -85,11 +85,15 @@ export function formatDriftValue(value: unknown): string {
   return JSON.stringify(value);
 }
 
-/** Safely parse a drift payload JSON string into a keyed record. */
-export function parseDriftPayload(json: string | null | undefined): Record<string, unknown> {
-  if (!json) return {};
+/** Normalize a structured drift payload, accepting legacy serialized values defensively. */
+export function parseDriftPayload(value: unknown): Record<string, unknown> {
+  if (!value) return {};
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  if (typeof value !== 'string') return {};
   try {
-    const parsed: unknown = JSON.parse(json);
+    const parsed: unknown = JSON.parse(value);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       return parsed as Record<string, unknown>;
     }
@@ -120,7 +124,7 @@ export function driftWarnings(item: DriftItemDto): DriftWarning[] {
   }
 
   if (item.driftType === 'Pricing' || item.driftType === 'MissingCost') {
-    const proposed = parseDriftPayload(item.proposedValuesJson);
+    const proposed = parseDriftPayload(item.proposedValues);
     const priceFields = ['inputPerMillion', 'outputPerMillion'];
     const hasZeroPrice = priceFields.some((f) => {
       const v = proposed[f];

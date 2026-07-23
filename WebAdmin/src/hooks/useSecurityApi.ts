@@ -117,7 +117,6 @@ export function useSecurityApi() {
       }
 
       const updateDto: UpdateIpFilterDto = {
-        id: numericId,
         name: rule.description,
         ipAddressOrCidr: rule.ipAddress,
         filterType: rule.action === 'allow' ? 'whitelist' : 'blacklist',

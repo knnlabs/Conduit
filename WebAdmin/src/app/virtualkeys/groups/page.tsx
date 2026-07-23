@@ -84,7 +84,7 @@ export default function VirtualKeyGroupsPage() {
       const data = await withAdminClient(client =>
         client.virtualKeyGroups.list()
       );
-      setGroups(data.items);
+      setGroups(data.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {

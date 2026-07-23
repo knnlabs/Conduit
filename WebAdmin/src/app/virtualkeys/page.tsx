@@ -78,7 +78,7 @@ export default function VirtualKeysPage() {
       const groupsResult = await withAdminClient(client =>
         client.virtualKeyGroups.list()
       );
-      setVirtualKeyGroups(groupsResult.items);
+      setVirtualKeyGroups(groupsResult.data ?? []);
     } catch (err) {
       console.warn('Error fetching virtual key groups:', err);
     }
@@ -177,7 +177,7 @@ export default function VirtualKeysPage() {
       currentBalance: groupBalanceMap.get(key.virtualKeyGroupId) ?? 0,
       status: key.isEnabled ? 'Active' : 'Disabled',
       createdAt: formatDateForExport(key.createdAt),
-      allowedModels: key.allowedModels ?? '',
+      allowedModels: key.allowedModels?.join(',') ?? '',
       expirationDate: key.expiresAt ? formatDateForExport(key.expiresAt) : '',
       rateLimitRpm: key.rateLimitRpm ?? '',
       rateLimitRpd: key.rateLimitRpd ?? '',

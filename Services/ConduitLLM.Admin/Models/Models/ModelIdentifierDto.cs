@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Admin.Models.Models
@@ -66,7 +67,7 @@ namespace ConduitLLM.Admin.Models.Models
         /// <summary>
         /// Optional metadata as JSON
         /// </summary>
-        public string? Metadata { get; set; }
+        public Dictionary<string, JsonElement>? Metadata { get; set; }
 
         /// <summary>
         /// Provider-specific override for maximum input tokens
@@ -124,7 +125,7 @@ namespace ConduitLLM.Admin.Models.Models
         /// <summary>
         /// Optional metadata as JSON
         /// </summary>
-        public string? Metadata { get; set; }
+        public Dictionary<string, JsonElement>? Metadata { get; set; }
 
         /// <summary>
         /// Provider-specific override for maximum input tokens

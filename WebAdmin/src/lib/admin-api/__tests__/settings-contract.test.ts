@@ -36,7 +36,10 @@ describe('Global Settings generated operations', () => {
   };
 
   it('preserves the settings aggregation facade over the generated list operation', async () => {
-    mockFetch.mockResolvedValueOnce(response([setting]));
+    mockFetch.mockResolvedValueOnce(response({
+      data: [setting],
+      pagination: { page: 1, pageSize: 100, totalItems: 1, totalPages: 1 },
+    }));
 
     await expect(client().settings.getGlobalSettings()).resolves.toEqual({
       settings: [setting],
@@ -46,7 +49,7 @@ describe('Global Settings generated operations', () => {
 
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('GET');
-    expect(request.url).toBe('https://admin.test/api/GlobalSettings');
+    expect(request.url).toBe('https://admin.test/v1/admin/global-settings');
     expect(request.headers.get('X-Master-Key')).toBe('master-key');
   });
 
@@ -54,7 +57,7 @@ describe('Global Settings generated operations', () => {
     mockFetch.mockResolvedValueOnce(response(setting));
     await expect(client().settings.getGlobalSetting('Routing/Alias value')).resolves.toEqual(setting);
     expect((mockFetch.mock.calls[0]?.[0] as Request).url)
-      .toBe('https://admin.test/api/GlobalSettings/by-key/Routing%2FAlias%20value');
+      .toBe('https://admin.test/v1/admin/global-settings/by-key/Routing%2FAlias%20value');
   });
 
   it('preserves the settingExists 404 adapter', async () => {
@@ -68,7 +71,7 @@ describe('Global Settings generated operations', () => {
     await expect(client().settings.createGlobalSetting(body)).resolves.toEqual(setting);
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('POST');
-    expect(request.url).toBe('https://admin.test/api/GlobalSettings');
+    expect(request.url).toBe('https://admin.test/v1/admin/global-settings');
     expect(requestBody(request)).toEqual(body);
   });
 
@@ -77,7 +80,7 @@ describe('Global Settings generated operations', () => {
     await expect(client().settings.updateGlobalSetting('Feature.Enabled', 'false', 'Toggle')).resolves.toBeUndefined();
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('PUT');
-    expect(request.url).toBe('https://admin.test/api/GlobalSettings/by-key');
+    expect(request.url).toBe('https://admin.test/v1/admin/global-settings/by-key');
     expect(requestBody(request)).toEqual({ key: 'Feature.Enabled', value: 'false', description: 'Toggle' });
   });
 
@@ -86,14 +89,14 @@ describe('Global Settings generated operations', () => {
     await expect(client().settings.deleteGlobalSetting('Feature/Enabled')).resolves.toBeUndefined();
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('DELETE');
-    expect(request.url).toBe('https://admin.test/api/GlobalSettings/by-key/Feature%2FEnabled');
+    expect(request.url).toBe('https://admin.test/v1/admin/global-settings/by-key/Feature%2FEnabled');
   });
 
   it('gets cache statistics', async () => {
     const stats = { cacheSize: 1, cacheHits: 2, cacheMisses: 3, invalidations: 4, hitRate: 40, lastLoadTime: setting.updatedAt, cachedKeys: [setting.key] };
     mockFetch.mockResolvedValueOnce(response(stats));
     await expect(client().settings.getCacheStats()).resolves.toEqual(stats);
-    expect((mockFetch.mock.calls[0]?.[0] as Request).url).toBe('https://admin.test/api/GlobalSettings/cache/stats');
+    expect((mockFetch.mock.calls[0]?.[0] as Request).url).toBe('https://admin.test/v1/admin/global-settings/cache/stats');
   });
 
   it('reloads the cache', async () => {
@@ -101,7 +104,7 @@ describe('Global Settings generated operations', () => {
     await expect(client().settings.reloadCache()).resolves.toBeUndefined();
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('POST');
-    expect(request.url).toBe('https://admin.test/api/GlobalSettings/cache/reload');
+    expect(request.url).toBe('https://admin.test/v1/admin/global-settings/cache/reload');
   });
 
   it('invalidates an encoded cache key', async () => {
@@ -109,6 +112,6 @@ describe('Global Settings generated operations', () => {
     await expect(client().settings.invalidateSetting('Feature/Enabled')).resolves.toBeUndefined();
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('POST');
-    expect(request.url).toBe('https://admin.test/api/GlobalSettings/cache/invalidate/Feature%2FEnabled');
+    expect(request.url).toBe('https://admin.test/v1/admin/global-settings/cache/invalidate/Feature%2FEnabled');
   });
 });

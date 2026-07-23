@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
@@ -47,8 +48,25 @@ namespace ConduitLLM.Admin.Services
                 RequestPath = log.RequestPath,
                 StatusCode = log.StatusCode,
                 Timestamp = log.Timestamp,
-                Metadata = log.Metadata
+                Metadata = DeserializeMetadata(log.Metadata)
             };
+        }
+
+        private static Dictionary<string, JsonElement>? DeserializeMetadata(string? metadata)
+        {
+            if (string.IsNullOrWhiteSpace(metadata))
+                return null;
+
+            try
+            {
+                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadata);
+            }
+            catch (JsonException)
+            {
+                // Historical rows may contain malformed metadata. A diagnostic field must
+                // not make the entire request-log resource unreadable.
+                return null;
+            }
         }
 
         private static string NormalizeTimeframe(string timeframe)

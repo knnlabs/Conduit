@@ -128,7 +128,7 @@ export class FetchSystemHealthService implements ISystemHealthService {
       );
 
       // Transform response to match ServiceStatusMapDto structure
-      // The /api/health/services endpoint returns a different format, so we'll map it
+      // The /v1/admin/health-status/services endpoint returns a different format, so we'll map it
       const typedResponse = response as {
         coreApi?: { status?: string; responseTime?: number; endpoint?: string };
         adminApi?: { status?: string; responseTime?: number; endpoint?: string };

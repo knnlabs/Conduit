@@ -2,15 +2,15 @@ import type { paths as AdminPaths } from '@/generated/admin-api';
 import type { paths as GatewayPaths } from '@/generated/gateway-api';
 
 export const ADMIN_CONTRACT_ROUTES = {
-  ephemeralMasterKey: '/api/admin/auth/ephemeral-master-key',
-  virtualKeys: '/api/VirtualKeys',
-  virtualKey: '/api/VirtualKeys/{id}',
-  validateVirtualKey: '/api/VirtualKeys/validate',
-  virtualKeyGroups: '/api/VirtualKeyGroups',
-  virtualKeyGroup: '/api/VirtualKeyGroups/{id}',
-  adjustVirtualKeyGroupBalance: '/api/VirtualKeyGroups/{id}/adjust-balance',
-  refundVirtualKeyGroup: '/api/VirtualKeyGroups/{id}/refund',
-  analyticsExport: '/api/Analytics/export',
+  ephemeralMasterKey: '/v1/admin/auth-tokens/ephemeral-master-key',
+  virtualKeys: '/v1/admin/virtual-keys',
+  virtualKey: '/v1/admin/virtual-keys/{id}',
+  validateVirtualKey: '/v1/admin/virtual-keys/validate',
+  virtualKeyGroups: '/v1/admin/virtual-key-groups',
+  virtualKeyGroup: '/v1/admin/virtual-key-groups/{id}',
+  adjustVirtualKeyGroupBalance: '/v1/admin/virtual-key-groups/{id}/adjust-balance',
+  refundVirtualKeyGroup: '/v1/admin/virtual-key-groups/{id}/refund',
+  analyticsExport: '/v1/admin/analytics/export',
 } as const satisfies Record<string, keyof AdminPaths>;
 
 export const GATEWAY_CONTRACT_ROUTES = {

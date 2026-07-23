@@ -51,7 +51,7 @@ export default function MediaAssetsContent() {
         const result = await withAdminClient(client =>
           client.virtualKeyGroups.list()
         );
-        const groups = result.items.map((group) => ({
+        const groups = (result.data ?? []).map((group) => ({
           id: group.id,
           name: group.groupName
         }));

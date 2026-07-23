@@ -61,8 +61,8 @@ export class FetchAnalyticsService {
     };
 
     return this.client['executeContractRead'](
-      '/api/Analytics/logs',
-      (contractClient, options) => contractClient.GET('/api/Analytics/logs', {
+      '/v1/admin/analytics/logs',
+      (contractClient, options) => contractClient.GET('/v1/admin/analytics/logs', {
         ...options,
         params: { query },
       }),
@@ -76,8 +76,8 @@ export class FetchAnalyticsService {
   async getRequestLogById(id: string, config?: RequestConfig): Promise<RequestLogDto> {
     const numericId = Number(id);
     return this.client['executeContractRead'](
-      `/api/Analytics/logs/${numericId}`,
-      (contractClient, options) => contractClient.GET('/api/Analytics/logs/{id}', {
+      `/v1/admin/analytics/logs/${numericId}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/analytics/logs/{id}', {
         ...options,
         params: { path: { id: numericId } },
       }),
@@ -176,8 +176,8 @@ export class FetchAnalyticsService {
     config?: RequestConfig
   ): Promise<CostDashboardDto> {
     return this.client['executeContractRead'](
-      '/api/Analytics/costs/summary',
-      (contractClient, options) => contractClient.GET('/api/Analytics/costs/summary', {
+      '/v1/admin/analytics/costs/summary',
+      (contractClient, options) => contractClient.GET('/v1/admin/analytics/costs/summary', {
         ...options,
         params: { query: { timeframe, startDate, endDate } },
       }),
@@ -195,8 +195,8 @@ export class FetchAnalyticsService {
     config?: RequestConfig
   ): Promise<CostTrendDto> {
     return this.client['executeContractRead'](
-      '/api/Analytics/costs/trends',
-      (contractClient, options) => contractClient.GET('/api/Analytics/costs/trends', {
+      '/v1/admin/analytics/costs/trends',
+      (contractClient, options) => contractClient.GET('/v1/admin/analytics/costs/trends', {
         ...options,
         params: { query: { period, startDate, endDate } },
       }),
@@ -217,8 +217,8 @@ export class FetchAnalyticsService {
     config?: RequestConfig
   ): Promise<Uint8Array> {
     const buffer = await this.client['executeContractRead']<ArrayBuffer>(
-      '/api/Analytics/export',
-      (contractClient, options) => contractClient.GET('/api/Analytics/export', {
+      '/v1/admin/analytics/export',
+      (contractClient, options) => contractClient.GET('/v1/admin/analytics/export', {
         ...options,
         headers: {
           Accept: format === 'csv' ? 'text/csv' : 'application/json',

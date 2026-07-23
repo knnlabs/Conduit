@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Models;
+using System.Text.Json;
 
 namespace ConduitLLM.Admin.Models.Models
 {
@@ -145,6 +146,6 @@ namespace ConduitLLM.Admin.Models.Models
         /// like sliders, selects, and inputs for model-specific parameters.
         /// </remarks>
         /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
-        public string? ModelParameters { get; set; }
+        public Dictionary<string, JsonElement>? ModelParameters { get; set; }
     }
 }

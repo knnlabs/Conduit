@@ -19,11 +19,12 @@ export class FetchModelAuthorService {
    * Get all model authors
    */
   async list(config?: RequestConfig): Promise<ModelAuthorDto[]> {
-    return this.client['executeContractRead'](
-      '/api/ModelAuthor',
-      (contractClient, options) => contractClient.GET('/api/ModelAuthor', options),
+    const result = await this.client['executeContractRead'](
+      '/v1/admin/model-authors',
+      (contractClient, options) => contractClient.GET('/v1/admin/model-authors', options),
       config,
     );
+    return result.data;
   }
 
   /**
@@ -31,8 +32,8 @@ export class FetchModelAuthorService {
    */
   async get(id: number, config?: RequestConfig): Promise<ModelAuthorDto> {
     return this.client['executeContractRead'](
-      `/api/ModelAuthor/${id}`,
-      (contractClient, options) => contractClient.GET('/api/ModelAuthor/{id}', {
+      `/v1/admin/model-authors/${id}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-authors/{id}', {
         ...options,
         params: { path: { id } },
       }),
@@ -44,14 +45,15 @@ export class FetchModelAuthorService {
    * Get series by author
    */
   async getSeries(id: number, config?: RequestConfig): Promise<SimpleModelSeriesDto[]> {
-    return this.client['executeContractRead'](
-      `/api/ModelAuthor/${id}/series`,
-      (contractClient, options) => contractClient.GET('/api/ModelAuthor/{id}/series', {
+    const result = await this.client['executeContractRead'](
+      `/v1/admin/model-authors/${id}/series`,
+      (contractClient, options) => contractClient.GET('/v1/admin/model-authors/{id}/series', {
         ...options,
         params: { path: { id } },
       }),
       config,
     );
+    return result.data;
   }
 
   // Author-management views fetch authors, series, and models once each and derive counts locally.
@@ -66,9 +68,9 @@ export class FetchModelAuthorService {
     config?: RequestConfig
   ): Promise<ModelAuthorDto> {
     return this.client['executeContractOperation']<ModelAuthorDto, CreateModelAuthorDto>(
-      '/api/ModelAuthor',
+      '/v1/admin/model-authors',
       HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/ModelAuthor', {
+      (contractClient, options) => contractClient.POST('/v1/admin/model-authors', {
         ...options,
         body: data,
       }),
@@ -84,11 +86,11 @@ export class FetchModelAuthorService {
     id: number,
     data: UpdateModelAuthorDto,
     config?: RequestConfig
-  ): Promise<void> {
-    return this.client['executeContractOperation']<void, UpdateModelAuthorDto>(
-      `/api/ModelAuthor/${id}`,
-      HttpMethod.PUT,
-      (contractClient, options) => contractClient.PUT('/api/ModelAuthor/{id}', {
+  ): Promise<ModelAuthorDto> {
+    return this.client['executeContractOperation']<ModelAuthorDto, UpdateModelAuthorDto>(
+      `/v1/admin/model-authors/${id}`,
+      HttpMethod.PATCH,
+      (contractClient, options) => contractClient.PATCH('/v1/admin/model-authors/{id}', {
         ...options,
         params: { path: { id } },
         body: data,
@@ -103,9 +105,9 @@ export class FetchModelAuthorService {
    */
   async delete(id: number, config?: RequestConfig): Promise<void> {
     return this.client['executeContractOperation']<void>(
-      `/api/ModelAuthor/${id}`,
+      `/v1/admin/model-authors/${id}`,
       HttpMethod.DELETE,
-      (contractClient, options) => contractClient.DELETE('/api/ModelAuthor/{id}', {
+      (contractClient, options) => contractClient.DELETE('/v1/admin/model-authors/{id}', {
         ...options,
         params: { path: { id } },
       }),

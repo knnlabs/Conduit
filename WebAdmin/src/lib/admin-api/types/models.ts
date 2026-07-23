@@ -48,7 +48,7 @@ export interface ProviderTypeAssociationInput {
   identifier: string;
   provider?: string | number;
   isPrimary?: boolean;
-  metadata?: string;
+  metadata?: Record<string, unknown>;
   maxInputTokens?: number | null;
   maxOutputTokens?: number | null;
   speedScore?: number | null;

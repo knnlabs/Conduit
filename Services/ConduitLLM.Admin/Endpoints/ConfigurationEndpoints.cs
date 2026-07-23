@@ -16,7 +16,7 @@ public static class ConfigurationEndpoints
 {
     public static IEndpointRouteBuilder MapConfigurationEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/config")
+        var group = app.MapGroup("/v1/admin/routing-configurations")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Configuration");

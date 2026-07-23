@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -26,7 +27,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// JSON configuration for complex pricing models
         /// </summary>
-        public string? PricingConfiguration { get; set; }
+        public Dictionary<string, JsonElement>? PricingConfiguration { get; set; }
 
         /// <summary>
         /// List of model provider type association IDs to associate with this cost

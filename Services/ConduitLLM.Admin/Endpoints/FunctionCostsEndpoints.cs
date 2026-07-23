@@ -16,7 +16,7 @@ public static class FunctionCostsEndpoints
 {
     public static IEndpointRouteBuilder MapFunctionCostsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/FunctionCosts")
+        var group = app.MapGroup("/v1/admin/function-costs")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("FunctionCosts");
@@ -30,7 +30,7 @@ public static class FunctionCostsEndpoints
         group.MapPost("/", Create).WithName("FunctionCosts_Create")
             .Produces<FunctionCostDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPut("/{id:int}", Update).WithName("FunctionCosts_Update")
+        group.MapPatch("/{id:int}", Update).WithName("FunctionCosts_Update")
             .Produces<FunctionCostDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapDelete("/{id:int}", Delete).WithName("FunctionCosts_Delete")
@@ -68,7 +68,7 @@ public static class FunctionCostsEndpoints
         var id = await service.CreateCostAsync(MapToEntity(createDto));
         var dto = (await service.GetCostByIdAsync(id))?.ToDto();
         Audit(httpContext, loggerFactory, "Created", id, createDto.CostName);
-        return Results.Created($"/api/FunctionCosts/{id}", dto);
+        return Results.Created($"/v1/admin/function-costs/{id}", dto);
     }
 
     private static async Task<IResult> Update(
@@ -78,15 +78,10 @@ public static class FunctionCostsEndpoints
         HttpContext httpContext,
         ILoggerFactory loggerFactory)
     {
-        if (id != updateDto.Id)
-        {
-            return AdminResults.BadRequest("ID mismatch");
-        }
-
         var existing = await service.GetCostByIdAsync(id) ?? throw new KeyNotFoundException();
         await service.UpdateCostAsync(MapToEntity(updateDto, existing));
         var updated = await service.GetCostByIdAsync(id);
-        Audit(httpContext, loggerFactory, "Updated", id, updateDto.CostName);
+        Audit(httpContext, loggerFactory, "Updated", id, updateDto.CostName ?? existing.CostName);
         return Results.Ok(updated?.ToDto());
     }
 
@@ -143,16 +138,17 @@ public static class FunctionCostsEndpoints
 
     private static FunctionCost MapToEntity(UpdateFunctionCostDto dto, FunctionCost existing)
     {
-        existing.CostName = dto.CostName;
-        existing.Purpose = dto.Purpose;
-        existing.Description = dto.Description;
-        existing.BaseCost = dto.BaseCost;
-        existing.PricingModel = dto.PricingModel;
-        existing.PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration);
-        existing.IsActive = dto.IsActive;
-        existing.Priority = dto.Priority;
-        existing.EffectiveDate = dto.EffectiveDate;
-        existing.ExpiryDate = dto.ExpiryDate;
+        if (dto.CostName is not null) existing.CostName = dto.CostName;
+        if (dto.Purpose.HasValue) existing.Purpose = dto.Purpose;
+        if (dto.Description is not null) existing.Description = dto.Description;
+        if (dto.BaseCost.HasValue) existing.BaseCost = dto.BaseCost;
+        if (dto.PricingModel.HasValue) existing.PricingModel = dto.PricingModel.Value;
+        if (dto.PricingConfiguration is not null)
+            existing.PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration);
+        if (dto.IsActive.HasValue) existing.IsActive = dto.IsActive.Value;
+        if (dto.Priority.HasValue) existing.Priority = dto.Priority.Value;
+        if (dto.EffectiveDate.HasValue) existing.EffectiveDate = dto.EffectiveDate.Value;
+        if (dto.ExpiryDate.HasValue) existing.ExpiryDate = dto.ExpiryDate;
         existing.UpdatedAt = DateTime.UtcNow;
         return existing;
     }

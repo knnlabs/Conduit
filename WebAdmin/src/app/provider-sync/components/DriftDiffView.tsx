@@ -21,8 +21,8 @@ interface DriftDiffViewProps {
  * for capability drift (shared-flag fan-out) and zero-price proposals.
  */
 export function DriftDiffView({ item }: DriftDiffViewProps) {
-  const current = parseDriftPayload(item.currentValuesJson);
-  const proposed = parseDriftPayload(item.proposedValuesJson);
+  const current = parseDriftPayload(item.currentValues);
+  const proposed = parseDriftPayload(item.proposedValues);
   const warnings = driftWarnings(item);
 
   // Union of keys across both sides, preserving a stable order.

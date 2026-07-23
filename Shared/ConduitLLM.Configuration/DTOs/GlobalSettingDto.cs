@@ -74,17 +74,16 @@ namespace ConduitLLM.Configuration.DTOs
     /// </summary>
     public class UpdateGlobalSettingDto
     {
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Id { get; set; }
         /// <summary>
         /// Unique identifier for the setting
         /// </summary>
-        public int Id { get; set; }
-
         /// <summary>
         /// Setting value
         /// </summary>
-        [Required]
         [MaxLength(2000)]
-        public string Value { get; set; } = string.Empty;
+        public string? Value { get; set; }
 
         /// <summary>
         /// Optional description of the setting

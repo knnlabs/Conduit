@@ -25,7 +25,7 @@ public static class PromptCachingEndpoints
 
     public static IEndpointRouteBuilder MapPromptCachingEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/prompt-caching")
+        var group = app.MapGroup("/v1/admin/prompt-cache-settings")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("PromptCaching");

@@ -233,13 +233,13 @@ public class HealthEndpointAuthorizationMiddlewareTests : TestBase
         };
 
         var middleware = CreateMiddleware(next);
-        var context = CreateHttpContext("/api/health/services", IPAddress.Parse("203.0.113.1"));
+        var context = CreateHttpContext("/v1/admin/health-status/services", IPAddress.Parse("203.0.113.1"));
 
         // Act
         await middleware.InvokeAsync(context);
 
         // Assert
-        nextCalled.Should().BeFalse("/api/health/* should be protected");
+        nextCalled.Should().BeFalse("/v1/admin/health-status/* should be protected");
         context.Response.StatusCode.Should().Be(404);
     }
 

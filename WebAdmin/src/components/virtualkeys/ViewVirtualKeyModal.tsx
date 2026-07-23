@@ -25,12 +25,8 @@ interface ViewVirtualKeyModalProps {
   virtualKeyGroup?: VirtualKeyGroupDto;
 }
 
-function formatMetadata(metadata: string): string {
-  try {
-    return JSON.stringify(JSON.parse(metadata) as unknown, null, 2);
-  } catch {
-    return metadata;
-  }
+function formatMetadata(metadata: Record<string, unknown>): string {
+  return JSON.stringify(metadata, null, 2);
 }
 
 export function ViewVirtualKeyModal({

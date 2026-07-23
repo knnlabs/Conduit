@@ -37,9 +37,10 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Updates a global setting
         /// </summary>
+        /// <param name="id">The route ID of the setting to update</param>
         /// <param name="setting">The setting to update</param>
         /// <returns>True if the update was successful, false otherwise</returns>
-        Task<bool> UpdateSettingAsync(UpdateGlobalSettingDto setting);
+        Task<bool> UpdateSettingAsync(int id, UpdateGlobalSettingDto setting);
 
         /// <summary>
         /// Updates a global setting by key

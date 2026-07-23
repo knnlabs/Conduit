@@ -27,7 +27,6 @@ export interface CreateIpFilterDto {
 }
 
 export interface UpdateIpFilterDto {
-  id: number;
   name?: string;
   ipAddressOrCidr?: string;
   filterType?: FilterType;

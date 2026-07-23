@@ -9,34 +9,35 @@ type ErrorStatisticsDto = components['schemas']['ErrorStatisticsDto'];
 type KeyErrorDetailsDto = components['schemas']['KeyErrorDetailsDto'];
 type ClearErrorsRequest = components['schemas']['ClearErrorsRequest'];
 type ClearKeyErrorsResponseDto = components['schemas']['ClearKeyErrorsResponseDto'];
-type RecentQuery = paths['/api/provider-errors/recent']['get']['parameters']['query'];
+type RecentQuery = paths['/v1/admin/provider-errors/recent']['get']['parameters']['query'];
 
 export class FetchProviderErrorsService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
   async getRecentErrors(params?: RecentQuery, config?: RequestConfig): Promise<ProviderErrorDto[]> {
     const queryString = new URLSearchParams(Object.entries(params ?? {}).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)])).toString();
-    return this.client['executeContractRead'](`/api/provider-errors/recent${queryString ? `?${queryString}` : ''}`,
-      (contractClient, options) => contractClient.GET('/api/provider-errors/recent', { ...options, params: { query: params } }), config);
+    return this.client['executeContractRead'](`/v1/admin/provider-errors/recent${queryString ? `?${queryString}` : ''}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/provider-errors/recent', { ...options, params: { query: params } }), config);
   }
 
   async getSummary(config?: RequestConfig): Promise<ProviderErrorSummaryDto[]> {
-    return this.client['executeContractRead']('/api/provider-errors/summary',
-      (contractClient, options) => contractClient.GET('/api/provider-errors/summary', options), config);
+    const result = await this.client['executeContractRead']('/v1/admin/provider-errors/summary',
+      (contractClient, options) => contractClient.GET('/v1/admin/provider-errors/summary', options), config);
+    return result.data;
   }
 
   async getStatistics(hours = 24, config?: RequestConfig): Promise<ErrorStatisticsDto> {
-    return this.client['executeContractRead'](`/api/provider-errors/stats?hours=${hours}`,
-      (contractClient, options) => contractClient.GET('/api/provider-errors/stats', { ...options, params: { query: { hours } } }), config);
+    return this.client['executeContractRead'](`/v1/admin/provider-errors/stats?hours=${hours}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/provider-errors/stats', { ...options, params: { query: { hours } } }), config);
   }
 
   async getKeyErrors(keyId: number, config?: RequestConfig): Promise<KeyErrorDetailsDto> {
-    return this.client['executeContractRead'](`/api/provider-errors/keys/${keyId}`,
-      (contractClient, options) => contractClient.GET('/api/provider-errors/keys/{keyId}', { ...options, params: { path: { keyId } } }), config);
+    return this.client['executeContractRead'](`/v1/admin/provider-errors/keys/${keyId}`,
+      (contractClient, options) => contractClient.GET('/v1/admin/provider-errors/keys/{keyId}', { ...options, params: { path: { keyId } } }), config);
   }
 
   async clearKeyErrors(keyId: number, request: ClearErrorsRequest, config?: RequestConfig): Promise<ClearKeyErrorsResponseDto> {
-    return this.client['executeContractOperation'](`/api/provider-errors/keys/${keyId}/clear`, HttpMethod.POST,
-      (contractClient, options) => contractClient.POST('/api/provider-errors/keys/{keyId}/clear', { ...options, params: { path: { keyId } }, body: request }), config, request);
+    return this.client['executeContractOperation'](`/v1/admin/provider-errors/keys/${keyId}/clear`, HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/v1/admin/provider-errors/keys/{keyId}/clear', { ...options, params: { path: { keyId } }, body: request }), config, request);
   }
 }

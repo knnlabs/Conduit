@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Admin.Models.ProviderSync
@@ -22,13 +23,13 @@ namespace ConduitLLM.Admin.Models.ProviderSync
         [JsonRequired]
         public string Status { get; set; } = string.Empty;
 
-        /// <summary>Conduit's current values at detection time (JSON; shape depends on DriftType).</summary>
+        /// <summary>Conduit's current values at detection time (shape depends on DriftType).</summary>
         [JsonRequired]
-        public string CurrentValuesJson { get; set; } = "{}";
+        public Dictionary<string, JsonElement> CurrentValues { get; set; } = new();
 
-        /// <summary>The provider's proposed values (JSON; shape depends on DriftType).</summary>
+        /// <summary>The provider's proposed values (shape depends on DriftType).</summary>
         [JsonRequired]
-        public string ProposedValuesJson { get; set; } = "{}";
+        public Dictionary<string, JsonElement> ProposedValues { get; set; } = new();
 
         [JsonRequired]
         public DateTime FirstDetectedAt { get; set; }

@@ -18,14 +18,18 @@ interface EditModelSeriesModalProps {
   onSuccess: () => void;
 }
 
+type EditModelSeriesFormValues = Omit<UpdateModelSeriesDto, 'parameters'> & {
+  parameters?: string;
+};
+
 export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: EditModelSeriesModalProps) {
   const [jsonValid, setJsonValid] = useState(true);
 
-  const form = useForm<UpdateModelSeriesDto & { parameters?: string }>({
+  const form = useForm<EditModelSeriesFormValues>({
     initialValues: {
       name: series?.name ?? '',
       description: series?.description ?? '',
-      parameters: series?.parameters ?? ''
+      parameters: series?.parameters ? JSON.stringify(series.parameters, null, 2) : ''
     },
     validate: {
       name: (value) => !value ? 'Name is required' : null,
@@ -49,7 +53,7 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
       form.setValues({
         name: series.name ?? '',
         description: series.description ?? '',
-        parameters: series.parameters ?? ''
+        parameters: series.parameters ? JSON.stringify(series.parameters, null, 2) : ''
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -57,12 +61,12 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
 
 
   const submitAction = useCallback(
-    async (values: UpdateModelSeriesDto & { parameters?: string }) => {
+    async (values: EditModelSeriesFormValues) => {
       if (!series.id) throw new Error('Series ID is required');
       const dto: UpdateModelSeriesDto = {
         name: values.name,
         description: values.description,
-        parameters: values.parameters ?? null
+        parameters: values.parameters ? JSON.parse(values.parameters) as Record<string, unknown> : undefined
       };
       await withAdminClient(client => client.modelSeries.update(series.id as number, dto));
     },

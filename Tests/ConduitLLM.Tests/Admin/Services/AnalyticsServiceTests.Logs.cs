@@ -182,6 +182,28 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
+        public async Task GetLogByIdAsync_IgnoresMalformedHistoricalMetadata()
+        {
+            var testLog = new RequestLog
+            {
+                Id = 125,
+                VirtualKeyId = 7,
+                ModelName = "gpt-4",
+                Metadata = "{not-json",
+                Timestamp = DateTime.UtcNow
+            };
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetByIdAsync(125, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(testLog);
+
+            var result = await _service.GetLogByIdAsync(125);
+
+            Assert.NotNull(result);
+            Assert.Null(result.Metadata);
+        }
+
+        [Fact]
         public async Task GetLogByIdAsync_ReturnsNull_WhenNotExists()
         {
             // Arrange
