@@ -94,22 +94,27 @@ function Invoke-CleanupOnError {
 function Clear-StaleContainers {
     Write-Info "Checking for stale Conduit containers..."
 
-    # Get all Conduit-related containers (running or stopped)
-    $conduitContainers = docker ps -a --filter "name=conduit-" --format "{{.Names}}" 2>$null
+    Push-Location $projectRoot
+    try {
+        # Query by Compose project rather than by container-name prefix. Other
+        # Conduit checkouts use similar names but must not be mistaken for
+        # containers that this Compose project can remove.
+        $projectContainers = docker compose -f docker-compose.yml -f docker-compose.dev.yml ps -aq 2>$null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to inspect stale Conduit containers"
+        }
 
-    if ($conduitContainers) {
-        Write-Info "Found stale Conduit containers, cleaning up..."
-        Push-Location $projectRoot
-        try {
+        if ($projectContainers) {
+            Write-Info "Found stale containers for this Compose project, cleaning up..."
             docker compose -f docker-compose.yml -f docker-compose.dev.yml down --remove-orphans 2>$null
             if ($LASTEXITCODE -ne 0) {
                 throw "Failed to remove stale Conduit containers"
             }
             Write-Info "Stale containers removed"
         }
-        finally {
-            Pop-Location
-        }
+    }
+    finally {
+        Pop-Location
     }
 }
 
@@ -165,15 +170,12 @@ function Test-PortConflicts {
             $container = docker ps --format "{{.Names}}" --filter "publish=$port" 2>$null | Select-Object -First 1
 
             if ($container) {
-                if ($container -like 'conduit-*') {
-                    Write-Warn "Port $port ($name) is used by stale Conduit container: $container"
-                    # Will be cleaned up by Clear-StaleContainers
-                }
-                else {
-                    Write-Warn "Port $port ($name) is used by container: $container"
-                    $conflictingContainers += $container
-                    $conflictsFound = $true
-                }
+                # Clear-StaleContainers has already removed containers belonging
+                # to this Compose project. Any remaining publisher is a real
+                # conflict, even when another checkout named it "conduit-*".
+                Write-Warn "Port $port ($name) is used by container: $container"
+                $conflictingContainers += $container
+                $conflictsFound = $true
             }
             else {
                 # Port is used by a system process
@@ -187,8 +189,10 @@ function Test-PortConflicts {
         }
     }
 
-    # Handle non-Conduit Docker container conflicts
+    # Handle Docker container conflicts
     if ($conflictingContainers.Count -gt 0) {
+        $conflictingContainers = @($conflictingContainers | Sort-Object -Unique)
+
         Write-Host ""
         Write-Warn "The following Docker containers are blocking required ports:"
         foreach ($container in $conflictingContainers) {
@@ -201,6 +205,9 @@ function Test-PortConflicts {
             foreach ($container in $conflictingContainers) {
                 Write-Info "Stopping $container..."
                 docker stop $container 2>$null
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Failed to stop conflicting container: $container"
+                }
             }
             Write-Info "Conflicting containers stopped"
         }
