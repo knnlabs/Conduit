@@ -457,18 +457,19 @@ public enum ProviderType
 ## Event-Driven Architecture
 
 - **Publish/consume through the Conduit-owned `IEventBus` / `IEventHandler<T>` abstraction**
-  (`ConduitLLM.Configuration.Messaging`), NOT MassTransit types directly. Inject `IEventBus`
+  (`ConduitLLM.Configuration.Messaging`), NOT transport types directly. Inject `IEventBus`
   to publish; implement `IEventHandler<TEvent>` (handler context is `IEventContext`) to consume.
-- The abstraction currently runs over **MassTransit** (in-memory for dev, RabbitMQ for
-  production); it is being migrated to **Wolverine on the PostgreSQL transport + outbox**
-  behind a config flag, with no domain changes (epic #909).
-- Events ensure cache consistency and eliminate race conditions; spend ordering is
-  RabbitMQ-native (single-active-consumer), webhook retry is deferred delivery.
+- The abstraction runs on **Wolverine over the PostgreSQL transport + outbox** in both dev and
+  production — it reuses `DATABASE_URL`; there is no separate message broker to run. The former
+  MassTransit/RabbitMQ backend was removed after the Wolverine cutover (epic #909); selecting
+  `MassTransit` fails boot with a pointer to Wolverine (`MessagingBackend.cs`).
+- Events ensure cache consistency and eliminate race conditions; spend ordering uses a
+  strict-ordering listener (one node, sequential handling), webhook retry is scheduled delivery.
 - The 4 tuned endpoints are described as data in `ConduitEndpointPolicies` (retry,
-  circuit-breaker, rate-limit, ordering) so both backends translate the same descriptors.
+  circuit-breaker, rate-limit, ordering), translated to Wolverine by `WolverineEndpointPolicy`.
 
-**See:** `docs/architecture/messaging-migration/` (ADR-001, inventory, phase plans) and
-`docs/architecture/media-generation/async-media-generation.md`
+**See:** `docs/configuration.md` (messaging section) and
+`Shared/ConduitLLM.Configuration/Messaging/`
 
 ## Real-Time Updates
 
@@ -482,12 +483,10 @@ public enum ProviderType
 
 ## High-Throughput Configuration
 
-- RabbitMQ: 1,000+ async tasks per minute
-- Settings: 25 prefetch, 30 partitions, 50 concurrent messages
+- Messaging throughput is tuned per endpoint via `ConduitEndpointPolicies` (concurrency
+  limits, partition-key ordering, retries) — queues live in PostgreSQL, no broker to scale
 - HTTP client pooling: 50 connections per server
 - Circuit breakers and rate limiting
-
-**See:** `docs/operations/infrastructure/rabbitmq-scaling.md`
 
 ---
 
