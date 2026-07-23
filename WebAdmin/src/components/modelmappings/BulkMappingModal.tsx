@@ -113,7 +113,10 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
       setSelectedModels(newSelected);
       
       if (result.conflictCount > 0) {
-        notify.warning(`${result.conflictCount} models already have mappings`, 'Conflicts Detected');
+        notify.warning(
+          `${result.conflictCount} models have conflicts or unresolved associations`,
+          'Conflicts Detected'
+        );
       }
     } catch {
       // Error handled by hook

@@ -190,6 +190,28 @@ public class AdminModelProviderMappingServiceBulkTests
     }
 
     [Fact]
+    public async Task CreateBulkMappingsAsync_PropagatesRequestedCancellation()
+    {
+        AddAssociation(10, "cancelled-model", ProviderType.OpenAI, 100);
+        using var cancellation = new CancellationTokenSource();
+        await cancellation.CancelAsync();
+        _mappingRepository
+            .Setup(repository => repository.CreateAsync(
+                It.IsAny<ModelProviderMapping>(), cancellation.Token))
+            .ThrowsAsync(new OperationCanceledException(cancellation.Token));
+        var request = new BulkModelMappingCreateRequest
+        {
+            Mappings =
+            [
+                Item("cancelled", 1, "cancelled-model")
+            ]
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => _service.CreateBulkMappingsAsync(request, cancellation.Token));
+    }
+
+    [Fact]
     public async Task AddMappingAsync_RejectsAssociationFromAnotherProviderType()
     {
         var association = AddAssociation(20, "groq-test", ProviderType.Groq, 200);

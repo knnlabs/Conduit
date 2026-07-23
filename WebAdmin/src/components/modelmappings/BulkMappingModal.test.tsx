@@ -3,6 +3,7 @@ import { MantineProvider } from '@mantine/core';
 
 import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkCreateMappings, useBulkDiscoverModels } from '@/hooks/useModelMappingsApi';
+import { notify } from '@/lib/notifications';
 import { BulkMappingModal } from './BulkMappingModal';
 
 jest.mock('@/hooks/useProviderApi', () => ({ useProviders: jest.fn() }));
@@ -63,6 +64,10 @@ it('selects only server-resolved models and explains unresolved conflicts', asyn
 
   expect(await screen.findByText(/1 models have conflicts or unresolved associations/)).toBeInTheDocument();
   expect(discoverModels).toHaveBeenCalledWith('9', 'OpenAI');
+  expect(notify.warning).toHaveBeenCalledWith(
+    '1 models have conflicts or unresolved associations',
+    'Conflicts Detected',
+  );
 
   const availableRow = screen.getByText('available').closest('tr');
   const unresolvedRow = screen.getByText('unresolved').closest('tr');

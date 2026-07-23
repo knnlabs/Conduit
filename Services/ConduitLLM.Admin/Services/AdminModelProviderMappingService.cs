@@ -381,8 +381,6 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                 ProviderId = item.ProviderId,
                 ProviderModelId = item.ProviderModelId.Trim(),
                 ModelProviderTypeAssociationId = resolved.Association.Id,
-                ModelProviderTypeAssociation = resolved.Association,
-                Provider = resolved.Provider,
                 RoutingPriority = request.Priority,
                 RoutingWeight = request.Weight,
                 IsEnabled = request.IsEnabled,
@@ -393,9 +391,23 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             try
             {
                 mapping.Id = await _mappingRepository.CreateAsync(mapping, cancellationToken);
+
+                // Resolution queries are intentionally no-tracking and use repository-owned
+                // DbContexts. Passing those detached navigation objects to CreateAsync causes
+                // EF Core's Add graph traversal to mark the existing provider and association
+                // as Added, resulting in duplicate primary-key inserts. Persist foreign keys
+                // only, then restore the resolved objects for response projection and the
+                // in-memory bulk conflict context.
+                mapping.ModelProviderTypeAssociation = resolved.Association;
+                mapping.Provider = resolved.Provider;
+
                 response.Created.Add(mapping.ToDto());
                 AddMappingToContext(context, mapping);
                 await PublishBulkMappingCreatedAsync(mapping);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -405,8 +417,12 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
                 try
                 {
                     racedMapping = (await _mappingRepository.GetAllByModelNameAsync(
-                            item.ModelAlias.Trim(), cancellationToken))
+                        item.ModelAlias.Trim(), cancellationToken))
                         .FirstOrDefault(existing => existing.ProviderId == item.ProviderId);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
                 }
                 catch (Exception lookupException)
                 {
