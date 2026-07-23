@@ -258,11 +258,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Gateway_IdempotentCommandsUseOnlyTheCanonicalHeader()
     {
-        foreach (var path in new[]
-        {
-            "/v1/conduit/functions/execute",
-            "/v1/conduit/batch/spend-updates"
-        })
+        foreach (var path in new[] { "/v1/conduit/functions/execute" })
         {
             var operation = Operation(_gateway, path, "post");
             operation.GetProperty("parameters").EnumerateArray()
@@ -301,7 +297,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Fact]
-    public void Gateway_ReservesDirectV1RoutesForOpenAICompatibleResources()
+    public void Gateway_PublicContractContainsOnlyOpenAIAndConduitExtensionRoutes()
     {
         var openAiRoutes = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -317,10 +313,9 @@ public sealed class AuthoritativeContractTests : IDisposable
             .Select(path => path.Name)
             .ToList();
 
-        paths.Where(path =>
-                path.StartsWith("/v1/", StringComparison.Ordinal) &&
-                !path.StartsWith("/v1/conduit/", StringComparison.Ordinal))
-            .Should().OnlyContain(path => openAiRoutes.Contains(path));
+        paths.Should().OnlyContain(path =>
+            openAiRoutes.Contains(path) ||
+            path.StartsWith("/v1/conduit/", StringComparison.Ordinal));
         paths.Should().Contain("/v1/conduit/discovery/models");
         paths.Should().Contain("/v1/conduit/functions/execute");
         paths.Should().Contain("/v1/conduit/videos/generations/async");

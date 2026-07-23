@@ -54,13 +54,6 @@ public static class GatewayApiEndpoints
             .Produces<OpenAIErrorResponse>(StatusCodes.Status501NotImplemented)
             .ExcludeFromDescription();
 
-        app.MapGet("/api/provider-models/{providerId:int}", ([FromServices] ProviderModelsEndpoints endpoints, int providerId) => endpoints.GetProviderModels(providerId))
-            .AddEndpointFilter<OperationLoggingEndpointFilter>()
-            .WithTags("Provider Models").WithName("ProviderModels_List")
-            .Produces<List<string>>(StatusCodes.Status200OK)
-            .Produces<OpenAIErrorResponse>(StatusCodes.Status404NotFound)
-            .AllowAnonymous();
-
         var discovery = app.MapGroup("/v1/conduit/discovery")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
@@ -86,53 +79,6 @@ public static class GatewayApiEndpoints
             .WithName("Tasks_Cancel").Produces(StatusCodes.Status204NoContent);
         tasks.MapGet("/{taskId}/poll", ([FromServices] TasksEndpoints endpoints, string taskId, int timeout = 300, int interval = 2) => endpoints.PollTask(taskId, timeout, interval))
             .WithName("Tasks_Poll").Produces<AsyncTaskStatus>();
-
-        var batch = app.MapGroup("/v1/conduit/batch")
-            .RequireAuthorization("VirtualKeyAuthentication")
-            .AddEndpointFilter<OperationLoggingEndpointFilter>()
-            .WithTags("Batch Operations");
-        batch.MapPost("/spend-updates", ([FromServices] BatchOperationsEndpoints endpoints, BatchSpendUpdateRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) => endpoints.StartBatchSpendUpdate(request, idempotencyKey))
-            .WithName("BatchOperations_StartSpendUpdates").Produces<BatchOperationStartResponse>(202).Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(401);
-        batch.MapPost("/virtual-key-updates", ([FromServices] BatchOperationsEndpoints endpoints, BatchVirtualKeyUpdateRequest request) => endpoints.StartBatchVirtualKeyUpdate(request))
-            .WithName("BatchOperations_StartVirtualKeyUpdates").Produces<BatchOperationStartResponse>(202).Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(401);
-        batch.MapPost("/webhook-sends", ([FromServices] BatchOperationsEndpoints endpoints, BatchWebhookSendRequest request) => endpoints.StartBatchWebhookSend(request))
-            .WithName("BatchOperations_StartWebhookSends").Produces<BatchOperationStartResponse>(202).Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(401);
-        batch.MapGet("/operations/{operationId}", ([FromServices] BatchOperationsEndpoints endpoints, string operationId) => endpoints.GetOperationStatus(operationId))
-            .WithName("BatchOperations_GetStatus").Produces<BatchOperationStatusResponse>().Produces<OpenAIErrorResponse>(404);
-        batch.MapPost("/operations/{operationId}/cancel", ([FromServices] BatchOperationsEndpoints endpoints, string operationId) => endpoints.CancelOperation(operationId))
-            .WithName("BatchOperations_Cancel").Produces(204).Produces<OpenAIErrorResponse>(404).Produces<OpenAIErrorResponse>(409);
-
-        var batching = app.MapGroup("/api/signalr/batching").WithTags("SignalR Batching");
-        batching.MapGet("/statistics", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.GetStatistics())
-            .AllowAnonymous().WithName("SignalRBatching_GetStatistics").Produces<BatchingStatistics>();
-        batching.MapPost("/pause", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.PauseBatching())
-            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Pause").Produces<MessageResponse>();
-        batching.MapPost("/resume", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.ResumeBatching())
-            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Resume").Produces<MessageResponse>();
-        batching.MapPost("/flush", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.FlushBatches())
-            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Flush").Produces<MessageResponse>();
-        batching.MapGet("/efficiency", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.GetEfficiencyMetrics())
-            .AllowAnonymous().WithName("SignalRBatching_GetEfficiency").Produces<BatchingEfficiencyResponse>();
-
-        var signalRHealth = app.MapGroup("/health/signalr").WithTags("SignalR Health");
-        signalRHealth.MapGet("/connections", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetConnectionStatistics())
-            .AllowAnonymous().WithName("SignalRHealth_GetConnections").Produces<ConnectionStatistics>();
-        signalRHealth.MapGet("/queue", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetQueueStatistics())
-            .AllowAnonymous().WithName("SignalRHealth_GetQueue").Produces<QueueStatistics>();
-        signalRHealth.MapGet("/connections/details", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetConnectionDetails())
-            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_GetConnectionDetails").Produces<ConnectionDetailsResponse>();
-        signalRHealth.MapGet("/connections/hub/{hubName}", ([FromServices] SignalRHealthEndpoints endpoints, string hubName) => endpoints.GetHubConnections(hubName))
-            .AllowAnonymous().WithName("SignalRHealth_GetHubConnections").Produces<HubConnectionsResponse>();
-        signalRHealth.MapGet("/connections/key/{virtualKeyId}", ([FromServices] SignalRHealthEndpoints endpoints, int virtualKeyId) => endpoints.GetVirtualKeyConnections(virtualKeyId))
-            .RequireAuthorization("VirtualKeyAuthentication").WithName("SignalRHealth_GetVirtualKeyConnections").Produces<VirtualKeyConnectionsResponse>();
-        signalRHealth.MapGet("/connections/group/{groupName}", ([FromServices] SignalRHealthEndpoints endpoints, string groupName) => endpoints.GetGroupConnections(groupName))
-            .AllowAnonymous().WithName("SignalRHealth_GetGroupConnections").Produces<GroupConnectionsResponse>();
-        signalRHealth.MapGet("/queue/deadletter", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetDeadLetterMessages())
-            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_GetDeadLetters").Produces<DeadLetterMessagesResponse>();
-        signalRHealth.MapPost("/queue/deadletter/{messageId}/requeue", ([FromServices] SignalRHealthEndpoints endpoints, string messageId) => endpoints.RequeueDeadLetter(messageId))
-            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_RequeueDeadLetter").Produces<MessageResponse>();
-        signalRHealth.MapGet("", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetHealthStatus())
-            .AllowAnonymous().WithName("SignalRHealth_GetHealth").Produces<SignalRHealthResponse>();
 
         var functions = app.MapGroup("/v1/conduit/functions")
             .RequireAuthorization("VirtualKeyAuthentication")

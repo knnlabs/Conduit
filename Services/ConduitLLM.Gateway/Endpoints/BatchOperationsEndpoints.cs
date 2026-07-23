@@ -15,7 +15,6 @@ namespace ConduitLLM.Gateway.Endpoints
         private readonly IBatchOperationService _batchOperationService;
         private readonly IBatchVirtualKeyUpdateOperation _batchVirtualKeyUpdateOperation;
         private readonly IBatchWebhookSendOperation _batchWebhookSendOperation;
-        private readonly IVirtualKeyService _virtualKeyService;
         private readonly BatchSpendUpdateOperation _batchSpendUpdateOperation;
 
         public BatchOperationsEndpoints(
@@ -24,14 +23,12 @@ namespace ConduitLLM.Gateway.Endpoints
             IBatchOperationService batchOperationService,
             IBatchVirtualKeyUpdateOperation batchVirtualKeyUpdateOperation,
             IBatchWebhookSendOperation batchWebhookSendOperation,
-            IVirtualKeyService virtualKeyService,
             BatchSpendUpdateOperation batchSpendUpdateOperation)
             : base(null, httpContextAccessor, logger)
         {
             _batchOperationService = batchOperationService ?? throw new ArgumentNullException(nameof(batchOperationService));
             _batchVirtualKeyUpdateOperation = batchVirtualKeyUpdateOperation ?? throw new ArgumentNullException(nameof(batchVirtualKeyUpdateOperation));
             _batchWebhookSendOperation = batchWebhookSendOperation ?? throw new ArgumentNullException(nameof(batchWebhookSendOperation));
-            _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _batchSpendUpdateOperation = batchSpendUpdateOperation ?? throw new ArgumentNullException(nameof(batchSpendUpdateOperation));
         }
 
@@ -108,7 +105,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 OperationId = result.OperationId,
                 OperationType = "spend_update",
                 TotalItems = request.Updates.Count(),
-                StatusUrl = $"/v1/conduit/batch/operations/{result.OperationId}",
+                StatusUrl = $"/internal/operations/batch/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
@@ -122,24 +119,6 @@ namespace ConduitLLM.Gateway.Endpoints
         public async Task<IResult> StartBatchVirtualKeyUpdate(BatchVirtualKeyUpdateRequest request)
         {
             var virtualKeyId = GetVirtualKeyId();
-
-            // Check if user has admin permissions
-            var virtualKeyInfo = await _virtualKeyService.GetVirtualKeyInfoAsync(virtualKeyId);
-            bool isAdmin = false;
-            if (virtualKeyInfo?.Metadata is { Count: > 0 })
-            {
-                if (virtualKeyInfo.Metadata.TryGetValue("isAdmin", out var isAdminValue))
-                {
-                    isAdmin = isAdminValue.ValueKind == System.Text.Json.JsonValueKind.True ||
-                        (isAdminValue.ValueKind == System.Text.Json.JsonValueKind.String &&
-                         bool.TryParse(isAdminValue.GetString(), out var parsed) && parsed);
-                }
-            }
-
-            if (!isAdmin)
-            {
-                return Forbid("Admin permissions required for batch virtual key updates");
-            }
 
             // Validate request
             if (request.Updates == null || !request.Updates.Any())
@@ -195,7 +174,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 OperationId = result.OperationId,
                 OperationType = "virtual_key_update",
                 TotalItems = request.Updates.Count(),
-                StatusUrl = $"/v1/conduit/batch/operations/{result.OperationId}",
+                StatusUrl = $"/internal/operations/batch/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
@@ -264,7 +243,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 OperationId = result.OperationId,
                 OperationType = "webhook_send",
                 TotalItems = request.Webhooks.Count(),
-                StatusUrl = $"/v1/conduit/batch/operations/{result.OperationId}",
+                StatusUrl = $"/internal/operations/batch/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
