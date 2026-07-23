@@ -9,7 +9,8 @@ namespace ConduitLLM.Configuration
     public enum ProviderType
     {
         /// <summary>
-        /// Provider information was not captured or is not recognized.
+        /// Provider information was not captured or is not recognized. This is a reporting
+        /// sentinel and must not be used to configure a provider.
         /// </summary>
         Unknown = 0,
 
@@ -82,5 +83,25 @@ namespace ConduitLLM.Configuration
         /// Meta AI (Meta Model API, Muse Spark models)
         /// </summary>
         Meta = 14
+    }
+
+    /// <summary>
+    /// Defines the provider types that can be used for provider configuration.
+    /// </summary>
+    public static class ProviderTypeCatalog
+    {
+        /// <summary>
+        /// All provider types backed by an operational provider adapter.
+        /// </summary>
+        public static IReadOnlyList<ProviderType> ConfigurableTypes { get; } = Array.AsReadOnly(
+            Enum.GetValues<ProviderType>()
+                .Where(providerType => providerType != ProviderType.Unknown)
+                .ToArray());
+
+        /// <summary>
+        /// Returns whether the value identifies a configurable provider adapter.
+        /// </summary>
+        public static bool IsConfigurable(ProviderType providerType) =>
+            providerType != ProviderType.Unknown && Enum.IsDefined(providerType);
     }
 }

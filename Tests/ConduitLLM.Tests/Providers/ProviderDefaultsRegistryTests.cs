@@ -15,28 +15,36 @@ namespace ConduitLLM.Tests.Providers;
 public class ProviderDefaultsRegistryTests
 {
     [Fact]
-    public void AdapterDefaults_Should_Cover_Every_ProviderType()
+    public void AdapterDefaults_Should_Cover_Every_Configurable_ProviderType()
     {
         ProviderAdapterDefaultsRegistry.GetRegisteredProviderTypes()
             .OrderBy(x => x)
             .Should()
-            .Equal(Enum.GetValues<ProviderType>().OrderBy(x => x));
+            .Equal(ProviderTypeCatalog.ConfigurableTypes.OrderBy(x => x));
     }
 
     [Fact]
-    public void ProviderConfigurations_Should_Cover_Every_ProviderType_And_Use_Canonical_Urls()
+    public void ProviderConfigurations_Should_Cover_Every_Configurable_ProviderType_And_Use_Canonical_Urls()
     {
         ProviderConfigurationRegistry.GetRegisteredProviderTypes()
             .OrderBy(x => x)
             .Should()
-            .Equal(Enum.GetValues<ProviderType>().OrderBy(x => x));
+            .Equal(ProviderTypeCatalog.ConfigurableTypes.OrderBy(x => x));
 
-        foreach (var providerType in Enum.GetValues<ProviderType>())
+        foreach (var providerType in ProviderTypeCatalog.ConfigurableTypes)
         {
             ProviderConfigurationRegistry.GetDefaultBaseUrl(providerType)
                 .Should()
                 .Be(ProviderAdapterDefaultsRegistry.GetRequired(providerType).DefaultBaseUrl);
         }
+    }
+
+    [Fact]
+    public void Unknown_Should_Be_A_Report_Only_Sentinel()
+    {
+        ProviderTypeCatalog.IsConfigurable(ProviderType.Unknown).Should().BeFalse();
+        ProviderAdapterDefaultsRegistry.TryGet(ProviderType.Unknown, out _).Should().BeFalse();
+        ProviderConfigurationRegistry.TryGetConfiguration(ProviderType.Unknown, out _).Should().BeFalse();
     }
 
     [Fact]

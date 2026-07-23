@@ -1,5 +1,6 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Configuration;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
@@ -135,6 +136,11 @@ namespace ConduitLLM.Admin.Endpoints
         /// <returns>The created provider</returns>
         public async Task<IResult> CreateProvider(CreateProviderRequest request)
         {
+            if (!ProviderTypeCatalog.IsConfigurable(request.ProviderType))
+            {
+                return BadRequest(new ErrorResponseDto("Provider type must identify a configurable provider."));
+            }
+
             var provider = new Provider
             {
                 ProviderType = request.ProviderType,

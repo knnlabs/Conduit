@@ -196,10 +196,11 @@ namespace ConduitLLM.Admin.Endpoints
             }
 
             // Parse provider string to enum
-            if (!Enum.TryParse<ProviderType>(provider, ignoreCase: true, out var providerType))
+            if (!Enum.TryParse<ProviderType>(provider, ignoreCase: true, out var providerType) ||
+                !ProviderTypeCatalog.IsConfigurable(providerType))
             {
-                var validProviders = Enum.GetNames<ProviderType>()
-                    .Select(p => p.ToLowerInvariant());
+                var validProviders = ProviderTypeCatalog.ConfigurableTypes
+                    .Select(providerType => providerType.ToString().ToLowerInvariant());
                 return BadRequest($"Invalid provider '{provider}'. Valid providers: {string.Join(", ", validProviders)}");
             }
 

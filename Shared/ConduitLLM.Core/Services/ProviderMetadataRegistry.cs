@@ -142,7 +142,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Verify all enum values have implementations
-                var missingProviders = Enum.GetValues<ProviderType>()
+                var missingProviders = ProviderTypeCatalog.ConfigurableTypes
                     .Where(pt => !_providers.ContainsKey(pt))
                     .ToList();
 
@@ -155,7 +155,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 _logger.LogInformation("Provider registration completed. Registered {Count} of {Total} providers",
-                    _providers.Count, Enum.GetValues<ProviderType>().Length);
+                    _providers.Count, ProviderTypeCatalog.ConfigurableTypes.Count);
             }
             catch (Exception ex)
             {

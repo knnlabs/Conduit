@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Metrics;
@@ -78,6 +79,11 @@ namespace ConduitLLM.Admin.Endpoints
         /// <returns>The test result</returns>
         public async Task<IResult> TestProviderConnectionWithCredentials(TestProviderRequest testRequest)
         {
+            if (!ProviderTypeCatalog.IsConfigurable(testRequest.ProviderType))
+            {
+                return BadRequest(new ErrorResponseDto("Provider type must identify a configurable provider."));
+            }
+
             // Create a temporary provider for testing
             var testProvider = new Provider
             {

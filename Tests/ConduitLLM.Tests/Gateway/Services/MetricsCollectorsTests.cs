@@ -134,6 +134,7 @@ public sealed class MetricsCollectorsTests
                 CreateRequestLog("model-a", "OpenAI", 0.25m, 10, 5, 100, 200, now.AddSeconds(-20)),
                 CreateRequestLog("model-a", "OpenAI", 0.75m, 20, 10, 300, 500, now.AddSeconds(-10)),
                 CreateRequestLog("model-b", "Groq", 0.50m, 4, 6, 50, 200, now.AddSeconds(-5)),
+                CreateRequestLog("model-c", "CustomVendor", 0.25m, 1, 2, 25, 200, now.AddSeconds(-2)),
                 CreateRequestLog("old-model", "OpenAI", 9m, 1, 1, 10, 200, now.AddMinutes(-2)));
             await context.SaveChangesAsync();
         }
@@ -152,11 +153,12 @@ public sealed class MetricsCollectorsTests
         var snapshot = await service.GetCurrentSnapshotAsync();
 
         Assert.Equal(2, snapshot.Business.ActiveVirtualKeys);
-        Assert.Equal(3, snapshot.Business.TotalRequestsPerMinute);
-        Assert.Equal(1.50m, snapshot.Business.Costs.TotalCostPerMinute);
-        Assert.Equal(0.50m, snapshot.Business.Costs.AverageCostPerRequest);
+        Assert.Equal(4, snapshot.Business.TotalRequestsPerMinute);
+        Assert.Equal(1.75m, snapshot.Business.Costs.TotalCostPerMinute);
+        Assert.Equal(0.4375m, snapshot.Business.Costs.AverageCostPerRequest);
         Assert.Equal(1.00m, snapshot.Business.Costs.CostByProvider["OpenAI"]);
         Assert.Equal(0.50m, snapshot.Business.Costs.CostByProvider["Groq"]);
+        Assert.Equal(0.25m, snapshot.Business.Costs.CostByProvider["CustomVendor"]);
 
         var modelA = Assert.Single(snapshot.Business.ModelUsage, usage => usage.ModelName == "model-a");
         Assert.Equal(ProviderType.OpenAI, modelA.ProviderType);
@@ -164,6 +166,8 @@ public sealed class MetricsCollectorsTests
         Assert.Equal(45, modelA.TokensPerMinute);
         Assert.Equal(200, modelA.AverageResponseTime);
         Assert.Equal(50, modelA.ErrorRate);
+        var modelC = Assert.Single(snapshot.Business.ModelUsage, usage => usage.ModelName == "model-c");
+        Assert.Equal(ProviderType.Unknown, modelC.ProviderType);
         Assert.DoesNotContain(snapshot.Business.ModelUsage, usage => usage.ModelName == "gpt-4-turbo");
 
         var exposition = await ExportMetricsAsync();
