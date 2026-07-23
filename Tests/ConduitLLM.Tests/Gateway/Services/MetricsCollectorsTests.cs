@@ -5,9 +5,9 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using Microsoft.AspNetCore.SignalR;
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,8 +16,10 @@ using Moq;
 
 namespace ConduitLLM.Tests.Gateway.Services;
 
-public sealed class MetricsCollectorsTests
+public sealed class MetricsCollectorsTests : IDisposable
 {
+    private readonly List<SqliteTestDatabase> _databases = [];
+
     [Fact]
     public async Task TaskMetrics_GroupActiveTasksAndRemoveStaleLabels()
     {
@@ -26,6 +28,7 @@ public sealed class MetricsCollectorsTests
         var taskType = $"issue_1076_{Guid.NewGuid():N}";
         await using (var context = new ConduitDbContext(options))
         {
+            SeedVirtualKey(context);
             context.AsyncTasks.AddRange(
                 CreateTask("pending-1", taskType, state: 0, DateTime.UtcNow.AddSeconds(-30)),
                 CreateTask("pending-2", taskType, state: 0, DateTime.UtcNow.AddSeconds(-10)),
@@ -88,6 +91,35 @@ public sealed class MetricsCollectorsTests
                 IsEnabled = false
             };
             context.Providers.AddRange(enabledProvider, disabledProvider);
+            for (var id = 1076011; id <= 1076013; id++)
+            {
+                var author = new ModelAuthor
+                {
+                    Id = id,
+                    Name = $"issue-1076-author-{id}"
+                };
+                var series = new ModelSeries
+                {
+                    Id = id,
+                    Author = author,
+                    Name = $"issue-1076-series-{id}",
+                    Parameters = "{}"
+                };
+                context.Models.Add(new Model
+                {
+                    Id = id,
+                    Name = $"issue-1076-model-{id}",
+                    Series = series
+                });
+                context.ModelProviderTypeAssociations.Add(new ModelProviderTypeAssociation
+                {
+                    Id = id,
+                    ModelId = id,
+                    Identifier = $"issue-1076-model-{id}",
+                    Provider = ProviderType.OpenAI,
+                    IsEnabled = true
+                });
+            }
             context.ModelProviderMappings.AddRange(
                 CreateMapping(1076011, enabledProvider, isEnabled: true),
                 CreateMapping(1076012, enabledProvider, isEnabled: false),
@@ -130,6 +162,7 @@ public sealed class MetricsCollectorsTests
         var now = DateTime.UtcNow;
         await using (var context = new ConduitDbContext(options))
         {
+            SeedVirtualKey(context);
             context.RequestLogs.AddRange(
                 CreateRequestLog("model-a", "OpenAI", 0.25m, 10, 5, 100, 200, now.AddSeconds(-20)),
                 CreateRequestLog("model-a", "OpenAI", 0.75m, 20, 10, 300, 500, now.AddSeconds(-10)),
@@ -179,15 +212,7 @@ public sealed class MetricsCollectorsTests
     [Fact]
     public async Task SnapshotBusinessMetrics_EmptyDatabaseReturnsEmptySeries()
     {
-        await using var connection = new SqliteConnection("DataSource=:memory:");
-        await connection.OpenAsync();
-        var options = new DbContextOptionsBuilder<ConduitDbContext>()
-            .UseSqlite(connection)
-            .Options;
-        await using (var context = new ConduitDbContext(options))
-        {
-            await context.Database.EnsureCreatedAsync();
-        }
+        var options = CreateOptions($"empty-snapshot-{Guid.NewGuid()}");
         var virtualKeys = new Mock<IVirtualKeyRepository>();
         virtualKeys.Setup(repository => repository.CountActiveAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(0);
@@ -224,10 +249,29 @@ public sealed class MetricsCollectorsTests
             exposition);
     }
 
-    private static DbContextOptions<ConduitDbContext> CreateOptions(string databaseName) =>
-        new DbContextOptionsBuilder<ConduitDbContext>()
-            .UseInMemoryDatabase(databaseName)
-            .Options;
+    private DbContextOptions<ConduitDbContext> CreateOptions(string databaseName)
+    {
+        var database = new SqliteTestDatabase();
+        _databases.Add(database);
+        return database.Options;
+    }
+
+    private static void SeedVirtualKey(ConduitDbContext context)
+    {
+        context.VirtualKeyGroups.Add(new VirtualKeyGroup
+        {
+            Id = 1,
+            GroupName = "Metrics test group"
+        });
+        context.VirtualKeys.Add(new VirtualKey
+        {
+            Id = 1,
+            VirtualKeyGroupId = 1,
+            KeyName = "Metrics test key",
+            KeyHash = $"metrics-{Guid.NewGuid():N}",
+            IsEnabled = true
+        });
+    }
 
     private static ServiceCollection CreateServices(
         DbContextOptions<ConduitDbContext> options,
@@ -306,5 +350,13 @@ public sealed class MetricsCollectorsTests
 
         public Task<ConduitDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(CreateDbContext());
+    }
+
+    public void Dispose()
+    {
+        foreach (var database in _databases)
+        {
+            database.Dispose();
+        }
     }
 }

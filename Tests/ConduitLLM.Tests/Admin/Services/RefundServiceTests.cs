@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Tests.TestInfrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,15 +20,14 @@ public class RefundServiceTests : IDisposable
     private readonly ConduitDbContext _context;
     private readonly Mock<ILogger<RefundService>> _mockLogger;
     private readonly RefundService _service;
+    private readonly SqliteTestDatabase _database;
 
     public RefundServiceTests()
     {
         _mockCostCalculationService = new Mock<ICostCalculationService>();
         _mockGroupRepository = new Mock<IVirtualKeyGroupRepository>();
-        var options = new DbContextOptionsBuilder<ConduitDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-        _context = new ConduitDbContext(options);
+        _database = new SqliteTestDatabase();
+        _context = _database.CreateContext();
         _mockLogger = new Mock<ILogger<RefundService>>();
 
         _service = new RefundService(
@@ -57,15 +57,14 @@ public class RefundServiceTests : IDisposable
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(groupId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
+        _context.VirtualKeyGroups.Add(group);
+        await _context.SaveChangesAsync();
         var originalTransactionId = await AddDebitAsync(groupId, 1m);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 modelId, originalUsage, refundUsage, "Incorrect response", originalTransactionId,
                 It.Is<ProviderCostRefundContext?>(c => c != null && c.OriginalChargedCost == 1m),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(refundResult);
-        _context.VirtualKeyGroups.Add(group);
-        await _context.SaveChangesAsync();
-
         // Act
         var result = await _service.ProcessRefundAsync(
             groupId, modelId, originalUsage, refundUsage,
@@ -74,7 +73,7 @@ public class RefundServiceTests : IDisposable
         // Assert
         result.Should().NotBeNull();
         result.RefundAmount.Should().Be(0.15m);
-        group.Balance.Should().Be(50.15m);
+        (await _context.VirtualKeyGroups.AsNoTracking().SingleAsync()).Balance.Should().Be(50.15m);
     }
 
     [Fact]
@@ -109,6 +108,8 @@ public class RefundServiceTests : IDisposable
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
+        _context.VirtualKeyGroups.Add(group);
+        await _context.SaveChangesAsync();
         var originalTransactionId = await AddDebitAsync(1, 1m);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(),
@@ -143,6 +144,8 @@ public class RefundServiceTests : IDisposable
 
         _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
             .ReturnsAsync(group);
+        _context.VirtualKeyGroups.Add(group);
+        await _context.SaveChangesAsync();
         var originalTransactionId = await AddDebitAsync(1, 1m);
         _mockCostCalculationService.Setup(x => x.CalculateRefundAsync(
                 It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<Usage>(),
@@ -207,5 +210,9 @@ public class RefundServiceTests : IDisposable
         return transaction.Id.ToString();
     }
 
-    public void Dispose() => _context.Dispose();
+    public void Dispose()
+    {
+        _context.Dispose();
+        _database.Dispose();
+    }
 }

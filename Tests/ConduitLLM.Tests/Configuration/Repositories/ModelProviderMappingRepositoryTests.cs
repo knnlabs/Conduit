@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Tests.TestInfrastructure;
 using ConduitLLM.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Tests.Configuration.Repositories
 {
@@ -90,13 +91,12 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             Assert.Equal(4096, mapping.ModelProviderTypeAssociation?.Model?.MaxInputTokens);
         }
 
-        [Fact(Skip = "SQLite constraint issue - test creates duplicate data within single test method")]
-        public async Task UpdateAsync_ChangingModelId_ShouldUpdateCapabilities()
+        [Fact]
+        public async Task GetByIdAsync_AfterAssociationModelChange_ReturnsUpdatedCapabilities()
         {
             // Arrange
             int mappingId = 0;
             int modelWithChatId = 0;
-            int modelNoChatId = 0;
             var testId = Guid.NewGuid();
             
             SeedData(context =>
@@ -115,7 +115,8 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 // Add model series
                 var series = new ModelSeries
                 {
-                    Name = $"Test Series {testId}"
+                    Name = $"Test Series {testId}",
+                    Author = new ModelAuthor { Name = $"Test Author {testId}" }
                 };
                 context.ModelSeries.Add(series);
                 context.SaveChanges();
@@ -126,7 +127,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 var modelNoChat = new Model
                 {
                     Name = $"model-no-chat-{testId}",
-                    ModelSeriesId = series.Id,
+                    Series = series,
                     SupportsChat = false,
                     MaxInputTokens = 4096,
                     MaxOutputTokens = 2048
@@ -136,7 +137,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 var modelWithChat = new Model
                 {
                     Name = $"model-with-chat-{testId}",
-                    ModelSeriesId = series.Id,
+                    Series = series,
                     SupportsChat = true,
                     SupportsVision = true,
                     SupportsStreaming = true,
@@ -172,7 +173,6 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 
                 mappingId = mapping.Id;
                 modelWithChatId = modelWithChat.Id;
-                modelNoChatId = modelNoChat.Id;
             });
 
             var repository = new ModelProviderMappingRepository(CreateDbContextFactory(), _logger);
@@ -182,13 +182,20 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             Assert.NotNull(mapping);
             Assert.False(mapping.ModelProviderTypeAssociation?.Model?.SupportsChat ?? false); // Initially false
 
-            // Act - Change to model with chat support by updating association
-            // In real scenario, we'd update the association's ModelId or create a new association
-            // For this test, we'll verify the model access through association
+            await using (var updateContext = CreateContext())
+            {
+                var association = await updateContext.ModelProviderTypeAssociations
+                    .SingleAsync(item => item.Id == mapping.ModelProviderTypeAssociationId);
+                association.ModelId = modelWithChatId;
+                await updateContext.SaveChangesAsync();
+            }
+
             var updated = await repository.GetByIdAsync(mappingId);
             Assert.NotNull(updated);
             Assert.NotNull(updated.ModelProviderTypeAssociation);
-            Assert.Equal(modelNoChatId, updated.ModelProviderTypeAssociation.ModelId);
+            Assert.Equal(modelWithChatId, updated.ModelProviderTypeAssociation.ModelId);
+            Assert.True(updated.ModelProviderTypeAssociation.Model.SupportsChat);
+            Assert.True(updated.ModelProviderTypeAssociation.Model.SupportsVision);
         }
 
         [Fact]

@@ -283,6 +283,14 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
                 // delegate re-runs on transient failure, so it re-reads before writing.
                 return await context.ExecuteInTransactionAsync(async _ =>
                 {
+                    // Validate the target before changing the current primary. A missing
+                    // or wrong-provider key is a no-op and must not clear a valid primary.
+                    var newPrimaryKey = await GetDbSet(context)
+                        .FirstOrDefaultAsync(k => k.Id == keyId && k.ProviderId == providerId);
+
+                    if (newPrimaryKey == null)
+                        return false;
+
                     // First, unset any existing primary keys
                     var existingPrimaryKeys = await GetDbSet(context)
                         .Where(k => k.ProviderId == providerId && k.IsPrimary)
@@ -299,13 +307,6 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
                     {
                         await context.SaveChangesAsync();
                     }
-
-                    // Set the new primary key
-                    var newPrimaryKey = await GetDbSet(context)
-                        .FirstOrDefaultAsync(k => k.Id == keyId && k.ProviderId == providerId);
-
-                    if (newPrimaryKey == null)
-                        return false;
 
                     newPrimaryKey.IsPrimary = true;
                     newPrimaryKey.UpdatedAt = DateTime.UtcNow;

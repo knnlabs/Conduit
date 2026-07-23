@@ -2,8 +2,8 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Tests.TestInfrastructure;
 
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -18,34 +18,28 @@ namespace ConduitLLM.Tests.Configuration.Repositories
     /// </summary>
     public class VirtualKeyGroupRepositoryIdempotencyTests : IDisposable
     {
-        private readonly SqliteConnection _connection;
+        private readonly SqliteTestDatabase _database;
         private readonly DbContextOptions<ConduitDbContext> _options;
         private readonly VirtualKeyGroupRepository _repository;
 
         public VirtualKeyGroupRepositoryIdempotencyTests()
         {
-            _connection = new SqliteConnection("DataSource=:memory:");
-            _connection.Open();
-            _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                // A relational provider is required to exercise the database-side
-                // atomic increment used to prevent lost balance updates (#1000).
-                .UseSqlite(_connection)
-                .Options;
+            _database = new SqliteTestDatabase();
+            _options = _database.Options;
 
             var dbContextFactoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
             dbContextFactoryMock
                 .Setup(f => f.CreateDbContext())
-                .Returns(() => new ConduitDbContext(_options));
+                .Returns(() => _database.CreateContext());
             dbContextFactoryMock
                 .Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_options));
+                .ReturnsAsync(() => _database.CreateContext());
 
             _repository = new VirtualKeyGroupRepository(
                 dbContextFactoryMock.Object,
                 new Mock<ILogger<VirtualKeyGroupRepository>>().Object);
 
-            using var context = new ConduitDbContext(_options);
-            context.Database.EnsureCreated();
+            using var context = _database.CreateContext();
             context.VirtualKeyGroups.Add(new VirtualKeyGroup
             {
                 Id = 1,
@@ -138,6 +132,6 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             Assert.Null(ledgerRow.IdempotencyKey);
         }
 
-        public void Dispose() => _connection.Dispose();
+        public void Dispose() => _database.Dispose();
     }
 }

@@ -16,17 +16,20 @@ namespace ConduitLLM.Tests.Admin.Endpoints;
 internal sealed class AdminEndpointTestHost : IDisposable
 {
     private readonly IHost _host;
+    private readonly IDisposable? _ownedResource;
     public HttpClient Client { get; }
 
-    private AdminEndpointTestHost(IHost host)
+    private AdminEndpointTestHost(IHost host, IDisposable? ownedResource)
     {
         _host = host;
+        _ownedResource = ownedResource;
         Client = host.GetTestClient();
     }
 
     public static AdminEndpointTestHost Create(
         Action<IServiceCollection> configureServices,
-        Action<IEndpointRouteBuilder> mapEndpoints)
+        Action<IEndpointRouteBuilder> mapEndpoints,
+        IDisposable? ownedResource = null)
     {
         var host = new HostBuilder()
             .ConfigureWebHost(webHost =>
@@ -51,13 +54,14 @@ internal sealed class AdminEndpointTestHost : IDisposable
                 });
             })
             .Start();
-        return new AdminEndpointTestHost(host);
+        return new AdminEndpointTestHost(host, ownedResource);
     }
 
     public void Dispose()
     {
         Client.Dispose();
         _host.Dispose();
+        _ownedResource?.Dispose();
     }
 
     private sealed class TestAuthenticationHandler : AuthenticationHandler<AuthenticationSchemeOptions>

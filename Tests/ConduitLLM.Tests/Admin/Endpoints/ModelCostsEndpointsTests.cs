@@ -8,6 +8,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -150,9 +151,8 @@ public sealed class ModelCostsEndpointsTests
 
     private static AdminEndpointTestHost CreateHost(params ModelSeed[] models)
     {
-        var options = new DbContextOptionsBuilder<ConduitDbContext>()
-            .UseInMemoryDatabase($"model-cost-validation-{Guid.NewGuid()}")
-            .Options;
+        var database = new SqliteTestDatabase();
+        var options = database.Options;
 
         using (var dbContext = new ConduitDbContext(options))
         {
@@ -210,7 +210,7 @@ public sealed class ModelCostsEndpointsTests
             services.AddSingleton<IDbContextFactory<ConduitDbContext>>(factory);
             services.AddSingleton<IPricingRulesValidator, PricingRulesValidator>();
             services.AddScoped<ModelCostsEndpoints>();
-        }, endpoints => ModelCostsEndpoints.MapModelCostsEndpoints(endpoints));
+        }, endpoints => ModelCostsEndpoints.MapModelCostsEndpoints(endpoints), database);
     }
 
     private static async Task<ValidationResult> ValidateAsync(

@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Tests.Helpers;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,14 +37,12 @@ namespace ConduitLLM.Tests.Configuration.Services
         private readonly IConfigurationDbContext _dbContext;
         private readonly ConduitDbContext _concreteDbContext;
         private readonly Mock<IVirtualKeyGroupRepository> _mockGroupRepository;
+        private readonly SqliteTestDatabase _database;
 
         public BatchSpendUpdateServiceTests()
         {
-            // Setup in-memory database
-            var options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-            _concreteDbContext = new ConduitDbContext(options);
+            _database = new SqliteTestDatabase();
+            _concreteDbContext = _database.CreateContext();
             _dbContext = _concreteDbContext;
 
             // Setup Redis mocks
@@ -283,6 +282,11 @@ namespace ConduitLLM.Tests.Configuration.Services
             const long expectedUnits = 12_345_678;
             
             // Setup virtual key in database
+            _dbContext.VirtualKeyGroups.Add(new VirtualKeyGroup
+            {
+                Id = groupId,
+                GroupName = "Queue spend group"
+            });
             var virtualKey = new VirtualKey
             {
                 Id = virtualKeyId,
@@ -414,6 +418,11 @@ namespace ConduitLLM.Tests.Configuration.Services
             // Arrange
             const int virtualKeyId = 17;
             const int groupId = 42;
+            _dbContext.VirtualKeyGroups.Add(new VirtualKeyGroup
+            {
+                Id = groupId,
+                GroupName = "Pending spend group"
+            });
             _dbContext.VirtualKeys.Add(new VirtualKey
             {
                 Id = virtualKeyId,
@@ -695,6 +704,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             _concreteDbContext?.Dispose();
             _serviceProvider?.Dispose();
             _service?.Dispose();
+            _database.Dispose();
         }
     }
 }

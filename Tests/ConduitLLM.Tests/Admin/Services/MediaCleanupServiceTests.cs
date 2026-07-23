@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Tests.TestInfrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,15 +39,12 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<ILogger<MediaCleanupService>> _mockLogger;
         private readonly Mock<IDistributedLock> _mockLock;
         private readonly ConduitDbContext _context;
+        private readonly SqliteTestDatabase _database;
 
         public MediaCleanupServiceTests()
         {
-            // Set up in-memory database
-            var dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
-                .Options;
-
-            _context = new ConduitDbContext(dbOptions);
+            _database = new SqliteTestDatabase();
+            _context = _database.CreateContext();
 
             _mockLockService = new Mock<IDistributedLockService>();
             _mockStorageService = new Mock<IMediaStorageService>();
@@ -702,6 +700,7 @@ namespace ConduitLLM.Tests.Admin.Services
         {
             _context?.Dispose();
             _serviceProvider?.Dispose();
+            _database.Dispose();
         }
     }
 }

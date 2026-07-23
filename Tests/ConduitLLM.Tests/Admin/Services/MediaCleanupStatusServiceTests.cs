@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Tests.TestInfrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,13 +21,12 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
 {
     private readonly ConduitDbContext _context;
     private readonly ServiceProvider _serviceProvider;
+    private readonly SqliteTestDatabase _database;
 
     public MediaCleanupStatusServiceTests()
     {
-        var dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-            .UseInMemoryDatabase($"MediaCleanupStatus_{Guid.NewGuid()}")
-            .Options;
-        _context = new ConduitDbContext(dbOptions);
+        _database = new SqliteTestDatabase();
+        _context = _database.CreateContext();
 
         var budgetService = new Mock<IMediaDeletionBudgetService>();
         budgetService
@@ -93,5 +93,6 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
     {
         _serviceProvider.Dispose();
         _context.Dispose();
+        _database.Dispose();
     }
 }

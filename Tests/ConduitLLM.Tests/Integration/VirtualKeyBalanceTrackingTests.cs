@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -24,20 +25,21 @@ namespace ConduitLLM.Tests.Integration
         private readonly VirtualKeyGroupRepository _repository;
         private readonly Mock<ILogger<VirtualKeyGroupRepository>> _mockLogger;
         private readonly DbContextOptions<ConduitDbContext> _dbOptions;
+        private readonly SqliteTestDatabase _database;
+        private readonly FailingSaveChangesInterceptor _saveFailure;
 
         public VirtualKeyBalanceTrackingTests()
         {
-            // Setup in-memory database for integration testing
-            _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-            _concreteDbContext = new ConduitDbContext(_dbOptions);
+            _saveFailure = new FailingSaveChangesInterceptor();
+            _database = new SqliteTestDatabase(_saveFailure);
+            _dbOptions = _database.Options;
+            _concreteDbContext = _database.CreateContext();
             _dbContext = _concreteDbContext;
 
             // Create a mock factory that returns contexts with the same database
             var mockFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             mockFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+                .ReturnsAsync(() => _database.CreateContext());
 
             _mockLogger = new Mock<ILogger<VirtualKeyGroupRepository>>();
             _repository = new VirtualKeyGroupRepository(mockFactory.Object, _mockLogger.Object);
@@ -277,6 +279,28 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        public async Task AdjustBalance_WhenLedgerSaveFails_ShouldRollbackBalanceUpdate()
+        {
+            var groupId = await _repository.CreateAsync(new VirtualKeyGroup
+            {
+                GroupName = "Rollback Group",
+                Balance = 100m,
+                LifetimeCreditsAdded = 100m
+            });
+            _saveFailure.Arm();
+
+            await Assert.ThrowsAsync<DbUpdateException>(() =>
+                _repository.AdjustBalanceAsync(groupId, -10m, "Usage", "System"));
+
+            _saveFailure.Disarm();
+            await using var verification = _database.CreateContext();
+            var group = await verification.VirtualKeyGroups.AsNoTracking().SingleAsync();
+            Assert.Equal(100m, group.Balance);
+            Assert.Equal(0m, group.LifetimeSpent);
+            Assert.Single(await verification.VirtualKeyGroupTransactions.ToListAsync());
+        }
+
+        [Fact]
         public async Task AdjustBalance_WithVirtualKeyReferenceType_ShouldCreateCorrectTransaction()
         {
             // Arrange
@@ -377,6 +401,7 @@ namespace ConduitLLM.Tests.Integration
         public void Dispose()
         {
             _concreteDbContext?.Dispose();
+            _database.Dispose();
         }
     }
 }

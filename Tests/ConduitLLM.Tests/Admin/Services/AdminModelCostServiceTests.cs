@@ -2,6 +2,8 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Tests.TestInfrastructure;
 
 
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +22,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<ILogger<AdminModelCostService>> _mockLogger;
         private readonly AdminModelCostService _service;
         private readonly DbContextOptions<ConduitDbContext> _dbContextOptions;
+        private readonly SqliteTestDatabase _database;
 
         public AdminModelCostServiceTests()
         {
@@ -29,14 +32,12 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockPublishEndpoint = new Mock<IEventBus>();
             _mockLogger = new Mock<ILogger<AdminModelCostService>>();
 
-            // Setup in-memory database options for testing
-            _dbContextOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
+            _database = new SqliteTestDatabase();
+            _dbContextOptions = _database.Options;
 
             // Setup factory to create new contexts each time
             _mockDbContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_dbContextOptions));
+                .ReturnsAsync(() => _database.CreateContext());
 
             _service = new AdminModelCostService(
                 _mockModelCostRepository.Object,
@@ -48,12 +49,35 @@ namespace ConduitLLM.Tests.Admin.Services
 
         public void Dispose()
         {
-            // Cleanup any remaining contexts if needed
+            _database.Dispose();
         }
 
         private ConduitDbContext CreateDbContext()
         {
-            return new ConduitDbContext(_dbContextOptions);
+            return _database.CreateContext();
+        }
+
+        private static void AddModels(ConduitDbContext context, params int[] modelIds)
+        {
+            foreach (var modelId in modelIds)
+            {
+                context.Models.Add(new Model
+                {
+                    Id = modelId,
+                    Name = $"admin-cost-model-{modelId}",
+                    Series = new ModelSeries
+                    {
+                        Id = modelId,
+                        Name = $"admin-cost-series-{modelId}",
+                        Parameters = "{}",
+                        Author = new ModelAuthor
+                        {
+                            Id = modelId,
+                            Name = $"admin-cost-author-{modelId}"
+                        }
+                    }
+                });
+            }
         }
     }
 }

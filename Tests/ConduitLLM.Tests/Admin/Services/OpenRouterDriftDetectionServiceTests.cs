@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using FluentAssertions;
 
@@ -27,20 +28,19 @@ namespace ConduitLLM.Tests.Admin.Services
     /// </summary>
     [Trait("Category", "Unit")]
     [Trait("Component", "Admin")]
-    public class OpenRouterDriftDetectionServiceTests
+    public class OpenRouterDriftDetectionServiceTests : IDisposable
     {
         private readonly DbContextOptions<ConduitDbContext> _dbOptions;
         private readonly Mock<IDbContextFactory<ConduitDbContext>> _dbFactory;
+        private readonly SqliteTestDatabase _database;
 
         public OpenRouterDriftDetectionServiceTests()
         {
-            _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
-                .Options;
+            _database = new SqliteTestDatabase();
+            _dbOptions = _database.Options;
             _dbFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             _dbFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+                .ReturnsAsync(() => _database.CreateContext());
         }
 
         private void SeedOpenRouterMapping(bool withCost = true)
@@ -157,5 +157,7 @@ namespace ConduitLLM.Tests.Admin.Services
             using var db = new ConduitDbContext(_dbOptions);
             db.ProviderMetadataDriftItems.Select(i => i.DriftType).Should().Contain(DriftType.MissingCost);
         }
+
+        public void Dispose() => _database.Dispose();
     }
 }

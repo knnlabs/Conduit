@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Gateway.Interfaces;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Tests.TestInfrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,16 +20,16 @@ public sealed class BillingReconciliationServiceTests : IDisposable
     private readonly Mock<IAlertManagementService> _alerts = new();
     private readonly BillingReconciliationService _service;
     private readonly DateTime _window = new(2026, 7, 19, 10, 0, 0, DateTimeKind.Utc);
+    private readonly SqliteTestDatabase _database;
 
     public BillingReconciliationServiceTests()
     {
-        _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-            .UseInMemoryDatabase($"billing-reconciliation-{Guid.NewGuid()}")
-            .Options;
-        _context = new ConduitDbContext(_dbOptions);
+        _database = new SqliteTestDatabase();
+        _dbOptions = _database.Options;
+        _context = _database.CreateContext();
         var factory = new Mock<IDbContextFactory<ConduitDbContext>>();
         factory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+            .ReturnsAsync(() => _database.CreateContext());
         _service = new BillingReconciliationService(
             factory.Object,
             _alerts.Object,
@@ -137,5 +138,9 @@ public sealed class BillingReconciliationServiceTests : IDisposable
         await _context.SaveChangesAsync();
     }
 
-    public void Dispose() => _context.Dispose();
+    public void Dispose()
+    {
+        _context.Dispose();
+        _database.Dispose();
+    }
 }

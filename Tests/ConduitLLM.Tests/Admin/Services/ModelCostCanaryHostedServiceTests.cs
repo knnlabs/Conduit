@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using FluentAssertions;
 
@@ -24,7 +25,7 @@ public sealed class ModelCostCanaryHostedServiceTests
     [Fact]
     public async Task RunOnceAsync_ChecksOnlyActiveMappings()
     {
-        var fixture = new CanaryFixture();
+        using var fixture = new CanaryFixture();
         fixture.AddMapping("active", enabled: true, cost: StandardCost(1));
         fixture.AddMapping("disabled", enabled: false, cost: StandardCost(2));
         fixture.AddMapping("provider-disabled", enabled: true, cost: StandardCost(3), providerEnabled: false);
@@ -45,7 +46,7 @@ public sealed class ModelCostCanaryHostedServiceTests
     [Fact]
     public async Task RunOnceAsync_MissingCost_WritesActionableAuditEvent()
     {
-        var fixture = new CanaryFixture();
+        using var fixture = new CanaryFixture();
         fixture.AddMapping("unpriced", enabled: true, cost: null);
 
         var result = await fixture.CreateService().RunOnceAsync();
@@ -62,7 +63,7 @@ public sealed class ModelCostCanaryHostedServiceTests
     [Fact]
     public async Task RunOnceAsync_ZeroCalculatedCost_IsFailure()
     {
-        var fixture = new CanaryFixture();
+        using var fixture = new CanaryFixture();
         fixture.AddMapping("zero", enabled: true, cost: StandardCost(1));
         fixture.CostService
             .Setup(service => service.CalculateCostByIdAsync(1, It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
@@ -78,7 +79,7 @@ public sealed class ModelCostCanaryHostedServiceTests
     [Fact]
     public async Task RunOnceAsync_InvalidPricingJson_FailsBeforeCalculation()
     {
-        var fixture = new CanaryFixture();
+        using var fixture = new CanaryFixture();
         fixture.AddMapping("bad-image", enabled: true, cost: new ModelCost
         {
             Id = 1,
@@ -99,7 +100,7 @@ public sealed class ModelCostCanaryHostedServiceTests
     [Fact]
     public async Task RunOnceAsync_AuditSinkFailure_DoesNotSkipRemainingModels()
     {
-        var fixture = new CanaryFixture();
+        using var fixture = new CanaryFixture();
         fixture.AddMapping("first", enabled: true, cost: StandardCost(1));
         fixture.AddMapping("second", enabled: true, cost: StandardCost(2));
         fixture.CostService
@@ -161,12 +162,9 @@ public sealed class ModelCostCanaryHostedServiceTests
         EffectiveDate = DateTime.UtcNow.AddDays(-1)
     };
 
-    private sealed class CanaryFixture
+    private sealed class CanaryFixture : IDisposable
     {
-        private readonly DbContextOptions<ConduitDbContext> _dbOptions =
-            new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options;
+        private readonly SqliteTestDatabase _database = new();
 
         internal Mock<ICostCalculationService> CostService { get; } = new(MockBehavior.Strict);
         internal Mock<IBillingAuditService> AuditService { get; } = new(MockBehavior.Strict);
@@ -184,7 +182,7 @@ public sealed class ModelCostCanaryHostedServiceTests
             bool providerEnabled = true,
             bool associationEnabled = true)
         {
-            using var context = new ConduitDbContext(_dbOptions);
+            using var context = _database.CreateContext();
             var id = context.ModelProviderMappings.Count() + 1;
             var provider = new Provider
             {
@@ -193,7 +191,24 @@ public sealed class ModelCostCanaryHostedServiceTests
                 ProviderType = ProviderType.OpenAI,
                 IsEnabled = providerEnabled
             };
-            var model = new Model { Id = id, Name = $"model-{id}" };
+            var author = new ModelAuthor
+            {
+                Id = id,
+                Name = $"canary-author-{id}"
+            };
+            var series = new ModelSeries
+            {
+                Id = id,
+                Author = author,
+                Name = $"canary-series-{id}",
+                Parameters = "{}"
+            };
+            var model = new Model
+            {
+                Id = id,
+                Name = $"model-{id}",
+                Series = series
+            };
             if (cost != null)
                 context.ModelCosts.Add(cost);
             context.Providers.Add(provider);
@@ -222,7 +237,7 @@ public sealed class ModelCostCanaryHostedServiceTests
         {
             var factory = new Mock<IDbContextFactory<ConduitDbContext>>();
             factory.Setup(item => item.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+                .ReturnsAsync(() => _database.CreateContext());
 
             var services = new ServiceCollection();
             services.AddSingleton(factory.Object);
@@ -235,5 +250,7 @@ public sealed class ModelCostCanaryHostedServiceTests
                 Options.Create(new BillingCostCanaryOptions()),
                 Mock.Of<ILogger<ModelCostCanaryHostedService>>());
         }
+
+        public void Dispose() => _database.Dispose();
     }
 }

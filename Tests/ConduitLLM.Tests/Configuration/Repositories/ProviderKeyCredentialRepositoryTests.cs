@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -12,28 +13,25 @@ namespace ConduitLLM.Tests.Configuration.Repositories
     {
         private readonly ConduitDbContext _context;
         private readonly DbContextOptions<ConduitDbContext> _options;
+        private readonly SqliteTestDatabase _database;
+        private readonly FailingSaveChangesInterceptor _saveFailure;
         private readonly Mock<IDbContextFactory<ConduitDbContext>> _mockContextFactory;
         private readonly ProviderKeyCredentialRepository _repository;
         private readonly Mock<ILogger<ProviderKeyCredentialRepository>> _mockLogger;
 
         public ProviderKeyCredentialRepositoryTests()
         {
-            _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
-                .Options;
-
-            _context = new ConduitDbContext(_options);
-            _context.IsTestEnvironment = true;
+            _saveFailure = new FailingSaveChangesInterceptor();
+            _database = new SqliteTestDatabase(_saveFailure);
+            _options = _database.Options;
+            _context = _database.CreateContext();
 
             _mockContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             // The factory must return a new context each time but sharing the same in-memory database
             _mockContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() =>
                 {
-                    var ctx = new ConduitDbContext(_options);
-                    ctx.IsTestEnvironment = true;
-                    return ctx;
+                    return _database.CreateContext();
                 });
 
             _mockLogger = new Mock<ILogger<ProviderKeyCredentialRepository>>();
@@ -46,14 +44,13 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         /// </summary>
         protected ConduitDbContext CreateVerificationContext()
         {
-            var ctx = new ConduitDbContext(_options);
-            ctx.IsTestEnvironment = true;
-            return ctx;
+            return _database.CreateContext();
         }
 
         public void Dispose()
         {
             _context.Dispose();
+            _database.Dispose();
         }
     }
 }

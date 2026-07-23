@@ -1,6 +1,5 @@
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Data.Sqlite;
 using ConduitLLM.Configuration;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Tests.TestInfrastructure
 {
@@ -10,33 +9,22 @@ namespace ConduitLLM.Tests.TestInfrastructure
     /// </summary>
     public abstract class RepositoryTestBase : IDisposable
     {
-        private readonly SqliteConnection _connection;
-        private readonly DbContextOptions<ConduitDbContext> _options;
+        private readonly SqliteTestDatabase _database;
         private bool _disposed;
 
         protected RepositoryTestBase()
         {
-            // Each test instance gets its own SQLite in-memory database
-            // This ensures complete isolation between tests
-            _connection = new SqliteConnection("DataSource=:memory:");
-            _connection.Open();
-
-            _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseSqlite(_connection)
-                .EnableSensitiveDataLogging()
-                .Options;
-
-            // Create the schema once for this test instance
-            using var context = new TestConduitDbContext(_options);
-            context.Database.EnsureCreated();
+            _database = new SqliteTestDatabase();
         }
+
+        protected SqliteTestDatabase Database => _database;
 
         /// <summary>
         /// Creates a fresh DbContext instance
         /// </summary>
         protected ConduitDbContext CreateContext()
         {
-            return new TestConduitDbContext(_options);
+            return _database.CreateContext();
         }
 
         /// <summary>
@@ -44,7 +32,7 @@ namespace ConduitLLM.Tests.TestInfrastructure
         /// </summary>
         protected IDbContextFactory<ConduitDbContext> CreateDbContextFactory()
         {
-            return new TestDbContextFactory(_options);
+            return _database.CreateDbContextFactory();
         }
 
         /// <summary>
@@ -52,9 +40,17 @@ namespace ConduitLLM.Tests.TestInfrastructure
         /// </summary>
         protected void SeedData(Action<ConduitDbContext> seedAction)
         {
-            using var context = CreateContext();
-            seedAction(context);
-            context.ChangeTracker.Clear();
+            _database.Seed(seedAction);
+        }
+
+        /// <summary>
+        /// Seeds test data asynchronously.
+        /// </summary>
+        protected Task SeedDataAsync(
+            Func<ConduitDbContext, Task> seedAction,
+            CancellationToken cancellationToken = default)
+        {
+            return _database.SeedAsync(seedAction, cancellationToken);
         }
 
         /// <summary>
@@ -62,9 +58,7 @@ namespace ConduitLLM.Tests.TestInfrastructure
         /// </summary>
         protected void AddTestData(Action<ConduitDbContext> seedAction)
         {
-            using var context = CreateContext();
-            seedAction(context);
-            context.ChangeTracker.Clear();
+            _database.Seed(seedAction);
         }
 
         public void Dispose()
@@ -79,7 +73,7 @@ namespace ConduitLLM.Tests.TestInfrastructure
             {
                 if (disposing)
                 {
-                    _connection?.Dispose();
+                    _database.Dispose();
                 }
                 _disposed = true;
             }
@@ -103,16 +97,21 @@ namespace ConduitLLM.Tests.TestInfrastructure
     /// </summary>
     public class TestDbContextFactory : IDbContextFactory<ConduitDbContext>
     {
-        private readonly DbContextOptions<ConduitDbContext> _options;
+        private readonly Func<ConduitDbContext> _createContext;
 
         public TestDbContextFactory(DbContextOptions<ConduitDbContext> options)
+            : this(() => new TestConduitDbContext(options))
         {
-            _options = options;
+        }
+
+        public TestDbContextFactory(Func<ConduitDbContext> createContext)
+        {
+            _createContext = createContext;
         }
 
         public ConduitDbContext CreateDbContext()
         {
-            return new TestConduitDbContext(_options);
+            return _createContext();
         }
 
         public Task<ConduitDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)

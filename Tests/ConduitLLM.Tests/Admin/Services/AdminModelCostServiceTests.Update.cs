@@ -68,6 +68,8 @@ namespace ConduitLLM.Tests.Admin.Services
             // Add existing associations to test context
             using (var setupContext = CreateDbContext())
             {
+                AddModels(setupContext, 1, 2, 3, 4, 5);
+                setupContext.ModelCosts.Add(new ModelCost { Id = 1, CostName = "Original Cost" });
                 setupContext.ModelProviderTypeAssociations.AddRange(new[]
                 {
                     new ModelProviderTypeAssociation { Id = 1, ModelCostId = 1, Identifier = "gpt-4", ModelId = 1, IsEnabled = true },

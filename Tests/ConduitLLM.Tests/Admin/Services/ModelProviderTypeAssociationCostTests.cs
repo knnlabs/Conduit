@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using FluentAssertions;
 
@@ -23,6 +24,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<ILogger<ModelCostService>> _mockLogger;
         private readonly ModelCostService _service;
         private readonly DbContextOptions<ConduitDbContext> _dbOptions;
+        private readonly SqliteTestDatabase _database;
 
         public ModelProviderTypeAssociationCostTests()
         {
@@ -36,10 +38,8 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockLogger.Object
             );
 
-            // Setup in-memory database for testing
-            _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
-                .Options;
+            _database = new SqliteTestDatabase();
+            _dbOptions = _database.Options;
         }
 
         [Fact]
@@ -213,6 +213,7 @@ namespace ConduitLLM.Tests.Admin.Services
             using (var context = new ConduitDbContext(_dbOptions))
             {
                 // Arrange
+                AddModels(context, 1);
                 var association = new ModelProviderTypeAssociation
                 {
                     Id = 1,
@@ -240,6 +241,7 @@ namespace ConduitLLM.Tests.Admin.Services
             using (var context = new ConduitDbContext(_dbOptions))
             {
                 // Arrange
+                AddModels(context, 1, 2);
                 var cost = new ModelCost
                 {
                     Id = 1,
@@ -293,6 +295,30 @@ namespace ConduitLLM.Tests.Admin.Services
 
         public void Dispose()
         {
+            _database.Dispose();
+        }
+
+        private static void AddModels(ConduitDbContext context, params int[] modelIds)
+        {
+            foreach (var modelId in modelIds)
+            {
+                context.Models.Add(new Model
+                {
+                    Id = modelId,
+                    Name = $"association-model-{modelId}",
+                    Series = new ModelSeries
+                    {
+                        Id = modelId,
+                        Name = $"association-series-{modelId}",
+                        Parameters = "{}",
+                        Author = new ModelAuthor
+                        {
+                            Id = modelId,
+                            Name = $"association-author-{modelId}"
+                        }
+                    }
+                });
+            }
         }
     }
 }

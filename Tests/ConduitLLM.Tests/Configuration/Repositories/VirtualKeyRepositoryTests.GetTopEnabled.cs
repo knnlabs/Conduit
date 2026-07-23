@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using FluentAssertions;
 
@@ -26,21 +27,19 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         private readonly Mock<ILogger<VirtualKeyRepository>> _mockLogger;
         private readonly VirtualKeyRepository _repository;
         private readonly ITestOutputHelper _output;
+        private readonly SqliteTestDatabase _database;
 
         public VirtualKeyRepositoryGetTopEnabledTests(ITestOutputHelper output)
         {
             _output = output;
 
-            // Setup in-memory database for testing
-            _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-
-            _context = new ConduitDbContext(_options);
+            _database = new SqliteTestDatabase();
+            _options = _database.Options;
+            _context = _database.CreateContext();
             _mockContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             // The factory must return a new context each time to simulate production behavior
             _mockContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_options));
+                .ReturnsAsync(() => _database.CreateContext());
 
             _mockLogger = new Mock<ILogger<VirtualKeyRepository>>();
 
@@ -247,6 +246,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public void Dispose()
         {
             _context?.Dispose();
+            _database.Dispose();
         }
     }
 }

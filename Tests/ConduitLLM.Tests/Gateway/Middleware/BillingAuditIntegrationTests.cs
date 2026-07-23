@@ -19,6 +19,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.UsageTracking;
+using ConduitLLM.Tests.TestInfrastructure;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware
@@ -29,7 +30,7 @@ namespace ConduitLLM.Tests.Http.Middleware
     public class BillingAuditIntegrationTests : IDisposable
     {
         private readonly ServiceProvider _serviceProvider;
-        private readonly string _databaseName;
+        private readonly SqliteTestDatabase _database;
         private readonly IBillingAuditService _billingAuditService;
         private readonly Mock<ICostCalculationService> _mockCostService;
         private readonly Mock<IBatchSpendUpdateService> _mockBatchSpendService;
@@ -43,10 +44,9 @@ namespace ConduitLLM.Tests.Http.Middleware
         {
             var services = new ServiceCollection();
             
-            // Configure in-memory database with a consistent name for this test instance
-            _databaseName = $"BillingAuditIntegrationTestDb_{Guid.NewGuid()}";
+            _database = new SqliteTestDatabase();
             services.AddDbContext<ConduitDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName: _databaseName),
+                options.UseSqlite(_database.ConnectionString),
                 ServiceLifetime.Scoped);
             
             // Register logger
@@ -60,6 +60,22 @@ namespace ConduitLLM.Tests.Http.Middleware
             {
                 var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
                 context.Database.EnsureCreated();
+                context.VirtualKeyGroups.Add(new VirtualKeyGroup
+                {
+                    Id = 1,
+                    GroupName = "Billing audit test group"
+                });
+                context.VirtualKeys.AddRange(
+                    new[] { 123, 456, 789, 111, 222, 333, 444 }
+                .Select(id => new VirtualKey
+                {
+                    Id = id,
+                    VirtualKeyGroupId = 1,
+                    KeyName = $"Billing audit key {id}",
+                    KeyHash = $"billing-audit-{id}",
+                    IsEnabled = true
+                }));
+                context.SaveChanges();
             }
             
             // Create BillingAuditService with the service provider
@@ -541,6 +557,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             }
             (_billingAuditService as IDisposable)?.Dispose();
             _serviceProvider?.Dispose();
+            _database.Dispose();
         }
     }
 }

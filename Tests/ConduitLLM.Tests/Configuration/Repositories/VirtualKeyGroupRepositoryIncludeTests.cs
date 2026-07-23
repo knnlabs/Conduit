@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -19,21 +20,20 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         private readonly VirtualKeyGroupRepository _repository;
         private readonly Mock<ILogger<VirtualKeyGroupRepository>> _loggerMock;
         private readonly Mock<IDbContextFactory<ConduitDbContext>> _dbContextFactoryMock;
+        private readonly SqliteTestDatabase _database;
 
         public VirtualKeyGroupRepositoryIncludeTests()
         {
-            // Use in-memory database for testing
-            _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
+            _database = new SqliteTestDatabase();
+            _options = _database.Options;
 
             _dbContextFactoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
             _dbContextFactoryMock
                 .Setup(f => f.CreateDbContext())
-                .Returns(() => new ConduitDbContext(_options));
+                .Returns(() => _database.CreateContext());
             _dbContextFactoryMock
                 .Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_options));
+                .ReturnsAsync(() => _database.CreateContext());
 
             _loggerMock = new Mock<ILogger<VirtualKeyGroupRepository>>();
             _repository = new VirtualKeyGroupRepository(_dbContextFactoryMock.Object, _loggerMock.Object);
@@ -44,7 +44,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
         private void SeedTestData()
         {
-            using var context = new ConduitDbContext(_options);
+            using var context = _database.CreateContext();
 
             // Create test groups
             var group1 = new VirtualKeyGroup
@@ -230,7 +230,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
         public void Dispose()
         {
-            // Clean up any resources if needed
+            _database.Dispose();
         }
     }
 }

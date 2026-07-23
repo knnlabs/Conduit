@@ -7,6 +7,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Tests.TestInfrastructure;
 
 namespace ConduitLLM.Tests.Http.Services
 {
@@ -16,24 +17,24 @@ namespace ConduitLLM.Tests.Http.Services
         private readonly Mock<ILogger<ToolCostCalculationService>> _loggerMock;
         private readonly ToolCostCalculationService _service;
         private readonly DbContextOptions<ConduitDbContext> _options;
+        private readonly SqliteTestDatabase _database;
 
         public ToolCostCalculationServiceTests()
         {
-            _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: $"TestDb_{Guid.NewGuid()}")
-                .Options;
-
-            _context = new ConduitDbContext(_options);
+            _database = new SqliteTestDatabase();
+            _options = _database.Options;
+            _context = _database.CreateContext();
             _loggerMock = new Mock<ILogger<ToolCostCalculationService>>();
             var factoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
             factoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_options));
+                .ReturnsAsync(() => _database.CreateContext());
             _service = new ToolCostCalculationService(factoryMock.Object, _loggerMock.Object);
         }
 
         public void Dispose()
         {
             _context?.Dispose();
+            _database.Dispose();
         }
 
         [Fact]

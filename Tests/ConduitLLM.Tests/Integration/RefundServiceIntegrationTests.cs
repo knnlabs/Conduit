@@ -8,6 +8,7 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -32,20 +33,21 @@ namespace ConduitLLM.Tests.Integration
         private readonly Mock<ILogger<VirtualKeyGroupRepository>> _mockGroupLogger;
         private readonly Mock<ILogger<RefundService>> _mockRefundLogger;
         private readonly DbContextOptions<ConduitDbContext> _dbOptions;
+        private readonly SqliteTestDatabase _database;
+        private readonly FailingSaveChangesInterceptor _saveFailure;
 
         public RefundServiceIntegrationTests()
         {
-            // Setup in-memory database for integration testing
-            _dbOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-            _concreteDbContext = new ConduitDbContext(_dbOptions);
+            _saveFailure = new FailingSaveChangesInterceptor();
+            _database = new SqliteTestDatabase(_saveFailure);
+            _dbOptions = _database.Options;
+            _concreteDbContext = _database.CreateContext();
             _dbContext = _concreteDbContext;
 
             // Create a mock factory that returns contexts with the same database
             var mockFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             mockFactory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_dbOptions));
+                .ReturnsAsync(() => _database.CreateContext());
 
             _mockGroupLogger = new Mock<ILogger<VirtualKeyGroupRepository>>();
             _groupRepository = new VirtualKeyGroupRepository(mockFactory.Object, _mockGroupLogger.Object);
@@ -313,6 +315,59 @@ namespace ConduitLLM.Tests.Integration
         }
 
         [Fact]
+        public async Task ProcessRefund_WhenReplayRecordSaveFails_RollsBackBalanceAndLedger()
+        {
+            const decimal initialBalance = 100m;
+            var groupId = await _groupRepository.CreateAsync(new VirtualKeyGroup
+            {
+                GroupName = "Refund rollback group",
+                Balance = initialBalance,
+                LifetimeCreditsAdded = initialBalance
+            });
+            var originalTransactionId = await AddDebitAsync(groupId, 20m, initialBalance);
+            var originalUsage = new Usage { PromptTokens = 100, TotalTokens = 100 };
+            var refundUsage = new Usage { PromptTokens = 25, TotalTokens = 25 };
+            _mockCostCalculationService
+                .Setup(service => service.CalculateRefundAsync(
+                    "openai/gpt-4o",
+                    originalUsage,
+                    refundUsage,
+                    "rollback",
+                    originalTransactionId,
+                    It.IsAny<ProviderCostRefundContext?>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new RefundResult
+                {
+                    ModelId = "openai/gpt-4o",
+                    RefundAmount = 5m,
+                    ValidationMessages = []
+                });
+            _saveFailure.Arm(failOnCall: 2);
+
+            await Assert.ThrowsAsync<DbUpdateException>(() =>
+                _refundService.ProcessRefundAsync(
+                    groupId,
+                    "openai/gpt-4o",
+                    originalUsage,
+                    refundUsage,
+                    "rollback",
+                    originalTransactionId,
+                    "refund-rollback",
+                    "TestAdmin",
+                    null));
+
+            _saveFailure.Disarm();
+            await using var verification = _database.CreateContext();
+            Assert.Equal(
+                initialBalance,
+                (await verification.VirtualKeyGroups.AsNoTracking().SingleAsync()).Balance);
+            Assert.Empty(await verification.VirtualKeyGroupTransactions
+                .Where(transaction => transaction.TransactionType == TransactionType.Refund)
+                .ToListAsync());
+            Assert.Empty(await verification.RefundIdempotencyRecords.ToListAsync());
+        }
+
+        [Fact]
         public async Task ProcessRefund_WithCumulativeRefundAboveOriginalDebit_ShouldRejectExcess()
         {
             var initialBalance = 100m;
@@ -399,6 +454,7 @@ namespace ConduitLLM.Tests.Integration
         public void Dispose()
         {
             _concreteDbContext?.Dispose();
+            _database.Dispose();
         }
     }
 }

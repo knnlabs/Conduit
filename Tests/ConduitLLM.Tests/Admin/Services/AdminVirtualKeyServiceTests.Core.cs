@@ -6,7 +6,6 @@ using ConduitLLM.Tests.TestInfrastructure;
 
 using ConduitLLM.Configuration.Messaging;
 
-using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -25,7 +24,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IMediaLifecycleService> _mockMediaLifecycleService;
         private readonly Mock<IModelProviderMappingRepository> _mockModelProviderMappingRepository;
         private readonly Mock<IModelCapabilityService> _mockModelCapabilityService;
-        private readonly SqliteConnection _connection;
+        private readonly SqliteTestDatabase _database;
         private readonly DbContextOptions<ConduitDbContext> _dbContextOptions;
         private readonly TestDbContextFactory _dbContextFactory;
         private readonly AdminVirtualKeyService _service;
@@ -45,16 +44,9 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // SQLite-backed factory so tests that hit ExecuteUpdateAsync (e.g. PerformMaintenanceAsync)
             // run against a real relational provider. EF's InMemory provider does not support it.
-            _connection = new SqliteConnection("DataSource=:memory:");
-            _connection.Open();
-            _dbContextOptions = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseSqlite(_connection)
-                .Options;
-            using (var ctx = new TestConduitDbContext(_dbContextOptions))
-            {
-                ctx.Database.EnsureCreated();
-            }
-            _dbContextFactory = new TestDbContextFactory(_dbContextOptions);
+            _database = new SqliteTestDatabase();
+            _dbContextOptions = _database.Options;
+            _dbContextFactory = new TestDbContextFactory(_database.CreateContext);
 
             _service = new AdminVirtualKeyService(
                 _mockVirtualKeyRepository.Object,
@@ -72,7 +64,7 @@ namespace ConduitLLM.Tests.Admin.Services
         public void Dispose()
         {
             if (_disposed) return;
-            _connection.Dispose();
+            _database.Dispose();
             _disposed = true;
             GC.SuppressFinalize(this);
         }

@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Tests.TestInfrastructure;
 
 using FluentAssertions;
 
@@ -26,22 +27,20 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         private readonly Mock<ILogger<VirtualKeyRepository>> _mockLogger;
         private readonly VirtualKeyRepository _repository;
         private readonly ITestOutputHelper _output;
+        private readonly SqliteTestDatabase _database;
 
         public VirtualKeyRepositoryExampleTests(ITestOutputHelper output)
         {
             _output = output;
             
-            // Setup in-memory database for testing
-            _options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
-                .Options;
-            
-            _context = new ConduitDbContext(_options);
+            _database = new SqliteTestDatabase();
+            _options = _database.Options;
+            _context = _database.CreateContext();
             _mockContextFactory = new Mock<IDbContextFactory<ConduitDbContext>>();
             // The factory must return a new context each time to simulate production behavior
             // where each operation gets its own context that will be disposed
             _mockContextFactory.Setup(x => x.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(() => new ConduitDbContext(_options));
+                .ReturnsAsync(() => _database.CreateContext());
             
             _mockLogger = new Mock<ILogger<VirtualKeyRepository>>();
             
@@ -107,6 +106,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public async Task CreateAsync_WithValidKey_ShouldCreateAndReturnId()
         {
             // Arrange
+            await EnsureGroupAsync();
             var key = new VirtualKey
             {
                 KeyName = "New Key",
@@ -147,11 +147,13 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public async Task UpdateAsync_WithExistingKey_ShouldReturnTrue()
         {
             // Arrange
+            await EnsureGroupAsync();
             var key = new VirtualKey
             {
                 KeyName = "Original Name",
                 KeyHash = "update-hash-789",
                 IsEnabled = true,
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -208,11 +210,13 @@ namespace ConduitLLM.Tests.Configuration.Repositories
         public async Task DeleteAsync_WithExistingKey_ShouldReturnTrue()
         {
             // Arrange
+            await EnsureGroupAsync();
             var key = new VirtualKey
             {
                 KeyName = "To Delete",
                 KeyHash = "delete-hash",
                 IsEnabled = true,
+                VirtualKeyGroupId = 1,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -247,9 +251,25 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
         // Note: BulkUpdateSpendAsync has been removed as spend tracking is now at the group level
 
+        private async Task EnsureGroupAsync()
+        {
+            if (await _context.VirtualKeyGroups.AnyAsync(group => group.Id == 1))
+            {
+                return;
+            }
+
+            _context.VirtualKeyGroups.Add(new VirtualKeyGroup
+            {
+                Id = 1,
+                GroupName = "Repository test group"
+            });
+            await _context.SaveChangesAsync();
+        }
+
         public void Dispose()
         {
             _context?.Dispose();
+            _database.Dispose();
         }
     }
 }

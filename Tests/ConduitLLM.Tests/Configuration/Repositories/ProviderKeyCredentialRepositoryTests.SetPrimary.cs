@@ -146,6 +146,16 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             };
             _context.Providers.AddRange(provider1, provider2);
 
+            var existingPrimary = new ProviderKeyCredential
+            {
+                Id = 2,
+                ProviderId = 1,
+                ApiKey = "provider1-key",
+                IsPrimary = true,
+                IsEnabled = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
             var key = new ProviderKeyCredential
             {
                 Id = 1,
@@ -157,7 +167,7 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _context.ProviderKeyCredentials.Add(key);
+            _context.ProviderKeyCredentials.AddRange(existingPrimary, key);
             await _context.SaveChangesAsync();
 
             // Act
@@ -165,12 +175,14 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.False(result);
+            using var verifyContext = CreateVerificationContext();
+            Assert.True((await verifyContext.ProviderKeyCredentials
+                .SingleAsync(item => item.Id == existingPrimary.Id)).IsPrimary);
         }
 
         [Fact]
-        public async Task SetPrimaryKeyAsync_WithMultiplePrimaryKeys_ShouldFixDataCorruption()
+        public async Task Database_ShouldRejectMultiplePrimaryKeysForOneProvider()
         {
-            // Arrange - simulate data corruption with multiple primary keys
             var provider = new Provider
             {
                 Id = 1,
@@ -181,7 +193,6 @@ namespace ConduitLLM.Tests.Configuration.Repositories
             };
             _context.Providers.Add(provider);
 
-            // Directly insert corrupted data bypassing constraints
             var key1 = new ProviderKeyCredential
             {
                 Id = 1,
@@ -197,44 +208,15 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 Id = 2,
                 ProviderId = 1,
                 ApiKey = "key2",
-                IsPrimary = true, // Corrupted - also primary
+                IsPrimary = true,
                 IsEnabled = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            var key3 = new ProviderKeyCredential
-            {
-                Id = 3,
-                ProviderId = 1,
-                ApiKey = "key3",
-                IsPrimary = false,
-                IsEnabled = true,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
+            _context.ProviderKeyCredentials.AddRange(key1, key2);
 
-            _context.ProviderKeyCredentials.AddRange(key1, key2, key3);
-
-            // Save without constraint validation (simulating corruption)
-            _context.ChangeTracker.AutoDetectChangesEnabled = false;
-            await _context.SaveChangesAsync();
-            _context.ChangeTracker.AutoDetectChangesEnabled = true;
-
-            // Act
-            var result = await _repository.SetPrimaryKeyAsync(1, 3);
-
-            // Assert
-            Assert.True(result);
-
-            using var verifyContext = CreateVerificationContext();
-            var keys = await verifyContext.ProviderKeyCredentials
-                .Where(k => k.ProviderId == 1)
-                .ToListAsync();
-
-            Assert.Equal(3, keys.Count);
-            Assert.False(keys.First(k => k.Id == 1).IsPrimary);
-            Assert.False(keys.First(k => k.Id == 2).IsPrimary);
-            Assert.True(keys.First(k => k.Id == 3).IsPrimary);
+            await Assert.ThrowsAsync<DbUpdateException>(
+                () => _context.SaveChangesAsync());
         }
 
         [Fact]
@@ -261,35 +243,62 @@ namespace ConduitLLM.Tests.Configuration.Repositories
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
+            var replacement = new ProviderKeyCredential
+            {
+                Id = 2,
+                ProviderId = 1,
+                ApiKey = "key2",
+                IsPrimary = false,
+                IsEnabled = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
 
-            _context.ProviderKeyCredentials.Add(existingPrimaryKey);
+            _context.ProviderKeyCredentials.AddRange(existingPrimaryKey, replacement);
             await _context.SaveChangesAsync();
 
-            // Create a new context that will fail on SaveChangesAsync
-            var options = new DbContextOptionsBuilder<ConduitDbContext>()
-                .UseInMemoryDatabase(databaseName: "FailingDb")
-                .Options;
+            _saveFailure.Arm(failOnCall: 2);
 
-            // Use a mock context that throws on second SaveChangesAsync
-            var mockContext = new Mock<ConduitDbContext>(options);
-            var callCount = 0;
-            mockContext.Setup(x => x.SaveChangesAsync(default))
-                .Returns(() =>
+            await Assert.ThrowsAsync<DbUpdateException>(
+                () => _repository.SetPrimaryKeyAsync(1, 2));
+
+            _saveFailure.Disarm();
+            await using var verifyContext = CreateVerificationContext();
+            var keys = await verifyContext.ProviderKeyCredentials
+                .AsNoTracking()
+                .Where(key => key.ProviderId == 1)
+                .OrderBy(key => key.Id)
+                .ToListAsync();
+            Assert.True(keys[0].IsPrimary);
+            Assert.False(keys[1].IsPrimary);
+        }
+
+        [Fact]
+        public async Task SetPrimaryKeyAsync_WithMissingTarget_ShouldPreserveExistingPrimary()
+        {
+            var provider = new Provider
+            {
+                Id = 1,
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+            _context.AddRange(
+                provider,
+                new ProviderKeyCredential
                 {
-                    callCount++;
-                    if (callCount == 2)
-                    {
-                        throw new DbUpdateException("Simulated failure");
-                    }
-                    return Task.FromResult(0);
+                    Id = 1,
+                    ProviderId = 1,
+                    ApiKey = "key1",
+                    IsPrimary = true,
+                    IsEnabled = true
                 });
+            await _context.SaveChangesAsync();
 
-            // This test is complex to implement with in-memory database
-            // In a real scenario, you'd use a test database that can simulate failures
-            // For now, we'll verify the transaction pattern is correct in the implementation
+            var result = await _repository.SetPrimaryKeyAsync(1, 999);
 
-            // Assert - implementation uses transaction correctly
-            Assert.True(true); // Placeholder - transaction testing requires more setup
+            Assert.False(result);
+            await using var verifyContext = CreateVerificationContext();
+            Assert.True((await verifyContext.ProviderKeyCredentials.SingleAsync()).IsPrimary);
         }
 
         [Fact]

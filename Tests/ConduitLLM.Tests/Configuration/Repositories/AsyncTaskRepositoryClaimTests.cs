@@ -2,7 +2,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
-using Microsoft.Data.Sqlite;
+using ConduitLLM.Tests.TestInfrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,19 +11,28 @@ namespace ConduitLLM.Tests.Configuration.Repositories;
 
 public sealed class AsyncTaskRepositoryClaimTests : IDisposable
 {
-    private readonly SqliteConnection _connection;
+    private readonly SqliteTestDatabase _database;
     private readonly DbContextOptions<ConduitDbContext> _options;
     private readonly AsyncTaskRepository _repository;
 
     public AsyncTaskRepositoryClaimTests()
     {
-        _connection = new SqliteConnection("Data Source=:memory:;Foreign Keys=False");
-        _connection.Open();
-        _options = new DbContextOptionsBuilder<ConduitDbContext>()
-            .UseSqlite(_connection)
-            .Options;
-        using var context = new ConduitDbContext(_options);
-        context.Database.EnsureCreated();
+        _database = new SqliteTestDatabase();
+        _options = _database.Options;
+        using var context = _database.CreateContext();
+        context.VirtualKeyGroups.Add(new VirtualKeyGroup
+        {
+            Id = 1,
+            GroupName = "Async task test group"
+        });
+        context.VirtualKeys.Add(new VirtualKey
+        {
+            Id = 1,
+            VirtualKeyGroupId = 1,
+            KeyName = "Async task test key",
+            KeyHash = "async-task-test-key",
+            IsEnabled = true
+        });
         context.AsyncTasks.Add(new AsyncTask
         {
             Id = "media-claim-1",
@@ -35,7 +44,7 @@ public sealed class AsyncTaskRepositoryClaimTests : IDisposable
 
         var factory = new Mock<IDbContextFactory<ConduitDbContext>>();
         factory.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => new ConduitDbContext(_options));
+            .ReturnsAsync(() => _database.CreateContext());
         _repository = new AsyncTaskRepository(
             factory.Object, Mock.Of<ILogger<AsyncTaskRepository>>());
     }
@@ -123,5 +132,5 @@ public sealed class AsyncTaskRepositoryClaimTests : IDisposable
         Assert.Null(recoveredTask.LeaseExpiryTime);
     }
 
-    public void Dispose() => _connection.Dispose();
+    public void Dispose() => _database.Dispose();
 }
