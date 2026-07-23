@@ -8,10 +8,30 @@ namespace ConduitLLM.Gateway.OpenApi;
 /// <summary>Normalizes Gateway media types, errors, binary bodies, and request IDs.</summary>
 public sealed class ResponseContractOperationTransformer : IOpenApiOperationTransformer
 {
+    private static readonly HashSet<string> OpenAICompatibleOperations =
+    [
+        "Models_ListModels",
+        "Models_RetrieveModel",
+        "Embeddings_Create",
+        "Chat_CreateCompletion",
+        "Audio_CreateTranscription",
+        "Audio_CreateSpeech",
+        "Images_Create"
+    ];
+
     private static readonly IReadOnlyDictionary<string, string[]> BinaryContentTypes =
         new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
-            ["Audio_CreateSpeech"] = ["audio/mpeg"],
+            ["Audio_CreateSpeech"] =
+            [
+                "audio/mpeg",
+                "audio/opus",
+                "audio/aac",
+                "audio/flac",
+                "audio/wav",
+                "audio/pcm",
+                "application/octet-stream"
+            ],
             ["Downloads_Get"] = ["application/octet-stream"],
             ["Media_Get"] = ["application/octet-stream"]
         };
@@ -23,14 +43,35 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
     {
         Normalize(operation, context.Description.HttpMethod);
 
-        if (operation.OperationId is "Audio_CreateTranscription" or "Media_Upload" &&
+        if (operation.OperationId == "Media_Upload" &&
             operation.RequestBody?.Content?["multipart/form-data"].Schema is OpenApiSchema multipartSchema)
         {
             multipartSchema.Required?.Clear();
-            if (operation.OperationId == "Media_Upload")
+            operation.RequestBody.Description = "Optional media type (image/video/audio).";
+        }
+
+        if (operation.OperationId == "Audio_CreateTranscription" &&
+            operation.RequestBody?.Content?["multipart/form-data"].Schema is OpenApiSchema transcriptionSchema)
+        {
+            transcriptionSchema.Properties ??= new Dictionary<string, IOpenApiSchema>();
+            foreach (var propertyName in new[]
             {
-                operation.RequestBody.Description = "Optional media type (image/video/audio).";
+                "include",
+                "known_speaker_names",
+                "timestamp_granularities"
+            })
+            {
+                transcriptionSchema.Properties[propertyName] = new OpenApiSchema
+                {
+                    Type = JsonSchemaType.Array,
+                    Items = new OpenApiSchema { Type = JsonSchemaType.String }
+                };
             }
+            transcriptionSchema.Properties["known_speaker_references"] = new OpenApiSchema
+            {
+                Type = JsonSchemaType.Array,
+                Items = new OpenApiSchema { Type = JsonSchemaType.String, Format = "binary" }
+            };
         }
 
         if (operation.Responses is null)
@@ -47,6 +88,12 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
         components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
         components.Schemas["OpenAIErrorResponse"] = schema;
         var errorReference = new OpenApiSchemaReference("OpenAIErrorResponse", document);
+
+        if (operation.OperationId is not null &&
+            OpenAICompatibleOperations.Contains(operation.OperationId))
+        {
+            AddOpenAIErrorResponses(operation, errorReference);
+        }
 
         foreach (var responseEntry in operation.Responses)
         {
@@ -68,6 +115,15 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                 {
                     ["application/json"] = new() { Schema = errorReference }
                 };
+
+                if (status is 429 or 503)
+                {
+                    response.Headers["Retry-After"] = new OpenApiHeader
+                    {
+                        Description = "Delay in seconds before retrying the request.",
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.String }
+                    };
+                }
             }
         }
     }
@@ -126,5 +182,35 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
         content?.Remove("text/json");
         content?.Remove("text/plain");
         content?.Remove("application/*+json");
+    }
+
+    private static void AddOpenAIErrorResponses(
+        OpenApiOperation operation,
+        IOpenApiSchema errorReference)
+    {
+        var descriptions = new Dictionary<string, string>
+        {
+            ["401"] = "Authentication failed.",
+            ["403"] = "The authenticated key is not authorized for this operation.",
+            ["408"] = "The request timed out.",
+            ["413"] = "The request payload is too large.",
+            ["429"] = "The request exceeded an applicable rate limit.",
+            ["503"] = "The service is temporarily unavailable."
+        };
+
+        foreach (var (status, description) in descriptions)
+        {
+            if (operation.Responses!.ContainsKey(status))
+                continue;
+
+            operation.Responses[status] = new OpenApiResponse
+            {
+                Description = description,
+                Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/json"] = new() { Schema = errorReference }
+                }
+            };
+        }
     }
 }

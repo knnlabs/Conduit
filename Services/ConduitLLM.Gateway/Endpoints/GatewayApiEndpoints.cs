@@ -162,8 +162,13 @@ public static class GatewayApiEndpoints
         audio.MapPost("/transcriptions", ([FromServices] AudioEndpoints endpoints,
                 [FromForm] IFormFile file, [FromForm] string model, [FromForm] string? language,
                 [FromForm] string? prompt, [FromForm(Name = "response_format")] string? responseFormat,
-                [FromForm] double? temperature, CancellationToken cancellationToken) =>
-                endpoints.CreateTranscription(file, model, language, prompt, responseFormat, temperature, cancellationToken))
+                [FromForm] double? temperature,
+                [FromForm(Name = "chunking_strategy")] string? chunkingStrategy,
+                [FromForm] bool? stream,
+                CancellationToken cancellationToken) =>
+                endpoints.CreateTranscription(
+                    file, model, language, prompt, responseFormat, temperature,
+                    chunkingStrategy, stream, cancellationToken))
             .WithName("Audio_CreateTranscription").DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitMetadata(26_214_400))
             .Produces<AudioTranscriptionResponse>();

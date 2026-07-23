@@ -41,6 +41,8 @@ namespace ConduitLLM.Gateway.Endpoints
             string? prompt = null,
             string? responseFormat = null,
             double? temperature = null,
+            string? chunkingStrategy = null,
+            bool? stream = null,
             CancellationToken cancellationToken = default)
         {
             if (file == null || file.Length == 0)
@@ -72,8 +74,31 @@ namespace ConduitLLM.Gateway.Endpoints
                 Language = language,
                 Prompt = prompt,
                 Temperature = temperature,
-                ResponseFormat = responseFormat
+                ResponseFormat = responseFormat,
+                ChunkingStrategy = ParseChunkingStrategy(chunkingStrategy),
+                Include = ReadFormValues(HttpContext.Request.Form, "include"),
+                KnownSpeakerNames = ReadFormValues(HttpContext.Request.Form, "known_speaker_names"),
+                Stream = stream,
+                TimestampGranularities = ReadFormValues(
+                    HttpContext.Request.Form, "timestamp_granularities")
             };
+            var knownSpeakerReferences =
+                HttpContext.Request.Form.Files.GetFiles("known_speaker_references");
+            if (knownSpeakerReferences.Count > 0)
+            {
+                request.KnownSpeakerReferences = [];
+                foreach (var reference in knownSpeakerReferences)
+                {
+                    using var referenceStream = new MemoryStream();
+                    await reference.CopyToAsync(referenceStream, cancellationToken);
+                    request.KnownSpeakerReferences.Add(new AudioTranscriptionReference
+                    {
+                        AudioData = referenceStream.ToArray(),
+                        FileName = reference.FileName,
+                        ContentType = reference.ContentType
+                    });
+                }
+            }
 
             var result = await stt.TranscribeAudioAsync(request, cancellationToken: cancellationToken);
             result.Model = model; // echo the caller's alias, not the provider model id
@@ -98,6 +123,44 @@ namespace ConduitLLM.Gateway.Endpoints
             if (string.Equals(responseFormat, "text", StringComparison.OrdinalIgnoreCase))
                 return Content(result.Text, "text/plain");
             return Ok(result);
+        }
+
+        private static System.Text.Json.JsonElement? ParseChunkingStrategy(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(value);
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return System.Text.Json.JsonSerializer.SerializeToElement(value);
+            }
+        }
+
+        private static List<string>? ReadFormValues(IFormCollection form, string name)
+        {
+            var values = form[name].Concat(form[$"{name}[]"])
+                .Where(value => value is not null)
+                .Select(value => value!)
+                .ToList();
+            if (values.Count == 1 &&
+                values[0] is { } value &&
+                value.TrimStart().StartsWith("[", StringComparison.Ordinal))
+            {
+                try
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<string>>(value);
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // Preserve malformed JSON-looking values for provider validation.
+                }
+            }
+
+            return values.Count == 0 ? null : values!;
         }
 
         /// <summary>

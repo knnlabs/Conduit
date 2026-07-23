@@ -36,6 +36,11 @@ public class ChatCompletionRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? MaxTokens { get; set; }
 
+    /// <summary>The maximum number of generated tokens, including visible and reasoning tokens.</summary>
+    [JsonPropertyName("max_completion_tokens")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MaxCompletionTokens { get; set; }
+
     /// <summary>
     /// An alternative to sampling with temperature, called nucleus sampling, where the model considers the results of
     /// the tokens with top_p probability mass. So 0.1 means only the tokens comprising the top 10% probability mass are considered.
@@ -91,6 +96,7 @@ public class ChatCompletionRequest
     /// </summary>
     [JsonPropertyName("stop")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    [JsonConverter(typeof(StringOrStringArrayConverter))]
     public List<string>? Stop { get; set; }
 
     /// <summary>
@@ -123,6 +129,16 @@ public class ChatCompletionRequest
     [JsonPropertyName("tool_choice")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ToolChoice? ToolChoice { get; set; }
+
+    /// <summary>Deprecated function definitions retained for official SDK compatibility.</summary>
+    [JsonPropertyName("functions")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<FunctionDefinition>? Functions { get; set; }
+
+    /// <summary>Deprecated function selection retained for official SDK compatibility.</summary>
+    [JsonPropertyName("function_call")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LegacyFunctionChoice? FunctionCall { get; set; }
 
     /// <summary>
     /// Specifies the format that the model must output.
@@ -158,6 +174,91 @@ public class ChatCompletionRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public ReasoningConfig? Reasoning { get; set; }
 
+    /// <summary>OpenAI reasoning effort hint.</summary>
+    [JsonPropertyName("reasoning_effort")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ReasoningEffort { get; set; }
+
+    /// <summary>Whether tools may be called in parallel.</summary>
+    [JsonPropertyName("parallel_tool_calls")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? ParallelToolCalls { get; set; }
+
+    /// <summary>Requested response modalities, such as text and audio.</summary>
+    [JsonPropertyName("modalities")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string>? Modalities { get; set; }
+
+    /// <summary>Audio output configuration when audio is requested as a modality.</summary>
+    [JsonPropertyName("audio")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ChatAudioOptions? Audio { get; set; }
+
+    /// <summary>Static predicted output content used to reduce latency.</summary>
+    [JsonPropertyName("prediction")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ChatPrediction? Prediction { get; set; }
+
+    /// <summary>Whether token log probabilities should be returned.</summary>
+    [JsonPropertyName("logprobs")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Logprobs { get; set; }
+
+    /// <summary>Number of most likely tokens returned at each position.</summary>
+    [JsonPropertyName("top_logprobs")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TopLogprobs { get; set; }
+
+    /// <summary>Requested processing tier.</summary>
+    [JsonPropertyName("service_tier")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ServiceTier { get; set; }
+
+    /// <summary>Whether the provider should store this completion.</summary>
+    [JsonPropertyName("store")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Store { get; set; }
+
+    /// <summary>Developer-provided request metadata.</summary>
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? Metadata { get; set; }
+
+    /// <summary>Stable identifier used by providers for safety monitoring.</summary>
+    [JsonPropertyName("safety_identifier")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SafetyIdentifier { get; set; }
+
+    /// <summary>Desired response verbosity.</summary>
+    [JsonPropertyName("verbosity")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Verbosity { get; set; }
+
+    /// <summary>Moderation behavior requested for the completion.</summary>
+    [JsonPropertyName("moderation")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Moderation { get; set; }
+
+    /// <summary>Prompt-cache routing key.</summary>
+    [JsonPropertyName("prompt_cache_key")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PromptCacheKey { get; set; }
+
+    /// <summary>Prompt-cache configuration.</summary>
+    [JsonPropertyName("prompt_cache_options")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public PromptCacheOptions? PromptCacheOptions { get; set; }
+
+    /// <summary>Prompt-cache retention policy.</summary>
+    [JsonPropertyName("prompt_cache_retention")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? PromptCacheRetention { get; set; }
+
+    /// <summary>Provider-hosted web search configuration.</summary>
+    [JsonPropertyName("web_search_options")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WebSearchOptions? WebSearchOptions { get; set; }
+
     /// <summary>
     /// A random number seed for deterministic outputs.
     /// </summary>
@@ -188,13 +289,6 @@ public class ChatCompletionRequest
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, int>? LogitBias { get; set; }
 
-    /// <summary>
-    /// The system fingerprint, a unique identifier for the configuration used by OpenAI systems for this request.
-    /// </summary>
-    [JsonPropertyName("system_fingerprint")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? SystemFingerprint { get; set; }
-    
     /// <summary>
     /// List of function configuration IDs to make available for this chat session.
     /// When provided, these functions will be converted to Tools and made available for the LLM to call.

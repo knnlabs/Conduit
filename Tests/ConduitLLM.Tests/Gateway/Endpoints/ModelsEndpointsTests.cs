@@ -76,9 +76,9 @@ public sealed class ModelsEndpointsTests : IDisposable
                 1, 100, It.IsAny<CancellationToken>()))
             .ReturnsAsync((new List<ModelProviderMapping>
             {
-                new() { ModelAlias = "gpt-4o" },
-                new() { ModelAlias = "gpt-4o" },
-                new() { ModelAlias = "claude-3" }
+                new() { ModelAlias = "gpt-4o", CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new() { ModelAlias = "gpt-4o", CreatedAt = new DateTime(2024, 2, 1, 0, 0, 0, DateTimeKind.Utc) },
+                new() { ModelAlias = "claude-3", CreatedAt = new DateTime(2024, 3, 1, 0, 0, 0, DateTimeKind.Utc) }
             }, 3));
 
         var response = await _client.GetAsync("/v1/models");
@@ -87,6 +87,80 @@ public sealed class ModelsEndpointsTests : IDisposable
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         json.RootElement.GetProperty("object").GetString().Should().Be("list");
         json.RootElement.GetProperty("data").GetArrayLength().Should().Be(2);
+        var model = json.RootElement.GetProperty("data").EnumerateArray()
+            .Single(item => item.GetProperty("id").GetString() == "gpt-4o");
+        model.GetProperty("object").GetString().Should().Be("model");
+        model.GetProperty("created").GetInt64().Should().Be(1704067200);
+        model.GetProperty("owned_by").GetString().Should().Be("conduit");
+    }
+
+    [Fact]
+    public async Task ListModels_FollowsPaginationAndExcludesDisabledMappings()
+    {
+        _repository.Setup(repository => repository.GetPaginatedAsync(
+                1, 100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<ModelProviderMapping>
+            {
+                new() { ModelAlias = "enabled", IsEnabled = true, CreatedAt = DateTime.UtcNow }
+            }, 2));
+        _repository.Setup(repository => repository.GetPaginatedAsync(
+                2, 100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<ModelProviderMapping>
+            {
+                new() { ModelAlias = "disabled", IsEnabled = false, CreatedAt = DateTime.UtcNow }
+            }, 2));
+
+        var response = await _client.GetAsync("/v1/models");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("data").EnumerateArray()
+            .Select(item => item.GetProperty("id").GetString())
+            .Should().Equal("enabled");
+        _repository.Verify(repository => repository.GetPaginatedAsync(
+            2, 100, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RetrieveModel_WhenEnabled_ReturnsOpenAIModelObject()
+    {
+        _repository.Setup(repository => repository.GetByModelNameAsync(
+                "gpt-4o", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ModelProviderMapping
+            {
+                ModelAlias = "gpt-4o",
+                IsEnabled = true,
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+        var response = await _client.GetAsync("/v1/models/gpt-4o");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        json.RootElement.GetProperty("id").GetString().Should().Be("gpt-4o");
+        json.RootElement.GetProperty("object").GetString().Should().Be("model");
+        json.RootElement.GetProperty("created").GetInt64().Should().Be(1704067200);
+        json.RootElement.GetProperty("owned_by").GetString().Should().Be("conduit");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RetrieveModel_WhenMissingOrDisabled_ReturnsOpenAI404(bool disabled)
+    {
+        _repository.Setup(repository => repository.GetByModelNameAsync(
+                "missing", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(disabled
+                ? new ModelProviderMapping { ModelAlias = "missing", IsEnabled = false }
+                : null);
+
+        var response = await _client.GetAsync("/v1/models/missing");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var error = json.RootElement.GetProperty("error");
+        error.GetProperty("code").GetString().Should().Be("model_not_found");
+        error.GetProperty("param").GetString().Should().Be("model");
     }
 
     [Fact]

@@ -24,7 +24,31 @@ namespace ConduitLLM.Core.Models
         /// Defaults to "dall-e-2" if not specified.
         /// </summary>
         [JsonPropertyName("model")]
-        public required string Model { get; set; } = "dall-e-2";
+        public string? Model { get; set; } = "dall-e-2";
+
+        /// <summary>Controls whether the generated image has a transparent, opaque, or automatic background.</summary>
+        [JsonPropertyName("background")]
+        public string? Background { get; set; }
+
+        /// <summary>Controls provider-side moderation strictness when the selected model supports it.</summary>
+        [JsonPropertyName("moderation")]
+        public string? Moderation { get; set; }
+
+        /// <summary>Compression level for generated JPEG or WebP output.</summary>
+        [JsonPropertyName("output_compression")]
+        public int? OutputCompression { get; set; }
+
+        /// <summary>The requested image encoding, such as png, jpeg, or webp.</summary>
+        [JsonPropertyName("output_format")]
+        public string? OutputFormat { get; set; }
+
+        /// <summary>Number of partial images emitted for streaming generation.</summary>
+        [JsonPropertyName("partial_images")]
+        public int? PartialImages { get; set; }
+
+        /// <summary>Whether to stream partial image generation events.</summary>
+        [JsonPropertyName("stream")]
+        public bool? Stream { get; set; }
 
         /// <summary>
         /// The number of images to generate. Defaults to 1.

@@ -52,6 +52,16 @@ public class ChatCompletionResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Usage? Usage { get; set; }
 
+    /// <summary>The processing tier used for the request.</summary>
+    [JsonPropertyName("service_tier")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ServiceTier { get; set; }
+
+    /// <summary>Moderation information returned by the provider.</summary>
+    [JsonPropertyName("moderation")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public object? Moderation { get; set; }
+
     /// <summary>
     /// The original model alias used in routing, if different from the model name.
     /// </summary>

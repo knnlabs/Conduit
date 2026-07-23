@@ -22,6 +22,13 @@ public static class ModelsEndpoints
             .Produces<ModelListResponse>(StatusCodes.Status200OK)
             .Produces<OpenAIErrorResponse>(StatusCodes.Status500InternalServerError);
 
+        group.MapGet("/models/{model}", RetrieveModel)
+            .WithName("Models_RetrieveModel")
+            .WithSummary("Retrieve a model")
+            .Produces<ModelListItemDto>(StatusCodes.Status200OK)
+            .Produces<OpenAIErrorResponse>(StatusCodes.Status404NotFound)
+            .Produces<OpenAIErrorResponse>(StatusCodes.Status500InternalServerError);
+
         app.MapGet("/v1/conduit/models/{modelId}/metadata", GetModelMetadata)
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
@@ -58,12 +65,38 @@ public static class ModelsEndpoints
         }
 
         var data = allMappings
-            .Select(mapping => mapping.ModelAlias)
-            .Distinct()
-            .Select(alias => new ModelListItemDto(alias, "model"))
+            .Where(mapping => mapping.IsEnabled)
+            .GroupBy(mapping => mapping.ModelAlias, StringComparer.Ordinal)
+            .Select(group => ToModel(group.OrderBy(mapping => mapping.CreatedAt).First()))
             .ToList();
         logger.LogDebug("Returning {ModelCount} available models", data.Count);
         return Results.Ok(new ModelListResponse(data, "list"));
+    }
+
+    private static async Task<IResult> RetrieveModel(
+        string model,
+        [FromServices] IModelProviderMappingRepository repository,
+        CancellationToken cancellationToken)
+    {
+        var mapping = await repository.GetByModelNameAsync(model, cancellationToken);
+        return mapping is null || !mapping.IsEnabled
+            ? GatewayResults.OpenAIError(
+                StatusCodes.Status404NotFound,
+                $"The model '{model}' does not exist or is not available.",
+                "model_not_found",
+                "invalid_request_error",
+                "model")
+            : Results.Ok(ToModel(mapping));
+    }
+
+    private static ModelListItemDto ToModel(Configuration.Entities.ModelProviderMapping mapping)
+    {
+        var owner = mapping.Provider?.ProviderType.ToString().ToLowerInvariant();
+        return new ModelListItemDto(
+            mapping.ModelAlias,
+            "model",
+            new DateTimeOffset(mapping.CreatedAt.ToUniversalTime()).ToUnixTimeSeconds(),
+            string.IsNullOrWhiteSpace(owner) ? "conduit" : owner);
     }
 
     private static async Task<IResult> GetModelMetadata(

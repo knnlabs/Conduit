@@ -35,7 +35,32 @@ namespace ConduitLLM.Core.Models.Audio
         /// <summary>Optional end-user identifier.</summary>
         public string? User { get; set; }
 
+        /// <summary>Optional provider chunking strategy, represented as a string or JSON object.</summary>
+        public JsonElement? ChunkingStrategy { get; set; }
+
+        /// <summary>Additional response data to include.</summary>
+        public List<string>? Include { get; set; }
+
+        /// <summary>Names corresponding to known speaker reference files.</summary>
+        public List<string>? KnownSpeakerNames { get; set; }
+
+        /// <summary>Known speaker reference audio files.</summary>
+        public List<AudioTranscriptionReference>? KnownSpeakerReferences { get; set; }
+
+        /// <summary>Whether the provider should stream transcription events.</summary>
+        public bool? Stream { get; set; }
+
+        /// <summary>Timestamp granularities requested in verbose responses.</summary>
+        public List<string>? TimestampGranularities { get; set; }
+
         /// <summary>Provider-specific passthrough fields.</summary>
         public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+    }
+
+    public sealed class AudioTranscriptionReference
+    {
+        public required byte[] AudioData { get; set; }
+        public required string FileName { get; set; }
+        public string? ContentType { get; set; }
     }
 }

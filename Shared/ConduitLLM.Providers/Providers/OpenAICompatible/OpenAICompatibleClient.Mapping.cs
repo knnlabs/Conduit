@@ -82,6 +82,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Add optional standard parameters
             if (request.MaxTokens != null)
                 openAiRequest["max_tokens"] = request.MaxTokens;
+            if (request.MaxCompletionTokens != null)
+                openAiRequest["max_completion_tokens"] = request.MaxCompletionTokens;
             if (request.Temperature != null)
                 openAiRequest["temperature"] = ParameterConverter.ToTemperature(request.Temperature);
             if (request.TopP != null)
@@ -100,10 +102,48 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 openAiRequest["user"] = request.User;
             if (request.Seed != null)
                 openAiRequest["seed"] = request.Seed;
+            if (request.ReasoningEffort != null)
+                openAiRequest["reasoning_effort"] = request.ReasoningEffort;
+            if (request.ParallelToolCalls != null)
+                openAiRequest["parallel_tool_calls"] = request.ParallelToolCalls;
+            if (request.Modalities != null)
+                openAiRequest["modalities"] = request.Modalities;
+            if (request.Audio != null)
+                openAiRequest["audio"] = request.Audio;
+            if (request.Prediction != null)
+                openAiRequest["prediction"] = request.Prediction;
+            if (request.Logprobs != null)
+                openAiRequest["logprobs"] = request.Logprobs;
+            if (request.TopLogprobs != null)
+                openAiRequest["top_logprobs"] = request.TopLogprobs;
+            if (request.ServiceTier != null)
+                openAiRequest["service_tier"] = request.ServiceTier;
+            if (request.Store != null)
+                openAiRequest["store"] = request.Store;
+            if (request.Metadata != null)
+                openAiRequest["metadata"] = request.Metadata;
+            if (request.SafetyIdentifier != null)
+                openAiRequest["safety_identifier"] = request.SafetyIdentifier;
+            if (request.Verbosity != null)
+                openAiRequest["verbosity"] = request.Verbosity;
+            if (request.Moderation != null)
+                openAiRequest["moderation"] = request.Moderation;
+            if (request.PromptCacheKey != null)
+                openAiRequest["prompt_cache_key"] = request.PromptCacheKey;
+            if (request.PromptCacheOptions != null)
+                openAiRequest["prompt_cache_options"] = request.PromptCacheOptions;
+            if (request.PromptCacheRetention != null)
+                openAiRequest["prompt_cache_retention"] = request.PromptCacheRetention;
+            if (request.WebSearchOptions != null)
+                openAiRequest["web_search_options"] = request.WebSearchOptions;
             if (openAiTools != null)
                 openAiRequest["tools"] = openAiTools;
             if (openAiToolChoice != null)
                 openAiRequest["tool_choice"] = openAiToolChoice;
+            if (request.Functions != null)
+                openAiRequest["functions"] = request.Functions;
+            if (request.FunctionCall != null)
+                openAiRequest["function_call"] = request.FunctionCall;
             // Only send ResponseFormat if explicitly requested and not "text" (default)
             // Some providers like SambaNova don't support response_format with type "text"
             if (request.ResponseFormat != null && request.ResponseFormat.Type != "text")
@@ -340,6 +380,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     }).ToList() ?? new List<CoreModels.Choice>(),
                     Usage = response.Usage != null ? MapUsageFromOpenAI(response.Usage) : null,
                     SystemFingerprint = response.SystemFingerprint,
+                    ServiceTier = response.ServiceTier,
+                    Moderation = response.Moderation,
                     Seed = response.Seed,
                     OriginalModelAlias = originalModelAlias
                 };

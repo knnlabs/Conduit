@@ -4,7 +4,7 @@
     "commit": "5c044be3bf3a42854e99e34616564eeb2124a317",
     "document": "openapi.json"
   },
-  "enforcement": "warn-only-until-P7",
+  "enforcement": "enforced",
   "operations": {
     "GET /v1/models": {
       "request": null,

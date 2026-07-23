@@ -44,22 +44,8 @@ namespace ConduitLLM.Gateway.Endpoints
                     });
                 }
 
-                // Model parameter is required
-                if (string.IsNullOrWhiteSpace(request.Model))
-                {
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Model is required",
-                            Type = "invalid_request_error",
-                            Code = "missing_parameter",
-                            Param = "model"
-                        }
-                    });
-                }
-                
-                var modelName = request.Model;
+                var modelName = request.Model ?? "dall-e-2";
+                request.Model = modelName;
                 
                 // Check model capabilities
                 var mapping = await _modelMappingService.GetMappingByModelAliasAsync(modelName);

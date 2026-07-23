@@ -336,7 +336,7 @@ function buildOpenAiBaseline(officialDocument, commit) {
       commit,
       document: 'openapi.json',
     },
-    enforcement: 'warn-only-until-P7',
+    enforcement: 'enforced',
     operations,
   };
 }
@@ -509,7 +509,7 @@ if (!options.selfTest || options.files.length > 0 || options.writeAllowlist) {
     console.log(`- ${rule}: ${(allowlist.rules?.[rule] ?? []).length}`);
   }
   if (result.conformanceWarnings.length > 0) {
-    console.warn(`OpenAI conformance (warn-only until P7): ${result.conformanceWarnings.length} difference(s).`);
+    console.warn(`OpenAI conformance (${baseline?.enforcement ?? 'warn-only'}): ${result.conformanceWarnings.length} difference(s).`);
     for (const warning of result.conformanceWarnings) console.warn(`- ${warning}`);
   }
 
@@ -520,6 +520,9 @@ if (!options.selfTest || options.files.length > 0 || options.writeAllowlist) {
       `${path.relative(repoRoot, violation.file)}: ${violation.rule}: ${violation.key}: ${violation.message}`),
     ...result.stale.map((entry) =>
       `${path.relative(repoRoot, options.allowlist)}: stale ${entry.rule} entry '${entry.key}' must be removed`),
+    ...(baseline?.enforcement === 'enforced'
+      ? result.conformanceWarnings.map((warning) => `OpenAI conformance: ${warning}`)
+      : []),
   ];
   if (errors.length > 0) {
     console.error(`OpenAPI invariant validation failed with ${errors.length} error(s):`);

@@ -120,6 +120,12 @@ namespace ConduitLLM.Providers.OpenAI
         [JsonPropertyName("system_fingerprint")]
         public string? SystemFingerprint { get; init; }
 
+        [JsonPropertyName("service_tier")]
+        public string? ServiceTier { get; init; }
+
+        [JsonPropertyName("moderation")]
+        public System.Text.Json.JsonElement? Moderation { get; init; }
+
         [JsonPropertyName("seed")]
         public int? Seed { get; init; }
 

@@ -42,6 +42,23 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 if (request.Temperature.HasValue)
                     form.Add(new StringContent(request.Temperature.Value.ToString(CultureInfo.InvariantCulture)), "temperature");
                 form.Add(new StringContent(request.ResponseFormat ?? "json"), "response_format");
+                if (request.ChunkingStrategy.HasValue)
+                    form.Add(new StringContent(request.ChunkingStrategy.Value.GetRawText()), "chunking_strategy");
+                AddFormValues(form, "include[]", request.Include);
+                AddFormValues(form, "known_speaker_names[]", request.KnownSpeakerNames);
+                if (request.KnownSpeakerReferences != null)
+                {
+                    foreach (var reference in request.KnownSpeakerReferences)
+                    {
+                        var referenceContent = new ByteArrayContent(reference.AudioData);
+                        referenceContent.Headers.ContentType = new MediaTypeHeaderValue(
+                            reference.ContentType ?? "application/octet-stream");
+                        form.Add(referenceContent, "known_speaker_references[]", reference.FileName);
+                    }
+                }
+                if (request.Stream.HasValue)
+                    form.Add(new StringContent(request.Stream.Value ? "true" : "false"), "stream");
+                AddFormValues(form, "timestamp_granularities[]", request.TimestampGranularities);
                 if (request.ExtensionData != null)
                 {
                     foreach (var kvp in request.ExtensionData)
@@ -76,7 +93,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
                 // Capture provider-reported cost (and strip it) for authoritative billing.
                 ExtractProviderUsageFromExtensionData(result.Usage);
-                if (result.Usage != null && result.DurationSeconds.HasValue)
+                if (result.Usage != null && result.DurationSeconds > 0)
                     result.Usage.AudioDurationSeconds ??= result.DurationSeconds;
 
                 CaptureGenerationId(httpResponse, result);
@@ -103,6 +120,10 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 };
                 if (request.Speed.HasValue)
                     body["speed"] = request.Speed.Value;
+                if (!string.IsNullOrWhiteSpace(request.Instructions))
+                    body["instructions"] = request.Instructions;
+                if (!string.IsNullOrWhiteSpace(request.StreamFormat))
+                    body["stream_format"] = request.StreamFormat;
                 if (request.ExtensionData != null)
                 {
                     foreach (var kvp in request.ExtensionData)
@@ -155,6 +176,17 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 result.Usage ??= new CoreModels.Usage();
                 (result.Usage.Metadata ??= new Dictionary<string, object>())["generation_id"] = genIds.FirstOrDefault() ?? string.Empty;
             }
+        }
+
+        private static void AddFormValues(
+            MultipartFormDataContent form,
+            string name,
+            IEnumerable<string>? values)
+        {
+            if (values == null)
+                return;
+            foreach (var value in values)
+                form.Add(new StringContent(value), name);
         }
     }
 }

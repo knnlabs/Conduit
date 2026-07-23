@@ -362,6 +362,48 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
+        public async Task TranscribeAudioAsync_ForwardsModernMultipartFields()
+        {
+            var client = CreateClient();
+            var request = new AudioTranscriptionRequest
+            {
+                Model = "openai/whisper-1",
+                AudioData = [1, 2, 3],
+                FileName = "audio.mp3",
+                ChunkingStrategy = JsonSerializer.SerializeToElement("auto"),
+                Include = ["logprobs"],
+                KnownSpeakerNames = ["Alice"],
+                KnownSpeakerReferences =
+                [
+                    new AudioTranscriptionReference
+                    {
+                        AudioData = [4, 5],
+                        FileName = "alice.wav",
+                        ContentType = "audio/wav"
+                    }
+                ],
+                Stream = true,
+                TimestampGranularities = ["word"]
+            };
+
+            await client.TranscribeAudioAsync(request);
+
+            var body = _capturedRequests.Single(r => r.Path.EndsWith("/audio/transcriptions")).Body;
+            body.Should().Contain("name=chunking_strategy");
+            body.Should().Contain("\"auto\"");
+            body.Should().Contain("name=\"include[]\"");
+            body.Should().Contain("logprobs");
+            body.Should().Contain("name=\"known_speaker_names[]\"");
+            body.Should().Contain("Alice");
+            body.Should().Contain("name=\"known_speaker_references[]\"");
+            body.Should().Contain("filename=alice.wav");
+            body.Should().Contain("name=stream");
+            body.Should().Contain("true");
+            body.Should().Contain("name=\"timestamp_granularities[]\"");
+            body.Should().Contain("word");
+        }
+
+        [Fact]
         public async Task CreateSpeechAsync_ReturnsAudioBytes_AndCharacterUsage()
         {
             // Arrange
@@ -376,6 +418,29 @@ namespace ConduitLLM.Tests.Providers
             result.AudioData.Should().NotBeEmpty();
             result.ContentType.Should().Contain("audio");
             result.Usage!.TtsCharacters.Should().Be(5); // "hello".Length
+        }
+
+        [Fact]
+        public async Task CreateSpeechAsync_ForwardsInstructionsAndStreamFormat()
+        {
+            var client = CreateClient();
+            var request = new TextToSpeechRequest
+            {
+                Model = "openai/tts-1",
+                Input = "hello",
+                Voice = "alloy",
+                ResponseFormat = "wav",
+                Instructions = "Speak softly",
+                StreamFormat = "sse"
+            };
+
+            await client.CreateSpeechAsync(request);
+
+            using var body = JsonDocument.Parse(
+                _capturedRequests.Single(r => r.Path.EndsWith("/audio/speech")).Body);
+            body.RootElement.GetProperty("response_format").GetString().Should().Be("wav");
+            body.RootElement.GetProperty("instructions").GetString().Should().Be("Speak softly");
+            body.RootElement.GetProperty("stream_format").GetString().Should().Be("sse");
         }
 
         [Fact]

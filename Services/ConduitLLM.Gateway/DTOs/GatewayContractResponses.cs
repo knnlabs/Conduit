@@ -7,7 +7,9 @@ namespace ConduitLLM.Gateway.DTOs;
 /// <summary>An OpenAI-compatible model entry.</summary>
 public sealed record ModelListItemDto(
     [property: JsonPropertyName("id")] string Id,
-    [property: JsonPropertyName("object")] string Object);
+    [property: JsonPropertyName("object")] string Object,
+    [property: JsonPropertyName("created")] long Created,
+    [property: JsonPropertyName("owned_by")] string OwnedBy);
 
 /// <summary>An OpenAI-compatible model list.</summary>
 public sealed record ModelListResponse(

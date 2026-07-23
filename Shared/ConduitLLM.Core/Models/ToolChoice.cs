@@ -42,6 +42,9 @@ public class ToolChoice
     /// </summary>
     public static ToolChoice Auto => new("auto");
 
+    /// <summary>Indicates that the model must call one or more tools.</summary>
+    public static ToolChoice Required => new("required");
+
     /// <summary>
     /// Indicates the model must call the specified function.
     /// </summary>
@@ -90,6 +93,10 @@ public class ToolChoiceConverter : JsonConverter<ToolChoice>
             if (value == "auto" || value == null)
             {
                 return ToolChoice.Auto;
+            }
+            if (value == "required")
+            {
+                return ToolChoice.Required;
             }
             throw new JsonException($"Unexpected string value for tool_choice: {value}");
         }

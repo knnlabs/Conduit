@@ -52,6 +52,18 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     openAiRequest["response_format"] = request.ResponseFormat;
                 if (!string.IsNullOrEmpty(request.User))
                     openAiRequest["user"] = request.User;
+                if (!string.IsNullOrEmpty(request.Background))
+                    openAiRequest["background"] = request.Background;
+                if (!string.IsNullOrEmpty(request.Moderation))
+                    openAiRequest["moderation"] = request.Moderation;
+                if (request.OutputCompression.HasValue)
+                    openAiRequest["output_compression"] = request.OutputCompression.Value;
+                if (!string.IsNullOrEmpty(request.OutputFormat))
+                    openAiRequest["output_format"] = request.OutputFormat;
+                if (request.PartialImages.HasValue)
+                    openAiRequest["partial_images"] = request.PartialImages.Value;
+                if (request.Stream.HasValue)
+                    openAiRequest["stream"] = request.Stream.Value;
 
                 // Only include quality and style for DALL-E 3
                 var modelName = request.Model ?? ProviderModelId;
@@ -102,6 +114,10 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 return new CoreModels.ImageGenerationResponse
                 {
                     Created = response.Created,
+                    Background = request.Background,
+                    OutputFormat = request.OutputFormat,
+                    Quality = request.Quality,
+                    Size = request.Size,
                     Data = response.Data?.Select(d => new CoreModels.ImageData
                     {
                         Url = d.Url,

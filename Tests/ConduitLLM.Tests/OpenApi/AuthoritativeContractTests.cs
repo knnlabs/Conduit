@@ -110,6 +110,79 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Fact]
+    public void Gateway_OpenAICompatibleOperationsPublishStandardFailuresAndRetryHeaders()
+    {
+        var operations = new[]
+        {
+            ("/v1/models", "get"),
+            ("/v1/models/{model}", "get"),
+            ("/v1/embeddings", "post"),
+            ("/v1/chat/completions", "post"),
+            ("/v1/audio/transcriptions", "post"),
+            ("/v1/audio/speech", "post"),
+            ("/v1/images/generations", "post")
+        };
+
+        foreach (var (path, method) in operations)
+        {
+            var responses = Operation(_gateway, path, method).GetProperty("responses");
+            foreach (var status in new[] { "401", "403", "408", "413", "429", "503" })
+                responses.TryGetProperty(status, out _).Should().BeTrue($"{method} {path} must document {status}");
+
+            foreach (var status in new[] { "429", "503" })
+                responses.GetProperty(status).GetProperty("headers")
+                    .TryGetProperty("Retry-After", out _).Should().BeTrue(
+                        $"{method} {path} {status} must document retry guidance");
+        }
+    }
+
+    [Fact]
+    public void Gateway_OpenAICompatibleMediaContractsMatchOfficialShapes()
+    {
+        var speechTypes = Operation(_gateway, "/v1/audio/speech", "post")
+            .GetProperty("responses").GetProperty("200").GetProperty("content")
+            .EnumerateObject().Select(item => item.Name);
+        speechTypes.Should().BeEquivalentTo(
+            "audio/mpeg", "audio/opus", "audio/aac", "audio/flac",
+            "audio/wav", "audio/pcm", "application/octet-stream");
+
+        var transcription = Operation(_gateway, "/v1/audio/transcriptions", "post")
+            .GetProperty("requestBody").GetProperty("content")
+            .GetProperty("multipart/form-data").GetProperty("schema");
+        transcription.GetProperty("required").EnumerateArray()
+            .Select(item => item.GetString()).Should().BeEquivalentTo("file", "model");
+        transcription.GetProperty("properties")
+            .TryGetProperty("known_speaker_references", out var speakerReferences).Should().BeTrue();
+        speakerReferences.GetProperty("type").GetString().Should().Be("array");
+        speakerReferences.GetProperty("items").GetProperty("format").GetString().Should().Be("binary");
+
+        var imageRequest = ResolveSchema(_gateway,
+            Operation(_gateway, "/v1/images/generations", "post")
+                .GetProperty("requestBody").GetProperty("content")
+                .GetProperty("application/json").GetProperty("schema"));
+        imageRequest.GetProperty("required").EnumerateArray()
+            .Select(item => item.GetString()).Should().Equal("prompt");
+
+        var embeddingRequest = ResolveSchema(_gateway,
+            Operation(_gateway, "/v1/embeddings", "post")
+                .GetProperty("requestBody").GetProperty("content")
+                .GetProperty("application/json").GetProperty("schema"));
+        embeddingRequest.GetProperty("required").EnumerateArray()
+            .Select(item => item.GetString()).Should().NotContain("encoding_format");
+
+        embeddingRequest.GetProperty("properties").GetProperty("input")
+            .GetProperty("oneOf").GetArrayLength().Should().Be(4);
+        _gateway.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty("Message").GetProperty("properties").GetProperty("content")
+            .GetProperty("oneOf").GetArrayLength().Should().Be(2);
+        _gateway.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty("ChatCompletionRequest").GetProperty("properties").GetProperty("stop")
+            .GetProperty("oneOf").GetArrayLength().Should().Be(2);
+        _gateway.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty("ToolChoice").GetProperty("oneOf").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
     public void Admin_Universal500UsesTheStandardErrorShape()
     {
         var schema = Operation(_admin, "/v1/admin/virtual-keys", "get")
@@ -237,7 +310,8 @@ public sealed class AuthoritativeContractTests : IDisposable
             "/v1/chat/completions",
             "/v1/embeddings",
             "/v1/images/generations",
-            "/v1/models"
+            "/v1/models",
+            "/v1/models/{model}"
         };
         var paths = _gateway.RootElement.GetProperty("paths").EnumerateObject()
             .Select(path => path.Name)

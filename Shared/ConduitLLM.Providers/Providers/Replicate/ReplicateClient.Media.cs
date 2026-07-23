@@ -26,7 +26,7 @@ namespace ConduitLLM.Providers.Replicate
                 var finalPrediction = await PollPredictionUntilCompletedAsync(
                     predictionResponse.Id, apiKey, cancellationToken, pollScope);
 
-                return MapToImageGenerationResponse(finalPrediction, request.Model);
+                return MapToImageGenerationResponse(finalPrediction, request.Model ?? ProviderModelId);
             }, "CreateImage", cancellationToken);
         }
 

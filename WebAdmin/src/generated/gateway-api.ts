@@ -20,6 +20,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/models/{model}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Retrieve a model */
+    get: operations["Models_RetrieveModel"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/conduit/models/{modelId}/metadata": {
     parameters: {
       query?: never;
@@ -840,19 +857,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    AgenticExecutionMetrics: {
-      /** Format: int32 */
-      total_iterations?: number | string;
-      /** Format: int32 */
-      total_function_calls?: number | string;
-      /** Format: double */
-      total_function_cost?: number | string;
-      /** Format: double */
-      total_llm_cost?: number | string;
-      /** Format: double */
-      total_cost?: number | string;
-      function_calls?: components["schemas"]["FunctionCallSummary"][];
-    };
     AsyncTaskResponse: {
       task_id: string;
       status: string;
@@ -898,13 +902,49 @@ export interface components {
       result?: unknown;
       error?: null | string;
     };
+    AudioTranscriptionLogprob: {
+      token?: string;
+      /** Format: double */
+      logprob?: number | string;
+      bytes?: null | (number | string)[];
+    };
     AudioTranscriptionResponse: {
       text: string;
-      language?: null | string;
+      language: string;
       /** Format: double */
-      duration?: null | number | string;
-      model?: null | string;
+      duration: number | string;
+      task: string;
+      segments: components["schemas"]["AudioTranscriptionSegment"][];
+      words?: null | components["schemas"]["AudioTranscriptionWord"][];
+      logprobs?: null | components["schemas"]["AudioTranscriptionLogprob"][];
       usage?: null | components["schemas"]["Usage"];
+    };
+    AudioTranscriptionSegment: {
+      /** Format: int32 */
+      id?: number | string;
+      /** Format: int32 */
+      seek?: number | string;
+      /** Format: double */
+      start?: number | string;
+      /** Format: double */
+      end?: number | string;
+      text?: string;
+      tokens?: (number | string)[];
+      /** Format: double */
+      temperature?: number | string;
+      /** Format: double */
+      avg_logprob?: number | string;
+      /** Format: double */
+      compression_ratio?: number | string;
+      /** Format: double */
+      no_speech_prob?: number | string;
+    };
+    AudioTranscriptionWord: {
+      word?: string;
+      /** Format: double */
+      start?: number | string;
+      /** Format: double */
+      end?: number | string;
     };
     /** @description SignalR batching efficiency metrics. */
     BatchingEfficiencyResponse: {
@@ -984,6 +1024,10 @@ export interface components {
     BatchWebhookSendRequest: {
       webhooks: components["schemas"]["WebhookSendDto"][];
     };
+    ChatAudioOptions: {
+      voice: string;
+      format: string;
+    };
     ChatCompletionRequest: {
       model: string;
       messages: components["schemas"]["Message"][];
@@ -991,21 +1035,41 @@ export interface components {
       temperature?: null | number | string;
       /** Format: int32 */
       max_tokens?: null | number | string;
+      /** Format: int32 */
+      max_completion_tokens?: null | number | string;
       /** Format: double */
       top_p?: null | number | string;
-      /** Format: int32 */
-      top_k?: null | number | string;
       /** Format: int32 */
       n?: null | number | string;
       stream?: null | boolean;
       stream_options?: null | components["schemas"]["StreamOptions"];
-      stop?: null | string[];
+      stop?: string | string[];
       user?: null | string;
-      session_id?: null | string;
       tools?: null | components["schemas"]["Tool"][];
       tool_choice?: null | components["schemas"]["ToolChoice"];
+      functions?: null | components["schemas"]["FunctionDefinition"][];
+      function_call?: null | components["schemas"]["LegacyFunctionChoice"];
       response_format?: null | components["schemas"]["ResponseFormat"];
-      reasoning?: null | components["schemas"]["ReasoningConfig"];
+      reasoning_effort?: null | string;
+      parallel_tool_calls?: null | boolean;
+      modalities?: null | string[];
+      audio?: null | components["schemas"]["ChatAudioOptions"];
+      prediction?: null | components["schemas"]["ChatPrediction"];
+      logprobs?: null | boolean;
+      /** Format: int32 */
+      top_logprobs?: null | number | string;
+      service_tier?: null | string;
+      store?: null | boolean;
+      metadata?: null | {
+        [key: string]: string;
+      };
+      safety_identifier?: null | string;
+      verbosity?: null | string;
+      moderation?: null | string;
+      prompt_cache_key?: null | string;
+      prompt_cache_options?: null | components["schemas"]["PromptCacheOptions"];
+      prompt_cache_retention?: null | string;
+      web_search_options?: null | components["schemas"]["WebSearchOptions"];
       /** Format: int32 */
       seed?: null | number | string;
       /** Format: double */
@@ -1015,11 +1079,6 @@ export interface components {
       logit_bias?: null | {
         [key: string]: number | string;
       };
-      system_fingerprint?: null | string;
-      function_configuration_ids?: null | (number | string)[];
-      enable_agentic_mode?: null | boolean;
-      /** Format: int32 */
-      max_agentic_iterations?: null | number | string;
     };
     ChatCompletionResponse: {
       id: string;
@@ -1030,10 +1089,12 @@ export interface components {
       system_fingerprint?: null | string;
       object: string;
       usage?: null | components["schemas"]["Usage"];
-      /** Format: int32 */
-      seed?: null | number | string;
-      performance_metrics?: null | components["schemas"]["PerformanceMetrics"];
-      agentic_metrics?: null | components["schemas"]["AgenticExecutionMetrics"];
+      service_tier?: null | string;
+      moderation?: unknown;
+    };
+    ChatPrediction: {
+      type?: string;
+      content: components["schemas"]["JsonElement"];
     };
     Choice: {
       finish_reason: string;
@@ -1191,9 +1252,9 @@ export interface components {
       index?: number | string;
     };
     EmbeddingRequest: {
-      input: unknown;
+      input: string | string[] | number[] | number[][];
       model: string;
-      encoding_format: string;
+      encoding_format?: null | string;
       /** Format: int32 */
       dimensions?: null | number | string;
       user?: null | string;
@@ -1258,22 +1319,6 @@ export interface components {
     FunctionCall: {
       name: string;
       arguments: string;
-    };
-    FunctionCallSummary: {
-      /** Format: int32 */
-      iteration?: number | string;
-      tool_call_id?: null | string;
-      function_name?: null | string;
-      /** Format: int32 */
-      function_configuration_id?: number | string;
-      /** Format: uuid */
-      function_execution_id?: null | string;
-      success?: boolean;
-      /** Format: double */
-      cost?: null | number | string;
-      error_message?: null | string;
-      /** Format: int64 */
-      duration_ms?: null | number | string;
     };
     FunctionDefinition: {
       name: string;
@@ -1415,7 +1460,15 @@ export interface components {
     };
     ImageGenerationRequest: {
       prompt: string;
-      model: string;
+      model?: null | string;
+      background?: null | string;
+      moderation?: null | string;
+      /** Format: int32 */
+      output_compression?: null | number | string;
+      output_format?: null | string;
+      /** Format: int32 */
+      partial_images?: null | number | string;
+      stream?: null | boolean;
       /** Format: int32 */
       n?: number | string;
       quality?: null | string;
@@ -1423,15 +1476,16 @@ export interface components {
       size?: null | string;
       style?: null | string;
       user?: null | string;
-      image?: null | string;
-      mask?: null | string;
-      operation?: string;
     };
     ImageGenerationResponse: {
       /** Format: int64 */
       created: number | string;
-      data: components["schemas"]["ImageData"][];
+      data?: components["schemas"]["ImageData"][];
       usage?: null | components["schemas"]["Usage"];
+      background?: null | string;
+      output_format?: null | string;
+      quality?: null | string;
+      size?: null | string;
     };
     JsonElement: unknown;
     JsonObject: Record<string, never>;
@@ -1440,6 +1494,7 @@ export interface components {
       strict?: null | boolean;
       schema?: components["schemas"]["JsonElement"];
     };
+    LegacyFunctionChoice: unknown;
     MediaInfo: {
       storage_key?: string;
       content_type?: string;
@@ -1471,7 +1526,7 @@ export interface components {
     };
     Message: {
       role: string;
-      content?: unknown;
+      content?: string | Record<string, never>[];
       name?: null | string;
       tool_calls?: null | components["schemas"]["ToolCall"][];
       tool_call_id?: null | string;
@@ -1508,6 +1563,9 @@ export interface components {
     ModelListItemDto: {
       id: string;
       object: string;
+      /** Format: int64 */
+      created: number | string;
+      owned_by: string;
     };
     /** @description An OpenAI-compatible model list. */
     ModelListResponse: {
@@ -1562,30 +1620,8 @@ export interface components {
         code?: null | string;
       };
     };
-    PerformanceMetrics: {
-      /** Format: int64 */
-      total_latency_ms?: number | string;
-      /** Format: int64 */
-      time_to_first_token_ms?: null | number | string;
-      /** Format: double */
-      tokens_per_second?: null | number | string;
-      /** Format: double */
-      prompt_tokens_per_second?: null | number | string;
-      /** Format: double */
-      completion_tokens_per_second?: null | number | string;
-      provider?: string;
-      model?: string;
-      streaming?: boolean;
-      /** Format: int32 */
-      retry_attempts?: number | string;
-      /** Format: double */
-      avg_inter_token_latency_ms?: null | number | string;
-      /** Format: int32 */
-      prompt_tokens?: null | number | string;
-      /** Format: int32 */
-      completion_tokens?: null | number | string;
-      /** Format: int32 */
-      total_tokens?: null | number | string;
+    PromptCacheOptions: {
+      retention?: null | string;
     };
     /** @enum {unknown} */
     ProviderType:
@@ -1627,13 +1663,6 @@ export interface components {
       circuit_breaker_state?: components["schemas"]["CircuitState"];
       /** Format: int32 */
       consecutive_failures?: number | string;
-    };
-    ReasoningConfig: {
-      effort?: null | string;
-      /** Format: int32 */
-      max_tokens?: null | number | string;
-      enabled?: null | boolean;
-      exclude?: null | boolean;
     };
     RerankRequest: {
       model: string;
@@ -1743,9 +1772,8 @@ export interface components {
       response_format?: null | string;
       /** Format: double */
       speed?: null | number | string;
-      extension_data?: {
-        [key: string]: unknown;
-      };
+      instructions?: null | string;
+      stream_format?: null | string;
     };
     Tool: {
       type?: string;
@@ -1756,7 +1784,7 @@ export interface components {
       type?: string;
       function: components["schemas"]["FunctionCall"];
     };
-    ToolChoice: unknown;
+    ToolChoice: string | Record<string, never>;
     Usage: {
       /** Format: int32 */
       prompt_tokens?: null | number | string;
@@ -1914,6 +1942,22 @@ export interface components {
       };
       secret?: null | string;
     };
+    WebSearchApproximateLocation: {
+      city?: null | string;
+      country?: null | string;
+      region?: null | string;
+      timezone?: null | string;
+    };
+    WebSearchOptions: {
+      search_context_size?: null | string;
+      user_location?: null | components["schemas"]["WebSearchUserLocation"];
+    };
+    WebSearchUserLocation: {
+      type?: string;
+      approximate?:
+        | null
+        | components["schemas"]["WebSearchApproximateLocation"];
+    };
   };
   responses: never;
   parameters: never;
@@ -1943,11 +1987,197 @@ export interface operations {
           "application/json": components["schemas"]["ModelListResponse"];
         };
       };
+      /** @description Authentication failed. */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The authenticated key is not authorized for this operation. */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
       /** @description Internal Server Error */
       500: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+    };
+  };
+  Models_RetrieveModel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        model: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ModelListItemDto"];
+        };
+      };
+      /** @description Authentication failed. */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The authenticated key is not authorized for this operation. */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2148,11 +2378,81 @@ export interface operations {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
+      /** @description Authentication failed. */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The authenticated key is not authorized for this operation. */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
       /** @description Internal Server Error */
       500: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2197,11 +2497,81 @@ export interface operations {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
+      /** @description Authentication failed. */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The authenticated key is not authorized for this operation. */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
       /** @description Internal Server Error */
       500: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3060,9 +3430,14 @@ export interface operations {
     requestBody: {
       content: {
         "multipart/form-data": {
-          file?: components["schemas"]["IFormFile"];
+          include?: string[];
+          known_speaker_names?: string[];
+          timestamp_granularities?: string[];
+          known_speaker_references?: string[];
+        } & ({
+          file: components["schemas"]["IFormFile"];
         } & {
-          model?: string;
+          model: string;
         } & {
           language?: string;
         } & {
@@ -3072,7 +3447,11 @@ export interface operations {
         } & {
           /** Format: double */
           temperature?: number | string;
-        };
+        } & {
+          chunking_strategy?: string;
+        } & {
+          stream?: boolean;
+        });
       };
     };
     responses: {
@@ -3085,6 +3464,76 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AudioTranscriptionResponse"];
+        };
+      };
+      /** @description Authentication failed. */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The authenticated key is not authorized for this operation. */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3111,6 +3560,82 @@ export interface operations {
         };
         content: {
           "audio/mpeg": string;
+          "audio/opus": string;
+          "audio/aac": string;
+          "audio/flac": string;
+          "audio/wav": string;
+          "audio/pcm": string;
+          "application/octet-stream": string;
+        };
+      };
+      /** @description Authentication failed. */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The authenticated key is not authorized for this operation. */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3338,6 +3863,76 @@ export interface operations {
           "application/json": components["schemas"]["ImageGenerationResponse"];
         };
       };
+      /** @description Authentication failed. */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The authenticated key is not authorized for this operation. */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
     };
   };
   Images_CreateImageAsync: {
@@ -3476,6 +4071,8 @@ export interface operations {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
           [name: string]: unknown;
         };
         content: {
