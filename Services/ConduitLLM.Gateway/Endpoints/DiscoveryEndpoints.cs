@@ -21,6 +21,10 @@ namespace ConduitLLM.Gateway.Endpoints
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IDiscoveryCacheService _discoveryCacheService;
 
+        // Cached single-object responses must serialize exactly as the response pipeline
+        // does (JsonSerializerDefaults.Web), or cache hits change the JSON shape.
+        private static readonly JsonSerializerOptions CacheSerializerOptions = JsonSerializerOptions.Web;
+
         /// <summary>
         /// Initializes the Discovery endpoint handler.
         /// </summary>
@@ -345,15 +349,15 @@ namespace ConduitLLM.Gateway.Endpoints
                 return accessFailure;
             }
 
-            // Build cache key based on filters
-            var cacheKey = $"functions_discovery_{purpose ?? "all"}_{providerType ?? "all"}";
+            // Build cache key based on filters ("v2": entries hold one web-serialized element)
+            var cacheKey = $"functions_discovery_v2_{purpose ?? "all"}_{providerType ?? "all"}";
 
             // Try to get from cache first
             var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
-            if (cachedResult != null)
+            if (cachedResult is { Data.Count: > 0 })
             {
                 Logger.LogDebug("Returning cached function discovery results");
-                return Ok(cachedResult.Data);
+                return Ok(cachedResult.Data[0]);
             }
 
             using var context = await _dbContextFactory.CreateDbContextAsync();
@@ -400,7 +404,7 @@ namespace ConduitLLM.Gateway.Endpoints
             // Cache the results
             var discoveryResult = new DiscoveryModelsResult
             {
-                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result) },
+                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, CacheSerializerOptions) },
                 Count = result.Count,
                 CapabilityFilter = purpose
             };
@@ -425,15 +429,15 @@ namespace ConduitLLM.Gateway.Endpoints
                 return accessFailure;
             }
 
-            // Build cache key
-            var cacheKey = $"function_parameters_{functionConfigurationId}";
+            // Build cache key ("v2": entries hold one web-serialized element)
+            var cacheKey = $"function_parameters_v2_{functionConfigurationId}";
 
             // Try to get from cache first
             var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
-            if (cachedResult != null)
+            if (cachedResult is { Data.Count: > 0 })
             {
                 Logger.LogDebug("Returning cached function parameter schema for config {ConfigId}", functionConfigurationId);
-                return Ok(cachedResult.Data);
+                return Ok(cachedResult.Data[0]);
             }
 
             using var context = await _dbContextFactory.CreateDbContextAsync();
@@ -486,7 +490,7 @@ namespace ConduitLLM.Gateway.Endpoints
             // Cache the results
             var discoveryResult = new DiscoveryModelsResult
             {
-                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result) },
+                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, CacheSerializerOptions) },
                 Count = 1
             };
 
