@@ -55,6 +55,20 @@ namespace ConduitLLM.Configuration.Repositories
             return query.OrderBy(m => m.CostName);
         }
 
+        private static IQueryable<ModelCost> ApplyProviderFilter(
+            IQueryable<ModelCost> query,
+            ConduitDbContext context,
+            int providerId)
+        {
+            var providerAssociationIds = context.ModelProviderMappings
+                .AsNoTracking()
+                .Where(mapping => mapping.ProviderId == providerId)
+                .Select(mapping => mapping.ModelProviderTypeAssociationId);
+
+            return query.Where(cost => cost.ModelProviderTypeAssociations.Any(association =>
+                association.IsEnabled && providerAssociationIds.Contains(association.Id)));
+        }
+
         /// <inheritdoc/>
         /// <remarks>
         /// Overrides the graph-traversing <c>DbSet.Update()</c> in the base class and marks only
@@ -129,13 +143,11 @@ namespace ConduitLLM.Configuration.Repositories
                     return new List<ModelCost>();
                 }
 
-                // Get all model mappings for this provider
-                var providerMappings = await context.ModelProviderMappings
+                var hasProviderMappings = await context.ModelProviderMappings
                     .AsNoTracking()
-                    .Where(m => m.ProviderId == providerId)
-                    .ToListAsync(cancellationToken);
+                    .AnyAsync(mapping => mapping.ProviderId == providerId, cancellationToken);
 
-                if (!providerMappings.Any())
+                if (!hasProviderMappings)
                 {
                     Logger.LogInformation("No model mappings found for provider {ProviderId}", providerId);
                     return new List<ModelCost>();
@@ -144,8 +156,7 @@ namespace ConduitLLM.Configuration.Repositories
                 // Get model costs associated with models from this provider
                 var query = GetDbSet(context).AsNoTracking();
                 query = ApplyDefaultIncludes(query);
-                query = query.Where(m => m.ModelProviderTypeAssociations.Any(mpta =>
-                    mpta.Provider != null && mpta.IsEnabled));
+                query = ApplyProviderFilter(query, context, providerId);
                 query = ApplyDefaultOrdering(query);
 
                 return await query.ToListAsync(cancellationToken);
@@ -176,8 +187,7 @@ namespace ConduitLLM.Configuration.Repositories
 
                 var query = GetDbSet(context).AsNoTracking();
                 query = ApplyDefaultIncludes(query);
-                query = query.Where(m => m.ModelProviderTypeAssociations.Any(mpta =>
-                    mpta.Provider != null && mpta.IsEnabled));
+                query = ApplyProviderFilter(query, context, providerId);
 
                 var totalCount = await query.CountAsync(cancellationToken);
 
