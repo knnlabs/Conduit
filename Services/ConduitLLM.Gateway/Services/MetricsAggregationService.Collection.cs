@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.Metrics;
 using ConduitLLM.Configuration.Interfaces;
+using MetricsCollectionInstrumentation = ConduitLLM.Gateway.Metrics.MetricsCollectionInstrumentation;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -75,6 +77,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("metrics_aggregation/http");
                 _logger.LogError(ex, "Error collecting HTTP metrics");
             }
         }
@@ -132,6 +135,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("metrics_aggregation/infrastructure");
                 _logger.LogError(ex, "Error collecting infrastructure metrics");
             }
         }
@@ -145,52 +149,105 @@ namespace ConduitLLM.Gateway.Services
             {
                 using var scope = _serviceProvider.CreateScope();
                 
-                // Active virtual keys
-                snapshot.Business.ActiveVirtualKeys = (int)GetMetricValue("conduit_virtualkeys_active_count");
-                
-                // Total requests
-                snapshot.Business.TotalRequestsPerMinute = (int)(GetMetricValue("conduit_virtualkey_requests_total") / 60.0);
-                
-                // Cost metrics
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ConduitDbContext>>();
+                await using var context = await dbContextFactory.CreateDbContextAsync();
+                var windowEnd = DateTime.UtcNow;
+                var windowStart = windowEnd.AddMinutes(-1);
+
+                var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
+                snapshot.Business.ActiveVirtualKeys = await virtualKeyRepo.CountActiveAsync();
+
+                var recentRequests = context.RequestLogs
+                    .AsNoTracking()
+                    .Where(log => log.Timestamp >= windowStart && log.Timestamp < windowEnd);
+                snapshot.Business.TotalRequestsPerMinute = await recentRequests.CountAsync();
+
+                // Costs remain attributable even if a provider is disabled after serving the
+                // request, so usage rows (rather than the current provider list) are authoritative.
+                var billedRequests = context.RequestLogs
+                    .AsNoTracking()
+                    .Where(log => (log.BilledAtUtc ?? log.Timestamp) >= windowStart &&
+                                  (log.BilledAtUtc ?? log.Timestamp) < windowEnd);
+                var costSummary = await billedRequests
+                    .GroupBy(_ => 1)
+                    .Select(group => new
+                    {
+                        Total = group.Sum(log => log.Cost),
+                        RequestCount = group.Count()
+                    })
+                    .SingleOrDefaultAsync();
+                var costsByProvider = await billedRequests
+                    .Where(log => log.Cost != 0)
+                    .GroupBy(log => log.ProviderType ?? "unknown")
+                    .Select(group => new
+                    {
+                        Provider = group.Key,
+                        Cost = group.Sum(log => log.Cost)
+                    })
+                    .ToListAsync();
+
                 snapshot.Business.Costs = new CostMetrics
                 {
-                    TotalCostPerMinute = (decimal)GetMetricValue("conduit_cost_rate_dollars_per_minute"),
-                    AverageCostPerRequest = (decimal)GetMetricValue("conduit_cost_per_request_dollars_sum")
+                    TotalCostPerMinute = costSummary?.Total ?? 0,
+                    AverageCostPerRequest = costSummary is { RequestCount: > 0 }
+                        ? costSummary.Total / costSummary.RequestCount
+                        : 0,
+                    CostByProvider = costsByProvider
+                        .GroupBy(row => row.Provider, StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(
+                            group => group.Key,
+                            group => group.Sum(row => row.Cost),
+                            StringComparer.OrdinalIgnoreCase)
                 };
 
-                // Cost by provider - dynamically get from database
-                // TODO(#1076): Populate provider cost metrics from enabled database providers.
-                // Provider cost metrics should be collected based on enabled providers
-                // not a hardcoded list. For now, leaving empty as metrics collection
-                // should be refactored to use actual provider repository data.
-                snapshot.Business.Costs.CostByProvider = new Dictionary<string, decimal>();
-
-                // Model usage (top 5)
-                // In production, this would query from database or Prometheus
-                snapshot.Business.ModelUsage = new List<ModelUsageStats>
-                {
-                    new ModelUsageStats
+                var modelUsage = await recentRequests
+                    .GroupBy(log => new { log.ModelName, Provider = log.ProviderType ?? "unknown" })
+                    .Select(group => new
                     {
-                        ModelName = "gpt-4-turbo",
-                        ProviderType = ProviderType.OpenAI,
-                        RequestsPerMinute = (int)(GetMetricValue("conduit_model_requests_total{model=\"gpt-4-turbo\"}") / 60.0),
-                        TokensPerMinute = (long)GetMetricValue("conduit_model_tokens_total{model=\"gpt-4-turbo\"}"),
-                        AverageResponseTime = GetMetricValue("conduit_model_response_time_seconds{model=\"gpt-4-turbo\"}") * 1000,
-                        ErrorRate = 0
-                    }
-                };
+                        group.Key.ModelName,
+                        group.Key.Provider,
+                        RequestCount = group.Count(),
+                        TokenCount = group.Sum(log => (long)log.InputTokens + log.OutputTokens),
+                        AverageResponseTime = group.Average(log => log.ResponseTimeMs),
+                        ErrorCount = group.Count(log => log.StatusCode >= 400)
+                    })
+                    .OrderByDescending(row => row.RequestCount)
+                    .ThenBy(row => row.ModelName)
+                    .Take(5)
+                    .ToListAsync();
+
+                snapshot.Business.ModelUsage = modelUsage
+                    .Select(row => new ModelUsageStats
+                    {
+                        ModelName = row.ModelName,
+                        ProviderType = ParseProviderType(row.Provider),
+                        RequestsPerMinute = row.RequestCount,
+                        TokensPerMinute = row.TokenCount,
+                        AverageResponseTime = row.AverageResponseTime,
+                        ErrorRate = row.RequestCount > 0
+                            ? row.ErrorCount * 100.0 / row.RequestCount
+                            : 0
+                    })
+                    .ToList();
 
                 // Top virtual keys by spend
-                var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
                 // Use optimized query that filters and limits at database level
                 var topKeys = await virtualKeyRepo.GetTopEnabledAsync(5);
+                var topKeyIds = topKeys.Select(key => key.Id).ToList();
+                var requestCountsByKey = topKeyIds.Count == 0
+                    ? new Dictionary<int, int>()
+                    : await recentRequests
+                        .Where(log => topKeyIds.Contains(log.VirtualKeyId))
+                        .GroupBy(log => log.VirtualKeyId)
+                        .Select(group => new { VirtualKeyId = group.Key, Count = group.Count() })
+                        .ToDictionaryAsync(row => row.VirtualKeyId, row => row.Count);
                 // Note: Spend tracking is now at the group level
                 snapshot.Business.TopVirtualKeys = topKeys
                     .Select(k => new VirtualKeyStats
                     {
                         KeyId = k.Id.ToString(),
                         KeyName = k.KeyName ?? "Unnamed",
-                        RequestsPerMinute = (int)(GetMetricValue($"conduit_virtualkey_requests_total{{virtual_key_id=\"{k.Id}\"}}") / 60.0),
+                        RequestsPerMinute = requestCountsByKey.GetValueOrDefault(k.Id),
                         TotalSpend = 0, // Spend is tracked at group level
                         BudgetUtilization = 0, // Budget is tracked at group level
                         IsOverBudget = false // Budget is tracked at group level
@@ -199,6 +256,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("metrics_aggregation/business");
                 _logger.LogError(ex, "Error collecting business metrics");
             }
         }
@@ -224,8 +282,16 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("metrics_aggregation/system");
                 _logger.LogError(ex, "Error collecting system metrics");
             }
+        }
+
+        private static ProviderType ParseProviderType(string provider)
+        {
+            return Enum.TryParse<ProviderType>(provider, ignoreCase: true, out var parsed)
+                ? parsed
+                : ProviderType.Unknown;
         }
 
     }

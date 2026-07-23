@@ -9,6 +9,11 @@ namespace ConduitLLM.Configuration
     public enum ProviderType
     {
         /// <summary>
+        /// Provider information was not captured or is not recognized.
+        /// </summary>
+        Unknown = 0,
+
+        /// <summary>
         /// OpenAI provider (GPT models)
         /// </summary>
         OpenAI = 1,

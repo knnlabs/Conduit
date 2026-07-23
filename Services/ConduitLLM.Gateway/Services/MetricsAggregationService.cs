@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.DTOs.Metrics;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -99,6 +100,7 @@ namespace ConduitLLM.Gateway.Services
 
         private async Task<MetricsSnapshot> CollectMetricsSnapshotAsync()
         {
+            using var collectionTimer = MetricsCollectionInstrumentation.Measure("metrics_aggregation");
             var snapshot = new MetricsSnapshot
             {
                 Timestamp = DateTime.UtcNow

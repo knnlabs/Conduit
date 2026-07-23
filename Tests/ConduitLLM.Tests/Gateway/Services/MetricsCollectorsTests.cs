@@ -1,0 +1,306 @@
+using System.Text;
+
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Gateway.Hubs;
+using ConduitLLM.Gateway.Services;
+
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+using Moq;
+
+namespace ConduitLLM.Tests.Gateway.Services;
+
+public sealed class MetricsCollectorsTests
+{
+    [Fact]
+    public async Task TaskMetrics_GroupActiveTasksAndRemoveStaleLabels()
+    {
+        var databaseName = $"task-metrics-{Guid.NewGuid()}";
+        var options = CreateOptions(databaseName);
+        var taskType = $"issue_1076_{Guid.NewGuid():N}";
+        await using (var context = new ConduitDbContext(options))
+        {
+            context.AsyncTasks.AddRange(
+                CreateTask("pending-1", taskType, state: 0, DateTime.UtcNow.AddSeconds(-30)),
+                CreateTask("pending-2", taskType, state: 0, DateTime.UtcNow.AddSeconds(-10)),
+                CreateTask("processing", taskType, state: 1, DateTime.UtcNow.AddSeconds(-20)),
+                CreateTask("completed", taskType, state: 2, DateTime.UtcNow.AddMinutes(-1)),
+                CreateTask("archived", taskType, state: 0, DateTime.UtcNow.AddMinutes(-2), isArchived: true));
+            await context.SaveChangesAsync();
+        }
+
+        await using var provider = CreateServices(options).BuildServiceProvider();
+        var service = new TaskProcessingMetricsService(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Mock.Of<ILogger<TaskProcessingMetricsService>>());
+        using var scope = provider.CreateScope();
+
+        await service.CollectAsyncTaskMetrics(scope);
+
+        var exposition = await ExportMetricsAsync();
+        Assert.Contains(
+            $"conduit_tasks_queue_depth{{task_type=\"{taskType}\",status=\"pending\"}} 2",
+            exposition);
+        Assert.Contains(
+            $"conduit_tasks_queue_depth{{task_type=\"{taskType}\",status=\"processing\"}} 1",
+            exposition);
+        Assert.Contains($"conduit_task_wait_time_seconds{{task_type=\"{taskType}\"}}", exposition);
+
+        await using (var context = new ConduitDbContext(options))
+        {
+            context.AsyncTasks.RemoveRange(context.AsyncTasks.Where(task => task.Type == taskType));
+            await context.SaveChangesAsync();
+        }
+
+        await service.CollectAsyncTaskMetrics(scope);
+
+        exposition = await ExportMetricsAsync();
+        Assert.DoesNotContain($"conduit_tasks_queue_depth{{task_type=\"{taskType}\"", exposition);
+        Assert.DoesNotContain($"conduit_task_wait_time_seconds{{task_type=\"{taskType}\"}}", exposition);
+    }
+
+    [Fact]
+    public async Task ActiveModelMetrics_ExcludeDisabledMappingsAndProvidersAndRemoveStaleLabels()
+    {
+        var options = CreateOptions($"active-model-metrics-{Guid.NewGuid()}");
+        const int enabledProviderId = 1076001;
+        const int disabledProviderId = 1076002;
+        await using (var context = new ConduitDbContext(options))
+        {
+            var enabledProvider = new Provider
+            {
+                Id = enabledProviderId,
+                ProviderName = "Issue 1076 enabled",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+            var disabledProvider = new Provider
+            {
+                Id = disabledProviderId,
+                ProviderName = "Issue 1076 disabled",
+                ProviderType = ProviderType.Groq,
+                IsEnabled = false
+            };
+            context.Providers.AddRange(enabledProvider, disabledProvider);
+            context.ModelProviderMappings.AddRange(
+                CreateMapping(1076011, enabledProvider, isEnabled: true),
+                CreateMapping(1076012, enabledProvider, isEnabled: false),
+                CreateMapping(1076013, disabledProvider, isEnabled: true));
+            await context.SaveChangesAsync();
+        }
+
+        var virtualKeys = new Mock<IVirtualKeyRepository>();
+        virtualKeys.Setup(repository => repository.CountActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(4);
+        await using var provider = CreateServices(options, virtualKeys.Object).BuildServiceProvider();
+        var service = new BusinessMetricsService(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Mock.Of<ILogger<BusinessMetricsService>>());
+        using var scope = provider.CreateScope();
+
+        await service.CollectActiveEntityMetrics(scope);
+
+        var exposition = await ExportMetricsAsync();
+        Assert.Contains($"conduit_models_active_count{{provider=\"{enabledProviderId}\"}} 1", exposition);
+        Assert.DoesNotContain($"conduit_models_active_count{{provider=\"{disabledProviderId}\"}}", exposition);
+
+        await using (var context = new ConduitDbContext(options))
+        {
+            var mapping = await context.ModelProviderMappings.SingleAsync(row => row.Id == 1076011);
+            mapping.IsEnabled = false;
+            await context.SaveChangesAsync();
+        }
+
+        await service.CollectActiveEntityMetrics(scope);
+
+        exposition = await ExportMetricsAsync();
+        Assert.DoesNotContain($"conduit_models_active_count{{provider=\"{enabledProviderId}\"}}", exposition);
+    }
+
+    [Fact]
+    public async Task SnapshotBusinessMetrics_AreDataDriven()
+    {
+        var options = CreateOptions($"snapshot-metrics-{Guid.NewGuid()}");
+        var now = DateTime.UtcNow;
+        await using (var context = new ConduitDbContext(options))
+        {
+            context.RequestLogs.AddRange(
+                CreateRequestLog("model-a", "OpenAI", 0.25m, 10, 5, 100, 200, now.AddSeconds(-20)),
+                CreateRequestLog("model-a", "OpenAI", 0.75m, 20, 10, 300, 500, now.AddSeconds(-10)),
+                CreateRequestLog("model-b", "Groq", 0.50m, 4, 6, 50, 200, now.AddSeconds(-5)),
+                CreateRequestLog("old-model", "OpenAI", 9m, 1, 1, 10, 200, now.AddMinutes(-2)));
+            await context.SaveChangesAsync();
+        }
+
+        var virtualKeys = new Mock<IVirtualKeyRepository>();
+        virtualKeys.Setup(repository => repository.CountActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(2);
+        virtualKeys.Setup(repository => repository.GetTopEnabledAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        await using var provider = CreateServices(options, virtualKeys.Object).BuildServiceProvider();
+        var service = new MetricsAggregationService(
+            provider,
+            Mock.Of<ILogger<MetricsAggregationService>>(),
+            Mock.Of<IHubContext<MetricsHub>>());
+
+        var snapshot = await service.GetCurrentSnapshotAsync();
+
+        Assert.Equal(2, snapshot.Business.ActiveVirtualKeys);
+        Assert.Equal(3, snapshot.Business.TotalRequestsPerMinute);
+        Assert.Equal(1.50m, snapshot.Business.Costs.TotalCostPerMinute);
+        Assert.Equal(0.50m, snapshot.Business.Costs.AverageCostPerRequest);
+        Assert.Equal(1.00m, snapshot.Business.Costs.CostByProvider["OpenAI"]);
+        Assert.Equal(0.50m, snapshot.Business.Costs.CostByProvider["Groq"]);
+
+        var modelA = Assert.Single(snapshot.Business.ModelUsage, usage => usage.ModelName == "model-a");
+        Assert.Equal(ProviderType.OpenAI, modelA.ProviderType);
+        Assert.Equal(2, modelA.RequestsPerMinute);
+        Assert.Equal(45, modelA.TokensPerMinute);
+        Assert.Equal(200, modelA.AverageResponseTime);
+        Assert.Equal(50, modelA.ErrorRate);
+        Assert.DoesNotContain(snapshot.Business.ModelUsage, usage => usage.ModelName == "gpt-4-turbo");
+
+        var exposition = await ExportMetricsAsync();
+        Assert.Contains(
+            "conduit_metrics_collection_duration_seconds_count{collector=\"metrics_aggregation\"}",
+            exposition);
+    }
+
+    [Fact]
+    public async Task SnapshotBusinessMetrics_EmptyDatabaseReturnsEmptySeries()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ConduitDbContext>()
+            .UseSqlite(connection)
+            .Options;
+        await using (var context = new ConduitDbContext(options))
+        {
+            await context.Database.EnsureCreatedAsync();
+        }
+        var virtualKeys = new Mock<IVirtualKeyRepository>();
+        virtualKeys.Setup(repository => repository.CountActiveAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+        virtualKeys.Setup(repository => repository.GetTopEnabledAsync(5, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+        await using var provider = CreateServices(options, virtualKeys.Object).BuildServiceProvider();
+        var service = new MetricsAggregationService(
+            provider,
+            Mock.Of<ILogger<MetricsAggregationService>>(),
+            Mock.Of<IHubContext<MetricsHub>>());
+
+        var snapshot = await service.GetCurrentSnapshotAsync();
+
+        Assert.Equal(0, snapshot.Business.TotalRequestsPerMinute);
+        Assert.Equal(0, snapshot.Business.Costs.TotalCostPerMinute);
+        Assert.Empty(snapshot.Business.Costs.CostByProvider);
+        Assert.Empty(snapshot.Business.ModelUsage);
+    }
+
+    [Fact]
+    public async Task CollectorFailures_AreExported()
+    {
+        await using var provider = new ServiceCollection().BuildServiceProvider();
+        var service = new BusinessMetricsService(
+            provider.GetRequiredService<IServiceScopeFactory>(),
+            Mock.Of<ILogger<BusinessMetricsService>>());
+        using var scope = provider.CreateScope();
+
+        await service.CollectActiveEntityMetrics(scope);
+
+        var exposition = await ExportMetricsAsync();
+        Assert.Contains(
+            "conduit_metrics_collection_failures_total{collector=\"business/active_entities\"}",
+            exposition);
+    }
+
+    private static DbContextOptions<ConduitDbContext> CreateOptions(string databaseName) =>
+        new DbContextOptionsBuilder<ConduitDbContext>()
+            .UseInMemoryDatabase(databaseName)
+            .Options;
+
+    private static ServiceCollection CreateServices(
+        DbContextOptions<ConduitDbContext> options,
+        IVirtualKeyRepository? virtualKeys = null)
+    {
+        var services = new ServiceCollection();
+        services.AddSingleton<IDbContextFactory<ConduitDbContext>>(new TestDbContextFactory(options));
+        if (virtualKeys != null)
+        {
+            services.AddSingleton(virtualKeys);
+        }
+        return services;
+    }
+
+    private static ConduitLLM.Configuration.Entities.AsyncTask CreateTask(
+        string id,
+        string type,
+        int state,
+        DateTime createdAt,
+        bool isArchived = false) => new()
+        {
+            Id = $"{type}-{id}",
+            Type = type,
+            State = state,
+            CreatedAt = createdAt,
+            UpdatedAt = createdAt,
+            VirtualKeyId = 1,
+            IsArchived = isArchived
+        };
+
+    private static ModelProviderMapping CreateMapping(int id, Provider provider, bool isEnabled) => new()
+    {
+        Id = id,
+        ModelAlias = $"model-{id}",
+        ProviderModelId = $"provider-model-{id}",
+        ProviderId = provider.Id,
+        Provider = provider,
+        ModelProviderTypeAssociationId = id,
+        IsEnabled = isEnabled
+    };
+
+    private static RequestLog CreateRequestLog(
+        string model,
+        string provider,
+        decimal cost,
+        int inputTokens,
+        int outputTokens,
+        double responseTimeMs,
+        int statusCode,
+        DateTime timestamp) => new()
+        {
+            VirtualKeyId = 1,
+            ModelName = model,
+            ProviderType = provider,
+            RequestType = "chat",
+            Cost = cost,
+            InputTokens = inputTokens,
+            OutputTokens = outputTokens,
+            ResponseTimeMs = responseTimeMs,
+            StatusCode = statusCode,
+            Timestamp = timestamp,
+            BilledAtUtc = timestamp
+        };
+
+    private static async Task<string> ExportMetricsAsync()
+    {
+        await using var stream = new MemoryStream();
+        await Prometheus.Metrics.DefaultRegistry.CollectAndExportAsTextAsync(stream, default);
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private sealed class TestDbContextFactory(DbContextOptions<ConduitDbContext> options)
+        : IDbContextFactory<ConduitDbContext>
+    {
+        public ConduitDbContext CreateDbContext() => new(options);
+
+        public Task<ConduitDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(CreateDbContext());
+    }
+}
