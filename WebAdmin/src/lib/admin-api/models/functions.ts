@@ -204,26 +204,34 @@ export interface UpdateFunctionCostDto {
 
 export interface FunctionExecutionDto {
   id: string; // Guid
-  functionConfigurationId: number;
-  virtualKeyId: number;
-  state: ExecutionState;
-  executionMode: FunctionExecutionMode;
-  requestedAt: string;
-  request?: unknown;
-  response?: unknown;
-  errorMessage?: string;
-  estimatedCost?: number;
-  actualCost?: number;
-  costCalculation?: unknown;
+  functionId: number;
+  status: ExecutionState;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  error?: string;
+  createdAt: string;
   startedAt?: string;
   completedAt?: string;
-  duration?: number; // TimeSpan in milliseconds
-  retryCount: number;
-  nextRetryAt?: string | null;
-  webhookUrl?: string | null;
-  webhookDelivered: boolean;
-  progressPercentage?: number | null;
-  statusMessage?: string | null;
+  durationMs?: number;
+  cost: {
+    estimated?: number;
+    actual?: number;
+    currency: string;
+    breakdown?: Record<string, unknown>;
+  };
+  admin: {
+    virtualKeyId: number;
+    executionMode: FunctionExecutionMode;
+    retryCount: number;
+    nextRetryAt?: string | null;
+    leasedBy?: string | null;
+    leaseExpiresAt?: string | null;
+    version: number;
+    webhookUrl?: string | null;
+    webhookDelivered: boolean;
+    progressPercentage?: number | null;
+    statusMessage?: string | null;
+  };
 }
 
 // ============================================================================

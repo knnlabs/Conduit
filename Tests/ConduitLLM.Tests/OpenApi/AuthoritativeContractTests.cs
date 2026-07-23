@@ -452,7 +452,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     [InlineData("/api/FunctionConfigurations", "FunctionConfigurationDto")]
     [InlineData("/api/FunctionCredentials", "FunctionCredential")]
     [InlineData("/api/FunctionCosts", "FunctionCostDto")]
-    [InlineData("/api/FunctionExecutions/expired-leases", "FunctionExecutionDto")]
+    [InlineData("/api/FunctionExecutions/expired-leases", "AdminFunctionExecutionDto")]
     public void Admin_FunctionListsPublishTypedItems(string path, string schema)
     {
         ResponseSchema(_admin, path).GetProperty("items").GetProperty("$ref").GetString()
@@ -463,7 +463,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     [InlineData("/api/FunctionConfigurations/{id}", "FunctionConfigurationDto")]
     [InlineData("/api/FunctionCredentials/{id}", "FunctionCredential")]
     [InlineData("/api/FunctionCosts/{id}", "FunctionCostDto")]
-    [InlineData("/api/FunctionExecutions/{id}", "FunctionExecutionDto")]
+    [InlineData("/api/FunctionExecutions/{id}", "AdminFunctionExecutionDto")]
     public void Admin_FunctionEntityReadsPublishTypedResponses(string path, string schema)
     {
         ResponseSchema(_admin, path).GetProperty("$ref").GetString()
@@ -525,22 +525,57 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Fact]
-    public void Admin_FunctionExecutionContractUsesStructuredJsonAndHidesLeaseInternals()
+    public void FunctionExecutionContractsShareCanonicalBaseAndScopeAdminDiagnostics()
     {
-        var properties = _admin.RootElement.GetProperty("components").GetProperty("schemas")
-            .GetProperty("FunctionExecutionDto").GetProperty("properties");
+        var adminSchemas = _admin.RootElement.GetProperty("components").GetProperty("schemas");
+        var gatewaySchemas = _gateway.RootElement.GetProperty("components").GetProperty("schemas");
+        var adminBase = adminSchemas.GetProperty("FunctionExecutionDto").GetProperty("properties");
+        var gatewayBase = gatewaySchemas.GetProperty("FunctionExecutionDto").GetProperty("properties");
 
-        JsonElementReference(properties.GetProperty("request"))
-            .Should().Be("#/components/schemas/JsonElement");
-        JsonElementReference(properties.GetProperty("response"))
-            .Should().Be("#/components/schemas/JsonElement");
-        JsonElementReference(properties.GetProperty("costCalculation"))
-            .Should().Be("#/components/schemas/JsonElement");
-        properties.TryGetProperty("requestJson", out _).Should().BeFalse();
-        properties.TryGetProperty("responseJson", out _).Should().BeFalse();
-        properties.TryGetProperty("leasedBy", out _).Should().BeFalse();
-        properties.TryGetProperty("leaseExpiryTime", out _).Should().BeFalse();
-        properties.TryGetProperty("version", out _).Should().BeFalse();
+        adminBase.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "id", "functionId", "status", "input", "output", "error", "createdAt",
+            "startedAt", "completedAt", "durationMs", "cost");
+        gatewayBase.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo(
+            "id", "function_id", "status", "input", "output", "error", "created_at",
+            "started_at", "completed_at", "duration_ms", "cost");
+
+        adminBase.GetProperty("input").GetProperty("type").ToString().Should().Contain("object");
+        adminBase.GetProperty("output").GetProperty("type").ToString().Should().Contain("object");
+        gatewayBase.GetProperty("input").GetProperty("type").ToString().Should().Contain("object");
+        gatewayBase.GetProperty("output").GetProperty("type").ToString().Should().Contain("object");
+
+        var adminExtension = adminSchemas.GetProperty("AdminFunctionExecutionDto");
+        adminExtension.GetProperty("allOf")[0].GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/FunctionExecutionDto");
+        adminExtension.GetProperty("properties").EnumerateObject().Select(property => property.Name)
+            .Should().BeEquivalentTo("admin");
+
+        var diagnostics = adminSchemas.GetProperty("FunctionExecutionAdminDetailsDto")
+            .GetProperty("properties");
+        diagnostics.TryGetProperty("leasedBy", out _).Should().BeTrue();
+        diagnostics.TryGetProperty("leaseExpiresAt", out _).Should().BeTrue();
+        adminBase.TryGetProperty("leasedBy", out _).Should().BeFalse();
+        adminBase.TryGetProperty("version", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void FunctionFamilyContractsUseStructuredJsonAndUnitSuffixedDuration()
+    {
+        var adminSchemas = _admin.RootElement.GetProperty("components").GetProperty("schemas");
+        var configuration = adminSchemas.GetProperty("FunctionConfigurationDto").GetProperty("properties");
+        configuration.GetProperty("providerSettings").GetProperty("type").ToString().Should().Contain("object");
+        configuration.GetProperty("parameterSchema").GetProperty("type").ToString().Should().Contain("object");
+
+        foreach (var document in new[] { _admin, _gateway })
+        {
+            var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+            var execution = schemas.GetProperty("FunctionExecutionDto").GetProperty("properties");
+            execution.TryGetProperty("duration", out _).Should().BeFalse();
+            execution.EnumerateObject().Any(property => property.Name is "durationMs" or "duration_ms")
+                .Should().BeTrue();
+            schemas.GetProperty("FunctionExecutionCostDto").GetProperty("properties")
+                .GetProperty("breakdown").GetProperty("type").ToString().Should().Contain("object");
+        }
     }
 
     public void Dispose()

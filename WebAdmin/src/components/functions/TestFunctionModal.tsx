@@ -27,24 +27,12 @@ import {
 import { notify } from '@/lib/notifications';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import { FunctionConfigurationDto } from '@/app/functions/types';
+import type { FunctionExecutionResponse } from '@/lib/gateway-api/types';
 
 interface TestFunctionModalProps {
   opened: boolean;
   onClose: () => void;
   configuration: FunctionConfigurationDto;
-}
-
-interface FunctionExecutionResponse {
-  executionId: string;
-  functionConfigurationId: number;
-  state: string;
-  result?: Record<string, unknown>;
-  errorMessage?: string;
-  estimatedCost?: number;
-  actualCost?: number;
-  startedAt?: string;
-  completedAt?: string;
-  duration?: number;
 }
 
 const validateJson = (value: string) => {
@@ -77,8 +65,8 @@ const validateParameters = (value: string) => {
 };
 
 function getStateIcon(state: string): React.ReactNode {
-  if (state === 'Completed') return <IconCheck size={16} />;
-  if (state === 'Failed') return <IconX size={16} />;
+  if (state.toLowerCase() === 'completed') return <IconCheck size={16} />;
+  if (state.toLowerCase() === 'failed') return <IconX size={16} />;
   return null;
 }
 
@@ -147,16 +135,16 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
         metadata,
       }, values.idempotencyKey || undefined);
 
-      setTestResult(response as FunctionExecutionResponse);
+      setTestResult(response);
 
       // Auto-switch to result tab
       setActiveTab('result');
 
       // Show success notification
-      if (response.state.toLowerCase() === 'completed') {
-        notify.success(`Execution completed in ${formatDuration(response.duration ?? 0)}`, 'Function executed');
+      if (response.status.toLowerCase() === 'completed') {
+        notify.success(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
       } else {
-        notify.warning(`Execution completed in ${formatDuration(response.duration ?? 0)}`, 'Function executed');
+        notify.warning(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
       }
     } catch (error) {
       console.warn('Error executing function:', error);
@@ -164,10 +152,12 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
       // Show error in result
       const errorMessage = error instanceof Error ? error.message : 'Failed to execute function';
       setTestResult({
-        executionId: '',
-        functionConfigurationId: configuration.id,
-        state: 'Failed',
-        errorMessage,
+        id: '',
+        functionId: configuration.id,
+        status: 'failed',
+        error: errorMessage,
+        createdAt: new Date().toISOString(),
+        cost: { currency: 'USD' },
       });
 
       // Auto-switch to result tab
@@ -204,14 +194,14 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
   };
 
   const getStateColor = (state: string): string => {
-    switch (state) {
-      case 'Completed':
+    switch (state.toLowerCase()) {
+      case 'completed':
         return 'green';
-      case 'Failed':
+      case 'failed':
         return 'red';
-      case 'Running':
+      case 'running':
         return 'blue';
-      case 'Pending':
+      case 'pending':
         return 'yellow';
       default:
         return 'gray';
@@ -294,36 +284,36 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
               <Stack gap="md">
                 <Group justify="space-between">
                   <Badge
-                    color={getStateColor(testResult.state)}
+                    color={getStateColor(testResult.status)}
                     variant="filled"
                     size="lg"
-                    leftSection={getStateIcon(testResult.state)}
+                    leftSection={getStateIcon(testResult.status)}
                   >
-                    {testResult.state}
+                    {testResult.status}
                   </Badge>
-                  {testResult.duration !== null && testResult.duration !== undefined && (
+                  {testResult.durationMs !== null && testResult.durationMs !== undefined && (
                     <Text size="sm" c="dimmed">
-                      Duration: {formatDuration(testResult.duration)}
+                      Duration: {formatDuration(testResult.durationMs)}
                     </Text>
                   )}
                 </Group>
 
-                {testResult.errorMessage && (
+                {testResult.error && (
                   <Alert icon={<IconAlertCircle size={16} />} color="red" variant="filled">
                     <Text size="sm" fw={500}>
                       Error
                     </Text>
-                    <Text size="sm">{testResult.errorMessage}</Text>
+                    <Text size="sm">{testResult.error}</Text>
                   </Alert>
                 )}
 
-                {testResult.result && (
+                {testResult.output && (
                   <div>
                     <Text size="sm" fw={500} mb="xs">
                       Response Data:
                     </Text>
                     <Code block style={{ maxHeight: '400px', overflow: 'auto' }}>
-                      {JSON.stringify(testResult.result, null, 2)}
+                      {JSON.stringify(testResult.output, null, 2)}
                     </Code>
                   </div>
                 )}
@@ -333,7 +323,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                     Execution Details
                   </Text>
                   <Grid>
-                    {testResult.executionId && (
+                    {testResult.id && (
                       <>
                         <Grid.Col span={4}>
                           <Text size="xs" c="dimmed">
@@ -342,7 +332,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                         </Grid.Col>
                         <Grid.Col span={8}>
                           <Text size="xs" style={{ fontFamily: 'monospace' }}>
-                            {testResult.executionId}
+                            {testResult.id}
                           </Text>
                         </Grid.Col>
                       </>
@@ -375,7 +365,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                         </Grid.Col>
                       </>
                     )}
-                    {testResult.estimatedCost !== null && testResult.estimatedCost !== undefined && (
+                    {testResult.cost.estimated !== null && testResult.cost.estimated !== undefined && (
                       <>
                         <Grid.Col span={4}>
                           <Text size="xs" c="dimmed">
@@ -383,11 +373,11 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatCost(testResult.estimatedCost)}</Text>
+                          <Text size="xs">{formatCost(testResult.cost.estimated)}</Text>
                         </Grid.Col>
                       </>
                     )}
-                    {testResult.actualCost !== null && testResult.actualCost !== undefined && (
+                    {testResult.cost.actual !== null && testResult.cost.actual !== undefined && (
                       <>
                         <Grid.Col span={4}>
                           <Text size="xs" c="dimmed">
@@ -395,7 +385,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatCost(testResult.actualCost)}</Text>
+                          <Text size="xs">{formatCost(testResult.cost.actual)}</Text>
                         </Grid.Col>
                       </>
                     )}

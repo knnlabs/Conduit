@@ -1,4 +1,6 @@
 using System.Text.Json;
+using ConduitLLM.Functions.DTOs;
+using ConduitLLM.Functions.Extensions;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Configuration.Messaging;
@@ -137,23 +139,7 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
                 })));
 
             // Return execution result
-            var response = new FunctionExecutionResponse
-            {
-                ExecutionId = execution.Id,
-                FunctionConfigurationId = execution.FunctionConfigurationId,
-                State = execution.State.ToString(),
-                Result = execution.ResponseJson != null
-                    ? JsonSerializer.Deserialize<Dictionary<string, object>>(execution.ResponseJson)
-                    : null,
-                ErrorMessage = execution.ErrorMessage,
-                EstimatedCost = execution.EstimatedCost,
-                ActualCost = execution.ActualCost,
-                StartedAt = execution.StartedAt,
-                CompletedAt = execution.CompletedAt,
-                Duration = execution.Duration?.TotalMilliseconds != null ? (long)execution.Duration.Value.TotalMilliseconds : null
-            };
-
-            return Ok(response);
+            return Ok(execution.ToContractDto());
         }
         catch (InvalidOperationException ex)
         {
@@ -203,23 +189,7 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
                 return OpenAIError(404, $"Function execution {executionId} not found", "not_found", "not_found_error");
             }
 
-            var response = new FunctionExecutionResponse
-            {
-                ExecutionId = execution.Id,
-                FunctionConfigurationId = execution.FunctionConfigurationId,
-                State = execution.State.ToString(),
-                Result = execution.ResponseJson != null
-                    ? JsonSerializer.Deserialize<Dictionary<string, object>>(execution.ResponseJson)
-                    : null,
-                ErrorMessage = execution.ErrorMessage,
-                EstimatedCost = execution.EstimatedCost,
-                ActualCost = execution.ActualCost,
-                StartedAt = execution.StartedAt,
-                CompletedAt = execution.CompletedAt,
-                Duration = execution.Duration?.TotalMilliseconds != null ? (long)execution.Duration.Value.TotalMilliseconds : null
-            };
-
-            return Ok(response);
+            return Ok(execution.ToContractDto());
         }
         catch (Exception ex)
         {
@@ -250,59 +220,4 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
 
     }
 
-    /// <summary>
-    /// Response model for function execution.
-    /// </summary>
-    public class FunctionExecutionResponse
-    {
-        /// <summary>
-        /// The unique execution ID.
-        /// </summary>
-        public Guid ExecutionId { get; set; }
-
-        /// <summary>
-        /// The function configuration ID that was executed.
-        /// </summary>
-        public int FunctionConfigurationId { get; set; }
-
-        /// <summary>
-        /// The current state of the execution.
-        /// </summary>
-        public string State { get; set; } = null!;
-
-        /// <summary>
-        /// The function execution result (provider-specific).
-        /// </summary>
-        public Dictionary<string, object>? Result { get; set; }
-
-        /// <summary>
-        /// Error message if execution failed.
-        /// </summary>
-        public string? ErrorMessage { get; set; }
-
-        /// <summary>
-        /// Estimated cost before execution.
-        /// </summary>
-        public decimal? EstimatedCost { get; set; }
-
-        /// <summary>
-        /// Actual cost after execution.
-        /// </summary>
-        public decimal? ActualCost { get; set; }
-
-        /// <summary>
-        /// When the execution started.
-        /// </summary>
-        public DateTime? StartedAt { get; set; }
-
-        /// <summary>
-        /// When the execution completed.
-        /// </summary>
-        public DateTime? CompletedAt { get; set; }
-
-        /// <summary>
-        /// Execution duration in milliseconds.
-        /// </summary>
-        public long? Duration { get; set; }
-    }
 }

@@ -121,6 +121,7 @@ public partial class Program
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.VirtualKeySecurityOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.ResponseContractOperationTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Gateway.OpenApi.StructuredJsonSchemaTransformer>();
             options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.OperationIdValidationDocumentTransformer>();
         });
     }

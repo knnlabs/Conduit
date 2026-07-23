@@ -280,24 +280,24 @@ export default function FunctionExecutionsPage() {
                       <Code>{execution.id.substring(0, 8)}...</Code>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{getConfigurationName(execution.functionConfigurationId)}</Text>
+                      <Text size="sm">{getConfigurationName(execution.functionId)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{execution.virtualKeyId}</Text>
+                      <Text size="sm">{execution.admin.virtualKeyId}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge color={getExecutionStateBadgeColor(execution.state)} variant="light">
-                        {getExecutionStateName(execution.state)}
+                      <Badge color={getExecutionStateBadgeColor(execution.status)} variant="light">
+                        {getExecutionStateName(execution.status)}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatDuration(execution.duration ?? undefined)}</Text>
+                      <Text size="sm">{formatDuration(execution.durationMs ?? undefined)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatCost(execution.estimatedCost ?? undefined)}</Text>
+                      <Text size="sm">{formatCost(execution.cost.estimated ?? undefined)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatCost(execution.actualCost ?? undefined)}</Text>
+                      <Text size="sm">{formatCost(execution.cost.actual ?? undefined)}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm" c="dimmed">
@@ -336,27 +336,27 @@ export default function FunctionExecutionsPage() {
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">State</Text>
-                <Badge color={getExecutionStateBadgeColor(selectedExecution.state)} variant="light" mt={4}>
-                  {getExecutionStateName(selectedExecution.state)}
+                <Badge color={getExecutionStateBadgeColor(selectedExecution.status)} variant="light" mt={4}>
+                  {getExecutionStateName(selectedExecution.status)}
                 </Badge>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Configuration</Text>
-                <Text size="sm">{getConfigurationName(selectedExecution.functionConfigurationId)}</Text>
+                <Text size="sm">{getConfigurationName(selectedExecution.functionId)}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Virtual Key</Text>
-                <Text size="sm">{selectedExecution.virtualKeyId}</Text>
+                <Text size="sm">{selectedExecution.admin.virtualKeyId}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Duration</Text>
-                <Text size="sm">{formatDuration(selectedExecution.duration ?? undefined)}</Text>
+                <Text size="sm">{formatDuration(selectedExecution.durationMs ?? undefined)}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Costs</Text>
                 <Text size="sm">
-                  Estimated: {formatCost(selectedExecution.estimatedCost ?? undefined)}<br />
-                  Actual: {formatCost(selectedExecution.actualCost ?? undefined)}
+                  Estimated: {formatCost(selectedExecution.cost.estimated ?? undefined)}<br />
+                  Actual: {formatCost(selectedExecution.cost.actual ?? undefined)}
                 </Text>
               </Grid.Col>
               <Grid.Col span={6}>
@@ -373,43 +373,43 @@ export default function FunctionExecutionsPage() {
               </Grid.Col>
             </Grid>
 
-            {selectedExecution.errorMessage && (
+            {selectedExecution.error && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Error Message</Text>
                 <Card withBorder p="md" bg="red.0">
-                  <Text size="sm" c="red.7">{selectedExecution.errorMessage}</Text>
+                  <Text size="sm" c="red.7">{selectedExecution.error}</Text>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.request !== undefined && selectedExecution.request !== null && (
+            {selectedExecution.input !== undefined && selectedExecution.input !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Request</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(selectedExecution.request, null, 2)}
+                    {JSON.stringify(selectedExecution.input, null, 2)}
                   </Code>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.response !== undefined && selectedExecution.response !== null && (
+            {selectedExecution.output !== undefined && selectedExecution.output !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Response</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(selectedExecution.response, null, 2)}
+                    {JSON.stringify(selectedExecution.output, null, 2)}
                   </Code>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.costCalculation !== undefined && selectedExecution.costCalculation !== null && (
+            {selectedExecution.cost.breakdown !== undefined && selectedExecution.cost.breakdown !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Cost Calculation Details</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(selectedExecution.costCalculation, null, 2)}
+                    {JSON.stringify(selectedExecution.cost.breakdown, null, 2)}
                   </Code>
                 </Card>
               </div>

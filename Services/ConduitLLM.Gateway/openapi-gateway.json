@@ -1749,7 +1749,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionExecutionResponse"
+                  "$ref": "#/components/schemas/FunctionExecutionDto"
                 }
               }
             }
@@ -1847,7 +1847,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionExecutionResponse"
+                  "$ref": "#/components/schemas/FunctionExecutionDto"
                 }
               }
             }
@@ -4464,6 +4464,16 @@
         },
         "description": "Response when creating an ephemeral key"
       },
+      "ExecutionState": {
+        "enum": [
+          "pending",
+          "running",
+          "completed",
+          "failed",
+          "cancelled",
+          "timed_out"
+        ]
+      },
       "FileMetadataResponse": {
         "required": [
           "file_name",
@@ -4677,6 +4687,10 @@
               "string"
             ],
             "format": "int32"
+          },
+          "parameter_schema": {
+            "type": "object",
+            "additionalProperties": { }
           }
         }
       },
@@ -4696,6 +4710,91 @@
               "string"
             ],
             "format": "int32"
+          }
+        }
+      },
+      "FunctionExecutionCostDto": {
+        "type": "object",
+        "properties": {
+          "estimated": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "actual": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "breakdown": {
+            "type": "object",
+            "additionalProperties": { }
+          }
+        }
+      },
+      "FunctionExecutionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "function_id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutionState"
+          },
+          "input": {
+            "type": "object",
+            "additionalProperties": { }
+          },
+          "output": {
+            "type": "object",
+            "additionalProperties": { }
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "format": "date-time"
+          },
+          "started_at": {
+            "format": "date-time"
+          },
+          "completed_at": {
+            "format": "date-time"
+          },
+          "duration_ms": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/FunctionExecutionCostDto"
           }
         }
       },
@@ -4728,86 +4827,10 @@
         },
         "description": "Request model for function execution."
       },
-      "FunctionExecutionResponse": {
-        "type": "object",
-        "properties": {
-          "execution_id": {
-            "type": "string",
-            "description": "The unique execution ID.",
-            "format": "uuid"
-          },
-          "function_configuration_id": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
-            "description": "The function configuration ID that was executed.",
-            "format": "int32"
-          },
-          "state": {
-            "type": "string",
-            "description": "The current state of the execution."
-          },
-          "result": {
-            "type": [
-              "null",
-              "object"
-            ],
-            "description": "The function execution result (provider-specific)."
-          },
-          "error_message": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Error message if execution failed."
-          },
-          "estimated_cost": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "description": "Estimated cost before execution.",
-            "format": "double"
-          },
-          "actual_cost": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "description": "Actual cost after execution.",
-            "format": "double"
-          },
-          "started_at": {
-            "description": "When the execution started.",
-            "format": "date-time"
-          },
-          "completed_at": {
-            "description": "When the execution completed.",
-            "format": "date-time"
-          },
-          "duration": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "description": "Execution duration in milliseconds.",
-            "format": "int64"
-          }
-        },
-        "description": "Response model for function execution."
-      },
       "FunctionParametersResponseDto": {
         "type": "object",
         "properties": {
-          "function_configuration_id": {
+          "function_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4824,8 +4847,14 @@
           "purpose": {
             "type": "string"
           },
-          "parameter_schema": { },
-          "example_request": { }
+          "parameter_schema": {
+            "type": "object",
+            "additionalProperties": { }
+          },
+          "example_request": {
+            "type": "object",
+            "additionalProperties": { }
+          }
         }
       },
       "GenerateEphemeralKeyRequest": {
@@ -6279,10 +6308,8 @@
             "format": "double"
           },
           "extension_data": {
-            "type": [
-              "null",
-              "object"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           }
         }
       },

@@ -1,6 +1,7 @@
 import { ValidationError } from '@/lib/conduit-common';
 import {
   gatewayEphemeralKeySchema,
+  gatewayFunctionExecutionSchema,
   gatewayMediaUploadSchema,
   gatewayVideoTaskSchema,
   parseCriticalResponse,
@@ -40,6 +41,34 @@ describe('critical API response validation', () => {
       { success: true },
       'test operation',
     )).toThrow(ValidationError);
+  });
+
+  it('normalizes the canonical Gateway function execution resource', () => {
+    const execution = parseCriticalResponse(gatewayFunctionExecutionSchema, {
+      id: '85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36',
+      function_id: '7',
+      status: 'completed',
+      input: { query: 'weather' },
+      output: { answer: 'sunny' },
+      created_at: '2026-07-23T20:00:00Z',
+      duration_ms: '12',
+      cost: { estimated: '0.001', actual: '0.002', currency: 'USD' },
+    }, 'test');
+
+    expect(execution.functionId).toBe(7);
+    expect(execution.status).toBe('completed');
+    expect(execution.durationMs).toBe(12);
+    expect(execution.cost.actual).toBe(0.002);
+  });
+
+  it('rejects function executions without structured cost data', () => {
+    expect(() => parseCriticalResponse(gatewayFunctionExecutionSchema, {
+      id: '85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36',
+      function_id: 7,
+      status: 'completed',
+      created_at: '2026-07-23T20:00:00Z',
+      duration_ms: 12,
+    }, 'test')).toThrow(ValidationError);
   });
 
   it('rejects malformed video-task responses', () => {

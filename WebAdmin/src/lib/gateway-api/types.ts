@@ -273,16 +273,22 @@ export interface GatewayClientConfig {
 }
 
 export interface FunctionExecutionResponse {
-  executionId: string;
-  functionConfigurationId: number;
-  state: string;
-  result?: Record<string, unknown>;
-  errorMessage?: string;
-  estimatedCost?: number;
-  actualCost?: number;
+  id: string;
+  functionId: number;
+  status: string;
+  input?: Record<string, unknown>;
+  output?: Record<string, unknown>;
+  error?: string;
+  createdAt: string;
   startedAt?: string;
   completedAt?: string;
-  duration?: number;
+  durationMs?: number;
+  cost: {
+    estimated?: number;
+    actual?: number;
+    currency: string;
+    breakdown?: Record<string, unknown>;
+  };
 }
 
 export interface RequestOptions {

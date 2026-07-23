@@ -21,17 +21,17 @@ public static class FunctionExecutionsEndpoints
             .WithTags("FunctionExecutions");
 
         group.MapGet("/{id:guid}", GetById).WithName("FunctionExecutions_GetById")
-            .Produces<FunctionExecutionDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
+            .Produces<AdminFunctionExecutionDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/virtualkey/{virtualKeyId:int}", GetByVirtualKey)
-            .WithName("FunctionExecutions_GetByVirtualKey").Produces<List<FunctionExecutionDto>>();
+            .WithName("FunctionExecutions_GetByVirtualKey").Produces<List<AdminFunctionExecutionDto>>();
         group.MapGet("/configuration/{functionConfigurationId:int}", GetByConfiguration)
-            .WithName("FunctionExecutions_GetByConfiguration").Produces<List<FunctionExecutionDto>>();
+            .WithName("FunctionExecutions_GetByConfiguration").Produces<List<AdminFunctionExecutionDto>>();
         group.MapGet("/state/{state}", GetByState).WithName("FunctionExecutions_GetByState")
-            .Produces<List<FunctionExecutionDto>>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
+            .Produces<List<AdminFunctionExecutionDto>>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapGet("/expired-leases", GetExpiredLeases).WithName("FunctionExecutions_GetExpiredLeases")
-            .Produces<List<FunctionExecutionDto>>();
+            .Produces<List<AdminFunctionExecutionDto>>();
         group.MapGet("/ready-for-retry", GetReadyForRetry).WithName("FunctionExecutions_GetReadyForRetry")
-            .Produces<List<FunctionExecutionDto>>();
+            .Produces<List<AdminFunctionExecutionDto>>();
         group.MapDelete("/cleanup", Cleanup).WithName("FunctionExecutions_Cleanup")
             .Produces<FunctionExecutionCleanupResultDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         return app;

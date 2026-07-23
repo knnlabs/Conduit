@@ -1,11 +1,11 @@
 using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Models;
+using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Gateway.Services;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Rerank;
-using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Core.Interfaces;
 
@@ -140,9 +140,9 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Functions");
         functions.MapPost("/execute", ([FromServices] FunctionsEndpoints endpoints, FunctionsEndpoints.FunctionExecutionRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken cancellationToken) => endpoints.ExecuteFunction(request, idempotencyKey, cancellationToken))
-            .WithName("Functions_Execute").Produces<FunctionsEndpoints.FunctionExecutionResponse>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(404).Produces(500);
+            .WithName("Functions_Execute").Produces<FunctionExecutionDto>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(404).Produces(500);
         functions.MapGet("/executions/{executionId}", ([FromServices] FunctionsEndpoints endpoints, Guid executionId, CancellationToken cancellationToken) => endpoints.GetExecution(executionId, cancellationToken))
-            .WithName("Functions_GetExecution").Produces<FunctionsEndpoints.FunctionExecutionResponse>().Produces<OpenAIErrorResponse>(404).Produces(500);
+            .WithName("Functions_GetExecution").Produces<FunctionExecutionDto>().Produces<OpenAIErrorResponse>(404).Produces(500);
 
         app.MapPost("/v1/conduit/rerank", ([FromServices] RerankEndpoints endpoints, RerankRequest request, CancellationToken cancellationToken) => endpoints.CreateRerank(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<RequireBalanceEndpointFilter>()

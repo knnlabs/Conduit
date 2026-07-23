@@ -3022,6 +3022,9 @@ export interface components {
       amount: number;
       description?: null | string;
     };
+    AdminFunctionExecutionDto: {
+      admin?: components["schemas"]["FunctionExecutionAdminDetailsDto"];
+    } & components["schemas"]["FunctionExecutionDto"];
     /** @description RFC 9457 error response used by every Admin API error path. */
     AdminProblemDetails: {
       type?: null | string;
@@ -3750,8 +3753,12 @@ export interface components {
       timeoutSeconds?: null | number;
       /** Format: int32 */
       maxRetries?: null | number;
-      providerSettings?: null | string;
-      parameterSchema?: null | string;
+      providerSettings?: {
+        [key: string]: unknown;
+      };
+      parameterSchema?: {
+        [key: string]: unknown;
+      };
       description?: null | string;
     };
     CreateFunctionCostDto: {
@@ -3762,7 +3769,9 @@ export interface components {
       /** Format: double */
       baseCost?: null | number;
       pricingModel?: components["schemas"]["FunctionPricingModel"];
-      pricingConfiguration?: null | string;
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
       isActive?: boolean;
       /** Format: int32 */
       priority?: number;
@@ -4374,8 +4383,12 @@ export interface components {
       timeoutSeconds?: null | number;
       /** Format: int32 */
       maxRetries?: null | number;
-      providerSettings?: null | string;
-      parameterSchema?: null | string;
+      providerSettings?: {
+        [key: string]: unknown;
+      };
+      parameterSchema?: {
+        [key: string]: unknown;
+      };
       description?: null | string;
       /** Format: int32 */
       credentialCount?: number;
@@ -4406,8 +4419,12 @@ export interface components {
       costPerToken?: null | number;
       /** Format: double */
       costPerMinute?: null | number;
-      tieredPricing?: null | string;
-      pricingConfiguration?: null | string;
+      tieredPricing?: {
+        [key: string]: unknown;
+      };
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
       isActive?: boolean;
       /** Format: date-time */
       effectiveDate?: string;
@@ -4460,46 +4477,63 @@ export interface components {
       lastInvalidation?: null | string;
       isEnabled?: boolean;
     };
+    FunctionExecutionAdminDetailsDto: {
+      /** Format: int32 */
+      virtualKeyId?: number;
+      executionMode?: components["schemas"]["ExecutionMode"];
+      /** Format: int32 */
+      retryCount?: number;
+      /** Format: date-time */
+      nextRetryAt?: null | string;
+      leasedBy?: null | string;
+      /** Format: date-time */
+      leaseExpiresAt?: null | string;
+      /** Format: int32 */
+      version?: number;
+      webhookUrl?: null | string;
+      webhookDelivered?: boolean;
+      /** Format: int32 */
+      progressPercentage?: null | number;
+      statusMessage?: null | string;
+    };
     /** @description Result returned after cleaning up old function executions. */
     FunctionExecutionCleanupResultDto: {
       /** Format: int32 */
       deletedCount?: number;
       message: string;
     };
+    FunctionExecutionCostDto: {
+      /** Format: double */
+      estimated?: null | number;
+      /** Format: double */
+      actual?: null | number;
+      currency?: string;
+      breakdown?: {
+        [key: string]: unknown;
+      };
+    };
     FunctionExecutionDto: {
       /** Format: uuid */
       id?: string;
       /** Format: int32 */
-      functionConfigurationId?: number;
-      /** Format: int32 */
-      virtualKeyId?: number;
-      executionMode?: components["schemas"]["ExecutionMode"];
-      state?: components["schemas"]["ExecutionState"];
+      functionId?: number;
+      status?: components["schemas"]["ExecutionState"];
+      input?: {
+        [key: string]: unknown;
+      };
+      output?: {
+        [key: string]: unknown;
+      };
+      error?: null | string;
       /** Format: date-time */
-      requestedAt?: string;
+      createdAt?: string;
       /** Format: date-time */
       startedAt?: null | string;
       /** Format: date-time */
       completedAt?: null | string;
-      /** Format: double */
-      duration?: null | number;
-      request?: null | components["schemas"]["JsonElement"];
-      response?: null | components["schemas"]["JsonElement"];
-      errorMessage?: null | string;
-      /** Format: double */
-      estimatedCost?: null | number;
-      /** Format: double */
-      actualCost?: null | number;
-      costCalculation?: null | components["schemas"]["JsonElement"];
-      /** Format: int32 */
-      retryCount?: number;
-      /** Format: date-time */
-      nextRetryAt?: null | string;
-      webhookUrl?: null | string;
-      webhookDelivered?: boolean;
-      /** Format: int32 */
-      progressPercentage?: null | number;
-      statusMessage?: null | string;
+      /** Format: int64 */
+      durationMs?: null | number;
+      cost?: components["schemas"]["FunctionExecutionCostDto"];
     };
     /** @enum {unknown} */
     FunctionPricingModel:
@@ -4720,7 +4754,6 @@ export interface components {
       whitelistFilters: components["schemas"]["IpFilterDto"][];
       blacklistFilters: components["schemas"]["IpFilterDto"][];
     };
-    JsonElement: unknown;
     /** @description DTO for detailed key error information */
     KeyErrorDetailsDto: {
       /**
@@ -6967,8 +7000,12 @@ export interface components {
       timeoutSeconds?: null | number;
       /** Format: int32 */
       maxRetries?: null | number;
-      providerSettings?: null | string;
-      parameterSchema?: null | string;
+      providerSettings?: {
+        [key: string]: unknown;
+      };
+      parameterSchema?: {
+        [key: string]: unknown;
+      };
       description?: null | string;
     };
     UpdateFunctionCostDto: {
@@ -6980,7 +7017,9 @@ export interface components {
       /** Format: double */
       baseCost?: null | number;
       pricingModel?: components["schemas"]["FunctionPricingModel"];
-      pricingConfiguration?: null | string;
+      pricingConfiguration?: {
+        [key: string]: unknown;
+      };
       isActive?: boolean;
       /** Format: int32 */
       priority?: number;
@@ -9179,7 +9218,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionDto"];
+          "application/json": components["schemas"]["AdminFunctionExecutionDto"];
         };
       };
       /** @description Not Found */
@@ -9225,7 +9264,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
         };
       };
       /** @description Internal Server Error */
@@ -9260,7 +9299,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
         };
       };
       /** @description Internal Server Error */
@@ -9295,7 +9334,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
         };
       };
       /** @description Bad Request */
@@ -9339,7 +9378,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
         };
       };
       /** @description Internal Server Error */
@@ -9372,7 +9411,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionDto"][];
+          "application/json": components["schemas"]["AdminFunctionExecutionDto"][];
         };
       };
       /** @description Internal Server Error */

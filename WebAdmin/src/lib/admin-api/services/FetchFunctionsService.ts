@@ -19,15 +19,65 @@ type CredentialWire = components['schemas']['FunctionCredential'];
 type CostWire = components['schemas']['FunctionCostDto'];
 type CreateCostWire = components['schemas']['CreateFunctionCostDto'];
 type UpdateCostWire = components['schemas']['UpdateFunctionCostDto'];
-type ExecutionWire = components['schemas']['FunctionExecutionDto'];
+type ExecutionWire = components['schemas']['AdminFunctionExecutionDto'];
 
-const configurationFromWire = (value: ConfigurationWire): FunctionConfigurationDto => value as unknown as FunctionConfigurationDto;
+const stringifyStructuredJson = (value: Record<string, unknown> | null | undefined): string | null =>
+  value === null || value === undefined ? null : JSON.stringify(value);
+
+const parseStructuredJson = (value: string | null | undefined, field: string): Record<string, unknown> | undefined => {
+  if (value === null || value === undefined || value.trim() === '') return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error('must be an object');
+    }
+    return parsed as Record<string, unknown>;
+  } catch {
+    throw new ValidationError(`${field} must be a valid JSON object`);
+  }
+};
+
+const configurationFromWire = (value: ConfigurationWire): FunctionConfigurationDto => ({
+  ...value,
+  providerSettings: stringifyStructuredJson(value.providerSettings),
+  parameterSchema: stringifyStructuredJson(value.parameterSchema),
+}) as unknown as FunctionConfigurationDto;
 const credentialFromWire = (value: CredentialWire): FunctionCredentialDto => value as unknown as FunctionCredentialDto;
-const executionFromWire = (value: ExecutionWire): FunctionExecutionDto => value as unknown as FunctionExecutionDto;
+const executionFromWire = (value: ExecutionWire): FunctionExecutionDto => ({
+  id: value.id ?? '',
+  functionId: value.functionId ?? 0,
+  status: value.status ?? ExecutionState.Pending,
+  input: value.input ?? undefined,
+  output: value.output ?? undefined,
+  error: value.error ?? undefined,
+  createdAt: value.createdAt ?? '',
+  startedAt: value.startedAt ?? undefined,
+  completedAt: value.completedAt ?? undefined,
+  durationMs: value.durationMs ?? undefined,
+  cost: {
+    estimated: value.cost?.estimated ?? undefined,
+    actual: value.cost?.actual ?? undefined,
+    currency: value.cost?.currency ?? 'USD',
+    breakdown: value.cost?.breakdown ?? undefined,
+  },
+  admin: {
+    virtualKeyId: value.admin?.virtualKeyId ?? 0,
+    executionMode: value.admin?.executionMode ?? 'synchronous',
+    retryCount: value.admin?.retryCount ?? 0,
+    nextRetryAt: value.admin?.nextRetryAt,
+    leasedBy: value.admin?.leasedBy,
+    leaseExpiresAt: value.admin?.leaseExpiresAt,
+    version: value.admin?.version ?? 0,
+    webhookUrl: value.admin?.webhookUrl,
+    webhookDelivered: value.admin?.webhookDelivered ?? false,
+    progressPercentage: value.admin?.progressPercentage,
+    statusMessage: value.admin?.statusMessage,
+  },
+});
 const costFromWire = (value: CostWire): FunctionCostDto => ({
   ...value,
   baseCost: value.baseCost ?? undefined,
-  pricingConfiguration: value.pricingConfiguration ?? '',
+  pricingConfiguration: JSON.stringify(value.pricingConfiguration ?? {}),
   expiryDate: value.expiryDate ?? undefined,
   description: value.description ?? undefined,
 }) as unknown as FunctionCostDto;
@@ -45,7 +95,7 @@ function validateCreateCredential(data: CreateFunctionCredentialDto): void {
 function validateCreateCost(data: CreateFunctionCostDto): void {
   validateRequired(data, ['costName', 'providerType', 'pricingModel', 'pricingConfiguration']);
   validateStringLength(data.costName, 1, 255, 'costName');
-  try { JSON.parse(data.pricingConfiguration); } catch { throw new ValidationError('pricingConfiguration must be valid JSON'); }
+  parseStructuredJson(data.pricingConfiguration, 'pricingConfiguration');
 }
 
 export class FetchFunctionConfigurationsService {
@@ -70,12 +120,20 @@ export class FetchFunctionConfigurationsService {
   }
   async create(data: CreateFunctionConfigurationDto, config?: RequestConfig): Promise<FunctionConfigurationDto> {
     validateCreateConfiguration(data);
-    const body = data as unknown as CreateConfigurationWire;
+    const body = {
+      ...data,
+      providerSettings: parseStructuredJson(data.providerSettings, 'providerSettings'),
+      parameterSchema: parseStructuredJson(data.parameterSchema, 'parameterSchema'),
+    } as unknown as CreateConfigurationWire;
     const result = await this.client['executeContractOperation']<ConfigurationWire, CreateConfigurationWire>('/api/FunctionConfigurations', HttpMethod.POST, (c, o) => c.POST('/api/FunctionConfigurations', { ...o, body }), config, body);
     return configurationFromWire(result);
   }
   async update(id: number, data: UpdateFunctionConfigurationDto, config?: RequestConfig): Promise<FunctionConfigurationDto> {
-    const body = data as unknown as UpdateConfigurationWire;
+    const body = {
+      ...data,
+      providerSettings: parseStructuredJson(data.providerSettings, 'providerSettings'),
+      parameterSchema: parseStructuredJson(data.parameterSchema, 'parameterSchema'),
+    } as unknown as UpdateConfigurationWire;
     const result = await this.client['executeContractOperation']<ConfigurationWire, UpdateConfigurationWire>(`/api/FunctionConfigurations/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionConfigurations/{id}', { ...o, params: { path: { id } }, body }), config, body);
     return configurationFromWire(result);
   }
@@ -100,8 +158,8 @@ export class FetchFunctionCostsService {
   async list(config?: RequestConfig): Promise<FunctionCostDto[]> { const data = await this.client['executeContractRead']('/api/FunctionCosts', (c, o) => c.GET('/api/FunctionCosts', o), config); return data.map(costFromWire); }
   async getById(id: number, config?: RequestConfig): Promise<FunctionCostDto> { const data = await this.client['executeContractRead'](`/api/FunctionCosts/${id}`, (c, o) => c.GET('/api/FunctionCosts/{id}', { ...o, params: { path: { id } } }), config); return costFromWire(data); }
   async getByConfiguration(functionConfigurationId: number, config?: RequestConfig): Promise<FunctionCostDto> { const data = await this.client['executeContractRead'](`/api/FunctionCosts/configuration/${functionConfigurationId}`, (c, o) => c.GET('/api/FunctionCosts/configuration/{functionConfigurationId}', { ...o, params: { path: { functionConfigurationId } } }), config); return costFromWire(data); }
-  async create(data: CreateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> { validateCreateCost(data); const body = data as unknown as CreateCostWire; const result = await this.client['executeContractOperation']<CostWire, CreateFunctionCostDto>('/api/FunctionCosts', HttpMethod.POST, (c, o) => c.POST('/api/FunctionCosts', { ...o, body }), config, data); return costFromWire(result); }
-  async update(id: number, data: UpdateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> { const body = data as unknown as UpdateCostWire; const result = await this.client['executeContractOperation']<CostWire, UpdateFunctionCostDto>(`/api/FunctionCosts/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionCosts/{id}', { ...o, params: { path: { id } }, body }), config, data); return costFromWire(result); }
+  async create(data: CreateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> { validateCreateCost(data); const body = { ...data, pricingConfiguration: parseStructuredJson(data.pricingConfiguration, 'pricingConfiguration') } as unknown as CreateCostWire; const result = await this.client['executeContractOperation']<CostWire, CreateCostWire>('/api/FunctionCosts', HttpMethod.POST, (c, o) => c.POST('/api/FunctionCosts', { ...o, body }), config, body); return costFromWire(result); }
+  async update(id: number, data: UpdateFunctionCostDto, config?: RequestConfig): Promise<FunctionCostDto> { const body = { ...data, pricingConfiguration: parseStructuredJson(data.pricingConfiguration, 'pricingConfiguration') } as unknown as UpdateCostWire; const result = await this.client['executeContractOperation']<CostWire, UpdateCostWire>(`/api/FunctionCosts/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionCosts/{id}', { ...o, params: { path: { id } }, body }), config, body); return costFromWire(result); }
   async deleteById(id: number, config?: RequestConfig): Promise<void> { return this.client['executeContractOperation'](`/api/FunctionCosts/${id}`, HttpMethod.DELETE, (c, o) => c.DELETE('/api/FunctionCosts/{id}', { ...o, params: { path: { id } } }), config); }
   async clearCache(config?: RequestConfig): Promise<{ message: string }> { return this.client['executeContractOperation']('/api/FunctionCosts/cache/clear', HttpMethod.POST, (c, o) => c.POST('/api/FunctionCosts/cache/clear', o), config); }
 }

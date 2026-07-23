@@ -62,8 +62,9 @@ public sealed class DiscoveryEndpointsCacheShapeTests : IDisposable
 
         using var document = JsonDocument.Parse(hitJson);
         Assert.Equal(JsonValueKind.Object, document.RootElement.ValueKind);
-        Assert.Equal(configurationId, document.RootElement.GetProperty("function_configuration_id").GetInt32());
+        Assert.Equal(configurationId, document.RootElement.GetProperty("function_id").GetInt32());
         Assert.Equal(JsonValueKind.Object, document.RootElement.GetProperty("parameter_schema").ValueKind);
+        Assert.Equal("test", document.RootElement.GetProperty("example_request").GetProperty("query").GetString());
     }
 
     private int SeedConfiguration(string? parameterSchema = null)

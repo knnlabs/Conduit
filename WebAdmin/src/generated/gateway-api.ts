@@ -1230,6 +1230,14 @@ export interface components {
        */
       expires_in_seconds?: number | string;
     };
+    /** @enum {unknown} */
+    ExecutionState:
+      | "pending"
+      | "running"
+      | "completed"
+      | "failed"
+      | "cancelled"
+      | "timed_out";
     /** @description Public file metadata. */
     FileMetadataResponse: {
       file_name: null | string;
@@ -1283,11 +1291,47 @@ export interface components {
       is_enabled?: boolean;
       /** Format: int32 */
       timeout_seconds?: null | number | string;
+      parameter_schema?: {
+        [key: string]: unknown;
+      };
     };
     FunctionDiscoveryResponse: {
       functions?: components["schemas"]["FunctionDiscoveryDto"][];
       /** Format: int32 */
       count?: number | string;
+    };
+    FunctionExecutionCostDto: {
+      /** Format: double */
+      estimated?: null | number | string;
+      /** Format: double */
+      actual?: null | number | string;
+      currency?: string;
+      breakdown?: {
+        [key: string]: unknown;
+      };
+    };
+    FunctionExecutionDto: {
+      /** Format: uuid */
+      id?: string;
+      /** Format: int32 */
+      function_id?: number | string;
+      status?: components["schemas"]["ExecutionState"];
+      input?: {
+        [key: string]: unknown;
+      };
+      output?: {
+        [key: string]: unknown;
+      };
+      error?: null | string;
+      /** Format: date-time */
+      created_at?: unknown;
+      /** Format: date-time */
+      started_at?: unknown;
+      /** Format: date-time */
+      completed_at?: unknown;
+      /** Format: int64 */
+      duration_ms?: null | number | string;
+      cost?: components["schemas"]["FunctionExecutionCostDto"];
     };
     /** @description Request model for function execution. */
     FunctionExecutionRequest: {
@@ -1301,58 +1345,18 @@ export interface components {
       /** @description Optional metadata to associate with the execution. */
       metadata?: null | Record<string, never>;
     };
-    /** @description Response model for function execution. */
-    FunctionExecutionResponse: {
-      /**
-       * Format: uuid
-       * @description The unique execution ID.
-       */
-      execution_id?: string;
-      /**
-       * Format: int32
-       * @description The function configuration ID that was executed.
-       */
-      function_configuration_id?: number | string;
-      /** @description The current state of the execution. */
-      state?: string;
-      /** @description The function execution result (provider-specific). */
-      result?: null | Record<string, never>;
-      /** @description Error message if execution failed. */
-      error_message?: null | string;
-      /**
-       * Format: double
-       * @description Estimated cost before execution.
-       */
-      estimated_cost?: null | number | string;
-      /**
-       * Format: double
-       * @description Actual cost after execution.
-       */
-      actual_cost?: null | number | string;
-      /**
-       * Format: date-time
-       * @description When the execution started.
-       */
-      started_at?: unknown;
-      /**
-       * Format: date-time
-       * @description When the execution completed.
-       */
-      completed_at?: unknown;
-      /**
-       * Format: int64
-       * @description Execution duration in milliseconds.
-       */
-      duration?: null | number | string;
-    };
     FunctionParametersResponseDto: {
       /** Format: int32 */
-      function_configuration_id?: number | string;
+      function_id?: number | string;
       configuration_name?: string;
       provider_type?: string;
       purpose?: string;
-      parameter_schema?: unknown;
-      example_request?: unknown;
+      parameter_schema?: {
+        [key: string]: unknown;
+      };
+      example_request?: {
+        [key: string]: unknown;
+      };
     };
     /** @description Request for generating an ephemeral key */
     GenerateEphemeralKeyRequest: {
@@ -1739,7 +1743,9 @@ export interface components {
       response_format?: null | string;
       /** Format: double */
       speed?: null | number | string;
-      extension_data?: null | Record<string, never>;
+      extension_data?: {
+        [key: string]: unknown;
+      };
     };
     Tool: {
       type?: string;
@@ -2960,7 +2966,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionResponse"];
+          "application/json": components["schemas"]["FunctionExecutionDto"];
         };
       };
       /** @description Bad Request */
@@ -3017,7 +3023,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionExecutionResponse"];
+          "application/json": components["schemas"]["FunctionExecutionDto"];
         };
       };
       /** @description Not Found */

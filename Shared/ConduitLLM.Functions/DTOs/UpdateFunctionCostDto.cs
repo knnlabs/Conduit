@@ -1,4 +1,5 @@
 using ConduitLLM.Functions.Enums;
+using System.Text.Json;
 
 namespace ConduitLLM.Functions.DTOs;
 
@@ -13,7 +14,7 @@ public class UpdateFunctionCostDto
     public string? Description { get; set; }
     public decimal? BaseCost { get; set; }
     public FunctionPricingModel PricingModel { get; set; }
-    public string? PricingConfiguration { get; set; }
+    public Dictionary<string, JsonElement>? PricingConfiguration { get; set; }
     public bool IsActive { get; set; }
     public int Priority { get; set; }
     public DateTime EffectiveDate { get; set; }

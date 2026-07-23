@@ -6,6 +6,8 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Models;
 using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Entities;
+using ConduitLLM.Functions.Extensions;
+using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Admin.Extensions
 {
@@ -126,52 +128,9 @@ namespace ConduitLLM.Admin.Extensions
         }
 
         /// <summary>
-        /// Maps a FunctionExecution entity to a FunctionExecutionDto
+        /// Maps a FunctionExecution entity to its Admin execution resource.
         /// </summary>
-        public static FunctionExecutionDto ToDto(this FunctionExecution entity)
-        {
-            return new FunctionExecutionDto
-            {
-                Id = entity.Id,
-                FunctionConfigurationId = entity.FunctionConfigurationId,
-                VirtualKeyId = entity.VirtualKeyId,
-                ExecutionMode = entity.ExecutionMode,
-                State = entity.State,
-                RequestedAt = entity.RequestedAt,
-                StartedAt = entity.StartedAt,
-                CompletedAt = entity.CompletedAt,
-                Duration = entity.Duration?.TotalMilliseconds,
-                Request = ParseJson(entity.RequestJson),
-                Response = ParseJson(entity.ResponseJson),
-                ErrorMessage = entity.ErrorMessage,
-                EstimatedCost = entity.EstimatedCost,
-                ActualCost = entity.ActualCost,
-                CostCalculation = ParseJson(entity.CostCalculationDetails),
-                RetryCount = entity.RetryCount,
-                NextRetryAt = entity.NextRetryAt,
-                WebhookUrl = entity.WebhookUrl,
-                WebhookDelivered = entity.WebhookDelivered,
-                ProgressPercentage = entity.ProgressPercentage,
-                StatusMessage = entity.StatusMessage
-            };
-        }
-
-        private static System.Text.Json.JsonElement? ParseJson(string? json)
-        {
-            if (string.IsNullOrWhiteSpace(json))
-            {
-                return null;
-            }
-
-            try
-            {
-                return System.Text.Json.JsonDocument.Parse(json).RootElement.Clone();
-            }
-            catch (System.Text.Json.JsonException)
-            {
-                return System.Text.Json.JsonSerializer.SerializeToElement(json);
-            }
-        }
+        public static AdminFunctionExecutionDto ToDto(this FunctionExecution entity) => entity.ToAdminDto();
 
         /// <summary>
         /// Maps a FunctionCost entity to a FunctionCostDto
@@ -191,8 +150,8 @@ namespace ConduitLLM.Admin.Extensions
                 CostPerResult = entity.CostPerResult,
                 CostPerToken = entity.CostPerToken,
                 CostPerMinute = entity.CostPerMinute,
-                TieredPricing = entity.TieredPricing,
-                PricingConfiguration = entity.PricingConfiguration,
+                TieredPricing = StructuredJson.ParseObject(entity.TieredPricing),
+                PricingConfiguration = StructuredJson.ParseObject(entity.PricingConfiguration),
                 IsActive = entity.IsActive,
                 EffectiveDate = entity.EffectiveDate,
                 ExpiryDate = entity.ExpiryDate,

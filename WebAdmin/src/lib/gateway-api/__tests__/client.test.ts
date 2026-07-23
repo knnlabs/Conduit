@@ -58,10 +58,14 @@ describe("GatewayClient", () => {
   it("uses canonical function fields and the idempotency header", async () => {
     const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
       jsonResponse({
-        execution_id: "85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36",
-        function_configuration_id: 7,
-        state: "completed",
-        duration: 12,
+        id: "85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36",
+        function_id: 7,
+        status: "completed",
+        input: {},
+        output: { answer: "ok" },
+        created_at: "2026-07-23T20:00:00Z",
+        duration_ms: 12,
+        cost: { estimated: "0.001", actual: "0.001", currency: "USD" },
       }),
     );
     const client = new GatewayClient({
@@ -82,11 +86,12 @@ describe("GatewayClient", () => {
       function_configuration_id: 7,
       parameters: {},
     });
-    expect(response).toEqual(expect.objectContaining({
-      executionId: "85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36",
-      functionConfigurationId: 7,
-      state: "completed",
-    }));
+    expect(response.id).toBe("85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36");
+    expect(response.functionId).toBe(7);
+    expect(response.status).toBe("completed");
+    expect(response.durationMs).toBe(12);
+    expect(response.cost.actual).toBe(0.001);
+    expect(response.cost.currency).toBe("USD");
   });
 
   it("validates media limits without issuing a request", () => {

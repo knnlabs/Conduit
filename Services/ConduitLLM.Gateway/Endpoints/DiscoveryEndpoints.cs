@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Models;
 using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Gateway.DTOs;
+using ConduitLLM.Functions.Utilities;
 using GatewayDiscoveredModelDto = ConduitLLM.Gateway.DTOs.DiscoveredModelDto;
 using GatewayModelCapabilitiesDto = ConduitLLM.Gateway.DTOs.ModelCapabilitiesDto;
 
@@ -332,8 +333,8 @@ namespace ConduitLLM.Gateway.Endpoints
                 return accessFailure;
             }
 
-            // "v3" entries use the canonical Gateway snake_case serializer.
-            var cacheKey = $"functions_discovery_v3_{purpose ?? "all"}_{providerType ?? "all"}";
+            // "v4" entries use the canonical configuration shape with structured parameter schemas.
+            var cacheKey = $"functions_discovery_v4_{purpose ?? "all"}_{providerType ?? "all"}";
 
             // Try to get from cache first
             var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
@@ -379,7 +380,8 @@ namespace ConduitLLM.Gateway.Endpoints
                     Description = fc.Description,
                     DefaultExecutionMode = fc.DefaultExecutionMode.ToString(),
                     IsEnabled = fc.IsEnabled,
-                    TimeoutSeconds = fc.TimeoutSeconds
+                    TimeoutSeconds = fc.TimeoutSeconds,
+                    ParameterSchema = StructuredJson.ParseObject(fc.ParameterSchema) ?? new()
                 }).ToList(),
                 Count = configurations.Count
             };
@@ -412,8 +414,8 @@ namespace ConduitLLM.Gateway.Endpoints
                 return accessFailure;
             }
 
-            // "v3" entries use the canonical Gateway snake_case serializer.
-            var cacheKey = $"function_parameters_v3_{functionConfigurationId}";
+            // "v4" entries use function_id and structured parameter/example objects.
+            var cacheKey = $"function_parameters_v4_{functionConfigurationId}";
 
             // Try to get from cache first
             var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
@@ -437,36 +439,25 @@ namespace ConduitLLM.Gateway.Endpoints
             }
 
             // Parse the parameter schema
-            object? parameterSchema = null;
-            object? exampleRequest = null;
+            Dictionary<string, JsonElement> parameterSchema = new();
+            Dictionary<string, JsonElement>? exampleRequest = null;
 
             if (!string.IsNullOrEmpty(configuration.ParameterSchema))
             {
-                try
+                parameterSchema = StructuredJson.ParseObject(configuration.ParameterSchema) ?? new();
+                if (parameterSchema.TryGetValue("example", out var exampleElement))
                 {
-                    var schemaDoc = System.Text.Json.JsonDocument.Parse(configuration.ParameterSchema);
-                    parameterSchema = System.Text.Json.JsonSerializer.Deserialize<object>(configuration.ParameterSchema);
-
-                    // Try to extract example request if it's in the schema
-                    if (schemaDoc.RootElement.TryGetProperty("example", out var exampleElement))
-                    {
-                        exampleRequest = System.Text.Json.JsonSerializer.Deserialize<object>(exampleElement.GetRawText());
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogWarning(ex, "Failed to parse parameter schema for function config {ConfigId}", functionConfigurationId);
-                    parameterSchema = new { };
+                    exampleRequest = StructuredJson.ParseObject(exampleElement.GetRawText());
                 }
             }
 
             var result = new ConduitLLM.Functions.DTOs.FunctionParametersResponseDto
             {
-                FunctionConfigurationId = configuration.Id,
+                FunctionId = configuration.Id,
                 ConfigurationName = configuration.ConfigurationName,
                 ProviderType = configuration.ProviderType.ToString(),
                 Purpose = configuration.Purpose.ToString(),
-                ParameterSchema = parameterSchema ?? new { },
+                ParameterSchema = parameterSchema,
                 ExampleRequest = exampleRequest
             };
 

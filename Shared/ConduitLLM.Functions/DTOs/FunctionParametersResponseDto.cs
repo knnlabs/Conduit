@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace ConduitLLM.Functions.DTOs;
 
 /// <summary>
@@ -9,7 +11,7 @@ public class FunctionParametersResponseDto
     /// <summary>
     /// The function configuration ID.
     /// </summary>
-    public int FunctionConfigurationId { get; set; }
+    public int FunctionId { get; set; }
 
     /// <summary>
     /// User-friendly name for this configuration.
@@ -29,10 +31,10 @@ public class FunctionParametersResponseDto
     /// <summary>
     /// Parameter schema defining required and optional parameters.
     /// </summary>
-    public object? ParameterSchema { get; set; }
+    public Dictionary<string, JsonElement> ParameterSchema { get; set; } = new();
 
     /// <summary>
     /// Example request demonstrating typical usage.
     /// </summary>
-    public object? ExampleRequest { get; set; }
+    public Dictionary<string, JsonElement>? ExampleRequest { get; set; }
 }

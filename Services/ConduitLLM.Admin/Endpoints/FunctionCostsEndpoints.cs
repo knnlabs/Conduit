@@ -6,6 +6,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Utilities;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -131,7 +132,7 @@ public static class FunctionCostsEndpoints
         Description = dto.Description,
         BaseCost = dto.BaseCost,
         PricingModel = dto.PricingModel,
-        PricingConfiguration = dto.PricingConfiguration,
+        PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration),
         IsActive = dto.IsActive,
         Priority = dto.Priority,
         EffectiveDate = dto.EffectiveDate,
@@ -147,7 +148,7 @@ public static class FunctionCostsEndpoints
         existing.Description = dto.Description;
         existing.BaseCost = dto.BaseCost;
         existing.PricingModel = dto.PricingModel;
-        existing.PricingConfiguration = dto.PricingConfiguration;
+        existing.PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration);
         existing.IsActive = dto.IsActive;
         existing.Priority = dto.Priority;
         existing.EffectiveDate = dto.EffectiveDate;

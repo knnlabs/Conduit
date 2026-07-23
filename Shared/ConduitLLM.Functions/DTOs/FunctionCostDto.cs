@@ -1,4 +1,5 @@
 using ConduitLLM.Functions.Enums;
+using System.Text.Json;
 
 namespace ConduitLLM.Functions.DTOs;
 
@@ -18,8 +19,8 @@ public class FunctionCostDto
     public decimal? CostPerResult { get; set; }
     public decimal? CostPerToken { get; set; }
     public decimal? CostPerMinute { get; set; }
-    public string? TieredPricing { get; set; }
-    public string? PricingConfiguration { get; set; }
+    public Dictionary<string, JsonElement>? TieredPricing { get; set; }
+    public Dictionary<string, JsonElement>? PricingConfiguration { get; set; }
     public bool IsActive { get; set; }
     public DateTime EffectiveDate { get; set; }
     public DateTime? ExpiryDate { get; set; }

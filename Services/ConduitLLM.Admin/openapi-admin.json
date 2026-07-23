@@ -2621,7 +2621,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionExecutionDto"
+                  "$ref": "#/components/schemas/AdminFunctionExecutionDto"
                 }
               }
             }
@@ -2704,7 +2704,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                    "$ref": "#/components/schemas/AdminFunctionExecutionDto"
                   }
                 }
               }
@@ -2770,7 +2770,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                    "$ref": "#/components/schemas/AdminFunctionExecutionDto"
                   }
                 }
               }
@@ -2834,7 +2834,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                    "$ref": "#/components/schemas/AdminFunctionExecutionDto"
                   }
                 }
               }
@@ -2906,7 +2906,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                    "$ref": "#/components/schemas/AdminFunctionExecutionDto"
                   }
                 }
               }
@@ -2960,7 +2960,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionExecutionDto"
+                    "$ref": "#/components/schemas/AdminFunctionExecutionDto"
                   }
                 }
               }
@@ -19493,6 +19493,19 @@
           }
         }
       },
+      "AdminFunctionExecutionDto": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FunctionExecutionDto"
+          }
+        ],
+        "properties": {
+          "admin": {
+            "$ref": "#/components/schemas/FunctionExecutionAdminDetailsDto"
+          }
+        }
+      },
       "AdminProblemDetails": {
         "type": "object",
         "properties": {
@@ -21373,16 +21386,12 @@
             "format": "int32"
           },
           "providerSettings": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "parameterSchema": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "description": {
             "maxLength": 1000,
@@ -21432,10 +21441,8 @@
             "$ref": "#/components/schemas/FunctionPricingModel"
           },
           "pricingConfiguration": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "isActive": {
             "type": "boolean"
@@ -22851,16 +22858,12 @@
             "format": "int32"
           },
           "providerSettings": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "parameterSchema": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "description": {
             "type": [
@@ -22965,16 +22968,12 @@
             "format": "double"
           },
           "tieredPricing": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "pricingConfiguration": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "isActive": {
             "type": "boolean"
@@ -23128,117 +23127,15 @@
           }
         }
       },
-      "FunctionExecutionCleanupResultDto": {
-        "required": [
-          "message"
-        ],
+      "FunctionExecutionAdminDetailsDto": {
         "type": "object",
         "properties": {
-          "deletedCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "description": "Result returned after cleaning up old function executions."
-      },
-      "FunctionExecutionDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "functionConfigurationId": {
-            "type": "integer",
-            "format": "int32"
-          },
           "virtualKeyId": {
             "type": "integer",
             "format": "int32"
           },
           "executionMode": {
             "$ref": "#/components/schemas/ExecutionMode"
-          },
-          "state": {
-            "$ref": "#/components/schemas/ExecutionState"
-          },
-          "requestedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "duration": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "request": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/JsonElement"
-              }
-            ]
-          },
-          "response": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/JsonElement"
-              }
-            ]
-          },
-          "errorMessage": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "estimatedCost": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "actualCost": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "costCalculation": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/JsonElement"
-              }
-            ]
           },
           "retryCount": {
             "type": "integer",
@@ -23250,6 +23147,23 @@
               "string"
             ],
             "format": "date-time"
+          },
+          "leasedBy": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "leaseExpiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
           },
           "webhookUrl": {
             "type": [
@@ -23272,6 +23186,106 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "FunctionExecutionCleanupResultDto": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "deletedCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "description": "Result returned after cleaning up old function executions."
+      },
+      "FunctionExecutionCostDto": {
+        "type": "object",
+        "properties": {
+          "estimated": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "actual": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "breakdown": {
+            "type": "object",
+            "additionalProperties": { }
+          }
+        }
+      },
+      "FunctionExecutionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "functionId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ExecutionState"
+          },
+          "input": {
+            "type": "object",
+            "additionalProperties": { }
+          },
+          "output": {
+            "type": "object",
+            "additionalProperties": { }
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "durationMs": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/FunctionExecutionCostDto"
           }
         }
       },
@@ -23747,7 +23761,6 @@
           }
         }
       },
-      "JsonElement": { },
       "KeyErrorDetailsDto": {
         "required": [
           "keyId",
@@ -28758,16 +28771,12 @@
             "format": "int32"
           },
           "providerSettings": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "parameterSchema": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "description": {
             "maxLength": 1000,
@@ -28818,10 +28827,8 @@
             "$ref": "#/components/schemas/FunctionPricingModel"
           },
           "pricingConfiguration": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": "object",
+            "additionalProperties": { }
           },
           "isActive": {
             "type": "boolean"

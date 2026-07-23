@@ -9,6 +9,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.DTOs;
+using ConduitLLM.Functions.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -143,8 +144,8 @@ public class FunctionConfigurationsEndpoints
             CacheTtlMinutes = request.CacheTtlMinutes,
             TimeoutSeconds = request.TimeoutSeconds,
             MaxRetries = request.MaxRetries,
-            ProviderSettings = request.ProviderSettings,
-            ParameterSchema = request.ParameterSchema,
+            ProviderSettings = StructuredJson.SerializeObject(request.ProviderSettings),
+            ParameterSchema = StructuredJson.SerializeObject(request.ParameterSchema),
             Description = request.Description
         };
         int id = await _configurationRepository.CreateAsync(configuration);
@@ -213,8 +214,8 @@ public class FunctionConfigurationsEndpoints
         Apply(request.CacheTtlMinutes, existing.CacheTtlMinutes, value => existing.CacheTtlMinutes = value, "CacheTtlMinutes", changedProperties);
         Apply(request.TimeoutSeconds, existing.TimeoutSeconds, value => existing.TimeoutSeconds = value, "TimeoutSeconds", changedProperties);
         Apply(request.MaxRetries, existing.MaxRetries, value => existing.MaxRetries = value, "MaxRetries", changedProperties);
-        Apply(request.ProviderSettings, existing.ProviderSettings, value => existing.ProviderSettings = value, "ProviderSettings", changedProperties);
-        Apply(request.ParameterSchema, existing.ParameterSchema, value => existing.ParameterSchema = value, "ParameterSchema", changedProperties);
+        Apply(StructuredJson.SerializeObject(request.ProviderSettings), existing.ProviderSettings, value => existing.ProviderSettings = value, "ProviderSettings", changedProperties);
+        Apply(StructuredJson.SerializeObject(request.ParameterSchema), existing.ParameterSchema, value => existing.ParameterSchema = value, "ParameterSchema", changedProperties);
         Apply(request.Description, existing.Description, value => existing.Description = value, "Description", changedProperties);
         existing.UpdatedAt = DateTime.UtcNow;
 
@@ -303,8 +304,8 @@ public class FunctionConfigurationsEndpoints
         CacheTtlMinutes = configuration.CacheTtlMinutes,
         TimeoutSeconds = configuration.TimeoutSeconds,
         MaxRetries = configuration.MaxRetries,
-        ProviderSettings = configuration.ProviderSettings,
-        ParameterSchema = configuration.ParameterSchema,
+        ProviderSettings = StructuredJson.ParseObject(configuration.ProviderSettings),
+        ParameterSchema = StructuredJson.ParseObject(configuration.ParameterSchema),
         Description = configuration.Description,
         CreatedAt = configuration.CreatedAt,
         UpdatedAt = configuration.UpdatedAt
