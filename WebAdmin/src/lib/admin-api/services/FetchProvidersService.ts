@@ -168,8 +168,8 @@ export class FetchProvidersService {
     config?: RequestConfig
   ): Promise<StandardApiKeyTestResponse> {
     try {
-      const result = await this.client['executeContractOperation']<RawApiKeyTestResponse>(`/api/ProviderCredentials/test/${id}`, HttpMethod.POST,
-        (contractClient, options) => contractClient.POST('/api/ProviderCredentials/test/{id}', { ...options, params: { path: { id } } }), config);
+      const result = await this.client['executeContractOperation']<RawApiKeyTestResponse>(`/api/ProviderCredentials/${id}/test`, HttpMethod.POST,
+        (contractClient, options) => contractClient.POST('/api/ProviderCredentials/{id}/test', { ...options, params: { path: { id } } }), config);
 
       // Normalize the response to handle C# PascalCase and enum mismatches
       return normalizeApiKeyTestResponse(result);

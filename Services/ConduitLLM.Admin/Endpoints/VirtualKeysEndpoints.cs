@@ -21,6 +21,7 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
     /// Initializes the Virtual Keys endpoint handler.
     /// </summary>
     /// <param name="virtualKeyService">The virtual key service</param>
+    /// <param name="httpContextAccessor">Accessor for the current request context</param>
     /// <param name="logger">The logger</param>
     public VirtualKeysEndpoints(
         IAdminVirtualKeyService virtualKeyService,

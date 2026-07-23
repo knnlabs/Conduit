@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using FluentAssertions;
 using Xunit;
 using ConduitLLM.IntegrationTests.Infrastructure;
+using System.Collections.Concurrent;
 
 namespace ConduitLLM.IntegrationTests.Tests;
 
@@ -96,38 +97,33 @@ public class SignalRConnectionLifecycleTests : SignalRIntegrationTestBase
         };
 
         var serverUrls = await HostFactory!.CreateServersAsync(1, RedisFixture.ConnectionString);
+        var retryPolicy = new RecordingRetryPolicy(reconnectDelays);
         var connection = CreateConnection(
             serverUrls[0], "/testhub",
             withAutoReconnect: true,
-            reconnectDelays: reconnectDelays);
-
-        var reconnectAttempts = new List<DateTime>();
-
-        connection.Reconnecting += error =>
-        {
-            reconnectAttempts.Add(DateTime.UtcNow);
-            return Task.CompletedTask;
-        };
+            retryPolicy: retryPolicy);
 
         await connection.StartAsync();
 
         // Act - Disconnect server (reconnection will fail since no server available)
         await HostFactory.DisposeAsync();
 
-        // Wait for multiple reconnection attempts
-        await Task.Delay(5000);
-
-        // Assert - Should have attempted reconnection multiple times
-        reconnectAttempts.Count.Should().BeGreaterThanOrEqualTo(2,
-            "Should have at least 2 reconnection attempts");
-
-        // Verify delays are approximately correct
-        if (reconnectAttempts.Count >= 2)
+        var timeoutAt = DateTime.UtcNow.AddSeconds(10);
+        while (retryPolicy.Attempts.Count < reconnectDelays.Length &&
+               DateTime.UtcNow < timeoutAt)
         {
-            var firstDelay = reconnectAttempts[1] - reconnectAttempts[0];
-            firstDelay.TotalMilliseconds.Should().BeGreaterThanOrEqualTo(400,
-                "First reconnection delay should be approximately 500ms");
+            await Task.Delay(100);
         }
+
+        // Reconnecting fires once for the whole reconnect cycle. The retry policy
+        // is the authoritative observation point for individual attempts.
+        retryPolicy.Attempts.Should().HaveCountGreaterThanOrEqualTo(reconnectDelays.Length);
+        retryPolicy.Attempts.Take(reconnectDelays.Length)
+            .Select(attempt => attempt.PreviousRetryCount)
+            .Should().Equal(0, 1, 2);
+        retryPolicy.Attempts.Take(reconnectDelays.Length)
+            .Select(attempt => attempt.Delay)
+            .Should().Equal(reconnectDelays.Select(delay => (TimeSpan?)delay));
     }
 
     [Fact]
@@ -218,4 +214,25 @@ public class SignalRConnectionLifecycleTests : SignalRIntegrationTestBase
     }
 
     #endregion
+
+    private sealed class RecordingRetryPolicy : IRetryPolicy
+    {
+        private readonly IReadOnlyList<TimeSpan> _delays;
+
+        public RecordingRetryPolicy(IReadOnlyList<TimeSpan> delays)
+        {
+            _delays = delays;
+        }
+
+        public ConcurrentQueue<(long PreviousRetryCount, TimeSpan? Delay)> Attempts { get; } = new();
+
+        public TimeSpan? NextRetryDelay(RetryContext retryContext)
+        {
+            TimeSpan? delay = retryContext.PreviousRetryCount < _delays.Count
+                ? _delays[(int)retryContext.PreviousRetryCount]
+                : null;
+            Attempts.Enqueue((retryContext.PreviousRetryCount, delay));
+            return delay;
+        }
+    }
 }

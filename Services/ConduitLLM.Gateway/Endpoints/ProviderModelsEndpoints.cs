@@ -17,6 +17,7 @@ namespace ConduitLLM.Gateway.Endpoints
         /// Initializes the Provider Models endpoint handler.
         /// </summary>
         /// <param name="dbContextFactory">Factory for creating database contexts.</param>
+        /// <param name="httpContextAccessor">Accessor for the current request context.</param>
         /// <param name="logger">Logger for diagnostic information.</param>
         public ProviderModelsEndpoints(
             IDbContextFactory<ConduitDbContext> dbContextFactory,

@@ -8,9 +8,4 @@
     <ProjectReference Include="..\..\Shared\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
     <ProjectReference Include="..\..\Services\ConduitLLM.Gateway\ConduitLLM.Gateway.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <None Update="GoldenCorpus\*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
 </Project>

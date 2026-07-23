@@ -4,12 +4,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
-    <PackageReference Include="Swashbuckle.AspNetCore" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../../../../Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj" />
-    <ProjectReference Include="../../../../Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj" />
+    <ProjectReference Include="../../../Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj" />
+    <ProjectReference Include="../../../Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj" />
   </ItemGroup>
 </Project>

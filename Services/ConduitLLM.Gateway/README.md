@@ -2,11 +2,11 @@
 
 ## Overview
 
-`ConduitLLM.Gateway` is the HTTP API backend for the Conduit solution (`Conduit.sln`). It exposes a unified, OpenAI-compatible REST API for interacting with multiple Large Language Model (LLM) providers such as OpenAI, Anthropic, Azure OpenAI, Gemini, Cohere, and others. It acts as the main programmatic interface for client applications and the ConduitLLM WebAdmin frontend.
+`ConduitLLM.Gateway` is the HTTP API backend for the Conduit solution (`Conduit.slnx`). It exposes a unified, OpenAI-compatible REST API for interacting with multiple Large Language Model (LLM) providers such as OpenAI, Anthropic, Azure OpenAI, Gemini, Cohere, and others. It acts as the main programmatic interface for client applications and the ConduitLLM WebAdmin frontend.
 
 ## Role in the Conduit Solution
 
-- **Conduit.sln**: The overall solution file tying together all Conduit sub-projects.
+- **Conduit.slnx**: The overall solution file tying together all Conduit sub-projects.
 - **ConduitLLM.Gateway**: This project. Provides the HTTP API for LLM access, model routing, API key/virtual key management, and provider abstraction.
 - **WebAdmin**: The web-based frontend for interactive LLM usage, configuration, and administration. Communicates with this API.
 - **ConduitLLM.Core**: Shared logic, models, and interfaces for LLM operations, used by both Http and WebAdmin.

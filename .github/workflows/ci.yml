@@ -40,6 +40,23 @@ jobs:
       - name: Run required billing invariant gate
         run: dotnet test Tests/ConduitLLM.BillingInvariantTests/ConduitLLM.BillingInvariantTests.csproj --configuration Release --verbosity normal
 
+  signalr-integration:
+    name: SignalR integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Run self-contained SignalR integration tests
+        run: dotnet test Tests/ConduitLLM.IntegrationTests/ConduitLLM.IntegrationTests.csproj --configuration Release --verbosity normal --filter "Component=SignalR"
+
+  # Provider and critical-path integration suites remain manual: they require
+  # already-running Conduit services plus provider credentials. The SignalR
+  # component is self-contained through Testcontainers and is required in CI.
+
   # Quick validation that everything builds
   validate:
     name: Validate

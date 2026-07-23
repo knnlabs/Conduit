@@ -32,7 +32,7 @@ namespace ConduitLLM.Admin.Extensions
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
 
                 // Clear the framework's default loopback entries so ONLY explicitly-trusted proxies are honored.
-                options.KnownNetworks.Clear();
+                options.KnownIPNetworks.Clear();
                 options.KnownProxies.Clear();
 
                 var networks = new List<string>(trusted.KnownNetworks);
@@ -53,8 +53,8 @@ namespace ConduitLLM.Admin.Extensions
                         && IPAddress.TryParse(slash[0], out var prefix)
                         && int.TryParse(slash[1], out var prefixLength))
                     {
-                        options.KnownNetworks.Add(
-                            new Microsoft.AspNetCore.HttpOverrides.IPNetwork(prefix, prefixLength));
+                        options.KnownIPNetworks.Add(
+                            new System.Net.IPNetwork(prefix, prefixLength));
                     }
                 }
 

@@ -62,37 +62,39 @@ namespace ConduitLLM.Admin.Endpoints
             group.MapGet("/paged", ([FromServices] ModelEndpoints endpoints, int page = 1, int pageSize = 50, string? search = null, string? capability = null, bool? hasProviders = null) =>
                     endpoints.GetPagedModels(page, pageSize, search, capability, hasProviders))
                 .WithName("Model_GetPaged").Produces<PagedResult<ModelDto>>();
-            group.MapGet("/{id}", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetModelById(id))
+            group.MapGet("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetModelById(id))
                 .WithName("Model_GetById").Produces<ModelDto>().Produces(StatusCodes.Status404NotFound);
             group.MapGet("/search", ([FromServices] ModelEndpoints endpoints, string? query = null) => endpoints.SearchModels(query))
                 .WithName("Model_Search").Produces<IEnumerable<ModelDto>>();
-            group.MapGet("/provider/{provider}", ([FromServices] ModelEndpoints endpoints, string provider) => endpoints.GetModelsByProvider(provider))
+            group.MapGet("/provider/models/{provider}", ([FromServices] ModelEndpoints endpoints, string provider) => endpoints.GetModelsByProvider(provider))
                 .WithName("Model_GetByProvider").Produces<IEnumerable<ModelWithProviderIdDto>>().Produces(StatusCodes.Status400BadRequest);
+            group.MapGet("/provider/{provider}", ([FromServices] ModelEndpoints endpoints, string provider) => endpoints.GetModelsByProvider(provider))
+                .ExcludeFromDescription();
             group.MapPost("/", ([FromServices] ModelEndpoints endpoints, CreateModelDto dto) => endpoints.CreateModel(dto))
                 .WithName("Model_Create").Produces<ModelDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status409Conflict);
-            group.MapPut("/{id}", ([FromServices] ModelEndpoints endpoints, int id, UpdateModelDto dto) => endpoints.UpdateModel(id, dto))
+            group.MapPut("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id, UpdateModelDto dto) => endpoints.UpdateModel(id, dto))
                 .WithName("Model_Update").Produces<ModelDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapDelete("/{id}", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.DeleteModel(id))
+            group.MapDelete("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.DeleteModel(id))
                 .WithName("Model_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
 
-            group.MapGet("/{id}/identifiers", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetModelIdentifiers(id))
+            group.MapGet("/{id:int}/identifiers", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetModelIdentifiers(id))
                 .WithName("Model_GetIdentifiers").Produces<IEnumerable<ModelIdentifierDto>>().Produces(StatusCodes.Status404NotFound);
-            group.MapGet("/{id}/available-providers", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetAvailableProviders(id))
+            group.MapGet("/{id:int}/available-providers", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetAvailableProviders(id))
                 .WithName("Model_GetAvailableProviders").Produces<IEnumerable<ModelProviderAvailabilityDto>>().Produces(StatusCodes.Status404NotFound);
-            group.MapPost("/{id}/identifiers", ([FromServices] ModelEndpoints endpoints, int id, CreateModelIdentifierDto dto) => endpoints.CreateModelIdentifier(id, dto))
+            group.MapPost("/{id:int}/identifiers", ([FromServices] ModelEndpoints endpoints, int id, CreateModelIdentifierDto dto) => endpoints.CreateModelIdentifier(id, dto))
                 .WithName("Model_CreateIdentifier").Produces<CreatedModelIdentifierDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapPut("/{id}/identifiers/{identifierId}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, UpdateModelIdentifierDto dto) => endpoints.UpdateModelIdentifier(id, identifierId, dto))
+            group.MapPut("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, UpdateModelIdentifierDto dto) => endpoints.UpdateModelIdentifier(id, identifierId, dto))
                 .WithName("Model_UpdateIdentifier").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapDelete("/{id}/identifiers/{identifierId}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId) => endpoints.DeleteModelIdentifier(id, identifierId))
+            group.MapDelete("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId) => endpoints.DeleteModelIdentifier(id, identifierId))
                 .WithName("Model_DeleteIdentifier").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
 
-            group.MapGet("/{id}/provider-mappings", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetModelProviderMappings(id))
+            group.MapGet("/{id:int}/provider-mappings", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetModelProviderMappings(id))
                 .WithName("Model_GetProviderMappings").Produces<IEnumerable<ModelProviderMappingDto>>().Produces(StatusCodes.Status404NotFound);
-            group.MapPost("/{id}/provider-mappings", ([FromServices] ModelEndpoints endpoints, int id, ModelProviderMappingDto dto) => endpoints.CreateModelProviderMapping(id, dto))
+            group.MapPost("/{id:int}/provider-mappings", ([FromServices] ModelEndpoints endpoints, int id, ModelProviderMappingDto dto) => endpoints.CreateModelProviderMapping(id, dto))
                 .WithName("Model_CreateProviderMapping").Produces<ModelProviderMappingDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapPut("/{id}/provider-mappings/{mappingId}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId, ModelProviderMappingDto dto) => endpoints.UpdateModelProviderMapping(id, mappingId, dto))
+            group.MapPut("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId, ModelProviderMappingDto dto) => endpoints.UpdateModelProviderMapping(id, mappingId, dto))
                 .WithName("Model_UpdateProviderMapping").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
-            group.MapDelete("/{id}/provider-mappings/{mappingId}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId) => endpoints.DeleteModelProviderMapping(id, mappingId))
+            group.MapDelete("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId) => endpoints.DeleteModelProviderMapping(id, mappingId))
                 .WithName("Model_DeleteProviderMapping").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             return app;
         }

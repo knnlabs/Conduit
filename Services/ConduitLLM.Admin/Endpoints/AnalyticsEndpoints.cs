@@ -23,8 +23,9 @@ public class AnalyticsEndpoints
     /// Initializes the Analytics endpoint handler.
     /// </summary>
     /// <param name="analyticsService">The analytics service</param>
-    /// <param name="analyticsMetrics">The analytics metrics service (optional)</param>
     /// <param name="logger">The logger</param>
+    /// <param name="httpContextAccessor">Accessor for the current request context</param>
+    /// <param name="analyticsMetrics">The analytics metrics service (optional)</param>
     public AnalyticsEndpoints(
         IAnalyticsService analyticsService,
         ILogger<AnalyticsEndpoints> logger,

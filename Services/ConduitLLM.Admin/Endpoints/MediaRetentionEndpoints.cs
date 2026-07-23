@@ -24,6 +24,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// Initializes the Media Retention endpoint handler.
         /// </summary>
         /// <param name="context">The database context for configuration operations.</param>
+        /// <param name="httpContextAccessor">Accessor for the current request context.</param>
         /// <param name="logger">The logger instance for diagnostic logging.</param>
         public MediaRetentionEndpoints(
             IConfigurationDbContext context,

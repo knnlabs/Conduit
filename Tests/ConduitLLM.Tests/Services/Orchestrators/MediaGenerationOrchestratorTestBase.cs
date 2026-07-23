@@ -306,7 +306,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 TaskState.Failed,
                 It.IsAny<int?>(),
                 It.IsAny<object?>(),
-                It.Is<string>(s => s.Contains("Virtual key validation returned null") || s.Contains("Invalid") || s.Contains("unauthorized") || s.Contains("disabled")),
+                It.Is<string>(s =>
+                    s.Contains("Virtual key validation returned null", StringComparison.OrdinalIgnoreCase) ||
+                    s.Contains("invalid", StringComparison.OrdinalIgnoreCase) ||
+                    s.Contains("unauthorized", StringComparison.OrdinalIgnoreCase) ||
+                    s.Contains("disabled", StringComparison.OrdinalIgnoreCase)),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 

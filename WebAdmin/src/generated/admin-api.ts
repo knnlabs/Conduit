@@ -1268,7 +1268,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ProviderCredentials/test/{id}": {
+  "/api/ProviderCredentials/{id}/test": {
     parameters: {
       query?: never;
       header?: never;
@@ -1380,7 +1380,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/Model/provider/{provider}": {
+  "/api/Model/provider/models/{provider}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2836,7 +2836,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/provider/{providerId}": {
+  "/api/ModelCosts/provider/costs/{providerId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -2852,7 +2852,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/ModelCosts/name/{costName}": {
+  "/api/ModelCosts/name/costs/{costName}": {
     parameters: {
       query?: never;
       header?: never;

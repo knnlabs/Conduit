@@ -19,6 +19,7 @@ public class IpFilterEndpoints : AdminEndpointHandlerBase
     /// Initializes the IP Filter endpoint handler.
     /// </summary>
     /// <param name="ipFilterService">The IP filter service</param>
+    /// <param name="httpContextAccessor">Accessor for the current request context</param>
     /// <param name="logger">The logger</param>
     public IpFilterEndpoints(
         IAdminIpFilterService ipFilterService,

@@ -8,6 +8,7 @@ using ConduitLLM.Gateway.Services;
 using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
+using ConduitLLM.Tests.Http.Middleware.Helpers;
 using Moq;
 using Xunit;
 

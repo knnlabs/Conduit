@@ -276,7 +276,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             _mockRedisDb.Setup(x => x.StringGetAsync(
                     It.Is<RedisKey[]>(requested => requested.SequenceEqual(keys)),
                     It.IsAny<CommandFlags>()))
-                .ReturnsAsync([new RedisValue(125_000_000L), new RedisValue(250_000_000L)]);
+                .ReturnsAsync([(RedisValue)125_000_000L, (RedisValue)250_000_000L]);
 
             using var service = new BatchSpendUpdateService(
                 _mockScopeFactory.Object,

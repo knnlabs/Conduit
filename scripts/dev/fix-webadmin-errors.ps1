@@ -56,7 +56,7 @@ function Test-ProjectRoot {
 
     $projectRoot = Get-ProjectRoot -FromPath $scriptDir
 
-    if (-not (Test-Path (Join-Path $projectRoot 'Conduit.sln'))) {
+    if (-not (Test-Path (Join-Path $projectRoot 'Conduit.slnx'))) {
         Write-Err "This script must be run from the Conduit root directory"
         Write-Err "Current directory: $(Get-Location)"
         exit 1

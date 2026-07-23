@@ -52,22 +52,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/completions": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: operations["Completions_Create"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/provider-models/{providerId}": {
     parameters: {
       query?: never;
@@ -1196,7 +1180,15 @@ export interface components {
       /** Format: int32 */
       pendingMessages?: number | string;
       /** Format: int32 */
+      delayedMessages?: number | string;
+      /** Format: int32 */
       deadLetterMessages?: number | string;
+      /** Format: int32 */
+      claimedMessages?: number | string;
+      /** Format: int32 */
+      retriedMessages?: number | string;
+      /** Format: double */
+      oldestPendingAgeSeconds?: number | string;
       /** Format: int32 */
       processedMessages?: number | string;
       /** Format: int32 */
@@ -1243,8 +1235,6 @@ export interface components {
       providerType: components["schemas"]["ProviderType"];
       metadata?: null | Record<string, never>;
     };
-    /** Format: binary */
-    Stream: string;
     StreamOptions: {
       include_usage?: boolean;
     };
@@ -1530,28 +1520,6 @@ export interface operations {
       };
       /** @description Internal Server Error */
       500: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
-        };
-      };
-    };
-  };
-  Completions_Create: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Not Implemented */
-      501: {
         headers: {
           [name: string]: unknown;
         };

@@ -213,9 +213,10 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
 
         string? currentEventType = null;
 
-        while (!reader.EndOfStream)
+        while (true)
         {
             var line = await reader.ReadLineAsync();
+            if (line is null) break;
             if (string.IsNullOrWhiteSpace(line)) continue;
 
             if (line.StartsWith("event:"))

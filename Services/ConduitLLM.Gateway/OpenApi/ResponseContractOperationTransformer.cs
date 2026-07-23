@@ -25,7 +25,6 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
             ["BatchOperations_GetStatus"] = ["200", "404"],
             ["BatchOperations_Cancel"] = ["404", "409"],
             ["Chat_CreateCompletion"] = ["400", "500"],
-            ["Completions_Create"] = ["501"],
             ["Embeddings_Create"] = ["200", "400", "500"],
             ["Functions_Execute"] = ["400", "404"],
             ["Functions_GetExecution"] = ["404"],

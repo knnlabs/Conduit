@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using Testcontainers.Redis;
 using Xunit;
 
@@ -19,9 +21,11 @@ public class RedisTestContainerFixture : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        var hostPort = GetAvailableHostPort();
         _redisContainer = new RedisBuilder()
             .WithImage("redis:7.4-alpine")
             .WithName($"redis-signalr-test-{Guid.NewGuid():N}")
+            .WithPortBinding(hostPort, 6379)
             .Build();
 
         await _redisContainer.StartAsync();
@@ -63,6 +67,13 @@ public class RedisTestContainerFixture : IAsyncLifetime
         {
             await _redisContainer.ExecAsync(new[] { "redis-cli", "FLUSHALL" });
         }
+    }
+
+    private static int GetAvailableHostPort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
     }
 }
 

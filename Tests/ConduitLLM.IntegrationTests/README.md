@@ -55,6 +55,16 @@ provider:
 
 ## Running Tests
 
+### CI SignalR Suite
+
+The SignalR component is self-contained with Testcontainers and runs as a required CI gate:
+
+```bash
+dotnet test ConduitLLM.IntegrationTests.csproj --configuration Release --filter "Component=SignalR"
+```
+
+Provider and critical-path integration tests remain manual because they require running Conduit services and provider credentials.
+
 ### Run All Tests
 ```bash
 cd ConduitLLM.IntegrationTests

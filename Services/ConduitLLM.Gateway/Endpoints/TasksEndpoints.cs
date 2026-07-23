@@ -14,6 +14,7 @@ namespace ConduitLLM.Gateway.Endpoints
         /// Initializes the Tasks endpoint handler.
         /// </summary>
         /// <param name="taskService">The async task service.</param>
+        /// <param name="httpContextAccessor">Accessor for the current request context.</param>
         /// <param name="logger">The logger.</param>
         public TasksEndpoints(IAsyncTaskService taskService, IHttpContextAccessor httpContextAccessor, ILogger<TasksEndpoints> logger)
             : base(null, httpContextAccessor, logger)

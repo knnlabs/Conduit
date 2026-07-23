@@ -34,6 +34,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <summary>
         /// Gets security events for monitoring.
         /// </summary>
+        /// <param name="dbContextFactory">Factory used to create the configuration database context.</param>
         /// <param name="hours">Number of hours to look back (default: 24).</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Security events data.</returns>
@@ -142,6 +143,8 @@ namespace ConduitLLM.Admin.Endpoints
         /// <summary>
         /// Gets threat analytics data.
         /// </summary>
+        /// <param name="dbContextFactory">Factory used to create the configuration database context.</param>
+        /// <param name="cache">Cache used for computed threat analytics.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Threat analytics information.</returns>
         private static async Task<IResult> GetThreatAnalytics(
@@ -244,6 +247,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <summary>
         /// Gets compliance metrics.
         /// </summary>
+        /// <param name="dbContextFactory">Factory used to create the configuration database context.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Compliance information.</returns>
         private static async Task<IResult> GetComplianceMetrics(

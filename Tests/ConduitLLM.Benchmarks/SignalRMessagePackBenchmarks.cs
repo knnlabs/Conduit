@@ -22,13 +22,13 @@ namespace ConduitLLM.Benchmarks;
 [ShortRunJob]
 public class SignalRMessagePackBenchmarks
 {
-    private IHubProtocol _jsonProtocol;
-    private IHubProtocol _messagePackProtocol;
+    private IHubProtocol _jsonProtocol = null!;
+    private IHubProtocol _messagePackProtocol = null!;
 
-    private HubMessage _smallMessage;
-    private HubMessage _mediumMessage;
-    private HubMessage _largeMessage;
-    private HubMessage _veryLargeMessage;
+    private HubMessage _smallMessage = null!;
+    private HubMessage _mediumMessage = null!;
+    private HubMessage _largeMessage = null!;
+    private HubMessage _veryLargeMessage = null!;
 
     [GlobalSetup]
     public void Setup()
@@ -122,7 +122,7 @@ public class SignalRMessagePackBenchmarks
     #region Serialization Speed Benchmarks
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("SmallPayload", "Serialization")]
+    [BenchmarkCategory("SmallPayload")]
     public int Json_Serialize_SmallPayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -131,7 +131,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("SmallPayload", "Serialization")]
+    [BenchmarkCategory("SmallPayload")]
     public int MessagePack_Serialize_SmallPayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -140,7 +140,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("MediumPayload", "Serialization")]
+    [BenchmarkCategory("MediumPayload")]
     public int Json_Serialize_MediumPayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -149,7 +149,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("MediumPayload", "Serialization")]
+    [BenchmarkCategory("MediumPayload")]
     public int MessagePack_Serialize_MediumPayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -158,7 +158,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("LargePayload", "Serialization")]
+    [BenchmarkCategory("LargePayload")]
     public int Json_Serialize_LargePayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -167,7 +167,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("LargePayload", "Serialization")]
+    [BenchmarkCategory("LargePayload")]
     public int MessagePack_Serialize_LargePayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -176,7 +176,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("VeryLargePayload", "Serialization")]
+    [BenchmarkCategory("VeryLargePayload")]
     public int Json_Serialize_VeryLargePayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -185,7 +185,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("VeryLargePayload", "Serialization")]
+    [BenchmarkCategory("VeryLargePayload")]
     public int MessagePack_Serialize_VeryLargePayload()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -198,7 +198,7 @@ public class SignalRMessagePackBenchmarks
     #region Payload Size Benchmarks
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("PayloadSize", "Compression")]
+    [BenchmarkCategory("MediumPayloadSize")]
     public int Json_PayloadSize_Medium()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -207,7 +207,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("PayloadSize", "Compression")]
+    [BenchmarkCategory("MediumPayloadSize")]
     public int MessagePack_PayloadSize_Medium()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -216,7 +216,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("PayloadSize", "Compression")]
+    [BenchmarkCategory("LargePayloadSize")]
     public int Json_PayloadSize_Large()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -225,7 +225,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("PayloadSize", "Compression")]
+    [BenchmarkCategory("LargePayloadSize")]
     public int MessagePack_PayloadSize_Large()
     {
         var writer = new ArrayBufferWriter<byte>();
@@ -238,7 +238,7 @@ public class SignalRMessagePackBenchmarks
     #region Throughput Benchmarks (messages per second)
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Throughput")]
+    [BenchmarkCategory("Throughput100")]
     public void Json_Throughput_100Messages()
     {
         for (int i = 0; i < 100; i++)
@@ -249,7 +249,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("Throughput")]
+    [BenchmarkCategory("Throughput100")]
     public void MessagePack_Throughput_100Messages()
     {
         for (int i = 0; i < 100; i++)
@@ -260,7 +260,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Throughput")]
+    [BenchmarkCategory("Throughput1000")]
     public void Json_Throughput_1000Messages()
     {
         for (int i = 0; i < 1000; i++)
@@ -271,7 +271,7 @@ public class SignalRMessagePackBenchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("Throughput")]
+    [BenchmarkCategory("Throughput1000")]
     public void MessagePack_Throughput_1000Messages()
     {
         for (int i = 0; i < 1000; i++)

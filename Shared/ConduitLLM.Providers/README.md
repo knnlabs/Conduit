@@ -4,7 +4,7 @@
 
 **ConduitLLM.Providers** is a core library within the [ConduitLLM](../) solution, responsible for providing modular, extensible integration with various Large Language Model (LLM) backends and services. It abstracts the details of interacting with different LLM providers and exposes a uniform interface for the rest of the Conduit ecosystem.
 
-This project is part of the larger `Conduit.sln` solution, which is composed of several sub-projects:
+This project is part of the larger `Conduit.slnx` solution, which is composed of several sub-projects:
 
 - **ConduitLLM.Gateway**: The HTTP API layer that exposes LLM functionality via REST endpoints.
 - **WebAdmin**: The web-based user interface for interacting with LLMs.

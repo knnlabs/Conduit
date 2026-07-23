@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
@@ -26,8 +25,8 @@ public sealed class ProviderUsageGoldenCorpusTests
         new Dictionary<string, GoldenCase>(StringComparer.Ordinal)
         {
             ["openai-top-level"] = new(
-                Fixture: "openai-top-level.json",
                 Path: "/v1/chat/completions",
+                Operation: RequestOperation.ChatCompletion,
                 ProviderType: "OpenAI",
                 Model: "golden-openai-top-level",
                 ModelCost: StandardCost(
@@ -43,8 +42,8 @@ public sealed class ProviderUsageGoldenCorpusTests
                 ExpectedCost: 0.004m),
 
             ["openai-nested-details"] = new(
-                Fixture: "openai-nested-details.json",
                 Path: "/v1/chat/completions",
+                Operation: RequestOperation.ChatCompletion,
                 ProviderType: "OpenAI",
                 Model: "golden-openai-nested-details",
                 ModelCost: StandardCost(
@@ -65,8 +64,8 @@ public sealed class ProviderUsageGoldenCorpusTests
                 ExpectedCost: 0.0044m),
 
             ["anthropic-cache"] = new(
-                Fixture: "anthropic-cache.json",
                 Path: "/v1/chat/completions",
+                Operation: RequestOperation.ChatCompletion,
                 ProviderType: "Anthropic",
                 Model: "golden-anthropic-cache",
                 ModelCost: StandardCost(
@@ -81,13 +80,14 @@ public sealed class ProviderUsageGoldenCorpusTests
                     CompletionTokens = 25,
                     CachedInputTokens = 10000,
                     CachedWriteTokens = 2000,
-                    CachedInputTokensIncludedInPrompt = false
+                    CachedInputTokensIncludedInPrompt = false,
+                    CachedWriteTokensIncludedInPrompt = false
                 },
                 ExpectedCost: 0.012375m),
 
             ["image-completion"] = new(
-                Fixture: "image-completion.json",
                 Path: "/v1/images/generations",
+                Operation: RequestOperation.Image,
                 ProviderType: "OpenAI",
                 Model: "golden-image-model",
                 ModelCost: new ModelCost
@@ -117,8 +117,8 @@ public sealed class ProviderUsageGoldenCorpusTests
                 }),
 
             ["video-completion"] = new(
-                Fixture: "video-completion.json",
                 Path: "/v1/videos/generations",
+                Operation: RequestOperation.Video,
                 ProviderType: "OpenAI",
                 Model: "golden-video-model",
                 ModelCost: new ModelCost
@@ -152,11 +152,9 @@ public sealed class ProviderUsageGoldenCorpusTests
     [InlineData("anthropic-cache")]
     [InlineData("image-completion")]
     [InlineData("video-completion")]
-    public async Task Frozen_provider_response_extracts_expected_usage_and_cost(string caseName)
+    public async Task Typed_provider_usage_produces_expected_usage_and_cost(string caseName)
     {
         var goldenCase = Cases[caseName];
-        var responseJson = await File.ReadAllTextAsync(
-            Path.Combine(AppContext.BaseDirectory, "GoldenCorpus", goldenCase.Fixture));
 
         var modelCosts = new Mock<IModelCostService>();
         modelCosts
@@ -215,10 +213,16 @@ public sealed class ProviderUsageGoldenCorpusTests
 
         var context = CreateContext(goldenCase);
         var middleware = new UsageTrackingMiddleware(
-            async httpContext =>
+            httpContext =>
             {
                 httpContext.Response.ContentType = "application/json";
-                await httpContext.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(responseJson));
+                var accounting = httpContext.GetOrCreateRequestAccountingContext();
+                accounting.SetOperation(goldenCase.Operation, VirtualKeyId, goldenCase.Model);
+                accounting.RecordProviderUsage(
+                    goldenCase.ExpectedUsage,
+                    goldenCase.Model,
+                    UsageEvidenceSource.Provider);
+                return Task.CompletedTask;
             },
             Mock.Of<ILogger<UsageTrackingMiddleware>>());
 
@@ -272,6 +276,7 @@ public sealed class ProviderUsageGoldenCorpusTests
         Assert.Equal(expected.CachedInputTokens, actual.CachedInputTokens);
         Assert.Equal(expected.CachedWriteTokens, actual.CachedWriteTokens);
         Assert.Equal(expected.CachedInputTokensIncludedInPrompt, actual.CachedInputTokensIncludedInPrompt);
+        Assert.Equal(expected.CachedWriteTokensIncludedInPrompt, actual.CachedWriteTokensIncludedInPrompt);
         Assert.Equal(expected.ReasoningTokens, actual.ReasoningTokens);
         Assert.Equal(expected.ImageCount, actual.ImageCount);
         Assert.Equal(expected.ImageQuality, actual.ImageQuality);
@@ -298,8 +303,8 @@ public sealed class ProviderUsageGoldenCorpusTests
     };
 
     private sealed record GoldenCase(
-        string Fixture,
         string Path,
+        RequestOperation Operation,
         string ProviderType,
         string Model,
         ModelCost ModelCost,

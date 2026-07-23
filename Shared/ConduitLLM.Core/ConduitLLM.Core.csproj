@@ -23,4 +23,8 @@
     <ProjectReference Include="..\ConduitLLM.Configuration\ConduitLLM.Configuration.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="ConduitLLM.Tests" />
+  </ItemGroup>
+
 </Project>

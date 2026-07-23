@@ -239,7 +239,7 @@ describe('contract-native model reads', () => {
     },
     {
       name: 'models.getByProvider',
-      url: 'https://admin.test/api/Model/provider/open%20ai%2Fcompatible',
+      url: 'https://admin.test/api/Model/provider/models/open%20ai%2Fcompatible',
       payload: [{ id: 41, name: 'nova-chat', providerModelId: 'provider/nova-chat' }],
       invoke: (client) => client.models.getByProvider('open ai/compatible', { headers: { [TEST_HEADER]: 'model-read' } }),
     },

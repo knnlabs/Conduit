@@ -207,41 +207,6 @@
         ]
       }
     },
-    "/v1/completions": {
-      "post": {
-        "tags": [
-          "Completions"
-        ],
-        "operationId": "Completions_Create",
-        "responses": {
-          "501": {
-            "description": "Not Implemented",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "VirtualKey": [ ]
-          }
-        ]
-      }
-    },
     "/api/provider-models/{providerId}": {
       "get": {
         "tags": [
@@ -4264,6 +4229,14 @@
             ],
             "format": "int32"
           },
+          "delayedMessages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
           "deadLetterMessages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
@@ -4271,6 +4244,30 @@
               "string"
             ],
             "format": "int32"
+          },
+          "claimedMessages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "retriedMessages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "oldestPendingAgeSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           },
           "processedMessages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -4465,10 +4462,6 @@
             ]
           }
         }
-      },
-      "Stream": {
-        "type": "string",
-        "format": "binary"
       },
       "StreamOptions": {
         "type": "object",
@@ -5169,9 +5162,6 @@
     },
     {
       "name": "Authentication"
-    },
-    {
-      "name": "Completions"
     },
     {
       "name": "Provider Models"

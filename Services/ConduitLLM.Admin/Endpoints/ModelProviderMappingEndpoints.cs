@@ -29,6 +29,7 @@ public class ModelProviderMappingEndpoints
     /// </summary>
     /// <param name="mappingService">The model provider mapping service</param>
     /// <param name="providerService">The provider service</param>
+    /// <param name="httpContextAccessor">Accessor for the current request context</param>
     /// <param name="logger">The logger</param>
     public ModelProviderMappingEndpoints(
         IAdminModelProviderMappingService mappingService,

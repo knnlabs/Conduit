@@ -17,8 +17,8 @@ namespace ConduitLLM.IntegrationTests.Tests
     [Trait("Component", "SignalR")]
     public class SignalRMessagePackIntegrationTests : IAsyncLifetime
     {
-        private IHost _host;
-        private string _serverUrl;
+        private IHost _host = null!;
+        private string _serverUrl = null!;
         private const int Port = 5555;
 
         public class TestHub : Hub
@@ -54,11 +54,7 @@ namespace ConduitLLM.IntegrationTests.Tests
                             services.AddSignalR()
                                 .AddMessagePackProtocol(options =>
                                 {
-                                    options.SerializerOptions = MessagePack.MessagePackSerializerOptions.Standard
-                                        .WithResolver(MessagePack.Resolvers.StandardResolver.Instance)
-                                        .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData)
-                                        .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray)
-                                        .WithCompressionMinLength(256);
+                                    options.SerializerOptions = CreateMessagePackSerializerOptions();
                                 });
                         })
                         .Configure(app =>
@@ -90,7 +86,8 @@ namespace ConduitLLM.IntegrationTests.Tests
             // Arrange
             var connection = new HubConnectionBuilder()
                 .WithUrl($"{_serverUrl}/testhub")
-                .AddMessagePackProtocol()
+                .AddMessagePackProtocol(options =>
+                    options.SerializerOptions = CreateMessagePackSerializerOptions())
                 .Build();
 
             // Act
@@ -129,7 +126,8 @@ namespace ConduitLLM.IntegrationTests.Tests
             // Arrange
             var connection = new HubConnectionBuilder()
                 .WithUrl($"{_serverUrl}/testhub")
-                .AddMessagePackProtocol()
+                .AddMessagePackProtocol(options =>
+                    options.SerializerOptions = CreateMessagePackSerializerOptions())
                 .Build();
 
             await connection.StartAsync();
@@ -176,7 +174,8 @@ namespace ConduitLLM.IntegrationTests.Tests
 
             var messagePackConnection = new HubConnectionBuilder()
                 .WithUrl($"{_serverUrl}/testhub")
-                .AddMessagePackProtocol()
+                .AddMessagePackProtocol(options =>
+                    options.SerializerOptions = CreateMessagePackSerializerOptions())
                 .Build();
 
             var jsonReceived = new TaskCompletionSource<string>();
@@ -206,8 +205,8 @@ namespace ConduitLLM.IntegrationTests.Tests
             jsonResult.Should().Be(jsonReceived.Task);
             messagePackResult.Should().Be(messagePackReceived.Task);
 
-            jsonReceived.Task.Result.Should().Be("Cross-protocol test");
-            messagePackReceived.Task.Result.Should().Be("Cross-protocol test");
+            (await jsonReceived.Task).Should().Be("Cross-protocol test");
+            (await messagePackReceived.Task).Should().Be("Cross-protocol test");
 
             // Cleanup
             await jsonConnection.StopAsync();
@@ -225,7 +224,8 @@ namespace ConduitLLM.IntegrationTests.Tests
             // Arrange
             var connection = new HubConnectionBuilder()
                 .WithUrl($"{_serverUrl}/testhub")
-                .AddMessagePackProtocol()
+                .AddMessagePackProtocol(options =>
+                    options.SerializerOptions = CreateMessagePackSerializerOptions())
                 .Build();
 
             await connection.StartAsync();
@@ -243,7 +243,7 @@ namespace ConduitLLM.IntegrationTests.Tests
             var result = await Task.WhenAny(received.Task, Task.Delay(10000));
             result.Should().Be(received.Task, $"Should receive payload of size {size}");
 
-            var payload = received.Task.Result;
+            var payload = await received.Task;
             payload.Length.Should().Be(size);
 
             // Cleanup
@@ -257,7 +257,8 @@ namespace ConduitLLM.IntegrationTests.Tests
             // Arrange
             var connection = new HubConnectionBuilder()
                 .WithUrl($"{_serverUrl}/testhub")
-                .AddMessagePackProtocol()
+                .AddMessagePackProtocol(options =>
+                    options.SerializerOptions = CreateMessagePackSerializerOptions())
                 .WithAutomaticReconnect()
                 .Build();
 
@@ -293,7 +294,8 @@ namespace ConduitLLM.IntegrationTests.Tests
 
             var messagePackConnection = new HubConnectionBuilder()
                 .WithUrl($"{_serverUrl}/testhub")
-                .AddMessagePackProtocol()
+                .AddMessagePackProtocol(options =>
+                    options.SerializerOptions = CreateMessagePackSerializerOptions())
                 .Build();
 
             await jsonConnection.StartAsync();
@@ -313,5 +315,12 @@ namespace ConduitLLM.IntegrationTests.Tests
             await jsonConnection.DisposeAsync();
             await messagePackConnection.DisposeAsync();
         }
+
+        private static MessagePack.MessagePackSerializerOptions CreateMessagePackSerializerOptions() =>
+            MessagePack.MessagePackSerializerOptions.Standard
+                .WithResolver(MessagePack.Resolvers.StandardResolver.Instance)
+                .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData)
+                .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray)
+                .WithCompressionMinLength(256);
     }
 }

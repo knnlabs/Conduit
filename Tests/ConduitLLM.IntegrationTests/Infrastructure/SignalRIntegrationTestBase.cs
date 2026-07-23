@@ -60,7 +60,8 @@ public abstract class SignalRIntegrationTestBase : IAsyncLifetime
         string hubPath,
         bool useMessagePack = false,
         bool withAutoReconnect = false,
-        TimeSpan[]? reconnectDelays = null)
+        TimeSpan[]? reconnectDelays = null,
+        IRetryPolicy? retryPolicy = null)
     {
         var builder = new HubConnectionBuilder()
             .WithUrl($"{serverUrl}{hubPath}");
@@ -72,7 +73,11 @@ public abstract class SignalRIntegrationTestBase : IAsyncLifetime
 
         if (withAutoReconnect)
         {
-            if (reconnectDelays != null)
+            if (retryPolicy != null)
+            {
+                builder.WithAutomaticReconnect(retryPolicy);
+            }
+            else if (reconnectDelays != null)
             {
                 builder.WithAutomaticReconnect(reconnectDelays);
             }

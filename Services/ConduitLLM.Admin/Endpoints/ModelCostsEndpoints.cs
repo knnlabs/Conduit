@@ -52,19 +52,21 @@ namespace ConduitLLM.Admin.Endpoints
         {
             var g = app.MapGroup("/api/ModelCosts").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Model Costs");
             g.MapGet("/", ([FromServices] ModelCostsEndpoints e, int? page=null, int? pageSize=null, string? modelType=null, int? providerId=null, bool? isActive=null) => e.GetAllModelCosts(page,pageSize,modelType,providerId,isActive)).WithName("ModelCosts_GetAll").Produces<PagedResult<ModelCostDto>>();
-            g.MapGet("/{id}", ([FromServices] ModelCostsEndpoints e,int id)=>e.GetModelCostById(id)).WithName("ModelCosts_GetById").Produces<ModelCostDto>().Produces(StatusCodes.Status404NotFound);
-            g.MapGet("/provider/{providerId}", ([FromServices] ModelCostsEndpoints e,int providerId)=>e.GetModelCostsByProvider(providerId)).WithName("ModelCosts_GetByProvider").Produces<IEnumerable<ModelCostDto>>();
-            g.MapGet("/name/{costName}", ([FromServices] ModelCostsEndpoints e,string costName)=>e.GetModelCostByCostName(costName)).WithName("ModelCosts_GetByName").Produces<ModelCostDto>().Produces(StatusCodes.Status404NotFound);
+            g.MapGet("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id)=>e.GetModelCostById(id)).WithName("ModelCosts_GetById").Produces<ModelCostDto>().Produces(StatusCodes.Status404NotFound);
+            g.MapGet("/provider/costs/{providerId:int}", ([FromServices] ModelCostsEndpoints e,int providerId)=>e.GetModelCostsByProvider(providerId)).WithName("ModelCosts_GetByProvider").Produces<IEnumerable<ModelCostDto>>();
+            g.MapGet("/provider/{providerId:int}", ([FromServices] ModelCostsEndpoints e,int providerId)=>e.GetModelCostsByProvider(providerId)).ExcludeFromDescription();
+            g.MapGet("/name/costs/{costName}", ([FromServices] ModelCostsEndpoints e,string costName)=>e.GetModelCostByCostName(costName)).WithName("ModelCosts_GetByName").Produces<ModelCostDto>().Produces(StatusCodes.Status404NotFound);
+            g.MapGet("/name/{costName}", ([FromServices] ModelCostsEndpoints e,string costName)=>e.GetModelCostByCostName(costName)).ExcludeFromDescription();
             g.MapPost("/", ([FromServices] ModelCostsEndpoints e,CreateModelCostDto d)=>e.CreateModelCost(d)).WithName("ModelCosts_Create").Produces<ModelCostDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-            g.MapPut("/{id}", ([FromServices] ModelCostsEndpoints e,int id,UpdateModelCostDto d)=>e.UpdateModelCost(id,d)).WithName("ModelCosts_Update").Produces<ModelCostDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
-            g.MapDelete("/{id}", ([FromServices] ModelCostsEndpoints e,int id)=>e.DeleteModelCost(id)).WithName("ModelCosts_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
+            g.MapPut("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id,UpdateModelCostDto d)=>e.UpdateModelCost(id,d)).WithName("ModelCosts_Update").Produces<ModelCostDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            g.MapDelete("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id)=>e.DeleteModelCost(id)).WithName("ModelCosts_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             g.MapGet("/overview", ([FromServices] ModelCostsEndpoints e,DateTime? startDate=null,DateTime? endDate=null)=>e.GetModelCostOverview(startDate ?? default,endDate ?? default)).WithName("ModelCosts_GetOverview").Produces<IEnumerable<ModelCostOverviewDto>>().Produces(StatusCodes.Status400BadRequest);
             g.MapPost("/import", ([FromServices] ModelCostsEndpoints e,IEnumerable<CreateModelCostDto> d)=>e.ImportModelCosts(d)).WithName("ModelCosts_Import").Accepts<IEnumerable<CreateModelCostDto>>("application/json", "text/json", "application/*+json").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
             g.MapGet("/export/csv", ([FromServices] ModelCostsEndpoints e,int? providerId=null)=>e.ExportCsv(providerId)).WithName("ModelCosts_ExportCsv").Produces(StatusCodes.Status200OK,typeof(void),"text/csv");
             g.MapGet("/export/json", ([FromServices] ModelCostsEndpoints e,int? providerId=null)=>e.ExportJson(providerId)).WithName("ModelCosts_ExportJson").Produces(StatusCodes.Status200OK,typeof(void),"application/json");
             g.MapPost("/import/csv", ([FromServices] ModelCostsEndpoints e,IFormFile file)=>e.ImportCsv(file)).WithName("ModelCosts_ImportCsv").DisableAntiforgery().Accepts<IFormFile>("multipart/form-data").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
             g.MapPost("/import/json", ([FromServices] ModelCostsEndpoints e,IFormFile file)=>e.ImportJson(file)).WithName("ModelCosts_ImportJson").DisableAntiforgery().Accepts<IFormFile>("multipart/form-data").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
-            g.MapPost("/{id}/validate-pricing-rules", ([FromServices] ModelCostsEndpoints e,int id,ValidatePricingRulesRequest d)=>e.ValidatePricingRules(id,d)).WithName("ModelCosts_ValidatePricingRules").Produces<ValidationResult>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            g.MapPost("/{id:int}/validate-pricing-rules", ([FromServices] ModelCostsEndpoints e,int id,ValidatePricingRulesRequest d)=>e.ValidatePricingRules(id,d)).WithName("ModelCosts_ValidatePricingRules").Produces<ValidationResult>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             g.MapPost("/validate-pricing-rules", ([FromServices] ModelCostsEndpoints e,ValidatePricingRulesRequest d)=>e.ValidatePricingRulesStandalone(d)).WithName("ModelCosts_ValidatePricingRulesStandalone").Produces<ValidationResult>().Produces(StatusCodes.Status400BadRequest);
             return app;
         }
@@ -75,6 +77,8 @@ namespace ConduitLLM.Admin.Endpoints
         /// <param name="page">Page number (1-based)</param>
         /// <param name="pageSize">Number of items per page</param>
         /// <param name="modelType">Optional filter by model type (chat, image, video, embedding, audio)</param>
+        /// <param name="providerId">Optional provider identifier filter</param>
+        /// <param name="isActive">Optional active-state filter</param>
         /// <returns>List of all model costs or paginated response</returns>
         public async Task<IResult> GetAllModelCosts(
             [FromQuery] int? page = null,

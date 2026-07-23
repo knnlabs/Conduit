@@ -355,7 +355,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     private static JsonDocument LoadContract(params string[] relativeSegments)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Conduit.sln")))
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Conduit.slnx")))
         {
             directory = directory.Parent;
         }

@@ -54,12 +54,11 @@ public class SignalRRedisBackplaneTests : SignalRIntegrationTestBase
         await conn2.StartAsync();
 
         // First verify cross-server works
-        var firstReceived = CreateMessageWaiter<(string message, string sender)>();
-        conn2.On<string, string>("ReceiveMessage", (msg, sender) =>
-            firstReceived.TrySetResult((msg, sender)));
-
-        await conn1.InvokeAsync("BroadcastMessage", "Before outage");
-        await WaitForMessageAsync(firstReceived, 5000, "Should receive before outage");
+        await WaitForBackplaneDeliveryAsync(
+            conn1,
+            conn2,
+            "Before outage",
+            TimeSpan.FromSeconds(5));
 
         // Stop Redis
         await RedisFixture.StopAsync();
@@ -67,17 +66,14 @@ public class SignalRRedisBackplaneTests : SignalRIntegrationTestBase
 
         // Restart Redis
         await RedisFixture.RestartAsync();
-        await Task.Delay(3000); // Allow backplane to reconnect
 
-        // Act - Send message across servers after recovery
-        var received = CreateMessageWaiter<(string message, string sender)>();
-        conn2.On<string, string>("ReceiveMessage", (msg, sender) =>
-            received.TrySetResult((msg, sender)));
-
-        await conn1.InvokeAsync("BroadcastMessage", "Cross-server after reconnect");
-
-        // Assert
-        var result = await WaitForMessageAsync(received, 15000);
+        // Act & Assert - poll delivery because StackExchange.Redis reconnects
+        // asynchronously after the container is accepting connections again.
+        var result = await WaitForBackplaneDeliveryAsync(
+            conn1,
+            conn2,
+            "Cross-server after reconnect",
+            TimeSpan.FromSeconds(15));
         result.message.Should().Be("Cross-server after reconnect");
     }
 
@@ -150,30 +146,68 @@ public class SignalRRedisBackplaneTests : SignalRIntegrationTestBase
         await conn2.StartAsync();
 
         // Verify cross-server works before outage
-        var received1 = CreateMessageWaiter<(string, string)>();
-        conn2.On<string, string>("ReceiveMessage", (msg, sender) =>
-            received1.TrySetResult((msg, sender)));
-
-        await conn1.InvokeAsync("BroadcastMessage", "Before outage");
-        await WaitForMessageAsync(received1, 5000, "Should receive before outage");
+        await WaitForBackplaneDeliveryAsync(
+            conn1,
+            conn2,
+            "Before outage",
+            TimeSpan.FromSeconds(5));
 
         // Simulate brief Redis outage (3 seconds)
         await RedisFixture.StopAsync();
         await Task.Delay(3000);
         await RedisFixture.RestartAsync();
-        await Task.Delay(5000); // Allow reconnection
 
-        // Act - Test cross-server after recovery
-        var received2 = CreateMessageWaiter<(string, string)>();
-        conn2.On<string, string>("ReceiveMessage", (msg, sender) =>
-            received2.TrySetResult((msg, sender)));
-
-        await conn1.InvokeAsync("BroadcastMessage", "After recovery");
-
-        // Assert
-        var result = await WaitForMessageAsync(received2, 10000, "Should receive after Redis recovery");
+        // Act & Assert
+        var result = await WaitForBackplaneDeliveryAsync(
+            conn1,
+            conn2,
+            "After recovery",
+            TimeSpan.FromSeconds(15));
         result.Item1.Should().Be("After recovery");
     }
 
     #endregion
+
+    private static async Task<(string message, string sender)> WaitForBackplaneDeliveryAsync(
+        HubConnection sendingConnection,
+        HubConnection receivingConnection,
+        string message,
+        TimeSpan timeout)
+    {
+        var received = new TaskCompletionSource<(string message, string sender)>(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        using var subscription = receivingConnection.On<string, string>(
+            "ReceiveMessage",
+            (receivedMessage, sender) =>
+            {
+                if (receivedMessage == message)
+                {
+                    received.TrySetResult((receivedMessage, sender));
+                }
+            });
+
+        var deadline = DateTime.UtcNow + timeout;
+        Exception? lastError = null;
+        while (DateTime.UtcNow < deadline)
+        {
+            try
+            {
+                await sendingConnection.InvokeAsync("BroadcastMessage", message);
+            }
+            catch (Exception exception)
+            {
+                lastError = exception;
+            }
+
+            var completed = await Task.WhenAny(received.Task, Task.Delay(500));
+            if (completed == received.Task)
+            {
+                return await received.Task;
+            }
+        }
+
+        throw new TimeoutException(
+            $"Message '{message}' was not delivered through the Redis backplane within {timeout}.",
+            lastError);
+    }
 }

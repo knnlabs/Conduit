@@ -48,7 +48,8 @@ public static class GatewayApiEndpoints
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Completions").WithName("Completions_Create")
-            .Produces<OpenAIErrorResponse>(StatusCodes.Status501NotImplemented);
+            .Produces<OpenAIErrorResponse>(StatusCodes.Status501NotImplemented)
+            .ExcludeFromDescription();
 
         app.MapGet("/api/provider-models/{providerId:int}", ([FromServices] ProviderModelsEndpoints endpoints, int providerId) => endpoints.GetProviderModels(providerId))
             .AddEndpointFilter<OperationLoggingEndpointFilter>()

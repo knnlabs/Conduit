@@ -173,13 +173,13 @@ function Get-ProjectRoot {
 
     $searchPath = if ($FromPath) { $FromPath } else { Get-ScriptDirectory }
 
-    # Walk up the directory tree looking for Conduit.sln
+    # Walk up the directory tree looking for Conduit.slnx
     $current = $searchPath
-    while ($current -and -not (Test-Path (Join-Path $current "Conduit.sln"))) {
+    while ($current -and -not (Test-Path (Join-Path $current "Conduit.slnx"))) {
         $parent = Split-Path -Parent $current
         if ($parent -eq $current) {
-            # Reached root without finding Conduit.sln
-            throw "Could not find Conduit.sln in parent directories of $searchPath"
+            # Reached root without finding Conduit.slnx
+            throw "Could not find Conduit.slnx in parent directories of $searchPath"
         }
         $current = $parent
     }

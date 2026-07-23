@@ -3,11 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # ===== CACHED LAYERS (Keep these fast) =====
-# Copy project files for dependency resolution
-COPY *.sln .
-COPY Directory.Build.props ./ 
-COPY */*.csproj ./
-RUN find . -name "*.csproj" -exec dirname {} \; | xargs -I {} mkdir -p {}
+# Copy solution-wide restore inputs before project files so package changes
+# invalidate the restore layer consistently.
+COPY Conduit.slnx Directory.Build.props Directory.Packages.props NuGet.Config ./
 
 # Copy project files to correct locations
 COPY Services/ConduitLLM.Gateway/*.csproj ./Services/ConduitLLM.Gateway/

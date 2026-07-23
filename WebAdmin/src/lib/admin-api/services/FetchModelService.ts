@@ -161,8 +161,8 @@ export class FetchModelService {
    */
   async getByProvider(provider: string, config?: RequestConfig): Promise<ModelDto[]> {
     return this.client['executeContractRead'](
-      `/api/Model/provider/${encodeURIComponent(provider)}`,
-      (contractClient, options) => contractClient.GET('/api/Model/provider/{provider}', {
+      `/api/Model/provider/models/${encodeURIComponent(provider)}`,
+      (contractClient, options) => contractClient.GET('/api/Model/provider/models/{provider}', {
         ...options,
         params: { path: { provider } },
       }),

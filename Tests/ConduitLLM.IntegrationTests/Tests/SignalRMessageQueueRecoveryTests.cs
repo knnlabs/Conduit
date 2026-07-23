@@ -24,6 +24,8 @@ using SignalRMessage = ConduitLLM.Core.Models.SignalR.SignalRMessage;
 namespace ConduitLLM.IntegrationTests.Tests;
 
 [Collection("SignalR Redis Collection")]
+[Trait("Category", "Integration")]
+[Trait("Component", "SignalR")]
 public sealed class SignalRMessageQueueRecoveryTests : IAsyncLifetime
 {
     private const string ConsumerGroup = "signalr-processors";

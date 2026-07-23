@@ -44,6 +44,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Updates a model cost
         /// </summary>
+        /// <param name="id">The model cost identifier.</param>
         /// <param name="modelCost">The model cost to update</param>
         /// <returns>True if update was successful, false if the model cost was not found</returns>
         Task<ModelCostDto?> UpdateModelCostAsync(int id, UpdateModelCostDto modelCost);

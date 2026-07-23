@@ -16,10 +16,10 @@ namespace ConduitLLM.IntegrationTests.Tests
     [Trait("Component", "SignalR")]
     public class SignalRProtocolNegotiationTests : IAsyncLifetime
     {
-        private IHost _hostWithBothProtocols;
-        private IHost _hostWithJsonOnly;
-        private string _bothProtocolsUrl;
-        private string _jsonOnlyUrl;
+        private IHost _hostWithBothProtocols = null!;
+        private IHost _hostWithJsonOnly = null!;
+        private string _bothProtocolsUrl = null!;
+        private string _jsonOnlyUrl = null!;
         private const int BothProtocolsPort = 5556;
         private const int JsonOnlyPort = 5557;
 

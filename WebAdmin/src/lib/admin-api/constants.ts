@@ -43,8 +43,8 @@ export const ENDPOINTS = {
   MODEL_COSTS: {
     BASE: '/api/ModelCosts',
     BY_ID: (id: number) => `/api/ModelCosts/${id}`,
-    BY_NAME: (costName: string) => `/api/ModelCosts/name/${costName}`,
-    BY_PROVIDER: (providerId: number) => `/api/ModelCosts/provider/${providerId}`,
+    BY_NAME: (costName: string) => `/api/ModelCosts/name/costs/${costName}`,
+    BY_PROVIDER: (providerId: number) => `/api/ModelCosts/provider/costs/${providerId}`,
     IMPORT: '/api/ModelCosts/import',
     IMPORT_CSV: '/api/ModelCosts/import/csv',
     IMPORT_JSON: '/api/ModelCosts/import/json',
@@ -58,7 +58,7 @@ export const ENDPOINTS = {
     BASE: '/api/Model',
     IMPORT_BUNDLED_CATALOG: '/api/Model/bundled-catalog/import',
     BY_ID: (id: number) => `/api/Model/${id}`,
-    BY_PROVIDER: (provider: string) => `/api/Model/provider/${provider}`,
+    BY_PROVIDER: (provider: string) => `/api/Model/provider/models/${provider}`,
     SEARCH: '/api/Model/search',
   },
 

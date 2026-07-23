@@ -22,9 +22,14 @@ public static class StreamingResponseParser
         using var reader = new StreamReader(stream);
         string? currentEventType = null;
 
-        while (!reader.EndOfStream && !cancellationToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
         {
             var line = await reader.ReadLineAsync(cancellationToken);
+            if (line is null)
+            {
+                break;
+            }
+
             if (string.IsNullOrEmpty(line))
             {
                 // Empty line - end of event
