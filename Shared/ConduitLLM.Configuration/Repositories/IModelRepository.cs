@@ -76,6 +76,20 @@ public interface IModelRepository : IRepositoryBase<Model, int>
     Task<List<Model>> GetByProviderAsync(ProviderType providerType, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets a provider type association by its ID, including the canonical model.
+    /// </summary>
+    Task<ModelProviderTypeAssociation?> GetProviderTypeAssociationByIdAsync(
+        int associationId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets provider type associations matching any of the supplied provider identifiers.
+    /// </summary>
+    Task<List<ModelProviderTypeAssociation>> GetProviderTypeAssociationsByIdentifiersAsync(
+        IReadOnlyCollection<string> identifiers,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Deletes a model identifier by ID.
     /// </summary>
     /// <param name="modelId">The model ID</param>

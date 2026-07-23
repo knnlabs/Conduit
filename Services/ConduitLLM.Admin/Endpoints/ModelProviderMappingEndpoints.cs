@@ -51,7 +51,8 @@ public class ModelProviderMappingEndpoints
         g.MapPut("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id, UpdateModelProviderMappingDto dto) => e.UpdateMapping(id, dto)).WithName("ModelProviderMapping_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
         g.MapDelete("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id) => e.DeleteMapping(id)).WithName("ModelProviderMapping_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
         g.MapGet("/providers", ([FromServices] ModelProviderMappingEndpoints e) => e.GetProviders()).WithName("ModelProviderMapping_GetProviders").Produces<IEnumerable<Provider>>();
-        g.MapPost("/bulk", ([FromServices] ModelProviderMappingEndpoints e, List<CreateModelProviderMappingDto> d) => e.CreateBulkMappings(d)).WithName("ModelProviderMapping_CreateBulk").Produces<BulkMappingResult>().Produces(StatusCodes.Status400BadRequest);
+        g.MapPost("/bulk/preview", ([FromServices] ModelProviderMappingEndpoints e, BulkModelMappingPreviewRequest d) => e.PreviewBulkMappings(d)).WithName("ModelProviderMapping_PreviewBulk").Produces<BulkModelMappingPreviewResponse>().Produces(StatusCodes.Status400BadRequest);
+        g.MapPost("/bulk", ([FromServices] ModelProviderMappingEndpoints e, BulkModelMappingCreateRequest d) => e.CreateBulkMappings(d)).WithName("ModelProviderMapping_CreateBulk").Produces<BulkModelMappingCreateResponse>().Produces(StatusCodes.Status400BadRequest);
         g.MapPost("/bulk/delete", ([FromServices] ModelProviderMappingEndpoints e, List<int> ids) => e.DeleteBulkMappings(ids)).WithName("ModelProviderMapping_DeleteBulk").Produces<BulkDeleteResult>().Produces(StatusCodes.Status400BadRequest);
         g.MapPost("/bulk/enable", ([FromServices] ModelProviderMappingEndpoints e, List<int> ids) => e.EnableBulkMappings(ids)).WithName("ModelProviderMapping_EnableBulk").Produces<BulkUpdateResult>().Produces(StatusCodes.Status400BadRequest);
         g.MapPost("/bulk/disable", ([FromServices] ModelProviderMappingEndpoints e, List<int> ids) => e.DisableBulkMappings(ids)).WithName("ModelProviderMapping_DisableBulk").Produces<BulkUpdateResult>().Produces(StatusCodes.Status400BadRequest);
@@ -238,31 +239,35 @@ public class ModelProviderMappingEndpoints
     }
 
     /// <summary>
-    /// Creates multiple model provider mappings in a single operation
+    /// Resolves model associations and conflicts before bulk creation.
     /// </summary>
-    /// <param name="mappingDtos">The mappings to create</param>
-    /// <returns>The bulk mapping response with results</returns>
-    public async Task<IResult> CreateBulkMappings(List<CreateModelProviderMappingDto> mappingDtos)
+    public async Task<IResult> PreviewBulkMappings(BulkModelMappingPreviewRequest request)
     {
-        if (mappingDtos == null || !mappingDtos.Any())
+        if (request?.Mappings == null || request.Mappings.Count == 0)
         {
             return Results.BadRequest(new ErrorResponseDto("No mappings provided"));
         }
 
-        var mappings = mappingDtos.Select(dto => dto.ToEntity()).ToList();
-        var (created, errors) = await _mappingService.CreateBulkMappingsAsync(mappings);
+        return Results.Ok(await _mappingService.PreviewBulkMappingsAsync(request));
+    }
 
-        var result = new BulkMappingResult
+    /// <summary>
+    /// Resolves and creates multiple model provider mappings using partial-success semantics.
+    /// Equivalent existing mappings satisfy retries without creating duplicates.
+    /// </summary>
+    public async Task<IResult> CreateBulkMappings(BulkModelMappingCreateRequest request)
+    {
+        if (request?.Mappings == null || request.Mappings.Count == 0)
         {
-            Created = created.Select(m => m.ToDto()).ToList(),
-            Errors = errors.ToList(),
-            TotalProcessed = mappingDtos.Count(),
-            SuccessCount = created.Count(),
-            FailureCount = errors.Count()
-        };
+            return Results.BadRequest(new ErrorResponseDto("No mappings provided"));
+        }
+
+        var result = await _mappingService.CreateBulkMappingsAsync(request);
 
         LogAdminAuditBulk("BulkCreated", "ModelProviderMapping", result.SuccessCount, result.FailureCount);
-        AdminOperationsMetricsService.RecordModelMappingOperation("bulk_create", "success");
+        AdminOperationsMetricsService.RecordModelMappingOperation(
+            "bulk_create",
+            result.IsSuccess ? "success" : result.IsPartialSuccess ? "partial" : "failed");
 
         return Results.Ok(result);
     }
@@ -403,42 +408,6 @@ public class ModelProviderMappingEndpoints
     private void LogAdminAudit(string operation, string entityType, object? entityId = null, string? detail = null) => AdminAudit.Log(_httpContextAccessor.HttpContext!, _logger, operation, entityType, entityId, detail);
     private void LogAdminAuditBulk(string operation, string entityType, int successCount, int failureCount) => AdminAudit.LogBulk(_httpContextAccessor.HttpContext!, _logger, operation, entityType, successCount, failureCount);
 
-}
-
-/// <summary>
-/// Result of a bulk mapping operation
-/// </summary>
-public class BulkMappingResult
-{
-    /// <summary>
-    /// Successfully created mappings
-    /// </summary>
-    [System.ComponentModel.DataAnnotations.Required]
-    public List<ModelProviderMappingDto> Created { get; set; } = new();
-
-    /// <summary>
-    /// Error messages for failed mappings
-    /// </summary>
-    [System.ComponentModel.DataAnnotations.Required]
-    public List<string> Errors { get; set; } = new();
-
-    /// <summary>
-    /// Total number of mappings processed
-    /// </summary>
-    [System.ComponentModel.DataAnnotations.Required]
-    public int TotalProcessed { get; set; }
-
-    /// <summary>
-    /// Number of successful mappings
-    /// </summary>
-    [System.ComponentModel.DataAnnotations.Required]
-    public int SuccessCount { get; set; }
-
-    /// <summary>
-    /// Number of failed mappings
-    /// </summary>
-    [System.ComponentModel.DataAnnotations.Required]
-    public int FailureCount { get; set; }
 }
 
 /// <summary>

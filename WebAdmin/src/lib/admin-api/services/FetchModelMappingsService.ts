@@ -7,6 +7,8 @@ import type {
   UpdateModelProviderMappingDto,
   BulkMappingRequest,
   BulkMappingResponse,
+  BulkModelMappingPreviewRequest,
+  BulkModelMappingPreviewResponse,
   BulkDeleteResult,
   BulkUpdateResult,
 } from '../models/modelMapping';
@@ -105,24 +107,40 @@ export class FetchModelMappingsService {
 
 
   /**
+   * Resolve associations and conflicts for discovered provider models.
+   */
+  async previewBulk(
+    request: BulkModelMappingPreviewRequest,
+    config?: RequestConfig
+  ): Promise<BulkModelMappingPreviewResponse> {
+    return this.client['executeContractOperation']<BulkModelMappingPreviewResponse, BulkModelMappingPreviewRequest>(
+      '/api/ModelProviderMapping/bulk/preview',
+      HttpMethod.POST,
+      (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk/preview', {
+        ...options,
+        body: request,
+      }),
+      config,
+      request,
+    );
+  }
+
+  /**
    * Bulk create model mappings
    */
   async bulkCreate(
     request: BulkMappingRequest,
     config?: RequestConfig
   ): Promise<BulkMappingResponse> {
-    // Backend expects a direct array of mappings, not a request object
-    const mappings = request.mappings;
-
-    return this.client['executeContractOperation']<BulkMappingResponse, CreateModelProviderMappingDto[]>(
+    return this.client['executeContractOperation']<BulkMappingResponse, BulkMappingRequest>(
       '/api/ModelProviderMapping/bulk',
       HttpMethod.POST,
       (contractClient, options) => contractClient.POST('/api/ModelProviderMapping/bulk', {
         ...options,
-        body: mappings,
+        body: request,
       }),
       config,
-      mappings,
+      request,
     );
   }
 

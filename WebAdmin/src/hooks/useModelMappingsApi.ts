@@ -113,6 +113,8 @@ interface BulkDiscoverResult {
     providerModelId?: string;
     hasConflict: boolean;
     existingMapping: ModelProviderMappingDto | null;
+    conflictReason: string | null;
+    modelProviderTypeAssociationId: number | null;
     capabilities: DiscoveredModelCapabilities;
   }>;
   totalModels: number;
@@ -130,33 +132,48 @@ export function useBulkDiscoverModels() {
         client.models.getByProvider(providerName.toLowerCase())
       );
 
-      // TODO(#1071): Use mapped aliases to detect conflicts during discovery.
-      // const mappedModelAliases = new Set(
-      //   existingMappings
-      //     .filter(m => m.providerId?.toString() === providerId)
-      //     .map(m => m.modelAlias)
-      // );
+      const discoveredModels = providerModels.map(model => {
+        const providerModelId = (model as { providerModelId?: string }).providerModelId ?? model.name ?? '';
+        return { model, providerModelId };
+      });
+      if (discoveredModels.length === 0) {
+        return {
+          providerId,
+          providerName,
+          models: [],
+          totalModels: 0,
+          conflictCount: 0,
+        };
+      }
+      const preview = await withAdminClient(client => client.modelMappings.previewBulk({
+        mappings: discoveredModels.map(({ providerModelId }) => ({
+          modelAlias: providerModelId,
+          providerId: Number.parseInt(providerId, 10),
+          providerModelId,
+        })),
+      }));
 
       // Transform provider-specific models to discovery result format
       const result: BulkDiscoverResult = {
         providerId,
         providerName,
-        models: providerModels.map(model => {
-          // The backend now returns providerModelId for provider-specific endpoints
-          const providerModelId = (model as { providerModelId?: string }).providerModelId ?? model.name ?? undefined;
+        models: discoveredModels.map(({ model, providerModelId }, index) => {
+          const resolution = preview.items[index];
 
           return {
             modelId: model.id?.toString() ?? '',
             displayName: model.name ?? model.id?.toString() ?? '',
             providerId,
-            providerModelId, // Store the provider-specific model ID
-            hasConflict: false, // TODO(#1071): Check against mapped aliases.
-            existingMapping: null,
+            providerModelId,
+            hasConflict: resolution?.hasConflict ?? true,
+            existingMapping: resolution?.existingMapping ?? null,
+            conflictReason: resolution?.errorMessage ?? null,
+            modelProviderTypeAssociationId: resolution?.modelProviderTypeAssociationId ?? null,
             capabilities: mapDiscoveredModelCapabilities(model),
           };
         }),
         totalModels: providerModels.length,
-        conflictCount: 0, // TODO(#1071): Count conflicts detected from mapped aliases.
+        conflictCount: preview.conflictCount ?? preview.items.filter(item => item.hasConflict).length,
       };
 
       return result;
@@ -190,9 +207,11 @@ interface BulkCreateRequest {
 interface BulkCreateResult {
   success: boolean;
   created: number;
+  existing: number;
   failed: number;
   details: {
     created: ModelProviderMappingDto[];
+    existing: ModelProviderMappingDto[];
     failed: Array<{
       modelId: string;
       error: string;
@@ -207,19 +226,15 @@ export function useBulkCreateMappings() {
   const createMappings = async (request: BulkCreateRequest): Promise<BulkCreateResult> => {
     setIsCreating(true);
     try {
-      // Transform request to Admin SDK format
-      // TODO(#1071): Create or resolve ModelProviderTypeAssociations before bulk creation.
-      // For now, using a placeholder value of 1 - this will need proper implementation
       const bulkRequest = {
         mappings: request.models.map(model => ({
-          modelAlias: model.providerModelId ?? model.displayName,  // Use provider model ID as alias
+          modelAlias: model.providerModelId ?? model.displayName,
           providerId: parseInt(model.providerId, 10),
-          providerModelId: model.providerModelId ?? model.displayName,  // Provider-specific model identifier
-          modelProviderTypeAssociationId: 1, // TODO(#1071): Resolve the association for each model.
-          isEnabled: request.enableByDefault ?? true,
-          priority: request.defaultPriority ?? 50,
+          providerModelId: model.providerModelId ?? model.displayName,
         })),
-        replaceExisting: false,
+        isEnabled: request.enableByDefault ?? true,
+        priority: request.defaultPriority ?? 50,
+        weight: 1,
       };
 
       const sdkResult = await withAdminClient(client =>
@@ -228,14 +243,16 @@ export function useBulkCreateMappings() {
 
       // Transform result back to expected format
       const result: BulkCreateResult = {
-        success: sdkResult.failureCount === 0,
-        created: sdkResult.successCount,
-        failed: sdkResult.failureCount,
+        success: sdkResult.isSuccess ?? sdkResult.failed.length === 0,
+        created: sdkResult.createdCount ?? sdkResult.created.length,
+        existing: sdkResult.existingCount ?? sdkResult.existing.length,
+        failed: sdkResult.failureCount ?? sdkResult.failed.length,
         details: {
           created: sdkResult.created,
-          failed: sdkResult.errors.map((error, index) => ({
-            modelId: request.models[index]?.modelId ?? 'unknown',
-            error: error,
+          existing: sdkResult.existing,
+          failed: sdkResult.failed.map(error => ({
+            modelId: request.models[error.index]?.modelId ?? 'unknown',
+            error: error.errorMessage ?? 'The mapping could not be created.',
           })),
         },
       };

@@ -3,25 +3,56 @@ using System.ComponentModel.DataAnnotations;
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
-    /// Request DTO for bulk model mapping creation
+    /// A discovered provider model submitted for bulk mapping resolution.
     /// </summary>
-    public class BulkModelMappingRequest
+    public class BulkModelMappingItemDto
     {
         /// <summary>
-        /// Collection of model mappings to create
+        /// The alias clients will use when requesting this model.
+        /// </summary>
+        [Required(ErrorMessage = "Model Alias is required")]
+        public string ModelAlias { get; set; } = string.Empty;
+
+        /// <summary>
+        /// The configured provider instance that will serve the model.
         /// </summary>
         [Required]
-        public List<CreateModelProviderMappingDto> Mappings { get; set; } = new();
+        [Range(1, int.MaxValue)]
+        public int ProviderId { get; set; }
 
         /// <summary>
-        /// Whether to replace existing mappings with the same model ID
+        /// The provider-specific model identifier used to resolve model metadata.
         /// </summary>
-        public bool ReplaceExisting { get; set; } = false;
+        [Required(ErrorMessage = "Provider Model ID is required")]
+        public string ProviderModelId { get; set; } = string.Empty;
+    }
 
-        /// <summary>
-        /// Whether to validate provider model existence before creation
-        /// </summary>
-        public bool ValidateProviderModels { get; set; } = true;
+    /// <summary>
+    /// Request DTO for resolving associations and conflicts before bulk creation.
+    /// </summary>
+    public class BulkModelMappingPreviewRequest
+    {
+        /// <summary>The discovered provider models to resolve.</summary>
+        [Required]
+        [MinLength(1)]
+        public List<BulkModelMappingItemDto> Mappings { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Request DTO for idempotent bulk model mapping creation.
+    /// </summary>
+    public class BulkModelMappingCreateRequest : BulkModelMappingPreviewRequest
+    {
+        /// <summary>The default routing priority applied to newly created mappings.</summary>
+        [Range(0, int.MaxValue)]
+        public int Priority { get; set; } = 50;
+
+        /// <summary>The default routing weight applied to newly created mappings.</summary>
+        [Range(0.1, 2.0)]
+        public decimal Weight { get; set; } = 1.0m;
+
+        /// <summary>Whether newly created mappings are enabled.</summary>
+        public bool IsEnabled { get; set; } = true;
     }
 
     /// <summary>
@@ -79,105 +110,123 @@ namespace ConduitLLM.Configuration.DTOs
     }
 
     /// <summary>
-    /// Response DTO for bulk model mapping creation
+    /// Per-item association resolution and conflict details.
     /// </summary>
-    public class BulkModelMappingResponse
+    public class BulkModelMappingResolutionDto
     {
-        /// <summary>
-        /// Successfully created mappings
-        /// </summary>
-        public List<ModelProviderMappingDto> Created { get; set; } = new();
-
-        /// <summary>
-        /// Updated mappings (when ReplaceExisting is true)
-        /// </summary>
-        public List<ModelProviderMappingDto> Updated { get; set; } = new();
-
-        /// <summary>
-        /// Failed mapping attempts
-        /// </summary>
-        public List<BulkMappingError> Failed { get; set; } = new();
-
-        /// <summary>
-        /// Total number of mappings processed
-        /// </summary>
-        public int TotalProcessed { get; set; }
-
-        /// <summary>
-        /// Number of successful operations
-        /// </summary>
-        public int SuccessCount => Created.Count + Updated.Count;
-
-        /// <summary>
-        /// Number of failed operations
-        /// </summary>
-        public int FailureCount => Failed.Count;
-
-        /// <summary>
-        /// Whether the bulk operation was completely successful
-        /// </summary>
-        public bool IsSuccess => Failed.Count == 0;
-    }
-
-    /// <summary>
-    /// Details about a failed mapping creation
-    /// </summary>
-    public class BulkMappingError
-    {
-        /// <summary>
-        /// Index of the failed mapping in the original request
-        /// </summary>
+        /// <summary>The item's index in the request.</summary>
+        [Required]
         public int Index { get; set; }
 
-        /// <summary>
-        /// The mapping that failed to be created
-        /// </summary>
-        public CreateModelProviderMappingDto Mapping { get; set; } = new();
+        /// <summary>The submitted model alias.</summary>
+        [Required]
+        public string ModelAlias { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Error message describing the failure
-        /// </summary>
-        public string ErrorMessage { get; set; } = string.Empty;
+        /// <summary>The submitted provider instance ID.</summary>
+        [Required]
+        public int ProviderId { get; set; }
 
-        /// <summary>
-        /// Detailed error information
-        /// </summary>
-        public string? Details { get; set; }
+        /// <summary>The submitted provider-specific model identifier.</summary>
+        [Required]
+        public string ProviderModelId { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Error category for UI handling
-        /// </summary>
-        public BulkMappingErrorType ErrorType { get; set; }
+        /// <summary>The compatible association resolved by the server, when available.</summary>
+        public int? ModelProviderTypeAssociationId { get; set; }
+
+        /// <summary>Whether this item must not be selected for creation.</summary>
+        [Required]
+        public bool HasConflict { get; set; }
+
+        /// <summary>The existing alias/provider mapping, when one caused the conflict.</summary>
+        public ModelProviderMappingDto? ExistingMapping { get; set; }
+
+        /// <summary>A machine-readable error category, when resolution failed.</summary>
+        public BulkModelMappingErrorType? ErrorType { get; set; }
+
+        /// <summary>A user-facing explanation of the conflict or resolution failure.</summary>
+        public string? ErrorMessage { get; set; }
     }
 
     /// <summary>
-    /// Categories of bulk mapping errors
+    /// Response DTO for a bulk mapping preview.
     /// </summary>
-    public enum BulkMappingErrorType
+    public class BulkModelMappingPreviewResponse
     {
-        /// <summary>
-        /// Validation error in the input data
-        /// </summary>
+        /// <summary>Resolution details in request order.</summary>
+        [Required]
+        public List<BulkModelMappingResolutionDto> Items { get; set; } = new();
+
+        /// <summary>Total number of items evaluated.</summary>
+        [Required]
+        public int TotalProcessed { get; set; }
+
+        /// <summary>Number of items that cannot be created.</summary>
+        [Required]
+        public int ConflictCount { get; set; }
+    }
+
+    /// <summary>
+    /// Response DTO for idempotent bulk model mapping creation.
+    /// Each item is committed independently; failures do not roll back successful items.
+    /// </summary>
+    public class BulkModelMappingCreateResponse
+    {
+        /// <summary>Mappings created by this request.</summary>
+        [Required]
+        public List<ModelProviderMappingDto> Created { get; set; } = new();
+
+        /// <summary>Equivalent mappings that already existed and made the request idempotent.</summary>
+        [Required]
+        public List<ModelProviderMappingDto> Existing { get; set; } = new();
+
+        /// <summary>Items that could not be resolved or created.</summary>
+        [Required]
+        public List<BulkModelMappingResolutionDto> Failed { get; set; } = new();
+
+        /// <summary>Total number of submitted items.</summary>
+        [Required]
+        public int TotalProcessed { get; set; }
+
+        /// <summary>Number of mappings created by this request.</summary>
+        [Required]
+        public int CreatedCount { get; set; }
+
+        /// <summary>Number of submitted items already satisfied by an equivalent mapping.</summary>
+        [Required]
+        public int ExistingCount { get; set; }
+
+        /// <summary>Number of successful or idempotently satisfied items.</summary>
+        [Required]
+        public int SuccessCount { get; set; }
+
+        /// <summary>Number of failed items.</summary>
+        [Required]
+        public int FailureCount { get; set; }
+
+        /// <summary>Whether all submitted items succeeded or were already satisfied.</summary>
+        [Required]
+        public bool IsSuccess { get; set; }
+
+        /// <summary>Whether the operation committed some items and rejected others.</summary>
+        [Required]
+        public bool IsPartialSuccess { get; set; }
+    }
+
+    /// <summary>
+    /// Categories of bulk mapping resolution and creation errors.
+    /// </summary>
+    public enum BulkModelMappingErrorType
+    {
         Validation,
-
-        /// <summary>
-        /// Duplicate model ID conflict
-        /// </summary>
-        Duplicate,
-
-        /// <summary>
-        /// Provider model does not exist
-        /// </summary>
-        ProviderModelNotFound,
-
-        /// <summary>
-        /// Database or system error
-        /// </summary>
-        SystemError,
-
-        /// <summary>
-        /// Provider not found or unavailable
-        /// </summary>
-        ProviderNotFound
+        ProviderNotFound,
+        AssociationNotFound,
+        AssociationProviderMismatch,
+        AssociationDisabled,
+        AmbiguousAssociation,
+        ExistingMapping,
+        ExistingMappingMismatch,
+        DuplicateRequest,
+        CanonicalModelMismatch,
+        SystemError
     }
 }

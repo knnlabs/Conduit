@@ -2724,6 +2724,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/ModelProviderMapping/bulk/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelProviderMapping_PreviewBulk"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/ModelProviderMapping/bulk": {
     parameters: {
       query?: never;
@@ -3325,27 +3341,61 @@ export interface components {
       failureCount: number;
       errors: string[];
     };
-    /** @description Result of a bulk mapping operation */
-    BulkMappingResult: {
-      /** @description Successfully created mappings */
+    BulkModelMappingCreateRequest: {
+      /** Format: int32 */
+      priority?: number;
+      /** Format: double */
+      weight?: number;
+      isEnabled?: boolean;
+      mappings: components["schemas"]["BulkModelMappingItemDto"][];
+    };
+    BulkModelMappingCreateResponse: {
       created: components["schemas"]["ModelProviderMappingDto"][];
-      /** @description Error messages for failed mappings */
-      errors: string[];
-      /**
-       * Format: int32
-       * @description Total number of mappings processed
-       */
+      existing: components["schemas"]["ModelProviderMappingDto"][];
+      failed: components["schemas"]["BulkModelMappingResolutionDto"][];
+      /** Format: int32 */
       totalProcessed: number;
-      /**
-       * Format: int32
-       * @description Number of successful mappings
-       */
+      /** Format: int32 */
+      createdCount: number;
+      /** Format: int32 */
+      existingCount: number;
+      /** Format: int32 */
       successCount: number;
-      /**
-       * Format: int32
-       * @description Number of failed mappings
-       */
+      /** Format: int32 */
       failureCount: number;
+      isSuccess: boolean;
+      isPartialSuccess: boolean;
+    };
+    BulkModelMappingErrorType: number;
+    BulkModelMappingItemDto: {
+      modelAlias: string;
+      /** Format: int32 */
+      providerId: number;
+      providerModelId: string;
+    };
+    BulkModelMappingPreviewRequest: {
+      mappings: components["schemas"]["BulkModelMappingItemDto"][];
+    };
+    BulkModelMappingPreviewResponse: {
+      items: components["schemas"]["BulkModelMappingResolutionDto"][];
+      /** Format: int32 */
+      totalProcessed: number;
+      /** Format: int32 */
+      conflictCount: number;
+    };
+    BulkModelMappingResolutionDto: {
+      /** Format: int32 */
+      index: number;
+      modelAlias: string;
+      /** Format: int32 */
+      providerId: number;
+      providerModelId: string;
+      /** Format: int32 */
+      modelProviderTypeAssociationId?: null | number;
+      hasConflict: boolean;
+      existingMapping?: null | components["schemas"]["ModelProviderMappingDto"];
+      errorType?: null | components["schemas"]["BulkModelMappingErrorType"];
+      errorMessage?: null | string;
     };
     /** @description Result of a bulk update operation */
     BulkUpdateResult: {
@@ -17852,7 +17902,7 @@ export interface operations {
       };
     };
   };
-  ModelProviderMapping_CreateBulk: {
+  ModelProviderMapping_PreviewBulk: {
     parameters: {
       query?: never;
       header?: never;
@@ -17861,9 +17911,9 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["CreateModelProviderMappingDto"][];
-        "text/json": components["schemas"]["CreateModelProviderMappingDto"][];
-        "application/*+json": components["schemas"]["CreateModelProviderMappingDto"][];
+        "application/json": components["schemas"]["BulkModelMappingPreviewRequest"];
+        "text/json": components["schemas"]["BulkModelMappingPreviewRequest"];
+        "application/*+json": components["schemas"]["BulkModelMappingPreviewRequest"];
       };
     };
     responses: {
@@ -17873,9 +17923,61 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["BulkMappingResult"];
-          "text/json": components["schemas"]["BulkMappingResult"];
-          "text/plain": components["schemas"]["BulkMappingResult"];
+          "application/json": components["schemas"]["BulkModelMappingPreviewResponse"];
+          "text/json": components["schemas"]["BulkModelMappingPreviewResponse"];
+          "text/plain": components["schemas"]["BulkModelMappingPreviewResponse"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            error?: unknown;
+            details?: null | string;
+            code?: null | string;
+          };
+        };
+      };
+    };
+  };
+  ModelProviderMapping_CreateBulk: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["BulkModelMappingCreateRequest"];
+        "text/json": components["schemas"]["BulkModelMappingCreateRequest"];
+        "application/*+json": components["schemas"]["BulkModelMappingCreateRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["BulkModelMappingCreateResponse"];
+          "text/json": components["schemas"]["BulkModelMappingCreateResponse"];
+          "text/plain": components["schemas"]["BulkModelMappingCreateResponse"];
         };
       };
       /** @description Bad Request */

@@ -221,12 +221,16 @@ public sealed class AuthoritativeContractTests : IDisposable
         RequestSchema(_admin, "/api/ModelProviderMapping/{id}", "put")
             .GetProperty("$ref").GetString().Should().Be("#/components/schemas/UpdateModelProviderMappingDto");
         RequestSchema(_admin, "/api/ModelProviderMapping/bulk", "post")
-            .GetProperty("items").GetProperty("$ref").GetString()
-            .Should().Be("#/components/schemas/CreateModelProviderMappingDto");
+            .GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/BulkModelMappingCreateRequest");
+        RequestSchema(_admin, "/api/ModelProviderMapping/bulk/preview", "post")
+            .GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/BulkModelMappingPreviewRequest");
 
         foreach (var (path, responseSchema) in new[]
         {
-            ("/api/ModelProviderMapping/bulk", "BulkMappingResult"),
+            ("/api/ModelProviderMapping/bulk/preview", "BulkModelMappingPreviewResponse"),
+            ("/api/ModelProviderMapping/bulk", "BulkModelMappingCreateResponse"),
             ("/api/ModelProviderMapping/bulk/delete", "BulkDeleteResult"),
             ("/api/ModelProviderMapping/bulk/enable", "BulkUpdateResult"),
             ("/api/ModelProviderMapping/bulk/disable", "BulkUpdateResult")
@@ -252,7 +256,8 @@ public sealed class AuthoritativeContractTests : IDisposable
     [InlineData("ModelProviderMappingDto", "id", "modelAlias", "providerModelId", "providerId", "modelProviderTypeAssociationId", "priority", "weight", "isEnabled", "createdAt", "updatedAt")]
     [InlineData("ProviderReferenceDto", "id", "providerType", "displayName", "isEnabled")]
     [InlineData("ModelCapabilitiesDto", "supportsVision", "supportsImageGeneration", "supportsVideoGeneration", "supportsEmbeddings", "supportsSpeechToText", "supportsTextToSpeech", "supportsRerank", "supportsChat", "supportsFunctionCalling", "supportsStreaming", "maxInputTokens", "maxOutputTokens")]
-    [InlineData("BulkMappingResult", "created", "errors", "totalProcessed", "successCount", "failureCount")]
+    [InlineData("BulkModelMappingPreviewResponse", "items", "totalProcessed", "conflictCount")]
+    [InlineData("BulkModelMappingCreateResponse", "created", "existing", "failed", "totalProcessed", "createdCount", "existingCount", "successCount", "failureCount", "isSuccess", "isPartialSuccess")]
     [InlineData("BulkDeleteResult", "deletedIds", "errors", "totalProcessed", "successCount", "failureCount")]
     [InlineData("BulkUpdateResult", "updated", "errors", "totalProcessed", "successCount", "failureCount")]
     public void Admin_ModelMappingResponsesRequireAlwaysEmittedProperties(string schema, params string[] properties)

@@ -5,15 +5,18 @@ export type ModelProviderMappingDto = components['schemas']['ModelProviderMappin
 export type ModelCapabilitiesDto = components['schemas']['ModelCapabilitiesDto'];
 export type CreateModelProviderMappingDto = components['schemas']['CreateModelProviderMappingDto'];
 export type UpdateModelProviderMappingDto = components['schemas']['UpdateModelProviderMappingDto'];
-export type BulkMappingResult = components['schemas']['BulkMappingResult'];
+export type BulkModelMappingItemDto = components['schemas']['BulkModelMappingItemDto'];
+export type BulkModelMappingPreviewRequest = components['schemas']['BulkModelMappingPreviewRequest'];
+export type BulkModelMappingPreviewResponse = components['schemas']['BulkModelMappingPreviewResponse'];
+export type BulkModelMappingCreateRequest = components['schemas']['BulkModelMappingCreateRequest'];
+export type BulkModelMappingCreateResponse = components['schemas']['BulkModelMappingCreateResponse'];
+export type BulkModelMappingResolutionDto = components['schemas']['BulkModelMappingResolutionDto'];
 
 // For bulk mapping requests
-export interface BulkMappingRequest {
-  mappings: CreateModelProviderMappingDto[];
-}
+export type BulkMappingRequest = BulkModelMappingCreateRequest;
 
 // For bulk mapping responses
-export type BulkMappingResponse = BulkMappingResult;
+export type BulkMappingResponse = BulkModelMappingCreateResponse;
 
 // For bulk delete operations
 export type BulkDeleteResult = components['schemas']['BulkDeleteResult'];

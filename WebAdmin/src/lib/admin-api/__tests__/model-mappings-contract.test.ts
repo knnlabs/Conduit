@@ -50,7 +50,18 @@ const mapping = {
 beforeEach(() => mockFetch.mockReset());
 
 describe('contract-native top-level model mappings', () => {
-  const bulkCreate = { created: [mapping], errors: [], totalProcessed: 1, successCount: 1, failureCount: 0 };
+  const bulkItem = { modelAlias: 'nova', providerId: 9, providerModelId: 'provider/nova' };
+  const bulkRequest = { mappings: [bulkItem], priority: 100, weight: 1, isEnabled: true };
+  const bulkPreview = {
+    items: [{ index: 0, ...bulkItem, modelProviderTypeAssociationId: 17, hasConflict: false }],
+    totalProcessed: 1,
+    conflictCount: 0,
+  };
+  const bulkCreate = {
+    created: [mapping], existing: [], failed: [], totalProcessed: 1,
+    createdCount: 1, existingCount: 0, successCount: 1, failureCount: 0,
+    isSuccess: true, isPartialSuccess: false,
+  };
   const bulkDelete = { deletedIds: [7], errors: [], totalProcessed: 1, successCount: 1, failureCount: 0 };
   const bulkUpdate = { updated: [mapping], errors: [], totalProcessed: 1, successCount: 1, failureCount: 0 };
 
@@ -65,8 +76,10 @@ describe('contract-native top-level model mappings', () => {
       (api: ConduitAdminClient) => api.modelMappings.update(7, updateRequest)],
     ['deleteById', 'DELETE', '/api/ModelProviderMapping/7', undefined, undefined, 204,
       (api: ConduitAdminClient) => api.modelMappings.deleteById(7)],
-    ['bulkCreate', 'POST', '/api/ModelProviderMapping/bulk', [createRequest], bulkCreate, 200,
-      (api: ConduitAdminClient) => api.modelMappings.bulkCreate({ mappings: [createRequest] })],
+    ['previewBulk', 'POST', '/api/ModelProviderMapping/bulk/preview', bulkRequest, bulkPreview, 200,
+      (api: ConduitAdminClient) => api.modelMappings.previewBulk(bulkRequest)],
+    ['bulkCreate', 'POST', '/api/ModelProviderMapping/bulk', bulkRequest, bulkCreate, 200,
+      (api: ConduitAdminClient) => api.modelMappings.bulkCreate(bulkRequest)],
     ['bulkDelete', 'POST', '/api/ModelProviderMapping/bulk/delete', [7], bulkDelete, 200,
       (api: ConduitAdminClient) => api.modelMappings.bulkDelete([7])],
     ['bulkEnable', 'POST', '/api/ModelProviderMapping/bulk/enable', [7], bulkUpdate, 200,

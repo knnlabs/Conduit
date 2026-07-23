@@ -19020,36 +19020,27 @@
         ]
       }
     },
-    "/api/ModelProviderMapping/bulk": {
+    "/api/ModelProviderMapping/bulk/preview": {
       "post": {
         "tags": [
           "Model Provider Mappings"
         ],
-        "operationId": "ModelProviderMapping_CreateBulk",
+        "operationId": "ModelProviderMapping_PreviewBulk",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CreateModelProviderMappingDto"
-                }
+                "$ref": "#/components/schemas/BulkModelMappingPreviewRequest"
               }
             },
             "text/json": {
               "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CreateModelProviderMappingDto"
-                }
+                "$ref": "#/components/schemas/BulkModelMappingPreviewRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "type": "array",
-                "items": {
-                  "$ref": "#/components/schemas/CreateModelProviderMappingDto"
-                }
+                "$ref": "#/components/schemas/BulkModelMappingPreviewRequest"
               }
             }
           },
@@ -19061,17 +19052,117 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BulkMappingResult"
+                  "$ref": "#/components/schemas/BulkModelMappingPreviewResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BulkMappingResult"
+                  "$ref": "#/components/schemas/BulkModelMappingPreviewResponse"
                 }
               },
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/BulkMappingResult"
+                  "$ref": "#/components/schemas/BulkModelMappingPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error. Returns a standardized ErrorResponseDto.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": { },
+                    "details": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    },
+                    "code": {
+                      "type": [
+                        "null",
+                        "string"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/api/ModelProviderMapping/bulk": {
+      "post": {
+        "tags": [
+          "Model Provider Mappings"
+        ],
+        "operationId": "ModelProviderMapping_CreateBulk",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkModelMappingCreateRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkModelMappingCreateRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkModelMappingCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkModelMappingCreateResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkModelMappingCreateResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkModelMappingCreateResponse"
                 }
               }
             }
@@ -21570,13 +21661,48 @@
           }
         }
       },
-      "BulkMappingResult": {
+      "BulkModelMappingCreateRequest": {
+        "required": [
+          "mappings"
+        ],
+        "type": "object",
+        "properties": {
+          "priority": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "weight": {
+            "maximum": 2,
+            "minimum": 0.1,
+            "type": "number",
+            "format": "double"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "mappings": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkModelMappingItemDto"
+            }
+          }
+        }
+      },
+      "BulkModelMappingCreateResponse": {
         "required": [
           "created",
-          "errors",
+          "existing",
+          "failed",
           "totalProcessed",
+          "createdCount",
+          "existingCount",
           "successCount",
-          "failureCount"
+          "failureCount",
+          "isSuccess",
+          "isPartialSuccess"
         ],
         "type": "object",
         "properties": {
@@ -21584,33 +21710,173 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ModelProviderMappingDto"
-            },
-            "description": "Successfully created mappings"
+            }
           },
-          "errors": {
+          "existing": {
             "type": "array",
             "items": {
-              "type": "string"
-            },
-            "description": "Error messages for failed mappings"
+              "$ref": "#/components/schemas/ModelProviderMappingDto"
+            }
+          },
+          "failed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkModelMappingResolutionDto"
+            }
           },
           "totalProcessed": {
             "type": "integer",
-            "description": "Total number of mappings processed",
+            "format": "int32"
+          },
+          "createdCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "existingCount": {
+            "type": "integer",
             "format": "int32"
           },
           "successCount": {
             "type": "integer",
-            "description": "Number of successful mappings",
             "format": "int32"
           },
           "failureCount": {
             "type": "integer",
-            "description": "Number of failed mappings",
+            "format": "int32"
+          },
+          "isSuccess": {
+            "type": "boolean"
+          },
+          "isPartialSuccess": {
+            "type": "boolean"
+          }
+        }
+      },
+      "BulkModelMappingErrorType": {
+        "type": "integer"
+      },
+      "BulkModelMappingItemDto": {
+        "required": [
+          "modelAlias",
+          "providerId",
+          "providerModelId"
+        ],
+        "type": "object",
+        "properties": {
+          "modelAlias": {
+            "type": "string"
+          },
+          "providerId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerModelId": {
+            "type": "string"
+          }
+        }
+      },
+      "BulkModelMappingPreviewRequest": {
+        "required": [
+          "mappings"
+        ],
+        "type": "object",
+        "properties": {
+          "mappings": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkModelMappingItemDto"
+            }
+          }
+        }
+      },
+      "BulkModelMappingPreviewResponse": {
+        "required": [
+          "items",
+          "totalProcessed",
+          "conflictCount"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkModelMappingResolutionDto"
+            }
+          },
+          "totalProcessed": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "conflictCount": {
+            "type": "integer",
             "format": "int32"
           }
-        },
-        "description": "Result of a bulk mapping operation"
+        }
+      },
+      "BulkModelMappingResolutionDto": {
+        "required": [
+          "index",
+          "modelAlias",
+          "providerId",
+          "providerModelId",
+          "hasConflict"
+        ],
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelAlias": {
+            "type": "string"
+          },
+          "providerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "providerModelId": {
+            "type": "string"
+          },
+          "modelProviderTypeAssociationId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "hasConflict": {
+            "type": "boolean"
+          },
+          "existingMapping": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelProviderMappingDto"
+              }
+            ]
+          },
+          "errorType": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BulkModelMappingErrorType"
+              }
+            ]
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "BulkUpdateResult": {
         "required": [

@@ -132,7 +132,12 @@ export type {
   ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto,
-  BulkMappingResult,
+  BulkModelMappingItemDto,
+  BulkModelMappingPreviewRequest,
+  BulkModelMappingPreviewResponse,
+  BulkModelMappingCreateRequest,
+  BulkModelMappingCreateResponse,
+  BulkModelMappingResolutionDto,
   ModelMappingFilterOptions
 } from './models/modelMapping';
 

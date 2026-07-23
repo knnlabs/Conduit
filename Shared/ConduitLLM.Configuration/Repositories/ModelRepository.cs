@@ -249,6 +249,46 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
     }
 
     /// <inheritdoc/>
+    public async Task<ModelProviderTypeAssociation?> GetProviderTypeAssociationByIdAsync(
+        int associationId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            return await context.Set<ModelProviderTypeAssociation>()
+                .AsNoTracking()
+                .Include(association => association.Model)
+                .FirstOrDefaultAsync(association => association.Id == associationId, cancellationToken);
+        }, cancellationToken, $"getting provider type association {associationId}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<ModelProviderTypeAssociation>> GetProviderTypeAssociationsByIdentifiersAsync(
+        IReadOnlyCollection<string> identifiers,
+        CancellationToken cancellationToken = default)
+    {
+        if (identifiers.Count == 0)
+        {
+            return new List<ModelProviderTypeAssociation>();
+        }
+
+        var normalizedIdentifiers = identifiers
+            .Where(identifier => !string.IsNullOrWhiteSpace(identifier))
+            .Select(identifier => identifier.Trim().ToLowerInvariant())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return await ExecuteAsync(async context =>
+        {
+            return await context.Set<ModelProviderTypeAssociation>()
+                .AsNoTracking()
+                .Include(association => association.Model)
+                .Where(association => normalizedIdentifiers.Contains(association.Identifier.ToLower()))
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, "getting provider type associations by identifiers");
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> DeleteIdentifierAsync(int modelId, int identifierId, CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>
