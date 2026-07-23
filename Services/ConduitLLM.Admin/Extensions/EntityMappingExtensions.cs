@@ -141,22 +141,36 @@ namespace ConduitLLM.Admin.Extensions
                 StartedAt = entity.StartedAt,
                 CompletedAt = entity.CompletedAt,
                 Duration = entity.Duration?.TotalMilliseconds,
-                RequestJson = entity.RequestJson,
-                ResponseJson = entity.ResponseJson,
+                Request = ParseJson(entity.RequestJson),
+                Response = ParseJson(entity.ResponseJson),
                 ErrorMessage = entity.ErrorMessage,
                 EstimatedCost = entity.EstimatedCost,
                 ActualCost = entity.ActualCost,
-                CostCalculationDetails = entity.CostCalculationDetails,
+                CostCalculation = ParseJson(entity.CostCalculationDetails),
                 RetryCount = entity.RetryCount,
                 NextRetryAt = entity.NextRetryAt,
-                LeasedBy = entity.LeasedBy,
-                LeaseExpiryTime = entity.LeaseExpiryTime,
-                Version = entity.Version,
                 WebhookUrl = entity.WebhookUrl,
                 WebhookDelivered = entity.WebhookDelivered,
                 ProgressPercentage = entity.ProgressPercentage,
                 StatusMessage = entity.StatusMessage
             };
+        }
+
+        private static System.Text.Json.JsonElement? ParseJson(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                return System.Text.Json.JsonDocument.Parse(json).RootElement.Clone();
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return System.Text.Json.JsonSerializer.SerializeToElement(json);
+            }
         }
 
         /// <summary>

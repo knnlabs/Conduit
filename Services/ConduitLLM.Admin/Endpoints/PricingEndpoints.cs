@@ -6,6 +6,7 @@ using ConduitLLM.Core.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Prometheus;
+using ConduitLLM.Admin.DTOs;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -70,7 +71,7 @@ namespace ConduitLLM.Admin.Endpoints
             var group = app.MapGroup("/api/Pricing").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Pricing");
             group.MapGet("/types", ([FromServices] PricingEndpoints e) => e.GetPricingTypes()).WithName("Pricing_GetTypes").Produces<IEnumerable<PricingTypeInfo>>();
             group.MapGet("/operators", ([FromServices] PricingEndpoints e) => e.GetConditionOperators()).WithName("Pricing_GetOperators").Produces<IEnumerable<OperatorInfo>>();
-            group.MapGet("/template", ([FromServices] PricingEndpoints e, string? pricingType = "per_second") => e.GetPricingTemplate(pricingType)).WithName("Pricing_GetTemplate").Produces<object>();
+            group.MapGet("/template", ([FromServices] PricingEndpoints e, string? pricingType = "per_second") => e.GetPricingTemplate(pricingType)).WithName("Pricing_GetTemplate").Produces<PricingTemplateResponse>();
             group.MapPost("/validate", ([FromServices] PricingEndpoints e, PricingValidationRequest request) => e.ValidatePricingConfiguration(request)).WithName("Pricing_Validate").Produces<PricingValidationResponse>().Produces(StatusCodes.Status400BadRequest);
             group.MapPost("/simulate", ([FromServices] PricingEndpoints e, PricingSimulationRequest request) => e.SimulatePricing(request)).WithName("Pricing_Simulate").Produces<PricingSimulationResponse>().Produces(StatusCodes.Status400BadRequest);
             group.MapPost("/audit/query", ([FromServices] PricingEndpoints e, PricingAuditQueryRequest request) => e.QueryPricingAuditEvents(request)).WithName("Pricing_QueryAudit").Produces<PricingAuditQueryResponse>().Produces(StatusCodes.Status400BadRequest);
@@ -162,100 +163,39 @@ namespace ConduitLLM.Admin.Endpoints
         /// <returns>JSON template for the pricing configuration</returns>
         public IResult GetPricingTemplate(string? pricingType = "per_second")
         {
-            // Note: Conditions are Dictionary<string, object> in the actual model
-            // This template shows the simplified key-value condition format
-            object template = pricingType?.ToLowerInvariant() switch
+            var template = pricingType?.ToLowerInvariant() switch
             {
-                "per_unit" => new
-                {
-                    pricingType = "per_unit",
-                    defaultRate = 0.05m,
-                    unitField = "ImageCount",
-                    rules = new object[]
-                    {
-                        new
-                        {
-                            priority = 1,
-                            description = "HD quality",
-                            conditions = new Dictionary<string, object> { ["quality"] = "hd" },
-                            rate = 0.08m
-                        },
-                        new
-                        {
-                            priority = 2,
-                            description = "Standard quality",
-                            conditions = new Dictionary<string, object> { ["quality"] = "standard" },
-                            rate = 0.05m
-                        }
-                    }
-                },
-                "per_second" => new
-                {
-                    pricingType = "per_second",
-                    defaultRate = 0.025m,
-                    unitField = "VideoDurationSeconds",
-                    rules = new object[]
-                    {
-                        new
-                        {
-                            priority = 1,
-                            description = "1080p video with audio",
-                            conditions = new Dictionary<string, object> { ["resolution"] = "1080p", ["with_audio"] = true },
-                            rate = 0.15m
-                        },
-                        new
-                        {
-                            priority = 2,
-                            description = "1080p video without audio",
-                            conditions = new Dictionary<string, object> { ["resolution"] = "1080p" },
-                            rate = 0.06m
-                        },
-                        new
-                        {
-                            priority = 3,
-                            description = "720p video",
-                            conditions = new Dictionary<string, object> { ["resolution"] = "720p" },
-                            rate = 0.025m
-                        },
-                        new
-                        {
-                            priority = 4,
-                            description = "480p video",
-                            conditions = new Dictionary<string, object> { ["resolution"] = "480p" },
-                            rate = 0.015m
-                        }
-                    }
-                },
-                "per_step" => new
-                {
-                    pricingType = "per_step",
-                    defaultRate = 0.00013m,
-                    unitField = "InferenceSteps",
-                    rules = new object[]
-                    {
-                        new
-                        {
-                            priority = 1,
-                            description = "High quality (50+ steps)",
-                            conditions = new Dictionary<string, object> { ["inference_steps_gte"] = 50 },
-                            rate = 0.00015m
-                        },
-                        new
-                        {
-                            priority = 2,
-                            description = "Standard quality",
-                            conditions = new Dictionary<string, object>(),
-                            rate = 0.00013m
-                        }
-                    }
-                },
-                _ => new
-                {
-                    pricingType = "per_second",
-                    defaultRate = 0.025m,
-                    unitField = "VideoDurationSeconds",
-                    rules = Array.Empty<object>()
-                }
+                "per_unit" => new PricingTemplateResponse(
+                    "per_unit",
+                    0.05m,
+                    "ImageCount",
+                    [
+                        new(1, "HD quality", new(Quality: "hd"), 0.08m),
+                        new(2, "Standard quality", new(Quality: "standard"), 0.05m)
+                    ]),
+                "per_second" => new PricingTemplateResponse(
+                    "per_second",
+                    0.025m,
+                    "VideoDurationSeconds",
+                    [
+                        new(1, "1080p video with audio", new(Resolution: "1080p", WithAudio: true), 0.15m),
+                        new(2, "1080p video without audio", new(Resolution: "1080p"), 0.06m),
+                        new(3, "720p video", new(Resolution: "720p"), 0.025m),
+                        new(4, "480p video", new(Resolution: "480p"), 0.015m)
+                    ]),
+                "per_step" => new PricingTemplateResponse(
+                    "per_step",
+                    0.00013m,
+                    "InferenceSteps",
+                    [
+                        new(1, "High quality (50+ steps)", new(InferenceStepsGte: 50), 0.00015m),
+                        new(2, "Standard quality", new(), 0.00013m)
+                    ]),
+                _ => new PricingTemplateResponse(
+                    "per_second",
+                    0.025m,
+                    "VideoDurationSeconds",
+                    [])
             };
 
             return Results.Ok(template);

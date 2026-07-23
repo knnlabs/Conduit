@@ -5,6 +5,7 @@ using System.Text.Json;
 
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Services;
 
@@ -92,7 +93,7 @@ public sealed class ModelsEndpointsTests : IDisposable
     public async Task GetMetadata_WhenMissing_ReturnsOpenAI404()
     {
         _metadata.Setup(service => service.GetModelMetadataAsync("missing"))
-            .ReturnsAsync((object?)null);
+            .ReturnsAsync((ModelMetadataDto?)null);
 
         var response = await _client.GetAsync("/v1/models/missing/metadata");
 

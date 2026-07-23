@@ -1,4 +1,5 @@
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -57,11 +58,8 @@ namespace ConduitLLM.Gateway.Endpoints
         public async Task<IResult> GetConnectionDetails()
         {
             var connections = await _connectionMonitor.GetActiveConnectionsAsync();
-            return Ok(new
-            {
-                activeConnections = connections,
-                count = connections.Count()
-            });
+            var activeConnections = connections.ToList();
+            return Ok(new ConnectionDetailsResponse(activeConnections, activeConnections.Count));
         }
 
         /// <summary>
@@ -71,20 +69,14 @@ namespace ConduitLLM.Gateway.Endpoints
         public async Task<IResult> GetHubConnections(string hubName)
         {
             var connections = await _connectionMonitor.GetHubConnectionsAsync(hubName);
-            return Ok(new
-            {
-                hubName,
-                connections = connections.Select(c => new
-                {
-                    c.ConnectionId,
-                    c.ConnectedAt,
-                    c.ConnectionDuration,
-                    c.Groups,
-                    c.MessagesSent,
-                    c.MessagesAcknowledged
-                }),
-                count = connections.Count()
-            });
+            var projected = connections.Select(c => new HubConnectionDto(
+                c.ConnectionId,
+                c.ConnectedAt,
+                c.ConnectionDuration,
+                c.Groups,
+                c.MessagesSent,
+                c.MessagesAcknowledged)).ToList();
+            return Ok(new HubConnectionsResponse(hubName, projected, projected.Count));
         }
 
         /// <summary>
@@ -96,19 +88,13 @@ namespace ConduitLLM.Gateway.Endpoints
             // This would normally involve checking if the requester owns or has admin access to the key
 
             var connections = await _connectionMonitor.GetVirtualKeyConnectionsAsync(virtualKeyId);
-            return Ok(new
-            {
-                virtualKeyId,
-                connections = connections.Select(c => new
-                {
-                    c.ConnectionId,
-                    c.HubName,
-                    c.ConnectedAt,
-                    c.ConnectionDuration,
-                    c.Groups
-                }),
-                count = connections.Count()
-            });
+            var projected = connections.Select(c => new VirtualKeyConnectionDto(
+                c.ConnectionId,
+                c.HubName,
+                c.ConnectedAt,
+                c.ConnectionDuration,
+                c.Groups)).ToList();
+            return Ok(new VirtualKeyConnectionsResponse(virtualKeyId, projected, projected.Count));
         }
 
         /// <summary>
@@ -118,18 +104,12 @@ namespace ConduitLLM.Gateway.Endpoints
         public async Task<IResult> GetGroupConnections(string groupName)
         {
             var connections = await _connectionMonitor.GetGroupConnectionsAsync(groupName);
-            return Ok(new
-            {
-                groupName,
-                connections = connections.Select(c => new
-                {
-                    c.ConnectionId,
-                    c.HubName,
-                    c.ConnectedAt,
-                    c.VirtualKeyId
-                }),
-                count = connections.Count()
-            });
+            var projected = connections.Select(c => new GroupConnectionDto(
+                c.ConnectionId,
+                c.HubName,
+                c.ConnectedAt,
+                c.VirtualKeyId)).ToList();
+            return Ok(new GroupConnectionsResponse(groupName, projected, projected.Count));
         }
 
         /// <summary>
@@ -138,21 +118,16 @@ namespace ConduitLLM.Gateway.Endpoints
         public IResult GetDeadLetterMessages()
         {
             var messages = _messageQueueService.GetDeadLetterMessages();
-            return Ok(new
-            {
-                messages = messages.Select(m => new
-                {
-                    m.Message.MessageId,
-                    m.Message.MessageType,
-                    m.HubName,
-                    m.MethodName,
-                    m.QueuedAt,
-                    m.DeliveryAttempts,
-                    m.LastError,
-                    m.DeadLetterReason
-                }),
-                count = messages.Count()
-            });
+            var projected = messages.Select(m => new DeadLetterMessageDto(
+                m.Message.MessageId,
+                m.Message.MessageType,
+                m.HubName,
+                m.MethodName,
+                m.QueuedAt,
+                m.DeliveryAttempts,
+                m.LastError,
+                m.DeadLetterReason)).ToList();
+            return Ok(new DeadLetterMessagesResponse(projected, projected.Count));
         }
 
         /// <summary>
@@ -162,7 +137,7 @@ namespace ConduitLLM.Gateway.Endpoints
         {
             await _messageQueueService.RequeueDeadLetterAsync(messageId);
             Logger.LogInformation("Dead letter message {MessageId} requeued by admin", messageId);
-            return Ok(new { message = "Message requeued successfully" });
+            return Ok(new MessageResponse("Message requeued successfully"));
         }
 
         /// <summary>
@@ -178,25 +153,19 @@ namespace ConduitLLM.Gateway.Endpoints
                            queueStats.CircuitBreakerState != Polly.CircuitBreaker.CircuitState.Open &&
                            queueStats.DeadLetterMessages < 100; // Threshold for unhealthy
 
-            return Ok(new
-            {
-                status = isHealthy ? "Healthy" : "Degraded",
-                timestamp = DateTime.UtcNow,
-                connections = new
-                {
-                    active = connectionStats.TotalActiveConnections,
-                    stale = connectionStats.StaleConnections,
-                    acknowledgmentRate = $"{connectionStats.AcknowledgmentRate:F2}%"
-                },
-                queue = new
-                {
-                    pending = queueStats.PendingMessages,
-                    deadLetter = queueStats.DeadLetterMessages,
-                    circuitBreaker = queueStats.CircuitBreakerState.ToString(),
-                    processed = queueStats.ProcessedMessages,
-                    failed = queueStats.FailedMessages
-                }
-            });
+            return Ok(new SignalRHealthResponse(
+                isHealthy ? "Healthy" : "Degraded",
+                DateTime.UtcNow,
+                new SignalRConnectionHealthDto(
+                    connectionStats.TotalActiveConnections,
+                    connectionStats.StaleConnections,
+                    $"{connectionStats.AcknowledgmentRate:F2}%"),
+                new SignalRQueueHealthDto(
+                    queueStats.PendingMessages,
+                    queueStats.DeadLetterMessages,
+                    queueStats.CircuitBreakerState.ToString(),
+                    queueStats.ProcessedMessages,
+                    queueStats.FailedMessages)));
         }
     }
 }

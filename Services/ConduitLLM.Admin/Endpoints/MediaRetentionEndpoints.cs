@@ -48,8 +48,8 @@ namespace ConduitLLM.Admin.Endpoints
             group.MapPost("/policies", ([FromServices] MediaRetentionEndpoints e, CreateMediaRetentionPolicyRequest request) => e.CreatePolicy(request)).WithName("MediaRetention_CreatePolicy").Produces<MediaRetentionPolicyDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
             group.MapPut("/policies/{id}", ([FromServices] MediaRetentionEndpoints e, int id, UpdateMediaRetentionPolicyRequest request) => e.UpdatePolicy(id, request)).WithName("MediaRetention_UpdatePolicy").Produces<MediaRetentionPolicyDto>().Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status400BadRequest);
             group.MapDelete("/policies/{id}", ([FromServices] MediaRetentionEndpoints e, int id) => e.DeletePolicy(id)).WithName("MediaRetention_DeletePolicy").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status400BadRequest);
-            group.MapPost("/assign/{groupId}/{policyId}", ([FromServices] MediaRetentionEndpoints e, int groupId, int policyId) => e.AssignPolicyToGroup(groupId, policyId)).WithName("MediaRetention_AssignPolicyToGroup").Produces<object>().Produces(StatusCodes.Status404NotFound);
-            group.MapPost("/policies/{id}/set-default", ([FromServices] MediaRetentionEndpoints e, int id) => e.SetDefaultPolicy(id)).WithName("MediaRetention_SetDefaultPolicy").Produces<object>().Produces(StatusCodes.Status404NotFound);
+            group.MapPost("/assign/{groupId}/{policyId}", ([FromServices] MediaRetentionEndpoints e, int groupId, int policyId) => e.AssignPolicyToGroup(groupId, policyId)).WithName("MediaRetention_AssignPolicyToGroup").Produces<MessageResponse>().Produces(StatusCodes.Status404NotFound);
+            group.MapPost("/policies/{id}/set-default", ([FromServices] MediaRetentionEndpoints e, int id) => e.SetDefaultPolicy(id)).WithName("MediaRetention_SetDefaultPolicy").Produces<MessageResponse>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/cleanup/{groupId}", ([FromServices] MediaRetentionEndpoints e, int groupId, bool dryRun = true) => e.TriggerCleanup(groupId, dryRun)).WithName("MediaRetention_TriggerCleanup").Produces<CleanupResultDto>().Produces(StatusCodes.Status404NotFound);
             return app;
         }
@@ -327,7 +327,7 @@ namespace ConduitLLM.Admin.Endpoints
 
             LogAdminAudit("AssignedPolicy", "MediaRetentionPolicy", policyId, $"GroupId: {groupId}");
 
-            return Results.Ok(new { message = $"Successfully assigned policy '{policy.Name}' to group {groupId}" });
+            return Results.Ok(new MessageResponse($"Successfully assigned policy '{policy.Name}' to group {groupId}"));
         }
 
         /// <summary>
@@ -365,7 +365,7 @@ namespace ConduitLLM.Admin.Endpoints
 
             LogAdminAudit("SetDefault", "MediaRetentionPolicy", policy.Id, $"Name: {LoggingSanitizer.S(policy.Name)}");
 
-            return Results.Ok(new { message = $"'{policy.Name}' is now the default retention policy" });
+            return Results.Ok(new MessageResponse($"'{policy.Name}' is now the default retention policy"));
         }
 
         /// <summary>

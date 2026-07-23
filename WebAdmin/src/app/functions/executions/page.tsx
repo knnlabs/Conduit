@@ -382,34 +382,34 @@ export default function FunctionExecutionsPage() {
               </div>
             )}
 
-            {selectedExecution.requestJson && (
+            {selectedExecution.request !== undefined && selectedExecution.request !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Request</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(JSON.parse(selectedExecution.requestJson), null, 2)}
+                    {JSON.stringify(selectedExecution.request, null, 2)}
                   </Code>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.responseJson && (
+            {selectedExecution.response !== undefined && selectedExecution.response !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Response</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(JSON.parse(selectedExecution.responseJson), null, 2)}
+                    {JSON.stringify(selectedExecution.response, null, 2)}
                   </Code>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.costCalculationDetails && (
+            {selectedExecution.costCalculation !== undefined && selectedExecution.costCalculation !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Cost Calculation Details</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(JSON.parse(selectedExecution.costCalculationDetails), null, 2)}
+                    {JSON.stringify(selectedExecution.costCalculation, null, 2)}
                   </Code>
                 </Card>
               </div>

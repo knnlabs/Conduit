@@ -118,7 +118,6 @@ export default function FunctionConfigurationsPage() {
 
     try {
       const updateData: UpdateFunctionConfigurationDto = {
-        id: editingConfig.id,
         configurationName: formData.configurationName,
         purpose: formData.purpose,
         description: formData.description,
@@ -160,7 +159,6 @@ export default function FunctionConfigurationsPage() {
     try {
       await executeWithAdmin(client =>
         client.functionConfigurations.update(config.id, {
-          id: config.id,
           isEnabled: !config.isEnabled,
         })
       );

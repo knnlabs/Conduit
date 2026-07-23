@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -46,17 +47,17 @@ public class FunctionConfigurationsEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Function Configurations");
         group.MapGet("/", ([FromServices] FunctionConfigurationsEndpoints e) => e.GetAllConfigurations())
-            .WithName("FunctionConfigurations_GetAll").Produces<List<FunctionConfiguration>>();
+            .WithName("FunctionConfigurations_GetAll").Produces<List<FunctionConfigurationDto>>();
         group.MapGet("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id) => e.GetConfigurationById(id))
-            .WithName("FunctionConfigurations_GetById").Produces<FunctionConfiguration>().Produces(StatusCodes.Status404NotFound);
+            .WithName("FunctionConfigurations_GetById").Produces<FunctionConfigurationDto>().Produces(StatusCodes.Status404NotFound);
         group.MapGet("/provider/{providerType}", ([FromServices] FunctionConfigurationsEndpoints e, string providerType) => e.GetConfigurationsByProvider(providerType))
-            .WithName("FunctionConfigurations_GetByProvider").Produces<List<FunctionConfiguration>>();
+            .WithName("FunctionConfigurations_GetByProvider").Produces<List<FunctionConfigurationDto>>();
         group.MapGet("/purpose/{purpose}", ([FromServices] FunctionConfigurationsEndpoints e, string purpose) => e.GetConfigurationsByPurpose(purpose))
-            .WithName("FunctionConfigurations_GetByPurpose").Produces<List<FunctionConfiguration>>();
-        group.MapPost("/", ([FromServices] FunctionConfigurationsEndpoints e, FunctionConfiguration configuration) => e.CreateConfiguration(configuration))
-            .WithName("FunctionConfigurations_Create").Produces<FunctionConfiguration>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-        group.MapPut("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id, FunctionConfiguration configuration) => e.UpdateConfiguration(id, configuration))
-            .WithName("FunctionConfigurations_Update").Produces<FunctionConfiguration>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            .WithName("FunctionConfigurations_GetByPurpose").Produces<List<FunctionConfigurationDto>>();
+        group.MapPost("/", ([FromServices] FunctionConfigurationsEndpoints e, CreateFunctionConfigurationRequest request) => e.CreateConfiguration(request))
+            .WithName("FunctionConfigurations_Create").Produces<FunctionConfigurationDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
+        group.MapPut("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id, UpdateFunctionConfigurationRequest request) => e.UpdateConfiguration(id, request))
+            .WithName("FunctionConfigurations_Update").Produces<FunctionConfigurationDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
         group.MapDelete("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id) => e.DeleteConfiguration(id))
             .WithName("FunctionConfigurations_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
         return app;
@@ -69,7 +70,7 @@ public class FunctionConfigurationsEndpoints
     public async Task<IResult> GetAllConfigurations()
     {
         var configurations = await _configurationRepository.GetAllUnboundedAsync();
-        return Results.Ok(configurations);
+        return Results.Ok(configurations.Select(ToDto).ToList());
     }
 
     /// <summary>
@@ -84,7 +85,7 @@ public class FunctionConfigurationsEndpoints
         {
             return AdminResults.NotFoundEntity("FunctionConfiguration", id);
         }
-        return Results.Ok(configuration);
+        return Results.Ok(ToDto(configuration));
     }
 
     /// <summary>
@@ -100,7 +101,7 @@ public class FunctionConfigurationsEndpoints
         }
 
         var configurations = await _configurationRepository.GetByProviderTypeAsync(providerEnum);
-        return Results.Ok(configurations);
+        return Results.Ok(configurations.Select(ToDto).ToList());
     }
 
     /// <summary>
@@ -116,21 +117,36 @@ public class FunctionConfigurationsEndpoints
         }
 
         var configurations = await _configurationRepository.GetByPurposeAsync(purposeEnum);
-        return Results.Ok(configurations);
+        return Results.Ok(configurations.Select(ToDto).ToList());
     }
 
     /// <summary>
     /// Creates a new function configuration.
     /// </summary>
-    /// <param name="configuration">The function configuration to create</param>
+    /// <param name="request">The function configuration to create</param>
     /// <returns>The created function configuration</returns>
-    public async Task<IResult> CreateConfiguration(FunctionConfiguration configuration)
+    public async Task<IResult> CreateConfiguration(CreateFunctionConfigurationRequest request)
     {
-        if (configuration == null)
+        if (request == null)
         {
             return Results.BadRequest(new ErrorResponseDto("Function configuration data is required"));
         }
 
+        var configuration = new FunctionConfiguration
+        {
+            ProviderType = request.ProviderType,
+            ConfigurationName = request.ConfigurationName,
+            Purpose = request.Purpose,
+            DefaultExecutionMode = request.DefaultExecutionMode,
+            BaseUrl = request.BaseUrl,
+            IsEnabled = request.IsEnabled,
+            CacheTtlMinutes = request.CacheTtlMinutes,
+            TimeoutSeconds = request.TimeoutSeconds,
+            MaxRetries = request.MaxRetries,
+            ProviderSettings = request.ProviderSettings,
+            ParameterSchema = request.ParameterSchema,
+            Description = request.Description
+        };
         int id = await _configurationRepository.CreateAsync(configuration);
 
         // Fetch the created entity to return
@@ -156,27 +172,24 @@ public class FunctionConfigurationsEndpoints
             new { ConfigName = created.ConfigurationName, ConfigId = created.Id });
         }
 
-        return Results.Created($"/api/FunctionConfigurations/{id}", created);
+        return created is null
+            ? Results.Problem("Function configuration was created but could not be reloaded.", statusCode: 500)
+            : Results.Created($"/api/FunctionConfigurations/{id}", ToDto(created));
     }
 
     /// <summary>
     /// Updates an existing function configuration.
     /// </summary>
     /// <param name="id">The ID of the function configuration to update</param>
-    /// <param name="configuration">The updated function configuration data</param>
+    /// <param name="request">The updated function configuration data</param>
     /// <returns>The updated function configuration</returns>
     public async Task<IResult> UpdateConfiguration(
         int id,
-        FunctionConfiguration configuration)
+        UpdateFunctionConfigurationRequest request)
     {
-        if (configuration == null)
+        if (request == null)
         {
             return Results.BadRequest(new ErrorResponseDto("Function configuration data is required"));
-        }
-
-        if (id != configuration.Id)
-        {
-            return Results.BadRequest(new ErrorResponseDto("ID mismatch"));
         }
 
         var existing = await _configurationRepository.GetByIdAsync(id);
@@ -186,21 +199,23 @@ public class FunctionConfigurationsEndpoints
         }
 
         // Detect changes for event publishing
-        bool isEnabledChanged = existing.IsEnabled != configuration.IsEnabled;
-        bool cacheTtlChanged = existing.CacheTtlMinutes != configuration.CacheTtlMinutes;
+        bool isEnabledChanged = request.IsEnabled.HasValue && existing.IsEnabled != request.IsEnabled.Value;
+        bool cacheTtlChanged = request.CacheTtlMinutes.HasValue && existing.CacheTtlMinutes != request.CacheTtlMinutes;
         var changedProperties = new List<string>();
-        if (existing.ConfigurationName != configuration.ConfigurationName) changedProperties.Add("ConfigurationName");
-        if (existing.ProviderType != configuration.ProviderType) changedProperties.Add("ProviderType");
-        if (existing.Purpose != configuration.Purpose) changedProperties.Add("Purpose");
-        if (existing.IsEnabled != configuration.IsEnabled) changedProperties.Add("IsEnabled");
-        if (existing.BaseUrl != configuration.BaseUrl) changedProperties.Add("BaseUrl");
-        if (existing.TimeoutSeconds != configuration.TimeoutSeconds) changedProperties.Add("TimeoutSeconds");
-        if (existing.CacheTtlMinutes != configuration.CacheTtlMinutes) changedProperties.Add("CacheTtlMinutes");
-        if (existing.ProviderSettings != configuration.ProviderSettings) changedProperties.Add("ProviderSettings");
-        if (existing.ParameterSchema != configuration.ParameterSchema) changedProperties.Add("ParameterSchema");
-        if (existing.Description != configuration.Description) changedProperties.Add("Description");
+        Apply(request.ConfigurationName, existing.ConfigurationName, value => existing.ConfigurationName = value, "ConfigurationName", changedProperties);
+        Apply(request.Purpose, existing.Purpose, value => existing.Purpose = value, "Purpose", changedProperties);
+        Apply(request.DefaultExecutionMode, existing.DefaultExecutionMode, value => existing.DefaultExecutionMode = value, "DefaultExecutionMode", changedProperties);
+        Apply(request.BaseUrl, existing.BaseUrl, value => existing.BaseUrl = value, "BaseUrl", changedProperties);
+        Apply(request.IsEnabled, existing.IsEnabled, value => existing.IsEnabled = value, "IsEnabled", changedProperties);
+        Apply(request.CacheTtlMinutes, existing.CacheTtlMinutes, value => existing.CacheTtlMinutes = value, "CacheTtlMinutes", changedProperties);
+        Apply(request.TimeoutSeconds, existing.TimeoutSeconds, value => existing.TimeoutSeconds = value, "TimeoutSeconds", changedProperties);
+        Apply(request.MaxRetries, existing.MaxRetries, value => existing.MaxRetries = value, "MaxRetries", changedProperties);
+        Apply(request.ProviderSettings, existing.ProviderSettings, value => existing.ProviderSettings = value, "ProviderSettings", changedProperties);
+        Apply(request.ParameterSchema, existing.ParameterSchema, value => existing.ParameterSchema = value, "ParameterSchema", changedProperties);
+        Apply(request.Description, existing.Description, value => existing.Description = value, "Description", changedProperties);
+        existing.UpdatedAt = DateTime.UtcNow;
 
-        await _configurationRepository.UpdateAsync(configuration);
+        await _configurationRepository.UpdateAsync(existing);
 
         // Fetch the updated entity to return
         var updated = await _configurationRepository.GetByIdAsync(id);
@@ -232,7 +247,7 @@ public class FunctionConfigurationsEndpoints
             new { ConfigName = updated.ConfigurationName, ConfigId = updated.Id, ChangedProps = string.Join(", ", changedProperties) });
         }
 
-        return Results.Ok(updated);
+        return Results.Ok(ToDto(updated));
     }
 
     /// <summary>
@@ -272,4 +287,67 @@ public class FunctionConfigurationsEndpoints
 
     private void LogAdminAudit(string operation, string entityType, object? entityId = null, string? detail = null) =>
         AdminAudit.Log(_httpContextAccessor.HttpContext!, _logger, operation, entityType, entityId, detail);
+
+    private static FunctionConfigurationDto ToDto(FunctionConfiguration configuration) => new()
+    {
+        Id = configuration.Id,
+        ProviderType = configuration.ProviderType,
+        ConfigurationName = configuration.ConfigurationName,
+        Purpose = configuration.Purpose,
+        DefaultExecutionMode = configuration.DefaultExecutionMode,
+        BaseUrl = configuration.BaseUrl,
+        IsEnabled = configuration.IsEnabled,
+        CacheTtlMinutes = configuration.CacheTtlMinutes,
+        TimeoutSeconds = configuration.TimeoutSeconds,
+        MaxRetries = configuration.MaxRetries,
+        ProviderSettings = configuration.ProviderSettings,
+        ParameterSchema = configuration.ParameterSchema,
+        Description = configuration.Description,
+        CreatedAt = configuration.CreatedAt,
+        UpdatedAt = configuration.UpdatedAt
+    };
+
+    private static void Apply<T>(
+        T? requested,
+        T current,
+        Action<T> setter,
+        string property,
+        ICollection<string> changed)
+        where T : struct
+    {
+        if (requested.HasValue && !EqualityComparer<T>.Default.Equals(requested.Value, current))
+        {
+            setter(requested.Value);
+            changed.Add(property);
+        }
+    }
+
+    private static void Apply<T>(
+        T? requested,
+        T? current,
+        Action<T?> setter,
+        string property,
+        ICollection<string> changed)
+        where T : struct
+    {
+        if (requested.HasValue && !EqualityComparer<T?>.Default.Equals(requested, current))
+        {
+            setter(requested);
+            changed.Add(property);
+        }
+    }
+
+    private static void Apply(
+        string? requested,
+        string? current,
+        Action<string> setter,
+        string property,
+        ICollection<string> changed)
+    {
+        if (requested is not null && !string.Equals(requested, current, StringComparison.Ordinal))
+        {
+            setter(requested);
+            changed.Add(property);
+        }
+    }
 }

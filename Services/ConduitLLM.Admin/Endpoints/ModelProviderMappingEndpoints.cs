@@ -51,7 +51,7 @@ public class ModelProviderMappingEndpoints
         g.MapPost("/", ([FromServices] ModelProviderMappingEndpoints e, CreateModelProviderMappingDto dto) => e.CreateMapping(dto)).WithName("ModelProviderMapping_Create").Produces<ModelProviderMappingDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status409Conflict);
         g.MapPut("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id, UpdateModelProviderMappingDto dto) => e.UpdateMapping(id, dto)).WithName("ModelProviderMapping_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
         g.MapDelete("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id) => e.DeleteMapping(id)).WithName("ModelProviderMapping_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
-        g.MapGet("/providers", ([FromServices] ModelProviderMappingEndpoints e) => e.GetProviders()).WithName("ModelProviderMapping_GetProviders").Produces<IEnumerable<Provider>>();
+        g.MapGet("/providers", ([FromServices] ModelProviderMappingEndpoints e) => e.GetProviders()).WithName("ModelProviderMapping_GetProviders").Produces<IEnumerable<ProviderDto>>();
         g.MapPost("/bulk/preview", ([FromServices] ModelProviderMappingEndpoints e, BulkModelMappingPreviewRequest d) => e.PreviewBulkMappings(d)).WithName("ModelProviderMapping_PreviewBulk").Produces<BulkModelMappingPreviewResponse>().Produces(StatusCodes.Status400BadRequest);
         g.MapPost("/bulk", ([FromServices] ModelProviderMappingEndpoints e, BulkModelMappingCreateRequest d) => e.CreateBulkMappings(d)).WithName("ModelProviderMapping_CreateBulk").Produces<BulkModelMappingCreateResponse>().Produces(StatusCodes.Status400BadRequest);
         g.MapPost("/bulk/delete", ([FromServices] ModelProviderMappingEndpoints e, List<int> ids) => e.DeleteBulkMappings(ids)).WithName("ModelProviderMapping_DeleteBulk").Produces<BulkDeleteResult>().Produces(StatusCodes.Status400BadRequest);
@@ -246,7 +246,19 @@ public class ModelProviderMappingEndpoints
     public async Task<IResult> GetProviders()
     {
         var result = await _mappingService.GetProvidersAsync();
-        return Results.Ok(result);
+        return Results.Ok(result.Select(provider => new ProviderDto
+        {
+            Id = provider.Id,
+            ProviderType = provider.ProviderType,
+            ProviderName = provider.ProviderName,
+            BaseUrl = provider.BaseUrl,
+            KeyCount = provider.ProviderKeyCredentials?.Count ?? 0,
+            TrustProviderReportedCosts = provider.TrustProviderReportedCosts,
+            ProviderCostMarkupMultiplier = provider.ProviderCostMarkupMultiplier,
+            IsEnabled = provider.IsEnabled,
+            CreatedAt = provider.CreatedAt,
+            UpdatedAt = provider.UpdatedAt
+        }).ToList());
     }
 
     /// <summary>

@@ -853,6 +853,75 @@ export interface components {
       total_cost?: number | string;
       function_calls?: components["schemas"]["FunctionCallSummary"][];
     };
+    AsyncTaskResponse: {
+      task_id: string;
+      status: string;
+      check_status_url?: null | string;
+      /** Format: date-time */
+      created_at?: string;
+      /** Format: date-time */
+      estimated_completion_time?: null | string;
+    };
+    AsyncTaskStatus: {
+      taskId?: string;
+      taskType?: string;
+      state?: components["schemas"]["TaskState"];
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      updatedAt?: string;
+      /** Format: date-time */
+      completedAt?: null | string;
+      result?: unknown;
+      error?: null | string;
+      metadata?: null | components["schemas"]["TaskMetadata"];
+      /** Format: int32 */
+      progress?: number | string;
+      progressMessage?: null | string;
+      /** Format: int32 */
+      retryCount?: number | string;
+      /** Format: int32 */
+      maxRetries?: number | string;
+      isRetryable?: boolean;
+      /** Format: date-time */
+      nextRetryAt?: null | string;
+    };
+    AsyncTaskStatusResponse: {
+      task_id: string;
+      status: string;
+      /** Format: int32 */
+      progress?: null | number | string;
+      /** Format: date-time */
+      created_at?: string;
+      /** Format: date-time */
+      updated_at?: string;
+      result?: unknown;
+      error?: null | string;
+    };
+    AudioTranscriptionResponse: {
+      text: string;
+      language?: null | string;
+      /** Format: double */
+      duration?: null | number | string;
+      model?: null | string;
+      usage?: null | components["schemas"]["Usage"];
+    };
+    /** @description SignalR batching efficiency metrics. */
+    BatchingEfficiencyResponse: {
+      /** Format: int64 */
+      totalMessagesBatched: number | string;
+      /** Format: int64 */
+      totalBatchesSent: number | string;
+      /** Format: double */
+      averageMessagesPerBatch: number | string;
+      /** Format: int64 */
+      networkCallsSaved: number | string;
+      /** Format: double */
+      batchEfficiencyPercentage: number | string;
+      /** Format: double */
+      averageBatchLatency: number | string;
+      isBatchingEnabled: boolean;
+    };
     /** @description Statistics about message batching */
     BatchingStatistics: {
       /** Format: int64 */
@@ -974,6 +1043,58 @@ export interface components {
       logprobs?: unknown;
     };
     CircuitState: number;
+    /** @description Detailed active SignalR connections. */
+    ConnectionDetailsResponse: {
+      activeConnections: components["schemas"]["ConnectionInfo"][];
+      /** Format: int32 */
+      count: number | string;
+    };
+    /** @description Information about a SignalR connection */
+    ConnectionInfo: {
+      /** @description Unique connection identifier */
+      connectionId?: string;
+      /** @description Hub name for this connection */
+      hubName?: string;
+      /**
+       * Format: int32
+       * @description Virtual key ID associated with this connection
+       */
+      virtualKeyId?: null | number | string;
+      /**
+       * Format: date-time
+       * @description Time when the connection was established
+       */
+      connectedAt?: string;
+      /**
+       * Format: date-time
+       * @description Last activity time for this connection
+       */
+      lastActivityAt?: string;
+      /** @description Groups this connection is subscribed to */
+      groups?: string[];
+      /** @description User agent string from the client */
+      userAgent?: null | string;
+      /** @description IP address of the client */
+      ipAddress?: null | string;
+      /** @description Transport type (WebSockets, ServerSentEvents, LongPolling) */
+      transportType?: null | string;
+      /** @description Custom metadata about the connection */
+      metadata?: Record<string, never>;
+      /**
+       * Format: int64
+       * @description Number of messages sent to this connection
+       */
+      messagesSent?: number | string;
+      /**
+       * Format: int64
+       * @description Number of messages acknowledged by this connection
+       */
+      messagesAcknowledged?: number | string;
+      /** @description Gets the connection duration */
+      connectionDuration?: string;
+      /** @description Gets the time since last activity */
+      idleTime?: string;
+    };
     /** @description Statistics about SignalR connections */
     ConnectionStatistics: {
       /** Format: int32 */
@@ -1002,6 +1123,65 @@ export interface components {
       totalMessagesAcknowledged?: number | string;
       /** Format: double */
       acknowledgmentRate?: number | string;
+    };
+    /** @description A dead-letter queue entry. */
+    DeadLetterMessageDto: {
+      messageId: string;
+      messageType: string;
+      hubName: string;
+      methodName: string;
+      /** Format: date-time */
+      queuedAt: string;
+      /** Format: int32 */
+      deliveryAttempts: number | string;
+      lastError: null | string;
+      deadLetterReason: null | string;
+    };
+    /** @description Dead-letter queue response. */
+    DeadLetterMessagesResponse: {
+      messages: components["schemas"]["DeadLetterMessageDto"][];
+      /** Format: int32 */
+      count: number | string;
+    };
+    /** @description A model returned by the Conduit discovery extension. */
+    DiscoveredModelDto: {
+      id: string;
+      provider: null | string;
+      display_name: string;
+      description: string;
+      model_card_url: string;
+      /** Format: int32 */
+      max_tokens: number | string;
+      /** Format: int32 */
+      max_input_tokens: number | string;
+      /** Format: int32 */
+      max_output_tokens: number | string;
+      tokenizer_type: string;
+      input_modalities: string[];
+      output_modalities: string[];
+      capability_source: string;
+      /** Format: date-time */
+      capabilities_last_verified_at: null | string;
+      parameters: string;
+      capabilities: components["schemas"]["ModelCapabilitiesDto"];
+    };
+    /** @description Known model capability names. */
+    DiscoveryCapabilitiesResponse: {
+      capabilities: string[];
+    };
+    /** @description Model discovery response. */
+    DiscoveryModelsResponse: {
+      data: components["schemas"]["DiscoveredModelDto"][];
+      /** Format: int32 */
+      count: number | string;
+    };
+    /** @description Temporary download URL response. */
+    DownloadUrlResponse: {
+      url: string;
+      /** Format: date-time */
+      expires_at: string;
+      /** Format: int32 */
+      expiration_minutes: number | string;
     };
     EmbeddingData: {
       object: string;
@@ -1049,6 +1229,23 @@ export interface components {
        */
       expiresInSeconds?: number | string;
     };
+    /** @description Public file metadata. */
+    FileMetadataResponse: {
+      file_name: null | string;
+      content_type: string;
+      /** Format: int64 */
+      size_bytes: number | string;
+      /** Format: date-time */
+      created_at: null | string;
+      /** Format: date-time */
+      modified_at: null | string;
+      storage_provider: null | string;
+      etag: null | string;
+      supports_range_requests: boolean;
+      additional_metadata: null | {
+        [key: string]: string;
+      };
+    };
     FunctionCall: {
       name: string;
       arguments: string;
@@ -1074,6 +1271,23 @@ export interface components {
       description?: null | string;
       parameters?: null | components["schemas"]["JsonObject"];
     };
+    FunctionDiscoveryDto: {
+      /** Format: int32 */
+      id?: number | string;
+      configurationName?: string;
+      providerType?: string;
+      purpose?: string;
+      description?: null | string;
+      defaultExecutionMode?: string;
+      isEnabled?: boolean;
+      /** Format: int32 */
+      timeoutSeconds?: null | number | string;
+    };
+    FunctionDiscoveryResponse: {
+      functions?: components["schemas"]["FunctionDiscoveryDto"][];
+      /** Format: int32 */
+      count?: number | string;
+    };
     /** @description Request model for function execution. */
     FunctionExecutionRequest: {
       /**
@@ -1087,6 +1301,59 @@ export interface components {
       metadata?: null | Record<string, never>;
       /** @description Optional idempotency key to prevent duplicate executions. */
       idempotencyKey?: null | string;
+    };
+    /** @description Response model for function execution. */
+    FunctionExecutionResponse: {
+      /**
+       * Format: uuid
+       * @description The unique execution ID.
+       */
+      executionId?: string;
+      /**
+       * Format: int32
+       * @description The function configuration ID that was executed.
+       */
+      functionConfigurationId?: number | string;
+      /** @description The current state of the execution. */
+      state?: string;
+      /** @description The function execution result (provider-specific). */
+      result?: null | Record<string, never>;
+      /** @description Error message if execution failed. */
+      errorMessage?: null | string;
+      /**
+       * Format: double
+       * @description Estimated cost before execution.
+       */
+      estimatedCost?: null | number | string;
+      /**
+       * Format: double
+       * @description Actual cost after execution.
+       */
+      actualCost?: null | number | string;
+      /**
+       * Format: date-time
+       * @description When the execution started.
+       */
+      startedAt?: null | string;
+      /**
+       * Format: date-time
+       * @description When the execution completed.
+       */
+      completedAt?: null | string;
+      /**
+       * Format: int64
+       * @description Execution duration in milliseconds.
+       */
+      duration?: null | number | string;
+    };
+    FunctionParametersResponseDto: {
+      /** Format: int32 */
+      functionConfigurationId?: number | string;
+      configurationName?: string;
+      providerType?: string;
+      purpose?: string;
+      parameterSchema?: unknown;
+      exampleRequest?: unknown;
     };
     /** @description Request for generating an ephemeral key */
     GenerateEphemeralKeyRequest: {
@@ -1102,8 +1369,47 @@ export interface components {
        */
       expirationMinutes?: null | number | string;
     };
+    /** @description A connection projected for group diagnostics. */
+    GroupConnectionDto: {
+      connectionId: string;
+      hubName: string;
+      /** Format: date-time */
+      connectedAt: string;
+      /** Format: int32 */
+      virtualKeyId: null | number | string;
+    };
+    /** @description Connections attached to a SignalR group. */
+    GroupConnectionsResponse: {
+      groupName: string;
+      connections: components["schemas"]["GroupConnectionDto"][];
+      /** Format: int32 */
+      count: number | string;
+    };
+    /** @description A connection projected for hub diagnostics. */
+    HubConnectionDto: {
+      connectionId: string;
+      /** Format: date-time */
+      connectedAt: string;
+      connectionDuration: string;
+      groups: string[];
+      /** Format: int64 */
+      messagesSent: number | string;
+      /** Format: int64 */
+      messagesAcknowledged: number | string;
+    };
+    /** @description Connections attached to a hub. */
+    HubConnectionsResponse: {
+      hubName: string;
+      connections: components["schemas"]["HubConnectionDto"][];
+      /** Format: int32 */
+      count: number | string;
+    };
     /** Format: binary */
     IFormFile: string;
+    ImageData: {
+      url?: null | string;
+      b64_json?: null | string;
+    };
     ImageGenerationRequest: {
       prompt: string;
       model: string;
@@ -1118,6 +1424,12 @@ export interface components {
       mask?: null | string;
       operation?: string;
     };
+    ImageGenerationResponse: {
+      /** Format: int64 */
+      created: number | string;
+      data: components["schemas"]["ImageData"][];
+      usage?: null | components["schemas"]["Usage"];
+    };
     JsonElement: unknown;
     JsonObject: Record<string, never>;
     JsonSchemaFormat: {
@@ -1125,12 +1437,112 @@ export interface components {
       strict?: null | boolean;
       schema?: components["schemas"]["JsonElement"];
     };
+    MediaInfo: {
+      storageKey?: string;
+      contentType?: string;
+      /** Format: int64 */
+      sizeBytes?: number | string;
+      fileName?: null | string;
+      mediaType?: components["schemas"]["MediaType"];
+      /** Format: date-time */
+      createdAt?: string;
+      /** Format: date-time */
+      expiresAt?: null | string;
+      customMetadata?: {
+        [key: string]: string;
+      };
+    };
+    MediaType: number;
+    /** @description Media upload response. */
+    MediaUploadResponse: {
+      success: boolean;
+      storageKey: string;
+      url: string;
+      directUrl: string;
+      contentType: string;
+      mediaType: string;
+      fileName: string;
+      /** Format: int64 */
+      sizeBytes: number | string;
+    };
     Message: {
       role: string;
       content?: unknown;
       name?: null | string;
       tool_calls?: null | components["schemas"]["ToolCall"][];
       tool_call_id?: null | string;
+    };
+    /** @description A simple operation acknowledgement. */
+    MessageResponse: {
+      message: string;
+    };
+    /** @description Capabilities advertised for a model. */
+    ModelCapabilitiesDto: {
+      chat: boolean;
+      chat_stream: boolean;
+      image_input: boolean;
+      video_input: boolean;
+      audio_input: boolean;
+      file_input: boolean;
+      vision: boolean;
+      video_understanding: boolean;
+      image_generation: boolean;
+      video_generation: boolean;
+      embeddings: boolean;
+      function_calling: boolean;
+      speech_to_text: boolean;
+      text_to_speech: boolean;
+      rerank: boolean;
+      tool_use?: null | boolean;
+      json_mode?: null | boolean;
+      /** Format: int32 */
+      max_tokens?: null | number | string;
+      /** Format: int32 */
+      max_output_tokens?: null | number | string;
+    };
+    /** @description An OpenAI-compatible model entry. */
+    ModelListItemDto: {
+      id: string;
+      object: string;
+    };
+    /** @description An OpenAI-compatible model list. */
+    ModelListResponse: {
+      data: components["schemas"]["ModelListItemDto"][];
+      object: string;
+    };
+    /** @description Effective metadata for an enabled model mapping. */
+    ModelMetadataDto: {
+      id: string;
+      /** Format: int32 */
+      canonical_model_id: number | string;
+      canonical_name: string;
+      provider: null | string;
+      provider_model_id: string;
+      description: null | string;
+      model_card_url: null | string;
+      input_modalities: string[];
+      output_modalities: string[];
+      capability_source: string;
+      /** Format: date-time */
+      capabilities_last_verified_at: null | string;
+      capabilities: components["schemas"]["ModelCapabilitiesDto"];
+      /** Format: int32 */
+      max_input_tokens: null | number | string;
+      /** Format: int32 */
+      max_output_tokens: null | number | string;
+    };
+    /** @description Model metadata response envelope. */
+    ModelMetadataResponse: {
+      modelId: string;
+      metadata: components["schemas"]["ModelMetadataDto"];
+    };
+    /** @description UI parameter metadata for a model. */
+    ModelParametersResponse: {
+      /** Format: int32 */
+      model_id: number | string;
+      model_alias: string;
+      series_name: string;
+      parameters: components["schemas"]["JsonElement"];
     };
     OpenAIError: {
       message: string;
@@ -1214,6 +1626,18 @@ export interface components {
       top_n?: null | number | string;
       return_documents?: null | boolean;
     };
+    RerankResponse: {
+      model?: null | string;
+      results: components["schemas"]["RerankResult"][];
+      usage?: null | components["schemas"]["Usage"];
+    };
+    RerankResult: {
+      /** Format: int32 */
+      index: number | string;
+      /** Format: double */
+      relevance_score: number | string;
+      document?: null | string;
+    };
     ResponseFormat: {
       type?: null | string;
       json_schema?: null | components["schemas"]["JsonSchemaFormat"];
@@ -1225,6 +1649,34 @@ export interface components {
       document_count?: number | string;
       /** Format: int32 */
       chunked_document_count?: number | string;
+    };
+    /** @description SignalR connection health summary. */
+    SignalRConnectionHealthDto: {
+      /** Format: int32 */
+      active: number | string;
+      /** Format: int32 */
+      stale: number | string;
+      acknowledgmentRate: string;
+    };
+    /** @description Overall SignalR health response. */
+    SignalRHealthResponse: {
+      status: string;
+      /** Format: date-time */
+      timestamp: string;
+      connections: components["schemas"]["SignalRConnectionHealthDto"];
+      queue: components["schemas"]["SignalRQueueHealthDto"];
+    };
+    /** @description SignalR queue health summary. */
+    SignalRQueueHealthDto: {
+      /** Format: int32 */
+      pending: number | string;
+      /** Format: int32 */
+      deadLetter: number | string;
+      circuitBreaker: string;
+      /** Format: int64 */
+      processed: number | string;
+      /** Format: int64 */
+      failed: number | string;
     };
     SpendUpdateDto: {
       /** Format: int32 */
@@ -1238,6 +1690,27 @@ export interface components {
     StreamOptions: {
       include_usage?: boolean;
     };
+    /** @description Image task cancellation acknowledgement. */
+    TaskCancellationResponse: {
+      message: string;
+      task_id: string;
+    };
+    TaskMetadata: {
+      /** Format: int32 */
+      virtualKeyId?: number | string;
+      model?: null | string;
+      prompt?: null | string;
+      correlationId?: null | string;
+      payload?: null | string;
+      videoId?: null | string;
+      webhookUrl?: null | string;
+      webhookHeaders?: null | {
+        [key: string]: string;
+      };
+      /** Format: int32 */
+      priority?: number | string;
+    };
+    TaskState: number;
     TextToSpeechRequest: {
       model: string;
       input: string;
@@ -1375,6 +1848,23 @@ export interface components {
       mime_type?: null | string;
       format?: null | string;
     };
+    /** @description A connection projected for virtual-key diagnostics. */
+    VirtualKeyConnectionDto: {
+      connectionId: string;
+      hubName: string;
+      /** Format: date-time */
+      connectedAt: string;
+      connectionDuration: string;
+      groups: string[];
+    };
+    /** @description Connections attached to a virtual key. */
+    VirtualKeyConnectionsResponse: {
+      /** Format: int32 */
+      virtualKeyId: number | string;
+      connections: components["schemas"]["VirtualKeyConnectionDto"][];
+      /** Format: int32 */
+      count: number | string;
+    };
     VirtualKeyUpdateDto: {
       /** Format: int32 */
       virtualKeyId: number | string;
@@ -1421,7 +1911,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": unknown;
+          "application/json": components["schemas"]["ModelListResponse"];
         };
       };
       /** @description Internal Server Error */
@@ -1452,7 +1942,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": unknown;
+          "application/json": components["schemas"]["ModelMetadataResponse"];
         };
       };
       /** @description Not Found */
@@ -1587,7 +2077,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["RerankResponse"];
         };
       };
     };
@@ -1710,7 +2200,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["DiscoveryModelsResponse"];
         };
       };
     };
@@ -1730,7 +2220,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["DiscoveryCapabilitiesResponse"];
         };
       };
     };
@@ -1752,7 +2242,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["ModelParametersResponse"];
         };
       };
     };
@@ -1775,7 +2265,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["FunctionDiscoveryResponse"];
         };
       };
     };
@@ -1797,7 +2287,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["FunctionParametersResponseDto"];
         };
       };
     };
@@ -1819,7 +2309,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["AsyncTaskStatus"];
         };
       };
     };
@@ -1835,14 +2325,12 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description OK */
-      200: {
+      /** @description No Content */
+      204: {
         headers: {
           [name: string]: unknown;
         };
-        content: {
-          "application/json": Record<string, never>;
-        };
+        content?: never;
       };
     };
   };
@@ -1866,7 +2354,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["AsyncTaskStatus"];
         };
       };
     };
@@ -2135,7 +2623,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MessageResponse"];
         };
       };
     };
@@ -2155,7 +2643,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MessageResponse"];
         };
       };
     };
@@ -2175,7 +2663,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MessageResponse"];
         };
       };
     };
@@ -2195,7 +2683,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["BatchingEfficiencyResponse"];
         };
       };
     };
@@ -2259,7 +2747,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["ConnectionDetailsResponse"];
         };
       };
     };
@@ -2281,7 +2769,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["HubConnectionsResponse"];
         };
       };
     };
@@ -2303,7 +2791,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["VirtualKeyConnectionsResponse"];
         };
       };
     };
@@ -2325,7 +2813,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["GroupConnectionsResponse"];
         };
       };
     };
@@ -2345,7 +2833,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["DeadLetterMessagesResponse"];
         };
       };
     };
@@ -2367,7 +2855,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MessageResponse"];
         };
       };
     };
@@ -2387,7 +2875,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["SignalRHealthResponse"];
         };
       };
     };
@@ -2413,7 +2901,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["FunctionExecutionResponse"];
         };
       };
       /** @description Bad Request */
@@ -2464,7 +2952,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["FunctionExecutionResponse"];
         };
       };
       /** @description Not Found */
@@ -2519,7 +3007,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["AudioTranscriptionResponse"];
         };
       };
     };
@@ -2574,7 +3062,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MediaUploadResponse"];
         };
       };
     };
@@ -2596,7 +3084,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["MediaInfo"];
         };
       };
     };
@@ -2660,7 +3148,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["FileMetadataResponse"];
         };
       };
     };
@@ -2686,7 +3174,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["DownloadUrlResponse"];
         };
       };
     };
@@ -2756,7 +3244,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["ImageGenerationResponse"];
         };
       };
     };
@@ -2776,13 +3264,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description OK */
-      200: {
+      /** @description Accepted */
+      202: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["AsyncTaskResponse"];
         };
       };
     };
@@ -2804,7 +3292,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["AsyncTaskStatusResponse"];
         };
       };
     };
@@ -2826,7 +3314,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": Record<string, never>;
+          "application/json": components["schemas"]["TaskCancellationResponse"];
         };
       };
     };

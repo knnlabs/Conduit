@@ -7,6 +7,9 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Models;
 using Microsoft.EntityFrameworkCore;
+using ConduitLLM.Gateway.DTOs;
+using GatewayDiscoveredModelDto = ConduitLLM.Gateway.DTOs.DiscoveredModelDto;
+using GatewayModelCapabilitiesDto = ConduitLLM.Gateway.DTOs.ModelCapabilitiesDto;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -94,11 +97,12 @@ namespace ConduitLLM.Gateway.Endpoints
             if (cachedResult != null)
             {
                 Logger.LogDebug("Returning cached discovery results for capability: {Capability}", LoggingSanitizer.S(capability ?? "all"));
-                return Ok(new
-                {
-                    data = cachedResult.Data,
-                    count = cachedResult.Count
-                });
+                var cachedModels = cachedResult.Data
+                    .Select(element => element.Deserialize<GatewayDiscoveredModelDto>(CacheSerializerOptions))
+                    .Where(model => model is not null)
+                    .Cast<GatewayDiscoveredModelDto>()
+                    .ToList();
+                return Ok(new DiscoveryModelsResponse(cachedModels, cachedModels.Count));
             }
 
             using var context = await _dbContextFactory.CreateDbContextAsync();
@@ -116,7 +120,7 @@ namespace ConduitLLM.Gateway.Endpoints
             Logger.LogDebug("Found {Count} enabled model mappings for discovery (capability filter: {Capability})",
                 modelMappings.Count, LoggingSanitizer.S(capability ?? "all"));
 
-            var models = new List<JsonElement>();
+            var models = new List<GatewayDiscoveredModelDto>();
 
             foreach (var mapping in modelMappings)
             {
@@ -164,59 +168,48 @@ namespace ConduitLLM.Gateway.Endpoints
                 var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? model.MaxInputTokens ?? 0;
                 var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? model.MaxOutputTokens ?? 0;
 
-                // Serialize to JsonElement for cache-safe storage (anonymous objects can't round-trip through JSON deserialization)
-                models.Add(JsonSerializer.SerializeToElement(new
-                {
-                    // Identity
-                    id = mapping.ModelAlias,
-                    provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
-                    display_name = mapping.ModelAlias,
-
-                    // Metadata
-                    description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
-                    model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
-                    max_tokens = maxInputTokens + maxOutputTokens, // Total context window size
-                    max_input_tokens = maxInputTokens,
-                    max_output_tokens = maxOutputTokens,
-                    tokenizer_type = model.TokenizerType.ToString().ToLowerInvariant(),
-                    input_modalities = caps.InputModalities,
-                    output_modalities = caps.OutputModalities,
-                    capability_source = caps.Source.ToString().ToLowerInvariant(),
-                    capabilities_last_verified_at = caps.LastVerifiedAt,
-
-                    // UI Parameters from Model or Series
-                    parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
-
-                    // Capabilities (nested object as expected by SDK)
-                    capabilities = new
-                    {
-                        chat = caps.SupportsChat,
-                        chat_stream = caps.SupportsStreaming,
-                        embeddings = caps.SupportsEmbeddings,
-                        image_generation = caps.SupportsImageGeneration,
-                        vision = caps.SupportsVision,
-                        video_generation = caps.SupportsVideoGeneration,
-                        image_input = caps.SupportsImageInput,
-                        video_input = caps.SupportsVideoInput,
-                        audio_input = caps.SupportsAudioInput,
-                        file_input = caps.SupportsFileInput,
-                        video_understanding = caps.SupportsVideoUnderstanding,
-                        speech_to_text = caps.SupportsSpeechToText,
-                        text_to_speech = caps.SupportsTextToSpeech,
-                        rerank = caps.SupportsRerank,
-                        function_calling = caps.SupportsFunctionCalling,
-                        tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
-                        json_mode = false, // Not yet tracked
-                        max_tokens = maxInputTokens + maxOutputTokens,
-                        max_output_tokens = maxOutputTokens
-                    }
-                }));
+                models.Add(new GatewayDiscoveredModelDto(
+                    mapping.ModelAlias,
+                    mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
+                    mapping.ModelAlias,
+                    model.Description ?? string.Empty,
+                    model.ModelCardUrl ?? string.Empty,
+                    maxInputTokens + maxOutputTokens,
+                    maxInputTokens,
+                    maxOutputTokens,
+                    model.TokenizerType.ToString().ToLowerInvariant(),
+                    caps.InputModalities ?? [],
+                    caps.OutputModalities ?? [],
+                    caps.Source.ToString().ToLowerInvariant(),
+                    caps.LastVerifiedAt,
+                    model.ModelParameters ?? model.Series?.Parameters ?? "{}",
+                    new GatewayModelCapabilitiesDto(
+                        caps.SupportsChat,
+                        caps.SupportsStreaming,
+                        caps.SupportsImageInput,
+                        caps.SupportsVideoInput,
+                        caps.SupportsAudioInput,
+                        caps.SupportsFileInput,
+                        caps.SupportsVision,
+                        caps.SupportsVideoUnderstanding,
+                        caps.SupportsImageGeneration,
+                        caps.SupportsVideoGeneration,
+                        caps.SupportsEmbeddings,
+                        caps.SupportsFunctionCalling,
+                        caps.SupportsSpeechToText,
+                        caps.SupportsTextToSpeech,
+                        caps.SupportsRerank,
+                        caps.SupportsFunctionCalling,
+                        false,
+                        maxInputTokens + maxOutputTokens,
+                        maxOutputTokens)));
             }
 
             // Cache the results for future requests
             var discoveryResult = new DiscoveryModelsResult
             {
-                Data = models,
+                Data = models.Select(model =>
+                    JsonSerializer.SerializeToElement(model, CacheSerializerOptions)).ToList(),
                 Count = models.Count,
                 CapabilityFilter = capability
             };
@@ -226,11 +219,7 @@ namespace ConduitLLM.Gateway.Endpoints
             Logger.LogInformation("Cached discovery results for capability: {Capability} with {Count} models",
                 LoggingSanitizer.S(capability ?? "all"), models.Count);
 
-            return Ok(new
-            {
-                data = models,
-                count = models.Count
-            });
+            return Ok(new DiscoveryModelsResponse(models, models.Count));
         }
 
         /// <summary>
@@ -258,10 +247,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 "json_mode"
             };
 
-            return Ok(new
-            {
-                capabilities = capabilities
-            });
+            return Ok(new DiscoveryCapabilitiesResponse(capabilities));
         }
 
         /// <summary>
@@ -308,7 +294,7 @@ namespace ConduitLLM.Gateway.Endpoints
             }
 
             // Parse the Parameters JSON - check model-specific parameters first, then fall back to series
-            object? parameters = null;
+            JsonElement? parameters = null;
             var parametersJson = modelMapping.ModelProviderTypeAssociation.Model.ModelParameters
                 ?? modelMapping.ModelProviderTypeAssociation.Model.Series?.Parameters;
 
@@ -316,22 +302,20 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 try
                 {
-                    parameters = System.Text.Json.JsonSerializer.Deserialize<object>(parametersJson);
+                    parameters = JsonDocument.Parse(parametersJson).RootElement.Clone();
                 }
                 catch (Exception ex)
                 {
                     Logger.LogWarning(ex, "Failed to parse parameters for model {Model}", LoggingSanitizer.S(model));
-                    parameters = new { };
+                    parameters = JsonSerializer.SerializeToElement(new { });
                 }
             }
 
-            return Ok(new
-            {
-                model_id = modelMapping.ModelProviderTypeAssociation.ModelId,
-                model_alias = modelMapping.ModelAlias,
-                series_name = modelMapping.ModelProviderTypeAssociation.Model.Series?.Name ?? string.Empty,
-                parameters = parameters ?? new { }
-            });
+            return Ok(new ModelParametersResponse(
+                modelMapping.ModelProviderTypeAssociation.ModelId,
+                modelMapping.ModelAlias,
+                modelMapping.ModelProviderTypeAssociation.Model.Series?.Name ?? string.Empty,
+                parameters ?? JsonSerializer.SerializeToElement(new { })));
         }
 
         /// <summary>

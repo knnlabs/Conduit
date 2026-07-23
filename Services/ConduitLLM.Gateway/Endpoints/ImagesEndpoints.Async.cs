@@ -8,6 +8,7 @@ using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.UsageTracking;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
+using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -357,7 +358,7 @@ namespace ConduitLLM.Gateway.Endpoints
 
                 _logger.LogInformation("Published cancellation event for image generation task {TaskId}", taskId);
 
-                return Ok(new { message = "Task cancellation requested", task_id = taskId });
+                return Ok(new TaskCancellationResponse("Task cancellation requested", taskId));
             }
             catch (Exception ex)
             {

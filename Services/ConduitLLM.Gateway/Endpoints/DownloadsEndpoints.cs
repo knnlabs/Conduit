@@ -2,6 +2,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -95,18 +96,16 @@ namespace ConduitLLM.Gateway.Endpoints
                 return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
             }
 
-            return Ok(new
-            {
-                file_name = metadata.FileName,
-                content_type = metadata.ContentType,
-                size_bytes = metadata.SizeBytes,
-                created_at = metadata.CreatedAt,
-                modified_at = metadata.ModifiedAt,
-                storage_provider = metadata.StorageProvider,
-                etag = metadata.ETag,
-                supports_range_requests = metadata.SupportsRangeRequests,
-                additional_metadata = metadata.AdditionalMetadata
-            });
+            return Ok(new FileMetadataResponse(
+                metadata.FileName,
+                metadata.ContentType,
+                metadata.SizeBytes,
+                metadata.CreatedAt,
+                metadata.ModifiedAt,
+                metadata.StorageProvider,
+                metadata.ETag,
+                metadata.SupportsRangeRequests,
+                metadata.AdditionalMetadata));
         }
 
         /// <summary>
@@ -145,12 +144,10 @@ namespace ConduitLLM.Gateway.Endpoints
                 return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found or URL generation failed", "not_found")));
             }
 
-            return Ok(new
-            {
-                url = url,
-                expires_at = DateTime.UtcNow.Add(expiration),
-                expiration_minutes = expirationMinutes
-            });
+            return Ok(new DownloadUrlResponse(
+                url,
+                DateTime.UtcNow.Add(expiration),
+                expirationMinutes));
         }
 
         /// <summary>

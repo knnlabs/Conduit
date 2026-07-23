@@ -12,7 +12,9 @@ import {
 import { ValidationError } from '../utils/errors';
 import { validateRequired, validateStringLength } from '../utils/validation';
 
-type ConfigurationWire = components['schemas']['FunctionConfiguration'];
+type ConfigurationWire = components['schemas']['FunctionConfigurationDto'];
+type CreateConfigurationWire = components['schemas']['CreateFunctionConfigurationRequest'];
+type UpdateConfigurationWire = components['schemas']['UpdateFunctionConfigurationRequest'];
 type CredentialWire = components['schemas']['FunctionCredential'];
 type CostWire = components['schemas']['FunctionCostDto'];
 type CreateCostWire = components['schemas']['CreateFunctionCostDto'];
@@ -68,13 +70,13 @@ export class FetchFunctionConfigurationsService {
   }
   async create(data: CreateFunctionConfigurationDto, config?: RequestConfig): Promise<FunctionConfigurationDto> {
     validateCreateConfiguration(data);
-    const body = data as ConfigurationWire;
-    const result = await this.client['executeContractOperation']<ConfigurationWire, ConfigurationWire>('/api/FunctionConfigurations', HttpMethod.POST, (c, o) => c.POST('/api/FunctionConfigurations', { ...o, body }), config, body);
+    const body = data as CreateConfigurationWire;
+    const result = await this.client['executeContractOperation']<ConfigurationWire, CreateConfigurationWire>('/api/FunctionConfigurations', HttpMethod.POST, (c, o) => c.POST('/api/FunctionConfigurations', { ...o, body }), config, body);
     return configurationFromWire(result);
   }
   async update(id: number, data: UpdateFunctionConfigurationDto, config?: RequestConfig): Promise<FunctionConfigurationDto> {
-    const body = data as ConfigurationWire;
-    const result = await this.client['executeContractOperation']<ConfigurationWire, UpdateFunctionConfigurationDto>(`/api/FunctionConfigurations/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionConfigurations/{id}', { ...o, params: { path: { id } }, body }), config, data);
+    const body = data as UpdateConfigurationWire;
+    const result = await this.client['executeContractOperation']<ConfigurationWire, UpdateConfigurationWire>(`/api/FunctionConfigurations/${id}`, HttpMethod.PUT, (c, o) => c.PUT('/api/FunctionConfigurations/{id}', { ...o, params: { path: { id } }, body }), config, body);
     return configurationFromWire(result);
   }
   async deleteById(id: number, config?: RequestConfig): Promise<void> {

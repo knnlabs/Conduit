@@ -1,4 +1,5 @@
 using ConduitLLM.Functions.Enums;
+using System.Text.Json;
 
 namespace ConduitLLM.Functions.DTOs;
 
@@ -53,14 +54,14 @@ public class FunctionExecutionDto
     public double? Duration { get; set; }
 
     /// <summary>
-    /// Input parameters for the function (stored as JSON)
+    /// Input parameters for the function
     /// </summary>
-    public string? RequestJson { get; set; }
+    public JsonElement? Request { get; set; }
 
     /// <summary>
-    /// Result data from the function (stored as JSON)
+    /// Result data from the function
     /// </summary>
-    public string? ResponseJson { get; set; }
+    public JsonElement? Response { get; set; }
 
     /// <summary>
     /// Error message if execution failed
@@ -78,9 +79,9 @@ public class FunctionExecutionDto
     public decimal? ActualCost { get; set; }
 
     /// <summary>
-    /// Detailed cost calculation breakdown (stored as JSON)
+    /// Detailed cost calculation breakdown
     /// </summary>
-    public string? CostCalculationDetails { get; set; }
+    public JsonElement? CostCalculation { get; set; }
 
     /// <summary>
     /// Number of retry attempts made for this execution
@@ -91,21 +92,6 @@ public class FunctionExecutionDto
     /// When the next retry should be attempted (for failed executions)
     /// </summary>
     public DateTime? NextRetryAt { get; set; }
-
-    /// <summary>
-    /// Worker instance ID that has leased this execution for processing
-    /// </summary>
-    public string? LeasedBy { get; set; }
-
-    /// <summary>
-    /// When the lease on this execution expires
-    /// </summary>
-    public DateTime? LeaseExpiryTime { get; set; }
-
-    /// <summary>
-    /// Version number for optimistic concurrency control
-    /// </summary>
-    public int Version { get; set; }
 
     /// <summary>
     /// Optional webhook URL to notify when execution completes

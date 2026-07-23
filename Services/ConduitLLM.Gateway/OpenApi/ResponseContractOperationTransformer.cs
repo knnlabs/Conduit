@@ -146,8 +146,6 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                 continue;
             }
 
-            EnsureJsonBody(response, operation.OperationId);
-
             if (responseEntry.Key == "200" && operation.OperationId == "Chat_CreateCompletion")
             {
                 response.Content!["text/event-stream"] = new OpenApiMediaType
@@ -156,27 +154,6 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                 };
             }
         }
-    }
-
-    private static void EnsureJsonBody(OpenApiResponse response, string? operationId)
-    {
-        if (response.Content?.Values.Any(media => media.Schema is not null) == true)
-        {
-            foreach (var media in response.Content.Values)
-            {
-                if (!string.Equals(operationId, "Models_ListModels", StringComparison.Ordinal) &&
-                    !string.Equals(operationId, "Models_GetModelMetadata", StringComparison.Ordinal) &&
-                    media.Schema is OpenApiSchema { Type: null } schema)
-                {
-                    schema.Type = JsonSchemaType.Object;
-                }
-            }
-            return;
-        }
-        response.Content = new Dictionary<string, OpenApiMediaType>
-        {
-            ["application/json"] = new() { Schema = new OpenApiSchema { Type = JsonSchemaType.Object } }
-        };
     }
 
     private static OpenApiSchema BinarySchema() => new() { Type = JsonSchemaType.String, Format = "binary" };

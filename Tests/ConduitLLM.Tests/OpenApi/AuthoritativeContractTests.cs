@@ -305,7 +305,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/api/FunctionConfigurations", "FunctionConfiguration")]
+    [InlineData("/api/FunctionConfigurations", "FunctionConfigurationDto")]
     [InlineData("/api/FunctionCredentials", "FunctionCredential")]
     [InlineData("/api/FunctionCosts", "FunctionCostDto")]
     [InlineData("/api/FunctionExecutions/expired-leases", "FunctionExecutionDto")]
@@ -316,7 +316,7 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Theory]
-    [InlineData("/api/FunctionConfigurations/{id}", "FunctionConfiguration")]
+    [InlineData("/api/FunctionConfigurations/{id}", "FunctionConfigurationDto")]
     [InlineData("/api/FunctionCredentials/{id}", "FunctionCredential")]
     [InlineData("/api/FunctionCosts/{id}", "FunctionCostDto")]
     [InlineData("/api/FunctionExecutions/{id}", "FunctionExecutionDto")]
@@ -335,6 +335,68 @@ public sealed class AuthoritativeContractTests : IDisposable
         Operation(_admin, path, method).GetProperty("responses").GetProperty("200")
             .GetProperty("content").GetProperty("application/json").GetProperty("schema")
             .GetProperty("$ref").GetString().Should().Be($"#/components/schemas/{schema}");
+    }
+
+    [Fact]
+    public void Contracts_DoNotPublishBareJsonSuccessSchemas()
+    {
+        foreach (var (name, document) in new[] { ("admin", _admin), ("gateway", _gateway) })
+        {
+            foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
+            {
+                foreach (var operation in path.Value.EnumerateObject()
+                    .Where(member => new[] { "get", "put", "post", "delete", "options", "head", "patch", "trace" }
+                        .Contains(member.Name)))
+                {
+                    foreach (var response in operation.Value.GetProperty("responses").EnumerateObject()
+                        .Where(member => member.Name.StartsWith('2')))
+                    {
+                        if (!response.Value.TryGetProperty("content", out var content) ||
+                            !content.TryGetProperty("application/json", out var json))
+                        {
+                            continue;
+                        }
+
+                        IsGenericSuccessSchema(json.GetProperty("schema")).Should().BeFalse(
+                            $"{name} {operation.Name.ToUpperInvariant()} {path.Name} response {response.Name} must publish a concrete JSON schema");
+                    }
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void Admin_FunctionConfigurationContractsUseBoundaryDtos()
+    {
+        RequestSchema(_admin, "/api/FunctionConfigurations", "post")
+            .GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/CreateFunctionConfigurationRequest");
+        RequestSchema(_admin, "/api/FunctionConfigurations/{id}", "put")
+            .GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/UpdateFunctionConfigurationRequest");
+
+        var schemas = _admin.RootElement.GetProperty("components").GetProperty("schemas");
+        schemas.TryGetProperty("FunctionConfiguration", out _).Should().BeFalse(
+            "the persistence entity must not be part of the public contract");
+    }
+
+    [Fact]
+    public void Admin_FunctionExecutionContractUsesStructuredJsonAndHidesLeaseInternals()
+    {
+        var properties = _admin.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty("FunctionExecutionDto").GetProperty("properties");
+
+        JsonElementReference(properties.GetProperty("request"))
+            .Should().Be("#/components/schemas/JsonElement");
+        JsonElementReference(properties.GetProperty("response"))
+            .Should().Be("#/components/schemas/JsonElement");
+        JsonElementReference(properties.GetProperty("costCalculation"))
+            .Should().Be("#/components/schemas/JsonElement");
+        properties.TryGetProperty("requestJson", out _).Should().BeFalse();
+        properties.TryGetProperty("responseJson", out _).Should().BeFalse();
+        properties.TryGetProperty("leasedBy", out _).Should().BeFalse();
+        properties.TryGetProperty("leaseExpiryTime", out _).Should().BeFalse();
+        properties.TryGetProperty("version", out _).Should().BeFalse();
     }
 
     public void Dispose()
@@ -364,6 +426,51 @@ public sealed class AuthoritativeContractTests : IDisposable
     private static JsonElement RequestSchema(JsonDocument document, string path, string method) =>
         Operation(document, path, method).GetProperty("requestBody").GetProperty("content")
             .GetProperty("application/json").GetProperty("schema");
+
+    private static bool IsGenericSuccessSchema(JsonElement schema)
+    {
+        if (schema.ValueKind != JsonValueKind.Object || !schema.EnumerateObject().Any())
+        {
+            return true;
+        }
+        if (schema.TryGetProperty("$ref", out _))
+        {
+            return false;
+        }
+        foreach (var composition in new[] { "oneOf", "anyOf", "allOf" })
+        {
+            if (schema.TryGetProperty(composition, out var branches))
+            {
+                return !branches.EnumerateArray().Any() ||
+                    branches.EnumerateArray().All(IsGenericSuccessSchema);
+            }
+        }
+        if (!schema.TryGetProperty("type", out var type) || type.GetString() != "object")
+        {
+            if (type.ValueKind == JsonValueKind.String && type.GetString() == "array")
+            {
+                return !schema.TryGetProperty("items", out var items) || IsGenericSuccessSchema(items);
+            }
+            return false;
+        }
+
+        return (!schema.TryGetProperty("properties", out var properties) ||
+                !properties.EnumerateObject().Any()) &&
+            !schema.TryGetProperty("additionalProperties", out _) &&
+            !schema.TryGetProperty("patternProperties", out _);
+    }
+
+    private static string? JsonElementReference(JsonElement schema)
+    {
+        if (schema.TryGetProperty("$ref", out var direct))
+        {
+            return direct.GetString();
+        }
+
+        return schema.GetProperty("oneOf").EnumerateArray()
+            .First(branch => branch.TryGetProperty("$ref", out _))
+            .GetProperty("$ref").GetString();
+    }
 
     private static JsonDocument LoadContract(params string[] relativeSegments)
     {

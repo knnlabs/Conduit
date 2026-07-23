@@ -1647,7 +1647,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/CacheInvalidationPublishedResponse"
+                }
               }
             }
           },
@@ -1695,7 +1697,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/FunctionDiscoveryCacheStatistics"
+                }
               }
             }
           },
@@ -1703,7 +1707,9 @@
             "description": "Not Found",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/CacheServiceUnavailableResponse"
+                }
               }
             }
           },
@@ -1751,7 +1757,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/CacheInvalidationPublishedResponse"
+                }
               }
             }
           },
@@ -3704,7 +3712,9 @@
             "description": "Accepted",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSpendingFlushResponse"
+                }
               }
             }
           },
@@ -3762,7 +3772,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSpendingStatusResponse"
+                }
               }
             }
           },
@@ -3810,7 +3822,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/BatchSpendingInformationResponse"
+                }
               }
             }
           },
@@ -5697,7 +5711,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MediaRecord"
+                    "$ref": "#/components/schemas/MediaRecordResponse"
                   }
                 }
               },
@@ -5705,7 +5719,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MediaRecord"
+                    "$ref": "#/components/schemas/MediaRecordResponse"
                   }
                 }
               },
@@ -5713,7 +5727,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MediaRecord"
+                    "$ref": "#/components/schemas/MediaRecordResponse"
                   }
                 }
               }
@@ -5775,7 +5789,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MediaRecord"
+                    "$ref": "#/components/schemas/MediaRecordResponse"
                   }
                 }
               },
@@ -5783,7 +5797,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MediaRecord"
+                    "$ref": "#/components/schemas/MediaRecordResponse"
                   }
                 }
               },
@@ -5791,7 +5805,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/MediaRecord"
+                    "$ref": "#/components/schemas/MediaRecordResponse"
                   }
                 }
               }
@@ -13580,13 +13594,19 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRevenueLossResponse"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRevenueLossResponse"
+                }
               },
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/BillingRevenueLossResponse"
+                }
               }
             }
           },
@@ -13751,13 +13771,28 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingAuditEventTypeResponse"
+                  }
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingAuditEventTypeResponse"
+                  }
+                }
               },
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BillingAuditEventTypeResponse"
+                  }
+                }
               }
             }
           },
@@ -14852,17 +14887,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnalyticsCacheMetricsResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnalyticsCacheMetricsResponse"
                 }
               },
               "text/plain": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnalyticsCacheMetricsResponse"
                 }
               }
             }
@@ -15034,7 +15069,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AnalyticsCacheInvalidationResponse"
                 }
               }
             }
@@ -15086,7 +15121,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               },
@@ -15094,7 +15129,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               },
@@ -15102,7 +15137,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               }
@@ -15149,17 +15184,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/FunctionConfiguration"
+                "$ref": "#/components/schemas/CreateFunctionConfigurationRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/FunctionConfiguration"
+                "$ref": "#/components/schemas/CreateFunctionConfigurationRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/FunctionConfiguration"
+                "$ref": "#/components/schemas/CreateFunctionConfigurationRequest"
               }
             }
           },
@@ -15171,17 +15206,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               },
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               }
             }
@@ -15262,17 +15297,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               },
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               }
             }
@@ -15349,17 +15384,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/FunctionConfiguration"
+                "$ref": "#/components/schemas/UpdateFunctionConfigurationRequest"
               }
             },
             "text/json": {
               "schema": {
-                "$ref": "#/components/schemas/FunctionConfiguration"
+                "$ref": "#/components/schemas/UpdateFunctionConfigurationRequest"
               }
             },
             "application/*+json": {
               "schema": {
-                "$ref": "#/components/schemas/FunctionConfiguration"
+                "$ref": "#/components/schemas/UpdateFunctionConfigurationRequest"
               }
             }
           },
@@ -15371,17 +15406,17 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               },
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionConfiguration"
+                  "$ref": "#/components/schemas/FunctionConfigurationDto"
                 }
               }
             }
@@ -15555,7 +15590,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               },
@@ -15563,7 +15598,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               },
@@ -15571,7 +15606,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               }
@@ -15634,7 +15669,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               },
@@ -15642,7 +15677,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               },
@@ -15650,7 +15685,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/FunctionConfiguration"
+                    "$ref": "#/components/schemas/FunctionConfigurationDto"
                   }
                 }
               }
@@ -16849,7 +16884,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -16930,7 +16965,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -17981,13 +18016,19 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/PricingTemplateResponse"
+                }
               },
               "text/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/PricingTemplateResponse"
+                }
               },
               "text/plain": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/PricingTemplateResponse"
+                }
               }
             }
           },
@@ -19017,7 +19058,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Provider"
+                    "$ref": "#/components/schemas/ProviderDto"
                   }
                 }
               },
@@ -19025,7 +19066,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Provider"
+                    "$ref": "#/components/schemas/ProviderDto"
                   }
                 }
               },
@@ -19033,7 +19074,7 @@
                 "schema": {
                   "type": "array",
                   "items": {
-                    "$ref": "#/components/schemas/Provider"
+                    "$ref": "#/components/schemas/ProviderDto"
                   }
                 }
               }
@@ -21101,6 +21142,77 @@
         },
         "description": "Comprehensive application metrics including database, application, and system metrics."
       },
+      "AnalyticsCacheInvalidationResponse": {
+        "required": [
+          "message",
+          "reason",
+          "keysInvalidated"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "keysInvalidated": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "AnalyticsCacheMetricsResponse": {
+        "required": [
+          "totalHits",
+          "totalMisses",
+          "hitRate",
+          "cacheMemoryMb",
+          "totalInvalidations",
+          "uptimeMinutes",
+          "topHitKeys",
+          "topMissKeys"
+        ],
+        "type": "object",
+        "properties": {
+          "totalHits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalMisses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hitRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "cacheMemoryMb": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalInvalidations": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "uptimeMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "topHitKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricKeyCountDto"
+            }
+          },
+          "topMissKeys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MetricKeyCountDto"
+            }
+          }
+        }
+      },
       "AnalyticsSummaryDto": {
         "type": "object",
         "properties": {
@@ -21271,6 +21383,238 @@
         },
         "description": "A configured provider instance that can serve a model identifier."
       },
+      "BatchSpendingArchitectureResponse": {
+        "required": [
+          "pattern",
+          "adminRole",
+          "coreRole",
+          "decoupling"
+        ],
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "adminRole": {
+            "type": "string"
+          },
+          "coreRole": {
+            "type": "string"
+          },
+          "decoupling": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchSpendingEndpointInfo": {
+        "required": [
+          "method",
+          "path",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "parameters": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/BatchSpendingParameterInfo"
+              }
+            ]
+          },
+          "useCases": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "BatchSpendingEndpointsInfo": {
+        "required": [
+          "flush",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "flush": {
+            "$ref": "#/components/schemas/BatchSpendingEndpointInfo"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BatchSpendingEndpointInfo"
+          }
+        }
+      },
+      "BatchSpendingFlushResponse": {
+        "required": [
+          "success",
+          "message",
+          "requestId",
+          "requestedAt",
+          "priority",
+          "estimatedProcessingTime",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "requestedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "estimatedProcessingTime": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchSpendingInformationArchitecture": {
+        "required": [
+          "pattern",
+          "security",
+          "reliability",
+          "monitoring"
+        ],
+        "type": "object",
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "security": {
+            "type": "string"
+          },
+          "reliability": {
+            "type": "string"
+          },
+          "monitoring": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchSpendingInformationResponse": {
+        "required": [
+          "service",
+          "description",
+          "endpoints",
+          "architecture",
+          "operationalNotes",
+          "timestamp"
+        ],
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "endpoints": {
+            "$ref": "#/components/schemas/BatchSpendingEndpointsInfo"
+          },
+          "architecture": {
+            "$ref": "#/components/schemas/BatchSpendingInformationArchitecture"
+          },
+          "operationalNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BatchSpendingParameterInfo": {
+        "required": [
+          "reason",
+          "priority",
+          "timeoutSeconds",
+          "includeStatistics"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "timeoutSeconds": {
+            "type": "string"
+          },
+          "includeStatistics": {
+            "type": "string"
+          }
+        }
+      },
+      "BatchSpendingStatusResponse": {
+        "required": [
+          "success",
+          "adminApiStatus",
+          "eventBusAvailable",
+          "canPublishFlushRequests",
+          "supportedOperations",
+          "architecture",
+          "timestamp"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "adminApiStatus": {
+            "type": "string"
+          },
+          "eventBusAvailable": {
+            "type": "boolean"
+          },
+          "canPublishFlushRequests": {
+            "type": "boolean"
+          },
+          "supportedOperations": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "architecture": {
+            "$ref": "#/components/schemas/BatchSpendingArchitectureResponse"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "BillingAnomaly": {
         "type": "object",
         "properties": {
@@ -21421,6 +21765,25 @@
       },
       "BillingAuditEventType": {
         "type": "integer"
+      },
+      "BillingAuditEventTypeResponse": {
+        "required": [
+          "value",
+          "name",
+          "description"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "$ref": "#/components/schemas/BillingAuditEventType"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
       },
       "BillingAuditExportRequest": {
         "type": "object",
@@ -21607,6 +21970,22 @@
               "type": "integer",
               "format": "int64"
             }
+          }
+        }
+      },
+      "BillingRevenueLossResponse": {
+        "required": [
+          "potentialRevenueLoss",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "potentialRevenueLoss": {
+            "type": "number",
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
           }
         }
       },
@@ -22038,6 +22417,41 @@
           }
         }
       },
+      "CacheInvalidationPublishedResponse": {
+        "required": [
+          "message",
+          "timestamp",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "CacheServiceUnavailableResponse": {
+        "required": [
+          "message",
+          "note"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
       "CatalogImportCounts": {
         "required": [
           "authors",
@@ -22428,6 +22842,85 @@
           }
         },
         "description": "DTO returned after creating a model identifier."
+      },
+      "CreateFunctionConfigurationRequest": {
+        "required": [
+          "providerType",
+          "configurationName",
+          "purpose"
+        ],
+        "type": "object",
+        "properties": {
+          "providerType": {
+            "$ref": "#/components/schemas/FunctionProviderType"
+          },
+          "configurationName": {
+            "maxLength": 200,
+            "type": "string"
+          },
+          "purpose": {
+            "$ref": "#/components/schemas/FunctionPurpose"
+          },
+          "defaultExecutionMode": {
+            "$ref": "#/components/schemas/ExecutionMode"
+          },
+          "baseUrl": {
+            "maxLength": 500,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "cacheTtlMinutes": {
+            "maximum": 10080,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "timeoutSeconds": {
+            "maximum": 3600,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxRetries": {
+            "maximum": 10,
+            "minimum": 0,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "providerSettings": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parameterSchema": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "maxLength": 1000,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "CreateFunctionCostDto": {
         "required": [
@@ -23835,15 +24328,9 @@
       "FlushPriority": {
         "type": "integer"
       },
-      "FunctionConfiguration": {
+      "FunctionConfigurationDto": {
         "required": [
-          "providerType",
-          "configurationName",
-          "purpose",
-          "defaultExecutionMode",
-          "isEnabled",
-          "createdAt",
-          "updatedAt"
+          "configurationName"
         ],
         "type": "object",
         "properties": {
@@ -23855,7 +24342,6 @@
             "$ref": "#/components/schemas/FunctionProviderType"
           },
           "configurationName": {
-            "maxLength": 200,
             "type": "string"
           },
           "purpose": {
@@ -23865,7 +24351,6 @@
             "$ref": "#/components/schemas/ExecutionMode"
           },
           "baseUrl": {
-            "maxLength": 500,
             "type": [
               "null",
               "string"
@@ -23874,14 +24359,14 @@
           "isEnabled": {
             "type": "boolean"
           },
-          "timeoutSeconds": {
+          "cacheTtlMinutes": {
             "type": [
               "null",
               "integer"
             ],
             "format": "int32"
           },
-          "cacheTtlMinutes": {
+          "timeoutSeconds": {
             "type": [
               "null",
               "integer"
@@ -23908,11 +24393,14 @@
             ]
           },
           "description": {
-            "maxLength": 1000,
             "type": [
               "null",
               "string"
             ]
+          },
+          "credentialCount": {
+            "type": "integer",
+            "format": "int32"
           },
           "createdAt": {
             "type": "string",
@@ -24139,6 +24627,37 @@
         },
         "description": "Result returned after testing a function credential."
       },
+      "FunctionDiscoveryCacheStatistics": {
+        "type": "object",
+        "properties": {
+          "hits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "misses": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hitRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "cachedEntries": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastInvalidation": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          }
+        }
+      },
       "FunctionExecutionCleanupResultDto": {
         "required": [
           "message"
@@ -24201,16 +24720,24 @@
             ],
             "format": "double"
           },
-          "requestJson": {
-            "type": [
-              "null",
-              "string"
+          "request": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
             ]
           },
-          "responseJson": {
-            "type": [
-              "null",
-              "string"
+          "response": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
             ]
           },
           "errorMessage": {
@@ -24233,10 +24760,14 @@
             ],
             "format": "double"
           },
-          "costCalculationDetails": {
-            "type": [
-              "null",
-              "string"
+          "costCalculation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
             ]
           },
           "retryCount": {
@@ -24249,23 +24780,6 @@
               "string"
             ],
             "format": "date-time"
-          },
-          "leasedBy": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "leaseExpiryTime": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "version": {
-            "type": "integer",
-            "format": "int32"
           },
           "webhookUrl": {
             "type": [
@@ -24699,80 +25213,6 @@
           }
         }
       },
-      "IpFilterEntity": {
-        "required": [
-          "filterType",
-          "ipAddressOrCidr"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "filterType": {
-            "maxLength": 10,
-            "type": "string"
-          },
-          "ipAddressOrCidr": {
-            "maxLength": 50,
-            "type": "string"
-          },
-          "name": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "maxLength": 500,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "createdBy": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "updatedBy": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "virtualKeyId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "rowVersion": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "byte"
-          }
-        }
-      },
       "IpFilterSettingsDto": {
         "required": [
           "isEnabled",
@@ -24817,6 +25257,7 @@
           }
         }
       },
+      "JsonElement": { },
       "KeyErrorDetailsDto": {
         "required": [
           "keyId",
@@ -25354,12 +25795,24 @@
         },
         "description": "Response returned when a media record is deleted."
       },
-      "MediaRecord": {
+      "MediaRecordResponse": {
         "required": [
+          "id",
           "storageKey",
           "virtualKeyId",
           "mediaType",
-          "createdAt"
+          "contentType",
+          "sizeBytes",
+          "contentHash",
+          "provider",
+          "model",
+          "prompt",
+          "storageUrl",
+          "publicUrl",
+          "expiresAt",
+          "createdAt",
+          "lastAccessedAt",
+          "accessCount"
         ],
         "type": "object",
         "properties": {
@@ -25368,22 +25821,16 @@
             "format": "uuid"
           },
           "storageKey": {
-            "maxLength": 500,
             "type": "string"
           },
           "virtualKeyId": {
             "type": "integer",
             "format": "int32"
           },
-          "virtualKey": {
-            "$ref": "#/components/schemas/VirtualKey"
-          },
           "mediaType": {
-            "maxLength": 50,
             "type": "string"
           },
           "contentType": {
-            "maxLength": 100,
             "type": [
               "null",
               "string"
@@ -25397,21 +25844,18 @@
             "format": "int64"
           },
           "contentHash": {
-            "maxLength": 64,
             "type": [
               "null",
               "string"
             ]
           },
           "provider": {
-            "maxLength": 50,
             "type": [
               "null",
               "string"
             ]
           },
           "model": {
-            "maxLength": 100,
             "type": [
               "null",
               "string"
@@ -25456,88 +25900,6 @@
           "accessCount": {
             "type": "integer",
             "format": "int32"
-          }
-        }
-      },
-      "MediaRetentionPolicy": {
-        "required": [
-          "name",
-          "createdAt",
-          "updatedAt"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "name": {
-            "maxLength": 100,
-            "type": "string"
-          },
-          "description": {
-            "maxLength": 500,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "positiveBalanceRetentionDays": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "zeroBalanceRetentionDays": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "negativeBalanceRetentionDays": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "softDeleteGracePeriodDays": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "respectRecentAccess": {
-            "type": "boolean"
-          },
-          "recentAccessWindowDays": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "maxStorageSizeBytes": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int64"
-          },
-          "maxFileCount": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "virtualKeyGroups": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VirtualKeyGroup"
-            }
           }
         }
       },
@@ -25726,6 +26088,33 @@
             "format": "int32"
           },
           "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "MessageResponse": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "MetricKeyCountDto": {
+        "required": [
+          "key",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "count": {
             "type": "integer",
             "format": "int64"
           }
@@ -26935,52 +27324,6 @@
         },
         "description": "Extended model DTO that includes the provider-specific identifier for the model."
       },
-      "Notification": {
-        "required": [
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "virtualKeyId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "virtualKey": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/VirtualKey"
-              }
-            ]
-          },
-          "type": {
-            "$ref": "#/components/schemas/NotificationType"
-          },
-          "severity": {
-            "$ref": "#/components/schemas/NotificationSeverity"
-          },
-          "message": {
-            "maxLength": 500,
-            "type": "string"
-          },
-          "isRead": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
       "NotificationDto": {
         "type": "object",
         "properties": {
@@ -27812,6 +28155,88 @@
         },
         "description": "Response from pricing simulation"
       },
+      "PricingTemplateConditionsDto": {
+        "type": "object",
+        "properties": {
+          "quality": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "resolution": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "with_audio": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "inference_steps_gte": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "PricingTemplateResponse": {
+        "required": [
+          "pricingType",
+          "defaultRate",
+          "unitField",
+          "rules"
+        ],
+        "type": "object",
+        "properties": {
+          "pricingType": {
+            "type": "string"
+          },
+          "defaultRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "unitField": {
+            "type": "string"
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PricingTemplateRuleDto"
+            }
+          }
+        }
+      },
+      "PricingTemplateRuleDto": {
+        "required": [
+          "priority",
+          "description",
+          "conditions",
+          "rate"
+        ],
+        "type": "object",
+        "properties": {
+          "priority": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "description": {
+            "type": "string"
+          },
+          "conditions": {
+            "$ref": "#/components/schemas/PricingTemplateConditionsDto"
+          },
+          "rate": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
       "PricingTypeInfo": {
         "type": "object",
         "properties": {
@@ -28122,56 +28547,6 @@
           }
         }
       },
-      "Provider": {
-        "required": [
-          "providerType",
-          "providerName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerType": {
-            "$ref": "#/components/schemas/ProviderType"
-          },
-          "providerName": {
-            "maxLength": 100,
-            "type": "string"
-          },
-          "baseUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "trustProviderReportedCosts": {
-            "type": "boolean"
-          },
-          "providerCostMarkupMultiplier": {
-            "type": "number",
-            "format": "double"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "providerKeyCredentials": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ProviderKeyCredential"
-            }
-          }
-        }
-      },
       "ProviderCatalogImportResult": {
         "required": [
           "provider",
@@ -28415,69 +28790,6 @@
           }
         },
         "description": "DTO for provider-level error summary"
-      },
-      "ProviderKeyCredential": {
-        "required": [
-          "providerId"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "providerId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "provider": {
-            "$ref": "#/components/schemas/Provider"
-          },
-          "providerAccountGroup": {
-            "maximum": 32,
-            "minimum": 0,
-            "type": "integer",
-            "format": "int16"
-          },
-          "apiKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "baseUrl": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "organization": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "keyName": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "isPrimary": {
-            "type": "boolean"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
       },
       "ProviderKeyCredentialDto": {
         "required": [
@@ -28931,193 +29243,6 @@
       },
       "RequestBillingMethod": {
         "type": "integer"
-      },
-      "RequestLog": {
-        "required": [
-          "modelName",
-          "requestType"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "virtualKeyId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "virtualKey": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/VirtualKey"
-              }
-            ]
-          },
-          "modelName": {
-            "maxLength": 100,
-            "type": "string"
-          },
-          "providerId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "providerType": {
-            "maxLength": 50,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "modelProviderMappingId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "promptCachingEligible": {
-            "type": "boolean"
-          },
-          "promptCachingPolicyApplied": {
-            "type": "boolean"
-          },
-          "cachedReadSavings": {
-            "type": "number",
-            "format": "double"
-          },
-          "cacheWritePremium": {
-            "type": "number",
-            "format": "double"
-          },
-          "promptCachingNetSavings": {
-            "type": "number",
-            "format": "double"
-          },
-          "routingAffinityUsed": {
-            "type": "boolean"
-          },
-          "routingDecisionReason": {
-            "maxLength": 50,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "routingFailoverCount": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "requestType": {
-            "maxLength": 50,
-            "type": "string"
-          },
-          "inputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "outputTokens": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "cachedInputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "cachedWriteTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "cost": {
-            "type": "number",
-            "format": "double"
-          },
-          "billingMethod": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/RequestBillingMethod"
-              }
-            ]
-          },
-          "providerReportedCostUsd": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "providerCostMarkupMultiplier": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "billedAtUtc": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "responseTimeMs": {
-            "type": "number",
-            "format": "double"
-          },
-          "timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "userId": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "clientIp": {
-            "maxLength": 50,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "requestPath": {
-            "maxLength": 256,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "statusCode": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "metadata": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
       },
       "ResolveIndeterminateTaskDto": {
         "required": [
@@ -30044,6 +30169,97 @@
       },
       "TransactionType": {
         "type": "integer"
+      },
+      "UpdateFunctionConfigurationRequest": {
+        "type": "object",
+        "properties": {
+          "configurationName": {
+            "maxLength": 200,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "purpose": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/FunctionPurpose"
+              }
+            ]
+          },
+          "defaultExecutionMode": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ExecutionMode"
+              }
+            ]
+          },
+          "baseUrl": {
+            "maxLength": 500,
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isEnabled": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "cacheTtlMinutes": {
+            "maximum": 10080,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "timeoutSeconds": {
+            "maximum": 3600,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxRetries": {
+            "maximum": 10,
+            "minimum": 0,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "providerSettings": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "parameterSchema": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "description": {
+            "maxLength": 1000,
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "UpdateFunctionCostDto": {
         "required": [
@@ -31307,128 +31523,6 @@
           }
         }
       },
-      "VirtualKey": {
-        "required": [
-          "keyName",
-          "keyHash"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "keyName": {
-            "maxLength": 100,
-            "type": "string"
-          },
-          "keyHash": {
-            "maxLength": 128,
-            "type": "string"
-          },
-          "description": {
-            "maxLength": 500,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "isEnabled": {
-            "type": "boolean"
-          },
-          "virtualKeyGroupId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "virtualKeyGroup": {
-            "$ref": "#/components/schemas/VirtualKeyGroup"
-          },
-          "expiresAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "metadata": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "allowedModels": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "rateLimitRpm": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "rateLimitRpd": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "requestLogs": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/RequestLog"
-            }
-          },
-          "spendHistory": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/VirtualKeySpendHistory"
-            }
-          },
-          "notifications": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/Notification"
-            }
-          },
-          "ipFilters": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "$ref": "#/components/schemas/IpFilterEntity"
-            }
-          },
-          "rowVersion": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "byte"
-          }
-        }
-      },
       "VirtualKeyCostBreakdownDto": {
         "type": "object",
         "properties": {
@@ -31586,85 +31680,6 @@
           }
         }
       },
-      "VirtualKeyGroup": {
-        "required": [
-          "groupName"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "externalGroupId": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "groupName": {
-            "maxLength": 100,
-            "type": "string"
-          },
-          "balance": {
-            "type": "number",
-            "format": "double"
-          },
-          "lifetimeCreditsAdded": {
-            "type": "number",
-            "format": "double"
-          },
-          "lifetimeSpent": {
-            "type": "number",
-            "format": "double"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "mediaRetentionPolicyId": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "mediaRetentionPolicy": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/MediaRetentionPolicy"
-              }
-            ]
-          },
-          "virtualKeys": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VirtualKey"
-            }
-          },
-          "transactions": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/VirtualKeyGroupTransaction"
-            }
-          },
-          "rowVersion": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "byte"
-          }
-        }
-      },
       "VirtualKeyGroupDto": {
         "required": [
           "id",
@@ -31735,89 +31750,6 @@
         },
         "description": "Summary information for a virtual key group."
       },
-      "VirtualKeyGroupTransaction": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "virtualKeyGroupId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "virtualKeyGroup": {
-            "$ref": "#/components/schemas/VirtualKeyGroup"
-          },
-          "transactionType": {
-            "$ref": "#/components/schemas/TransactionType"
-          },
-          "amount": {
-            "type": "number",
-            "format": "double"
-          },
-          "balanceAfter": {
-            "type": "number",
-            "format": "double"
-          },
-          "referenceType": {
-            "$ref": "#/components/schemas/ReferenceType"
-          },
-          "referenceId": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "description": {
-            "maxLength": 500,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "initiatedBy": {
-            "maxLength": 50,
-            "type": "string"
-          },
-          "initiatedByUserId": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "idempotencyKey": {
-            "maxLength": 100,
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "billingWindowStartUtc": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "isDeleted": {
-            "type": "boolean"
-          },
-          "deletedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        }
-      },
       "VirtualKeyGroupTransactionDto": {
         "required": [
           "id",
@@ -31875,41 +31807,6 @@
             ]
           },
           "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "VirtualKeySpendHistory": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "virtualKeyId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "virtualKey": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/VirtualKey"
-              }
-            ]
-          },
-          "amount": {
-            "type": "number",
-            "format": "double"
-          },
-          "date": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "timestamp": {
             "type": "string",
             "format": "date-time"
           }

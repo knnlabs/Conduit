@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Net.Http.Headers;
+using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -100,17 +101,15 @@ namespace ConduitLLM.Gateway.Endpoints
 
             // Return result with full URL
             var baseUrl = $"{Request.Scheme}://{Request.Host}";
-            return Ok(new
-            {
-                success = true,
-                storageKey = result.StorageKey,
-                url = result.Url,
-                directUrl = $"{baseUrl}/v1/media/{result.StorageKey}",
-                contentType = metadata.ContentType,
-                mediaType = determinedMediaType.ToString(),
-                fileName = file.FileName,
-                sizeBytes = file.Length
-            });
+            return Ok(new MediaUploadResponse(
+                true,
+                result.StorageKey,
+                result.Url,
+                $"{baseUrl}/v1/media/{result.StorageKey}",
+                metadata.ContentType,
+                determinedMediaType.ToString(),
+                file.FileName,
+                file.Length));
         }
 
         /// <summary>

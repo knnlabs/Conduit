@@ -1,4 +1,5 @@
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -34,7 +35,7 @@ namespace ConduitLLM.Gateway.Endpoints
         {
             _messageBatcher.PauseBatching();
             Logger.LogInformation("Message batching paused by admin");
-            return Ok(new { message = "Batching paused successfully" });
+            return Ok(new MessageResponse("Batching paused successfully"));
         }
 
         /// <summary>
@@ -44,7 +45,7 @@ namespace ConduitLLM.Gateway.Endpoints
         {
             _messageBatcher.ResumeBatching();
             Logger.LogInformation("Message batching resumed by admin");
-            return Ok(new { message = "Batching resumed successfully" });
+            return Ok(new MessageResponse("Batching resumed successfully"));
         }
 
         /// <summary>
@@ -54,7 +55,7 @@ namespace ConduitLLM.Gateway.Endpoints
         {
             await _messageBatcher.FlushAllBatchesAsync();
             Logger.LogInformation("All batches flushed by admin");
-            return Ok(new { message = "All batches flushed successfully" });
+            return Ok(new MessageResponse("All batches flushed successfully"));
         }
 
         /// <summary>
@@ -64,16 +65,14 @@ namespace ConduitLLM.Gateway.Endpoints
         {
             var stats = await _messageBatcher.GetStatisticsAsync();
             
-            return Ok(new
-            {
-                totalMessagesBatched = stats.TotalMessagesBatched,
-                totalBatchesSent = stats.TotalBatchesSent,
-                averageMessagesPerBatch = stats.AverageMessagesPerBatch,
-                networkCallsSaved = stats.NetworkCallsSaved,
-                batchEfficiencyPercentage = stats.BatchEfficiencyPercentage,
-                averageBatchLatency = stats.AverageBatchLatency.TotalMilliseconds,
-                isBatchingEnabled = stats.IsBatchingEnabled
-            });
+            return Ok(new BatchingEfficiencyResponse(
+                stats.TotalMessagesBatched,
+                stats.TotalBatchesSent,
+                stats.AverageMessagesPerBatch,
+                stats.NetworkCallsSaved,
+                stats.BatchEfficiencyPercentage,
+                stats.AverageBatchLatency.TotalMilliseconds,
+                stats.IsBatchingEnabled));
         }
     }
 }

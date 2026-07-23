@@ -5,6 +5,9 @@ using ConduitLLM.Gateway.Services;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Rerank;
+using ConduitLLM.Functions.DTOs;
+using ConduitLLM.Gateway.DTOs;
+using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Gateway.Endpoints;
 
@@ -63,26 +66,26 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Discovery");
         discovery.MapGet("/models", ([FromServices] DiscoveryEndpoints endpoints, string? capability) => endpoints.GetModels(capability))
-            .WithName("Discovery_GetModels").Produces<object>();
+            .WithName("Discovery_GetModels").Produces<DiscoveryModelsResponse>();
         discovery.MapGet("/capabilities", ([FromServices] DiscoveryEndpoints endpoints) => endpoints.GetCapabilities())
-            .WithName("Discovery_GetCapabilities").Produces<object>();
+            .WithName("Discovery_GetCapabilities").Produces<DiscoveryCapabilitiesResponse>();
         discovery.MapGet("/models/{model}/parameters", ([FromServices] DiscoveryEndpoints endpoints, string model) => endpoints.GetModelParameters(model))
-            .WithName("Discovery_GetModelParameters").Produces<object>();
+            .WithName("Discovery_GetModelParameters").Produces<ModelParametersResponse>();
         discovery.MapGet("/functions", ([FromServices] DiscoveryEndpoints endpoints, string? purpose, string? providerType) => endpoints.GetFunctions(purpose, providerType))
-            .WithName("Discovery_GetFunctions").Produces<object>();
+            .WithName("Discovery_GetFunctions").Produces<FunctionDiscoveryResponse>();
         discovery.MapGet("/functions/{functionConfigurationId}/parameters", ([FromServices] DiscoveryEndpoints endpoints, int functionConfigurationId) => endpoints.GetFunctionParameters(functionConfigurationId))
-            .WithName("Discovery_GetFunctionParameters").Produces<object>();
+            .WithName("Discovery_GetFunctionParameters").Produces<FunctionParametersResponseDto>();
 
         var tasks = app.MapGroup("/v1/tasks")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Tasks");
         tasks.MapGet("/{taskId}", ([FromServices] TasksEndpoints endpoints, string taskId) => endpoints.GetTaskStatus(taskId))
-            .WithName("Tasks_GetStatus").Produces<object>();
+            .WithName("Tasks_GetStatus").Produces<AsyncTaskStatus>();
         tasks.MapPost("/{taskId}/cancel", ([FromServices] TasksEndpoints endpoints, string taskId) => endpoints.CancelTask(taskId))
-            .WithName("Tasks_Cancel").Produces<object>();
+            .WithName("Tasks_Cancel").Produces(StatusCodes.Status204NoContent);
         tasks.MapGet("/{taskId}/poll", ([FromServices] TasksEndpoints endpoints, string taskId, int timeout = 300, int interval = 2) => endpoints.PollTask(taskId, timeout, interval))
-            .WithName("Tasks_Poll").Produces<object>();
+            .WithName("Tasks_Poll").Produces<AsyncTaskStatus>();
 
         var batch = app.MapGroup("/v1/batch")
             .RequireAuthorization("VirtualKeyAuthentication")
@@ -103,13 +106,13 @@ public static class GatewayApiEndpoints
         batching.MapGet("/statistics", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.GetStatistics())
             .AllowAnonymous().WithName("SignalRBatching_GetStatistics").Produces<BatchingStatistics>();
         batching.MapPost("/pause", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.PauseBatching())
-            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Pause").Produces<object>();
+            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Pause").Produces<MessageResponse>();
         batching.MapPost("/resume", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.ResumeBatching())
-            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Resume").Produces<object>();
+            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Resume").Produces<MessageResponse>();
         batching.MapPost("/flush", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.FlushBatches())
-            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Flush").Produces<object>();
+            .RequireAuthorization("AdminOnly").WithName("SignalRBatching_Flush").Produces<MessageResponse>();
         batching.MapGet("/efficiency", ([FromServices] SignalRBatchingEndpoints endpoints) => endpoints.GetEfficiencyMetrics())
-            .AllowAnonymous().WithName("SignalRBatching_GetEfficiency").Produces<object>();
+            .AllowAnonymous().WithName("SignalRBatching_GetEfficiency").Produces<BatchingEfficiencyResponse>();
 
         var signalRHealth = app.MapGroup("/health/signalr").WithTags("SignalR Health");
         signalRHealth.MapGet("/connections", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetConnectionStatistics())
@@ -117,19 +120,19 @@ public static class GatewayApiEndpoints
         signalRHealth.MapGet("/queue", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetQueueStatistics())
             .AllowAnonymous().WithName("SignalRHealth_GetQueue").Produces<QueueStatistics>();
         signalRHealth.MapGet("/connections/details", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetConnectionDetails())
-            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_GetConnectionDetails").Produces<object>();
+            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_GetConnectionDetails").Produces<ConnectionDetailsResponse>();
         signalRHealth.MapGet("/connections/hub/{hubName}", ([FromServices] SignalRHealthEndpoints endpoints, string hubName) => endpoints.GetHubConnections(hubName))
-            .AllowAnonymous().WithName("SignalRHealth_GetHubConnections").Produces<object>();
+            .AllowAnonymous().WithName("SignalRHealth_GetHubConnections").Produces<HubConnectionsResponse>();
         signalRHealth.MapGet("/connections/key/{virtualKeyId}", ([FromServices] SignalRHealthEndpoints endpoints, int virtualKeyId) => endpoints.GetVirtualKeyConnections(virtualKeyId))
-            .RequireAuthorization("VirtualKeyAuthentication").WithName("SignalRHealth_GetVirtualKeyConnections").Produces<object>();
+            .RequireAuthorization("VirtualKeyAuthentication").WithName("SignalRHealth_GetVirtualKeyConnections").Produces<VirtualKeyConnectionsResponse>();
         signalRHealth.MapGet("/connections/group/{groupName}", ([FromServices] SignalRHealthEndpoints endpoints, string groupName) => endpoints.GetGroupConnections(groupName))
-            .AllowAnonymous().WithName("SignalRHealth_GetGroupConnections").Produces<object>();
+            .AllowAnonymous().WithName("SignalRHealth_GetGroupConnections").Produces<GroupConnectionsResponse>();
         signalRHealth.MapGet("/queue/deadletter", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetDeadLetterMessages())
-            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_GetDeadLetters").Produces<object>();
+            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_GetDeadLetters").Produces<DeadLetterMessagesResponse>();
         signalRHealth.MapPost("/queue/deadletter/{messageId}/requeue", ([FromServices] SignalRHealthEndpoints endpoints, string messageId) => endpoints.RequeueDeadLetter(messageId))
-            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_RequeueDeadLetter").Produces<object>();
+            .RequireAuthorization("AdminOnly").WithName("SignalRHealth_RequeueDeadLetter").Produces<MessageResponse>();
         signalRHealth.MapGet("", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetHealthStatus())
-            .AllowAnonymous().WithName("SignalRHealth_GetHealth").Produces<object>();
+            .AllowAnonymous().WithName("SignalRHealth_GetHealth").Produces<SignalRHealthResponse>();
 
         var functions = app.MapGroup("/v1/functions")
             .RequireAuthorization("VirtualKeyAuthentication")
@@ -137,14 +140,14 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Functions");
         functions.MapPost("/execute", ([FromServices] FunctionsEndpoints endpoints, FunctionsEndpoints.FunctionExecutionRequest request, CancellationToken cancellationToken) => endpoints.ExecuteFunction(request, cancellationToken))
-            .WithName("Functions_Execute").Produces<object>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(404).Produces(500);
+            .WithName("Functions_Execute").Produces<FunctionsEndpoints.FunctionExecutionResponse>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(404).Produces(500);
         functions.MapGet("/executions/{executionId}", ([FromServices] FunctionsEndpoints endpoints, Guid executionId, CancellationToken cancellationToken) => endpoints.GetExecution(executionId, cancellationToken))
-            .WithName("Functions_GetExecution").Produces<object>().Produces<OpenAIErrorResponse>(404).Produces(500);
+            .WithName("Functions_GetExecution").Produces<FunctionsEndpoints.FunctionExecutionResponse>().Produces<OpenAIErrorResponse>(404).Produces(500);
 
         app.MapPost("/v1/rerank", ([FromServices] RerankEndpoints endpoints, RerankRequest request, CancellationToken cancellationToken) => endpoints.CreateRerank(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<RequireBalanceEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Rerank").WithName("Rerank_Create")
-            .Produces<object>();
+            .Produces<RerankResponse>();
 
         app.MapPost("/v1/embeddings", ([FromServices] EmbeddingsEndpoints endpoints, EmbeddingRequest request, CancellationToken cancellationToken) => endpoints.CreateEmbedding(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<RequireBalanceEndpointFilter>()
@@ -163,7 +166,7 @@ public static class GatewayApiEndpoints
                 endpoints.CreateTranscription(file, model, language, prompt, responseFormat, temperature, cancellationToken))
             .WithName("Audio_CreateTranscription").DisableAntiforgery()
             .WithMetadata(new RequestSizeLimitMetadata(26_214_400))
-            .Produces<object>();
+            .Produces<AudioTranscriptionResponse>();
         audio.MapPost("/speech", ([FromServices] AudioEndpoints endpoints, TextToSpeechRequest request, CancellationToken cancellationToken) => endpoints.CreateSpeech(request, cancellationToken))
             .WithName("Audio_CreateSpeech").Produces<byte[]>(200, "application/octet-stream");
 
@@ -171,9 +174,9 @@ public static class GatewayApiEndpoints
         media.MapPost("/upload", ([FromServices] MediaEndpoints endpoints, [FromForm] IFormFile file, [FromForm] string? mediaType) => endpoints.UploadMedia(file, mediaType))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithName("Media_Upload").DisableAntiforgery().WithMetadata(new RequestSizeLimitMetadata(524_288_000))
-            .Produces<object>();
+            .Produces<MediaUploadResponse>();
         media.MapGet("/info/{**storageKey}", ([FromServices] MediaEndpoints endpoints, string storageKey) => endpoints.GetMediaInfo(storageKey))
-            .RequireAuthorization("VirtualKeyAuthentication").WithName("Media_GetInfo").Produces<object>();
+            .RequireAuthorization("VirtualKeyAuthentication").WithName("Media_GetInfo").Produces<MediaInfo>();
         media.MapGet("/{**storageKey}", ([FromServices] MediaEndpoints endpoints, string storageKey) => endpoints.GetMedia(storageKey))
             .AllowAnonymous().WithName("Media_Get").Produces<Stream>(200, "application/octet-stream");
         media.MapMethods("/{**storageKey}", [HttpMethods.Head], ([FromServices] MediaEndpoints endpoints, string storageKey) => endpoints.CheckMediaExists(storageKey))
@@ -184,9 +187,9 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Downloads");
         downloads.MapGet("/metadata/{**fileId}", ([FromServices] DownloadsEndpoints endpoints, string fileId) => endpoints.GetFileMetadata(fileId))
-            .WithName("Downloads_GetMetadata").Produces<object>();
+            .WithName("Downloads_GetMetadata").Produces<FileMetadataResponse>();
         downloads.MapPost("/generate-url", ([FromServices] DownloadsEndpoints endpoints, GenerateUrlRequest request) => endpoints.GenerateDownloadUrl(request))
-            .WithName("Downloads_GenerateUrl").Produces<object>();
+            .WithName("Downloads_GenerateUrl").Produces<DownloadUrlResponse>();
         downloads.MapGet("/{**fileId}", ([FromServices] DownloadsEndpoints endpoints, string fileId, bool inline = false) => endpoints.DownloadFile(fileId, inline))
             .WithName("Downloads_Get").Produces<Stream>(200, "application/octet-stream");
         downloads.MapMethods("/{**fileId}", [HttpMethods.Head], ([FromServices] DownloadsEndpoints endpoints, string fileId) => endpoints.CheckFileExists(fileId))
@@ -198,13 +201,13 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Images");
         images.MapPost("/generations", ([FromServices] ImagesEndpoints endpoints, ImageGenerationRequest request, CancellationToken cancellationToken) => endpoints.CreateImage(request, cancellationToken))
-            .WithName("Images_Create").Produces<object>();
+            .WithName("Images_Create").Produces<ImageGenerationResponse>();
         images.MapPost("/generations/async", ([FromServices] ImagesEndpoints endpoints, ImageGenerationRequest request) => endpoints.CreateImageAsync(request))
-            .WithName("Images_CreateImageAsync").Produces<object>();
+            .WithName("Images_CreateImageAsync").Produces<AsyncTaskResponse>(StatusCodes.Status202Accepted);
         images.MapGet("/generations/{taskId}/status", ([FromServices] ImagesEndpoints endpoints, string taskId) => endpoints.GetGenerationStatus(taskId))
-            .WithName("Images_GetStatus").Produces<object>();
+            .WithName("Images_GetStatus").Produces<AsyncTaskStatusResponse>();
         images.MapDelete("/generations/{taskId}", ([FromServices] ImagesEndpoints endpoints, string taskId) => endpoints.CancelGeneration(taskId))
-            .WithName("Images_Cancel").Produces<object>();
+            .WithName("Images_Cancel").Produces<TaskCancellationResponse>();
 
         var videos = app.MapGroup("/v1/videos")
             .RequireAuthorization("VirtualKeyAuthentication")

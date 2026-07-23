@@ -51,13 +51,6 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
         "Media_Prune:400"
     ];
 
-    private static readonly HashSet<string> LegacyObjectResponses =
-    [
-        "Analytics_InvalidateCache:200",
-        "MediaRetention_AssignPolicyToGroup:200",
-        "MediaRetention_SetDefaultPolicy:200"
-    ];
-
     private static readonly IReadOnlyDictionary<string, HashSet<string>> LegacyOptionalQueryParameters =
         new Dictionary<string, HashSet<string>>(StringComparer.Ordinal)
         {
@@ -109,17 +102,7 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                 continue;
             }
 
-            EnsureJsonBody(response);
         }
-    }
-
-    private static void EnsureJsonBody(OpenApiResponse response)
-    {
-        if (response.Content?.Values.Any(media => media.Schema is not null) == true) return;
-        response.Content = new Dictionary<string, OpenApiMediaType>
-        {
-            ["application/json"] = new() { Schema = new OpenApiSchema { Type = JsonSchemaType.Object } }
-        };
     }
 
     private static OpenApiSchema BinarySchema() => new() { Type = JsonSchemaType.String, Format = "binary" };
@@ -207,17 +190,6 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                     };
                 }
                 continue;
-            }
-
-            if (LegacyObjectResponses.Contains(responseKey) && response.Content is not null)
-            {
-                foreach (var media in response.Content.Values)
-                {
-                    if (media.Schema is OpenApiSchema { Type: null } schema)
-                    {
-                        schema.Type = JsonSchemaType.Object;
-                    }
-                }
             }
 
             if (responseEntry.Key != "500" &&

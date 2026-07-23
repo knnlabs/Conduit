@@ -78,7 +78,6 @@ export interface CreateFunctionConfigurationDto {
 }
 
 export interface UpdateFunctionConfigurationDto {
-  id: number;
   configurationName?: string;
   purpose?: FunctionPurpose;
   description?: string;
@@ -205,20 +204,17 @@ export interface FunctionExecutionDto {
   state: ExecutionState;
   executionMode: FunctionExecutionMode;
   requestedAt: string;
-  requestJson?: string | null; // JSON
-  responseJson?: string; // JSON
+  request?: unknown;
+  response?: unknown;
   errorMessage?: string;
   estimatedCost?: number;
   actualCost?: number;
-  costCalculationDetails?: string; // JSON
+  costCalculation?: unknown;
   startedAt?: string;
   completedAt?: string;
   duration?: number; // TimeSpan in milliseconds
   retryCount: number;
   nextRetryAt?: string | null;
-  leasedBy?: string | null;
-  leaseExpiryTime?: string | null;
-  version: number;
   webhookUrl?: string | null;
   webhookDelivered: boolean;
   progressPercentage?: number | null;

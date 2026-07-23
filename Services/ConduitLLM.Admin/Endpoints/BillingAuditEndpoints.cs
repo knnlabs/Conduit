@@ -79,7 +79,7 @@ namespace ConduitLLM.Admin.Endpoints
                 .Produces(StatusCodes.Status400BadRequest);
             group.MapGet("/revenue-loss", ([FromServices] BillingAuditEndpoints endpoints, [FromQuery] DateTime? from = null, [FromQuery] DateTime? to = null) => endpoints.GetRevenueLoss(from ?? default, to ?? default))
                 .WithName("BillingAudit_GetRevenueLoss")
-                .Produces<object>()
+                .Produces<BillingRevenueLossResponse>()
                 .Produces(StatusCodes.Status400BadRequest);
             group.MapPost("/export", ([FromServices] BillingAuditEndpoints endpoints, BillingAuditExportRequest request) => endpoints.ExportAuditEvents(request))
                 .WithName("BillingAudit_ExportAuditEvents")
@@ -87,7 +87,7 @@ namespace ConduitLLM.Admin.Endpoints
                 .Produces(StatusCodes.Status400BadRequest);
             group.MapGet("/event-types", ([FromServices] BillingAuditEndpoints endpoints) => endpoints.GetEventTypes())
                 .WithName("BillingAudit_GetEventTypes")
-                .Produces<object>();
+                .Produces<List<BillingAuditEventTypeResponse>>();
             return app;
         }
 
@@ -209,7 +209,7 @@ namespace ConduitLLM.Admin.Endpoints
             var loss = await _billingAuditService.GetPotentialRevenueLossAsync(from, to);
 
             BillingAuditQueries.WithLabels("revenue-loss", "success").Inc();
-            return Results.Ok(new { potentialRevenueLoss = loss, currency = "USD" });
+            return Results.Ok(new BillingRevenueLossResponse(loss, "USD"));
         }
 
         /// <summary>
@@ -266,12 +266,10 @@ namespace ConduitLLM.Admin.Endpoints
         public IResult GetEventTypes()
         {
             var eventTypes = Enum.GetValues<BillingAuditEventType>()
-                .Select(e => new
-                {
-                    Value = e,
-                    Name = e.ToString(),
-                    Description = GetEventTypeDescription(e)
-                })
+                .Select(e => new BillingAuditEventTypeResponse(
+                    e,
+                    e.ToString(),
+                    GetEventTypeDescription(e)))
                 .OrderBy(e => e.Name)
                 .ToList();
 

@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using ConduitLLM.Admin.DTOs;
 
 namespace ConduitLLM.Admin.Endpoints;
 
@@ -21,12 +22,14 @@ public static class SystemInfoEndpoints
         group.MapGet("/health", GetHealth).WithName("SystemInfo_GetHealth")
             .Produces<HealthStatusDto>(StatusCodes.Status200OK);
         group.MapPost("/cache/invalidate-discovery", InvalidateDiscovery)
-            .WithName("SystemInfo_InvalidateDiscoveryCache").Produces<object>(StatusCodes.Status200OK);
+            .WithName("SystemInfo_InvalidateDiscoveryCache").Produces<CacheInvalidationPublishedResponse>(StatusCodes.Status200OK);
         group.MapGet("/cache/function-discovery/stats", GetFunctionDiscoveryStats)
             .WithName("SystemInfo_GetFunctionDiscoveryCacheStats")
-            .Produces<object>(StatusCodes.Status200OK).Produces<object>(StatusCodes.Status404NotFound);
+            .Produces<FunctionDiscoveryCacheStatistics>(StatusCodes.Status200OK)
+            .Produces<CacheServiceUnavailableResponse>(StatusCodes.Status404NotFound);
         group.MapPost("/cache/invalidate-function-discovery", InvalidateFunctionDiscovery)
-            .WithName("SystemInfo_InvalidateFunctionDiscoveryCache").Produces<object>(StatusCodes.Status200OK);
+            .WithName("SystemInfo_InvalidateFunctionDiscoveryCache")
+            .Produces<CacheInvalidationPublishedResponse>(StatusCodes.Status200OK);
         return app;
     }
 
@@ -45,23 +48,19 @@ public static class SystemInfoEndpoints
             CorrelationId = Guid.NewGuid().ToString()
         });
         Audit(context, loggerFactory, "DiscoveryCache");
-        return Results.Ok(new
-        {
-            message = "Discovery cache invalidation request published successfully",
-            timestamp = DateTime.UtcNow,
-            note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
-        });
+        return Results.Ok(new CacheInvalidationPublishedResponse(
+            "Discovery cache invalidation request published successfully",
+            DateTime.UtcNow,
+            "Cache invalidation is being processed asynchronously across all Gateway API instances"));
     }
 
     private static async Task<IResult> GetFunctionDiscoveryStats(IServiceProvider services)
     {
         var cache = services.GetService<IFunctionDiscoveryCacheService>();
         return cache is null
-            ? Results.NotFound(new
-            {
-                message = "Function discovery cache service is not configured",
-                note = "The cache service must be registered in the DI container"
-            })
+            ? Results.NotFound(new CacheServiceUnavailableResponse(
+                "Function discovery cache service is not configured",
+                "The cache service must be registered in the DI container"))
             : Results.Ok(await cache.GetStatisticsAsync());
     }
 
@@ -75,12 +74,10 @@ public static class SystemInfoEndpoints
             CorrelationId = Guid.NewGuid().ToString()
         });
         Audit(context, loggerFactory, "FunctionDiscoveryCache");
-        return Results.Ok(new
-        {
-            message = "Function discovery cache invalidation request published successfully",
-            timestamp = DateTime.UtcNow,
-            note = "Cache invalidation is being processed asynchronously across all Gateway API instances"
-        });
+        return Results.Ok(new CacheInvalidationPublishedResponse(
+            "Function discovery cache invalidation request published successfully",
+            DateTime.UtcNow,
+            "Cache invalidation is being processed asynchronously across all Gateway API instances"));
     }
 
     private static void Audit(HttpContext context, ILoggerFactory factory, string entity) =>

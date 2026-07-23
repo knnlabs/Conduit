@@ -6,6 +6,7 @@ using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.Costs;
+using ConduitLLM.Admin.DTOs;
 
 namespace ConduitLLM.Admin.Endpoints;
 
@@ -65,11 +66,11 @@ public class AnalyticsEndpoints
         group.MapGet("/export", ([FromServices] AnalyticsEndpoints e, string format = "csv", DateTime? startDate = null, DateTime? endDate = null, string? model = null, int? virtualKeyId = null) => e.ExportAnalytics(format, startDate, endDate, model, virtualKeyId))
             .WithName("Analytics_ExportAnalytics").Produces(StatusCodes.Status200OK, typeof(void), "text/csv", "application/json").Produces(StatusCodes.Status400BadRequest);
         group.MapGet("/metrics/cache", ([FromServices] AnalyticsEndpoints e) => e.GetCacheMetrics())
-            .WithName("Analytics_GetCacheMetrics").Produces<Dictionary<string, object>>().Produces(StatusCodes.Status404NotFound);
+            .WithName("Analytics_GetCacheMetrics").Produces<AnalyticsCacheMetricsResponse>().Produces(StatusCodes.Status404NotFound);
         group.MapGet("/metrics/operations", ([FromServices] AnalyticsEndpoints e) => e.GetOperationMetrics())
             .WithName("Analytics_GetOperationMetrics").Produces<Dictionary<string, double>>().Produces(StatusCodes.Status404NotFound);
         group.MapPost("/cache/invalidate", ([FromServices] AnalyticsEndpoints e, string reason = "Manual invalidation") => e.InvalidateCache(reason))
-            .WithName("Analytics_InvalidateCache").Produces<object>();
+            .WithName("Analytics_InvalidateCache").Produces<AnalyticsCacheInvalidationResponse>();
         return app;
     }
 
@@ -304,7 +305,15 @@ public class AnalyticsEndpoints
         }
 
         var metrics = _analyticsMetrics.GetCacheStatistics();
-        return Results.Ok(metrics);
+        return Results.Ok(new AnalyticsCacheMetricsResponse(
+            Convert.ToInt64(metrics["TotalHits"]),
+            Convert.ToInt64(metrics["TotalMisses"]),
+            Convert.ToDouble(metrics["HitRate"]),
+            Convert.ToDouble(metrics["CacheMemoryMB"]),
+            Convert.ToInt64(metrics["TotalInvalidations"]),
+            Convert.ToDouble(metrics["UptimeMinutes"]),
+            ToMetricCounts(metrics["TopHitKeys"]),
+            ToMetricCounts(metrics["TopMissKeys"])));
     }
 
     /// <summary>
@@ -335,12 +344,10 @@ public class AnalyticsEndpoints
             "Invalidated",
             "AnalyticsCache",
             detail: $"Reason: {reason}, KeysInvalidated: {keysInvalidated}");
-        return Results.Ok(new
-        {
-            message = "Analytics cache invalidated",
+        return Results.Ok(new AnalyticsCacheInvalidationResponse(
+            "Analytics cache invalidated",
             reason,
-            keysInvalidated
-        });
+            keysInvalidated));
     }
 
     private void LogAdminAudit(string operation, string entityType, object? entityId = null, string? detail = null)
@@ -353,4 +360,9 @@ public class AnalyticsEndpoints
     }
 
     #endregion
+
+    private static IReadOnlyList<MetricKeyCountDto> ToMetricCounts(object value) =>
+        ((IEnumerable<KeyValuePair<string, long>>)value)
+        .Select(pair => new MetricKeyCountDto(pair.Key, pair.Value))
+        .ToList();
 }

@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.DTOs;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Gateway.Endpoints;
@@ -18,12 +19,12 @@ public static class ModelsEndpoints
 
         group.MapGet("/models", ListModels)
             .WithName("Models_ListModels")
-            .Produces<object>(StatusCodes.Status200OK)
+            .Produces<ModelListResponse>(StatusCodes.Status200OK)
             .Produces<OpenAIErrorResponse>(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/models/{modelId}/metadata", GetModelMetadata)
             .WithName("Models_GetModelMetadata")
-            .Produces<object>(StatusCodes.Status200OK)
+            .Produces<ModelMetadataResponse>(StatusCodes.Status200OK)
             .Produces<OpenAIErrorResponse>(StatusCodes.Status404NotFound)
             .Produces<OpenAIErrorResponse>(StatusCodes.Status500InternalServerError);
 
@@ -56,10 +57,10 @@ public static class ModelsEndpoints
         var data = allMappings
             .Select(mapping => mapping.ModelAlias)
             .Distinct()
-            .Select(alias => new { id = alias, @object = "model" })
+            .Select(alias => new ModelListItemDto(alias, "model"))
             .ToList();
         logger.LogDebug("Returning {ModelCount} available models", data.Count);
-        return Results.Ok(new { data, @object = "list" });
+        return Results.Ok(new ModelListResponse(data, "list"));
     }
 
     private static async Task<IResult> GetModelMetadata(
@@ -75,6 +76,6 @@ public static class ModelsEndpoints
                 StatusCodes.Status404NotFound,
                 $"No metadata found for model '{modelId}'",
                 "model_not_found")
-            : Results.Ok(new { modelId, metadata });
+            : Results.Ok(new ModelMetadataResponse(modelId, metadata));
     }
 }

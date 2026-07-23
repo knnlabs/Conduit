@@ -29,9 +29,9 @@ public static class MediaEndpoints
         media.MapGet("/stats/by-type", GetStatsByMediaType).WithName("Media_GetStatsByMediaType")
             .Produces<Dictionary<string, long>>();
         media.MapGet("/virtual-key/{virtualKeyId}", GetMediaByVirtualKey).WithName("Media_GetByVirtualKey")
-            .Produces<List<MediaRecord>>();
+            .Produces<List<MediaRecordResponse>>();
         media.MapGet("/search", SearchMedia).WithName("Media_Search")
-            .Produces<List<MediaRecord>>()
+            .Produces<List<MediaRecordResponse>>()
             .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
         media.MapDelete("/{mediaId}", DeleteMedia).WithName("Media_Delete")
             .Produces<MediaDeletionResponseDto>()
@@ -82,7 +82,7 @@ public static class MediaEndpoints
     private static async Task<IResult> GetMediaByVirtualKey(
         int virtualKeyId,
         [FromServices] IAdminMediaService mediaService) =>
-        Results.Ok(await mediaService.GetMediaByVirtualKeyAsync(virtualKeyId));
+        Results.Ok((await mediaService.GetMediaByVirtualKeyAsync(virtualKeyId)).Select(ToResponse).ToList());
 
     private static async Task<IResult> SearchMedia(
         [FromServices] IAdminMediaService mediaService,
@@ -90,7 +90,7 @@ public static class MediaEndpoints
     {
         if (string.IsNullOrWhiteSpace(pattern))
             return Results.BadRequest(new ErrorResponseDto("Search pattern is required"));
-        return Results.Ok(await mediaService.SearchMediaByStorageKeyAsync(pattern));
+        return Results.Ok((await mediaService.SearchMediaByStorageKeyAsync(pattern)).Select(ToResponse).ToList());
     }
 
     private static async Task<IResult> DeleteMedia(
@@ -190,4 +190,22 @@ public static class MediaEndpoints
     }
 
     private sealed class MediaEndpointLog;
+
+    private static MediaRecordResponse ToResponse(MediaRecord media) => new(
+        media.Id,
+        media.StorageKey,
+        media.VirtualKeyId,
+        media.MediaType,
+        media.ContentType,
+        media.SizeBytes,
+        media.ContentHash,
+        media.Provider,
+        media.Model,
+        media.Prompt,
+        media.StorageUrl,
+        media.PublicUrl,
+        media.ExpiresAt,
+        media.CreatedAt,
+        media.LastAccessedAt,
+        media.AccessCount);
 }

@@ -1,12 +1,13 @@
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Models;
+using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Services;
 
 /// <summary>Retrieves effective model metadata from the configured routing database.</summary>
 public interface IModelMetadataService
 {
-    Task<object?> GetModelMetadataAsync(string modelId);
+    Task<ModelMetadataDto?> GetModelMetadataAsync(string modelId);
 }
 
 /// <summary>
@@ -26,7 +27,7 @@ public sealed class ModelMetadataService : IModelMetadataService
         _logger = logger;
     }
 
-    public async Task<object?> GetModelMetadataAsync(string modelId)
+    public async Task<ModelMetadataDto?> GetModelMetadataAsync(string modelId)
     {
         var mappings = await _mappingRepository.GetAllByModelNameAsync(modelId);
         var mapping = mappings.FirstOrDefault(candidate =>
@@ -43,39 +44,35 @@ public sealed class ModelMetadataService : IModelMetadataService
         }
 
         var capabilities = ModelCapabilityResolver.Resolve(model, association);
-        return new
-        {
-            id = modelId,
-            canonical_model_id = model.Id,
-            canonical_name = model.Name,
-            provider = mapping!.Provider?.ProviderType.ToString().ToLowerInvariant(),
-            provider_model_id = association!.Identifier,
-            description = model.Description,
-            model_card_url = model.ModelCardUrl,
-            input_modalities = capabilities.InputModalities,
-            output_modalities = capabilities.OutputModalities,
-            capability_source = capabilities.Source.ToString().ToLowerInvariant(),
-            capabilities_last_verified_at = capabilities.LastVerifiedAt,
-            capabilities = new
-            {
-                chat = capabilities.SupportsChat,
-                chat_stream = capabilities.SupportsStreaming,
-                image_input = capabilities.SupportsImageInput,
-                video_input = capabilities.SupportsVideoInput,
-                audio_input = capabilities.SupportsAudioInput,
-                file_input = capabilities.SupportsFileInput,
-                vision = capabilities.SupportsVision,
-                video_understanding = capabilities.SupportsVideoUnderstanding,
-                image_generation = capabilities.SupportsImageGeneration,
-                video_generation = capabilities.SupportsVideoGeneration,
-                embeddings = capabilities.SupportsEmbeddings,
-                function_calling = capabilities.SupportsFunctionCalling,
-                speech_to_text = capabilities.SupportsSpeechToText,
-                text_to_speech = capabilities.SupportsTextToSpeech,
-                rerank = capabilities.SupportsRerank
-            },
-            max_input_tokens = association.MaxInputTokens ?? model.MaxInputTokens,
-            max_output_tokens = association.MaxOutputTokens ?? model.MaxOutputTokens
-        };
+        return new ModelMetadataDto(
+            modelId,
+            model.Id,
+            model.Name,
+            mapping!.Provider?.ProviderType.ToString().ToLowerInvariant(),
+            association!.Identifier,
+            model.Description,
+            model.ModelCardUrl,
+            capabilities.InputModalities ?? [],
+            capabilities.OutputModalities ?? [],
+            capabilities.Source.ToString().ToLowerInvariant(),
+            capabilities.LastVerifiedAt,
+            new ModelCapabilitiesDto(
+                capabilities.SupportsChat,
+                capabilities.SupportsStreaming,
+                capabilities.SupportsImageInput,
+                capabilities.SupportsVideoInput,
+                capabilities.SupportsAudioInput,
+                capabilities.SupportsFileInput,
+                capabilities.SupportsVision,
+                capabilities.SupportsVideoUnderstanding,
+                capabilities.SupportsImageGeneration,
+                capabilities.SupportsVideoGeneration,
+                capabilities.SupportsEmbeddings,
+                capabilities.SupportsFunctionCalling,
+                capabilities.SupportsSpeechToText,
+                capabilities.SupportsTextToSpeech,
+                capabilities.SupportsRerank),
+            association.MaxInputTokens ?? model.MaxInputTokens,
+            association.MaxOutputTokens ?? model.MaxOutputTokens);
     }
 }

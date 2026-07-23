@@ -17,7 +17,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ModelListResponse"
+                }
               }
             }
           },
@@ -60,7 +62,9 @@
             "description": "OK",
             "content": {
               "application/json": {
-                "schema": { }
+                "schema": {
+                  "$ref": "#/components/schemas/ModelMetadataResponse"
+                }
               }
             }
           },
@@ -311,7 +315,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/RerankResponse"
                 }
               }
             }
@@ -540,7 +544,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DiscoveryModelsResponse"
                 }
               }
             }
@@ -565,7 +569,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DiscoveryCapabilitiesResponse"
                 }
               }
             }
@@ -600,7 +604,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ModelParametersResponse"
                 }
               }
             }
@@ -641,7 +645,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionDiscoveryResponse"
                 }
               }
             }
@@ -681,7 +685,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionParametersResponseDto"
                 }
               }
             }
@@ -716,7 +720,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AsyncTaskStatus"
                 }
               }
             }
@@ -746,15 +750,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object"
-                }
-              }
-            }
+          "204": {
+            "description": "No Content"
           }
         },
         "security": [
@@ -812,7 +809,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AsyncTaskStatus"
                 }
               }
             }
@@ -1286,7 +1283,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -1311,7 +1308,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -1336,7 +1333,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -1361,7 +1358,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/BatchingEfficiencyResponse"
                 }
               }
             }
@@ -1444,7 +1441,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ConnectionDetailsResponse"
                 }
               }
             }
@@ -1479,7 +1476,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/HubConnectionsResponse"
                 }
               }
             }
@@ -1515,7 +1512,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/VirtualKeyConnectionsResponse"
                 }
               }
             }
@@ -1550,7 +1547,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/GroupConnectionsResponse"
                 }
               }
             }
@@ -1571,7 +1568,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DeadLetterMessagesResponse"
                 }
               }
             }
@@ -1606,7 +1603,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MessageResponse"
                 }
               }
             }
@@ -1631,7 +1628,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/SignalRHealthResponse"
                 }
               }
             }
@@ -1672,7 +1669,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionExecutionResponse"
                 }
               }
             }
@@ -1751,7 +1748,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FunctionExecutionResponse"
                 }
               }
             }
@@ -1864,7 +1861,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AudioTranscriptionResponse"
                 }
               }
             }
@@ -1964,7 +1961,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MediaUploadResponse"
                 }
               }
             }
@@ -1999,7 +1996,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/MediaInfo"
                 }
               }
             }
@@ -2088,7 +2085,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/FileMetadataResponse"
                 }
               }
             }
@@ -2133,7 +2130,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DownloadUrlResponse"
                 }
               }
             }
@@ -2248,7 +2245,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/ImageGenerationResponse"
                 }
               }
             }
@@ -2288,12 +2285,12 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK",
+          "202": {
+            "description": "Accepted",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AsyncTaskResponse"
                 }
               }
             }
@@ -2328,7 +2325,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/AsyncTaskStatusResponse"
                 }
               }
             }
@@ -2363,7 +2360,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/TaskCancellationResponse"
                 }
               }
             }
@@ -2923,6 +2920,271 @@
           }
         }
       },
+      "AsyncTaskResponse": {
+        "required": [
+          "task_id",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "check_status_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "estimated_completion_time": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "AsyncTaskStatus": {
+        "type": "object",
+        "properties": {
+          "taskId": {
+            "type": "string"
+          },
+          "taskType": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/TaskState"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "result": { },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TaskMetadata"
+              }
+            ]
+          },
+          "progress": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "progressMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "retryCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "maxRetries": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "isRetryable": {
+            "type": "boolean"
+          },
+          "nextRetryAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "AsyncTaskStatusResponse": {
+        "required": [
+          "task_id",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "progress": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "result": { },
+          "error": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "AudioTranscriptionResponse": {
+        "required": [
+          "text"
+        ],
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "language": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "duration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "usage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Usage"
+              }
+            ]
+          }
+        }
+      },
+      "BatchingEfficiencyResponse": {
+        "required": [
+          "totalMessagesBatched",
+          "totalBatchesSent",
+          "averageMessagesPerBatch",
+          "networkCallsSaved",
+          "batchEfficiencyPercentage",
+          "averageBatchLatency",
+          "isBatchingEnabled"
+        ],
+        "type": "object",
+        "properties": {
+          "totalMessagesBatched": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "totalBatchesSent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "averageMessagesPerBatch": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "networkCallsSaved": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "batchEfficiencyPercentage": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "averageBatchLatency": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "isBatchingEnabled": {
+            "type": "boolean"
+          }
+        },
+        "description": "SignalR batching efficiency metrics."
+      },
       "BatchingStatistics": {
         "type": "object",
         "properties": {
@@ -3479,6 +3741,124 @@
       "CircuitState": {
         "type": "integer"
       },
+      "ConnectionDetailsResponse": {
+        "required": [
+          "activeConnections",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "activeConnections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConnectionInfo"
+            }
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Detailed active SignalR connections."
+      },
+      "ConnectionInfo": {
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "description": "Unique connection identifier"
+          },
+          "hubName": {
+            "type": "string",
+            "description": "Hub name for this connection"
+          },
+          "virtualKeyId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Virtual key ID associated with this connection",
+            "format": "int32"
+          },
+          "connectedAt": {
+            "type": "string",
+            "description": "Time when the connection was established",
+            "format": "date-time"
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "description": "Last activity time for this connection",
+            "format": "date-time"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Groups this connection is subscribed to"
+          },
+          "userAgent": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "User agent string from the client"
+          },
+          "ipAddress": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "IP address of the client"
+          },
+          "transportType": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Transport type (WebSockets, ServerSentEvents, LongPolling)"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Custom metadata about the connection"
+          },
+          "messagesSent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of messages sent to this connection",
+            "format": "int64"
+          },
+          "messagesAcknowledged": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "Number of messages acknowledged by this connection",
+            "format": "int64"
+          },
+          "connectionDuration": {
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string",
+            "description": "Gets the connection duration"
+          },
+          "idleTime": {
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string",
+            "description": "Gets the time since last activity"
+          }
+        },
+        "description": "Information about a SignalR connection"
+      },
       "ConnectionStatistics": {
         "type": "object",
         "properties": {
@@ -3578,6 +3958,243 @@
           }
         },
         "description": "Statistics about SignalR connections"
+      },
+      "DeadLetterMessageDto": {
+        "required": [
+          "messageId",
+          "messageType",
+          "hubName",
+          "methodName",
+          "queuedAt",
+          "deliveryAttempts",
+          "lastError",
+          "deadLetterReason"
+        ],
+        "type": "object",
+        "properties": {
+          "messageId": {
+            "type": "string"
+          },
+          "messageType": {
+            "type": "string"
+          },
+          "hubName": {
+            "type": "string"
+          },
+          "methodName": {
+            "type": "string"
+          },
+          "queuedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deliveryAttempts": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "lastError": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "deadLetterReason": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "A dead-letter queue entry."
+      },
+      "DeadLetterMessagesResponse": {
+        "required": [
+          "messages",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeadLetterMessageDto"
+            }
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Dead-letter queue response."
+      },
+      "DiscoveredModelDto": {
+        "required": [
+          "id",
+          "provider",
+          "display_name",
+          "description",
+          "model_card_url",
+          "max_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "tokenizer_type",
+          "input_modalities",
+          "output_modalities",
+          "capability_source",
+          "capabilities_last_verified_at",
+          "parameters",
+          "capabilities"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "model_card_url": {
+            "type": "string"
+          },
+          "max_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max_input_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max_output_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "tokenizer_type": {
+            "type": "string"
+          },
+          "input_modalities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "output_modalities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capability_source": {
+            "type": "string"
+          },
+          "capabilities_last_verified_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "parameters": {
+            "type": "string"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ModelCapabilitiesDto"
+          }
+        },
+        "description": "A model returned by the Conduit discovery extension."
+      },
+      "DiscoveryCapabilitiesResponse": {
+        "required": [
+          "capabilities"
+        ],
+        "type": "object",
+        "properties": {
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Known model capability names."
+      },
+      "DiscoveryModelsResponse": {
+        "required": [
+          "data",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveredModelDto"
+            }
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Model discovery response."
+      },
+      "DownloadUrlResponse": {
+        "required": [
+          "url",
+          "expires_at",
+          "expiration_minutes"
+        ],
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiration_minutes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Temporary download URL response."
       },
       "EmbeddingData": {
         "required": [
@@ -3726,6 +4343,78 @@
         },
         "description": "Response when creating an ephemeral key"
       },
+      "FileMetadataResponse": {
+        "required": [
+          "file_name",
+          "content_type",
+          "size_bytes",
+          "created_at",
+          "modified_at",
+          "storage_provider",
+          "etag",
+          "supports_range_requests",
+          "additional_metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "file_name": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "created_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "modified_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "storage_provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "etag": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "supports_range_requests": {
+            "type": "boolean"
+          },
+          "additional_metadata": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Public file metadata."
+      },
       "FunctionCall": {
         "required": [
           "name",
@@ -3835,6 +4524,68 @@
           }
         }
       },
+      "FunctionDiscoveryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "configurationName": {
+            "type": "string"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "defaultExecutionMode": {
+            "type": "string"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "timeoutSeconds": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "FunctionDiscoveryResponse": {
+        "type": "object",
+        "properties": {
+          "functions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FunctionDiscoveryDto"
+            }
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "FunctionExecutionRequest": {
         "type": "object",
         "properties": {
@@ -3870,6 +4621,114 @@
           }
         },
         "description": "Request model for function execution."
+      },
+      "FunctionExecutionResponse": {
+        "type": "object",
+        "properties": {
+          "executionId": {
+            "type": "string",
+            "description": "The unique execution ID.",
+            "format": "uuid"
+          },
+          "functionConfigurationId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "description": "The function configuration ID that was executed.",
+            "format": "int32"
+          },
+          "state": {
+            "type": "string",
+            "description": "The current state of the execution."
+          },
+          "result": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "description": "The function execution result (provider-specific)."
+          },
+          "errorMessage": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Error message if execution failed."
+          },
+          "estimatedCost": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "Estimated cost before execution.",
+            "format": "double"
+          },
+          "actualCost": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "description": "Actual cost after execution.",
+            "format": "double"
+          },
+          "startedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the execution started.",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the execution completed.",
+            "format": "date-time"
+          },
+          "duration": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "description": "Execution duration in milliseconds.",
+            "format": "int64"
+          }
+        },
+        "description": "Response model for function execution."
+      },
+      "FunctionParametersResponseDto": {
+        "type": "object",
+        "properties": {
+          "functionConfigurationId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "configurationName": {
+            "type": "string"
+          },
+          "providerType": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "parameterSchema": { },
+          "exampleRequest": { }
+        }
       },
       "GenerateEphemeralKeyRequest": {
         "type": "object",
@@ -3911,9 +4770,160 @@
         },
         "description": "Request to generate a temporary download URL."
       },
+      "GroupConnectionDto": {
+        "required": [
+          "connectionId",
+          "hubName",
+          "connectedAt",
+          "virtualKeyId"
+        ],
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string"
+          },
+          "hubName": {
+            "type": "string"
+          },
+          "connectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "virtualKeyId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "A connection projected for group diagnostics."
+      },
+      "GroupConnectionsResponse": {
+        "required": [
+          "groupName",
+          "connections",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "groupName": {
+            "type": "string"
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupConnectionDto"
+            }
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Connections attached to a SignalR group."
+      },
+      "HubConnectionDto": {
+        "required": [
+          "connectionId",
+          "connectedAt",
+          "connectionDuration",
+          "groups",
+          "messagesSent",
+          "messagesAcknowledged"
+        ],
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string"
+          },
+          "connectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "connectionDuration": {
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "messagesSent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "messagesAcknowledged": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "description": "A connection projected for hub diagnostics."
+      },
+      "HubConnectionsResponse": {
+        "required": [
+          "hubName",
+          "connections",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "hubName": {
+            "type": "string"
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/HubConnectionDto"
+            }
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Connections attached to a hub."
+      },
       "IFormFile": {
         "type": "string",
         "format": "binary"
+      },
+      "ImageData": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "b64_json": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
       },
       "ImageGenerationRequest": {
         "required": [
@@ -3983,6 +4993,39 @@
           }
         }
       },
+      "ImageGenerationResponse": {
+        "required": [
+          "created",
+          "data"
+        ],
+        "type": "object",
+        "properties": {
+          "created": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageData"
+            }
+          },
+          "usage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Usage"
+              }
+            ]
+          }
+        }
+      },
       "JsonElement": { },
       "JsonObject": {
         "type": "object"
@@ -4003,6 +5046,99 @@
             "$ref": "#/components/schemas/JsonElement"
           }
         }
+      },
+      "MediaInfo": {
+        "type": "object",
+        "properties": {
+          "storageKey": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "fileName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "mediaType": {
+            "$ref": "#/components/schemas/MediaType"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "customMetadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "MediaType": {
+        "type": "integer"
+      },
+      "MediaUploadResponse": {
+        "required": [
+          "success",
+          "storageKey",
+          "url",
+          "directUrl",
+          "contentType",
+          "mediaType",
+          "fileName",
+          "sizeBytes"
+        ],
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "storageKey": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "directUrl": {
+            "type": "string"
+          },
+          "contentType": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "description": "Media upload response."
       },
       "Message": {
         "required": [
@@ -4036,6 +5172,296 @@
             ]
           }
         }
+      },
+      "MessageResponse": {
+        "required": [
+          "message"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "description": "A simple operation acknowledgement."
+      },
+      "ModelCapabilitiesDto": {
+        "required": [
+          "chat",
+          "chat_stream",
+          "image_input",
+          "video_input",
+          "audio_input",
+          "file_input",
+          "vision",
+          "video_understanding",
+          "image_generation",
+          "video_generation",
+          "embeddings",
+          "function_calling",
+          "speech_to_text",
+          "text_to_speech",
+          "rerank"
+        ],
+        "type": "object",
+        "properties": {
+          "chat": {
+            "type": "boolean"
+          },
+          "chat_stream": {
+            "type": "boolean"
+          },
+          "image_input": {
+            "type": "boolean"
+          },
+          "video_input": {
+            "type": "boolean"
+          },
+          "audio_input": {
+            "type": "boolean"
+          },
+          "file_input": {
+            "type": "boolean"
+          },
+          "vision": {
+            "type": "boolean"
+          },
+          "video_understanding": {
+            "type": "boolean"
+          },
+          "image_generation": {
+            "type": "boolean"
+          },
+          "video_generation": {
+            "type": "boolean"
+          },
+          "embeddings": {
+            "type": "boolean"
+          },
+          "function_calling": {
+            "type": "boolean"
+          },
+          "speech_to_text": {
+            "type": "boolean"
+          },
+          "text_to_speech": {
+            "type": "boolean"
+          },
+          "rerank": {
+            "type": "boolean"
+          },
+          "tool_use": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "json_mode": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "max_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max_output_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Capabilities advertised for a model."
+      },
+      "ModelListItemDto": {
+        "required": [
+          "id",
+          "object"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          }
+        },
+        "description": "An OpenAI-compatible model entry."
+      },
+      "ModelListResponse": {
+        "required": [
+          "data",
+          "object"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelListItemDto"
+            }
+          },
+          "object": {
+            "type": "string"
+          }
+        },
+        "description": "An OpenAI-compatible model list."
+      },
+      "ModelMetadataDto": {
+        "required": [
+          "id",
+          "canonical_model_id",
+          "canonical_name",
+          "provider",
+          "provider_model_id",
+          "description",
+          "model_card_url",
+          "input_modalities",
+          "output_modalities",
+          "capability_source",
+          "capabilities_last_verified_at",
+          "capabilities",
+          "max_input_tokens",
+          "max_output_tokens"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "canonical_model_id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "canonical_name": {
+            "type": "string"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "provider_model_id": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "model_card_url": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "input_modalities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "output_modalities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capability_source": {
+            "type": "string"
+          },
+          "capabilities_last_verified_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/ModelCapabilitiesDto"
+          },
+          "max_input_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max_output_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Effective metadata for an enabled model mapping."
+      },
+      "ModelMetadataResponse": {
+        "required": [
+          "modelId",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "modelId": {
+            "type": "string"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/ModelMetadataDto"
+          }
+        },
+        "description": "Model metadata response envelope."
+      },
+      "ModelParametersResponse": {
+        "required": [
+          "model_id",
+          "model_alias",
+          "series_name",
+          "parameters"
+        ],
+        "type": "object",
+        "properties": {
+          "model_id": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "model_alias": {
+            "type": "string"
+          },
+          "series_name": {
+            "type": "string"
+          },
+          "parameters": {
+            "$ref": "#/components/schemas/JsonElement"
+          }
+        },
+        "description": "UI parameter metadata for a model."
       },
       "OpenAIError": {
         "required": [
@@ -4372,6 +5798,67 @@
           }
         }
       },
+      "RerankResponse": {
+        "required": [
+          "results"
+        ],
+        "type": "object",
+        "properties": {
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RerankResult"
+            }
+          },
+          "usage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Usage"
+              }
+            ]
+          }
+        }
+      },
+      "RerankResult": {
+        "required": [
+          "index",
+          "relevance_score"
+        ],
+        "type": "object",
+        "properties": {
+          "index": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "relevance_score": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "document": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
       "ResponseFormat": {
         "type": "object",
         "properties": {
@@ -4422,6 +5909,109 @@
           }
         }
       },
+      "SignalRConnectionHealthDto": {
+        "required": [
+          "active",
+          "stale",
+          "acknowledgmentRate"
+        ],
+        "type": "object",
+        "properties": {
+          "active": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "stale": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "acknowledgmentRate": {
+            "type": "string"
+          }
+        },
+        "description": "SignalR connection health summary."
+      },
+      "SignalRHealthResponse": {
+        "required": [
+          "status",
+          "timestamp",
+          "connections",
+          "queue"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "connections": {
+            "$ref": "#/components/schemas/SignalRConnectionHealthDto"
+          },
+          "queue": {
+            "$ref": "#/components/schemas/SignalRQueueHealthDto"
+          }
+        },
+        "description": "Overall SignalR health response."
+      },
+      "SignalRQueueHealthDto": {
+        "required": [
+          "pending",
+          "deadLetter",
+          "circuitBreaker",
+          "processed",
+          "failed"
+        ],
+        "type": "object",
+        "properties": {
+          "pending": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "deadLetter": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "circuitBreaker": {
+            "type": "string"
+          },
+          "processed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          },
+          "failed": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int64"
+          }
+        },
+        "description": "SignalR queue health summary."
+      },
       "SpendUpdateDto": {
         "required": [
           "virtualKeyId",
@@ -4470,6 +6060,91 @@
             "type": "boolean"
           }
         }
+      },
+      "TaskCancellationResponse": {
+        "required": [
+          "message",
+          "task_id"
+        ],
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "task_id": {
+            "type": "string"
+          }
+        },
+        "description": "Image task cancellation acknowledgement."
+      },
+      "TaskMetadata": {
+        "type": "object",
+        "properties": {
+          "virtualKeyId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "model": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "prompt": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "correlationId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "payload": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "videoId": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhookUrl": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "webhookHeaders": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "priority": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "TaskState": {
+        "type": "integer"
       },
       "TextToSpeechRequest": {
         "required": [
@@ -5051,6 +6726,72 @@
             ]
           }
         }
+      },
+      "VirtualKeyConnectionDto": {
+        "required": [
+          "connectionId",
+          "hubName",
+          "connectedAt",
+          "connectionDuration",
+          "groups"
+        ],
+        "type": "object",
+        "properties": {
+          "connectionId": {
+            "type": "string"
+          },
+          "hubName": {
+            "type": "string"
+          },
+          "connectedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "connectionDuration": {
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "A connection projected for virtual-key diagnostics."
+      },
+      "VirtualKeyConnectionsResponse": {
+        "required": [
+          "virtualKeyId",
+          "connections",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "virtualKeyId": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "connections": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VirtualKeyConnectionDto"
+            }
+          },
+          "count": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        },
+        "description": "Connections attached to a virtual key."
       },
       "VirtualKeyUpdateDto": {
         "required": [
