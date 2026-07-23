@@ -30,9 +30,6 @@ public static class RedisKeys
         public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
         public static string VirtualKeyRpmSeq(string hash) => $"rate:vk:{hash}:rpm:seq";
         public static string VirtualKeyRpdSeq(string hash) => $"rate:vk:{hash}:rpd:seq";
-
-        /// <summary>Cached rate limit configuration per virtual key.</summary>
-        public static string Config(string hash) => $"rate:config:{hash}";
     }
 
     /// <summary>

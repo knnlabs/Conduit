@@ -26,6 +26,13 @@ namespace ConduitLLM.Core.Utilities
             if (ipAddress == rule)
                 return true;
 
+            if (!rule.Contains('/') &&
+                IPAddress.TryParse(ipAddress, out var parsedIp) &&
+                IPAddress.TryParse(rule, out var parsedRule))
+            {
+                return NormalizeAddress(parsedIp).Equals(NormalizeAddress(parsedRule));
+            }
+
             // CIDR range check
             if (rule.Contains('/'))
             {
@@ -58,6 +65,17 @@ namespace ConduitLLM.Core.Utilities
 
                 if (!int.TryParse(parts[1], out var prefixLength))
                     return false;
+
+                var baseWasIpv4Mapped = baseAddress.IsIPv4MappedToIPv6;
+                ip = NormalizeAddress(ip);
+                baseAddress = NormalizeAddress(baseAddress);
+                if (baseWasIpv4Mapped)
+                {
+                    if (prefixLength < 96)
+                        return false;
+
+                    prefixLength -= 96;
+                }
 
                 // Ensure both addresses are the same family
                 if (ip.AddressFamily != baseAddress.AddressFamily)
@@ -168,6 +186,9 @@ namespace ConduitLLM.Core.Utilities
 
             return true;
         }
+
+        private static IPAddress NormalizeAddress(IPAddress address) =>
+            address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
 
         #endregion
 
@@ -329,7 +350,7 @@ namespace ConduitLLM.Core.Utilities
         {
             // Do NOT read forwarded headers here — they are spoofable. The connection's
             // RemoteIpAddress has already been vetted by ForwardedHeadersMiddleware.
-            return remoteIpAddress?.ToString() ?? "unknown";
+            return remoteIpAddress == null ? "unknown" : NormalizeAddress(remoteIpAddress).ToString();
         }
 
         /// <summary>
@@ -345,7 +366,8 @@ namespace ConduitLLM.Core.Utilities
         /// <returns>The client IP address as a string, or "unknown" if it cannot be determined.</returns>
         public static string GetClientIpAddress(Microsoft.AspNetCore.Http.HttpContext context)
         {
-            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var remoteIpAddress = context.Connection.RemoteIpAddress;
+            return remoteIpAddress == null ? "unknown" : NormalizeAddress(remoteIpAddress).ToString();
         }
 
         #endregion

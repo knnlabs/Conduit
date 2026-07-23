@@ -8,9 +8,7 @@ jest.mock('@/lib/client/browserCoreClient');
 
 // Mock the video SignalR client
 jest.mock('@/lib/client/videoSignalRClient', () => ({
-  videoSignalRClient: {
-    disconnect: jest.fn().mockResolvedValue(undefined),
-  },
+  disconnectVideoSignalRClient: jest.fn().mockResolvedValue(undefined),
 }));
 
 interface MockVideoClient {

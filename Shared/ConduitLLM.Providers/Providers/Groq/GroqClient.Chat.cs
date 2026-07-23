@@ -56,6 +56,22 @@ namespace ConduitLLM.Providers.Groq
             => ProcessGroqChunkJson(chunk);
 
         /// <summary>
+        /// Maps Groq chunks without exposing x_groq while retaining hosted-tool usage for billing.
+        /// </summary>
+        protected override CoreModels.ChatCompletionChunk? MapStreamingChunk(System.Text.Json.JsonElement chunk)
+        {
+            try
+            {
+                return Streaming.GroqChunkConverter.Convert(chunk, DefaultJsonOptions);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Failed to map Groq streaming chunk");
+                return base.MapStreamingChunk(chunk);
+            }
+        }
+
+        /// <summary>
         /// Processes a Groq chunk JSON to extract x_groq.usage and map it to the standard usage field.
         /// </summary>
         private string ProcessGroqChunkJson(System.Text.Json.JsonElement chunk)

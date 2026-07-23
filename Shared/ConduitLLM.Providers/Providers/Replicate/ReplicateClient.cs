@@ -40,26 +40,21 @@ namespace ConduitLLM.Providers.Replicate
         /// <param name="providerModelId">The model identifier to use (typically a version hash or full slug).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">The HTTP client factory for creating HttpClient instances.</param>
-        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public ReplicateClient(
             Provider provider,
             ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger logger,
-            IHttpClientFactory? httpClientFactory = null,
-            ProviderDefaultModels? defaultModels = null)
+            IHttpClientFactory? httpClientFactory = null)
             : base(
                 provider,
                 keyCredential,
                 providerModelId,
                 logger,
                 httpClientFactory,
-                "Replicate",
-                defaultModels)
+                "Replicate")
         {
-            BaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate)
-                ?? provider.BaseUrl
-                ?? throw new ConfigurationException($"Base URL must be provided for {ProviderName}");
+            BaseUrl = ProviderConfigurationRegistry.ResolveBaseUrl(provider);
         }
 
         /// <inheritdoc/>
@@ -139,8 +134,7 @@ namespace ConduitLLM.Providers.Replicate
         /// </summary>
         protected override string GetDefaultBaseUrl()
         {
-            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate)
-                ?? "https://api.replicate.com/v1";
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate)!;
         }
     }
 }

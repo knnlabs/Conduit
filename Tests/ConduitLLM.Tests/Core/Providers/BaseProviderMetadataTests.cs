@@ -19,26 +19,10 @@ namespace ConduitLLM.Tests.Core.Providers
             public override string DisplayName => "Test Provider";
             public override string DefaultBaseUrl => "https://test.api.com/v1";
 
-            public TestProviderMetadata(bool customizeCapabilities = false)
+            public TestProviderMetadata(bool customizeAuth = false)
             {
-                if (customizeCapabilities)
+                if (customizeAuth)
                 {
-                    Capabilities = new ProviderCapabilities
-                    {
-                        Provider = ProviderType.ToString(),
-                        ChatParameters = new ChatParameterSupport
-                        {
-                            Temperature = true,
-                            MaxTokens = true,
-                            Tools = true
-                        },
-                        Features = new FeatureSupport
-                        {
-                            Streaming = true,
-                            Embeddings = true
-                        }
-                    };
-
                     AuthRequirements = new AuthenticationRequirements
                     {
                         RequiresApiKey = true,
@@ -74,15 +58,8 @@ namespace ConduitLLM.Tests.Core.Providers
             var metadata = new TestProviderMetadata();
 
             // Assert
-            Assert.NotNull(metadata.Capabilities);
             Assert.NotNull(metadata.AuthRequirements);
             Assert.NotNull(metadata.ConfigurationHints);
-            
-            // Verify default capabilities
-            Assert.True(metadata.Capabilities.ChatParameters.Temperature);
-            Assert.True(metadata.Capabilities.ChatParameters.MaxTokens);
-            Assert.True(metadata.Capabilities.Features.Streaming);
-            Assert.False(metadata.Capabilities.Features.ImageGeneration);
             
             // Verify default auth requirements
             Assert.True(metadata.AuthRequirements.RequiresApiKey);
@@ -152,7 +129,7 @@ namespace ConduitLLM.Tests.Core.Providers
         public void ValidateConfiguration_WithCustomRequiredFields_ValidatesCorrectly()
         {
             // Arrange
-            var metadata = new TestProviderMetadata(customizeCapabilities: true);
+            var metadata = new TestProviderMetadata(customizeAuth: true);
             var config = new Dictionary<string, object>
             {
                 ["apiKey"] = "valid-key",
@@ -171,7 +148,7 @@ namespace ConduitLLM.Tests.Core.Providers
         public void ValidateConfiguration_WithMissingCustomRequiredField_ReturnsError()
         {
             // Arrange
-            var metadata = new TestProviderMetadata(customizeCapabilities: true);
+            var metadata = new TestProviderMetadata(customizeAuth: true);
             var config = new Dictionary<string, object>
             {
                 ["apiKey"] = "valid-key"
@@ -192,7 +169,7 @@ namespace ConduitLLM.Tests.Core.Providers
         public void ValidateConfiguration_WithInvalidPatternForCustomField_ReturnsError()
         {
             // Arrange
-            var metadata = new TestProviderMetadata(customizeCapabilities: true);
+            var metadata = new TestProviderMetadata(customizeAuth: true);
             var config = new Dictionary<string, object>
             {
                 ["apiKey"] = "valid-key",
@@ -253,7 +230,7 @@ namespace ConduitLLM.Tests.Core.Providers
         public void ValidateConfiguration_WithOptionalFields_DoesNotRequireThem()
         {
             // Arrange
-            var metadata = new TestProviderMetadata(customizeCapabilities: true);
+            var metadata = new TestProviderMetadata(customizeAuth: true);
             var config = new Dictionary<string, object>
             {
                 ["apiKey"] = "valid-key",
@@ -309,25 +286,6 @@ namespace ConduitLLM.Tests.Core.Providers
         #endregion
 
         #region Default Method Tests
-
-        [Fact]
-        public void CreateDefaultCapabilities_ReturnsReasonableDefaults()
-        {
-            // Arrange
-            var metadata = new TestProviderMetadata();
-
-            // Act - access protected method through public property
-            var capabilities = metadata.Capabilities;
-
-            // Assert
-            Assert.NotNull(capabilities);
-            Assert.True(capabilities.ChatParameters.Temperature);
-            Assert.True(capabilities.ChatParameters.MaxTokens);
-            Assert.False(capabilities.ChatParameters.TopP);
-            Assert.True(capabilities.ChatParameters.Stop);
-            Assert.True(capabilities.Features.Streaming);
-            Assert.False(capabilities.Features.ImageGeneration);
-        }
 
         [Fact]
         public void CreateDefaultAuthRequirements_ReturnsReasonableDefaults()

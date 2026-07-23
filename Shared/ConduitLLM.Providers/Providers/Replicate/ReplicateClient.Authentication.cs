@@ -76,8 +76,7 @@ namespace ConduitLLM.Providers.Replicate
         /// </summary>
         public override string GetHealthCheckUrl(string? baseUrl = null)
         {
-            var defaultBaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate)
-                ?? "https://api.replicate.com/v1";
+            var defaultBaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Replicate)!;
 
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
                 ? baseUrl.TrimEnd('/')

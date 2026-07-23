@@ -31,13 +31,6 @@ namespace ConduitLLM.Admin.Services
         Task<bool> IsKeyValidAsync(string key);
 
         /// <summary>
-        /// Marks an ephemeral master key as consumed without deleting it (for streaming)
-        /// </summary>
-        /// <param name="key">The ephemeral master key to mark as consumed</param>
-        /// <returns>True if valid, false otherwise</returns>
-        Task<bool> ConsumeKeyAsync(string key);
-
-        /// <summary>
         /// Deletes an ephemeral master key after use
         /// </summary>
         /// <param name="key">The ephemeral master key to delete</param>
@@ -139,19 +132,5 @@ namespace ConduitLLM.Admin.Services
             return await ValidateKeyAsync(key) is not null;
         }
 
-        /// <inheritdoc />
-        public async Task<bool> ConsumeKeyAsync(string key)
-        {
-            var keyData = await ConsumeKeyInternalAsync(key);
-            if (keyData == null)
-            {
-                Logger.LogWarning("Failed to consume ephemeral master key for streaming: {Key}",
-                    SanitizeKeyForLogging(key));
-                return false;
-            }
-
-            Logger.LogInformation("Consumed and deleted ephemeral master key for streaming");
-            return true;
-        }
     }
 }

@@ -48,6 +48,14 @@ namespace ConduitLLM.Tests.Core.Utilities
             result.Should().Be(expected);
         }
 
+        [Theory]
+        [InlineData("::ffff:203.0.113.9", "203.0.113.9")]
+        [InlineData("::ffff:203.0.113.9", "203.0.113.0/24")]
+        public void IsIpInRange_IPv4MappedAddress_MatchesIpv4Rule(string ipAddress, string rule)
+        {
+            IpAddressHelper.IsIpInRange(ipAddress, rule).Should().BeTrue();
+        }
+
         #endregion
 
         #region CIDR Matching Tests - IPv6
@@ -292,6 +300,17 @@ namespace ConduitLLM.Tests.Core.Utilities
 
             // Assert
             result.Should().Be("198.51.100.42");
+        }
+
+        [Fact]
+        public void GetClientIpAddress_ShouldCanonicalizeIpv4MappedRemoteAddress()
+        {
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = IPAddress.Parse("::ffff:203.0.113.9");
+
+            var result = IpAddressHelper.GetClientIpAddress(context);
+
+            result.Should().Be("203.0.113.9");
         }
 
         [Fact]

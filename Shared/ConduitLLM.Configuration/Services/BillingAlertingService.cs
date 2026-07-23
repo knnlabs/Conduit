@@ -18,8 +18,10 @@ namespace ConduitLLM.Configuration.Services
         private readonly ILogger<BillingAlertingService> _logger;
         private readonly IBillingAuditService? _auditService;
         private static readonly object AlertCooldownLock = new();
-        private static DateTime _lastAlertTime = DateTime.MinValue;
+        private static readonly Dictionary<AlertCooldownKey, DateTime> AlertCooldowns = new();
         private static readonly TimeSpan AlertCooldown = TimeSpan.FromMinutes(5);
+        private static DateTime _nextCooldownPrune = DateTime.MinValue;
+        private const int MaxTrackedAlerts = 1024;
 
         /// <summary>
         /// Initializes a new instance of the BillingAlertingService
@@ -64,15 +66,8 @@ namespace ConduitLLM.Configuration.Services
                     }
                 }
 
-                var shouldNotify = false;
-                lock (AlertCooldownLock)
-                {
-                    if (now - _lastAlertTime >= AlertCooldown)
-                    {
-                        _lastAlertTime = now;
-                        shouldNotify = true;
-                    }
-                }
+                var alertKey = new AlertCooldownKey(message, virtualKeyId);
+                var shouldNotify = TryBeginCooldown(alertKey, now);
 
                 if (!shouldNotify)
                 {
@@ -92,6 +87,43 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogError(ex, "Failed to send critical billing alert");
             }
         }
+
+        private static bool TryBeginCooldown(AlertCooldownKey alertKey, DateTime now)
+        {
+            lock (AlertCooldownLock)
+            {
+                if (now >= _nextCooldownPrune || AlertCooldowns.Count >= MaxTrackedAlerts)
+                {
+                    var cutoff = now - AlertCooldown;
+                    foreach (var expiredKey in AlertCooldowns
+                        .Where(entry => entry.Value <= cutoff)
+                        .Select(entry => entry.Key)
+                        .ToList())
+                    {
+                        AlertCooldowns.Remove(expiredKey);
+                    }
+
+                    _nextCooldownPrune = now + AlertCooldown;
+                }
+
+                if (AlertCooldowns.TryGetValue(alertKey, out var lastAlert) &&
+                    now - lastAlert < AlertCooldown)
+                {
+                    return false;
+                }
+
+                if (!AlertCooldowns.ContainsKey(alertKey) && AlertCooldowns.Count >= MaxTrackedAlerts)
+                {
+                    var oldestKey = AlertCooldowns.MinBy(entry => entry.Value).Key;
+                    AlertCooldowns.Remove(oldestKey);
+                }
+
+                AlertCooldowns[alertKey] = now;
+                return true;
+            }
+        }
+
+        private readonly record struct AlertCooldownKey(string Message, int? VirtualKeyId);
 
     }
 }

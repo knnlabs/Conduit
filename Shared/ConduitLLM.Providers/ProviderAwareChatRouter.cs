@@ -149,12 +149,35 @@ internal sealed class RoutedChatClient : ILLMClient
                 continue;
             }
 
-            await SuccessAsync(mapping, cancellationToken);
-            if (!hasFirst) { await enumerator.DisposeAsync(); yield break; }
-            yield return enumerator.Current;
+            if (!hasFirst)
+            {
+                try { await SuccessAsync(mapping, cancellationToken); }
+                finally { await enumerator.DisposeAsync(); }
+                yield break;
+            }
+
             try
             {
-                while (await enumerator.MoveNextAsync()) yield return enumerator.Current;
+                yield return enumerator.Current;
+                while (true)
+                {
+                    bool hasNext;
+                    try
+                    {
+                        hasNext = await enumerator.MoveNextAsync();
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException ||
+                        !cancellationToken.IsCancellationRequested)
+                    {
+                        RouteCircuitRegistry.Failure(mapping.Id);
+                        throw;
+                    }
+
+                    if (!hasNext) break;
+                    yield return enumerator.Current;
+                }
+
+                await SuccessAsync(mapping, cancellationToken);
             }
             finally { await enumerator.DisposeAsync(); }
             yield break;

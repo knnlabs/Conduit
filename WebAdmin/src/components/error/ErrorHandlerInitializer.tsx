@@ -8,7 +8,7 @@ import { setupGlobalErrorHandler } from '@/lib/utils/error-handler';
  */
 export function ErrorHandlerInitializer() {
   useEffect(() => {
-    setupGlobalErrorHandler();
+    return setupGlobalErrorHandler();
   }, []);
 
   return null;

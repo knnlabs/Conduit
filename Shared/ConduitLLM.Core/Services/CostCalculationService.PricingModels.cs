@@ -246,6 +246,9 @@ public partial class CostCalculationService
 
         if (usage.CachedWriteTokens is > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
         {
+            if (usage.CachedWriteTokensIncludedInPrompt)
+                regularInputTokens -= usage.CachedWriteTokens.Value;
+
             calculatedCost += usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value / 1_000_000m;
         }
 
@@ -326,8 +329,6 @@ public partial class CostCalculationService
 
         return Task.FromResult(cost);
     }
-
-    // Audio calculation methods removed - audio functionality has been removed from the system
 
     private async Task<decimal> CalculateRulesBasedCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {

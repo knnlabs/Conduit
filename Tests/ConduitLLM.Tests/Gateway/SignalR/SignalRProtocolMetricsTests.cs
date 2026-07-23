@@ -1,10 +1,15 @@
 using ConduitLLM.Gateway.Interfaces;
+using ConduitLLM.Gateway.Filters;
 using ConduitLLM.Gateway.Metrics;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using FluentAssertions;
 using Microsoft.Extensions.Diagnostics.Metrics;
+using Moq;
 
 namespace ConduitLLM.Tests.Gateway.SignalR
 {
@@ -277,6 +282,46 @@ namespace ConduitLLM.Tests.Gateway.SignalR
                 GetTagValue(m.Tags, "protocol") == null);
         }
 
+        [Theory]
+        [InlineData("json")]
+        [InlineData("messagepack")]
+        public async Task MetricsFilter_Should_Not_Guess_Protocol_And_Should_Balance_Active_Connection_Tags(
+            string negotiatedProtocol)
+        {
+            var items = new Dictionary<object, object?>
+            {
+                // A protocol value from another component must not become an unverified metric label.
+                ["Protocol"] = negotiatedProtocol
+            };
+            var callerContext = new Mock<HubCallerContext>();
+            callerContext.SetupGet(x => x.ConnectionId).Returns($"{negotiatedProtocol}-connection");
+            callerContext.SetupGet(x => x.Items).Returns(items);
+            callerContext.SetupGet(x => x.Features).Returns(new FeatureCollection());
+
+            var lifetimeContext = new HubLifetimeContext(
+                callerContext.Object,
+                _serviceProvider,
+                new TestHub());
+            var filter = new SignalRMetricsFilter(
+                NullLogger<SignalRMetricsFilter>.Instance,
+                _metrics);
+
+            await filter.OnConnectedAsync(lifetimeContext, _ => Task.CompletedTask);
+            await filter.OnDisconnectedAsync(lifetimeContext, null, (_, _) => Task.CompletedTask);
+
+            var connections = _counterMeasurements["signalr.connections.total"];
+            connections.Should().ContainSingle(m =>
+                GetTagValue(m.Tags, "hub") == nameof(TestHub) &&
+                !m.Tags.ContainsKey("protocol"));
+
+            var active = _counterMeasurements["signalr.connections.active"]
+                .Where(m => GetTagValue(m.Tags, "hub") == nameof(TestHub))
+                .ToList();
+            active.Select(m => m.Value).Should().Equal(1, -1);
+            active.Should().OnlyContain(m => !m.Tags.ContainsKey("protocol"));
+            active[0].Tags.Keys.Should().BeEquivalentTo(active[1].Tags.Keys);
+        }
+
         [Fact]
         public void RecordHubMethodInvocation_Should_Track_Duration_With_Protocol()
         {
@@ -316,5 +361,7 @@ namespace ConduitLLM.Tests.Gateway.SignalR
             _serviceProvider?.Dispose();
             (_metrics as IDisposable)?.Dispose();
         }
+
+        private sealed class TestHub : Hub;
     }
 }

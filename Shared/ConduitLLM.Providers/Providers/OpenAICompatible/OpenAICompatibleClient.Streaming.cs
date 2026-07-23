@@ -65,6 +65,17 @@ namespace ConduitLLM.Providers.OpenAICompatible
             => chunk.GetRawText();
 
         /// <summary>
+        /// Maps a raw provider chunk to the provider-agnostic streaming model.
+        /// Subclasses may override this when server-only metadata must be preserved
+        /// separately from the JSON returned to clients.
+        /// </summary>
+        protected virtual CoreModels.ChatCompletionChunk? MapStreamingChunk(JsonElement chunk)
+        {
+            var chunkJson = TransformChunkJson(chunk);
+            return JsonSerializer.Deserialize<CoreModels.ChatCompletionChunk>(chunkJson, DefaultJsonOptions);
+        }
+
+        /// <summary>
         /// Streams chunks progressively without buffering them into a list
         /// </summary>
         protected virtual async IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
@@ -127,9 +138,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                         }
 
                         // Transform the raw JSON (allows subclasses to inject provider-specific processing)
-                        var chunkJson = TransformChunkJson(chunk);
-                        var mappedChunk = System.Text.Json.JsonSerializer.Deserialize<CoreModels.ChatCompletionChunk>(
-                            chunkJson, DefaultJsonOptions);
+                        var mappedChunk = MapStreamingChunk(chunk);
 
                         if (mappedChunk != null)
                         {

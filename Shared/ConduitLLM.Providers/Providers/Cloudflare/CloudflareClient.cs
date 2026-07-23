@@ -79,15 +79,13 @@ namespace ConduitLLM.Providers.Cloudflare
         /// <param name="providerModelId">The model identifier (e.g., @cf/meta/llama-3.3-70b-instruct-fp8-fast).</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances.</param>
-        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         /// <exception cref="ConfigurationException">Thrown when API key is missing.</exception>
         public CloudflareClient(
             Provider provider,
             ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger<CloudflareClient> logger,
-            IHttpClientFactory httpClientFactory,
-            ProviderDefaultModels? defaultModels = null)
+            IHttpClientFactory httpClientFactory)
             : base(
                 provider,
                 keyCredential,
@@ -95,8 +93,7 @@ namespace ConduitLLM.Providers.Cloudflare
                 logger,
                 httpClientFactory,
                 "Cloudflare",
-                baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.Cloudflare),
-                defaultModels: defaultModels)
+                baseUrl: ProviderConfigurationRegistry.ResolveBaseUrl(provider))
         {
             if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
             {

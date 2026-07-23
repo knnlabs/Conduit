@@ -60,14 +60,12 @@ namespace ConduitLLM.Providers.OpenRouter
         /// <param name="providerModelId">The model identifier to use (e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet).</param>
         /// <param name="logger">The logger to use.</param>
         /// <param name="httpClientFactory">Optional HTTP client factory for advanced usage scenarios.</param>
-        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         public OpenRouterClient(
             Provider provider,
             ProviderKeyCredential keyCredential,
             string providerModelId,
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
-            ProviderDefaultModels? defaultModels = null,
             string? providerOptionsJson = null)
             : base(
                 provider,
@@ -76,8 +74,7 @@ namespace ConduitLLM.Providers.OpenRouter
                 logger,
                 httpClientFactory,
                 "OpenRouter",
-                baseUrl: ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenRouter),
-                defaultModels: defaultModels)
+                baseUrl: ProviderConfigurationRegistry.ResolveBaseUrl(provider))
         {
             _mappingOptions = ParseProviderOptions(providerOptionsJson);
         }

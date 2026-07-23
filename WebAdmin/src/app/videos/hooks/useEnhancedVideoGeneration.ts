@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useVideoStore } from './useVideoStore';
-import { videoSignalRClient } from '@/lib/client/videoSignalRClient';
+import { disconnectVideoSignalRClient } from '@/lib/client/videoSignalRClient';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import type { 
   VideoSettings, 
@@ -32,12 +32,6 @@ export function useEnhancedVideoGeneration() {
   
   // Create error handler with toast notifications
   const handleError = createToastErrorHandler(notifications.show);
-
-  useEffect(() => {
-    return () => {
-      void videoSignalRClient.disconnect();
-    };
-  }, []);
 
   const generateVideo = useCallback(async ({ prompt, settings, dynamicParameters }: GenerateVideoParams) => {
     setIsGenerating(true);
@@ -162,8 +156,8 @@ export function useEnhancedVideoGeneration() {
 
       updateTask(taskId, { status: MediaGenerationStatus.Cancelled });
       
-      // Disconnect SignalR if connected
-      await videoSignalRClient.disconnect();
+      // Disconnect only this task's SignalR connection.
+      await disconnectVideoSignalRClient(taskId);
       
       setIsGenerating(false);
     } catch (error) {

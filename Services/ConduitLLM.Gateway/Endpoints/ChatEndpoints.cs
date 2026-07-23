@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -7,6 +8,7 @@ using ConduitLLM.Core;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.UsageTracking;
@@ -128,6 +130,34 @@ namespace ConduitLLM.Gateway.Endpoints
                     return Results.Empty;
                 }
             }
+            catch (LLMCommunicationException ex)
+            {
+                var error = MapProviderCommunicationError(ex.StatusCode);
+                activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                activity?.SetTag("error.type", ex.GetType().Name);
+                activity?.SetTag("http.response.status_code", error.StatusCode);
+                activity?.SetTag("provider.http_status_code", ex.StatusCode is null ? null : (int)ex.StatusCode.Value);
+
+                if (error.StatusCode >= StatusCodes.Status500InternalServerError)
+                {
+                    _logger.LogError(ex,
+                        "Provider communication failed for model {Model}; upstream status {UpstreamStatus} mapped to HTTP {StatusCode}",
+                        LoggingSanitizer.S(request.Model), ex.StatusCode, error.StatusCode);
+                }
+                else
+                {
+                    _logger.LogWarning(ex,
+                        "Provider rejected chat request for model {Model}; upstream status {UpstreamStatus} mapped to HTTP {StatusCode}",
+                        LoggingSanitizer.S(request.Model), ex.StatusCode, error.StatusCode);
+                }
+
+                GatewayOpsMetrics.RecordLlmOperation(
+                    "chat_completion",
+                    request.Model,
+                    error.MetricOutcome,
+                    operationStopwatch.Elapsed.TotalSeconds);
+                return OpenAIError(error.StatusCode, ex.Message, error.Code, error.Type);
+            }
             catch (Exception ex)
             {
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
@@ -137,6 +167,59 @@ namespace ConduitLLM.Gateway.Endpoints
                 return OpenAIError(500, ex.Message, "internal_error", "server_error");
             }
         }
+
+        internal static ProviderCommunicationError MapProviderCommunicationError(HttpStatusCode? upstreamStatus)
+        {
+            return upstreamStatus switch
+            {
+                HttpStatusCode.TooManyRequests => new(
+                    StatusCodes.Status429TooManyRequests,
+                    "rate_limit_exceeded",
+                    "rate_limit_error",
+                    "rate_limited"),
+                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new(
+                    StatusCodes.Status502BadGateway,
+                    "provider_authentication_error",
+                    "server_error",
+                    "provider_error"),
+                HttpStatusCode.RequestTimeout => new(
+                    StatusCodes.Status503ServiceUnavailable,
+                    "provider_timeout",
+                    "server_error",
+                    "provider_unavailable"),
+                HttpStatusCode.BadGateway => new(
+                    StatusCodes.Status502BadGateway,
+                    "provider_bad_gateway",
+                    "server_error",
+                    "provider_unavailable"),
+                HttpStatusCode.ServiceUnavailable => new(
+                    StatusCodes.Status503ServiceUnavailable,
+                    "provider_unavailable",
+                    "server_error",
+                    "provider_unavailable"),
+                HttpStatusCode.GatewayTimeout => new(
+                    StatusCodes.Status504GatewayTimeout,
+                    "provider_timeout",
+                    "server_error",
+                    "provider_unavailable"),
+                { } status when (int)status >= 400 && (int)status < 500 => new(
+                    (int)status,
+                    "provider_request_error",
+                    "invalid_request_error",
+                    "provider_rejected"),
+                _ => new(
+                    StatusCodes.Status502BadGateway,
+                    "provider_communication_error",
+                    "server_error",
+                    "provider_error")
+            };
+        }
+
+        internal readonly record struct ProviderCommunicationError(
+            int StatusCode,
+            string Code,
+            string Type,
+            string MetricOutcome);
 
         private void ApplySessionAffinity(ChatCompletionRequest request)
         {

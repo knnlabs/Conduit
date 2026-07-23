@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -13,7 +14,6 @@ namespace ConduitLLM.Providers.MiniMax
     /// </summary>
     public partial class MiniMaxClient : BaseLLMClient, IAuthenticationVerifiable
     {
-        private const string DefaultBaseUrl = "https://api.minimax.io";
         private readonly string _baseUrl;
         private Func<string, string, int, Task>? _progressCallback;
 
@@ -33,17 +33,15 @@ namespace ConduitLLM.Providers.MiniMax
         /// <param name="modelId">The default model ID to use.</param>
         /// <param name="logger">The logger for diagnostic information.</param>
         /// <param name="httpClientFactory">The HTTP client factory.</param>
-        /// <param name="defaultModels">The default models configuration.</param>
         public MiniMaxClient(
             Provider provider,
             ProviderKeyCredential keyCredential,
             string modelId,
             ILogger<MiniMaxClient> logger,
-            IHttpClientFactory httpClientFactory,
-            ProviderDefaultModels? defaultModels = null)
-            : base(provider, keyCredential, modelId, logger, httpClientFactory, "minimax", defaultModels)
+            IHttpClientFactory httpClientFactory)
+            : base(provider, keyCredential, modelId, logger, httpClientFactory, "minimax")
         {
-            _baseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? DefaultBaseUrl : provider.BaseUrl.TrimEnd('/');
+            _baseUrl = ProviderConfigurationRegistry.ResolveBaseUrl(provider);
             logger.LogInformation("MiniMax client initialized with base URL: {BaseUrl}, Model: {Model}", _baseUrl, modelId);
         }
 
@@ -71,7 +69,7 @@ namespace ConduitLLM.Providers.MiniMax
         /// <inheritdoc/>
         protected override string GetDefaultBaseUrl()
         {
-            return DefaultBaseUrl;
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.MiniMax)!;
         }
     }
 }

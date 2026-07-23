@@ -8,6 +8,10 @@ import type {
   UpdateModelProviderMappingDto
 } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
+import {
+  mapDiscoveredModelCapabilities,
+  type DiscoveredModelCapabilities,
+} from './modelCapabilities';
 
 const QUERY_KEY = 'model-mappings';
 
@@ -109,20 +113,7 @@ interface BulkDiscoverResult {
     providerModelId?: string;
     hasConflict: boolean;
     existingMapping: ModelProviderMappingDto | null;
-    capabilities: {
-      supportsVision: boolean;
-      supportsImageGeneration: boolean;
-      supportsAudioTranscription: boolean;
-      supportsTextToSpeech: boolean;
-      supportsRealtimeAudio: boolean;
-      supportsFunctionCalling: boolean;
-      supportsStreaming: boolean;
-      supportsVideoGeneration: boolean;
-      supportsEmbeddings: boolean;
-      supportsChat: boolean;
-      maxContextLength?: number | null;
-      maxOutputTokens?: number | null;
-    };
+    capabilities: DiscoveredModelCapabilities;
   }>;
   totalModels: number;
   conflictCount: number;
@@ -161,20 +152,7 @@ export function useBulkDiscoverModels() {
             providerModelId, // Store the provider-specific model ID
             hasConflict: false, // TODO(#1071): Check against mapped aliases.
             existingMapping: null,
-            capabilities: {
-              supportsVision: model.supportsVision ?? false,
-              supportsImageGeneration: model.supportsImageGeneration ?? false,
-              supportsAudioTranscription: false, // Audio capabilities removed from project
-              supportsTextToSpeech: false, // Audio capabilities removed from project
-              supportsRealtimeAudio: false, // Audio capabilities removed from project
-              supportsFunctionCalling: model.supportsFunctionCalling ?? false,
-              supportsStreaming: model.supportsStreaming ?? true,
-              supportsVideoGeneration: model.supportsVideoGeneration ?? false,
-              supportsEmbeddings: model.supportsEmbeddings ?? false,
-              supportsChat: model.supportsChat ?? true,
-              maxContextLength: model.maxInputTokens ?? null,
-              maxOutputTokens: model.maxOutputTokens ?? null,
-            },
+            capabilities: mapDiscoveredModelCapabilities(model),
           };
         }),
         totalModels: providerModels.length,
@@ -203,20 +181,7 @@ interface BulkCreateRequest {
     displayName: string;
     providerId: string;
     providerModelId?: string;
-    capabilities: {
-      supportsVision: boolean;
-      supportsImageGeneration: boolean;
-      supportsAudioTranscription: boolean;
-      supportsTextToSpeech: boolean;
-      supportsRealtimeAudio: boolean;
-      supportsFunctionCalling: boolean;
-      supportsStreaming: boolean;
-      supportsVideoGeneration: boolean;
-      supportsEmbeddings: boolean;
-      supportsChat: boolean;
-      maxContextLength?: number | null;
-      maxOutputTokens?: number | null;
-    };
+    capabilities: DiscoveredModelCapabilities;
   }>;
   defaultPriority?: number;
   enableByDefault?: boolean;

@@ -71,5 +71,29 @@ namespace ConduitLLM.Tests.Core.Utilities
             var decision = IpFilterEvaluator.Evaluate("2001:db8::1", White(), Black("2001:db8::/32"), defaultAllow: true);
             decision.IsAllowed.Should().BeFalse();
         }
+
+        [Fact]
+        public void Evaluate_IPv4MappedAddress_Ipv4CidrBlacklistDenies()
+        {
+            var decision = IpFilterEvaluator.Evaluate(
+                "::ffff:203.0.113.9",
+                White(),
+                Black("203.0.113.0/24"),
+                defaultAllow: true);
+
+            decision.IsAllowed.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Evaluate_IPv4MappedAddress_Ipv4WhitelistAllows()
+        {
+            var decision = IpFilterEvaluator.Evaluate(
+                "::ffff:203.0.113.9",
+                White("203.0.113.9"),
+                Black(),
+                defaultAllow: false);
+
+            decision.IsAllowed.Should().BeTrue();
+        }
     }
 }

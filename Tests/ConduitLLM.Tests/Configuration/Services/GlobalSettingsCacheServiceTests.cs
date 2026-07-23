@@ -451,23 +451,19 @@ namespace ConduitLLM.Tests.Configuration.Services
         }
 
         [Fact]
-        public async Task InvalidateSettingAsync_WithNonExistentSetting_LogsDebugMessage()
+        public async Task InvalidateSettingAsync_WithNewlyCreatedSetting_LoadsItIntoCache()
         {
-            // Arrange
             _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<GlobalSetting>());
             await _service.StartAsync(CancellationToken.None);
+            _mockRepository
+                .Setup(x => x.GetByKeyAsync("new_setting", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GlobalSetting { Id = 42, Key = "new_setting", Value = "enabled" });
 
-            // Act
-            await _service.InvalidateSettingAsync("non_existent_key");
+            await _service.InvalidateSettingAsync("new_setting");
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Debug,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Attempted to invalidate non-cached setting")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            (await _service.GetSettingValueAsync("new_setting")).Should().Be("enabled");
+            _mockRepository.Verify(
+                x => x.GetByKeyAsync("new_setting", It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 

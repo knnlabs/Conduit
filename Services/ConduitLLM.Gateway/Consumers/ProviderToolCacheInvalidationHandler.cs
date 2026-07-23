@@ -58,6 +58,7 @@ public class ProviderToolCacheInvalidationHandler : IEventHandler<ProviderToolCh
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error invalidating provider tool cache for {ProviderType}", @event.ProviderType);
+            throw;
         }
     }
 }

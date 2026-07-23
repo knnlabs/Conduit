@@ -224,34 +224,44 @@ namespace ConduitLLM.Gateway.Consumers
                     // Record failure in circuit breaker
                     _circuitBreaker.RecordFailure(request.WebhookUrl);
                     
-                    // Message will be moved to the error/dead-letter queue by the transport
-                    throw new InvalidOperationException(
+                    throw new NonRetryableMessageException(
                         $"Webhook delivery failed after {MAX_RETRY_COUNT} attempts to {request.WebhookUrl}");
                 }
             }
-            catch (Exception ex) when (ex is not InvalidOperationException)
+            catch (Exception ex) when (ex is not NonRetryableMessageException)
             {
                 _logger.LogError(ex, 
                     "Unexpected error processing webhook delivery for TaskId={TaskId}",
                     request.TaskId);
                 
-                // Notify about unexpected error
+                if (request.RetryCount < MAX_RETRY_COUNT)
+                {
+                    var retryDelay = TimeSpan.FromSeconds(Math.Pow(2, request.RetryCount + 1));
+                    var retryTime = DateTime.UtcNow.Add(retryDelay);
+                    await _notificationService.NotifyDeliveryFailureAsync(
+                        request.WebhookUrl, request.TaskId, $"Unexpected error: {ex.Message}", null,
+                        request.RetryCount + 1, false);
+                    await _notificationService.NotifyRetryScheduledAsync(
+                        request.WebhookUrl, request.TaskId, retryTime,
+                        request.RetryCount + 1, MAX_RETRY_COUNT);
+                    await context.SchedulePublishAsync(retryTime, request with
+                    {
+                        RetryCount = request.RetryCount + 1,
+                        NextRetryAt = retryTime
+                    });
+                    await _deliveryTracker.RecordFailureAsync(deliveryKey, request.WebhookUrl, ex.Message);
+                    _circuitBreaker.RecordFailure(request.WebhookUrl);
+                    return;
+                }
+
+                var finalError = $"Max retries ({MAX_RETRY_COUNT}) exceeded: {ex.Message}";
                 await _notificationService.NotifyDeliveryFailureAsync(
-                    request.WebhookUrl,
-                    request.TaskId,
-                    $"Unexpected error: {ex.Message}",
-                    null,
-                    request.RetryCount + 1,
-                    false);
-                
-                // Record the error
-                await _deliveryTracker.RecordFailureAsync(
-                    deliveryKey, 
-                    request.WebhookUrl, 
-                    ex.Message);
-                
-                // Re-throw to let the endpoint retry policy handle it
-                throw;
+                    request.WebhookUrl, request.TaskId, finalError, null,
+                    request.RetryCount + 1, true);
+                await _deliveryTracker.RecordFailureAsync(deliveryKey, request.WebhookUrl, finalError);
+                _circuitBreaker.RecordFailure(request.WebhookUrl);
+                throw new NonRetryableMessageException(
+                    $"Webhook delivery failed after {MAX_RETRY_COUNT} retries to {request.WebhookUrl}");
             }
         }
     }

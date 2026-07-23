@@ -4,7 +4,7 @@ namespace ConduitLLM.Core.Interfaces
 {
     /// <summary>
     /// Registry for managing provider metadata across the application.
-    /// Provides a single source of truth for provider capabilities and configuration.
+    /// Provides discovery for provider setup hints and validation metadata.
     /// </summary>
     public interface IProviderMetadataRegistry
     {
@@ -38,17 +38,10 @@ namespace ConduitLLM.Core.Interfaces
         bool IsRegistered(ProviderType providerType);
 
         /// <summary>
-        /// Gets providers that support a specific feature.
-        /// </summary>
-        /// <param name="featurePredicate">Predicate to test provider features</param>
-        /// <returns>Providers that match the feature predicate</returns>
-        IEnumerable<IProviderMetadata> GetProvidersByFeature(Func<Models.FeatureSupport, bool> featurePredicate);
-
-        /// <summary>
         /// Gets diagnostic information about the registry.
         /// Useful for debugging and health checks.
         /// </summary>
-        /// <returns>Diagnostic information including registered providers and their capabilities</returns>
+        /// <returns>Diagnostic information including registered provider types</returns>
         ProviderRegistryDiagnostics GetDiagnostics();
     }
 
@@ -66,11 +59,6 @@ namespace ConduitLLM.Core.Interfaces
         /// Gets or sets the list of registered provider types.
         /// </summary>
         public List<string> RegisteredProviders { get; set; } = new();
-
-        /// <summary>
-        /// Gets or sets providers grouped by capabilities.
-        /// </summary>
-        public Dictionary<string, List<string>> ProvidersByCapability { get; set; } = new();
 
         /// <summary>
         /// Gets or sets any registration errors encountered.

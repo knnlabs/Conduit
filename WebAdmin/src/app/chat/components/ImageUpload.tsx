@@ -32,7 +32,12 @@ export function ImageUpload({
   disabled = false 
 }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imagesRef = useRef(images);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  React.useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -147,13 +152,13 @@ export function ImageUpload({
   // Clean up object URLs when component unmounts
   React.useEffect(() => {
     return () => {
-      images.forEach(img => {
+      imagesRef.current.forEach(img => {
         if (img.url.startsWith('blob:')) {
           URL.revokeObjectURL(img.url);
         }
       });
     };
-  }, [images]);
+  }, []);
 
   return (
     <Stack gap="xs">

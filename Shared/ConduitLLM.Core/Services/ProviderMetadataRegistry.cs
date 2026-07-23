@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Services
 {
@@ -59,16 +58,6 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc />
-        public IEnumerable<IProviderMetadata> GetProvidersByFeature(Func<FeatureSupport, bool> featurePredicate)
-        {
-            ArgumentNullException.ThrowIfNull(featurePredicate);
-
-            return _providers.Values
-                .Where(p => featurePredicate(p.Capabilities.Features))
-                .OrderBy(p => p.DisplayName);
-        }
-
-        /// <inheritdoc />
         public ProviderRegistryDiagnostics GetDiagnostics()
         {
             var diagnostics = new ProviderRegistryDiagnostics
@@ -80,29 +69,6 @@ namespace ConduitLLM.Core.Services
                     .ToList(),
                 RegistrationErrors = new List<string>(_registrationErrors)
             };
-
-            // Group providers by capabilities
-            var capabilityGroups = new Dictionary<string, List<string>>();
-
-            // Group by features
-            AddCapabilityGroup(capabilityGroups, "Streaming", 
-                p => p.Capabilities.Features.Streaming);
-            AddCapabilityGroup(capabilityGroups, "Embeddings", 
-                p => p.Capabilities.Features.Embeddings);
-            AddCapabilityGroup(capabilityGroups, "ImageGeneration", 
-                p => p.Capabilities.Features.ImageGeneration);
-            AddCapabilityGroup(capabilityGroups, "VisionInput", 
-                p => p.Capabilities.Features.VisionInput);
-            AddCapabilityGroup(capabilityGroups, "FunctionCalling", 
-                p => p.Capabilities.Features.FunctionCalling);
-
-            // Group by authentication
-            AddCapabilityGroup(capabilityGroups, "RequiresApiKey", 
-                p => p.AuthRequirements.RequiresApiKey);
-            AddCapabilityGroup(capabilityGroups, "SupportsOAuth", 
-                p => p.AuthRequirements.SupportsOAuth);
-
-            diagnostics.ProvidersByCapability = capabilityGroups;
 
             return diagnostics;
         }
@@ -198,22 +164,5 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        /// <summary>
-        /// Adds providers to a capability group based on a predicate.
-        /// </summary>
-        private void AddCapabilityGroup(Dictionary<string, List<string>> groups, 
-            string capability, Func<IProviderMetadata, bool> predicate)
-        {
-            var providers = _providers.Values
-                .Where(predicate)
-                .Select(p => p.DisplayName)
-                .OrderBy(n => n)
-                .ToList();
-
-            if (providers.Any())
-            {
-                groups[capability] = providers;
-            }
-        }
     }
 }

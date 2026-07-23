@@ -183,6 +183,20 @@ namespace ConduitLLM.Security.Services
                     _ipProfiles.TryRemove(ip, out _);
                 }
 
+                // Clean anomaly state after IP eviction so derived state cannot outlive its profile.
+                var staleAnomalyStates = _anomalyStates
+                    .Where(entry =>
+                        entry.Value.WindowStart < cutoff ||
+                        (entry.Key.StartsWith("ip:", StringComparison.Ordinal) &&
+                         !_ipProfiles.ContainsKey(entry.Key[3..])))
+                    .Select(entry => entry.Key)
+                    .ToList();
+
+                foreach (var identifier in staleAnomalyStates)
+                {
+                    _anomalyStates.TryRemove(identifier, out _);
+                }
+
                 // Clean inactive key profiles
                 var inactiveKeys = _keyProfiles
                     .Where(p => p.Value.LastActivity < cutoff)
@@ -194,8 +208,9 @@ namespace ConduitLLM.Security.Services
                     _keyProfiles.TryRemove(key, out _);
                 }
 
-                _logger.LogInformation("Security monitoring cleanup completed. Removed {IpCount} inactive IPs and {KeyCount} inactive keys",
-                    inactiveIps.Count(), inactiveKeys.Count());
+                _logger.LogInformation(
+                    "Security monitoring cleanup completed. Removed {IpCount} inactive IPs, {KeyCount} inactive keys, and {AnomalyStateCount} anomaly states",
+                    inactiveIps.Count, inactiveKeys.Count, staleAnomalyStates.Count);
             }
             catch (Exception ex)
             {

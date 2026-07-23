@@ -118,8 +118,7 @@ namespace ConduitLLM.Providers.OpenAI
         /// </summary>
         public override string GetHealthCheckUrl(string? baseUrl = null)
         {
-            var defaultBaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)
-                ?? "https://api.openai.com/v1";
+            var defaultBaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)!;
 
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
                 ? baseUrl.TrimEnd('/')
@@ -141,8 +140,7 @@ namespace ConduitLLM.Providers.OpenAI
         /// </summary>
         protected override string GetDefaultBaseUrl()
         {
-            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)
-                ?? "https://api.openai.com/v1";
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)!;
         }
     }
 }

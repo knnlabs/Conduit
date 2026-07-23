@@ -1,3 +1,54 @@
+function csvValueToString(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(csvValueToString).join('; ');
+  }
+
+  if (typeof value === 'object') {
+    return JSON.stringify(value) ?? '';
+  }
+
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+    return value.toString();
+  }
+
+  if (typeof value === 'symbol') {
+    return value.description ?? '';
+  }
+
+  if (typeof value === 'function') {
+    return value.name;
+  }
+
+  return '';
+}
+
+export function escapeCsvField(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+
+  const isStringLike = typeof value === 'string' || Array.isArray(value);
+  let text = csvValueToString(value);
+
+  if (isStringLike && /^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`;
+  }
+
+  if (/[,"\n\r]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+
+  return text;
+}
+
 export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
   filename: string,
@@ -18,25 +69,9 @@ export function exportToCSV<T extends Record<string, unknown>>(
 
   // Create CSV content
   const csvContent = [
-    headers.join(','),
+    headers.map(escapeCsvField).join(','),
     ...data.map(row => 
-      keys.map(key => {
-        const value = row[key];
-        // Handle different value types
-        if (value === null || value === undefined) {
-          return '';
-        }
-        if (typeof value === 'string' && value.includes(',')) {
-          return `"${value.replace(/"/g, '""')}"`;
-        }
-        if (Array.isArray(value)) {
-          return `"${value.join('; ')}"`;
-        }
-        if (typeof value === 'object') {
-          return `"${JSON.stringify(value)}"`;
-        }
-        return String(value);
-      }).join(',')
+      keys.map(key => escapeCsvField(row[key])).join(',')
     )
   ].join('\n');
 

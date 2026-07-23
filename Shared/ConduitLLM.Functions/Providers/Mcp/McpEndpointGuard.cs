@@ -60,6 +60,11 @@ public static class McpEndpointGuard
 
     private static bool IsPrivateOrReserved(IPAddress ip)
     {
+        if (ip.IsIPv4MappedToIPv6)
+        {
+            ip = ip.MapToIPv4();
+        }
+
         if (IPAddress.IsLoopback(ip))
         {
             return true;

@@ -93,7 +93,13 @@ namespace ConduitLLM.Tests.Providers
             var provider = new Provider { Id = 1, ProviderType = ProviderType.OpenRouter };
             var keyCredential = new ProviderKeyCredential { Id = 1, ProviderId = 1, ApiKey = "test-api-key" };
             var logger = CreateLogger<OpenRouterClient>();
-            return new OpenRouterClient(provider, keyCredential, model, logger.Object, _httpClientFactoryMock.Object, null, providerOptionsJson);
+            return new OpenRouterClient(
+                provider,
+                keyCredential,
+                model,
+                logger.Object,
+                _httpClientFactoryMock.Object,
+                providerOptionsJson: providerOptionsJson);
         }
 
         [Fact]

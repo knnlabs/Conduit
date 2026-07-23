@@ -1,16 +1,10 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Providers;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Providers.Metadata
 {
-    // TODO(#1082): Migrate provider metadata, including default base URLs and capabilities,
-    // should eventually be migrated to database configuration for full
-    // data-driven architecture. These classes provide reasonable defaults
-    // but should not be the source of truth for provider configuration.
-
-
-
     /// <summary>
     /// Provider metadata for Groq.
     /// </summary>
@@ -18,11 +12,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.Groq;
         public override string DisplayName => "Groq";
-        public override string DefaultBaseUrl => "https://api.groq.com/openai/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public GroqProviderMetadata()
         {
-            Capabilities.ChatParameters.Tools = true;
             ConfigurationHints.DocumentationUrl = "https://console.groq.com/docs";
             ConfigurationHints.Tips.Add(new ConfigurationTip
             {
@@ -41,13 +34,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.Replicate;
         public override string DisplayName => "Replicate";
-        public override string DefaultBaseUrl => "https://api.replicate.com/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public ReplicateProviderMetadata()
         {
-            Capabilities.Features.ImageGeneration = true;
-            Capabilities.Features.VisionInput = true;
-            
             AuthRequirements.ApiKeyHeaderName = "Authorization";
             ConfigurationHints.DocumentationUrl = "https://replicate.com/docs";
         }
@@ -60,11 +50,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.Fireworks;
         public override string DisplayName => "Fireworks AI";
-        public override string DefaultBaseUrl => "https://api.fireworks.ai/inference/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public FireworksProviderMetadata()
         {
-            Capabilities.ChatParameters.Tools = true;
             ConfigurationHints.DocumentationUrl = "https://readme.fireworks.ai/";
         }
     }
@@ -80,7 +69,7 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.OpenAICompatible;
         public override string DisplayName => "OpenAI Compatible";
-        public override string DefaultBaseUrl => "http://localhost:8080/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public OpenAICompatibleProviderMetadata()
         {
@@ -105,7 +94,7 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.MiniMax;
         public override string DisplayName => "MiniMax";
-        public override string DefaultBaseUrl => "https://api.minimax.chat/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public MiniMaxProviderMetadata()
         {
@@ -123,12 +112,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.Cerebras;
         public override string DisplayName => "Cerebras";
-        public override string DefaultBaseUrl => "https://api.cerebras.ai/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public CerebrasProviderMetadata()
         {
-            Capabilities.ChatParameters.Tools = true;
-            
             ConfigurationHints.DocumentationUrl = "https://inference-docs.cerebras.ai/";
             ConfigurationHints.Tips.Add(new ConfigurationTip
             {
@@ -146,21 +133,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.DeepInfra;
         public override string DisplayName => "DeepInfra";
-        public override string DefaultBaseUrl => "https://api.deepinfra.com/v1/openai";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public DeepInfraProviderMetadata()
         {
-            // DeepInfra supports full OpenAI-compatible features
-            Capabilities.Features.Streaming = true;
-            Capabilities.Features.ImageGeneration = true;
-            Capabilities.Features.Embeddings = true;
-            Capabilities.Features.VisionInput = true; // Multimodal support
-            
-            // Chat parameters support
-            Capabilities.ChatParameters.Tools = true;
-            Capabilities.ChatParameters.ResponseFormat = true;
-            Capabilities.ChatParameters.Seed = true;
-            
             ConfigurationHints.DocumentationUrl = "https://deepinfra.com/docs/openai_api";
             ConfigurationHints.Tips.Add(new ConfigurationTip
             {
@@ -184,19 +160,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.OpenRouter;
         public override string DisplayName => "OpenRouter";
-        public override string DefaultBaseUrl => "https://openrouter.ai/api/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public OpenRouterProviderMetadata()
         {
-            // OpenRouter supports chat completions with features dependent on routed model
-            Capabilities.Features.Streaming = true;
-            Capabilities.Features.VisionInput = true;
-
-            // Chat parameters support (dependent on routed model)
-            Capabilities.ChatParameters.Tools = true;
-            Capabilities.ChatParameters.ResponseFormat = true;
-            Capabilities.ChatParameters.Seed = true;
-
             ConfigurationHints.DocumentationUrl = "https://openrouter.ai/docs";
             ConfigurationHints.Tips.Add(new ConfigurationTip
             {
@@ -220,19 +187,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.Cloudflare;
         public override string DisplayName => "Cloudflare Workers AI";
-        public override string DefaultBaseUrl => "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public CloudflareProviderMetadata()
         {
-            // Cloudflare Workers AI supports OpenAI-compatible features
-            Capabilities.Features.Streaming = true;
-            Capabilities.Features.Embeddings = true;
-            Capabilities.Features.ImageGeneration = true;
-
-            // Chat parameters support
-            Capabilities.ChatParameters.Tools = true;
-            Capabilities.ChatParameters.ResponseFormat = true;
-
             AuthRequirements.CustomFields = new List<AuthField>
             {
                 CreateUrlField("baseUrl", "API Base URL (must include account ID)", true,
@@ -262,18 +220,10 @@ namespace ConduitLLM.Core.Providers.Metadata
     {
         public override ProviderType ProviderType => ProviderType.Meta;
         public override string DisplayName => "Meta AI";
-        public override string DefaultBaseUrl => "https://api.meta.ai/v1";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
 
         public MetaProviderMetadata()
         {
-            // Meta Model API is OpenAI-compatible with multimodal input support
-            Capabilities.Features.Streaming = true;
-            Capabilities.Features.VisionInput = true;
-
-            // Chat parameters support
-            Capabilities.ChatParameters.Tools = true;
-            Capabilities.ChatParameters.ResponseFormat = true;
-
             ConfigurationHints.DocumentationUrl = "https://ai.developer.meta.com/docs";
             ConfigurationHints.Tips.Add(new ConfigurationTip
             {

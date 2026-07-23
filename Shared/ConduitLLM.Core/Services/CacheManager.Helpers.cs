@@ -10,8 +10,7 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public partial class CacheManager
     {
-        // Per-key semaphores for local locking (fixes cache stampede within same instance)
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _localLocks = new();
+        private readonly StripedAsyncLock _localLocks = new();
         private void InitializeDefaultConfigurations(CacheManagerOptions? options)
         {
             var defaultConfigs = new Dictionary<CacheRegion, (TimeSpan ttl, int priority, bool distributed)>
@@ -115,10 +114,7 @@ namespace ConduitLLM.Core.Services
 
         private async Task<IDisposable> AcquireLockAsync(string lockKey, CancellationToken cancellationToken)
         {
-            // Get or create a per-key semaphore to prevent same-instance stampedes
-            var semaphore = _localLocks.GetOrAdd(lockKey, _ => new SemaphoreSlim(1, 1));
-            await semaphore.WaitAsync(cancellationToken);
-            return new DisposableLock(semaphore, lockKey, _localLocks);
+            return await _localLocks.AcquireAsync(lockKey, cancellationToken);
         }
 
         private CacheRegionConfig CreateDefaultConfig(CacheRegion region)
@@ -154,30 +150,6 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        private class DisposableLock : IDisposable
-        {
-            private readonly SemaphoreSlim _semaphore;
-            private readonly string _lockKey;
-            private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks;
-
-            public DisposableLock(SemaphoreSlim semaphore, string lockKey, ConcurrentDictionary<string, SemaphoreSlim> locks)
-            {
-                _semaphore = semaphore;
-                _lockKey = lockKey;
-                _locks = locks;
-            }
-
-            public void Dispose()
-            {
-                _semaphore.Release();
-                // Cleanup: Remove semaphore from dictionary if no one is waiting
-                // This prevents memory leaks from accumulating semaphores for stale keys
-                if (_semaphore.CurrentCount == 1)
-                {
-                    _locks.TryRemove(_lockKey, out _);
-                }
-            }
-        }
     }
 
     /// <summary>

@@ -279,6 +279,14 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 656, 0.05m);
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal(656, dto.VirtualKeyId);
+                Assert.Equal("unknown", dto.ModelName);
+                Assert.Equal(0, dto.InputTokens);
+                Assert.Equal(0, dto.OutputTokens);
+                Assert.Equal(0.05m, dto.Cost);
+            });
             Assert.Contains(Fixture.CapturedBillingEvents,
                 e => e.EventType == BillingAuditEventType.StreamingUsageMissing);
         }

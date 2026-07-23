@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using ConduitLLM.Functions.Entities;
@@ -26,6 +27,7 @@ namespace ConduitLLM.Functions.Providers.Mcp;
 public sealed partial class McpFunctionClient : IFunctionClient, IDynamicToolProvider
 {
     private const int MaxResponseChars = 100_000;
+    private const string TruncationMarker = "…[truncated]";
 
     private readonly FunctionConfiguration _configuration;
     private readonly FunctionCredential _credential;
@@ -117,6 +119,14 @@ public sealed partial class McpFunctionClient : IFunctionClient, IDynamicToolPro
         {
             throw new ArgumentException(
                 "No MCP tool name was supplied for execution. This indicates a routing error.",
+                nameof(parameters));
+        }
+
+        var allow = _settings.AllowedToolSet;
+        if (allow is not null && !allow.Contains(toolName))
+        {
+            throw new ArgumentException(
+                $"MCP tool '{toolName}' is not in the configured allowlist.",
                 nameof(parameters));
         }
 
@@ -290,9 +300,96 @@ public sealed partial class McpFunctionClient : IFunctionClient, IDynamicToolPro
             }
         }
 
+        var json = SerializeResponsePayload(
+            result.IsError ?? false,
+            textParts,
+            nonTextBlocks,
+            result.StructuredContent,
+            truncated: false,
+            omittedStructuredContent: false);
+        if (json.Length <= MaxResponseChars)
+        {
+            return json;
+        }
+
+        return BuildTruncatedResponseJson(
+            result.IsError ?? false,
+            textParts,
+            nonTextBlocks,
+            result.StructuredContent);
+    }
+
+    private string BuildTruncatedResponseJson(
+        bool isError,
+        IReadOnlyList<string> textParts,
+        int nonTextBlocks,
+        object? structuredContent)
+    {
+        var omittedStructuredContent = false;
+        var boundedStructuredContent = structuredContent;
+        var best = SerializeResponsePayload(
+            isError,
+            TruncateTextParts(textParts, 0),
+            nonTextBlocks,
+            boundedStructuredContent,
+            truncated: true,
+            omittedStructuredContent);
+
+        if (best.Length > MaxResponseChars)
+        {
+            boundedStructuredContent = null;
+            omittedStructuredContent = structuredContent is not null;
+            best = SerializeResponsePayload(
+                isError,
+                TruncateTextParts(textParts, 0),
+                nonTextBlocks,
+                boundedStructuredContent,
+                truncated: true,
+                omittedStructuredContent);
+        }
+
+        var totalTextChars = textParts.Aggregate(
+            0L,
+            (total, text) => Math.Min(MaxResponseChars, total + text.Length));
+        var low = 0;
+        var high = (int)totalTextChars;
+
+        while (low <= high)
+        {
+            var budget = low + ((high - low) / 2);
+            var candidate = SerializeResponsePayload(
+                isError,
+                TruncateTextParts(textParts, budget),
+                nonTextBlocks,
+                boundedStructuredContent,
+                truncated: true,
+                omittedStructuredContent);
+
+            if (candidate.Length <= MaxResponseChars)
+            {
+                best = candidate;
+                low = budget + 1;
+            }
+            else
+            {
+                high = budget - 1;
+            }
+        }
+
+        return best;
+    }
+
+    private string SerializeResponsePayload(
+        bool isError,
+        IReadOnlyList<string> textParts,
+        int nonTextBlocks,
+        object? structuredContent,
+        bool truncated,
+        bool omittedStructuredContent)
+    {
         var payload = new Dictionary<string, object?>
         {
-            ["isError"] = result.IsError ?? false,
+            ["isError"] = isError,
             ["content"] = textParts
         };
 
@@ -301,17 +398,66 @@ public sealed partial class McpFunctionClient : IFunctionClient, IDynamicToolPro
             payload["omittedNonTextBlocks"] = nonTextBlocks;
         }
 
-        if (result.StructuredContent is not null)
+        if (structuredContent is not null)
         {
-            payload["structuredContent"] = result.StructuredContent;
+            payload["structuredContent"] = structuredContent;
         }
 
-        var json = JsonSerializer.Serialize(payload, _jsonOptions);
-        if (json.Length > MaxResponseChars)
+        if (truncated)
         {
-            json = json[..MaxResponseChars];
+            payload["truncated"] = true;
         }
 
-        return json;
+        if (omittedStructuredContent)
+        {
+            payload["omittedStructuredContent"] = true;
+        }
+
+        return JsonSerializer.Serialize(payload, _jsonOptions);
+    }
+
+    private static IReadOnlyList<string> TruncateTextParts(
+        IReadOnlyList<string> textParts,
+        int maxTextChars)
+    {
+        if (textParts.Count == 0)
+        {
+            return [];
+        }
+
+        var bounded = new StringBuilder(Math.Min(maxTextChars, MaxResponseChars));
+        var remaining = maxTextChars;
+        var omittedText = false;
+
+        foreach (var text in textParts)
+        {
+            if (text.Length <= remaining)
+            {
+                bounded.Append(text);
+                remaining -= text.Length;
+                continue;
+            }
+
+            var take = remaining;
+            if (take > 0 && take < text.Length && char.IsHighSurrogate(text[take - 1]))
+            {
+                take--;
+            }
+
+            if (take > 0)
+            {
+                bounded.Append(text.AsSpan(0, take));
+            }
+
+            omittedText = true;
+            break;
+        }
+
+        if (omittedText)
+        {
+            bounded.Append(TruncationMarker);
+        }
+
+        return bounded.Length == 0 ? [] : [bounded.ToString()];
     }
 }

@@ -45,7 +45,7 @@ public interface IGlobalSettingsCacheService
     Task<string?> GetSettingValueAsync(string key);
 
     /// <summary>
-    /// Invalidates a specific cached setting, forcing it to be reloaded from the database on next access.
+    /// Invalidates and immediately reloads a specific setting from the database.
     /// </summary>
     /// <param name="settingKey">The key of the setting to invalidate.</param>
     Task InvalidateSettingAsync(string settingKey);

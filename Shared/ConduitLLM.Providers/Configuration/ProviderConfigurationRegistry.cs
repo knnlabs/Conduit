@@ -1,4 +1,6 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Providers;
 using ConduitLLM.Providers.Authentication;
 
 namespace ConduitLLM.Providers.Configuration
@@ -16,7 +18,7 @@ namespace ConduitLLM.Providers.Configuration
         {
             [ProviderType.OpenAI] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.openai.com/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.OpenAI),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 EmbeddingsEndpoint = "/embeddings",
@@ -35,7 +37,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Groq] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.groq.com/openai/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.Groq),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
@@ -49,7 +51,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Fireworks] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.fireworks.ai/inference/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.Fireworks),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 EmbeddingsEndpoint = "/embeddings",
@@ -65,7 +67,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Cerebras] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.cerebras.ai/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.Cerebras),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
@@ -80,7 +82,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.SambaNova] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.sambanova.ai/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.SambaNova),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
@@ -94,7 +96,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.DeepInfra] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.deepinfra.com/v1/openai",
+                DefaultBaseUrl = DefaultUrl(ProviderType.DeepInfra),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 EmbeddingsEndpoint = "/embeddings",
@@ -109,7 +111,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Cloudflare] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.Cloudflare),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 EmbeddingsEndpoint = "/embeddings",
@@ -126,7 +128,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Replicate] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.replicate.com/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.Replicate),
                 ModelsEndpoint = "/models",
                 HealthCheckEndpoint = "/account",
                 AuthenticationStrategy = TokenStrategy.Instance,
@@ -140,7 +142,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.MiniMax] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.minimax.chat/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.MiniMax),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/text/chatcompletion_v2",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
@@ -155,7 +157,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.OpenAICompatible] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.openai.com/v1", // Will be overridden by provider config
+                DefaultBaseUrl = DefaultUrl(ProviderType.OpenAICompatible), // Explicit provider URL remains required.
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 EmbeddingsEndpoint = "/embeddings",
@@ -171,7 +173,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Ultravox] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.ultravox.ai/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.Ultravox),
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -182,7 +184,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.ElevenLabs] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://api.elevenlabs.io/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.ElevenLabs),
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -193,7 +195,7 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.OpenRouter] = new ProviderConfiguration
             {
-                DefaultBaseUrl = "https://openrouter.ai/api/v1",
+                DefaultBaseUrl = DefaultUrl(ProviderType.OpenRouter),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
@@ -203,8 +205,25 @@ namespace ConduitLLM.Providers.Configuration
                     RateLimitExceeded = "OpenRouter API rate limit exceeded. Please try again later.",
                     ModelNotFound = "Model not found. OpenRouter models use provider/model-name format (e.g., openai/gpt-4o)."
                 }
+            },
+
+            [ProviderType.Meta] = new ProviderConfiguration
+            {
+                DefaultBaseUrl = DefaultUrl(ProviderType.Meta),
+                ModelsEndpoint = "/models",
+                ChatCompletionsEndpoint = "/chat/completions",
+                AuthenticationStrategy = BearerTokenStrategy.Instance,
+                ErrorMessages = new ProviderErrorMessages
+                {
+                    InvalidApiKey = "Invalid API key for Meta. Please verify your API key is correct.",
+                    RateLimitExceeded = "Meta API rate limit exceeded. Please try again later.",
+                    ModelNotFound = "Model not found. Please verify the Meta model ID is correct."
+                }
             }
         };
+
+        private static string DefaultUrl(ProviderType providerType) =>
+            ProviderAdapterDefaultsRegistry.GetRequired(providerType).DefaultBaseUrl;
 
         /// <summary>
         /// Gets the configuration for a provider type.
@@ -228,6 +247,12 @@ namespace ConduitLLM.Providers.Configuration
         }
 
         /// <summary>
+        /// Gets every provider type with immutable adapter configuration.
+        /// </summary>
+        public static IReadOnlyCollection<ProviderType> GetRegisteredProviderTypes() =>
+            Configurations.Keys.ToArray();
+
+        /// <summary>
         /// Gets the default base URL for a provider type.
         /// </summary>
         /// <param name="providerType">The provider type.</param>
@@ -235,6 +260,22 @@ namespace ConduitLLM.Providers.Configuration
         public static string? GetDefaultBaseUrl(ProviderType providerType)
         {
             return GetConfiguration(providerType)?.DefaultBaseUrl;
+        }
+
+        /// <summary>
+        /// Resolves the effective base URL, preferring the operator's database override.
+        /// </summary>
+        public static string ResolveBaseUrl(Provider provider)
+        {
+            ArgumentNullException.ThrowIfNull(provider);
+
+            if (!string.IsNullOrWhiteSpace(provider.BaseUrl))
+            {
+                return provider.BaseUrl.TrimEnd('/');
+            }
+
+            return GetDefaultBaseUrl(provider.ProviderType)
+                ?? throw new InvalidOperationException($"No default base URL is registered for {provider.ProviderType}.");
         }
 
         /// <summary>

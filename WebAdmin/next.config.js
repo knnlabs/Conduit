@@ -8,6 +8,9 @@ const nextConfig = {
   },
   // Enable React strict mode for additional checks
   reactStrictMode: true,
+  // Emit browser source maps for restricted build artifacts/error-symbolication.
+  // The edge proxy blocks direct .map requests in production.
+  productionBrowserSourceMaps: true,
   // Image configuration to allow loading from API server
   images: {
     remotePatterns: [

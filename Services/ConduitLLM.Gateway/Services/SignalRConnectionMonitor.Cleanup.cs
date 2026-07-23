@@ -14,7 +14,7 @@ namespace ConduitLLM.Gateway.Services
             _ = CleanupStaleConnectionsAsync();
         }
 
-        private async Task CleanupStaleConnectionsAsync()
+        internal async Task CleanupStaleConnectionsAsync()
         {
             if (_redis == null)
             {

@@ -50,7 +50,7 @@ namespace ConduitLLM.Admin.Services
             var path = context.Request.Path.Value ?? "";
 
             // Check API key authentication (unless excluded path)
-            if (!IsPathExcluded(path, new List<string> { "/health", "/swagger", "/scalar", "/openapi", "/hubs" }))
+            if (!IsPathExcluded(path, new List<string> { "/health", "/swagger", "/scalar", "/openapi" }))
             {
                 if (!await IsApiKeyValidAsync(context))
                 {

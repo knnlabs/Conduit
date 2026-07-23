@@ -41,7 +41,8 @@ namespace ConduitLLM.Gateway.EventHandlers
                 {
                     ContentType = @event.ContentType,
                     SizeBytes = @event.FileSizeBytes,
-                    Provider = @event.GeneratedByModel,
+                    Provider = ResolveMetadataValue(@event.Provider, @event.Metadata, "provider"),
+                    Model = ResolveMetadataValue(@event.GeneratedByModel, @event.Metadata, "model"),
                     Prompt = @event.GenerationPrompt,
                     StorageUrl = @event.MediaUrl,
                     ExpiresAt = @event.ExpiresAt
@@ -78,6 +79,22 @@ namespace ConduitLLM.Gateway.EventHandlers
                     @event.StorageKey);
                 throw; // Re-throw to trigger the event bus retry policy
             }
+        }
+
+        private static string ResolveMetadataValue(
+            string firstClassValue,
+            IReadOnlyDictionary<string, object>? metadata,
+            string metadataKey)
+        {
+            if (!string.IsNullOrWhiteSpace(firstClassValue))
+            {
+                return firstClassValue;
+            }
+
+            return metadata?.TryGetValue(metadataKey, out var value) == true &&
+                !string.IsNullOrWhiteSpace(value?.ToString())
+                    ? value.ToString()!
+                    : "unknown";
         }
     }
 }

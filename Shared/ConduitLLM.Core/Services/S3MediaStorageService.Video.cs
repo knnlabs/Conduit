@@ -193,7 +193,10 @@ namespace ConduitLLM.Core.Services
             {
                 while (true)
                 {
-                    var bytesRead = await content.ReadAsync(buffer, 0, buffer.Length);
+                    var bytesRead = await content.ReadAtLeastAsync(
+                        buffer.AsMemory(),
+                        buffer.Length,
+                        throwOnEndOfStream: false);
                     if (bytesRead == 0)
                         break;
 

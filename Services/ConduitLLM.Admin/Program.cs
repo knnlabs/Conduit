@@ -248,9 +248,6 @@ public partial class Program
         ModelProviderMappingEndpoints.MapModelProviderMappingEndpoints(app);
         ModelCostsEndpoints.MapModelCostsEndpoints(app);
 
-        // Map SignalR hub with master key authentication
-        app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
-
         // Map monitoring endpoints (health, metrics, Prometheus)
         MapMonitoringEndpoints(app);
 

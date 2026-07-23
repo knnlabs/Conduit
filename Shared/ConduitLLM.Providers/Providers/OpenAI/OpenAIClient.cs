@@ -54,7 +54,6 @@ namespace ConduitLLM.Providers.OpenAI
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
         /// <param name="capabilityService">Optional service for model capability detection and validation.</param>
-        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         /// <param name="providerName">Optional provider name override. If not specified, uses provider.ProviderName or defaults to "openai".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing for non-Azure providers.</exception>
@@ -65,7 +64,6 @@ namespace ConduitLLM.Providers.OpenAI
             ILogger<OpenAIClient> logger,
             IHttpClientFactory httpClientFactory,
             IModelCapabilityService? capabilityService = null,
-            ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
                 provider,
@@ -74,8 +72,7 @@ namespace ConduitLLM.Providers.OpenAI
                 logger,
                 httpClientFactory,
                 providerName ?? provider.ProviderType.ToString() ?? "openai",
-                DetermineBaseUrl(provider, primaryKeyCredential, providerName ?? provider.ProviderType.ToString() ?? "openai"),
-                defaultModels)
+                DetermineBaseUrl(provider, primaryKeyCredential, providerName ?? provider.ProviderType.ToString() ?? "openai"))
         {
             _isAzure = (providerName ?? provider.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
             _capabilityService = capabilityService;
@@ -107,7 +104,8 @@ namespace ConduitLLM.Providers.OpenAI
                 : baseUrl;
 
             // Ensure consistent formatting
-            return baseUrl?.TrimEnd('/') ?? "https://api.openai.com/v1";
+            return baseUrl?.TrimEnd('/')
+                ?? ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)!;
         }
     }
 }

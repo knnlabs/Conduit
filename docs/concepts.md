@@ -27,6 +27,17 @@ The **WebAdmin** UI (port 3000) is not a third API tier. Administrators sign in 
 browser then talks to the Gateway and Admin APIs directly using short-lived *ephemeral* keys it
 mints on demand. Nothing else needs to hold the master key.
 
+### Audio support
+
+Audio is supported through the Gateway API: clients use `/v1/audio/transcriptions` for
+speech-to-text and `/v1/audio/speech` for text-to-speech. A model must advertise the matching
+`SupportsSpeechToText` or `SupportsTextToSpeech` capability; discovery exposes those flags and
+the Gateway rejects an unsupported model before invoking a provider.
+
+WebAdmin deliberately treats audio as API-only. Its chat page does not record, request browser
+microphone permission, or upload audio. Administrators can still view and configure the model
+capabilities used by API clients.
+
 ## The core objects
 
 Everything in Conduit is built from a small set of objects. Understanding how they relate is
@@ -47,6 +58,13 @@ or "Dev Azure." A provider is identified by its **ID**, not by its type. The *ty
 Conduit which API dialect to speak (OpenAI, Anthropic, and so on); you can run several providers
 of the same type side by side and Conduit keeps them distinct. When you see "which provider,"
 think of a specific instance you configured — never just "OpenAI."
+
+Provider configuration has three deliberately separate owners. The code-level adapter registry
+owns immutable protocol defaults such as standard endpoint shapes, authentication behavior, and
+the fallback base URL. A provider instance in the database owns operator settings; its `BaseUrl`
+overrides the adapter fallback when overrides are supported. OpenAI-compatible/custom providers
+always require that database URL. Model and provider-association records own capabilities, because
+support varies by model and must not be inferred from a provider-wide code constant.
 
 **Provider key** — the API key or keys Conduit uses to call a provider. A provider can hold
 **several** keys so it can spread load and fail over between them. Keys that belong to the same

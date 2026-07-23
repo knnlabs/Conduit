@@ -15,7 +15,6 @@ namespace ConduitLLM.Gateway.Authentication
     /// </summary>
     public class VirtualKeySignalRRateLimitFilter : IHubFilter
     {
-        private readonly VirtualKeyRateLimitCache _rateLimitCache;
         private readonly ISignalRRateLimitService _signalRRateLimitService;
         private readonly ILogger<VirtualKeySignalRRateLimitFilter> _logger;
         private readonly IServiceProvider _serviceProvider;
@@ -25,13 +24,11 @@ namespace ConduitLLM.Gateway.Authentication
         /// Initializes a new instance of VirtualKeySignalRRateLimitFilter
         /// </summary>
         public VirtualKeySignalRRateLimitFilter(
-            VirtualKeyRateLimitCache rateLimitCache,
             ISignalRRateLimitService signalRRateLimitService,
             ILogger<VirtualKeySignalRRateLimitFilter> logger,
             IServiceProvider serviceProvider,
             IOptions<SignalRConnectionOptions> connectionOptions)
         {
-            _rateLimitCache = rateLimitCache;
             _signalRRateLimitService = signalRRateLimitService ?? throw new ArgumentNullException(nameof(signalRRateLimitService));
             _logger = logger;
             _serviceProvider = serviceProvider;
@@ -53,9 +50,12 @@ namespace ConduitLLM.Gateway.Authentication
                 return await next(invocationContext);
             }
 
-            // Get rate limits from cache
-            var rateLimits = _rateLimitCache.GetRateLimits(virtualKeyHash);
-            if (rateLimits == null || (!rateLimits.RateLimitRpm.HasValue && !rateLimits.RateLimitRpd.HasValue))
+            // VirtualKeyHubFilter loads the authoritative limits during authentication and stores
+            // them on the connection context. Keeping the values with the authenticated connection
+            // avoids a second, independently populated rate-limit configuration cache.
+            var rpmLimit = GetRateLimit(invocationContext.Context, "VirtualKey.RateLimitRpm");
+            var rpdLimit = GetRateLimit(invocationContext.Context, "VirtualKey.RateLimitRpd");
+            if (!rpmLimit.HasValue && !rpdLimit.HasValue)
             {
                 // No rate limits configured
                 return await next(invocationContext);
@@ -64,8 +64,8 @@ namespace ConduitLLM.Gateway.Authentication
             // Check rate limits using Redis service for distributed tracking
             var result = await _signalRRateLimitService.CheckMethodInvocationAsync(
                 virtualKeyHash, 
-                rateLimits.RateLimitRpm, 
-                rateLimits.RateLimitRpd);
+                rpmLimit,
+                rpdLimit);
 
             if (!result.IsAllowed)
             {
@@ -176,6 +176,13 @@ namespace ConduitLLM.Gateway.Authentication
             // Try from User claims (set by authentication handler)
             var claim = context.User?.FindFirst("VirtualKeyHash");
             return claim?.Value;
+        }
+
+        private static int? GetRateLimit(HubCallerContext context, string itemKey)
+        {
+            return context.Items.TryGetValue(itemKey, out var value) && value is int limit
+                ? limit
+                : null;
         }
         
         /// <summary>

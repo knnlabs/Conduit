@@ -169,7 +169,7 @@ namespace ConduitLLM.Providers.MiniMax
 
                 Logger.LogInformation("MiniMax video generation completed: FileId={FileId}", statusResult.FileId);
 
-                var videoUrl = $"https://api.minimax.io/v1/files/retrieve?file_id={statusResult.FileId}";
+                var videoUrl = $"{_baseUrl}/v1/files/retrieve?file_id={statusResult.FileId}";
                 var videoData = new List<VideoData>
                 {
                     new VideoData

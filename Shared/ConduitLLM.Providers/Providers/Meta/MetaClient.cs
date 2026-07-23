@@ -2,6 +2,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Common.Models;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -32,14 +33,6 @@ namespace ConduitLLM.Providers.Meta
         // API configuration constants
         private static class Constants
         {
-            public static class Urls
-            {
-                /// <summary>
-                /// Default base URL for the Meta Model API
-                /// </summary>
-                public const string DefaultBaseUrl = "https://api.meta.ai/v1";
-            }
-
             public static class Headers
             {
                 /// <summary>
@@ -81,7 +74,6 @@ namespace ConduitLLM.Providers.Meta
         /// <param name="providerModelId">The specific model ID to use with this provider.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
-        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         /// <param name="providerName">Optional provider name override. If not specified, defaults to "meta".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing.</exception>
@@ -91,7 +83,6 @@ namespace ConduitLLM.Providers.Meta
             string providerModelId,
             ILogger<MetaClient> logger,
             IHttpClientFactory httpClientFactory,
-            ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
                 provider,
@@ -100,8 +91,7 @@ namespace ConduitLLM.Providers.Meta
                 logger,
                 httpClientFactory,
                 providerName ?? "meta",
-                baseUrl: Constants.Urls.DefaultBaseUrl,
-                defaultModels: defaultModels)
+                baseUrl: ProviderConfigurationRegistry.ResolveBaseUrl(provider))
         {
             if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
             {
