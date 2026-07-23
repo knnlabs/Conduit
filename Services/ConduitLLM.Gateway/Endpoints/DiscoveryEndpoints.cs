@@ -2,6 +2,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.DTOs;
 using Microsoft.EntityFrameworkCore;
@@ -38,24 +39,46 @@ namespace ConduitLLM.Gateway.Endpoints
         }
 
         /// <summary>
+        /// Discovery is authentication-protected but not balance-protected. A valid key may
+        /// inspect capabilities even when its group has no remaining balance.
+        /// </summary>
+        private async Task<IResult?> ValidateDiscoveryAccessAsync()
+        {
+            var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
+            if (string.IsNullOrEmpty(virtualKeyValue))
+            {
+                return OpenAIError(
+                    StatusCodes.Status401Unauthorized,
+                    "Virtual key not found",
+                    VirtualKeyValidationFailureCodes.MissingKey,
+                    "authentication_error");
+            }
+
+            var validation = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKeyValue);
+            if (validation.IsValid && validation.Key is not null)
+            {
+                return null;
+            }
+
+            return OpenAIError(
+                validation.HttpStatusCode,
+                validation.Reason ?? "Virtual key validation failed.",
+                validation.FailureCode ?? VirtualKeyValidationFailureCodes.ValidationError,
+                validation.HttpStatusCode == StatusCodes.Status401Unauthorized
+                    ? "authentication_error"
+                    : "server_error");
+        }
+
+        /// <summary>
         /// Gets all discovered models and their capabilities for authenticated virtual keys.
         /// </summary>
         /// <param name="capability">Optional capability filter (e.g., "video_generation", "vision")</param>
         /// <returns>List of models with their capabilities.</returns>
         public async Task<IResult> GetModels(string? capability = null)
         {
-            // Get virtual key from user claims
-            var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
-            if (string.IsNullOrEmpty(virtualKeyValue))
+            if (await ValidateDiscoveryAccessAsync() is { } accessFailure)
             {
-                return OpenAIError(401, "Virtual key not found", "unauthorized");
-            }
-
-            // Validate virtual key is active
-            var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
-            if (virtualKey == null)
-            {
-                return OpenAIError(401, "Invalid virtual key", "unauthorized");
+                return accessFailure;
             }
 
             // Build cache key based on capability filter
@@ -229,18 +252,9 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>JSON object containing UI parameter definitions for the model.</returns>
         public async Task<IResult> GetModelParameters(string model)
         {
-            // Get virtual key from user claims
-            var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
-            if (string.IsNullOrEmpty(virtualKeyValue))
+            if (await ValidateDiscoveryAccessAsync() is { } accessFailure)
             {
-                return OpenAIError(401, "Virtual key not found", "unauthorized");
-            }
-
-            // Validate virtual key is active
-            var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
-            if (virtualKey == null)
-            {
-                return OpenAIError(401, "Invalid virtual key", "unauthorized");
+                return accessFailure;
             }
 
             using var context = await _dbContextFactory.CreateDbContextAsync();
@@ -311,18 +325,9 @@ namespace ConduitLLM.Gateway.Endpoints
             string? purpose = null,
             string? providerType = null)
         {
-            // Get virtual key from user claims
-            var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
-            if (string.IsNullOrEmpty(virtualKeyValue))
+            if (await ValidateDiscoveryAccessAsync() is { } accessFailure)
             {
-                return OpenAIError(401, "Virtual key not found", "unauthorized");
-            }
-
-            // Validate virtual key is active
-            var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
-            if (virtualKey == null)
-            {
-                return OpenAIError(401, "Invalid virtual key", "unauthorized");
+                return accessFailure;
             }
 
             // Build cache key based on filters
@@ -400,18 +405,9 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>JSON schema defining required and optional parameters</returns>
         public async Task<IResult> GetFunctionParameters(int functionConfigurationId)
         {
-            // Get virtual key from user claims
-            var virtualKeyValue = HttpContext.User.FindFirst("VirtualKey")?.Value;
-            if (string.IsNullOrEmpty(virtualKeyValue))
+            if (await ValidateDiscoveryAccessAsync() is { } accessFailure)
             {
-                return OpenAIError(401, "Virtual key not found", "unauthorized");
-            }
-
-            // Validate virtual key is active
-            var virtualKey = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKeyValue);
-            if (virtualKey == null)
-            {
-                return OpenAIError(401, "Invalid virtual key", "unauthorized");
+                return accessFailure;
             }
 
             // Build cache key

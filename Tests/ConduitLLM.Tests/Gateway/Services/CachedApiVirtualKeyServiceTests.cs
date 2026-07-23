@@ -4,6 +4,7 @@ using Xunit.Abstractions;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Configuration.Messaging;
 
@@ -58,9 +59,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKey.Id, result.Id);
-            Assert.Equal(virtualKey.KeyName, result.KeyName);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
+            Assert.Equal(200, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             
@@ -83,7 +84,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.Null(result);
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.KeyDisabled, result.FailureCode);
+            Assert.Equal(401, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -103,7 +106,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.Null(result);
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.KeyExpired, result.FailureCode);
+            Assert.Equal(401, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -127,7 +132,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyAsync(keyValue);
 
             // Assert
-            Assert.Null(result); // Returns null due to insufficient balance
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.InsufficientBalance, result.FailureCode);
+            Assert.Equal(402, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             _groupRepositoryMock.Verify(g => g.GetByIdAsync(virtualKey.VirtualKeyGroupId), Times.Once);
@@ -155,8 +162,8 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyAsync(keyValue);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKey.Id, result.Id);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             _groupRepositoryMock.Verify(g => g.GetByIdAsync(virtualKey.VirtualKeyGroupId), Times.Once);
@@ -184,7 +191,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyAsync(keyValue);
 
             // Assert
-            Assert.Null(result);
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.InsufficientBalance, result.FailureCode);
+            Assert.Equal(402, result.HttpStatusCode);
             _batchSpendServiceMock.Verify(s => s.GetPendingSpendAsync(virtualKey.Id), Times.Once);
         }
 
@@ -204,8 +213,8 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue, requestedModel);
 
             // Assert
-            Assert.NotNull(result); // Should succeed for allowed model
-            Assert.Equal(virtualKey.Id, result.Id);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -226,7 +235,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue, requestedModel);
 
             // Assert
-            Assert.Null(result); // Should fail for disallowed model
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.ModelNotAllowed, result.FailureCode);
+            Assert.Equal(403, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -238,8 +249,10 @@ namespace ConduitLLM.Tests.Http.Services
             var result1 = await _service.ValidateVirtualKeyForAuthenticationAsync("");
             var result2 = await _service.ValidateVirtualKeyForAuthenticationAsync(null);
 
-            Assert.Null(result1);
-            Assert.Null(result2);
+            Assert.False(result1.IsValid);
+            Assert.False(result2.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.MissingKey, result1.FailureCode);
+            Assert.Equal(VirtualKeyValidationFailureCodes.MissingKey, result2.FailureCode);
             
             // Verify cache was never accessed
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(It.IsAny<string>(), It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Never);
@@ -264,8 +277,8 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKey.Id, result.Id);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             _virtualKeyRepositoryMock.Verify(r => r.GetByKeyHashAsync(keyHash, default), Times.Once);

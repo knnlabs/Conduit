@@ -8,6 +8,7 @@ using Moq;
 using Xunit.Abstractions;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Authentication;
 using ConduitLLM.Gateway.Services;
 
@@ -61,7 +62,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.Path = "/v1/chat/completions";
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -97,7 +98,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.Path = "/v1/models";
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -139,7 +140,10 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.Path = "/v1/chat/completions";
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync((VirtualKey?)null);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.KeyNotFound,
+                    401,
+                    "Virtual key was not found."));
 
             await InitializeHandler();
 
@@ -165,7 +169,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             
             // ValidateVirtualKeyForAuthenticationAsync should succeed even with $0.00 balance
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -231,7 +235,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.Headers["Authorization"] = $"Bearer {keyValue}";
             _httpContext.Request.Path = "/metrics";
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -255,7 +259,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.QueryString = new QueryString($"?access_token={keyValue}");
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -318,7 +322,7 @@ namespace ConduitLLM.Tests.Http.Authentication
                 .ReturnsAsync(actualVirtualKey);
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(actualVirtualKey, null))
-                .ReturnsAsync(virtualKeyEntity);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKeyEntity));
 
             await InitializeHandler();
 

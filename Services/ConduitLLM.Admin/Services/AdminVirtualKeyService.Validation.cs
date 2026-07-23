@@ -3,6 +3,7 @@ using ConduitLLM.Core.Services;
 
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
+using ConduitLLM.Core.Models;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
 namespace ConduitLLM.Admin.Services
@@ -51,10 +52,12 @@ namespace ConduitLLM.Admin.Services
                 if (!validationResult.IsValid)
                 {
                     // Map helper reasons to admin-specific error messages
-                    result.ErrorMessage = validationResult.Reason switch
+                    result.ErrorMessage = validationResult.FailureCode switch
                     {
-                        "Insufficient balance" => "Budget depleted",
-                        "Model not allowed" when !string.IsNullOrEmpty(requestedModel)
+                        VirtualKeyValidationFailureCodes.KeyDisabled => "Key is disabled",
+                        VirtualKeyValidationFailureCodes.KeyExpired => "Key has expired",
+                        VirtualKeyValidationFailureCodes.InsufficientBalance => "Budget depleted",
+                        VirtualKeyValidationFailureCodes.ModelNotAllowed when !string.IsNullOrEmpty(requestedModel)
                             => $"Model {requestedModel} is not allowed for this key",
                         _ => validationResult.Reason
                     };

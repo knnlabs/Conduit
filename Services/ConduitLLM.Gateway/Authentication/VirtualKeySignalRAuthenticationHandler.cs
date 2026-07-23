@@ -57,14 +57,16 @@ namespace ConduitLLM.Gateway.Authentication
                 }
 
                 // Validate the Virtual Key
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
-                if (keyEntity == null || !keyEntity.IsEnabled)
+                var validation = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey);
+                if (!validation.IsValid || validation.Key is null)
                 {
-                    _logger.LogWarning("Invalid or disabled Virtual Key in SignalR connection from IP {IP}",
-                        GetClientIpAddress(httpContext));
+                    _logger.LogWarning("Virtual Key validation failed with {FailureCode} in SignalR connection from IP {IP}",
+                        validation.FailureCode ?? "unknown", GetClientIpAddress(httpContext));
                     context.Fail();
                     return;
                 }
+
+                var keyEntity = validation.Key;
 
                 // Create claims for the authenticated connection
                 var claims = new[]

@@ -50,13 +50,15 @@ namespace ConduitLLM.Gateway.Authentication
             }
 
             // Validate the Virtual Key
-            var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
-            if (keyEntity == null || !keyEntity.IsEnabled)
+            var validation = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey);
+            if (!validation.IsValid || validation.Key is null)
             {
-                _logger.LogWarning("Invalid or disabled Virtual Key in SignalR method invocation: {Method}",
-                    invocationContext.HubMethodName);
+                _logger.LogWarning("Virtual Key validation failed with {FailureCode} in SignalR method invocation: {Method}",
+                    validation.FailureCode ?? "unknown", invocationContext.HubMethodName);
                 throw new HubException("Invalid authentication");
             }
+
+            var keyEntity = validation.Key;
 
             // Store virtual key information in the connection context
             invocationContext.Context.Items["VirtualKeyId"] = keyEntity.Id;
@@ -89,14 +91,16 @@ namespace ConduitLLM.Gateway.Authentication
             }
 
             // Validate the Virtual Key
-            var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
-            if (keyEntity == null || !keyEntity.IsEnabled)
+            var validation = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey);
+            if (!validation.IsValid || validation.Key is null)
             {
-                _logger.LogWarning("Invalid or disabled Virtual Key in SignalR connection from IP {IP}",
-                    GetClientIpAddress(httpContext));
+                _logger.LogWarning("Virtual Key validation failed with {FailureCode} in SignalR connection from IP {IP}",
+                    validation.FailureCode ?? "unknown", GetClientIpAddress(httpContext));
                 context.Context.Abort();
                 return;
             }
+
+            var keyEntity = validation.Key;
 
             // Store virtual key information in the connection context
             context.Context.Items["VirtualKeyId"] = keyEntity.Id;

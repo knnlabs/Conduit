@@ -94,14 +94,14 @@ public sealed class MediaCancellationFaultTests(BillingFaultFixture fixture)
 
         var virtualKeyService = new Mock<IVirtualKeyService>();
         virtualKeyService.Setup(service => service.ValidateVirtualKeyAsync("test-key", null))
-            .ReturnsAsync(new VirtualKey
+            .ReturnsAsync(VirtualKeyValidationOutcome.Success(new VirtualKey
             {
                 Id = account.KeyId,
                 VirtualKeyGroupId = account.GroupId,
                 KeyName = "fault-key",
                 KeyHash = "fault-hash",
                 IsEnabled = true
-            });
+            }));
         var costService = new Mock<ICostCalculationService>();
         costService.Setup(service => service.CalculateCostAsync(
                 "provider-model", It.Is<Usage>(usage => usage.ImageCount == 1), It.IsAny<CancellationToken>()))

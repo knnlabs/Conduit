@@ -145,12 +145,12 @@ namespace ConduitLLM.Tests.Core.Fixtures
             var mock = new Mock<ConduitLLM.Core.Interfaces.IVirtualKeyService>();
 
             mock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync((string key, string model) => new VirtualKey
+                .ReturnsAsync((string key, string model) => VirtualKeyValidationOutcome.Success(new VirtualKey
                 {
                     Id = 1,
                     KeyName = key,
                     IsEnabled = true
-                });
+                }));
 
             mock.Setup(x => x.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
                 .ReturnsAsync(true);

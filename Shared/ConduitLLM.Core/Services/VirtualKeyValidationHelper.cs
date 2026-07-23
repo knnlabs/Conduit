@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
@@ -20,7 +21,7 @@ namespace ConduitLLM.Core.Services
         /// <param name="logger">Logger for diagnostic output</param>
         /// <param name="batchSpendService">Optional service for pending spend and reservation checks</param>
         /// <returns>Validation result with status and error message if failed</returns>
-        public static async Task<ValidationResult> ValidateVirtualKeyAsync(
+        public static async Task<VirtualKeyValidationOutcome> ValidateVirtualKeyAsync(
             VirtualKey virtualKey,
             string? requestedModel,
             bool checkBalance,
@@ -33,7 +34,11 @@ namespace ConduitLLM.Core.Services
             {
                 logger.LogWarning("Virtual key is disabled: {KeyName} (ID: {KeyId})",
                     LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
-                return new ValidationResult { IsValid = false, Reason = "Key is disabled" };
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.KeyDisabled,
+                    401,
+                    "Virtual key is disabled.",
+                    virtualKey);
             }
 
             // Check expiration
@@ -41,7 +46,11 @@ namespace ConduitLLM.Core.Services
             {
                 logger.LogWarning("Virtual key has expired: {KeyName} (ID: {KeyId}), expired at {ExpiryDate}",
                     LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, virtualKey.ExpiresAt);
-                return new ValidationResult { IsValid = false, Reason = "Key has expired" };
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.KeyExpired,
+                    401,
+                    "Virtual key has expired.",
+                    virtualKey);
             }
 
             // Check group balance if requested
@@ -57,12 +66,11 @@ namespace ConduitLLM.Core.Services
                     logger.LogWarning("Virtual key group budget depleted: {KeyName} (ID: {KeyId}), group {GroupId} has database balance {Balance} and pending spend {PendingSpend}",
                         LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, group.Id, group.Balance, pendingSpend);
 
-                    return new ValidationResult
-                    {
-                        IsValid = false,
-                        Reason = "Insufficient balance",
-                        StatusCode = 402 // Payment Required
-                    };
+                    return VirtualKeyValidationOutcome.Failure(
+                        VirtualKeyValidationFailureCodes.InsufficientBalance,
+                        402,
+                        "Your account balance is insufficient to perform this operation.",
+                        virtualKey);
                 }
             }
 
@@ -74,7 +82,11 @@ namespace ConduitLLM.Core.Services
                 {
                     logger.LogWarning("Virtual key {KeyName} (ID: {KeyId}) attempted to access restricted model: {RequestedModel}",
                         LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id, LoggingSanitizer.S(requestedModel));
-                    return new ValidationResult { IsValid = false, Reason = "Model not allowed" };
+                    return VirtualKeyValidationOutcome.Failure(
+                        VirtualKeyValidationFailureCodes.ModelNotAllowed,
+                        403,
+                        "The requested model is not allowed for this virtual key.",
+                        virtualKey);
                 }
             }
 
@@ -91,28 +103,7 @@ namespace ConduitLLM.Core.Services
                     LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);
             }
 
-            return new ValidationResult { IsValid = true };
-        }
-
-        /// <summary>
-        /// Result of virtual key validation
-        /// </summary>
-        public class ValidationResult
-        {
-            /// <summary>
-            /// Whether the validation passed
-            /// </summary>
-            public bool IsValid { get; set; }
-
-            /// <summary>
-            /// Reason for validation failure
-            /// </summary>
-            public string? Reason { get; set; }
-
-            /// <summary>
-            /// Optional status code to return (e.g., 402 for insufficient balance)
-            /// </summary>
-            public int? StatusCode { get; set; }
+            return VirtualKeyValidationOutcome.Success(virtualKey);
         }
     }
 }

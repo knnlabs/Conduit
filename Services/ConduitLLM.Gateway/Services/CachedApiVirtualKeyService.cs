@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.Messaging;
 
@@ -55,72 +56,46 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         /// <param name="key">The virtual key to validate</param>
         /// <param name="requestedModel">Optional model to check against allowed models</param>
-        /// <returns>The virtual key if valid for authentication, null otherwise</returns>
-        public async Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null)
+        /// <returns>A typed validation outcome. Balance is never checked by this method.</returns>
+        public Task<VirtualKeyValidationOutcome> ValidateVirtualKeyForAuthenticationAsync(
+            string key,
+            string? requestedModel = null)
         {
-            if (string.IsNullOrEmpty(key))
-            {
-                _logger.LogWarning("Empty key provided for authentication validation");
-                return null;
-            }
-
-            try
-            {
-                var keyHash = VirtualKeyUtilities.HashKey(key);
-                _logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}",
-                    LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
-
-                // Use cache with database fallback
-                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash =>
-                {
-                    // This fallback only runs on cache miss
-                    var dbKey = await VirtualKeyRepository.GetByKeyHashAsync(hash);
-                    _logger.LogDebug("Database fallback executed for Virtual Key authentication validation");
-                    return dbKey;
-                });
-
-                if (virtualKey == null)
-                {
-                    _logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
-                    return null;
-                }
-
-                // Validate without balance check
-                var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                    virtualKey,
-                    requestedModel,
-                    checkBalance: false,
-                    groupRepository: null,
-                    _logger);
-
-                return validationResult.IsValid ? virtualKey : null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error validating virtual key for authentication");
-                return null;
-            }
+            return ValidateInternalAsync(key, requestedModel, checkBalance: false);
         }
 
         /// <inheritdoc />
-        public async Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
+        public Task<VirtualKeyValidationOutcome> ValidateVirtualKeyAsync(
+            string key,
+            string? requestedModel = null)
         {
-            if (string.IsNullOrEmpty(key))
+            return ValidateInternalAsync(key, requestedModel, checkBalance: true);
+        }
+
+        private async Task<VirtualKeyValidationOutcome> ValidateInternalAsync(
+            string key,
+            string? requestedModel,
+            bool checkBalance)
+        {
+            if (string.IsNullOrWhiteSpace(key))
             {
-                _logger.LogWarning("Empty key provided for validation");
-                return null;
+                _logger.LogWarning("Empty key provided for virtual key validation");
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.MissingKey,
+                    401,
+                    "Virtual key is required.");
             }
 
             try
             {
                 var keyHash = VirtualKeyUtilities.HashKey(key);
-                _logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}",
-                    LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
+                _logger.LogDebug("Validating key ({ValidationMode}): {KeyPrefix}..., Hash: {Hash}",
+                    checkBalance ? "balance" : "authentication",
+                    LoggingSanitizer.S(key[..Math.Min(10, key.Length)]),
+                    keyHash);
 
-                // Use cache with database fallback
                 var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash =>
                 {
-                    // This fallback only runs on cache miss
                     var dbKey = await VirtualKeyRepository.GetByKeyHashAsync(hash);
                     _logger.LogDebug("Database fallback executed for Virtual Key validation");
                     return dbKey;
@@ -129,49 +104,35 @@ namespace ConduitLLM.Gateway.Services
                 if (virtualKey == null)
                 {
                     _logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
-                    return null;
+                    return VirtualKeyValidationOutcome.Failure(
+                        VirtualKeyValidationFailureCodes.KeyNotFound,
+                        401,
+                        "Virtual key was not found.");
                 }
 
-                // Validate with balance check
                 var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
                     virtualKey,
                     requestedModel,
-                    checkBalance: true,
-                    GroupRepository,
+                    checkBalance,
+                    checkBalance ? GroupRepository : null,
                     _logger,
-                    _batchSpendService);
+                    checkBalance ? _batchSpendService : null);
 
                 if (!validationResult.IsValid)
                 {
                     _logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
                         virtualKey.Id, validationResult.Reason ?? "unknown");
-
-                    // Handle 402 status code for insufficient balance
-                    if (validationResult.StatusCode == 402)
-                    {
-                        // Preserve the legacy HTTP status propagation while validation still returns a status code.
-                        try
-                        {
-                            var httpContext = new Microsoft.AspNetCore.Http.HttpContextAccessor().HttpContext;
-                            if (httpContext != null)
-                            {
-                                httpContext.Response.StatusCode = 402;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogDebug(ex, "Could not set 402 status — HTTP context not available for insufficient balance response");
-                        }
-                    }
-                    return null;
                 }
 
-                return virtualKey;
+                return validationResult;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating virtual key");
-                return null;
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.ValidationError,
+                    500,
+                    "Virtual key validation failed.");
             }
         }
 

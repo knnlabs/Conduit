@@ -439,10 +439,10 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
             
             // Validate and get virtual key info
-            VirtualKey? virtualKeyInfo = null;
+            VirtualKeyValidationOutcome validation;
             try
             {
-                virtualKeyInfo = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
+                validation = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
             }
             catch (Exception ex)
             {
@@ -450,17 +450,13 @@ namespace ConduitLLM.Core.Services.Abstractions
                 throw new InvalidOperationException($"Virtual key validation failed: {ex.Message}", ex);
             }
             
-            if (virtualKeyInfo == null)
+            if (!validation.IsValid || validation.Key is null)
             {
-                throw new UnauthorizedAccessException("Virtual key validation returned null - key may not exist or service may be unavailable");
+                throw new UnauthorizedAccessException(
+                    $"Virtual key validation failed ({validation.FailureCode ?? "unknown"}): {validation.Reason}");
             }
             
-            if (!virtualKeyInfo.IsEnabled)
-            {
-                throw new UnauthorizedAccessException("Virtual key is disabled");
-            }
-            
-            return virtualKeyInfo;
+            return validation.Key;
         }
 
         protected virtual async Task<decimal> CalculateCostAsync(TEventRequest request, GenerationModelInfo modelInfo, TResponse response)

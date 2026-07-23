@@ -159,14 +159,14 @@ namespace ConduitLLM.Tests.Services.Orchestrators
 
             // Setup virtual key service
             VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
-                .ReturnsAsync(new VirtualKey
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(new VirtualKey
                 {
                     Id = 1,
                     KeyName = "test-virtual-key",
                     KeyHash = "hashed-test-virtual-key",
                     IsEnabled = true,
                     VirtualKeyGroupId = 1
-                });
+                }));
 
             // Setup model mapping service
             var testProvider = new Provider
@@ -292,7 +292,10 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             var context = CreateEventContext();
 
             VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
-                .ReturnsAsync((VirtualKey?)null);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.KeyNotFound,
+                    401,
+                    "Virtual key was not found."));
 
             // Act
             await Orchestrator.HandleAsync(request, context);
@@ -315,14 +318,10 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             var context = CreateEventContext();
 
             VirtualKeyServiceMock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string?>()))
-                .ReturnsAsync(new VirtualKey
-                {
-                    Id = 1,
-                    KeyName = "test-virtual-key",
-                    KeyHash = "hashed-test-virtual-key",
-                    IsEnabled = false,
-                    VirtualKeyGroupId = 1
-                });
+                .ReturnsAsync(VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.KeyDisabled,
+                    401,
+                    "Virtual key is disabled."));
 
             // Act
             await Orchestrator.HandleAsync(request, context);

@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
@@ -40,68 +41,82 @@ namespace ConduitLLM.Gateway.Services
         }
 
         /// <inheritdoc />
-        public async Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null)
+        public Task<VirtualKeyValidationOutcome> ValidateVirtualKeyForAuthenticationAsync(
+            string key,
+            string? requestedModel = null)
         {
-            if (string.IsNullOrEmpty(key))
-            {
-                Logger.LogWarning("Empty key provided for authentication validation");
-                return null;
-            }
-
-            // Hash the incoming key before looking it up
-            var keyHash = VirtualKeyUtilities.HashKey(key);
-            Logger.LogDebug("Validating key for authentication: {KeyPrefix}..., Hash: {Hash}",
-                LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
-
-            var virtualKey = await VirtualKeyRepository.GetByKeyHashAsync(keyHash);
-            if (virtualKey == null)
-            {
-                Logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
-                return null;
-            }
-
-            // Delegate to shared validation helper (no balance check for authentication)
-            var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                virtualKey, requestedModel, checkBalance: false, GroupRepository, Logger);
-
-            return result.IsValid ? virtualKey : null;
+            return ValidateInternalAsync(key, requestedModel, checkBalance: false);
         }
 
         /// <inheritdoc />
-        public async Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null)
+        public Task<VirtualKeyValidationOutcome> ValidateVirtualKeyAsync(
+            string key,
+            string? requestedModel = null)
         {
-            if (string.IsNullOrEmpty(key))
+            return ValidateInternalAsync(key, requestedModel, checkBalance: true);
+        }
+
+        private async Task<VirtualKeyValidationOutcome> ValidateInternalAsync(
+            string key,
+            string? requestedModel,
+            bool checkBalance)
+        {
+            if (string.IsNullOrWhiteSpace(key))
             {
-                Logger.LogWarning("Empty key provided for validation");
-                return null;
+                Logger.LogWarning("Empty key provided for virtual key validation");
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.MissingKey,
+                    401,
+                    "Virtual key is required.");
             }
 
-            // Hash the incoming key before looking it up
-            var keyHash = VirtualKeyUtilities.HashKey(key);
-            Logger.LogDebug("Validating key: {KeyPrefix}..., Hash: {Hash}",
-                LoggingSanitizer.S(key.Length > 10 ? key.Substring(0, 10) : key), keyHash);
-
-            var virtualKey = await VirtualKeyRepository.GetByKeyHashAsync(keyHash);
-            if (virtualKey == null)
+            try
             {
-                Logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
-                return null;
+                var keyHash = VirtualKeyUtilities.HashKey(key);
+                Logger.LogDebug("Validating key ({ValidationMode}): {KeyPrefix}..., Hash: {Hash}",
+                    checkBalance ? "balance" : "authentication",
+                    LoggingSanitizer.S(key[..Math.Min(10, key.Length)]),
+                    keyHash);
+
+                var virtualKey = await VirtualKeyRepository.GetByKeyHashAsync(keyHash);
+                if (virtualKey == null)
+                {
+                    Logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
+                    return VirtualKeyValidationOutcome.Failure(
+                        VirtualKeyValidationFailureCodes.KeyNotFound,
+                        401,
+                        "Virtual key was not found.");
+                }
+
+                var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
+                    virtualKey,
+                    requestedModel,
+                    checkBalance,
+                    checkBalance ? GroupRepository : null,
+                    Logger,
+                    checkBalance ? _batchSpendService : null);
+
+                if (!result.IsValid)
+                {
+                    Logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
+                        virtualKey.Id, result.Reason ?? "unknown");
+                }
+                else
+                {
+                    Logger.LogDebug("Virtual key {KeyId} validated successfully for model: {Model}",
+                        virtualKey.Id, LoggingSanitizer.S(requestedModel ?? "any"));
+                }
+
+                return result;
             }
-
-            // Delegate to shared validation helper (with balance check)
-            var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                virtualKey, requestedModel, checkBalance: true, GroupRepository, Logger, _batchSpendService);
-
-            if (!result.IsValid)
+            catch (Exception ex)
             {
-                Logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
-                    virtualKey.Id, result.Reason ?? "unknown");
-                return null;
+                Logger.LogError(ex, "Error validating virtual key");
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.ValidationError,
+                    500,
+                    "Virtual key validation failed.");
             }
-
-            Logger.LogDebug("Virtual key {KeyId} validated successfully for model: {Model}",
-                virtualKey.Id, LoggingSanitizer.S(requestedModel ?? "any"));
-            return virtualKey;
         }
 
         /// <inheritdoc />

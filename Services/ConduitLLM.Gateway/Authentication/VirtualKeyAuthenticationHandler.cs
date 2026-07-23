@@ -113,14 +113,18 @@ namespace ConduitLLM.Gateway.Authentication
 
                 // Validate the Virtual Key for authentication only (no balance check)
                 // virtualKey is guaranteed to be non-null at this point due to earlier validation
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey!);
-                if (keyEntity == null)
+                var validation = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey!);
+                if (!validation.IsValid || validation.Key is null)
                 {
-                    Logger.LogWarning("Invalid Virtual Key in request to {Path} from IP {IP}",
-                        Context.Request.Path, GetClientIpAddress(Context));
-                    GatewayAuthMetrics.RecordFailure("VirtualKey", "invalid_key");
+                    Logger.LogWarning("Virtual Key validation failed with {FailureCode} in request to {Path} from IP {IP}",
+                        validation.FailureCode ?? "unknown",
+                        Context.Request.Path,
+                        GetClientIpAddress(Context));
+                    GatewayAuthMetrics.RecordFailure("VirtualKey", validation.FailureCode ?? "invalid_key");
                     return AuthenticateResult.Fail("Invalid Virtual Key");
                 }
+
+                var keyEntity = validation.Key;
 
                 // Create claims for the authenticated user
                 var claims = new[]

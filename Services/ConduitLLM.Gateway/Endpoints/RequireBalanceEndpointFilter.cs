@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Gateway.Endpoints;
 
@@ -47,20 +48,21 @@ public sealed class RequireBalanceEndpointFilter : IEndpointFilter
             var model = httpContext.Request.RouteValues.TryGetValue("model", out var modelValue)
                 ? modelValue?.ToString()
                 : null;
-            var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, model);
-            if (keyEntity is null)
+            var validation = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, model);
+            if (!validation.IsValid || validation.Key is null)
             {
                 _logger.LogWarning(
-                    "Virtual key validation failed during balance check for key prefix {KeyPrefix}",
+                    "Virtual key validation failed with {FailureCode} during balance check for key prefix {KeyPrefix}",
+                    validation.FailureCode ?? "unknown",
                     LoggingSanitizer.S(virtualKey[..Math.Min(10, virtualKey.Length)]));
                 return GatewayResults.OpenAIError(
-                    StatusCodes.Status402PaymentRequired,
-                    "Your account balance is insufficient to perform this operation.",
-                    "insufficient_balance",
-                    "billing_error");
+                    validation.HttpStatusCode,
+                    validation.Reason ?? "Virtual key validation failed.",
+                    validation.FailureCode ?? VirtualKeyValidationFailureCodes.ValidationError,
+                    GetErrorType(validation.HttpStatusCode));
             }
 
-            httpContext.Items["ValidatedVirtualKey"] = keyEntity;
+            httpContext.Items["ValidatedVirtualKey"] = validation.Key;
             return await next(context);
         }
         catch (Exception ex)
@@ -73,4 +75,12 @@ public sealed class RequireBalanceEndpointFilter : IEndpointFilter
                 "server_error");
         }
     }
+
+    private static string GetErrorType(int statusCode) => statusCode switch
+    {
+        StatusCodes.Status401Unauthorized => "authentication_error",
+        StatusCodes.Status402PaymentRequired => "billing_error",
+        StatusCodes.Status403Forbidden => "permission_error",
+        _ => "server_error"
+    };
 }
