@@ -4,34 +4,30 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <!-- Framework pruning ships up-to-date framework assemblies regardless of NuGet pin;
-         the pins below exist for SBOM/vulnerability-scanner clarity. -->
+    <!-- Direct framework-package references are intentional; see the central security-pin rationales. -->
     <NoWarn>$(NoWarn);NU1510</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <!-- Override vulnerable transitive dependencies from EF Core Design (CVE-2025-55247) -->
-    <PackageReference Include="Microsoft.Build.Tasks.Core" Version="18.6.3" />
-    <PackageReference Include="Microsoft.Build.Utilities.Core" Version="18.6.3" />
-    <!-- Override vulnerable transitive (GHSA-37gx-xxp4-5rgx, GHSA-w3x6-4m5h-cxqf); fixed in 10.0.4+ -->
-    <PackageReference Include="System.Security.Cryptography.Xml" Version="10.0.10" />
-    <!-- Override vulnerable transitive (GHSA-9mv3-2cwr-p262, critical); fixed in 10.0.4+ -->
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="10.0.10" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.10" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
-    <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" Version="10.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="10.0.10" />
-    <PackageReference Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
-    <PackageReference Include="RabbitMQ.Client" Version="7.2.1" />
-    <PackageReference Include="Polly" Version="8.7.0" />
-    <PackageReference Include="Polly.Extensions.Http" Version="3.0.0" />
-    <PackageReference Include="prometheus-net" Version="8.2.1" />
+    <PackageReference Include="Microsoft.Build.Tasks.Core" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" />
+    <PackageReference Include="System.Security.Cryptography.Xml" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.AspNetCore.DataProtection.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Polly" />
+    <PackageReference Include="Polly.Extensions.Http" />
+    <PackageReference Include="prometheus-net" />
   </ItemGroup>
 
   <ItemGroup>
@@ -42,12 +38,12 @@
   <ItemGroup>
     <!-- Wolverine backend of the messaging abstraction (epic #909 Phase 2, #924).
          Spike-verified on this toolchain: docs/architecture/messaging-migration/spike-wolverine-postgres.md -->
-    <PackageReference Include="WolverineFx" Version="6.14.0" />
-    <PackageReference Include="WolverineFx.Postgresql" Version="6.14.0" />
+    <PackageReference Include="WolverineFx" />
+    <PackageReference Include="WolverineFx.Postgresql" />
     <!-- Wolverine 6 no longer ships the runtime (Roslyn) compiler in the core package;
          without this, hosts fail at startup in the default TypeLoadMode.Dynamic.
          Pre-generated static codegen is a cutover-time optimization (#930). -->
-    <PackageReference Include="WolverineFx.RuntimeCompilation" Version="6.14.0" />
+    <PackageReference Include="WolverineFx.RuntimeCompilation" />
   </ItemGroup>
 
   <ItemGroup>
