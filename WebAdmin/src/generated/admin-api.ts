@@ -7050,7 +7050,8 @@ export interface components {
     ValidatePricingRulesRequest: {
       /** @description The pricing configuration JSON to validate */
       pricingConfiguration?: string;
-      /** @description Optional parameter schema JSON for validation against model parameters */
+      /** @description Optional parameter schema JSON for standalone validation. The model-cost-scoped
+       *     endpoint ignores this value and uses persisted associated-model schemas. */
       parameterSchema?: null | string;
     };
     ValidateVirtualKeyRequest: {

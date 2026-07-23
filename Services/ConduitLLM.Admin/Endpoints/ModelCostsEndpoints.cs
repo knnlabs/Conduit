@@ -1,15 +1,17 @@
-using ConduitLLM.Core.Extensions;
 using System.Text;
+using System.Text.Json;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Core.Models.Pricing;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -20,6 +22,7 @@ namespace ConduitLLM.Admin.Endpoints
     {
         private readonly IAdminModelCostService _modelCostService;
         private readonly IPricingRulesValidator _pricingRulesValidator;
+        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly ILogger<ModelCostsEndpoints> _logger;
 
@@ -28,15 +31,19 @@ namespace ConduitLLM.Admin.Endpoints
         /// </summary>
         /// <param name="modelCostService">The model cost service</param>
         /// <param name="pricingRulesValidator">The pricing rules validator</param>
+        /// <param name="dbContextFactory">Factory used to load persisted model parameter schemas</param>
+        /// <param name="httpContextAccessor">Accessor for the current request context</param>
         /// <param name="logger">The logger</param>
         public ModelCostsEndpoints(
             IAdminModelCostService modelCostService,
             IPricingRulesValidator pricingRulesValidator,
+            IDbContextFactory<ConduitDbContext> dbContextFactory,
             IHttpContextAccessor httpContextAccessor,
             ILogger<ModelCostsEndpoints> logger)
         {
             _modelCostService = modelCostService ?? throw new ArgumentNullException(nameof(modelCostService));
             _pricingRulesValidator = pricingRulesValidator ?? throw new ArgumentNullException(nameof(pricingRulesValidator));
+            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
             _httpContextAccessor = httpContextAccessor;
             _logger = logger;
         }
@@ -354,18 +361,128 @@ namespace ConduitLLM.Admin.Endpoints
                 throw new KeyNotFoundException($"Model cost with ID '{id}' not found");
             }
 
-            // Get parameter schema from associated model if available
-            string? parameterSchema = null;
-            if (!string.IsNullOrEmpty(request.ParameterSchema))
+            // Validate the pricing document once before adding diagnostics from every distinct
+            // persisted model schema. Caller-provided schemas are intentionally ignored here:
+            // the model-cost-scoped endpoint treats the database associations as authoritative.
+            var result = _pricingRulesValidator.ValidateJson(request.PricingConfiguration);
+            if (result.ParsedConfig == null)
             {
-                // Use provided schema (for testing or when model schema is known)
-                parameterSchema = request.ParameterSchema;
+                return Results.Ok(result);
             }
-            // TODO(#1078): Validate pricing rules against the associated model parameter schema.
 
-            // Validate the configuration
-            var result = _pricingRulesValidator.ValidateJson(request.PricingConfiguration, parameterSchema);
+            await using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+            var associations = await dbContext.ModelProviderTypeAssociations
+                .AsNoTracking()
+                .Where(association => association.ModelCostId == id)
+                .Include(association => association.Model)
+                    .ThenInclude(model => model.Series)
+                .OrderBy(association => association.ModelId)
+                .ThenBy(association => association.Id)
+                .ToListAsync();
+
+            var associatedModels = associations
+                .GroupBy(association => association.ModelId)
+                .Select(group => group.First().Model)
+                .ToList();
+
+            if (associatedModels.Count == 0)
+            {
+                result.Errors.Add(new ValidationError
+                {
+                    Field = "modelCostId",
+                    Message = $"Model cost {id} has no associated models; persisted parameter schema validation could not be performed."
+                });
+                return Results.Ok(result);
+            }
+
+            var baseErrors = result.Errors.Select(GetErrorKey).ToHashSet();
+            var baseWarnings = result.Warnings.ToHashSet(StringComparer.Ordinal);
+
+            // A shared cost is compatible only when its rules validate against every distinct
+            // associated model. Model-specific diagnostics are prefixed so callers can identify
+            // the incompatible model while the aggregate IsValid flag remains authoritative.
+            foreach (var model in associatedModels)
+            {
+                var modelLabel = $"Model {model.Id} ('{model.Name}')";
+                var parameterSchema = model.ModelParameters ?? model.Series?.Parameters ?? "{}";
+
+                if (!TryValidateParameterSchema(parameterSchema, out var schemaError))
+                {
+                    _logger.LogWarning(
+                        "Skipping pricing-rule schema validation for model {ModelId}: {SchemaError}",
+                        model.Id,
+                        schemaError);
+                    result.Errors.Add(new ValidationError
+                    {
+                        Field = "parameterSchema",
+                        Message = $"[{modelLabel}] {schemaError}"
+                    });
+                    continue;
+                }
+
+                var modelResult = _pricingRulesValidator.Validate(result.ParsedConfig, parameterSchema);
+                foreach (var error in modelResult.Errors.Where(error => !baseErrors.Contains(GetErrorKey(error))))
+                {
+                    result.Errors.Add(new ValidationError
+                    {
+                        Field = error.Field,
+                        Message = $"[{modelLabel}] {error.Message}",
+                        RuleIndex = error.RuleIndex
+                    });
+                }
+
+                foreach (var warning in modelResult.Warnings.Where(warning => !baseWarnings.Contains(warning)))
+                {
+                    result.Warnings.Add($"[{modelLabel}] {warning}");
+                }
+            }
+
             return Results.Ok(result);
+        }
+
+        private static string GetErrorKey(ValidationError error) =>
+            $"{error.Field}\u001f{error.RuleIndex}\u001f{error.Message}";
+
+        private static bool TryValidateParameterSchema(string? parameterSchema, out string error)
+        {
+            if (string.IsNullOrWhiteSpace(parameterSchema))
+            {
+                error = "The persisted parameter schema is empty.";
+                return false;
+            }
+
+            try
+            {
+                using var schemaDocument = JsonDocument.Parse(parameterSchema);
+                if (schemaDocument.RootElement.ValueKind != JsonValueKind.Object)
+                {
+                    error = "The persisted parameter schema must be a JSON object.";
+                    return false;
+                }
+
+                var definitions = schemaDocument.RootElement.EnumerateObject().ToList();
+                if (definitions.Count == 0)
+                {
+                    error = "The persisted parameter schema is empty.";
+                    return false;
+                }
+
+                if (definitions.Any(definition =>
+                        string.IsNullOrWhiteSpace(definition.Name) ||
+                        definition.Value.ValueKind != JsonValueKind.Object))
+                {
+                    error = "The persisted parameter schema contains an invalid parameter definition.";
+                    return false;
+                }
+            }
+            catch (JsonException)
+            {
+                error = "The persisted parameter schema is invalid JSON.";
+                return false;
+            }
+
+            error = string.Empty;
+            return true;
         }
 
         /// <summary>
@@ -403,7 +520,8 @@ namespace ConduitLLM.Admin.Endpoints
         public string PricingConfiguration { get; set; } = string.Empty;
 
         /// <summary>
-        /// Optional parameter schema JSON for validation against model parameters
+        /// Optional parameter schema JSON for standalone validation. The model-cost-scoped
+        /// endpoint ignores this value and uses persisted associated-model schemas.
         /// </summary>
         public string? ParameterSchema { get; set; }
     }

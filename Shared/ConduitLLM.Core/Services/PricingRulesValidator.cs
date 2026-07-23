@@ -336,6 +336,8 @@ public class PricingRulesValidator : IPricingRulesValidator
         switch (paramDef.Type?.ToLowerInvariant())
         {
             case "enum":
+            case "select":
+            case "resolution":
                 if (paramDef.Options != null && paramDef.Options.Count > 0)
                 {
                     if (!paramDef.Options.Contains(valueStr, StringComparer.OrdinalIgnoreCase))
@@ -350,6 +352,8 @@ public class PricingRulesValidator : IPricingRulesValidator
                 break;
 
             case "boolean":
+            case "checkbox":
+            case "toggle":
                 if (!bool.TryParse(valueStr, out _) &&
                     !valueStr.Equals("true", StringComparison.OrdinalIgnoreCase) &&
                     !valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
@@ -378,6 +382,7 @@ public class PricingRulesValidator : IPricingRulesValidator
                 break;
 
             case "number":
+            case "slider":
                 if (!decimal.TryParse(valueStr, out var numValue))
                 {
                     result.Errors.Add(new ValidationError
