@@ -1,0 +1,216 @@
+{
+  "source": {
+    "repository": "https://github.com/openai/openai-openapi",
+    "commit": "5c044be3bf3a42854e99e34616564eeb2124a317",
+    "document": "openapi.json"
+  },
+  "enforcement": "warn-only-until-P7",
+  "operations": {
+    "GET /v1/models": {
+      "request": null,
+      "response": {
+        "properties": [
+          "data",
+          "object"
+        ],
+        "required": [
+          "data",
+          "object"
+        ]
+      }
+    },
+    "POST /v1/embeddings": {
+      "request": {
+        "properties": [
+          "dimensions",
+          "encoding_format",
+          "input",
+          "model",
+          "user"
+        ],
+        "required": [
+          "input",
+          "model"
+        ]
+      },
+      "response": {
+        "properties": [
+          "data",
+          "model",
+          "object",
+          "usage"
+        ],
+        "required": [
+          "data",
+          "model",
+          "object",
+          "usage"
+        ]
+      }
+    },
+    "POST /v1/chat/completions": {
+      "request": {
+        "properties": [
+          "audio",
+          "frequency_penalty",
+          "function_call",
+          "functions",
+          "logit_bias",
+          "logprobs",
+          "max_completion_tokens",
+          "max_tokens",
+          "messages",
+          "metadata",
+          "modalities",
+          "model",
+          "moderation",
+          "n",
+          "parallel_tool_calls",
+          "prediction",
+          "presence_penalty",
+          "prompt_cache_key",
+          "prompt_cache_options",
+          "prompt_cache_retention",
+          "reasoning_effort",
+          "response_format",
+          "safety_identifier",
+          "seed",
+          "service_tier",
+          "stop",
+          "store",
+          "stream",
+          "stream_options",
+          "temperature",
+          "tool_choice",
+          "tools",
+          "top_logprobs",
+          "top_p",
+          "user",
+          "verbosity",
+          "web_search_options"
+        ],
+        "required": [
+          "messages",
+          "model"
+        ]
+      },
+      "response": {
+        "properties": [
+          "choices",
+          "created",
+          "id",
+          "model",
+          "moderation",
+          "object",
+          "service_tier",
+          "system_fingerprint",
+          "usage"
+        ],
+        "required": [
+          "choices",
+          "created",
+          "id",
+          "model",
+          "object"
+        ]
+      }
+    },
+    "POST /v1/audio/transcriptions": {
+      "request": {
+        "properties": [
+          "chunking_strategy",
+          "file",
+          "include",
+          "known_speaker_names",
+          "known_speaker_references",
+          "language",
+          "model",
+          "prompt",
+          "response_format",
+          "stream",
+          "temperature",
+          "timestamp_granularities"
+        ],
+        "required": [
+          "file",
+          "model"
+        ]
+      },
+      "response": {
+        "properties": [
+          "duration",
+          "language",
+          "logprobs",
+          "segments",
+          "task",
+          "text",
+          "usage",
+          "words"
+        ],
+        "required": [
+          "duration",
+          "language",
+          "segments",
+          "task",
+          "text"
+        ]
+      }
+    },
+    "POST /v1/audio/speech": {
+      "request": {
+        "properties": [
+          "input",
+          "instructions",
+          "model",
+          "response_format",
+          "speed",
+          "stream_format",
+          "voice"
+        ],
+        "required": [
+          "input",
+          "model",
+          "voice"
+        ]
+      },
+      "response": null
+    },
+    "POST /v1/images/generations": {
+      "request": {
+        "properties": [
+          "background",
+          "model",
+          "moderation",
+          "n",
+          "output_compression",
+          "output_format",
+          "partial_images",
+          "prompt",
+          "quality",
+          "response_format",
+          "size",
+          "stream",
+          "style",
+          "user"
+        ],
+        "required": [
+          "prompt"
+        ]
+      },
+      "response": {
+        "properties": [
+          "background",
+          "created",
+          "data",
+          "output_format",
+          "quality",
+          "size",
+          "usage"
+        ],
+        "required": [
+          "created"
+        ]
+      }
+    }
+  }
+}
