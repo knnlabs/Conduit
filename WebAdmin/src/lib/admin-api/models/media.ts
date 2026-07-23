@@ -102,6 +102,18 @@ export interface MediaCleanupStatus {
   isSimpleRetentionOverrideActive: boolean;
   nextScheduledRunUtc: string | null;
   currentLeaderInstanceId: string | null;
+  /** Last known result for each scheduler-owned cleanup phase. */
+  operationStatuses: MediaCleanupOperationStatus[];
+}
+
+export interface MediaCleanupOperationStatus {
+  cleanupType: 'expiration' | 'orphan' | 'retention';
+  isEnabled: boolean;
+  lastRunTimeUtc: string | null;
+  lastRunStatus: string | null;
+  lastRunFilesDeleted: number;
+  lastRunBytesFreed: number;
+  lastRunDurationSeconds: number | null;
 }
 
 export interface RetentionPolicySummary {

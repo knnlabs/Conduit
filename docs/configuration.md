@@ -60,6 +60,26 @@ of the areas, not a copy of that file:
 > **deprecated or ignored** and log a warning on boot if set. Trust `.env.example` and the startup
 > warnings over any list — including this one — for what is still live.
 
+### Scheduled media lifecycle cleanup
+
+The Admin service is the single owner of scheduled media cleanup. Each cycle acquires a PostgreSQL
+distributed lock before running explicit expiration, orphan, and retention-policy cleanup, so a
+multi-instance deployment does not run the same cycle concurrently. The Gateway only records media
+lifecycle metadata; it does not schedule cleanup.
+
+Set `MediaLifecycle__Enabled=true` to start the scheduler and configure its polling interval with
+`MediaLifecycle__ScheduleIntervalMinutes`. The three phases can be controlled independently with
+`MediaLifecycle__EnableExpirationCleanup`, `MediaLifecycle__EnableOrphanCleanup`, and
+`MediaLifecycle__EnableRetentionCleanup`. Cleanup defaults to `MediaLifecycle__DryRunMode=true`;
+set it to `false` only after reviewing the status endpoint and logs. All phases share
+`MediaLifecycle__MonthlyDeleteBudget`, batch-size, rate-limit, and dry-run safeguards.
+
+The Admin media cleanup status endpoint reports both the aggregate cycle and the last outcome of
+each phase. Prometheus metrics use a `cleanup_type` label with `expiration`, `orphan`, or
+`retention`. When `MediaLifecycle__TestVirtualKeyGroups` is set, expiration and retention are
+limited to those groups and orphan cleanup is skipped because an orphan no longer has group
+ownership that can be scoped safely.
+
 ## Runtime configuration (in the Admin UI)
 
 Everything about *how Conduit behaves per request* is data in Postgres, created and edited live

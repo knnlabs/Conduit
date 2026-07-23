@@ -62,6 +62,14 @@ function getBudgetColor(percent: number): string {
   return 'green';
 }
 
+function getRunStatusColor(runStatus: string | null): string {
+  if (!runStatus) return 'gray';
+  if (runStatus === 'Completed' || runStatus === 'Dry run completed') return 'green';
+  if (runStatus.startsWith('Skipped')) return 'gray';
+  if (runStatus.startsWith('Failed') || runStatus === 'Cancelled') return 'red';
+  return 'yellow';
+}
+
 export default function MediaCleanupStatusContent() {
   const [status, setStatus] = useState<MediaCleanupStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -360,7 +368,7 @@ export default function MediaCleanupStatusContent() {
               <Text size="sm" c="dimmed">Status</Text>
             </Group>
             <Badge
-              color={status.lastRunStatus === 'Completed' ? 'green' : 'yellow'}
+              color={getRunStatusColor(status.lastRunStatus)}
               variant="light"
             >
               {status.lastRunStatus ?? 'No runs yet'}
@@ -390,6 +398,43 @@ export default function MediaCleanupStatusContent() {
             Duration: {formatDuration(status.lastRunDurationSeconds)}
           </Text>
         )}
+      </Card>
+
+      {/* Per-phase outcomes */}
+      <Card withBorder shadow="sm">
+        <Title order={4} mb="md">Cleanup Phases</Title>
+        <SimpleGrid cols={{ base: 1, md: 3 }} spacing="md">
+          {(status.operationStatuses ?? []).map((operation) => (
+            <Paper key={operation.cleanupType} p="md" withBorder>
+              <Group justify="space-between" mb="sm">
+                <Text fw={600} tt="capitalize">{operation.cleanupType}</Text>
+                <Badge color={operation.isEnabled ? 'blue' : 'gray'} variant="light">
+                  {operation.isEnabled ? 'Enabled' : 'Disabled'}
+                </Badge>
+              </Group>
+              <Stack gap={6}>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Last outcome</Text>
+                  <Badge color={getRunStatusColor(operation.lastRunStatus)} variant="light">
+                    {operation.lastRunStatus ?? 'Never run'}
+                  </Badge>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Last run</Text>
+                  <Text size="sm">{formatDate(operation.lastRunTimeUtc)}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Files</Text>
+                  <Text size="sm">{operation.lastRunFilesDeleted.toLocaleString()}</Text>
+                </Group>
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Duration</Text>
+                  <Text size="sm">{formatDuration(operation.lastRunDurationSeconds)}</Text>
+                </Group>
+              </Stack>
+            </Paper>
+          ))}
+        </SimpleGrid>
       </Card>
 
       {/* Schedule Info */}

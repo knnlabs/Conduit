@@ -19,13 +19,6 @@ namespace ConduitLLM.Admin.Services
         {
             _logger.LogInformation("Starting virtual key maintenance tasks");
 
-            // TODO(#1073): Consolidate and schedule these media lifecycle maintenance tasks:
-            // 1. Clean up expired media (based on MediaRecord.ExpiresAt)
-            // 2. Clean up orphaned media (virtual key deleted but media remains)
-            // 3. Prune old media based on retention policy (e.g., >90 days)
-            // 4. Update storage usage statistics per virtual key
-            // See issue #1073 and the media lifecycle management design document.
-
             try
             {
                 var now = DateTime.UtcNow;

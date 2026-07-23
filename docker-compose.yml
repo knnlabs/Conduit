@@ -50,22 +50,6 @@ services:
       Conduit__PerformanceTracking__Enabled: "true"
       Conduit__PerformanceTracking__IncludeInResponse: "true"
       Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
-      # Media Lifecycle Configuration
-      MediaLifecycle__Enabled: "false"  # Cleanup runs on Admin API, not Gateway API
-      MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
-      MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
-      MediaLifecycle__EnableSoftDelete: "true"
-      MediaLifecycle__SoftDeleteGracePeriodDays: "7"
-      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
-      MediaLifecycle__RequireManualApprovalForLargeBatches: "false"
-      MediaLifecycle__LargeBatchThreshold: "100"
-      MediaLifecycle__MaxBatchSize: "50"
-      MediaLifecycle__DelayBetweenBatchesMs: "500"
-      MediaLifecycle__MaxConcurrentBatches: "2"
-      MediaLifecycle__MonthlyDeleteBudget: "500000"
-      MediaLifecycle__EnableAuditLogging: "true"
-      MediaLifecycle__EnableMetrics: "true"
-      MediaLifecycle__R2OperationTimeoutSeconds: "30"
       Logging__LogLevel__Default: "Information"
       Logging__LogLevel__ConduitLLM: "Information"
       Logging__LogLevel__ConduitLLM__Providers: "Debug"
@@ -154,6 +138,9 @@ services:
       MediaLifecycle__Enabled: "true"  # Enable cleanup on Admin API
       MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
       MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
+      MediaLifecycle__EnableExpirationCleanup: "true"
+      MediaLifecycle__EnableOrphanCleanup: "true"
+      MediaLifecycle__EnableRetentionCleanup: "true"
       MediaLifecycle__EnableSoftDelete: "true"
       MediaLifecycle__SoftDeleteGracePeriodDays: "7"
       MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1

@@ -33,6 +33,21 @@ namespace ConduitLLM.Configuration.Options
         public int ScheduleIntervalMinutes { get; set; } = 60;
 
         /// <summary>
+        /// Enable cleanup of media whose explicit expiration time has passed.
+        /// </summary>
+        public bool EnableExpirationCleanup { get; set; } = true;
+
+        /// <summary>
+        /// Enable cleanup of media whose owning virtual key no longer exists.
+        /// </summary>
+        public bool EnableOrphanCleanup { get; set; } = true;
+
+        /// <summary>
+        /// Enable cleanup based on virtual key group retention policies.
+        /// </summary>
+        public bool EnableRetentionCleanup { get; set; } = true;
+
+        /// <summary>
         /// Enable soft delete with grace period before permanent deletion.
         /// </summary>
         public bool EnableSoftDelete { get; set; } = true;

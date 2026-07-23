@@ -4603,6 +4603,35 @@ export interface components {
       /** @description Whether the media cleanup service is currently enabled. */
       enabled?: boolean;
     };
+    /** @description Last known status for one scheduled media cleanup phase. */
+    MediaCleanupOperationStatusDto: {
+      /** @description Stable cleanup phase name: expiration, orphan, or retention. */
+      cleanupType?: string;
+      /** @description Whether this cleanup phase is enabled by deploy-time configuration. */
+      isEnabled?: boolean;
+      /**
+       * Format: date-time
+       * @description Timestamp of the last run for this phase (UTC).
+       */
+      lastRunTimeUtc?: null | string;
+      /** @description Outcome of the last run for this phase. */
+      lastRunStatus?: null | string;
+      /**
+       * Format: int32
+       * @description Number of files deleted by the last run of this phase.
+       */
+      lastRunFilesDeleted?: number;
+      /**
+       * Format: int64
+       * @description Bytes freed by the last run of this phase.
+       */
+      lastRunBytesFreed?: number;
+      /**
+       * Format: double
+       * @description Duration of the last run of this phase in seconds.
+       */
+      lastRunDurationSeconds?: null | number;
+    };
     /** @description Response returned by media cleanup and pruning operations. */
     MediaCleanupResponseDto: {
       /** @description Human-readable summary of the cleanup operation. */
@@ -4688,6 +4717,8 @@ export interface components {
       nextScheduledRunUtc?: null | string;
       /** @description Instance ID of the current cleanup leader (if known). */
       currentLeaderInstanceId?: null | string;
+      /** @description Last known outcome for each cleanup phase owned by the scheduler. */
+      operationStatuses?: components["schemas"]["MediaCleanupOperationStatusDto"][];
       /**
        * Format: int32
        * @description Simple retention override in days.

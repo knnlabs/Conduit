@@ -24709,6 +24709,53 @@
         },
         "description": "Response describing whether the media cleanup service is enabled."
       },
+      "MediaCleanupOperationStatusDto": {
+        "type": "object",
+        "properties": {
+          "cleanupType": {
+            "type": "string",
+            "description": "Stable cleanup phase name: expiration, orphan, or retention."
+          },
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Whether this cleanup phase is enabled by deploy-time configuration."
+          },
+          "lastRunTimeUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Timestamp of the last run for this phase (UTC).",
+            "format": "date-time"
+          },
+          "lastRunStatus": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Outcome of the last run for this phase."
+          },
+          "lastRunFilesDeleted": {
+            "type": "integer",
+            "description": "Number of files deleted by the last run of this phase.",
+            "format": "int32"
+          },
+          "lastRunBytesFreed": {
+            "type": "integer",
+            "description": "Bytes freed by the last run of this phase.",
+            "format": "int64"
+          },
+          "lastRunDurationSeconds": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Duration of the last run of this phase in seconds.",
+            "format": "double"
+          }
+        },
+        "description": "Last known status for one scheduled media cleanup phase."
+      },
       "MediaCleanupResponseDto": {
         "type": "object",
         "properties": {
@@ -24828,6 +24875,13 @@
               "string"
             ],
             "description": "Instance ID of the current cleanup leader (if known)."
+          },
+          "operationStatuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaCleanupOperationStatusDto"
+            },
+            "description": "Last known outcome for each cleanup phase owned by the scheduler."
           },
           "simpleRetentionOverrideDays": {
             "type": [

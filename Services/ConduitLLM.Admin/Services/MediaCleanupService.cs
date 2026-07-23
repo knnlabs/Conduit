@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
@@ -72,7 +73,7 @@ namespace ConduitLLM.Admin.Services
                     // Check runtime toggle before attempting cleanup
                     if (await IsRuntimeEnabledAsync(stoppingToken))
                     {
-                        await AttemptScheduledCleanupAsync(stoppingToken);
+                        await RunScheduledCleanupAsync(stoppingToken);
                     }
                     else
                     {
@@ -128,7 +129,7 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
-        private async Task AttemptScheduledCleanupAsync(CancellationToken stoppingToken)
+        internal async Task RunScheduledCleanupAsync(CancellationToken stoppingToken)
         {
             var lockKey = "media:cleanup:leader";
             var lockDuration = TimeSpan.FromMinutes(30); // Longer lock for actual cleanup work
@@ -174,60 +175,71 @@ namespace ConduitLLM.Admin.Services
             var budgetService = scope.ServiceProvider.GetRequiredService<IMediaDeletionBudgetService>();
             var mediaRepository = scope.ServiceProvider.GetRequiredService<IMediaRecordRepository>();
             var statusService = scope.ServiceProvider.GetService<IMediaCleanupStatusService>();
-
-            // Get groups to process
-            IQueryable<int> groupQuery = context.VirtualKeyGroups.Select(g => g.Id);
-
-            // Filter by test groups if in progressive rollout mode
-            if (_options.TestVirtualKeyGroups.Any())
-            {
-                groupQuery = groupQuery.Where(g => _options.TestVirtualKeyGroups.Contains(g));
-                _logger.LogInformation(
-                    "Running in test mode - only processing groups: {Groups}",
-                    string.Join(", ", _options.TestVirtualKeyGroups));
-            }
-
-            var groupIds = await groupQuery.ToListAsync(stoppingToken);
-
-            if (!groupIds.Any())
-            {
-                _logger.LogDebug("No virtual key groups found to process");
-                stopwatch.Stop();
-                if (statusService != null)
-                {
-                    await statusService.RecordRunCompletionAsync(
-                        0, 0, stopwatch.Elapsed.TotalSeconds, "No groups", _instanceId, stoppingToken);
-                }
-                AdminMediaCleanupMetrics.CleanupCycles.WithLabels("no_groups").Inc();
-                return;
-            }
-
-            _logger.LogInformation(
-                "Starting media cleanup for {Count} virtual key groups (DryRun: {DryRun})",
-                groupIds.Count, _options.DryRunMode);
-
             var totalDeleted = 0;
             long totalBytesFreed = 0;
+            var operationFailures = 0;
+            var processedRecordIds = new HashSet<Guid>();
 
             try
             {
-                foreach (var groupId in groupIds)
+                if (_options.TestVirtualKeyGroups.Any())
                 {
-                    if (stoppingToken.IsCancellationRequested)
-                    {
-                        status = "Cancelled";
-                        break;
-                    }
-
-                    var (deleted, bytesFreed) = await ProcessGroupAsync(
-                        groupId, context, storageService, budgetService, mediaRepository, stoppingToken);
-
-                    totalDeleted += deleted;
-                    totalBytesFreed += bytesFreed;
-
-                    // Small delay between groups
-                    await Task.Delay(100, stoppingToken);
+                    _logger.LogInformation(
+                        "Running in test mode - only processing groups: {Groups}",
+                        string.Join(", ", _options.TestVirtualKeyGroups));
                 }
+
+                if (_options.EnableExpirationCleanup)
+                {
+                    var result = await ExecuteOperationAsync(
+                        MediaCleanupTypes.Expiration,
+                        () => ProcessExpiredMediaAsync(
+                            context, storageService, budgetService, mediaRepository,
+                            processedRecordIds, stoppingToken),
+                        statusService,
+                        stoppingToken);
+                    totalDeleted += result.FilesDeleted;
+                    totalBytesFreed += result.BytesFreed;
+                    operationFailures += result.Failures;
+                }
+
+                if (_options.EnableOrphanCleanup)
+                {
+                    var result = await ExecuteOperationAsync(
+                        MediaCleanupTypes.Orphan,
+                        () => ProcessOrphanedMediaAsync(
+                            storageService, budgetService, mediaRepository,
+                            processedRecordIds, stoppingToken),
+                        statusService,
+                        stoppingToken);
+                    totalDeleted += result.FilesDeleted;
+                    totalBytesFreed += result.BytesFreed;
+                    operationFailures += result.Failures;
+                }
+
+                if (_options.EnableRetentionCleanup)
+                {
+                    var result = await ExecuteOperationAsync(
+                        MediaCleanupTypes.Retention,
+                        () => ProcessRetentionMediaAsync(
+                            context, storageService, budgetService, mediaRepository,
+                            processedRecordIds, stoppingToken),
+                        statusService,
+                        stoppingToken);
+                    totalDeleted += result.FilesDeleted;
+                    totalBytesFreed += result.BytesFreed;
+                    operationFailures += result.Failures;
+                }
+
+                if (operationFailures > 0)
+                {
+                    status = "Completed with errors";
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                status = "Cancelled";
+                throw;
             }
             catch (Exception ex)
             {
@@ -239,8 +251,8 @@ namespace ConduitLLM.Admin.Services
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "Media cleanup {Status}. Deleted {Count} files, freed {Bytes:N0} bytes across {Groups} groups in {Duration:F2}s",
-                    status, totalDeleted, totalBytesFreed, groupIds.Count, stopwatch.Elapsed.TotalSeconds);
+                    "Media cleanup {Status}. Deleted {Count} files and freed {Bytes:N0} bytes in {Duration:F2}s",
+                    status, totalDeleted, totalBytesFreed, stopwatch.Elapsed.TotalSeconds);
 
                 // Record run completion for status tracking
                 if (statusService != null)
@@ -254,25 +266,223 @@ namespace ConduitLLM.Admin.Services
                         stoppingToken);
                 }
 
-                // Record Prometheus metrics
-                AdminMediaCleanupMetrics.CleanupDuration.Observe(stopwatch.Elapsed.TotalSeconds);
-                AdminMediaCleanupMetrics.GroupsProcessed.Observe(groupIds.Count);
-                if (totalDeleted > 0)
-                    AdminMediaCleanupMetrics.FilesDeleted.Inc(totalDeleted);
-                if (totalBytesFreed > 0)
-                    AdminMediaCleanupMetrics.BytesFreed.Inc(totalBytesFreed);
-                var cleanupStatus = status.StartsWith("Failed") ? "failed"
-                    : status == "Cancelled" ? "cancelled" : "completed";
-                AdminMediaCleanupMetrics.CleanupCycles.WithLabels(cleanupStatus).Inc();
             }
         }
 
-        private async Task<(int deleted, long bytesFreed)> ProcessGroupAsync(
+        private async Task<CleanupOperationResult> ExecuteOperationAsync(
+            string cleanupType,
+            Func<Task<CleanupOperationResult>> operation,
+            IMediaCleanupStatusService? statusService,
+            CancellationToken stoppingToken)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var result = CleanupOperationResult.Empty;
+            var operationStatus = "Completed";
+
+            try
+            {
+                result = await operation();
+                operationStatus = GetOperationStatus(result);
+                return result;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                operationStatus = "Cancelled";
+                throw;
+            }
+            catch (Exception ex)
+            {
+                operationStatus = $"Failed: {ex.Message}";
+                result = new CleanupOperationResult(Failures: 1);
+                _logger.LogError(ex, "{CleanupType} media cleanup failed", cleanupType);
+                AdminMediaCleanupMetrics.CleanupErrors
+                    .WithLabels(cleanupType, "operation")
+                    .Inc();
+                return result;
+            }
+            finally
+            {
+                stopwatch.Stop();
+
+                if (statusService != null)
+                {
+                    await statusService.RecordOperationCompletionAsync(
+                        cleanupType,
+                        result.FilesDeleted,
+                        result.BytesFreed,
+                        stopwatch.Elapsed.TotalSeconds,
+                        operationStatus,
+                        _instanceId,
+                        stoppingToken);
+                }
+
+                var metricStatus = operationStatus.StartsWith("Failed", StringComparison.Ordinal)
+                    ? "failed"
+                    : operationStatus == "Cancelled"
+                        ? "cancelled"
+                        : operationStatus.Contains("errors", StringComparison.OrdinalIgnoreCase)
+                            ? "partial"
+                            : operationStatus.Contains("budget", StringComparison.OrdinalIgnoreCase)
+                                ? "budget_exhausted"
+                                : operationStatus.StartsWith("Skipped", StringComparison.Ordinal)
+                                    ? "skipped"
+                                    : "completed";
+
+                AdminMediaCleanupMetrics.CleanupCycles
+                    .WithLabels(cleanupType, metricStatus)
+                    .Inc();
+                AdminMediaCleanupMetrics.CleanupDuration
+                    .WithLabels(cleanupType)
+                    .Observe(stopwatch.Elapsed.TotalSeconds);
+                AdminMediaCleanupMetrics.LastRunTimestamp
+                    .WithLabels(cleanupType)
+                    .Set(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                AdminMediaCleanupMetrics.LastRunSucceeded
+                    .WithLabels(cleanupType)
+                    .Set(metricStatus == "completed" ? 1 : 0);
+                if (result.FilesDeleted > 0)
+                {
+                    AdminMediaCleanupMetrics.FilesDeleted
+                        .WithLabels(cleanupType)
+                        .Inc(result.FilesDeleted);
+                }
+                if (result.BytesFreed > 0)
+                {
+                    AdminMediaCleanupMetrics.BytesFreed
+                        .WithLabels(cleanupType)
+                        .Inc(result.BytesFreed);
+                }
+            }
+        }
+
+        private string GetOperationStatus(CleanupOperationResult result)
+        {
+            if (!string.IsNullOrWhiteSpace(result.StatusOverride))
+                return result.StatusOverride;
+            if (result.BudgetExhausted)
+                return result.Failures > 0
+                    ? "Partial: deletion budget exhausted with errors"
+                    : "Partial: deletion budget exhausted";
+            if (result.Failures > 0)
+                return "Completed with errors";
+            return _options.DryRunMode ? "Dry run completed" : "Completed";
+        }
+
+        private async Task<CleanupOperationResult> ProcessExpiredMediaAsync(
+            IConfigurationDbContext context,
+            IMediaStorageService storageService,
+            IMediaDeletionBudgetService budgetService,
+            IMediaRecordRepository mediaRepository,
+            HashSet<Guid> processedRecordIds,
+            CancellationToken stoppingToken)
+        {
+            var now = DateTime.UtcNow;
+            var query = context.MediaRecords
+                .AsNoTracking()
+                .Where(media => media.ExpiresAt != null && media.ExpiresAt <= now);
+
+            if (_options.TestVirtualKeyGroups.Any())
+            {
+                query = query.Where(media => context.VirtualKeys.Any(key =>
+                    key.Id == media.VirtualKeyId &&
+                    _options.TestVirtualKeyGroups.Contains(key.VirtualKeyGroupId)));
+            }
+
+            var expiredMedia = await query.ToListAsync(stoppingToken);
+            _logger.LogInformation(
+                "Found {Count} explicitly expired media files eligible for cleanup",
+                expiredMedia.Count);
+
+            return await DeleteMediaBatchesAsync(
+                expiredMedia,
+                MediaCleanupTypes.Expiration,
+                groupId: null,
+                storageService,
+                budgetService,
+                mediaRepository,
+                processedRecordIds,
+                stoppingToken);
+        }
+
+        private async Task<CleanupOperationResult> ProcessOrphanedMediaAsync(
+            IMediaStorageService storageService,
+            IMediaDeletionBudgetService budgetService,
+            IMediaRecordRepository mediaRepository,
+            HashSet<Guid> processedRecordIds,
+            CancellationToken stoppingToken)
+        {
+            if (_options.TestVirtualKeyGroups.Any())
+            {
+                _logger.LogInformation(
+                    "Skipping orphan cleanup because test virtual key groups are configured and orphan ownership cannot be scoped safely");
+                return new CleanupOperationResult(
+                    StatusOverride: "Skipped: test virtual key group scope is active");
+            }
+
+            var orphanedMedia = await mediaRepository.GetOrphanedMediaAsync(stoppingToken);
+            _logger.LogInformation(
+                "Found {Count} orphaned media files eligible for cleanup",
+                orphanedMedia.Count);
+
+            return await DeleteMediaBatchesAsync(
+                orphanedMedia,
+                MediaCleanupTypes.Orphan,
+                groupId: null,
+                storageService,
+                budgetService,
+                mediaRepository,
+                processedRecordIds,
+                stoppingToken);
+        }
+
+        private async Task<CleanupOperationResult> ProcessRetentionMediaAsync(
+            IConfigurationDbContext context,
+            IMediaStorageService storageService,
+            IMediaDeletionBudgetService budgetService,
+            IMediaRecordRepository mediaRepository,
+            HashSet<Guid> processedRecordIds,
+            CancellationToken stoppingToken)
+        {
+            IQueryable<int> groupQuery = context.VirtualKeyGroups.Select(group => group.Id);
+            if (_options.TestVirtualKeyGroups.Any())
+            {
+                groupQuery = groupQuery.Where(groupId => _options.TestVirtualKeyGroups.Contains(groupId));
+            }
+
+            var groupIds = await groupQuery.ToListAsync(stoppingToken);
+            var result = CleanupOperationResult.Empty;
+
+            foreach (var groupId in groupIds)
+            {
+                stoppingToken.ThrowIfCancellationRequested();
+
+                var groupResult = await ProcessGroupAsync(
+                    groupId,
+                    context,
+                    storageService,
+                    budgetService,
+                    mediaRepository,
+                    processedRecordIds,
+                    stoppingToken);
+                result = result.Combine(groupResult);
+
+                if (groupResult.BudgetExhausted)
+                    break;
+
+                await Task.Delay(100, stoppingToken);
+            }
+
+            AdminMediaCleanupMetrics.GroupsProcessed.Observe(groupIds.Count);
+            return result;
+        }
+
+        private async Task<CleanupOperationResult> ProcessGroupAsync(
             int groupId,
             IConfigurationDbContext context,
             IMediaStorageService storageService,
             IMediaDeletionBudgetService budgetService,
             IMediaRecordRepository mediaRepository,
+            HashSet<Guid> processedRecordIds,
             CancellationToken stoppingToken)
         {
             try
@@ -285,27 +495,40 @@ namespace ConduitLLM.Admin.Services
                 if (group == null)
                 {
                     _logger.LogWarning("VirtualKeyGroup {GroupId} not found", groupId);
-                    return (0, 0);
+                    return CleanupOperationResult.Empty;
                 }
 
                 var retention = await ResolveRetentionSettingsAsync(group, context, stoppingToken);
                 if (retention == null)
-                    return (0, 0);
+                    return CleanupOperationResult.Empty;
 
                 var mediaToDelete = await QueryEligibleMediaAsync(
                     group, retention.Value, context, stoppingToken);
                 if (mediaToDelete == null || mediaToDelete.Count == 0)
-                    return (0, 0);
+                    return CleanupOperationResult.Empty;
 
                 // Process deletions in batches
                 return await DeleteMediaBatchesAsync(
-                    mediaToDelete, groupId, storageService, budgetService, mediaRepository, stoppingToken);
+                    mediaToDelete,
+                    MediaCleanupTypes.Retention,
+                    groupId,
+                    storageService,
+                    budgetService,
+                    mediaRepository,
+                    processedRecordIds,
+                    stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing cleanup for group {GroupId}", groupId);
-                AdminMediaCleanupMetrics.CleanupErrors.WithLabels("group_processing").Inc();
-                return (0, 0);
+                AdminMediaCleanupMetrics.CleanupErrors
+                    .WithLabels(MediaCleanupTypes.Retention, "group_processing")
+                    .Inc();
+                return new CleanupOperationResult(Failures: 1);
             }
         }
 
@@ -392,31 +615,40 @@ namespace ConduitLLM.Admin.Services
                 "Found {Count} media files eligible for cleanup in group {GroupId}",
                 mediaToDelete.Count, group.Id);
 
-            if (_options.RequireManualApprovalForLargeBatches &&
-                mediaToDelete.Count > _options.LargeBatchThreshold)
-            {
-                _logger.LogWarning(
-                    "Batch of {Count} files exceeds threshold of {Threshold}. Manual approval required. Skipping.",
-                    mediaToDelete.Count, _options.LargeBatchThreshold);
-                return null;
-            }
-
             return mediaToDelete;
         }
 
-        private async Task<(int deleted, long bytesFreed)> DeleteMediaBatchesAsync(
+        private async Task<CleanupOperationResult> DeleteMediaBatchesAsync(
             List<MediaRecord> mediaRecords,
-            int groupId,
+            string cleanupType,
+            int? groupId,
             IMediaStorageService storageService,
             IMediaDeletionBudgetService budgetService,
             IMediaRecordRepository mediaRepository,
+            HashSet<Guid> processedRecordIds,
             CancellationToken stoppingToken)
         {
-            var totalDeleted = 0;
-            long totalBytesFreed = 0;
+            var uniqueMediaRecords = mediaRecords
+                .Where(record => processedRecordIds.Add(record.Id))
+                .ToList();
+
+            if (uniqueMediaRecords.Count == 0)
+                return CleanupOperationResult.Empty;
+
+            if (_options.RequireManualApprovalForLargeBatches &&
+                uniqueMediaRecords.Count > _options.LargeBatchThreshold)
+            {
+                _logger.LogWarning(
+                    "{CleanupType} cleanup batch of {Count} files exceeds threshold of {Threshold}. Manual approval required. Skipping.",
+                    cleanupType, uniqueMediaRecords.Count, _options.LargeBatchThreshold);
+                return new CleanupOperationResult(
+                    StatusOverride: "Skipped: manual approval required");
+            }
+
+            var result = CleanupOperationResult.Empty;
 
             // Process in batches
-            var batches = mediaRecords.Chunk(_options.MaxBatchSize);
+            var batches = uniqueMediaRecords.Chunk(_options.MaxBatchSize);
 
             foreach (var batch in batches)
             {
@@ -424,7 +656,8 @@ namespace ConduitLLM.Admin.Services
                     break;
 
                 // Check monthly budget before processing
-                if (await budgetService.WouldExceedBudgetAsync(batch.Length, _options.MonthlyDeleteBudget, stoppingToken))
+                if (!_options.DryRunMode &&
+                    await budgetService.WouldExceedBudgetAsync(batch.Length, _options.MonthlyDeleteBudget, stoppingToken))
                 {
                     var remaining = await budgetService.GetRemainingBudgetAsync(_options.MonthlyDeleteBudget, stoppingToken);
                     var currentCount = await budgetService.GetMonthlyDeleteCountAsync(stoppingToken);
@@ -432,14 +665,20 @@ namespace ConduitLLM.Admin.Services
                     _logger.LogWarning(
                         "Monthly delete budget would be exceeded. Current: {Current}, Batch: {Batch}, Budget: {Budget}, Remaining: {Remaining}. Stopping cleanup.",
                         currentCount, batch.Length, _options.MonthlyDeleteBudget, remaining);
+                    result = result with { BudgetExhausted = true };
                     break;
                 }
 
-                var (deleted, bytesFreed) = await ProcessBatchAsync(
-                    batch, groupId, storageService, budgetService, mediaRepository, stoppingToken);
+                var batchResult = await ProcessBatchAsync(
+                    batch,
+                    cleanupType,
+                    groupId,
+                    storageService,
+                    budgetService,
+                    mediaRepository,
+                    stoppingToken);
 
-                totalDeleted += deleted;
-                totalBytesFreed += bytesFreed;
+                result = result.Combine(batchResult);
 
                 // Delay between batches to avoid overwhelming the system
                 if (_options.DelayBetweenBatchesMs > 0)
@@ -448,12 +687,13 @@ namespace ConduitLLM.Admin.Services
                 }
             }
 
-            return (totalDeleted, totalBytesFreed);
+            return result;
         }
 
-        private async Task<(int deleted, long bytesFreed)> ProcessBatchAsync(
+        private async Task<CleanupOperationResult> ProcessBatchAsync(
             MediaRecord[] batch,
-            int groupId,
+            string cleanupType,
+            int? groupId,
             IMediaStorageService storageService,
             IMediaDeletionBudgetService budgetService,
             IMediaRecordRepository mediaRepository,
@@ -461,6 +701,7 @@ namespace ConduitLLM.Admin.Services
         {
             var successfulDeletes = 0;
             long bytesFreed = 0;
+            var failures = 0;
 
             await _rateLimiter.WaitAsync(stoppingToken);
             try
@@ -488,11 +729,22 @@ namespace ConduitLLM.Admin.Services
                                 bytesFreed += mediaRecord.SizeBytes ?? 0;
 
                                 // Delete from database
-                                await mediaRepository.DeleteAsync(mediaRecord.Id);
+                                var recordDeleted = await mediaRepository.DeleteAsync(mediaRecord.Id);
+                                if (!recordDeleted)
+                                {
+                                    failures++;
+                                    _logger.LogWarning(
+                                        "Storage object {Key} was deleted but media record {Id} could not be removed",
+                                        mediaRecord.StorageKey, mediaRecord.Id);
+                                }
 
                                 _logger.LogDebug(
                                     "Deleted media record {Id} with storage key {Key}",
                                     mediaRecord.Id, mediaRecord.StorageKey);
+                            }
+                            else
+                            {
+                                failures++;
                             }
                         }
 
@@ -507,9 +759,14 @@ namespace ConduitLLM.Admin.Services
 
                         await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
                     }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to delete object {Key}", mediaRecord.StorageKey);
+                        failures++;
                     }
                 }
 
@@ -525,11 +782,18 @@ namespace ConduitLLM.Admin.Services
                 if (successfulDeletes > 0)
                 {
                     _logger.LogInformation(
-                        "Deleted {Count} files, freed {Bytes:N0} bytes for group {GroupId}",
-                        successfulDeletes, bytesFreed, groupId);
+                        "{CleanupType} cleanup deleted {Count} files, freed {Bytes:N0} bytes for group {GroupId}",
+                        cleanupType, successfulDeletes, bytesFreed, groupId);
                 }
 
-                return (successfulDeletes, bytesFreed);
+                if (failures > 0)
+                {
+                    AdminMediaCleanupMetrics.CleanupErrors
+                        .WithLabels(cleanupType, "storage")
+                        .Inc(failures);
+                }
+
+                return new CleanupOperationResult(successfulDeletes, bytesFreed, failures);
             }
             finally
             {
@@ -548,13 +812,12 @@ namespace ConduitLLM.Admin.Services
 
                 // Note: IMediaStorageService.DeleteAsync does not accept a CancellationToken,
                 // so per-operation timeouts must be enforced by the storage implementation itself.
-                await storageService.DeleteAsync(storageKey);
-                return true;
+                return await storageService.DeleteAsync(storageKey);
             }
             catch (OperationCanceledException)
             {
                 _logger.LogWarning("Storage delete operation cancelled for key: {Key}", storageKey);
-                return false;
+                throw;
             }
             catch (Exception ex)
             {
@@ -592,6 +855,23 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogWarning(ex, "Error checking simple retention override, using policy-based retention");
                 return null;
             }
+        }
+
+        private sealed record CleanupOperationResult(
+            int FilesDeleted = 0,
+            long BytesFreed = 0,
+            int Failures = 0,
+            bool BudgetExhausted = false,
+            string? StatusOverride = null)
+        {
+            public static CleanupOperationResult Empty { get; } = new();
+
+            public CleanupOperationResult Combine(CleanupOperationResult other) => new(
+                FilesDeleted + other.FilesDeleted,
+                BytesFreed + other.BytesFreed,
+                Failures + other.Failures,
+                BudgetExhausted || other.BudgetExhausted,
+                StatusOverride ?? other.StatusOverride);
         }
 
         /// <inheritdoc />

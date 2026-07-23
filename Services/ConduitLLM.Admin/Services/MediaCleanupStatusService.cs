@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -24,7 +25,13 @@ namespace ConduitLLM.Admin.Services
 
         // Redis keys
         private const string REDIS_KEY_LAST_RUN = "media:cleanup:last-run";
+        private const string REDIS_KEY_OPERATION_PREFIX = "media:cleanup:last-run:";
         private const string REDIS_KEY_LEADER = "media:cleanup:current-leader";
+
+        // In-process fallback keeps status useful for single-instance deployments without Redis.
+        private LastRunInfo? _lastRunFallback;
+        private string? _leaderFallback;
+        private readonly ConcurrentDictionary<string, LastRunInfo> _operationRunFallback = new();
 
         /// <summary>
         /// GlobalSetting key for the runtime enabled toggle.
@@ -75,6 +82,21 @@ namespace ConduitLLM.Admin.Services
 
             // Get last run info from Redis
             var lastRunInfo = await GetLastRunInfoAsync();
+            var operationStatuses = new List<MediaCleanupOperationStatusDto>();
+            foreach (var cleanupType in MediaCleanupTypes.All)
+            {
+                var operationInfo = await GetLastRunInfoAsync(cleanupType);
+                operationStatuses.Add(new MediaCleanupOperationStatusDto
+                {
+                    CleanupType = cleanupType,
+                    IsEnabled = IsOperationEnabled(cleanupType),
+                    LastRunTimeUtc = operationInfo?.LastRunTimeUtc,
+                    LastRunStatus = operationInfo?.Status,
+                    LastRunFilesDeleted = operationInfo?.FilesDeleted ?? 0,
+                    LastRunBytesFreed = operationInfo?.BytesFreed ?? 0,
+                    LastRunDurationSeconds = operationInfo?.DurationSeconds
+                });
+            }
 
             // Get default retention policy
             var defaultPolicy = await context.MediaRetentionPolicies
@@ -142,7 +164,8 @@ namespace ConduitLLM.Admin.Services
                 ActiveRetentionPoliciesCount = activePoliciesCount,
                 SimpleRetentionOverrideDays = simpleRetentionOverride,
                 NextScheduledRunUtc = nextScheduledRun,
-                CurrentLeaderInstanceId = currentLeader
+                CurrentLeaderInstanceId = currentLeader,
+                OperationStatuses = operationStatuses
             };
         }
 
@@ -155,38 +178,83 @@ namespace ConduitLLM.Admin.Services
             string leaderInstanceId,
             CancellationToken cancellationToken = default)
         {
+            var runInfo = CreateRunInfo(
+                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId);
+            _lastRunFallback = runInfo;
+            _leaderFallback = leaderInstanceId;
+
+            await PersistRunInfoAsync(REDIS_KEY_LAST_RUN, runInfo, leaderInstanceId);
+
+            _logger.LogDebug(
+                "Recorded cleanup run completion: {FilesDeleted} files, {BytesFreed} bytes, {Duration:F2}s",
+                filesDeleted, bytesFreed, durationSeconds);
+        }
+
+        /// <inheritdoc />
+        public async Task RecordOperationCompletionAsync(
+            string cleanupType,
+            int filesDeleted,
+            long bytesFreed,
+            double durationSeconds,
+            string status,
+            string leaderInstanceId,
+            CancellationToken cancellationToken = default)
+        {
+            if (!MediaCleanupTypes.All.Contains(cleanupType, StringComparer.Ordinal))
+            {
+                throw new ArgumentException($"Unknown media cleanup type '{cleanupType}'", nameof(cleanupType));
+            }
+
+            var runInfo = CreateRunInfo(
+                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId);
+            _operationRunFallback[cleanupType] = runInfo;
+            _leaderFallback = leaderInstanceId;
+
+            await PersistRunInfoAsync(
+                REDIS_KEY_OPERATION_PREFIX + cleanupType, runInfo, leaderInstanceId);
+
+            _logger.LogDebug(
+                "Recorded {CleanupType} cleanup completion: {Status}, {FilesDeleted} files, {Duration:F2}s",
+                cleanupType, status, filesDeleted, durationSeconds);
+        }
+
+        private async Task PersistRunInfoAsync(
+            string redisKey,
+            LastRunInfo runInfo,
+            string leaderInstanceId)
+        {
             if (_redis == null)
             {
-                _logger.LogDebug("Redis not available - last run info will not be persisted");
                 return;
             }
 
             try
             {
                 var db = _redis.GetDatabase();
-                var runInfo = new LastRunInfo
-                {
-                    LastRunTimeUtc = DateTime.UtcNow,
-                    FilesDeleted = filesDeleted,
-                    BytesFreed = bytesFreed,
-                    DurationSeconds = durationSeconds,
-                    Status = status,
-                    LeaderInstanceId = leaderInstanceId
-                };
-
                 var json = JsonSerializer.Serialize(runInfo);
-                await db.StringSetAsync(REDIS_KEY_LAST_RUN, json, TimeSpan.FromDays(7));
+                await db.StringSetAsync(redisKey, json, TimeSpan.FromDays(7));
                 await db.StringSetAsync(REDIS_KEY_LEADER, leaderInstanceId, TimeSpan.FromMinutes(35));
-
-                _logger.LogDebug(
-                    "Recorded cleanup run completion: {FilesDeleted} files, {BytesFreed} bytes, {Duration:F2}s",
-                    filesDeleted, bytesFreed, durationSeconds);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording cleanup run completion to Redis");
+                _logger.LogError(ex, "Error recording cleanup run status to Redis key {RedisKey}", redisKey);
             }
         }
+
+        private static LastRunInfo CreateRunInfo(
+            int filesDeleted,
+            long bytesFreed,
+            double durationSeconds,
+            string status,
+            string leaderInstanceId) => new()
+        {
+            LastRunTimeUtc = DateTime.UtcNow,
+            FilesDeleted = filesDeleted,
+            BytesFreed = bytesFreed,
+            DurationSeconds = durationSeconds,
+            Status = status,
+            LeaderInstanceId = leaderInstanceId
+        };
 
         /// <inheritdoc />
         public async Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default)
@@ -329,21 +397,36 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
-        private async Task<LastRunInfo?> GetLastRunInfoAsync()
+        private bool IsOperationEnabled(string cleanupType) => cleanupType switch
         {
+            MediaCleanupTypes.Expiration => _options.EnableExpirationCleanup,
+            MediaCleanupTypes.Orphan => _options.EnableOrphanCleanup,
+            MediaCleanupTypes.Retention => _options.EnableRetentionCleanup,
+            _ => false
+        };
+
+        private async Task<LastRunInfo?> GetLastRunInfoAsync(string? cleanupType = null)
+        {
+            var fallback = cleanupType == null
+                ? _lastRunFallback
+                : _operationRunFallback.GetValueOrDefault(cleanupType);
+
             if (_redis == null)
             {
-                return null;
+                return fallback;
             }
 
             try
             {
                 var db = _redis.GetDatabase();
-                var json = await db.StringGetAsync(REDIS_KEY_LAST_RUN);
+                var redisKey = cleanupType == null
+                    ? REDIS_KEY_LAST_RUN
+                    : REDIS_KEY_OPERATION_PREFIX + cleanupType;
+                var json = await db.StringGetAsync(redisKey);
 
                 if (json.IsNullOrEmpty)
                 {
-                    return null;
+                    return fallback;
                 }
 
                 return JsonSerializer.Deserialize<LastRunInfo>(json.ToString());
@@ -351,7 +434,7 @@ namespace ConduitLLM.Admin.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reading last run info from Redis");
-                return null;
+                return fallback;
             }
         }
 
@@ -359,19 +442,19 @@ namespace ConduitLLM.Admin.Services
         {
             if (_redis == null)
             {
-                return null;
+                return _leaderFallback;
             }
 
             try
             {
                 var db = _redis.GetDatabase();
                 var leader = await db.StringGetAsync(REDIS_KEY_LEADER);
-                return leader.IsNullOrEmpty ? null : leader.ToString();
+                return leader.IsNullOrEmpty ? _leaderFallback : leader.ToString();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reading current leader from Redis");
-                return null;
+                return _leaderFallback;
             }
         }
 

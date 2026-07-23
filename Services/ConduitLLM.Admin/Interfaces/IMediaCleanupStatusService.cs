@@ -30,6 +30,18 @@ namespace ConduitLLM.Admin.Interfaces
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Records the completion of one cleanup phase.
+        /// </summary>
+        Task RecordOperationCompletionAsync(
+            string cleanupType,
+            int filesDeleted,
+            long bytesFreed,
+            double durationSeconds,
+            string status,
+            string leaderInstanceId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets whether the cleanup service is enabled via runtime toggle.
         /// </summary>
         Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default);

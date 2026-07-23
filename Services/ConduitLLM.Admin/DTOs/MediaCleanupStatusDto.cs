@@ -93,6 +93,11 @@ namespace ConduitLLM.Admin.DTOs
         public string? CurrentLeaderInstanceId { get; set; }
 
         /// <summary>
+        /// Last known outcome for each cleanup phase owned by the scheduler.
+        /// </summary>
+        public List<MediaCleanupOperationStatusDto> OperationStatuses { get; set; } = new();
+
+        /// <summary>
         /// Simple retention override in days.
         /// When set, all media is deleted after this many days regardless of account balance.
         /// Null means using policy-based retention.
@@ -103,6 +108,60 @@ namespace ConduitLLM.Admin.DTOs
         /// Whether the simple retention override is active.
         /// </summary>
         public bool IsSimpleRetentionOverrideActive => SimpleRetentionOverrideDays.HasValue;
+    }
+
+    /// <summary>
+    /// Last known status for one scheduled media cleanup phase.
+    /// </summary>
+    public class MediaCleanupOperationStatusDto
+    {
+        /// <summary>
+        /// Stable cleanup phase name: expiration, orphan, or retention.
+        /// </summary>
+        public string CleanupType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Whether this cleanup phase is enabled by deploy-time configuration.
+        /// </summary>
+        public bool IsEnabled { get; set; }
+
+        /// <summary>
+        /// Timestamp of the last run for this phase (UTC).
+        /// </summary>
+        public DateTime? LastRunTimeUtc { get; set; }
+
+        /// <summary>
+        /// Outcome of the last run for this phase.
+        /// </summary>
+        public string? LastRunStatus { get; set; }
+
+        /// <summary>
+        /// Number of files deleted by the last run of this phase.
+        /// </summary>
+        public int LastRunFilesDeleted { get; set; }
+
+        /// <summary>
+        /// Bytes freed by the last run of this phase.
+        /// </summary>
+        public long LastRunBytesFreed { get; set; }
+
+        /// <summary>
+        /// Duration of the last run of this phase in seconds.
+        /// </summary>
+        public double? LastRunDurationSeconds { get; set; }
+    }
+
+    /// <summary>
+    /// Stable names for the cleanup phases owned by the media lifecycle scheduler.
+    /// </summary>
+    public static class MediaCleanupTypes
+    {
+        public const string Expiration = "expiration";
+        public const string Orphan = "orphan";
+        public const string Retention = "retention";
+
+        public static readonly IReadOnlyList<string> All =
+            new[] { Expiration, Orphan, Retention };
     }
 
     /// <summary>
