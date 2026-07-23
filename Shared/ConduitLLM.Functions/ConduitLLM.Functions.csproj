@@ -1,9 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
     <!-- Direct framework-package references are intentional; see the central security-pin rationales. -->
     <NoWarn>$(NoWarn);NU1510</NoWarn>
   </PropertyGroup>
