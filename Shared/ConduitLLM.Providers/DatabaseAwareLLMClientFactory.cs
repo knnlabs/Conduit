@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
@@ -7,11 +9,10 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Providers.Configuration;
 
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace ConduitLLM.Providers
 {
@@ -79,6 +80,17 @@ namespace ConduitLLM.Providers
             var switchValue = settings is null ? null : await settings.GetSettingValueAsync("Routing.Chat.Enabled");
             var routingEnabled = !bool.TryParse(switchValue, out var enabled) || enabled;
             var policy = await GetRoutePolicyAsync(request.Model, cancellationToken);
+            if (routingEnabled && _logger.IsEnabled(LogLevel.Debug))
+            {
+                foreach (var mapping in mappings.Where(mapping => mapping.IsEnabled && mapping.Provider?.IsEnabled == true &&
+                    mapping.ModelProviderTypeAssociation?.IsEnabled == true && !RouteCircuitRegistry.IsAvailable(mapping.Id)))
+                {
+                    _logger.LogDebug(
+                        "Excluding provider mapping {MappingId} for model {ModelAlias} because its route circuit is open or a recovery probe is already in progress",
+                        mapping.Id,
+                        request.Model);
+                }
+            }
             var scored = routingEnabled ? BalancedRouteScorer.Score(mappings, policy) :
                 mappings.OrderBy(mapping => mapping.Id).Take(1).Select(mapping => new ScoredRoute(mapping, 0.5m)).ToArray();
             if (scored.Count == 0)
@@ -115,7 +127,7 @@ namespace ConduitLLM.Providers
             if (routes.Count == 0)
                 throw new ServiceUnavailableException($"No configured provider credential for model '{request.Model}'.", "Routing");
             request.SelectedMappingId = routes[0].Item1.Id;
-            return new RoutedChatClient(routes, request, _distributedCache, policy);
+            return new RoutedChatClient(routes, request, _distributedCache, policy, _logger);
         }
 
         private async Task<ModelRoutePolicy> GetRoutePolicyAsync(string alias, CancellationToken cancellationToken)

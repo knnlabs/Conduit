@@ -76,7 +76,7 @@ public sealed class RoutedChatClientStreamingTests
             });
         }
 
-        Assert.False(RouteCircuitRegistry.CanAttempt(mapping.Id));
+        Assert.False(RouteCircuitRegistry.IsAvailable(mapping.Id));
         cache.Verify(store => store.SetAsync(
             It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(),
             It.IsAny<CancellationToken>()), Times.Never);
