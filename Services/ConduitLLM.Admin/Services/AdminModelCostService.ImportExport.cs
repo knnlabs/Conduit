@@ -169,54 +169,9 @@ namespace ConduitLLM.Admin.Services
                     _ => throw new ArgumentException($"Unsupported import format: {format}")
                 };
 
-                foreach (var modelCost in modelCosts)
-                {
-                    try
-                    {
-                        ModelPricingConfigurationValidator.Validate(
-                            modelCost.PricingModel, modelCost.PricingConfiguration);
-
-                        // Check if model cost with the same name already exists
-                        var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
-
-                        if (existingModelCost != null)
-                        {
-                            // Update existing model cost
-                            var updateDto = new UpdateModelCostDto
-                            {
-                                CostName = modelCost.CostName,
-                                PricingModel = modelCost.PricingModel,
-                                PricingConfiguration = modelCost.PricingConfiguration,
-                                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
-                                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
-                                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
-                                BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
-                                SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
-                                CostPerSearchUnit = modelCost.CostPerSearchUnit,
-                                CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
-                                CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens
-                            };
-
-                            existingModelCost.UpdateFrom(updateDto);
-                            await _modelCostRepository.UpdateAsync(existingModelCost);
-                        }
-                        else
-                        {
-                            // Create new model cost
-                            var modelCostEntity = modelCost.ToEntity();
-                            await _modelCostRepository.CreateAsync(modelCostEntity);
-                        }
-
-                        result.SuccessCount++;
-                    }
-                    catch (Exception ex)
-                    {
-                        result.FailureCount++;
-                        result.Errors.Add($"Failed to import model cost '{modelCost.CostName}': {ex.Message}");
-                        _logger.LogWarning(ex, "Error importing model cost '{CostName}' from {Format} data",
-                            LoggingSanitizer.S(modelCost.CostName), format);
-                    }
-                }
+                // Keep parsed file imports on the same write and event-publishing path as
+                // DTO imports so Gateway model-cost caches are invalidated consistently.
+                result = await ImportModelCostsAsync(modelCosts);
             }
             catch (Exception ex)
             {
