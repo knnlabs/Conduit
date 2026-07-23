@@ -112,8 +112,8 @@ namespace ConduitLLM.Gateway.Middleware
                 return "/v1/models";
             if (pathValue.StartsWith("/v1/images/generations", StringComparison.OrdinalIgnoreCase))
                 return "/v1/images/generations";
-            if (pathValue.StartsWith("/v1/videos/generations", StringComparison.OrdinalIgnoreCase))
-                return "/v1/videos/generations";
+            if (pathValue.StartsWith("/v1/conduit/videos/generations", StringComparison.OrdinalIgnoreCase))
+                return "/v1/conduit/videos/generations";
             if (pathValue.StartsWith("/v1/audio", StringComparison.OrdinalIgnoreCase))
                 return "/v1/audio/{operation}";
 

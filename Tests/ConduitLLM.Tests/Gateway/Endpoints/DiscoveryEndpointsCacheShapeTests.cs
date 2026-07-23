@@ -7,6 +7,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Gateway.Endpoints;
+using ConduitLLM.Gateway.Options;
 using ConduitLLM.Tests.TestInfrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -61,8 +62,8 @@ public sealed class DiscoveryEndpointsCacheShapeTests : IDisposable
 
         using var document = JsonDocument.Parse(hitJson);
         Assert.Equal(JsonValueKind.Object, document.RootElement.ValueKind);
-        Assert.Equal(configurationId, document.RootElement.GetProperty("functionConfigurationId").GetInt32());
-        Assert.Equal(JsonValueKind.Object, document.RootElement.GetProperty("parameterSchema").ValueKind);
+        Assert.Equal(configurationId, document.RootElement.GetProperty("function_configuration_id").GetInt32());
+        Assert.Equal(JsonValueKind.Object, document.RootElement.GetProperty("parameter_schema").ValueKind);
     }
 
     private int SeedConfiguration(string? parameterSchema = null)
@@ -110,20 +111,24 @@ public sealed class DiscoveryEndpointsCacheShapeTests : IDisposable
             Mock.Of<IModelCapabilityService>(),
             virtualKeyService.Object,
             _cache,
+            GatewayJsonOptions.Create(),
             Mock.Of<IHttpContextAccessor>(accessor => accessor.HttpContext == httpContext),
             Mock.Of<ILogger<DiscoveryEndpoints>>());
     }
 
     /// <summary>
-    /// Executes the result exactly as the Gateway pipeline would (no customized
-    /// JsonOptions registered, matching the service's configuration) and returns
-    /// the raw response body.
+    /// Executes the result with the Gateway's canonical wire serializer and
+    /// returns the raw response body.
     /// </summary>
     private static async Task<string> RenderAsync(IResult result)
     {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.ConfigureHttpJsonOptions(options =>
+            GatewayJsonOptions.Configure(options.SerializerOptions));
         var httpContext = new DefaultHttpContext
         {
-            RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider()
+            RequestServices = services.BuildServiceProvider()
         };
         using var body = new MemoryStream();
         httpContext.Response.Body = body;

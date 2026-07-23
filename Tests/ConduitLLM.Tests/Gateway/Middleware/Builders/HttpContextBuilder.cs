@@ -71,7 +71,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         /// <summary>
         /// Configures for video generations endpoint.
         /// </summary>
-        public HttpContextBuilder ForVideoGenerations() => WithPath("/v1/videos/generations");
+        public HttpContextBuilder ForVideoGenerations() => WithPath("/v1/conduit/videos/generations");
 
         /// <summary>
         /// Configures for embeddings endpoint.
@@ -91,12 +91,12 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         /// <summary>
         /// Configures for functions endpoint.
         /// </summary>
-        public HttpContextBuilder ForFunctions() => WithPath("/v1/functions");
+        public HttpContextBuilder ForFunctions() => WithPath("/v1/conduit/functions");
 
         /// <summary>
         /// Configures for a polling endpoint (excluded from usage tracking).
         /// </summary>
-        public HttpContextBuilder ForPolling() => WithPath("/v1/videos/tasks/123/status");
+        public HttpContextBuilder ForPolling() => WithPath("/v1/conduit/videos/tasks/123/status");
 
         /// <summary>
         /// Configures for a non-API path (excluded from usage tracking).

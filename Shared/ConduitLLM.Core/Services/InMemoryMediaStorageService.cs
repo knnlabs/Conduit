@@ -157,7 +157,7 @@ namespace ConduitLLM.Core.Services
         public Task<string> GenerateUrlAsync(string storageKey, TimeSpan? expiration = null)
         {
             // For in-memory storage, we'll need the HTTP endpoint to serve these
-            var url = $"{_baseUrl}/v1/media/{storageKey}";
+            var url = $"{_baseUrl}/v1/conduit/media/{storageKey}";
             return Task.FromResult(url);
         }
 
@@ -465,7 +465,7 @@ namespace ConduitLLM.Core.Services
 
             var presignedUrl = new PresignedUploadUrl
             {
-                Url = $"{_baseUrl}/v1/media/upload/{uploadToken}",
+                Url = $"{_baseUrl}/v1/conduit/media/upload/{uploadToken}",
                 HttpMethod = "PUT",
                 RequiredHeaders = new Dictionary<string, string>
                 {

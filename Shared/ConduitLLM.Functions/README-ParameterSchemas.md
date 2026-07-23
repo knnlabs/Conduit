@@ -186,7 +186,7 @@ The Exa search provider has a comprehensive parameter schema:
 
 ### Get Function Parameter Schema
 
-**Endpoint**: `GET /v1/discovery/functions/{functionConfigurationId}/parameters`
+**Endpoint**: `GET /v1/conduit/discovery/functions/{functionConfigurationId}/parameters`
 
 **Authentication**: Virtual Key (Bearer token)
 
@@ -210,7 +210,7 @@ The Exa search provider has a comprehensive parameter schema:
 
 ### List Available Functions
 
-**Endpoint**: `GET /v1/discovery/functions?purpose=Search&providerType=Exa`
+**Endpoint**: `GET /v1/conduit/discovery/functions?purpose=Search&providerType=Exa`
 
 **Authentication**: Virtual Key (Bearer token)
 
@@ -315,7 +315,7 @@ public partial class SeedPerplexityParameterSchema : Migration
 ### Step 3: Test the Schema
 
 1. Run the migration
-2. Call `GET /v1/discovery/functions/{id}/parameters`
+2. Call `GET /v1/conduit/discovery/functions/{id}/parameters`
 3. Verify the schema is returned correctly
 4. Test validation by calling execute with invalid parameters
 
@@ -444,7 +444,7 @@ const result = await client.functions.execute({
 
 ### Schema Not Returned
 
-**Problem**: `GET /v1/discovery/functions/{id}/parameters` returns empty schema
+**Problem**: `GET /v1/conduit/discovery/functions/{id}/parameters` returns empty schema
 
 **Solutions**:
 1. Check if `ParameterSchema` column has data: `SELECT "ParameterSchema" FROM "FunctionConfigurations" WHERE "Id" = 1`

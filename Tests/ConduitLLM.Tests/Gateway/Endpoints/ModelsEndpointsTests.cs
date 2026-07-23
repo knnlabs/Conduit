@@ -95,7 +95,7 @@ public sealed class ModelsEndpointsTests : IDisposable
         _metadata.Setup(service => service.GetModelMetadataAsync("missing"))
             .ReturnsAsync((ModelMetadataDto?)null);
 
-        var response = await _client.GetAsync("/v1/models/missing/metadata");
+        var response = await _client.GetAsync("/v1/conduit/models/missing/metadata");
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

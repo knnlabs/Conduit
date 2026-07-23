@@ -67,7 +67,7 @@ namespace ConduitLLM.Tests.Core.Services
             var url = await _service.GenerateUrlAsync(storageKey);
 
             // Assert
-            Assert.Equal($"{TestBaseUrl}/v1/media/{storageKey}", url);
+            Assert.Equal($"{TestBaseUrl}/v1/conduit/media/{storageKey}", url);
         }
 
         [Fact]
@@ -81,7 +81,7 @@ namespace ConduitLLM.Tests.Core.Services
             var url = await _service.GenerateUrlAsync(storageKey, expiration);
 
             // Assert
-            Assert.Equal($"{TestBaseUrl}/v1/media/{storageKey}", url);
+            Assert.Equal($"{TestBaseUrl}/v1/conduit/media/{storageKey}", url);
             // Note: In-memory storage doesn't use expiration, but method should still work
         }
 

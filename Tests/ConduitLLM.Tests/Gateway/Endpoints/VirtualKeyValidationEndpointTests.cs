@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Endpoints;
+using ConduitLLM.Gateway.Options;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -103,6 +104,7 @@ public class VirtualKeyValidationEndpointTests
             Mock.Of<IModelCapabilityService>(),
             virtualKeyService.Object,
             discoveryCache.Object,
+            GatewayJsonOptions.Create(),
             Mock.Of<IHttpContextAccessor>(accessor => accessor.HttpContext == httpContext),
             Mock.Of<ILogger<DiscoveryEndpoints>>());
 

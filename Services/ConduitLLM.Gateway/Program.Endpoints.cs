@@ -1,13 +1,9 @@
-using System.Text.Json;
 using ConduitLLM.Gateway.Endpoints;
 
 public partial class Program
 {
     public static void ConfigureEndpoints(WebApplication app)
     {
-        // Get JsonSerializerOptions from DI
-        var jsonSerializerOptions = app.Services.GetRequiredService<JsonSerializerOptions>();
-
         app.MapModelsEndpoints();
         app.MapGatewayApiEndpoints();
 

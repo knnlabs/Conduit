@@ -1,5 +1,6 @@
 using System.Text;
 
+using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.Services;
 
 using Microsoft.AspNetCore.Http;
@@ -15,7 +16,9 @@ public class EnhancedSSEResponseWriterTests
         var responseBody = new MemoryStream();
         context.Response.Body = responseBody;
         context.Request.Headers.Origin = "https://example.test";
-        var writer = new EnhancedSSEResponseWriter(context.Response);
+        var writer = new EnhancedSSEResponseWriter(
+            context.Response,
+            GatewayJsonOptions.Create());
 
         await writer.WriteDoneEventAsync();
         await writer.WriteDoneEventAsync();

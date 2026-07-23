@@ -144,7 +144,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         {
             // Arrange - async video completion is billed by MediaGenerationOrchestrator.
             var context = new HttpContextBuilder()
-                .WithPath("/v1/videos/generations/async")
+                .WithPath("/v1/conduit/videos/generations/async")
                 .WithVirtualKey(983)
                 .WithVideoRequest("test-video-model", duration: 10, size: "1280x720")
                 .Build();
@@ -155,7 +155,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             {
                 taskId = "task_video_983",
                 status = "pending",
-                checkStatusUrl = "/v1/videos/generations/tasks/task_video_983"
+                checkStatusUrl = "/v1/conduit/videos/generations/tasks/task_video_983"
             };
 
             // Act
@@ -234,7 +234,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
         [Theory]
         [InlineData("/v1/images/generations", BillingAuditEventType.MissingUsageData)]
-        [InlineData("/v1/videos/generations", BillingAuditEventType.MissingUsageData)]
+        [InlineData("/v1/conduit/videos/generations", BillingAuditEventType.MissingUsageData)]
         public async Task MediaResponse_MalformedJson_EmitsRevenueLossAudit(
             string path,
             BillingAuditEventType expectedEventType)
@@ -257,7 +257,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         public async Task FunctionResponse_PascalCaseCost_IsBilled()
         {
             var context = new HttpContextBuilder()
-                .WithPath("/v1/functions/execute")
+                .WithPath("/v1/conduit/functions/execute")
                 .WithVirtualKey(1026)
                 .WithItem("FunctionConfigurationName", "case-test")
                 .Build();
@@ -281,7 +281,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         public async Task FunctionResponse_InvalidCost_EmitsRevenueLossAuditWithoutBilling()
         {
             var context = new HttpContextBuilder()
-                .WithPath("/v1/functions/execute")
+                .WithPath("/v1/conduit/functions/execute")
                 .WithVirtualKey(1026)
                 .WithItem("FunctionConfigurationName", "invalid-cost-test")
                 .Build();

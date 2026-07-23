@@ -20,9 +20,9 @@ describe('critical API response validation', () => {
 
   it('coerces the Gateway TTL published as an integer string', () => {
     expect(parseCriticalResponse(gatewayEphemeralKeySchema, {
-      ephemeralKey: 'gateway_ephemeral',
-      expiresAt: '2026-07-20T00:00:00Z',
-      expiresInSeconds: '60',
+      ephemeral_key: 'gateway_ephemeral',
+      expires_at: '2026-07-20T00:00:00Z',
+      expires_in_seconds: '60',
     }, 'test').expiresInSeconds).toBe(60);
   });
 

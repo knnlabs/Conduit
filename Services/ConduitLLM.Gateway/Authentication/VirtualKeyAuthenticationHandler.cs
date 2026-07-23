@@ -194,7 +194,7 @@ namespace ConduitLLM.Gateway.Authentication
                 "/health",
                 "/health/ready",
                 "/health/live",
-                "/v1/media/public"
+                "/v1/conduit/media/public"
             };
 
             return Array.Exists(excludedPaths, excludedPath => 

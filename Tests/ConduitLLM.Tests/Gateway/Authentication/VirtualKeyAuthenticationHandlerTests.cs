@@ -165,7 +165,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             var keyValue = "condt_zerobalance";
             
             _httpContext.Request.Headers["Authorization"] = $"Bearer {keyValue}";
-            _httpContext.Request.Path = "/v1/models/gpt-4/metadata";
+            _httpContext.Request.Path = "/v1/conduit/models/gpt-4/metadata";
             
             // ValidateVirtualKeyForAuthenticationAsync should succeed even with $0.00 balance
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
@@ -208,7 +208,7 @@ namespace ConduitLLM.Tests.Http.Authentication
         [InlineData("/health")]
         [InlineData("/health/ready")]
         [InlineData("/health/live")]
-        [InlineData("/v1/media/public")]
+        [InlineData("/v1/conduit/media/public")]
         public async Task HandleAuthenticateAsync_WithExcludedPaths_SkipsAuthentication(string path)
         {
             // Arrange
@@ -306,7 +306,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             var virtualKeyEntity = CreateValidVirtualKey();
             
             _httpContext.Request.Headers["Authorization"] = $"Bearer {ephemeralKey}";
-            _httpContext.Request.Path = "/v1/media/upload";
+            _httpContext.Request.Path = "/v1/conduit/media/upload";
             
             var keyData = new ConduitLLM.Gateway.Models.EphemeralKeyData
             {
@@ -352,7 +352,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             var ephemeralKey = "ek_expired";
             
             _httpContext.Request.Headers["Authorization"] = $"Bearer {ephemeralKey}";
-            _httpContext.Request.Path = "/v1/media/upload";
+            _httpContext.Request.Path = "/v1/conduit/media/upload";
             
             var keyData = new ConduitLLM.Gateway.Models.EphemeralKeyData
             {

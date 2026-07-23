@@ -105,7 +105,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 true,
                 result.StorageKey,
                 result.Url,
-                $"{baseUrl}/v1/media/{result.StorageKey}",
+                $"{baseUrl}/v1/conduit/media/{result.StorageKey}",
                 metadata.ContentType,
                 determinedMediaType.ToString(),
                 file.FileName,

@@ -37,7 +37,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         [InlineData("/health")]
         [InlineData("/health/ready")]
         [InlineData("/metrics")]
-        [InlineData("/v1/media/public/foo")]
+        [InlineData("/v1/conduit/media/public/foo")]
         [InlineData("/hubs/images")]
         public async Task Skips_excluded_paths_without_calling_service(string path)
         {

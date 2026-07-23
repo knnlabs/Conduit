@@ -20,7 +20,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/models/{modelId}/metadata": {
+  "/v1/conduit/models/{modelId}/metadata": {
     parameters: {
       query?: never;
       header?: never;
@@ -36,7 +36,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/auth/ephemeral-key": {
+  "/v1/conduit/auth/ephemeral-key": {
     parameters: {
       query?: never;
       header?: never;
@@ -68,7 +68,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/rerank": {
+  "/v1/conduit/rerank": {
     parameters: {
       query?: never;
       header?: never;
@@ -116,7 +116,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/discovery/models": {
+  "/v1/conduit/discovery/models": {
     parameters: {
       query?: never;
       header?: never;
@@ -132,7 +132,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/discovery/capabilities": {
+  "/v1/conduit/discovery/capabilities": {
     parameters: {
       query?: never;
       header?: never;
@@ -148,7 +148,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/discovery/models/{model}/parameters": {
+  "/v1/conduit/discovery/models/{model}/parameters": {
     parameters: {
       query?: never;
       header?: never;
@@ -164,7 +164,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/discovery/functions": {
+  "/v1/conduit/discovery/functions": {
     parameters: {
       query?: never;
       header?: never;
@@ -180,7 +180,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/discovery/functions/{functionConfigurationId}/parameters": {
+  "/v1/conduit/discovery/functions/{functionConfigurationId}/parameters": {
     parameters: {
       query?: never;
       header?: never;
@@ -196,7 +196,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/tasks/{taskId}": {
+  "/v1/conduit/tasks/{taskId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -212,7 +212,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/tasks/{taskId}/cancel": {
+  "/v1/conduit/tasks/{taskId}/cancel": {
     parameters: {
       query?: never;
       header?: never;
@@ -228,7 +228,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/tasks/{taskId}/poll": {
+  "/v1/conduit/tasks/{taskId}/poll": {
     parameters: {
       query?: never;
       header?: never;
@@ -244,7 +244,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/batch/spend-updates": {
+  "/v1/conduit/batch/spend-updates": {
     parameters: {
       query?: never;
       header?: never;
@@ -260,7 +260,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/batch/virtual-key-updates": {
+  "/v1/conduit/batch/virtual-key-updates": {
     parameters: {
       query?: never;
       header?: never;
@@ -276,7 +276,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/batch/webhook-sends": {
+  "/v1/conduit/batch/webhook-sends": {
     parameters: {
       query?: never;
       header?: never;
@@ -292,7 +292,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/batch/operations/{operationId}": {
+  "/v1/conduit/batch/operations/{operationId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -308,7 +308,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/batch/operations/{operationId}/cancel": {
+  "/v1/conduit/batch/operations/{operationId}/cancel": {
     parameters: {
       query?: never;
       header?: never;
@@ -548,7 +548,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/functions/execute": {
+  "/v1/conduit/functions/execute": {
     parameters: {
       query?: never;
       header?: never;
@@ -564,7 +564,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/functions/executions/{executionId}": {
+  "/v1/conduit/functions/executions/{executionId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -612,7 +612,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/media/upload": {
+  "/v1/conduit/media/upload": {
     parameters: {
       query?: never;
       header?: never;
@@ -628,7 +628,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/media/info/{storageKey}": {
+  "/v1/conduit/media/info/{storageKey}": {
     parameters: {
       query?: never;
       header?: never;
@@ -644,7 +644,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/media/{storageKey}": {
+  "/v1/conduit/media/{storageKey}": {
     parameters: {
       query?: never;
       header?: never;
@@ -660,7 +660,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/downloads/metadata/{fileId}": {
+  "/v1/conduit/downloads/metadata/{fileId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -676,7 +676,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/downloads/generate-url": {
+  "/v1/conduit/downloads/generate-url": {
     parameters: {
       query?: never;
       header?: never;
@@ -692,7 +692,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/downloads/{fileId}": {
+  "/v1/conduit/downloads/{fileId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -724,7 +724,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/images/generations/async": {
+  "/v1/conduit/images/generations/async": {
     parameters: {
       query?: never;
       header?: never;
@@ -740,7 +740,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/images/generations/{taskId}/status": {
+  "/v1/conduit/images/generations/{taskId}/status": {
     parameters: {
       query?: never;
       header?: never;
@@ -756,7 +756,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/images/generations/{taskId}": {
+  "/v1/conduit/images/generations/{taskId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -772,7 +772,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/videos/generations/async": {
+  "/v1/conduit/videos/generations/async": {
     parameters: {
       query?: never;
       header?: never;
@@ -788,7 +788,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/videos/generations/tasks/{taskId}": {
+  "/v1/conduit/videos/generations/tasks/{taskId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -804,7 +804,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/videos/generations/tasks/{taskId}/retry": {
+  "/v1/conduit/videos/generations/tasks/{taskId}/retry": {
     parameters: {
       query?: never;
       header?: never;
@@ -820,7 +820,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/videos/generations/{taskId}": {
+  "/v1/conduit/videos/generations/{taskId}": {
     parameters: {
       query?: never;
       header?: never;
@@ -858,33 +858,33 @@ export interface components {
       status: string;
       check_status_url?: null | string;
       /** Format: date-time */
-      created_at?: string;
+      created_at?: unknown;
       /** Format: date-time */
-      estimated_completion_time?: null | string;
+      estimated_completion_time?: unknown;
     };
     AsyncTaskStatus: {
-      taskId?: string;
-      taskType?: string;
+      task_id?: string;
+      task_type?: string;
       state?: components["schemas"]["TaskState"];
       /** Format: date-time */
-      createdAt?: string;
+      created_at?: unknown;
       /** Format: date-time */
-      updatedAt?: string;
+      updated_at?: unknown;
       /** Format: date-time */
-      completedAt?: null | string;
+      completed_at?: unknown;
       result?: unknown;
       error?: null | string;
       metadata?: null | components["schemas"]["TaskMetadata"];
       /** Format: int32 */
       progress?: number | string;
-      progressMessage?: null | string;
+      progress_message?: null | string;
       /** Format: int32 */
-      retryCount?: number | string;
+      retry_count?: number | string;
       /** Format: int32 */
-      maxRetries?: number | string;
-      isRetryable?: boolean;
+      max_retries?: number | string;
+      is_retryable?: boolean;
       /** Format: date-time */
-      nextRetryAt?: null | string;
+      next_retry_at?: unknown;
     };
     AsyncTaskStatusResponse: {
       task_id: string;
@@ -892,9 +892,9 @@ export interface components {
       /** Format: int32 */
       progress?: null | number | string;
       /** Format: date-time */
-      created_at?: string;
+      created_at?: unknown;
       /** Format: date-time */
-      updated_at?: string;
+      updated_at?: unknown;
       result?: unknown;
       error?: null | string;
     };
@@ -909,71 +909,71 @@ export interface components {
     /** @description SignalR batching efficiency metrics. */
     BatchingEfficiencyResponse: {
       /** Format: int64 */
-      totalMessagesBatched: number | string;
+      total_messages_batched: number | string;
       /** Format: int64 */
-      totalBatchesSent: number | string;
+      total_batches_sent: number | string;
       /** Format: double */
-      averageMessagesPerBatch: number | string;
+      average_messages_per_batch: number | string;
       /** Format: int64 */
-      networkCallsSaved: number | string;
+      network_calls_saved: number | string;
       /** Format: double */
-      batchEfficiencyPercentage: number | string;
+      batch_efficiency_percentage: number | string;
       /** Format: double */
-      averageBatchLatency: number | string;
-      isBatchingEnabled: boolean;
+      average_batch_latency: number | string;
+      is_batching_enabled: boolean;
     };
     /** @description Statistics about message batching */
     BatchingStatistics: {
       /** Format: int64 */
-      totalMessagesBatched?: number | string;
+      total_messages_batched?: number | string;
       /** Format: int64 */
-      totalBatchesSent?: number | string;
+      total_batches_sent?: number | string;
       /** Format: double */
-      averageMessagesPerBatch?: number | string;
+      average_messages_per_batch?: number | string;
       /** Format: int64 */
-      currentPendingMessages?: number | string;
+      current_pending_messages?: number | string;
       /** Format: date-time */
-      lastBatchSentAt?: string;
-      averageBatchLatency?: string;
+      last_batch_sent_at?: unknown;
+      average_batch_latency?: string;
       /** Format: int64 */
-      networkCallsSaved?: number | string;
-      isBatchingEnabled?: boolean;
-      messagesByMethod?: {
+      network_calls_saved?: number | string;
+      is_batching_enabled?: boolean;
+      messages_by_method?: {
         [key: string]: number | string;
       };
       /** Format: double */
-      batchEfficiencyPercentage?: number | string;
+      batch_efficiency_percentage?: number | string;
     };
     BatchOperationStartResponse: {
-      operationId?: string;
-      operationType?: string;
+      operation_id?: string;
+      operation_type?: string;
       /** Format: int32 */
-      totalItems?: number | string;
-      statusUrl?: string;
-      taskId?: string;
-      signalREvents?: string[];
+      total_items?: number | string;
+      status_url?: string;
+      task_id?: string;
+      signal_r_events?: string[];
       message?: string;
     };
     BatchOperationStatusResponse: {
-      operationId?: string;
-      operationType?: string;
+      operation_id?: string;
+      operation_type?: string;
       status?: string;
       /** Format: int32 */
-      totalItems?: number | string;
+      total_items?: number | string;
       /** Format: int32 */
-      processedCount?: number | string;
+      processed_count?: number | string;
       /** Format: int32 */
-      successCount?: number | string;
+      success_count?: number | string;
       /** Format: int32 */
-      failedCount?: number | string;
+      failed_count?: number | string;
       /** Format: int32 */
-      progressPercentage?: number | string;
-      elapsedTime?: string;
-      estimatedTimeRemaining?: string;
+      progress_percentage?: number | string;
+      elapsed_time?: string;
+      estimated_time_remaining?: string;
       /** Format: double */
-      itemsPerSecond?: number | string;
-      currentItem?: null | string;
-      canCancel?: boolean;
+      items_per_second?: number | string;
+      current_item?: null | string;
+      can_cancel?: boolean;
     };
     BatchSpendUpdateRequest: {
       updates: components["schemas"]["SpendUpdateDto"][];
@@ -1046,97 +1046,97 @@ export interface components {
     CircuitState: "closed" | "open" | "half_open" | "isolated";
     /** @description Detailed active SignalR connections. */
     ConnectionDetailsResponse: {
-      activeConnections: components["schemas"]["ConnectionInfo"][];
+      active_connections: components["schemas"]["ConnectionInfo"][];
       /** Format: int32 */
       count: number | string;
     };
     /** @description Information about a SignalR connection */
     ConnectionInfo: {
       /** @description Unique connection identifier */
-      connectionId?: string;
+      connection_id?: string;
       /** @description Hub name for this connection */
-      hubName?: string;
+      hub_name?: string;
       /**
        * Format: int32
        * @description Virtual key ID associated with this connection
        */
-      virtualKeyId?: null | number | string;
+      virtual_key_id?: null | number | string;
       /**
        * Format: date-time
        * @description Time when the connection was established
        */
-      connectedAt?: string;
+      connected_at?: unknown;
       /**
        * Format: date-time
        * @description Last activity time for this connection
        */
-      lastActivityAt?: string;
+      last_activity_at?: unknown;
       /** @description Groups this connection is subscribed to */
       groups?: string[];
       /** @description User agent string from the client */
-      userAgent?: null | string;
+      user_agent?: null | string;
       /** @description IP address of the client */
-      ipAddress?: null | string;
+      ip_address?: null | string;
       /** @description Transport type (WebSockets, ServerSentEvents, LongPolling) */
-      transportType?: null | string;
+      transport_type?: null | string;
       /** @description Custom metadata about the connection */
       metadata?: Record<string, never>;
       /**
        * Format: int64
        * @description Number of messages sent to this connection
        */
-      messagesSent?: number | string;
+      messages_sent?: number | string;
       /**
        * Format: int64
        * @description Number of messages acknowledged by this connection
        */
-      messagesAcknowledged?: number | string;
+      messages_acknowledged?: number | string;
       /** @description Gets the connection duration */
-      connectionDuration?: string;
+      connection_duration?: string;
       /** @description Gets the time since last activity */
-      idleTime?: string;
+      idle_time?: string;
     };
     /** @description Statistics about SignalR connections */
     ConnectionStatistics: {
       /** Format: int32 */
-      totalActiveConnections?: number | string;
-      connectionsByHub?: {
+      total_active_connections?: number | string;
+      connections_by_hub?: {
         [key: string]: number | string;
       };
-      connectionsByTransport?: {
+      connections_by_transport?: {
         [key: string]: number | string;
       };
       /** Format: int32 */
-      totalGroups?: number | string;
+      total_groups?: number | string;
       /** Format: int32 */
-      staleConnections?: number | string;
+      stale_connections?: number | string;
       /** Format: double */
-      averageConnectionDurationMinutes?: number | string;
+      average_connection_duration_minutes?: number | string;
       /** Format: double */
-      averageIdleTimeMinutes?: number | string;
+      average_idle_time_minutes?: number | string;
       /** Format: date-time */
-      oldestConnectionTime?: string;
+      oldest_connection_time?: unknown;
       /** Format: date-time */
-      newestConnectionTime?: string;
+      newest_connection_time?: unknown;
       /** Format: int64 */
-      totalMessagesSent?: number | string;
+      total_messages_sent?: number | string;
       /** Format: int64 */
-      totalMessagesAcknowledged?: number | string;
+      total_messages_acknowledged?: number | string;
       /** Format: double */
-      acknowledgmentRate?: number | string;
+      acknowledgment_rate?: number | string;
     };
     /** @description A dead-letter queue entry. */
     DeadLetterMessageDto: {
-      messageId: string;
-      messageType: string;
-      hubName: string;
-      methodName: string;
+      message_id: string;
+      message_type: string;
+      hub_name: string;
+      method_name: string;
       /** Format: date-time */
-      queuedAt: string;
+      queued_at: unknown;
       /** Format: int32 */
-      deliveryAttempts: number | string;
-      lastError: null | string;
-      deadLetterReason: null | string;
+      delivery_attempts: number | string;
+      last_error: null | string;
+      dead_letter_reason: null | string;
     };
     /** @description Dead-letter queue response. */
     DeadLetterMessagesResponse: {
@@ -1162,7 +1162,7 @@ export interface components {
       output_modalities: string[];
       capability_source: string;
       /** Format: date-time */
-      capabilities_last_verified_at: null | string;
+      capabilities_last_verified_at: unknown;
       parameters: string;
       capabilities: components["schemas"]["ModelCapabilitiesDto"];
     };
@@ -1180,7 +1180,7 @@ export interface components {
     DownloadUrlResponse: {
       url: string;
       /** Format: date-time */
-      expires_at: string;
+      expires_at: unknown;
       /** Format: int32 */
       expiration_minutes: number | string;
     };
@@ -1207,28 +1207,28 @@ export interface components {
     /** @description Optional metadata for tracking ephemeral key usage */
     EphemeralKeyMetadata: {
       /** @description IP address that requested the ephemeral key */
-      sourceIP?: null | string;
+      source_ip?: null | string;
       /** @description User agent that requested the ephemeral key */
-      userAgent?: null | string;
+      user_agent?: null | string;
       /** @description Purpose or intended use of the ephemeral key */
       purpose?: null | string;
       /** @description Request ID for correlation */
-      requestId?: null | string;
+      request_id?: null | string;
     };
     /** @description Response when creating an ephemeral key */
     EphemeralKeyResponse: {
       /** @description The ephemeral key token to use for authentication */
-      ephemeralKey?: string;
+      ephemeral_key?: string;
       /**
        * Format: date-time
        * @description When the ephemeral key expires
        */
-      expiresAt?: string;
+      expires_at?: string;
       /**
        * Format: int32
        * @description The TTL in seconds
        */
-      expiresInSeconds?: number | string;
+      expires_in_seconds?: number | string;
     };
     /** @description Public file metadata. */
     FileMetadataResponse: {
@@ -1237,9 +1237,9 @@ export interface components {
       /** Format: int64 */
       size_bytes: number | string;
       /** Format: date-time */
-      created_at: null | string;
+      created_at: unknown;
       /** Format: date-time */
-      modified_at: null | string;
+      modified_at: unknown;
       storage_provider: null | string;
       etag: null | string;
       supports_range_requests: boolean;
@@ -1275,14 +1275,14 @@ export interface components {
     FunctionDiscoveryDto: {
       /** Format: int32 */
       id?: number | string;
-      configurationName?: string;
-      providerType?: string;
+      configuration_name?: string;
+      provider_type?: string;
       purpose?: string;
       description?: null | string;
-      defaultExecutionMode?: string;
-      isEnabled?: boolean;
+      default_execution_mode?: string;
+      is_enabled?: boolean;
       /** Format: int32 */
-      timeoutSeconds?: null | number | string;
+      timeout_seconds?: null | number | string;
     };
     FunctionDiscoveryResponse: {
       functions?: components["schemas"]["FunctionDiscoveryDto"][];
@@ -1295,7 +1295,7 @@ export interface components {
        * Format: int32
        * @description The function configuration ID to execute.
        */
-      functionConfigurationId?: number | string;
+      function_configuration_id?: number | string;
       /** @description Parameters to pass to the function. */
       parameters?: null | Record<string, never>;
       /** @description Optional metadata to associate with the execution. */
@@ -1307,38 +1307,38 @@ export interface components {
        * Format: uuid
        * @description The unique execution ID.
        */
-      executionId?: string;
+      execution_id?: string;
       /**
        * Format: int32
        * @description The function configuration ID that was executed.
        */
-      functionConfigurationId?: number | string;
+      function_configuration_id?: number | string;
       /** @description The current state of the execution. */
       state?: string;
       /** @description The function execution result (provider-specific). */
       result?: null | Record<string, never>;
       /** @description Error message if execution failed. */
-      errorMessage?: null | string;
+      error_message?: null | string;
       /**
        * Format: double
        * @description Estimated cost before execution.
        */
-      estimatedCost?: null | number | string;
+      estimated_cost?: null | number | string;
       /**
        * Format: double
        * @description Actual cost after execution.
        */
-      actualCost?: null | number | string;
+      actual_cost?: null | number | string;
       /**
        * Format: date-time
        * @description When the execution started.
        */
-      startedAt?: null | string;
+      started_at?: unknown;
       /**
        * Format: date-time
        * @description When the execution completed.
        */
-      completedAt?: null | string;
+      completed_at?: unknown;
       /**
        * Format: int64
        * @description Execution duration in milliseconds.
@@ -1347,12 +1347,12 @@ export interface components {
     };
     FunctionParametersResponseDto: {
       /** Format: int32 */
-      functionConfigurationId?: number | string;
-      configurationName?: string;
-      providerType?: string;
+      function_configuration_id?: number | string;
+      configuration_name?: string;
+      provider_type?: string;
       purpose?: string;
-      parameterSchema?: unknown;
-      exampleRequest?: unknown;
+      parameter_schema?: unknown;
+      example_request?: unknown;
     };
     /** @description Request for generating an ephemeral key */
     GenerateEphemeralKeyRequest: {
@@ -1361,44 +1361,44 @@ export interface components {
     /** @description Request to generate a temporary download URL. */
     GenerateUrlRequest: {
       /** @description The file identifier. */
-      fileId: string;
+      file_id: string;
       /**
        * Format: int32
        * @description How many minutes the URL should be valid (1-10080).
        */
-      expirationMinutes?: null | number | string;
+      expiration_minutes?: null | number | string;
     };
     /** @description A connection projected for group diagnostics. */
     GroupConnectionDto: {
-      connectionId: string;
-      hubName: string;
+      connection_id: string;
+      hub_name: string;
       /** Format: date-time */
-      connectedAt: string;
+      connected_at: unknown;
       /** Format: int32 */
-      virtualKeyId: null | number | string;
+      virtual_key_id: null | number | string;
     };
     /** @description Connections attached to a SignalR group. */
     GroupConnectionsResponse: {
-      groupName: string;
+      group_name: string;
       connections: components["schemas"]["GroupConnectionDto"][];
       /** Format: int32 */
       count: number | string;
     };
     /** @description A connection projected for hub diagnostics. */
     HubConnectionDto: {
-      connectionId: string;
+      connection_id: string;
       /** Format: date-time */
-      connectedAt: string;
-      connectionDuration: string;
+      connected_at: unknown;
+      connection_duration: string;
       groups: string[];
       /** Format: int64 */
-      messagesSent: number | string;
+      messages_sent: number | string;
       /** Format: int64 */
-      messagesAcknowledged: number | string;
+      messages_acknowledged: number | string;
     };
     /** @description Connections attached to a hub. */
     HubConnectionsResponse: {
-      hubName: string;
+      hub_name: string;
       connections: components["schemas"]["HubConnectionDto"][];
       /** Format: int32 */
       count: number | string;
@@ -1437,17 +1437,17 @@ export interface components {
       schema?: components["schemas"]["JsonElement"];
     };
     MediaInfo: {
-      storageKey?: string;
-      contentType?: string;
+      storage_key?: string;
+      content_type?: string;
       /** Format: int64 */
-      sizeBytes?: number | string;
-      fileName?: null | string;
-      mediaType?: components["schemas"]["MediaType"];
+      size_bytes?: number | string;
+      file_name?: null | string;
+      media_type?: components["schemas"]["MediaType"];
       /** Format: date-time */
-      createdAt?: string;
+      created_at?: unknown;
       /** Format: date-time */
-      expiresAt?: null | string;
-      customMetadata?: {
+      expires_at?: unknown;
+      custom_metadata?: {
         [key: string]: string;
       };
     };
@@ -1456,14 +1456,14 @@ export interface components {
     /** @description Media upload response. */
     MediaUploadResponse: {
       success: boolean;
-      storageKey: string;
+      storage_key: string;
       url: string;
-      directUrl: string;
-      contentType: string;
-      mediaType: string;
-      fileName: string;
+      direct_url: string;
+      content_type: string;
+      media_type: string;
+      file_name: string;
       /** Format: int64 */
-      sizeBytes: number | string;
+      size_bytes: number | string;
     };
     Message: {
       role: string;
@@ -1524,7 +1524,7 @@ export interface components {
       output_modalities: string[];
       capability_source: string;
       /** Format: date-time */
-      capabilities_last_verified_at: null | string;
+      capabilities_last_verified_at: unknown;
       capabilities: components["schemas"]["ModelCapabilitiesDto"];
       /** Format: int32 */
       max_input_tokens: null | number | string;
@@ -1533,7 +1533,7 @@ export interface components {
     };
     /** @description Model metadata response envelope. */
     ModelMetadataResponse: {
-      modelId: string;
+      model_id: string;
       metadata: components["schemas"]["ModelMetadataDto"];
     };
     /** @description UI parameter metadata for a model. */
@@ -1603,26 +1603,26 @@ export interface components {
     /** @description Statistics about the message queue */
     QueueStatistics: {
       /** Format: int32 */
-      pendingMessages?: number | string;
+      pending_messages?: number | string;
       /** Format: int32 */
-      delayedMessages?: number | string;
+      delayed_messages?: number | string;
       /** Format: int32 */
-      deadLetterMessages?: number | string;
+      dead_letter_messages?: number | string;
       /** Format: int32 */
-      claimedMessages?: number | string;
+      claimed_messages?: number | string;
       /** Format: int32 */
-      retriedMessages?: number | string;
+      retried_messages?: number | string;
       /** Format: double */
-      oldestPendingAgeSeconds?: number | string;
+      oldest_pending_age_seconds?: number | string;
       /** Format: int32 */
-      processedMessages?: number | string;
+      processed_messages?: number | string;
       /** Format: int32 */
-      failedMessages?: number | string;
+      failed_messages?: number | string;
       /** Format: date-time */
-      lastProcessedAt?: string;
-      circuitBreakerState?: components["schemas"]["CircuitState"];
+      last_processed_at?: unknown;
+      circuit_breaker_state?: components["schemas"]["CircuitState"];
       /** Format: int32 */
-      consecutiveFailures?: number | string;
+      consecutive_failures?: number | string;
     };
     ReasoningConfig: {
       effort?: null | string;
@@ -1669,13 +1669,13 @@ export interface components {
       active: number | string;
       /** Format: int32 */
       stale: number | string;
-      acknowledgmentRate: string;
+      acknowledgment_rate: string;
     };
     /** @description Overall SignalR health response. */
     SignalRHealthResponse: {
       status: string;
       /** Format: date-time */
-      timestamp: string;
+      timestamp: unknown;
       connections: components["schemas"]["SignalRConnectionHealthDto"];
       queue: components["schemas"]["SignalRQueueHealthDto"];
     };
@@ -1684,8 +1684,8 @@ export interface components {
       /** Format: int32 */
       pending: number | string;
       /** Format: int32 */
-      deadLetter: number | string;
-      circuitBreaker: string;
+      dead_letter: number | string;
+      circuit_breaker: string;
       /** Format: int64 */
       processed: number | string;
       /** Format: int64 */
@@ -1693,11 +1693,11 @@ export interface components {
     };
     SpendUpdateDto: {
       /** Format: int32 */
-      virtualKeyId: number | string;
+      virtual_key_id: number | string;
       /** Format: double */
       amount: number | string;
       model: string;
-      providerType: components["schemas"]["ProviderType"];
+      provider_type: components["schemas"]["ProviderType"];
       metadata?: null | Record<string, never>;
     };
     StreamOptions: {
@@ -1710,14 +1710,14 @@ export interface components {
     };
     TaskMetadata: {
       /** Format: int32 */
-      virtualKeyId?: number | string;
+      virtual_key_id?: number | string;
       model?: null | string;
       prompt?: null | string;
-      correlationId?: null | string;
+      correlation_id?: null | string;
       payload?: null | string;
-      videoId?: null | string;
-      webhookUrl?: null | string;
-      webhookHeaders?: null | {
+      video_id?: null | string;
+      webhook_url?: null | string;
+      webhook_headers?: null | {
         [key: string]: string;
       };
       /** Format: int32 */
@@ -1736,10 +1736,10 @@ export interface components {
       model: string;
       input: string;
       voice: string;
-      responseFormat?: null | string;
+      response_format?: null | string;
       /** Format: double */
       speed?: null | number | string;
-      extensionData?: null | Record<string, never>;
+      extension_data?: null | Record<string, never>;
     };
     Tool: {
       type?: string;
@@ -1819,28 +1819,28 @@ export interface components {
     };
     /** @description Response for async video generation task creation. */
     VideoGenerationTaskResponse: {
-      taskId?: string;
+      task_id?: string;
       status?: string;
       /** Format: date-time */
-      createdAt?: string;
+      created_at?: string;
       /** Format: date-time */
-      estimatedCompletionTime?: null | string;
-      checkStatusUrl?: string;
+      estimated_completion_time?: null | string;
+      check_status_url?: string;
     };
     /** @description Status information for a video generation task. */
     VideoGenerationTaskStatus: {
-      taskId?: string;
+      task_id?: string;
       status?: string;
       /** Format: int32 */
       progress?: null | number | string;
       /** Format: date-time */
-      createdAt?: string;
+      created_at?: string;
       /** Format: date-time */
-      updatedAt?: string;
+      updated_at?: string;
       /** Format: date-time */
-      completedAt?: null | string;
+      completed_at?: null | string;
       error?: null | string;
-      resultRaw?: null | string;
+      result_raw?: null | string;
       result?: null | components["schemas"]["VideoGenerationResponse"];
     };
     VideoGenerationUsage: {
@@ -1871,37 +1871,37 @@ export interface components {
     };
     /** @description A connection projected for virtual-key diagnostics. */
     VirtualKeyConnectionDto: {
-      connectionId: string;
-      hubName: string;
+      connection_id: string;
+      hub_name: string;
       /** Format: date-time */
-      connectedAt: string;
-      connectionDuration: string;
+      connected_at: unknown;
+      connection_duration: string;
       groups: string[];
     };
     /** @description Connections attached to a virtual key. */
     VirtualKeyConnectionsResponse: {
       /** Format: int32 */
-      virtualKeyId: number | string;
+      virtual_key_id: number | string;
       connections: components["schemas"]["VirtualKeyConnectionDto"][];
       /** Format: int32 */
       count: number | string;
     };
     VirtualKeyUpdateDto: {
       /** Format: int32 */
-      virtualKeyId: number | string;
+      virtual_key_id: number | string;
       /** Format: double */
-      maxBudget?: null | number | string;
-      allowedModels?: null | string[];
-      rateLimits?: null | Record<string, never>;
-      isEnabled?: null | boolean;
+      max_budget?: null | number | string;
+      allowed_models?: null | string[];
+      rate_limits?: null | Record<string, never>;
+      is_enabled?: null | boolean;
       /** Format: date-time */
-      expiresAt?: null | string;
+      expires_at?: unknown;
       notes?: null | string;
     };
     WebhookSendDto: {
       /** Format: uri */
       url: string;
-      eventType: string;
+      event_type: string;
       payload: unknown;
       headers?: null | {
         [key: string]: string;
@@ -3122,7 +3122,7 @@ export interface operations {
         "multipart/form-data": {
           file?: components["schemas"]["IFormFile"];
         } & {
-          mediaType?: string;
+          media_type?: string;
         };
       };
     };

@@ -108,7 +108,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 OperationId = result.OperationId,
                 OperationType = "spend_update",
                 TotalItems = request.Updates.Count(),
-                StatusUrl = $"/v1/batch/operations/{result.OperationId}",
+                StatusUrl = $"/v1/conduit/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
@@ -201,7 +201,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 OperationId = result.OperationId,
                 OperationType = "virtual_key_update",
                 TotalItems = request.Updates.Count(),
-                StatusUrl = $"/v1/batch/operations/{result.OperationId}",
+                StatusUrl = $"/v1/conduit/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });
@@ -270,7 +270,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 OperationId = result.OperationId,
                 OperationType = "webhook_send",
                 TotalItems = request.Webhooks.Count(),
-                StatusUrl = $"/v1/batch/operations/{result.OperationId}",
+                StatusUrl = $"/v1/conduit/batch/operations/{result.OperationId}",
                 TaskId = result.OperationId,
                 Message = "Batch operation started. Subscribe to TaskHub with the taskId for real-time updates."
             });

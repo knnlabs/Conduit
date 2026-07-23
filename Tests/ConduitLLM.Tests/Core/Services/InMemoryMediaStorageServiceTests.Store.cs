@@ -33,7 +33,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(15, result.SizeBytes); // "fake image data" length
             Assert.NotNull(result.ContentHash);
             Assert.NotNull(result.Url);
-            Assert.Contains("/v1/media/", result.Url);
+            Assert.Contains("/v1/conduit/media/", result.Url);
         }
 
         [Fact]

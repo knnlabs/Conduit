@@ -49,14 +49,14 @@ function normalizeVideoTask(raw: JsonRecord): VideoTaskResponse {
     for (const key of keys) if (raw[key] !== undefined) return raw[key] as T;
     return undefined;
   };
-  const estimatedCompletion = value<string>("EstimatedCompletionTime");
+  const estimatedCompletion = value<string>("estimated_completion_time");
   return {
-    task_id: value<string>("task_id", "taskId", "TaskId") ?? "",
-    status: value<string>("status", "Status") ?? "pending",
-    progress: value<number>("progress", "Progress") ?? 0,
-    message: value<string>("message", "Message"),
-    error: value<string>("error", "Error"),
-    result: value<VideoGenerationResponse>("result", "Result"),
+    task_id: value<string>("task_id") ?? "",
+    status: value<string>("status") ?? "pending",
+    progress: value<number>("progress") ?? 0,
+    message: value<string>("message"),
+    error: value<string>("error"),
+    result: value<VideoGenerationResponse>("result"),
     estimated_time_to_completion: estimatedCompletion
       ? Math.max(
           0,
@@ -66,13 +66,10 @@ function normalizeVideoTask(raw: JsonRecord): VideoTaskResponse {
         )
       : (value<number>(
           "estimated_time_to_completion",
-          "EstimatedTimeToCompletion",
         ) ?? 60),
-    created_at:
-      value<string>("created_at", "CreatedAt") ?? new Date().toISOString(),
-    updated_at:
-      value<string>("updated_at", "UpdatedAt") ?? new Date().toISOString(),
-    check_status_url: value<string>("check_status_url", "CheckStatusUrl"),
+    created_at: value<string>("created_at") ?? new Date().toISOString(),
+    updated_at: value<string>("updated_at") ?? new Date().toISOString(),
+    check_status_url: value<string>("check_status_url"),
   };
 }
 
@@ -158,9 +155,9 @@ export class GatewayClient {
       options?: { metadata?: JsonRecord },
     ) => {
       const response = await this.request<{
-        ephemeralKey: string;
-        expiresAt: string;
-        expiresInSeconds: number;
+        ephemeral_key: string;
+        expires_at: string;
+        expires_in_seconds: number;
       }>(GATEWAY_CONTRACT_ROUTES.ephemeralKey, {
         method: "POST",
         headers: { Authorization: `Bearer ${virtualKey}` },
@@ -184,21 +181,26 @@ export class GatewayClient {
         `${GATEWAY_CONTRACT_ROUTES.discoveryModels}?capability=${encodeURIComponent(capability)}`,
       );
     },
-    getFunctionParameters: (id: number) => {
+    getFunctionParameters: async (id: number) => {
       if (id < 1) throw new Error("Function configuration ID must be positive");
-      return this.request<{
-        exampleRequest?: JsonRecord;
-        parameterSchema?: JsonRecord;
+      const response = await this.request<{
+        example_request?: JsonRecord;
+        parameter_schema?: JsonRecord;
       }>(materializeContractPath(GATEWAY_CONTRACT_ROUTES.functionParameters, {
         functionConfigurationId: id,
       }));
+      return {
+        exampleRequest: response.example_request,
+        parameterSchema: response.parameter_schema,
+      };
     },
   };
 
   readonly functions = {
-    execute: async (body: JsonRecord) => {
+    execute: async (body: JsonRecord, idempotencyKey?: string) => {
       const response = await this.request<FunctionExecutionResponse>(GATEWAY_CONTRACT_ROUTES.executeFunction, {
         method: "POST",
+        headers: idempotencyKey ? { ["Idempotency-Key"]: idempotencyKey } : undefined,
         body: JSON.stringify(body),
       });
       return parseCriticalResponse(

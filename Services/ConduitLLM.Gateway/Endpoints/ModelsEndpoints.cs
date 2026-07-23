@@ -22,7 +22,10 @@ public static class ModelsEndpoints
             .Produces<ModelListResponse>(StatusCodes.Status200OK)
             .Produces<OpenAIErrorResponse>(StatusCodes.Status500InternalServerError);
 
-        group.MapGet("/models/{modelId}/metadata", GetModelMetadata)
+        app.MapGet("/v1/conduit/models/{modelId}/metadata", GetModelMetadata)
+            .RequireAuthorization("VirtualKeyAuthentication")
+            .AddEndpointFilter<OperationLoggingEndpointFilter>()
+            .WithTags("Models")
             .WithName("Models_GetModelMetadata")
             .Produces<ModelMetadataResponse>(StatusCodes.Status200OK)
             .Produces<OpenAIErrorResponse>(StatusCodes.Status404NotFound)

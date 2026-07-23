@@ -77,7 +77,7 @@ namespace ConduitLLM.Security.Options
         /// </summary>
         public List<string> DiscoveryPaths { get; set; } = new()
         {
-            "/v1/discovery/",
+            "/v1/conduit/discovery/",
             "/v1/models/",
             "/capabilities/"
         };

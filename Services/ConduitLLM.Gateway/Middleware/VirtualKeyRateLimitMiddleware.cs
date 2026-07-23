@@ -27,7 +27,7 @@ namespace ConduitLLM.Gateway.Middleware
         {
             "/health",
             "/metrics",
-            "/v1/media/public",
+            "/v1/conduit/media/public",
             "/hubs"
         };
 

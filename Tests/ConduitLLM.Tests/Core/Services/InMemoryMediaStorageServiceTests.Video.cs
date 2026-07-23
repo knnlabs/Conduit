@@ -207,7 +207,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.NotNull(presignedUrl);
-            Assert.StartsWith($"{TestBaseUrl}/v1/media/upload/", presignedUrl.Url);
+            Assert.StartsWith($"{TestBaseUrl}/v1/conduit/media/upload/", presignedUrl.Url);
             Assert.Equal("PUT", presignedUrl.HttpMethod);
             Assert.Contains("Content-Type", presignedUrl.RequiredHeaders.Keys);
             Assert.Equal("video/mp4", presignedUrl.RequiredHeaders["Content-Type"]);

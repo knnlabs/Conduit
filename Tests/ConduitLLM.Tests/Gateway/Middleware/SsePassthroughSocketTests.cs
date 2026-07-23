@@ -1,6 +1,7 @@
 using System.Net;
 
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.Services;
 
 using Microsoft.AspNetCore.Builder;
@@ -27,7 +28,8 @@ public class SsePassthroughSocketTests
 
         app.MapGet("/stream", async context =>
         {
-            var writer = context.Response.CreateEnhancedSSEWriter();
+            var writer = context.Response.CreateEnhancedSSEWriter(
+                GatewayJsonOptions.Create());
             await writer.WriteContentEventAsync(new { value = "first" }, context.RequestAborted);
             await allowCompletion.Task.WaitAsync(context.RequestAborted);
             await writer.WriteContentEventAsync(new { value = "second" }, context.RequestAborted);

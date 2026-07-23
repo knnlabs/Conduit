@@ -15,10 +15,14 @@ export const webAdminEphemeralKeySchema = adminEphemeralKeySchema.extend({
 });
 
 export const gatewayEphemeralKeySchema = z.object({
-  ephemeralKey: nonEmpty,
-  expiresAt: dateTime,
-  expiresInSeconds: z.coerce.number().int().positive(),
-});
+  ephemeral_key: nonEmpty,
+  expires_at: dateTime,
+  expires_in_seconds: z.coerce.number().int().positive(),
+}).transform(value => ({
+  ephemeralKey: value.ephemeral_key,
+  expiresAt: value.expires_at,
+  expiresInSeconds: value.expires_in_seconds,
+}));
 
 export const virtualKeyIssueSchema = z.object({
   virtualKey: nonEmpty,
@@ -40,10 +44,28 @@ export const balanceAdjustmentSchema = z.object({
 }).passthrough();
 
 export const gatewayFunctionExecutionSchema = z.object({
-  executionId: nonEmpty,
-  functionConfigurationId: z.coerce.number().int().positive(),
+  execution_id: nonEmpty,
+  function_configuration_id: z.coerce.number().int().positive(),
   state: nonEmpty,
-}).passthrough();
+  result: z.record(z.string(), z.unknown()).nullish(),
+  error_message: z.string().nullish(),
+  estimated_cost: z.coerce.number().nullish(),
+  actual_cost: z.coerce.number().nullish(),
+  started_at: z.string().nullish(),
+  completed_at: z.string().nullish(),
+  duration: z.coerce.number().nullish(),
+}).passthrough().transform(value => ({
+  executionId: value.execution_id,
+  functionConfigurationId: value.function_configuration_id,
+  state: value.state,
+  result: value.result ?? undefined,
+  errorMessage: value.error_message ?? undefined,
+  estimatedCost: value.estimated_cost ?? undefined,
+  actualCost: value.actual_cost ?? undefined,
+  startedAt: value.started_at ?? undefined,
+  completedAt: value.completed_at ?? undefined,
+  duration: value.duration ?? undefined,
+}));
 
 export const gatewayMediaUploadSchema = z.object({
   success: z.boolean(),
@@ -51,19 +73,9 @@ export const gatewayMediaUploadSchema = z.object({
 }).passthrough();
 
 export const gatewayVideoTaskSchema = z.object({
-  taskId: nonEmpty.optional(),
-  task_id: nonEmpty.optional(),
-  TaskId: nonEmpty.optional(),
-  status: nonEmpty.optional(),
-  Status: nonEmpty.optional(),
-}).passthrough().superRefine((value, context) => {
-  if (!(value.taskId ?? value.task_id ?? value.TaskId)) {
-    context.addIssue({ code: 'custom', message: 'Video task response is missing a task ID' });
-  }
-  if (!(value.status ?? value.Status)) {
-    context.addIssue({ code: 'custom', message: 'Video task response is missing a status' });
-  }
-});
+  task_id: nonEmpty,
+  status: nonEmpty,
+}).passthrough();
 
 export function parseCriticalResponse<T>(
   schema: z.ZodType<T>,

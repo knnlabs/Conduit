@@ -27,7 +27,7 @@ describe("GatewayClient", () => {
 
     const [request] = fetchMock.mock.calls[0];
     expect((request as Request).url).toBe(
-      "https://gateway.test/v1/discovery/models?capability=chat",
+      "https://gateway.test/v1/conduit/discovery/models?capability=chat",
     );
     expect((request as Request).headers.get("Authorization")).toBe("Bearer vk_test");
   });
@@ -35,9 +35,9 @@ describe("GatewayClient", () => {
   it("uses the supplied virtual key when minting an ephemeral key", async () => {
     const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
       jsonResponse({
-        ephemeralKey: "ephemeral",
-        expiresAt: "2026-07-20T00:00:00Z",
-        expiresInSeconds: 60,
+        ephemeral_key: "ephemeral",
+        expires_at: "2026-07-20T00:00:00Z",
+        expires_in_seconds: 60,
       }),
     );
     const client = new GatewayClient({
@@ -50,9 +50,43 @@ describe("GatewayClient", () => {
     });
 
     const [request] = fetchMock.mock.calls[0];
-    expect((request as Request).url).toBe("https://gateway.test/v1/auth/ephemeral-key");
+    expect((request as Request).url).toBe("https://gateway.test/v1/conduit/auth/ephemeral-key");
     expect((request as Request).method).toBe("POST");
     expect((request as Request).headers.get("Authorization")).toBe("Bearer webadmin-key");
+  });
+
+  it("uses canonical function fields and the idempotency header", async () => {
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse({
+        execution_id: "85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36",
+        function_configuration_id: 7,
+        state: "completed",
+        duration: 12,
+      }),
+    );
+    const client = new GatewayClient({
+      apiKey: "vk_test",
+      baseURL: "https://gateway.test",
+    });
+
+    const response = await client.functions.execute(
+      { function_configuration_id: 7, parameters: {} },
+      "idem-123",
+    );
+
+    const [request] = fetchMock.mock.calls[0] as [Request];
+    expect(request.url).toBe("https://gateway.test/v1/conduit/functions/execute");
+    expect(request.headers.get("Idempotency-Key")).toBe("idem-123");
+    expect(typeof request.body).toBe("string");
+    expect(JSON.parse(request.body as unknown as string)).toEqual({
+      function_configuration_id: 7,
+      parameters: {},
+    });
+    expect(response).toEqual(expect.objectContaining({
+      executionId: "85f88aa3-a3e3-43d3-9e12-f33c4f6dcb36",
+      functionConfigurationId: 7,
+      state: "completed",
+    }));
   });
 
   it("validates media limits without issuing a request", () => {

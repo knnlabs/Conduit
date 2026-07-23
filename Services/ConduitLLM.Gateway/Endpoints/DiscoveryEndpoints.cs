@@ -23,10 +23,7 @@ namespace ConduitLLM.Gateway.Endpoints
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IDiscoveryCacheService _discoveryCacheService;
-
-        // Cached single-object responses must serialize exactly as the response pipeline
-        // does (JsonSerializerDefaults.Web), or cache hits change the JSON shape.
-        private static readonly JsonSerializerOptions CacheSerializerOptions = JsonSerializerOptions.Web;
+        private readonly JsonSerializerOptions _wireJsonOptions;
 
         /// <summary>
         /// Initializes the Discovery endpoint handler.
@@ -36,6 +33,7 @@ namespace ConduitLLM.Gateway.Endpoints
             IModelCapabilityService modelCapabilityService,
             IVirtualKeyService virtualKeyService,
             IDiscoveryCacheService discoveryCacheService,
+            JsonSerializerOptions wireJsonOptions,
             IHttpContextAccessor httpContextAccessor,
             ILogger<DiscoveryEndpoints> logger)
             : base(null, httpContextAccessor, logger)
@@ -44,6 +42,7 @@ namespace ConduitLLM.Gateway.Endpoints
             _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
+            _wireJsonOptions = wireJsonOptions ?? throw new ArgumentNullException(nameof(wireJsonOptions));
         }
 
         /// <summary>
@@ -98,7 +97,7 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 Logger.LogDebug("Returning cached discovery results for capability: {Capability}", LoggingSanitizer.S(capability ?? "all"));
                 var cachedModels = cachedResult.Data
-                    .Select(element => element.Deserialize<GatewayDiscoveredModelDto>(CacheSerializerOptions))
+                    .Select(element => element.Deserialize<GatewayDiscoveredModelDto>(_wireJsonOptions))
                     .Where(model => model is not null)
                     .Cast<GatewayDiscoveredModelDto>()
                     .ToList();
@@ -209,7 +208,7 @@ namespace ConduitLLM.Gateway.Endpoints
             var discoveryResult = new DiscoveryModelsResult
             {
                 Data = models.Select(model =>
-                    JsonSerializer.SerializeToElement(model, CacheSerializerOptions)).ToList(),
+                    JsonSerializer.SerializeToElement(model, _wireJsonOptions)).ToList(),
                 Count = models.Count,
                 CapabilityFilter = capability
             };
@@ -333,8 +332,8 @@ namespace ConduitLLM.Gateway.Endpoints
                 return accessFailure;
             }
 
-            // Build cache key based on filters ("v2": entries hold one web-serialized element)
-            var cacheKey = $"functions_discovery_v2_{purpose ?? "all"}_{providerType ?? "all"}";
+            // "v3" entries use the canonical Gateway snake_case serializer.
+            var cacheKey = $"functions_discovery_v3_{purpose ?? "all"}_{providerType ?? "all"}";
 
             // Try to get from cache first
             var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
@@ -388,7 +387,7 @@ namespace ConduitLLM.Gateway.Endpoints
             // Cache the results
             var discoveryResult = new DiscoveryModelsResult
             {
-                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, CacheSerializerOptions) },
+                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, _wireJsonOptions) },
                 Count = result.Count,
                 CapabilityFilter = purpose
             };
@@ -413,8 +412,8 @@ namespace ConduitLLM.Gateway.Endpoints
                 return accessFailure;
             }
 
-            // Build cache key ("v2": entries hold one web-serialized element)
-            var cacheKey = $"function_parameters_v2_{functionConfigurationId}";
+            // "v3" entries use the canonical Gateway snake_case serializer.
+            var cacheKey = $"function_parameters_v3_{functionConfigurationId}";
 
             // Try to get from cache first
             var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
@@ -474,7 +473,7 @@ namespace ConduitLLM.Gateway.Endpoints
             // Cache the results
             var discoveryResult = new DiscoveryModelsResult
             {
-                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, CacheSerializerOptions) },
+                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(result, _wireJsonOptions) },
                 Count = 1
             };
 

@@ -93,12 +93,12 @@ namespace ConduitLLM.Core.Middleware
                 return "/v1/embeddings";
             if (path.StartsWith("/v1/images", StringComparison.OrdinalIgnoreCase))
                 return "/v1/images";
-            if (path.StartsWith("/v1/videos", StringComparison.OrdinalIgnoreCase))
-                return "/v1/videos";
+            if (path.StartsWith("/v1/conduit/videos", StringComparison.OrdinalIgnoreCase))
+                return "/v1/conduit/videos";
             if (path.StartsWith("/v1/models", StringComparison.OrdinalIgnoreCase))
                 return "/v1/models";
-            if (path.StartsWith("/v1/batch", StringComparison.OrdinalIgnoreCase))
-                return "/v1/batch";
+            if (path.StartsWith("/v1/conduit/batch", StringComparison.OrdinalIgnoreCase))
+                return "/v1/conduit/batch";
             if (path.StartsWith("/v1/audio", StringComparison.OrdinalIgnoreCase))
                 return "/v1/audio";
             if (path.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))

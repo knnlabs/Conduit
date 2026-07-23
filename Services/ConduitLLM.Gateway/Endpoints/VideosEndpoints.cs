@@ -166,7 +166,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 Status = TaskStateConstants.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
                 EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60),
-                CheckStatusUrl = $"/v1/videos/generations/tasks/{taskId}"
+                CheckStatusUrl = $"/v1/conduit/videos/generations/tasks/{taskId}"
             };
             accounting.RecordMetadata(JsonSerializer.Serialize(new
             {

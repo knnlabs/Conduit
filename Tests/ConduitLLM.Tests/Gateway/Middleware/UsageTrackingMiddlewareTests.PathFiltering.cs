@@ -15,8 +15,8 @@ namespace ConduitLLM.Tests.Http.Middleware
     public partial class UsageTrackingMiddlewareTests
     {
         [Theory]
-        [InlineData("/v1/videos/generations/async", true)]
-        [InlineData("/v1/videos/generations", true)]
+        [InlineData("/v1/conduit/videos/generations/async", true)]
+        [InlineData("/v1/conduit/videos/generations", true)]
         [InlineData("/v1/images/generations", true)]
         [InlineData("/v1/chat/completions", true)]
         [InlineData("/v1/completions", true)]
@@ -50,12 +50,12 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Theory]
-        [InlineData("/v1/videos/generations/tasks/task_abc123")]
-        [InlineData("/v1/videos/generations/tasks/task_xyz789")]
+        [InlineData("/v1/conduit/videos/generations/tasks/task_abc123")]
+        [InlineData("/v1/conduit/videos/generations/tasks/task_xyz789")]
         [InlineData("/v1/images/generations/tasks/task_def456")]
         [InlineData("/v1/images/status/task_ghi789")]
-        [InlineData("/v1/tasks/some-task-id")]
-        [InlineData("/v1/videos/status")]
+        [InlineData("/v1/conduit/tasks/some-task-id")]
+        [InlineData("/v1/conduit/videos/status")]
         public async Task ShouldTrackUsage_ForPollingEndpoints_ReturnsFalse(string path)
         {
             // Arrange
@@ -145,7 +145,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
         [Theory]
         [InlineData("/v1/images/generations")]
-        [InlineData("/v1/videos/generations")]
+        [InlineData("/v1/conduit/videos/generations")]
         public async Task ShouldTrackUsage_WithDownstreamMediaError_DoesNotSynthesizeUsage(string path)
         {
             var context = new HttpContextBuilder()

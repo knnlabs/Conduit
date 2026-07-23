@@ -39,7 +39,7 @@ public static class GatewayApiEndpoints
 
     public static IEndpointRouteBuilder MapGatewayApiEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapPost("/v1/auth/ephemeral-key", ([FromServices] AuthEndpoints endpoints, GenerateEphemeralKeyRequest? request) => endpoints.GenerateEphemeralKey(request))
+        app.MapPost("/v1/conduit/auth/ephemeral-key", ([FromServices] AuthEndpoints endpoints, GenerateEphemeralKeyRequest? request) => endpoints.GenerateEphemeralKey(request))
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Authentication").WithName("Auth_GenerateEphemeralKey")
@@ -61,7 +61,7 @@ public static class GatewayApiEndpoints
             .Produces<OpenAIErrorResponse>(StatusCodes.Status404NotFound)
             .AllowAnonymous();
 
-        var discovery = app.MapGroup("/v1/discovery")
+        var discovery = app.MapGroup("/v1/conduit/discovery")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Discovery");
@@ -76,7 +76,7 @@ public static class GatewayApiEndpoints
         discovery.MapGet("/functions/{functionConfigurationId}/parameters", ([FromServices] DiscoveryEndpoints endpoints, int functionConfigurationId) => endpoints.GetFunctionParameters(functionConfigurationId))
             .WithName("Discovery_GetFunctionParameters").Produces<FunctionParametersResponseDto>();
 
-        var tasks = app.MapGroup("/v1/tasks")
+        var tasks = app.MapGroup("/v1/conduit/tasks")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Tasks");
@@ -87,7 +87,7 @@ public static class GatewayApiEndpoints
         tasks.MapGet("/{taskId}/poll", ([FromServices] TasksEndpoints endpoints, string taskId, int timeout = 300, int interval = 2) => endpoints.PollTask(taskId, timeout, interval))
             .WithName("Tasks_Poll").Produces<AsyncTaskStatus>();
 
-        var batch = app.MapGroup("/v1/batch")
+        var batch = app.MapGroup("/v1/conduit/batch")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Batch Operations");
@@ -134,7 +134,7 @@ public static class GatewayApiEndpoints
         signalRHealth.MapGet("", ([FromServices] SignalRHealthEndpoints endpoints) => endpoints.GetHealthStatus())
             .AllowAnonymous().WithName("SignalRHealth_GetHealth").Produces<SignalRHealthResponse>();
 
-        var functions = app.MapGroup("/v1/functions")
+        var functions = app.MapGroup("/v1/conduit/functions")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<RequireBalanceEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
@@ -144,7 +144,7 @@ public static class GatewayApiEndpoints
         functions.MapGet("/executions/{executionId}", ([FromServices] FunctionsEndpoints endpoints, Guid executionId, CancellationToken cancellationToken) => endpoints.GetExecution(executionId, cancellationToken))
             .WithName("Functions_GetExecution").Produces<FunctionsEndpoints.FunctionExecutionResponse>().Produces<OpenAIErrorResponse>(404).Produces(500);
 
-        app.MapPost("/v1/rerank", ([FromServices] RerankEndpoints endpoints, RerankRequest request, CancellationToken cancellationToken) => endpoints.CreateRerank(request, cancellationToken))
+        app.MapPost("/v1/conduit/rerank", ([FromServices] RerankEndpoints endpoints, RerankRequest request, CancellationToken cancellationToken) => endpoints.CreateRerank(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<RequireBalanceEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Rerank").WithName("Rerank_Create")
             .Produces<RerankResponse>();
@@ -170,8 +170,8 @@ public static class GatewayApiEndpoints
         audio.MapPost("/speech", ([FromServices] AudioEndpoints endpoints, TextToSpeechRequest request, CancellationToken cancellationToken) => endpoints.CreateSpeech(request, cancellationToken))
             .WithName("Audio_CreateSpeech").Produces<byte[]>(200, "application/octet-stream");
 
-        var media = app.MapGroup("/v1/media").WithTags("Media");
-        media.MapPost("/upload", ([FromServices] MediaEndpoints endpoints, [FromForm] IFormFile file, [FromForm] string? mediaType) => endpoints.UploadMedia(file, mediaType))
+        var media = app.MapGroup("/v1/conduit/media").WithTags("Media");
+        media.MapPost("/upload", ([FromServices] MediaEndpoints endpoints, [FromForm] IFormFile file, [FromForm(Name = "media_type")] string? mediaType) => endpoints.UploadMedia(file, mediaType))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithName("Media_Upload").DisableAntiforgery().WithMetadata(new RequestSizeLimitMetadata(524_288_000))
             .Produces<MediaUploadResponse>();
@@ -182,7 +182,7 @@ public static class GatewayApiEndpoints
         media.MapMethods("/{**storageKey}", [HttpMethods.Head], ([FromServices] MediaEndpoints endpoints, string storageKey) => endpoints.CheckMediaExists(storageKey))
             .AllowAnonymous().WithName("Media_Head").Produces(200);
 
-        var downloads = app.MapGroup("/v1/downloads")
+        var downloads = app.MapGroup("/v1/conduit/downloads")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Downloads");
@@ -202,14 +202,19 @@ public static class GatewayApiEndpoints
             .WithTags("Images");
         images.MapPost("/generations", ([FromServices] ImagesEndpoints endpoints, ImageGenerationRequest request, CancellationToken cancellationToken) => endpoints.CreateImage(request, cancellationToken))
             .WithName("Images_Create").Produces<ImageGenerationResponse>();
-        images.MapPost("/generations/async", ([FromServices] ImagesEndpoints endpoints, ImageGenerationRequest request) => endpoints.CreateImageAsync(request))
+        var conduitImages = app.MapGroup("/v1/conduit/images")
+            .RequireAuthorization("VirtualKeyAuthentication")
+            .AddEndpointFilter<RequireBalanceEndpointFilter>()
+            .AddEndpointFilter<OperationLoggingEndpointFilter>()
+            .WithTags("Images");
+        conduitImages.MapPost("/generations/async", ([FromServices] ImagesEndpoints endpoints, ImageGenerationRequest request) => endpoints.CreateImageAsync(request))
             .WithName("Images_CreateImageAsync").Produces<AsyncTaskResponse>(StatusCodes.Status202Accepted);
-        images.MapGet("/generations/{taskId}/status", ([FromServices] ImagesEndpoints endpoints, string taskId) => endpoints.GetGenerationStatus(taskId))
+        conduitImages.MapGet("/generations/{taskId}/status", ([FromServices] ImagesEndpoints endpoints, string taskId) => endpoints.GetGenerationStatus(taskId))
             .WithName("Images_GetStatus").Produces<AsyncTaskStatusResponse>();
-        images.MapDelete("/generations/{taskId}", ([FromServices] ImagesEndpoints endpoints, string taskId) => endpoints.CancelGeneration(taskId))
+        conduitImages.MapDelete("/generations/{taskId}", ([FromServices] ImagesEndpoints endpoints, string taskId) => endpoints.CancelGeneration(taskId))
             .WithName("Images_Cancel").Produces<TaskCancellationResponse>();
 
-        var videos = app.MapGroup("/v1/videos")
+        var videos = app.MapGroup("/v1/conduit/videos")
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<RequireBalanceEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()

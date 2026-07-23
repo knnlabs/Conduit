@@ -142,11 +142,10 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
 
       // Execute the function
       const response = await coreClient.functions.execute({
-        functionConfigurationId: configuration.id,
+        function_configuration_id: configuration.id,
         parameters,
         metadata,
-        idempotencyKey: values.idempotencyKey || undefined,
-      });
+      }, values.idempotencyKey || undefined);
 
       setTestResult(response as FunctionExecutionResponse);
 
@@ -154,7 +153,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
       setActiveTab('result');
 
       // Show success notification
-      if (response.state === 'Completed') {
+      if (response.state.toLowerCase() === 'completed') {
         notify.success(`Execution completed in ${formatDuration(response.duration ?? 0)}`, 'Function executed');
       } else {
         notify.warning(`Execution completed in ${formatDuration(response.duration ?? 0)}`, 'Function executed');

@@ -117,7 +117,7 @@ public sealed class ProviderUsageGoldenCorpusTests
                 }),
 
             ["video-completion"] = new(
-                Path: "/v1/videos/generations",
+                Path: "/v1/conduit/videos/generations",
                 Operation: RequestOperation.Video,
                 ProviderType: "OpenAI",
                 Model: "golden-video-model",

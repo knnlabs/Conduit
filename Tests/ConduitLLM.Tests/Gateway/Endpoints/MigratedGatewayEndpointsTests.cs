@@ -34,9 +34,9 @@ public sealed class MigratedGatewayEndpointsTests
     public async Task MediaGetAndHead_RemainAnonymous()
     {
         await using var host = await GatewayEndpointTestHost.StartAsync();
-        using var get = new HttpRequestMessage(HttpMethod.Get, "/v1/media/missing");
+        using var get = new HttpRequestMessage(HttpMethod.Get, "/v1/conduit/media/missing");
         get.Headers.Add("X-Test-Anonymous", "true");
-        using var head = new HttpRequestMessage(HttpMethod.Head, "/v1/media/missing");
+        using var head = new HttpRequestMessage(HttpMethod.Head, "/v1/conduit/media/missing");
         head.Headers.Add("X-Test-Anonymous", "true");
 
         var getResponse = await host.Client.SendAsync(get);

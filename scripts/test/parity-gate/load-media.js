@@ -57,7 +57,7 @@ async function imagesMode() {
       const submittedAt = Date.now();
       let rec = { key: k.name, group: k.group, groupId: k.groupId, seq, submittedAt };
       try {
-        const sub = await post('/v1/images/generations/async', k.key, { model, prompt: `parity ${k.name} seq ${seq}`, n: 1 });
+        const sub = await post('/v1/conduit/images/generations/async', k.key, { model, prompt: `parity ${k.name} seq ${seq}`, n: 1 });
         if (sub.status !== 202 && sub.status !== 200) {
           errors++;
           rec = { ...rec, status: 'submit_error', httpStatus: sub.status, err: sub.text.slice(0, 200) };
@@ -114,7 +114,7 @@ async function videosMode() {
       const k = keys[sent % keys.length];
       const submittedAt = Date.now();
       sent++;
-      post('/v1/videos/generations/async', k.key, { model, prompt: `parity webhook load`, webhook_url: webhook })
+      post('/v1/conduit/videos/generations/async', k.key, { model, prompt: `parity webhook load`, webhook_url: webhook })
         .then((sub) => {
           const okStatus = sub.status === 202 || sub.status === 200;
           okStatus ? submitted++ : errors++;

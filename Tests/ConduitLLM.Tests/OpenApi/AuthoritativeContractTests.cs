@@ -61,8 +61,8 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Theory]
     [InlineData("admin", "/api/VirtualKeys/validate", "post")]
     [InlineData("admin", "/api/IpFilter/check/{ipAddress}", "get")]
-    [InlineData("gateway", "/v1/media/{storageKey}", "get")]
-    [InlineData("gateway", "/v1/media/{storageKey}", "head")]
+    [InlineData("gateway", "/v1/conduit/media/{storageKey}", "get")]
+    [InlineData("gateway", "/v1/conduit/media/{storageKey}", "head")]
     public void AnonymousOperations_PublishAnExplicitEmptySecurityRequirement(
         string contract,
         string path,
@@ -91,13 +91,13 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Gateway_PublishesBinaryAndStreamingResponses()
     {
-        var mediaSchema = Operation(_gateway, "/v1/media/{storageKey}", "get")
+        var mediaSchema = Operation(_gateway, "/v1/conduit/media/{storageKey}", "get")
             .GetProperty("responses").GetProperty("200").GetProperty("content")
             .GetProperty("application/octet-stream").GetProperty("schema");
         mediaSchema.GetProperty("type").GetString().Should().Be("string");
         mediaSchema.GetProperty("format").GetString().Should().Be("binary");
 
-        var downloadSchema = Operation(_gateway, "/v1/downloads/{fileId}", "get")
+        var downloadSchema = Operation(_gateway, "/v1/conduit/downloads/{fileId}", "get")
             .GetProperty("responses").GetProperty("200").GetProperty("content")
             .GetProperty("application/octet-stream").GetProperty("schema");
         downloadSchema.GetProperty("type").GetString().Should().Be("string");
@@ -185,7 +185,11 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Gateway_IdempotentCommandsUseOnlyTheCanonicalHeader()
     {
-        foreach (var path in new[] { "/v1/functions/execute", "/v1/batch/spend-updates" })
+        foreach (var path in new[]
+        {
+            "/v1/conduit/functions/execute",
+            "/v1/conduit/batch/spend-updates"
+        })
         {
             var operation = Operation(_gateway, path, "post");
             operation.GetProperty("parameters").EnumerateArray()
@@ -200,6 +204,52 @@ public sealed class AuthoritativeContractTests : IDisposable
                 .Should().NotContain(name =>
                     name.Contains("idempotency", StringComparison.OrdinalIgnoreCase));
         }
+    }
+
+    [Fact]
+    public void Gateway_UsesSnakeCaseForEveryPublishedSchemaProperty()
+    {
+        foreach (var element in Descendants(_gateway.RootElement))
+        {
+            if (element.ValueKind != JsonValueKind.Object ||
+                !element.TryGetProperty("properties", out var properties) ||
+                properties.ValueKind != JsonValueKind.Object)
+            {
+                continue;
+            }
+
+            properties.EnumerateObject().Select(property => property.Name)
+                .Should().OnlyContain(
+                    name => System.Text.RegularExpressions.Regex.IsMatch(
+                        name,
+                        "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"),
+                    "Gateway wire properties must use snake_case");
+        }
+    }
+
+    [Fact]
+    public void Gateway_ReservesDirectV1RoutesForOpenAICompatibleResources()
+    {
+        var openAiRoutes = new HashSet<string>(StringComparer.Ordinal)
+        {
+            "/v1/audio/speech",
+            "/v1/audio/transcriptions",
+            "/v1/chat/completions",
+            "/v1/embeddings",
+            "/v1/images/generations",
+            "/v1/models"
+        };
+        var paths = _gateway.RootElement.GetProperty("paths").EnumerateObject()
+            .Select(path => path.Name)
+            .ToList();
+
+        paths.Where(path =>
+                path.StartsWith("/v1/", StringComparison.Ordinal) &&
+                !path.StartsWith("/v1/conduit/", StringComparison.Ordinal))
+            .Should().OnlyContain(path => openAiRoutes.Contains(path));
+        paths.Should().Contain("/v1/conduit/discovery/models");
+        paths.Should().Contain("/v1/conduit/functions/execute");
+        paths.Should().Contain("/v1/conduit/videos/generations/async");
     }
 
     [Fact]

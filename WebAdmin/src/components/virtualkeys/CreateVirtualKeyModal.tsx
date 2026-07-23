@@ -52,7 +52,7 @@ const ENDPOINT_OPTIONS = [
   { value: '/v1/audio/translations', label: 'Audio Translation' },
   { value: '/v1/audio/speech', label: 'Text to Speech' },
   { value: '/v1/moderations', label: 'Moderations' },
-  { value: '/v1/videos/generations', label: 'Video Generation' },
+  { value: '/v1/conduit/videos/generations', label: 'Video Generation' },
 ];
 
 // Common models - hardcoded for now since we removed SDK

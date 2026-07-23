@@ -24,14 +24,10 @@ namespace ConduitLLM.Gateway.Services
 
         public DateTimeOffset? FirstClientFlushAt => _firstClientFlushAt;
 
-        public EnhancedSSEResponseWriter(HttpResponse response, JsonSerializerOptions? jsonOptions = null)
+        public EnhancedSSEResponseWriter(HttpResponse response, JsonSerializerOptions jsonOptions)
         {
             _response = response ?? throw new ArgumentNullException(nameof(response));
-            _jsonOptions = jsonOptions ?? new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            };
+            _jsonOptions = jsonOptions ?? throw new ArgumentNullException(nameof(jsonOptions));
         }
 
         /// <summary>
@@ -204,7 +200,7 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public static EnhancedSSEResponseWriter CreateEnhancedSSEWriter(
             this HttpResponse response, 
-            JsonSerializerOptions? jsonOptions = null)
+            JsonSerializerOptions jsonOptions)
         {
             return new EnhancedSSEResponseWriter(response, jsonOptions);
         }

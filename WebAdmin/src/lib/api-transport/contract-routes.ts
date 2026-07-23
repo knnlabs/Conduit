@@ -14,16 +14,16 @@ export const ADMIN_CONTRACT_ROUTES = {
 } as const satisfies Record<string, keyof AdminPaths>;
 
 export const GATEWAY_CONTRACT_ROUTES = {
-  ephemeralKey: '/v1/auth/ephemeral-key',
+  ephemeralKey: '/v1/conduit/auth/ephemeral-key',
   chatCompletions: '/v1/chat/completions',
-  discoveryModels: '/v1/discovery/models',
-  functionParameters: '/v1/discovery/functions/{functionConfigurationId}/parameters',
-  executeFunction: '/v1/functions/execute',
+  discoveryModels: '/v1/conduit/discovery/models',
+  functionParameters: '/v1/conduit/discovery/functions/{functionConfigurationId}/parameters',
+  executeFunction: '/v1/conduit/functions/execute',
   imageGenerations: '/v1/images/generations',
-  mediaUpload: '/v1/media/upload',
-  createVideoTask: '/v1/videos/generations/async',
-  videoTaskStatus: '/v1/videos/generations/tasks/{taskId}',
-  cancelVideoTask: '/v1/videos/generations/{taskId}',
+  mediaUpload: '/v1/conduit/media/upload',
+  createVideoTask: '/v1/conduit/videos/generations/async',
+  videoTaskStatus: '/v1/conduit/videos/generations/tasks/{taskId}',
+  cancelVideoTask: '/v1/conduit/videos/generations/{taskId}',
 } as const satisfies Record<string, keyof GatewayPaths>;
 
 export function materializeContractPath(

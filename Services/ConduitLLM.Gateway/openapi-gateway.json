@@ -57,7 +57,7 @@
         ]
       }
     },
-    "/v1/models/{modelId}/metadata": {
+    "/v1/conduit/models/{modelId}/metadata": {
       "get": {
         "tags": [
           "Models"
@@ -136,7 +136,7 @@
         ]
       }
     },
-    "/v1/auth/ephemeral-key": {
+    "/v1/conduit/auth/ephemeral-key": {
       "post": {
         "tags": [
           "Authentication"
@@ -283,7 +283,7 @@
         "security": [ ]
       }
     },
-    "/v1/rerank": {
+    "/v1/conduit/rerank": {
       "post": {
         "tags": [
           "Rerank"
@@ -489,7 +489,7 @@
         ]
       }
     },
-    "/v1/discovery/models": {
+    "/v1/conduit/discovery/models": {
       "get": {
         "tags": [
           "Discovery"
@@ -531,7 +531,7 @@
         ]
       }
     },
-    "/v1/discovery/capabilities": {
+    "/v1/conduit/discovery/capabilities": {
       "get": {
         "tags": [
           "Discovery"
@@ -564,7 +564,7 @@
         ]
       }
     },
-    "/v1/discovery/models/{model}/parameters": {
+    "/v1/conduit/discovery/models/{model}/parameters": {
       "get": {
         "tags": [
           "Discovery"
@@ -607,7 +607,7 @@
         ]
       }
     },
-    "/v1/discovery/functions": {
+    "/v1/conduit/discovery/functions": {
       "get": {
         "tags": [
           "Discovery"
@@ -656,7 +656,7 @@
         ]
       }
     },
-    "/v1/discovery/functions/{functionConfigurationId}/parameters": {
+    "/v1/conduit/discovery/functions/{functionConfigurationId}/parameters": {
       "get": {
         "tags": [
           "Discovery"
@@ -704,7 +704,7 @@
         ]
       }
     },
-    "/v1/tasks/{taskId}": {
+    "/v1/conduit/tasks/{taskId}": {
       "get": {
         "tags": [
           "Tasks"
@@ -747,7 +747,7 @@
         ]
       }
     },
-    "/v1/tasks/{taskId}/cancel": {
+    "/v1/conduit/tasks/{taskId}/cancel": {
       "post": {
         "tags": [
           "Tasks"
@@ -783,7 +783,7 @@
         ]
       }
     },
-    "/v1/tasks/{taskId}/poll": {
+    "/v1/conduit/tasks/{taskId}/poll": {
       "get": {
         "tags": [
           "Tasks"
@@ -852,7 +852,7 @@
         ]
       }
     },
-    "/v1/batch/spend-updates": {
+    "/v1/conduit/batch/spend-updates": {
       "post": {
         "tags": [
           "Batch Operations"
@@ -940,7 +940,7 @@
         ]
       }
     },
-    "/v1/batch/virtual-key-updates": {
+    "/v1/conduit/batch/virtual-key-updates": {
       "post": {
         "tags": [
           "Batch Operations"
@@ -1019,7 +1019,7 @@
         ]
       }
     },
-    "/v1/batch/webhook-sends": {
+    "/v1/conduit/batch/webhook-sends": {
       "post": {
         "tags": [
           "Batch Operations"
@@ -1098,7 +1098,7 @@
         ]
       }
     },
-    "/v1/batch/operations/{operationId}": {
+    "/v1/conduit/batch/operations/{operationId}": {
       "get": {
         "tags": [
           "Batch Operations"
@@ -1159,7 +1159,7 @@
         ]
       }
     },
-    "/v1/batch/operations/{operationId}/cancel": {
+    "/v1/conduit/batch/operations/{operationId}/cancel": {
       "post": {
         "tags": [
           "Batch Operations"
@@ -1710,7 +1710,7 @@
         "security": [ ]
       }
     },
-    "/v1/functions/execute": {
+    "/v1/conduit/functions/execute": {
       "post": {
         "tags": [
           "Functions"
@@ -1816,7 +1816,7 @@
         ]
       }
     },
-    "/v1/functions/executions/{executionId}": {
+    "/v1/conduit/functions/executions/{executionId}": {
       "get": {
         "tags": [
           "Functions"
@@ -2038,7 +2038,7 @@
         ]
       }
     },
-    "/v1/media/upload": {
+    "/v1/conduit/media/upload": {
       "post": {
         "tags": [
           "Media"
@@ -2062,7 +2062,7 @@
                   {
                     "type": "object",
                     "properties": {
-                      "mediaType": {
+                      "media_type": {
                         "type": "string"
                       }
                     }
@@ -2100,7 +2100,7 @@
         ]
       }
     },
-    "/v1/media/info/{storageKey}": {
+    "/v1/conduit/media/info/{storageKey}": {
       "get": {
         "tags": [
           "Media"
@@ -2143,7 +2143,7 @@
         ]
       }
     },
-    "/v1/media/{storageKey}": {
+    "/v1/conduit/media/{storageKey}": {
       "get": {
         "tags": [
           "Media"
@@ -2213,7 +2213,7 @@
         "security": [ ]
       }
     },
-    "/v1/downloads/metadata/{fileId}": {
+    "/v1/conduit/downloads/metadata/{fileId}": {
       "get": {
         "tags": [
           "Downloads"
@@ -2256,7 +2256,7 @@
         ]
       }
     },
-    "/v1/downloads/generate-url": {
+    "/v1/conduit/downloads/generate-url": {
       "post": {
         "tags": [
           "Downloads"
@@ -2299,7 +2299,7 @@
         ]
       }
     },
-    "/v1/downloads/{fileId}": {
+    "/v1/conduit/downloads/{fileId}": {
       "get": {
         "tags": [
           "Downloads"
@@ -2428,7 +2428,7 @@
         ]
       }
     },
-    "/v1/images/generations/async": {
+    "/v1/conduit/images/generations/async": {
       "post": {
         "tags": [
           "Images"
@@ -2471,7 +2471,7 @@
         ]
       }
     },
-    "/v1/images/generations/{taskId}/status": {
+    "/v1/conduit/images/generations/{taskId}/status": {
       "get": {
         "tags": [
           "Images"
@@ -2514,7 +2514,7 @@
         ]
       }
     },
-    "/v1/images/generations/{taskId}": {
+    "/v1/conduit/images/generations/{taskId}": {
       "delete": {
         "tags": [
           "Images"
@@ -2557,7 +2557,7 @@
         ]
       }
     },
-    "/v1/videos/generations/async": {
+    "/v1/conduit/videos/generations/async": {
       "post": {
         "tags": [
           "Videos"
@@ -2690,7 +2690,7 @@
         ]
       }
     },
-    "/v1/videos/generations/tasks/{taskId}": {
+    "/v1/conduit/videos/generations/tasks/{taskId}": {
       "get": {
         "tags": [
           "Videos"
@@ -2787,7 +2787,7 @@
         ]
       }
     },
-    "/v1/videos/generations/tasks/{taskId}/retry": {
+    "/v1/conduit/videos/generations/tasks/{taskId}/retry": {
       "post": {
         "tags": [
           "Videos"
@@ -2902,7 +2902,7 @@
         ]
       }
     },
-    "/v1/videos/generations/{taskId}": {
+    "/v1/conduit/videos/generations/{taskId}": {
       "delete": {
         "tags": [
           "Videos"
@@ -3084,14 +3084,9 @@
             ]
           },
           "created_at": {
-            "type": "string",
             "format": "date-time"
           },
           "estimated_completion_time": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           }
         }
@@ -3099,28 +3094,22 @@
       "AsyncTaskStatus": {
         "type": "object",
         "properties": {
-          "taskId": {
+          "task_id": {
             "type": "string"
           },
-          "taskType": {
+          "task_type": {
             "type": "string"
           },
           "state": {
             "$ref": "#/components/schemas/TaskState"
           },
-          "createdAt": {
-            "type": "string",
+          "created_at": {
             "format": "date-time"
           },
-          "updatedAt": {
-            "type": "string",
+          "updated_at": {
             "format": "date-time"
           },
-          "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+          "completed_at": {
             "format": "date-time"
           },
           "result": { },
@@ -3148,13 +3137,13 @@
             ],
             "format": "int32"
           },
-          "progressMessage": {
+          "progress_message": {
             "type": [
               "null",
               "string"
             ]
           },
-          "retryCount": {
+          "retry_count": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3162,7 +3151,7 @@
             ],
             "format": "int32"
           },
-          "maxRetries": {
+          "max_retries": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3170,14 +3159,10 @@
             ],
             "format": "int32"
           },
-          "isRetryable": {
+          "is_retryable": {
             "type": "boolean"
           },
-          "nextRetryAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+          "next_retry_at": {
             "format": "date-time"
           }
         }
@@ -3205,11 +3190,9 @@
             "format": "int32"
           },
           "created_at": {
-            "type": "string",
             "format": "date-time"
           },
           "updated_at": {
-            "type": "string",
             "format": "date-time"
           },
           "result": { },
@@ -3265,17 +3248,17 @@
       },
       "BatchingEfficiencyResponse": {
         "required": [
-          "totalMessagesBatched",
-          "totalBatchesSent",
-          "averageMessagesPerBatch",
-          "networkCallsSaved",
-          "batchEfficiencyPercentage",
-          "averageBatchLatency",
-          "isBatchingEnabled"
+          "total_messages_batched",
+          "total_batches_sent",
+          "average_messages_per_batch",
+          "network_calls_saved",
+          "batch_efficiency_percentage",
+          "average_batch_latency",
+          "is_batching_enabled"
         ],
         "type": "object",
         "properties": {
-          "totalMessagesBatched": {
+          "total_messages_batched": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3283,7 +3266,7 @@
             ],
             "format": "int64"
           },
-          "totalBatchesSent": {
+          "total_batches_sent": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3291,7 +3274,7 @@
             ],
             "format": "int64"
           },
-          "averageMessagesPerBatch": {
+          "average_messages_per_batch": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -3299,7 +3282,7 @@
             ],
             "format": "double"
           },
-          "networkCallsSaved": {
+          "network_calls_saved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3307,7 +3290,7 @@
             ],
             "format": "int64"
           },
-          "batchEfficiencyPercentage": {
+          "batch_efficiency_percentage": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -3315,7 +3298,7 @@
             ],
             "format": "double"
           },
-          "averageBatchLatency": {
+          "average_batch_latency": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -3323,7 +3306,7 @@
             ],
             "format": "double"
           },
-          "isBatchingEnabled": {
+          "is_batching_enabled": {
             "type": "boolean"
           }
         },
@@ -3332,7 +3315,7 @@
       "BatchingStatistics": {
         "type": "object",
         "properties": {
-          "totalMessagesBatched": {
+          "total_messages_batched": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3340,7 +3323,7 @@
             ],
             "format": "int64"
           },
-          "totalBatchesSent": {
+          "total_batches_sent": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3348,7 +3331,7 @@
             ],
             "format": "int64"
           },
-          "averageMessagesPerBatch": {
+          "average_messages_per_batch": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -3356,7 +3339,7 @@
             ],
             "format": "double"
           },
-          "currentPendingMessages": {
+          "current_pending_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3364,15 +3347,14 @@
             ],
             "format": "int64"
           },
-          "lastBatchSentAt": {
-            "type": "string",
+          "last_batch_sent_at": {
             "format": "date-time"
           },
-          "averageBatchLatency": {
+          "average_batch_latency": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string"
           },
-          "networkCallsSaved": {
+          "network_calls_saved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3380,10 +3362,10 @@
             ],
             "format": "int64"
           },
-          "isBatchingEnabled": {
+          "is_batching_enabled": {
             "type": "boolean"
           },
-          "messagesByMethod": {
+          "messages_by_method": {
             "type": "object",
             "additionalProperties": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -3394,7 +3376,7 @@
               "format": "int64"
             }
           },
-          "batchEfficiencyPercentage": {
+          "batch_efficiency_percentage": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -3408,13 +3390,13 @@
       "BatchOperationStartResponse": {
         "type": "object",
         "properties": {
-          "operationId": {
+          "operation_id": {
             "type": "string"
           },
-          "operationType": {
+          "operation_type": {
             "type": "string"
           },
-          "totalItems": {
+          "total_items": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3422,13 +3404,13 @@
             ],
             "format": "int32"
           },
-          "statusUrl": {
+          "status_url": {
             "type": "string"
           },
-          "taskId": {
+          "task_id": {
             "type": "string"
           },
-          "signalREvents": {
+          "signal_r_events": {
             "type": "array",
             "items": {
               "type": "string"
@@ -3442,16 +3424,16 @@
       "BatchOperationStatusResponse": {
         "type": "object",
         "properties": {
-          "operationId": {
+          "operation_id": {
             "type": "string"
           },
-          "operationType": {
+          "operation_type": {
             "type": "string"
           },
           "status": {
             "type": "string"
           },
-          "totalItems": {
+          "total_items": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3459,7 +3441,7 @@
             ],
             "format": "int32"
           },
-          "processedCount": {
+          "processed_count": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3467,7 +3449,7 @@
             ],
             "format": "int32"
           },
-          "successCount": {
+          "success_count": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3475,7 +3457,7 @@
             ],
             "format": "int32"
           },
-          "failedCount": {
+          "failed_count": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3483,7 +3465,7 @@
             ],
             "format": "int32"
           },
-          "progressPercentage": {
+          "progress_percentage": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3491,15 +3473,15 @@
             ],
             "format": "int32"
           },
-          "elapsedTime": {
+          "elapsed_time": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string"
           },
-          "estimatedTimeRemaining": {
+          "estimated_time_remaining": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string"
           },
-          "itemsPerSecond": {
+          "items_per_second": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -3507,13 +3489,13 @@
             ],
             "format": "double"
           },
-          "currentItem": {
+          "current_item": {
             "type": [
               "null",
               "string"
             ]
           },
-          "canCancel": {
+          "can_cancel": {
             "type": "boolean"
           }
         }
@@ -3892,12 +3874,12 @@
       },
       "ConnectionDetailsResponse": {
         "required": [
-          "activeConnections",
+          "active_connections",
           "count"
         ],
         "type": "object",
         "properties": {
-          "activeConnections": {
+          "active_connections": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ConnectionInfo"
@@ -3917,15 +3899,15 @@
       "ConnectionInfo": {
         "type": "object",
         "properties": {
-          "connectionId": {
+          "connection_id": {
             "type": "string",
             "description": "Unique connection identifier"
           },
-          "hubName": {
+          "hub_name": {
             "type": "string",
             "description": "Hub name for this connection"
           },
-          "virtualKeyId": {
+          "virtual_key_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -3935,13 +3917,11 @@
             "description": "Virtual key ID associated with this connection",
             "format": "int32"
           },
-          "connectedAt": {
-            "type": "string",
+          "connected_at": {
             "description": "Time when the connection was established",
             "format": "date-time"
           },
-          "lastActivityAt": {
-            "type": "string",
+          "last_activity_at": {
             "description": "Last activity time for this connection",
             "format": "date-time"
           },
@@ -3952,21 +3932,21 @@
             },
             "description": "Groups this connection is subscribed to"
           },
-          "userAgent": {
+          "user_agent": {
             "type": [
               "null",
               "string"
             ],
             "description": "User agent string from the client"
           },
-          "ipAddress": {
+          "ip_address": {
             "type": [
               "null",
               "string"
             ],
             "description": "IP address of the client"
           },
-          "transportType": {
+          "transport_type": {
             "type": [
               "null",
               "string"
@@ -3977,7 +3957,7 @@
             "type": "object",
             "description": "Custom metadata about the connection"
           },
-          "messagesSent": {
+          "messages_sent": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3986,7 +3966,7 @@
             "description": "Number of messages sent to this connection",
             "format": "int64"
           },
-          "messagesAcknowledged": {
+          "messages_acknowledged": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -3995,12 +3975,12 @@
             "description": "Number of messages acknowledged by this connection",
             "format": "int64"
           },
-          "connectionDuration": {
+          "connection_duration": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string",
             "description": "Gets the connection duration"
           },
-          "idleTime": {
+          "idle_time": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string",
             "description": "Gets the time since last activity"
@@ -4011,7 +3991,7 @@
       "ConnectionStatistics": {
         "type": "object",
         "properties": {
-          "totalActiveConnections": {
+          "total_active_connections": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4019,7 +3999,7 @@
             ],
             "format": "int32"
           },
-          "connectionsByHub": {
+          "connections_by_hub": {
             "type": "object",
             "additionalProperties": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -4030,7 +4010,7 @@
               "format": "int32"
             }
           },
-          "connectionsByTransport": {
+          "connections_by_transport": {
             "type": "object",
             "additionalProperties": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -4041,7 +4021,7 @@
               "format": "int32"
             }
           },
-          "totalGroups": {
+          "total_groups": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4049,7 +4029,7 @@
             ],
             "format": "int32"
           },
-          "staleConnections": {
+          "stale_connections": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4057,7 +4037,7 @@
             ],
             "format": "int32"
           },
-          "averageConnectionDurationMinutes": {
+          "average_connection_duration_minutes": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -4065,7 +4045,7 @@
             ],
             "format": "double"
           },
-          "averageIdleTimeMinutes": {
+          "average_idle_time_minutes": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -4073,15 +4053,13 @@
             ],
             "format": "double"
           },
-          "oldestConnectionTime": {
-            "type": "string",
+          "oldest_connection_time": {
             "format": "date-time"
           },
-          "newestConnectionTime": {
-            "type": "string",
+          "newest_connection_time": {
             "format": "date-time"
           },
-          "totalMessagesSent": {
+          "total_messages_sent": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4089,7 +4067,7 @@
             ],
             "format": "int64"
           },
-          "totalMessagesAcknowledged": {
+          "total_messages_acknowledged": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4097,7 +4075,7 @@
             ],
             "format": "int64"
           },
-          "acknowledgmentRate": {
+          "acknowledgment_rate": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -4110,34 +4088,33 @@
       },
       "DeadLetterMessageDto": {
         "required": [
-          "messageId",
-          "messageType",
-          "hubName",
-          "methodName",
-          "queuedAt",
-          "deliveryAttempts",
-          "lastError",
-          "deadLetterReason"
+          "message_id",
+          "message_type",
+          "hub_name",
+          "method_name",
+          "queued_at",
+          "delivery_attempts",
+          "last_error",
+          "dead_letter_reason"
         ],
         "type": "object",
         "properties": {
-          "messageId": {
+          "message_id": {
             "type": "string"
           },
-          "messageType": {
+          "message_type": {
             "type": "string"
           },
-          "hubName": {
+          "hub_name": {
             "type": "string"
           },
-          "methodName": {
+          "method_name": {
             "type": "string"
           },
-          "queuedAt": {
-            "type": "string",
+          "queued_at": {
             "format": "date-time"
           },
-          "deliveryAttempts": {
+          "delivery_attempts": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4145,13 +4122,13 @@
             ],
             "format": "int32"
           },
-          "lastError": {
+          "last_error": {
             "type": [
               "null",
               "string"
             ]
           },
-          "deadLetterReason": {
+          "dead_letter_reason": {
             "type": [
               "null",
               "string"
@@ -4265,10 +4242,6 @@
             "type": "string"
           },
           "capabilities_last_verified_at": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "parameters": {
@@ -4331,7 +4304,6 @@
             "type": "string"
           },
           "expires_at": {
-            "type": "string",
             "format": "date-time"
           },
           "expiration_minutes": {
@@ -4437,14 +4409,14 @@
       "EphemeralKeyMetadata": {
         "type": "object",
         "properties": {
-          "sourceIP": {
+          "source_ip": {
             "type": [
               "null",
               "string"
             ],
             "description": "IP address that requested the ephemeral key"
           },
-          "userAgent": {
+          "user_agent": {
             "type": [
               "null",
               "string"
@@ -4458,7 +4430,7 @@
             ],
             "description": "Purpose or intended use of the ephemeral key"
           },
-          "requestId": {
+          "request_id": {
             "type": [
               "null",
               "string"
@@ -4471,16 +4443,16 @@
       "EphemeralKeyResponse": {
         "type": "object",
         "properties": {
-          "ephemeralKey": {
+          "ephemeral_key": {
             "type": "string",
             "description": "The ephemeral key token to use for authentication"
           },
-          "expiresAt": {
+          "expires_at": {
             "type": "string",
             "description": "When the ephemeral key expires",
             "format": "date-time"
           },
-          "expiresInSeconds": {
+          "expires_in_seconds": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4524,17 +4496,9 @@
             "format": "int64"
           },
           "created_at": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "modified_at": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "storage_provider": {
@@ -4684,10 +4648,10 @@
             ],
             "format": "int32"
           },
-          "configurationName": {
+          "configuration_name": {
             "type": "string"
           },
-          "providerType": {
+          "provider_type": {
             "type": "string"
           },
           "purpose": {
@@ -4699,13 +4663,13 @@
               "string"
             ]
           },
-          "defaultExecutionMode": {
+          "default_execution_mode": {
             "type": "string"
           },
-          "isEnabled": {
+          "is_enabled": {
             "type": "boolean"
           },
-          "timeoutSeconds": {
+          "timeout_seconds": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -4738,7 +4702,7 @@
       "FunctionExecutionRequest": {
         "type": "object",
         "properties": {
-          "functionConfigurationId": {
+          "function_configuration_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4767,12 +4731,12 @@
       "FunctionExecutionResponse": {
         "type": "object",
         "properties": {
-          "executionId": {
+          "execution_id": {
             "type": "string",
             "description": "The unique execution ID.",
             "format": "uuid"
           },
-          "functionConfigurationId": {
+          "function_configuration_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4792,14 +4756,14 @@
             ],
             "description": "The function execution result (provider-specific)."
           },
-          "errorMessage": {
+          "error_message": {
             "type": [
               "null",
               "string"
             ],
             "description": "Error message if execution failed."
           },
-          "estimatedCost": {
+          "estimated_cost": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "null",
@@ -4809,7 +4773,7 @@
             "description": "Estimated cost before execution.",
             "format": "double"
           },
-          "actualCost": {
+          "actual_cost": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
             "type": [
               "null",
@@ -4819,19 +4783,11 @@
             "description": "Actual cost after execution.",
             "format": "double"
           },
-          "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+          "started_at": {
             "description": "When the execution started.",
             "format": "date-time"
           },
-          "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+          "completed_at": {
             "description": "When the execution completed.",
             "format": "date-time"
           },
@@ -4851,7 +4807,7 @@
       "FunctionParametersResponseDto": {
         "type": "object",
         "properties": {
-          "functionConfigurationId": {
+          "function_configuration_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -4859,17 +4815,17 @@
             ],
             "format": "int32"
           },
-          "configurationName": {
+          "configuration_name": {
             "type": "string"
           },
-          "providerType": {
+          "provider_type": {
             "type": "string"
           },
           "purpose": {
             "type": "string"
           },
-          "parameterSchema": { },
-          "exampleRequest": { }
+          "parameter_schema": { },
+          "example_request": { }
         }
       },
       "GenerateEphemeralKeyRequest": {
@@ -4891,15 +4847,15 @@
       },
       "GenerateUrlRequest": {
         "required": [
-          "fileId"
+          "file_id"
         ],
         "type": "object",
         "properties": {
-          "fileId": {
+          "file_id": {
             "type": "string",
             "description": "The file identifier."
           },
-          "expirationMinutes": {
+          "expiration_minutes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -4914,24 +4870,23 @@
       },
       "GroupConnectionDto": {
         "required": [
-          "connectionId",
-          "hubName",
-          "connectedAt",
-          "virtualKeyId"
+          "connection_id",
+          "hub_name",
+          "connected_at",
+          "virtual_key_id"
         ],
         "type": "object",
         "properties": {
-          "connectionId": {
+          "connection_id": {
             "type": "string"
           },
-          "hubName": {
+          "hub_name": {
             "type": "string"
           },
-          "connectedAt": {
-            "type": "string",
+          "connected_at": {
             "format": "date-time"
           },
-          "virtualKeyId": {
+          "virtual_key_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "null",
@@ -4945,13 +4900,13 @@
       },
       "GroupConnectionsResponse": {
         "required": [
-          "groupName",
+          "group_name",
           "connections",
           "count"
         ],
         "type": "object",
         "properties": {
-          "groupName": {
+          "group_name": {
             "type": "string"
           },
           "connections": {
@@ -4973,23 +4928,22 @@
       },
       "HubConnectionDto": {
         "required": [
-          "connectionId",
-          "connectedAt",
-          "connectionDuration",
+          "connection_id",
+          "connected_at",
+          "connection_duration",
           "groups",
-          "messagesSent",
-          "messagesAcknowledged"
+          "messages_sent",
+          "messages_acknowledged"
         ],
         "type": "object",
         "properties": {
-          "connectionId": {
+          "connection_id": {
             "type": "string"
           },
-          "connectedAt": {
-            "type": "string",
+          "connected_at": {
             "format": "date-time"
           },
-          "connectionDuration": {
+          "connection_duration": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string"
           },
@@ -4999,7 +4953,7 @@
               "type": "string"
             }
           },
-          "messagesSent": {
+          "messages_sent": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5007,7 +4961,7 @@
             ],
             "format": "int64"
           },
-          "messagesAcknowledged": {
+          "messages_acknowledged": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5020,13 +4974,13 @@
       },
       "HubConnectionsResponse": {
         "required": [
-          "hubName",
+          "hub_name",
           "connections",
           "count"
         ],
         "type": "object",
         "properties": {
-          "hubName": {
+          "hub_name": {
             "type": "string"
           },
           "connections": {
@@ -5192,13 +5146,13 @@
       "MediaInfo": {
         "type": "object",
         "properties": {
-          "storageKey": {
+          "storage_key": {
             "type": "string"
           },
-          "contentType": {
+          "content_type": {
             "type": "string"
           },
-          "sizeBytes": {
+          "size_bytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5206,27 +5160,22 @@
             ],
             "format": "int64"
           },
-          "fileName": {
+          "file_name": {
             "type": [
               "null",
               "string"
             ]
           },
-          "mediaType": {
+          "media_type": {
             "$ref": "#/components/schemas/MediaType"
           },
-          "createdAt": {
-            "type": "string",
+          "created_at": {
             "format": "date-time"
           },
-          "expiresAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+          "expires_at": {
             "format": "date-time"
           },
-          "customMetadata": {
+          "custom_metadata": {
             "type": "object",
             "additionalProperties": {
               "type": "string"
@@ -5245,38 +5194,38 @@
       "MediaUploadResponse": {
         "required": [
           "success",
-          "storageKey",
+          "storage_key",
           "url",
-          "directUrl",
-          "contentType",
-          "mediaType",
-          "fileName",
-          "sizeBytes"
+          "direct_url",
+          "content_type",
+          "media_type",
+          "file_name",
+          "size_bytes"
         ],
         "type": "object",
         "properties": {
           "success": {
             "type": "boolean"
           },
-          "storageKey": {
+          "storage_key": {
             "type": "string"
           },
           "url": {
             "type": "string"
           },
-          "directUrl": {
+          "direct_url": {
             "type": "string"
           },
-          "contentType": {
+          "content_type": {
             "type": "string"
           },
-          "mediaType": {
+          "media_type": {
             "type": "string"
           },
-          "fileName": {
+          "file_name": {
             "type": "string"
           },
-          "sizeBytes": {
+          "size_bytes": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5535,10 +5484,6 @@
             "type": "string"
           },
           "capabilities_last_verified_at": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "capabilities": {
@@ -5567,12 +5512,12 @@
       },
       "ModelMetadataResponse": {
         "required": [
-          "modelId",
+          "model_id",
           "metadata"
         ],
         "type": "object",
         "properties": {
-          "modelId": {
+          "model_id": {
             "type": "string"
           },
           "metadata": {
@@ -5796,7 +5741,7 @@
       "QueueStatistics": {
         "type": "object",
         "properties": {
-          "pendingMessages": {
+          "pending_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5804,7 +5749,7 @@
             ],
             "format": "int32"
           },
-          "delayedMessages": {
+          "delayed_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5812,7 +5757,7 @@
             ],
             "format": "int32"
           },
-          "deadLetterMessages": {
+          "dead_letter_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5820,7 +5765,7 @@
             ],
             "format": "int32"
           },
-          "claimedMessages": {
+          "claimed_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5828,7 +5773,7 @@
             ],
             "format": "int32"
           },
-          "retriedMessages": {
+          "retried_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5836,7 +5781,7 @@
             ],
             "format": "int32"
           },
-          "oldestPendingAgeSeconds": {
+          "oldest_pending_age_seconds": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": [
               "number",
@@ -5844,7 +5789,7 @@
             ],
             "format": "double"
           },
-          "processedMessages": {
+          "processed_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5852,7 +5797,7 @@
             ],
             "format": "int32"
           },
-          "failedMessages": {
+          "failed_messages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -5860,14 +5805,13 @@
             ],
             "format": "int32"
           },
-          "lastProcessedAt": {
-            "type": "string",
+          "last_processed_at": {
             "format": "date-time"
           },
-          "circuitBreakerState": {
+          "circuit_breaker_state": {
             "$ref": "#/components/schemas/CircuitState"
           },
-          "consecutiveFailures": {
+          "consecutive_failures": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -6062,7 +6006,7 @@
         "required": [
           "active",
           "stale",
-          "acknowledgmentRate"
+          "acknowledgment_rate"
         ],
         "type": "object",
         "properties": {
@@ -6082,7 +6026,7 @@
             ],
             "format": "int32"
           },
-          "acknowledgmentRate": {
+          "acknowledgment_rate": {
             "type": "string"
           }
         },
@@ -6101,7 +6045,6 @@
             "type": "string"
           },
           "timestamp": {
-            "type": "string",
             "format": "date-time"
           },
           "connections": {
@@ -6116,8 +6059,8 @@
       "SignalRQueueHealthDto": {
         "required": [
           "pending",
-          "deadLetter",
-          "circuitBreaker",
+          "dead_letter",
+          "circuit_breaker",
           "processed",
           "failed"
         ],
@@ -6131,7 +6074,7 @@
             ],
             "format": "int32"
           },
-          "deadLetter": {
+          "dead_letter": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -6139,7 +6082,7 @@
             ],
             "format": "int32"
           },
-          "circuitBreaker": {
+          "circuit_breaker": {
             "type": "string"
           },
           "processed": {
@@ -6163,14 +6106,14 @@
       },
       "SpendUpdateDto": {
         "required": [
-          "virtualKeyId",
+          "virtual_key_id",
           "amount",
           "model",
-          "providerType"
+          "provider_type"
         ],
         "type": "object",
         "properties": {
-          "virtualKeyId": {
+          "virtual_key_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -6191,7 +6134,7 @@
           "model": {
             "type": "string"
           },
-          "providerType": {
+          "provider_type": {
             "$ref": "#/components/schemas/ProviderType"
           },
           "metadata": {
@@ -6229,7 +6172,7 @@
       "TaskMetadata": {
         "type": "object",
         "properties": {
-          "virtualKeyId": {
+          "virtual_key_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -6249,7 +6192,7 @@
               "string"
             ]
           },
-          "correlationId": {
+          "correlation_id": {
             "type": [
               "null",
               "string"
@@ -6261,19 +6204,19 @@
               "string"
             ]
           },
-          "videoId": {
+          "video_id": {
             "type": [
               "null",
               "string"
             ]
           },
-          "webhookUrl": {
+          "webhook_url": {
             "type": [
               "null",
               "string"
             ]
           },
-          "webhookHeaders": {
+          "webhook_headers": {
             "type": [
               "null",
               "object"
@@ -6320,7 +6263,7 @@
           "voice": {
             "type": "string"
           },
-          "responseFormat": {
+          "response_format": {
             "type": [
               "null",
               "string"
@@ -6335,7 +6278,7 @@
             ],
             "format": "double"
           },
-          "extensionData": {
+          "extension_data": {
             "type": [
               "null",
               "object"
@@ -6695,24 +6638,24 @@
       "VideoGenerationTaskResponse": {
         "type": "object",
         "properties": {
-          "taskId": {
+          "task_id": {
             "type": "string"
           },
           "status": {
             "type": "string"
           },
-          "createdAt": {
+          "created_at": {
             "type": "string",
             "format": "date-time"
           },
-          "estimatedCompletionTime": {
+          "estimated_completion_time": {
             "type": [
               "null",
               "string"
             ],
             "format": "date-time"
           },
-          "checkStatusUrl": {
+          "check_status_url": {
             "type": "string"
           }
         },
@@ -6721,7 +6664,7 @@
       "VideoGenerationTaskStatus": {
         "type": "object",
         "properties": {
-          "taskId": {
+          "task_id": {
             "type": "string"
           },
           "status": {
@@ -6736,15 +6679,15 @@
             ],
             "format": "int32"
           },
-          "createdAt": {
+          "created_at": {
             "type": "string",
             "format": "date-time"
           },
-          "updatedAt": {
+          "updated_at": {
             "type": "string",
             "format": "date-time"
           },
-          "completedAt": {
+          "completed_at": {
             "type": [
               "null",
               "string"
@@ -6757,7 +6700,7 @@
               "string"
             ]
           },
-          "resultRaw": {
+          "result_raw": {
             "type": [
               "null",
               "string"
@@ -6886,25 +6829,24 @@
       },
       "VirtualKeyConnectionDto": {
         "required": [
-          "connectionId",
-          "hubName",
-          "connectedAt",
-          "connectionDuration",
+          "connection_id",
+          "hub_name",
+          "connected_at",
+          "connection_duration",
           "groups"
         ],
         "type": "object",
         "properties": {
-          "connectionId": {
+          "connection_id": {
             "type": "string"
           },
-          "hubName": {
+          "hub_name": {
             "type": "string"
           },
-          "connectedAt": {
-            "type": "string",
+          "connected_at": {
             "format": "date-time"
           },
-          "connectionDuration": {
+          "connection_duration": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string"
           },
@@ -6919,13 +6861,13 @@
       },
       "VirtualKeyConnectionsResponse": {
         "required": [
-          "virtualKeyId",
+          "virtual_key_id",
           "connections",
           "count"
         ],
         "type": "object",
         "properties": {
-          "virtualKeyId": {
+          "virtual_key_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -6952,11 +6894,11 @@
       },
       "VirtualKeyUpdateDto": {
         "required": [
-          "virtualKeyId"
+          "virtual_key_id"
         ],
         "type": "object",
         "properties": {
-          "virtualKeyId": {
+          "virtual_key_id": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": [
               "integer",
@@ -6964,7 +6906,7 @@
             ],
             "format": "int32"
           },
-          "maxBudget": {
+          "max_budget": {
             "maximum": 1000000,
             "minimum": 0,
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
@@ -6975,7 +6917,7 @@
             ],
             "format": "double"
           },
-          "allowedModels": {
+          "allowed_models": {
             "type": [
               "null",
               "array"
@@ -6984,23 +6926,19 @@
               "type": "string"
             }
           },
-          "rateLimits": {
+          "rate_limits": {
             "type": [
               "null",
               "object"
             ]
           },
-          "isEnabled": {
+          "is_enabled": {
             "type": [
               "null",
               "boolean"
             ]
           },
-          "expiresAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+          "expires_at": {
             "format": "date-time"
           },
           "notes": {
@@ -7014,7 +6952,7 @@
       "WebhookSendDto": {
         "required": [
           "url",
-          "eventType",
+          "event_type",
           "payload"
         ],
         "type": "object",
@@ -7023,7 +6961,7 @@
             "type": "string",
             "format": "uri"
           },
-          "eventType": {
+          "event_type": {
             "type": "string"
           },
           "payload": { },
