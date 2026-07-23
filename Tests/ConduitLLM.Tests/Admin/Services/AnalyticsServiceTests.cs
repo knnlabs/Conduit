@@ -12,6 +12,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IRequestLogRepository> _mockRequestLogRepository;
         private readonly Mock<IVirtualKeyRepository> _mockVirtualKeyRepository;
         private readonly IMemoryCache _memoryCache;
+        private readonly AnalyticsCacheInvalidator _cacheInvalidator;
         private readonly Mock<ILogger<AnalyticsService>> _mockLogger;
         private readonly AnalyticsService _service;
 
@@ -20,12 +21,14 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockRequestLogRepository = new Mock<IRequestLogRepository>();
             _mockVirtualKeyRepository = new Mock<IVirtualKeyRepository>();
             _memoryCache = new MemoryCache(new MemoryCacheOptions());
+            _cacheInvalidator = new AnalyticsCacheInvalidator();
             _mockLogger = new Mock<ILogger<AnalyticsService>>();
             
             _service = new AnalyticsService(
                 _mockRequestLogRepository.Object,
                 _mockVirtualKeyRepository.Object,
                 _memoryCache,
+                _cacheInvalidator,
                 _mockLogger.Object
             );
         }

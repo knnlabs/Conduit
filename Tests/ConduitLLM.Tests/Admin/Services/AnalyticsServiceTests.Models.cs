@@ -49,6 +49,30 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.Equal(result1, result2);
         }
 
+        [Fact]
+        public async Task InvalidateCache_ExpiresCachedAnalyticsResults()
+        {
+            // Arrange
+            _mockRequestLogRepository
+                .SetupSequence(x => x.GetDistinctModelsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new List<string> { "gpt-4" })
+                .ReturnsAsync(new List<string> { "claude-3" });
+
+            var initialResult = await _service.GetDistinctModelsAsync();
+
+            // Act
+            var keysInvalidated = _service.InvalidateCache();
+            var refreshedResult = await _service.GetDistinctModelsAsync();
+
+            // Assert
+            Assert.Equal(["gpt-4"], initialResult);
+            Assert.Equal(1, keysInvalidated);
+            Assert.Equal(["claude-3"], refreshedResult);
+            _mockRequestLogRepository.Verify(
+                x => x.GetDistinctModelsAsync(It.IsAny<CancellationToken>()),
+                Times.Exactly(2));
+        }
+
         #endregion
     }
 }

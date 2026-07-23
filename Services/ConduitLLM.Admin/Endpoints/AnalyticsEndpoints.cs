@@ -326,13 +326,20 @@ public class AnalyticsEndpoints
     /// </summary>
     /// <param name="reason">Reason for cache invalidation</param>
     /// <returns>Success response</returns>
-    public async Task<IResult> InvalidateCache(string reason = "Manual invalidation")
+    public IResult InvalidateCache(string reason = "Manual invalidation")
     {
-        // TODO(#1075): Make analytics cache invalidation functional or remove this endpoint.
-        _analyticsMetrics?.RecordCacheInvalidation(reason, 0);
-        await Task.CompletedTask;
-        LogAdminAudit("Invalidated", "AnalyticsCache", detail: $"Reason: {reason}");
-        return Results.Ok(new { message = "Cache invalidation initiated", reason });
+        var keysInvalidated = _analyticsService.InvalidateCache();
+        _analyticsMetrics?.RecordCacheInvalidation(reason, keysInvalidated);
+        LogAdminAudit(
+            "Invalidated",
+            "AnalyticsCache",
+            detail: $"Reason: {reason}, KeysInvalidated: {keysInvalidated}");
+        return Results.Ok(new
+        {
+            message = "Analytics cache invalidated",
+            reason,
+            keysInvalidated
+        });
     }
 
     private void LogAdminAudit(string operation, string entityType, object? entityId = null, string? detail = null)

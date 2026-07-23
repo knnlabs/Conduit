@@ -27,6 +27,7 @@ namespace ConduitLLM.Admin.Services
 
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
+                _cacheInvalidator.TrackEntry(entry, cacheKey);
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = ShortCacheDuration;
 
@@ -139,6 +140,7 @@ namespace ConduitLLM.Admin.Services
 
             var result = await _cache.GetOrCreateAsync(cacheKey, async entry =>
             {
+                _cacheInvalidator.TrackEntry(entry, cacheKey);
                 _metrics?.RecordCacheMiss(cacheKey);
                 entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
 

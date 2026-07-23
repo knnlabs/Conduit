@@ -16,6 +16,7 @@ public partial class AnalyticsService : IAnalyticsService
     private readonly IRequestLogRepository _requestLogRepository;
     private readonly IVirtualKeyRepository _virtualKeyRepository;
     private readonly IMemoryCache _cache;
+    private readonly AnalyticsCacheInvalidator _cacheInvalidator;
     private readonly ILogger<AnalyticsService> _logger;
     private readonly IAnalyticsMetrics? _metrics;
     
@@ -30,18 +31,21 @@ public partial class AnalyticsService : IAnalyticsService
     /// <param name="requestLogRepository">Repository for request logs</param>
     /// <param name="virtualKeyRepository">Repository for virtual keys</param>
     /// <param name="cache">Memory cache for performance optimization</param>
+    /// <param name="cacheInvalidator">Shared invalidator for analytics cache entries</param>
     /// <param name="logger">Logger instance</param>
     /// <param name="metrics">Optional metrics collection service for monitoring cache performance</param>
     public AnalyticsService(
         IRequestLogRepository requestLogRepository,
         IVirtualKeyRepository virtualKeyRepository,
         IMemoryCache cache,
+        AnalyticsCacheInvalidator cacheInvalidator,
         ILogger<AnalyticsService> logger,
         IAnalyticsMetrics? metrics = null)
     {
         _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));
         _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _cacheInvalidator = cacheInvalidator ?? throw new ArgumentNullException(nameof(cacheInvalidator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _metrics = metrics;
     }
@@ -155,6 +159,7 @@ public partial class AnalyticsService : IAnalyticsService
 
         var result = await _cache.GetOrCreateAsync(CacheKeys.Analytics.Models, async entry =>
         {
+            _cacheInvalidator.TrackEntry(entry, CacheKeys.Analytics.Models);
             _metrics?.RecordCacheMiss(CacheKeys.Analytics.Models);
             entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
 
@@ -177,6 +182,14 @@ public partial class AnalyticsService : IAnalyticsService
         _metrics?.RecordOperationDuration("GetDistinctModelsAsync", stopwatch.ElapsedMilliseconds);
 
         return result ?? Enumerable.Empty<string>();
+    }
+
+    /// <inheritdoc/>
+    public int InvalidateCache()
+    {
+        var keysInvalidated = _cacheInvalidator.Invalidate();
+        _logger.LogInformation("Invalidated {KeyCount} analytics cache keys", keysInvalidated);
+        return keysInvalidated;
     }
 
     #endregion

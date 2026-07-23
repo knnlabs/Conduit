@@ -93,6 +93,12 @@ public interface IAnalyticsService
         DateTime? endDate = null,
         string? model = null,
         int? virtualKeyId = null);
+
+    /// <summary>
+    /// Invalidates all cached analytics results.
+    /// </summary>
+    /// <returns>The number of distinct cache keys invalidated.</returns>
+    int InvalidateCache();
 }
 
 /// <summary>

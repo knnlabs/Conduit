@@ -75,6 +75,7 @@ public static class ServiceCollectionExtensions
         
         // Register Analytics services
         services.AddSingleton<IAnalyticsMetrics, AnalyticsMetricsService>();
+        services.AddSingleton<AnalyticsCacheInvalidator>();
         services.AddScoped<IAnalyticsService, AnalyticsService>();
         
         // Register AdminIpFilterService (optional deps use default parameter values)
