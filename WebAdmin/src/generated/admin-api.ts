@@ -3790,7 +3790,6 @@ export interface components {
       /** Format: double */
       weight?: number;
       isEnabled?: boolean;
-      notes?: null | string;
       providerOptions?: null | string;
     };
     /** @description Data transfer object for creating a new model series in the system. */
@@ -5209,7 +5208,6 @@ export interface components {
       createdAt: string;
       /** Format: date-time */
       updatedAt: string;
-      notes?: null | string;
       providerOptions?: null | string;
       capabilities?: null | components["schemas"]["ModelCapabilitiesDto"];
     };
@@ -6966,7 +6964,6 @@ export interface components {
       /** Format: double */
       weight: number;
       isEnabled: boolean;
-      notes?: null | string;
       providerOptions?: null | string;
     };
     /** @description Data transfer object for updating an existing model series. */
@@ -17799,6 +17796,17 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProblemDetails"];
+          "text/json": components["schemas"]["ProblemDetails"];
+          "text/plain": components["schemas"]["ProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };

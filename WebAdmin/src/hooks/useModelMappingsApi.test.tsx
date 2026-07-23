@@ -3,7 +3,12 @@ import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { withAdminClient } from '@/lib/client/adminClient';
-import { useBulkCreateMappings, useBulkDiscoverModels } from './useModelMappingsApi';
+import {
+  useBulkCreateMappings,
+  useBulkDiscoverModels,
+  useCreateModelMapping,
+  useUpdateModelMapping,
+} from './useModelMappingsApi';
 
 jest.mock('@/lib/client/adminClient', () => ({ withAdminClient: jest.fn() }));
 jest.mock('@/lib/notifications', () => ({
@@ -17,9 +22,11 @@ jest.mock('@/lib/notifications', () => ({
 const getByProvider = jest.fn();
 const previewBulk = jest.fn();
 const bulkCreate = jest.fn<Promise<unknown>, [unknown]>();
+const create = jest.fn<Promise<unknown>, [unknown]>();
+const update = jest.fn<Promise<void>, [number, unknown]>();
 const adminClient = {
   models: { getByProvider },
-  modelMappings: { previewBulk, bulkCreate },
+  modelMappings: { previewBulk, bulkCreate, create, update },
 };
 
 const mockedWithAdminClient = jest.mocked(withAdminClient);
@@ -27,6 +34,60 @@ const mockedWithAdminClient = jest.mocked(withAdminClient);
 beforeEach(() => {
   jest.clearAllMocks();
   mockedWithAdminClient.mockImplementation(operation => operation(adminClient as never));
+});
+
+describe('single mapping mutations', () => {
+  it('submits the exact create payload and invalidates mappings', async () => {
+    const queryClient = createQueryClient();
+    const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useCreateModelMapping(), {
+      wrapper: queryWrapper(queryClient),
+    });
+    const payload = {
+      modelAlias: 'shared',
+      providerId: 9,
+      providerModelId: 'provider/shared',
+      modelProviderTypeAssociationId: 42,
+      priority: 25,
+      weight: 1,
+      isEnabled: true,
+      providerOptions: '{"temperature":0.2}',
+    };
+    create.mockResolvedValue({ id: 7 });
+
+    await act(async () => {
+      await result.current.mutateAsync(payload);
+    });
+
+    expect(create).toHaveBeenCalledWith(payload);
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-mappings'] });
+  });
+
+  it('submits the exact update payload including preserved weight and cleared options', async () => {
+    const queryClient = createQueryClient();
+    const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useUpdateModelMapping(), {
+      wrapper: queryWrapper(queryClient),
+    });
+    const payload = {
+      modelAlias: 'shared',
+      providerId: 12,
+      providerModelId: 'provider/shared-v2',
+      modelProviderTypeAssociationId: 77,
+      priority: 5,
+      weight: 1.4,
+      isEnabled: false,
+      providerOptions: null,
+    };
+    update.mockResolvedValue();
+
+    await act(async () => {
+      await result.current.mutateAsync({ id: 7, data: payload });
+    });
+
+    expect(update).toHaveBeenCalledWith(7, payload);
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['model-mappings'] });
+  });
 });
 
 describe('useBulkDiscoverModels', () => {
@@ -121,9 +182,7 @@ describe('useBulkCreateMappings', () => {
       isSuccess: false,
       isPartialSuccess: true,
     });
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
-    });
+    const queryClient = createQueryClient();
     const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
     const wrapper = ({ children }: PropsWithChildren) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -179,5 +238,17 @@ function Model(modelId: string, providerModelId: string) {
       supportsEmbeddings: false,
       supportsChat: true,
     },
+  };
+}
+
+function createQueryClient() {
+  return new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+}
+
+function queryWrapper(queryClient: QueryClient) {
+  return function Wrapper({ children }: PropsWithChildren) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }

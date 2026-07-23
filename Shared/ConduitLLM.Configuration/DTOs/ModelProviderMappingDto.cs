@@ -29,8 +29,6 @@ namespace ConduitLLM.Configuration.DTOs
         [Required]
         public bool IsEnabled { get; set; }
 
-        public string? Notes { get; set; }
-
         public string? ProviderOptions { get; set; }
     }
 
@@ -104,11 +102,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         [Required]
         public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-
-        /// <summary>
-        /// Optional notes or description for this mapping
-        /// </summary>
-        public string? Notes { get; set; }
 
         /// <summary>
         /// Optional provider-specific request options as a JSON object (OpenRouter: provider/plugins/

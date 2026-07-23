@@ -99,11 +99,6 @@ namespace ConduitLLM.Configuration.DTOs
         public bool IsEnabled { get; set; } = true;
 
         /// <summary>
-        /// Optional notes or description for this mapping
-        /// </summary>
-        public string? Notes { get; set; }
-
-        /// <summary>
         /// Optional provider-specific request options as a JSON object.
         /// </summary>
         public string? ProviderOptions { get; set; }

@@ -220,6 +220,17 @@ public sealed class AuthoritativeContractTests : IDisposable
             .GetProperty("$ref").GetString().Should().Be("#/components/schemas/CreateModelProviderMappingDto");
         RequestSchema(_admin, "/api/ModelProviderMapping/{id}", "put")
             .GetProperty("$ref").GetString().Should().Be("#/components/schemas/UpdateModelProviderMappingDto");
+        foreach (var schemaName in new[]
+        {
+            "CreateModelProviderMappingDto",
+            "UpdateModelProviderMappingDto",
+            "ModelProviderMappingDto"
+        })
+        {
+            _admin.RootElement.GetProperty("components").GetProperty("schemas")
+                .GetProperty(schemaName).GetProperty("properties")
+                .TryGetProperty("notes", out _).Should().BeFalse();
+        }
         RequestSchema(_admin, "/api/ModelProviderMapping/bulk", "post")
             .GetProperty("$ref").GetString()
             .Should().Be("#/components/schemas/BulkModelMappingCreateRequest");
@@ -247,6 +258,8 @@ public sealed class AuthoritativeContractTests : IDisposable
                 .GetProperty("responses").GetProperty("204")
                 .TryGetProperty("content", out _).Should().BeFalse();
         }
+        Operation(_admin, "/api/ModelProviderMapping/{id}", "put")
+            .GetProperty("responses").TryGetProperty("409", out _).Should().BeTrue();
 
         Operation(_admin, "/api/ModelProviderMapping/{id}", "get").GetProperty("parameters")[0]
             .GetProperty("schema").GetProperty("format").GetString().Should().Be("int32");

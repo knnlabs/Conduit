@@ -18878,6 +18878,26 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal server error. Returns a standardized ErrorResponseDto.",
             "content": {
@@ -22921,12 +22941,6 @@
           "isEnabled": {
             "type": "boolean"
           },
-          "notes": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "providerOptions": {
             "type": [
               "null",
@@ -26290,12 +26304,6 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
-          },
-          "notes": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "providerOptions": {
             "type": [
@@ -30273,12 +30281,6 @@
           },
           "isEnabled": {
             "type": "boolean"
-          },
-          "notes": {
-            "type": [
-              "null",
-              "string"
-            ]
           },
           "providerOptions": {
             "type": [

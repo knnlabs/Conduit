@@ -15,7 +15,6 @@ import {
   Stack, 
   LoadingOverlay, 
   Alert, 
-  Textarea,
   Badge,
   Text,
   Card,
@@ -50,7 +49,6 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
   const [priority, setPriority] = useState<number>(100);
   const [weight, setWeight] = useState<number>(1);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
-  const [notes, setNotes] = useState<string>('');
   
   // Data state
   const [currentMapping, setCurrentMapping] = useState<ModelProviderMappingDto | null>(null);
@@ -130,7 +128,6 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       setPriority(mappingData.priority ?? 100);
       setWeight(mappingData.weight ?? 1);
       setIsEnabled(mappingData.isEnabled);
-      setNotes(mappingData.notes ?? '');
 
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -197,7 +194,6 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
         priority,
         weight,
         isEnabled,
-        notes: notes || undefined,
       };
 
       await withAdminClient((client: ConduitAdminClient) => 
@@ -384,15 +380,6 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
               decimalScale={2}
               value={weight}
               onChange={(val) => setWeight(Number(val) || 1)}
-            />
-
-            <Textarea
-              label="Notes"
-              description="Additional notes about this mapping"
-              placeholder="Optional notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.currentTarget.value)}
-              rows={3}
             />
 
             <Switch

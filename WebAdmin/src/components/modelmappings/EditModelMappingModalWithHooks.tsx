@@ -12,7 +12,7 @@ import {
   JsonInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderType, type ProviderDto, type ModelProviderMappingDto, type UpdateModelProviderMappingDto } from '@/lib/admin-api';
@@ -32,7 +32,6 @@ interface FormValues {
   modelProviderTypeAssociationId?: number;
   priority: number;
   isEnabled: boolean;
-  notes?: string;
   providerOptions?: string;
 }
 
@@ -46,30 +45,28 @@ export function EditModelMappingModal({
   const { providers } = useProviders();
   const { mappings } = useModelMappings();
 
-  const [initialFormValues, setInitialFormValues] = useState<FormValues>(() => ({
-    modelAlias: '',
-    providerId: '',
-    providerModelId: '',
-    modelProviderTypeAssociationId: undefined,
-    priority: 100,
-    isEnabled: true,
-    notes: undefined,
-    providerOptions: undefined,
-  }));
-
   const form = useForm<FormValues>({
-    initialValues: initialFormValues,
+    initialValues: {
+      modelAlias: '',
+      providerId: '',
+      providerModelId: '',
+      modelProviderTypeAssociationId: undefined,
+      priority: 100,
+      isEnabled: true,
+      providerOptions: undefined,
+    },
     validate: {
-      modelAlias: (value) => {
+      modelAlias: (value, values) => {
         if (!value?.trim()) return 'Model alias is required';
         
-        // Check for duplicates, but exclude the current mapping being edited
         const duplicate = mappings.find(m => 
-          m.modelAlias === value && m.id !== (mapping?.id ?? 0)
+          m.modelAlias.toLowerCase() === value.trim().toLowerCase() &&
+          m.providerId === Number(values.providerId) &&
+          m.id !== (mapping?.id ?? 0)
         );
         
         if (duplicate) {
-          return 'Model alias already exists';
+          return 'Model alias already exists for this provider';
         }
         
         return null;
@@ -77,35 +74,24 @@ export function EditModelMappingModal({
     },
   });
 
-  // Stable callback for form updates
-  const updateForm = useCallback((newFormValues: FormValues) => {
-    setInitialFormValues(newFormValues);
-    form.setValues(newFormValues);
-    form.resetDirty();
-  }, [form]);
-
   // Update form when mapping changes
   useEffect(() => {
-    if (mapping && providers) {
-      
-      // The mapping.providerId is now a numeric ID
-      const providerIdForForm = mapping.providerId?.toString() ?? '';
-      
-      
-      const newFormValues: FormValues = {
+    if (mapping) {
+      form.setValues({
         modelAlias: mapping.modelAlias,
-        providerId: providerIdForForm, // Use the numeric ID for the form
+        providerId: mapping.providerId?.toString() ?? '',
         providerModelId: mapping.providerModelId,
         modelProviderTypeAssociationId: mapping.modelProviderTypeAssociationId,
         priority: mapping.priority ?? 100,
         isEnabled: mapping.isEnabled,
-        notes: mapping.notes ?? undefined,
         providerOptions: mapping.providerOptions ?? undefined,
-      };
-      
-      updateForm(newFormValues);
+      });
+      form.resetDirty();
     }
-  }, [mapping, providers, updateForm]);
+    // The form object is intentionally excluded: Mantine returns a new wrapper while its
+    // setters are stable, and depending on the wrapper causes an initialization render loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapping]);
 
   const handleClose = () => {
     form.reset();
@@ -123,8 +109,7 @@ export function EditModelMappingModal({
       priority: values.priority,
       weight: mapping.weight,
       isEnabled: values.isEnabled,
-      notes: values.notes,
-      providerOptions: values.providerOptions?.trim() ? values.providerOptions : undefined,
+      providerOptions: values.providerOptions?.trim() ? values.providerOptions : null,
     };
 
     try {
@@ -212,13 +197,6 @@ export function EditModelMappingModal({
             {...form.getInputProps('isEnabled', { type: 'checkbox' })}
           />
 
-
-          <TextInput
-            label="Notes"
-            placeholder="Optional notes"
-            description="Additional notes about this mapping"
-            {...form.getInputProps('notes')}
-          />
 
           {isOpenRouter && (
             <JsonInput

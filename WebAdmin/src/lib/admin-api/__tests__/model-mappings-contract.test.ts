@@ -44,7 +44,7 @@ const updateRequest = { ...createRequest, priority: 50, weight: 1.2, isEnabled: 
 const mapping = {
   id: 7, ...createRequest,
   createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-02T00:00:00Z',
-  provider: null, notes: null, providerOptions: null, capabilities: null,
+  provider: null, providerOptions: null, capabilities: null,
 };
 
 beforeEach(() => mockFetch.mockReset());

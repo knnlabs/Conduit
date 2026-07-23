@@ -191,6 +191,7 @@ public class AdminModelProviderMappingService : EventPublishingServiceBase, IAdm
             {
                 return false;
             }
+            if (mapping.RoutingWeight is < 0.1m or > 2.0m) return false;
 
             // Update properties that can be modified
             existingMapping.ModelAlias = mapping.ModelAlias;

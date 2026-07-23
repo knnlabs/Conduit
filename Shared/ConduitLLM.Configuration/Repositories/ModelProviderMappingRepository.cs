@@ -75,7 +75,8 @@ namespace ConduitLLM.Configuration.Repositories
             return await ExecuteAsync(async context =>
             {
                 var query = ApplyDefaultIncludes(GetDbSet(context).AsNoTracking());
-                return await query.Where(mapping => mapping.ModelAlias == modelName)
+                var normalizedModelName = modelName.ToLower();
+                return await query.Where(mapping => mapping.ModelAlias.ToLower() == normalizedModelName)
                     .OrderBy(mapping => mapping.RoutingPriority).ThenBy(mapping => mapping.Id)
                     .ToListAsync(cancellationToken);
             }, cancellationToken, $"getting all mappings by model name {LoggingSanitizer.S(modelName)}");

@@ -40,7 +40,6 @@ namespace ConduitLLM.Configuration.Extensions
                 IsEnabled = mapping.IsEnabled,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
-                Notes = null, // Entity doesn't have Notes
                 ProviderOptions = mapping.ProviderOptions,
                 Capabilities = mapping.ModelProviderTypeAssociation?.Model != null ? new ModelCapabilitiesDto
                 {
@@ -71,7 +70,6 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.RoutingPriority = dto.Priority;
             mapping.RoutingWeight = dto.Weight;
             mapping.UpdatedAt = System.DateTime.UtcNow;
-            // Notes remains DTO-only.
         }
 
         public static void UpdateFromDto(this ModelProviderMapping mapping, UpdateModelProviderMappingDto dto)

@@ -37,7 +37,6 @@ interface FormValues {
   associationProviderId: string | null; // Format: "associationId:providerId"
   priority: number;
   isEnabled: boolean;
-  notes?: string;
 }
 
 export function CreateModelMappingModal({ 
@@ -56,19 +55,21 @@ export function CreateModelMappingModal({
       associationProviderId: null,
       priority: 100,
       isEnabled: true,
-      notes: undefined,
     },
     validate: {
-      modelAlias: (value) => {
+      modelAlias: (value, values) => {
         if (!value?.trim()) return 'Model alias is required';
-        
-        // Check for duplicate aliases
-        const duplicate = mappings.find(m => 
-          m.modelAlias.toLowerCase() === value.trim().toLowerCase()
+
+        const selectedProviderId = values.associationProviderId
+          ? Number(values.associationProviderId.split(':')[1])
+          : null;
+        const duplicate = selectedProviderId === null ? undefined : mappings.find(m =>
+          m.modelAlias.toLowerCase() === value.trim().toLowerCase() &&
+          m.providerId === selectedProviderId
         );
         
         if (duplicate) {
-          return `Model alias '${value}' already exists`;
+          return `Model alias '${value}' already exists for this provider`;
         }
         
         return null;
@@ -113,25 +114,14 @@ export function CreateModelMappingModal({
         return;
       }
       
-      // Validate that the same association+provider combo isn't already mapped
-      const duplicateMapping = mappings.find(m => 
-        m.modelProviderTypeAssociationId === associationId &&
-        m.providerId === providerId
-      );
-      
-      if (duplicateMapping) {
-        notify.error(new Error(`This provider configuration is already mapped as '${duplicateMapping.modelAlias}'`));
-        return;
-      }
-
       const createData: CreateModelProviderMappingDto = {
         modelAlias: values.modelAlias,
         providerId: providerId,
         providerModelId: selectedAssociation.identifier, // Use the identifier from the association
         modelProviderTypeAssociationId: associationId,
         priority: values.priority,
+        weight: 1,
         isEnabled: values.isEnabled,
-        notes: values.notes,
       };
 
       await createMapping.mutateAsync(createData);
@@ -251,20 +241,6 @@ export function CreateModelMappingModal({
               </Stack>
             </Paper>
           )}
-
-          {/* Optional Settings */}
-          <Paper p="md" withBorder>
-            <Stack gap="sm">
-              <Text fw={600} size="sm">Optional Settings</Text>
-              
-
-              <TextInput
-                label="Notes"
-                placeholder="Optional notes about this mapping"
-                {...form.getInputProps('notes')}
-              />
-            </Stack>
-          </Paper>
 
           <Alert icon={<IconAlertCircle size={16} />} color="blue">
             <Text size="sm" fw={500} mb="xs">Three-Layer Architecture:</Text>

@@ -49,7 +49,7 @@ public class ModelProviderMappingEndpoints
         g.MapGet("/", ([FromServices] ModelProviderMappingEndpoints e) => e.GetAllMappings()).WithName("ModelProviderMapping_GetAll").Produces<IEnumerable<ModelProviderMappingDto>>();
         g.MapGet("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id) => e.GetMappingById(id)).WithName("ModelProviderMapping_GetById").Produces<ModelProviderMappingDto>().Produces(StatusCodes.Status404NotFound);
         g.MapPost("/", ([FromServices] ModelProviderMappingEndpoints e, CreateModelProviderMappingDto dto) => e.CreateMapping(dto)).WithName("ModelProviderMapping_Create").Produces<ModelProviderMappingDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status409Conflict);
-        g.MapPut("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id, UpdateModelProviderMappingDto dto) => e.UpdateMapping(id, dto)).WithName("ModelProviderMapping_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+        g.MapPut("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id, UpdateModelProviderMappingDto dto) => e.UpdateMapping(id, dto)).WithName("ModelProviderMapping_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
         g.MapDelete("/{id}", ([FromServices] ModelProviderMappingEndpoints e, int id) => e.DeleteMapping(id)).WithName("ModelProviderMapping_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
         g.MapGet("/providers", ([FromServices] ModelProviderMappingEndpoints e) => e.GetProviders()).WithName("ModelProviderMapping_GetProviders").Produces<IEnumerable<Provider>>();
         g.MapPost("/bulk/preview", ([FromServices] ModelProviderMappingEndpoints e, BulkModelMappingPreviewRequest d) => e.PreviewBulkMappings(d)).WithName("ModelProviderMapping_PreviewBulk").Produces<BulkModelMappingPreviewResponse>().Produces(StatusCodes.Status400BadRequest);
@@ -136,6 +136,16 @@ public class ModelProviderMappingEndpoints
         if (existingMapping == null)
         {
             throw new KeyNotFoundException($"Model provider mapping with ID '{id}' not found");
+        }
+
+        var mappings = await _mappingService.GetAllMappingsAsync();
+        if (mappings.Any(mapping =>
+            mapping.Id != id &&
+            mapping.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase) &&
+            mapping.ProviderId == mappingDto.ProviderId))
+        {
+            return Results.Conflict(new ErrorResponseDto(
+                $"A mapping for alias '{mappingDto.ModelAlias}' and provider {mappingDto.ProviderId} already exists"));
         }
 
         var optionsError = ValidateProviderOptions(mappingDto.ProviderOptions);
