@@ -296,7 +296,8 @@ namespace ConduitLLM.Configuration.Repositories
                     var query = context.AsyncTasks
                         .AsNoTracking()
                         .Where(t => t.State == 0 && !t.IsArchived &&
-                                   (t.LeasedBy == null || t.LeaseExpiryTime == null || t.LeaseExpiryTime < now));
+                                   (t.LeasedBy == null || t.LeaseExpiryTime == null || t.LeaseExpiryTime < now) &&
+                                   (t.NextRetryAt == null || t.NextRetryAt <= now));
 
                     if (!string.IsNullOrEmpty(taskType))
                     {
@@ -363,6 +364,11 @@ namespace ConduitLLM.Configuration.Repositories
                     return task;
                 }, cancellationToken);
             }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                Logger.LogDebug(ex, "Concurrency conflict while leasing a pending task");
+                return null;
+            }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error leasing next pending task for worker {WorkerId}", workerId);
@@ -387,8 +393,13 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 return await ExecuteAsync(async context =>
                 {
+                    var now = DateTime.UtcNow;
                     var task = await context.AsyncTasks
-                        .FirstOrDefaultAsync(t => t.Id == taskId && t.LeasedBy == workerId, cancellationToken);
+                        .FirstOrDefaultAsync(t => t.Id == taskId &&
+                                                 t.LeasedBy == workerId &&
+                                                 t.LeaseExpiryTime != null &&
+                                                 t.LeaseExpiryTime > now,
+                                                 cancellationToken);
 
                     if (task == null)
                     {
@@ -505,23 +516,12 @@ namespace ConduitLLM.Configuration.Repositories
             {
                 return await ExecuteAsync(async context =>
                 {
-                    // Check version before updating
-                    var currentVersion = await context.AsyncTasks
-                        .Where(t => t.Id == task.Id)
-                        .Select(t => t.Version)
-                        .FirstOrDefaultAsync(cancellationToken);
-
-                    if (currentVersion != expectedVersion)
-                    {
-                        Logger.LogWarning("Version mismatch for task {TaskId}. Expected {ExpectedVersion}, found {CurrentVersion}",
-                            task.Id, expectedVersion, currentVersion);
-                        return false;
-                    }
-
                     task.UpdatedAt = DateTime.UtcNow;
                     task.Version = expectedVersion + 1;
 
-                    context.AsyncTasks.Update(task);
+                    context.AsyncTasks.Attach(task);
+                    context.Entry(task).State = EntityState.Modified;
+                    context.Entry(task).Property(t => t.Version).OriginalValue = expectedVersion;
                     var affected = await context.SaveChangesAsync(cancellationToken);
 
                     if (affected > 0)
@@ -710,6 +710,7 @@ namespace ConduitLLM.Configuration.Repositories
                 {
                     task.ProviderInvocationStartedAt = null;
                     task.ProviderInvocationCompletedAt = null;
+                    task.ProviderOperationId = null;
                     task.CompletedAt = null;
                     task.NextRetryAt = null;
                     task.RetryCount++;

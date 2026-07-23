@@ -319,7 +319,10 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
                 {
                     execution.StartedAt = DateTime.UtcNow;
                 }
-                else if (state == ExecutionState.Completed || state == ExecutionState.Failed || state == ExecutionState.Cancelled)
+                else if (state == ExecutionState.Completed ||
+                         state == ExecutionState.Failed ||
+                         state == ExecutionState.Cancelled ||
+                         state == ExecutionState.TimedOut)
                 {
                     execution.CompletedAt = DateTime.UtcNow;
                     if (execution.StartedAt.HasValue)
