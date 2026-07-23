@@ -2,19 +2,21 @@ import { FilterOptions } from './common';
 import { VirtualKeyMetadata } from './metadata';
 import type { components } from '../generated/admin-api';
 
-export enum TransactionType {
-  Credit = 1,
-  Debit = 2,
-  Refund = 3,
-  Adjustment = 4
-}
+export const TransactionType = {
+  Credit: 'credit',
+  Debit: 'debit',
+  Refund: 'refund',
+  Adjustment: 'adjustment',
+} as const;
+export type TransactionType = (typeof TransactionType)[keyof typeof TransactionType];
 
-export enum ReferenceType {
-  Manual = 1,
-  VirtualKey = 2,
-  System = 3,
-  Initial = 4
-}
+export const ReferenceType = {
+  Manual: 'manual',
+  VirtualKey: 'virtualKey',
+  System: 'system',
+  Initial: 'initial',
+} as const;
+export type ReferenceType = (typeof ReferenceType)[keyof typeof ReferenceType];
 
 export type VirtualKeyGroupDto = components['schemas']['VirtualKeyGroupDto'];
 export type CreateVirtualKeyGroupRequestDto = components['schemas']['CreateVirtualKeyGroupRequestDto'];

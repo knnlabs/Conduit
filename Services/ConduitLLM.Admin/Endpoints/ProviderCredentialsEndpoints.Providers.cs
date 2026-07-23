@@ -140,7 +140,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (!ProviderTypeCatalog.IsConfigurable(request.ProviderType))
             {
-                return BadRequest(new ErrorResponseDto("Provider type must identify a configurable provider."));
+                return BadRequest("Provider type must identify a configurable provider.");
             }
 
             var provider = new Provider

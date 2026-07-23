@@ -1,4 +1,4 @@
-import type { CreateProviderTool } from '@/lib/admin-api';
+import { normalizeProviderType, type CreateProviderTool } from '@/lib/admin-api';
 
 export const MAX_PROVIDER_TOOL_IMPORT_ROWS = 5_000;
 export const LARGE_PROVIDER_TOOL_IMPORT_ROWS = 500;
@@ -65,9 +65,13 @@ export function parseProviderToolImport(contents: string): ProviderToolImportPre
 
     const provider = value.provider;
     const rawToolName = value.toolName;
+    const normalizedProvider =
+      typeof provider === 'string' || typeof provider === 'number'
+        ? normalizeProviderType(provider)
+        : undefined;
 
-    if (typeof provider !== 'number' || !Number.isInteger(provider) || provider <= 0) {
-      errors.push('provider must be a positive integer.');
+    if (!normalizedProvider || normalizedProvider === 'unknown') {
+      errors.push('provider must be a recognized provider name or legacy positive integer.');
     }
 
     if (typeof rawToolName !== 'string' || rawToolName.trim().length === 0) {
@@ -101,8 +105,8 @@ export function parseProviderToolImport(contents: string): ProviderToolImportPre
     }
 
     const toolName = typeof rawToolName === 'string' ? rawToolName.trim() : '';
-    if (typeof provider === 'number' && Number.isInteger(provider) && provider > 0 && toolName) {
-      const duplicateKey = `${provider}:${toolName.toLowerCase()}`;
+    if (normalizedProvider && normalizedProvider !== 'unknown' && toolName) {
+      const duplicateKey = `${normalizedProvider}:${toolName.toLowerCase()}`;
       if (seenTools.has(duplicateKey)) {
         duplicateCount += 1;
         errors.push('Duplicate provider and toolName in this file.');
@@ -113,7 +117,7 @@ export function parseProviderToolImport(contents: string): ProviderToolImportPre
 
     const tool: CreateProviderTool | null = errors.length === 0
       ? {
-          provider: provider as number,
+          provider: normalizedProvider ?? 'unknown',
           toolName,
           toolParameters: (value.toolParameters as string | null | undefined) ?? null,
           costPerUnit: (value.costPerUnit as number | null | undefined) ?? null,
@@ -126,7 +130,8 @@ export function parseProviderToolImport(contents: string): ProviderToolImportPre
     return {
       rowNumber,
       tool,
-      providerLabel: typeof provider === 'number' ? String(provider) : '—',
+      providerLabel:
+        typeof provider === 'string' || typeof provider === 'number' ? String(provider) : '—',
       toolName: toolName || '—',
       errors,
     };

@@ -1,7 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { ApiKeyTestResult } from '@/lib/admin-api';
+import { ApiKeyTestResult, type ProviderType } from '@/lib/admin-api';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
 
 interface UseProviderFormHandlersParams {
@@ -32,7 +32,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
 
         // First create the provider without the API key
         const providerPayload = {
-          providerType: parseInt(values.providerType, 10),
+          providerType: values.providerType as ProviderType,
           providerName: providerName,
           baseUrl: values.apiEndpoint ?? undefined,
           isEnabled: values.isEnabled,
@@ -113,7 +113,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
       if (mode === 'add') {
         result = await withAdminClient(client => 
           client.providers.testConfig({
-            providerType: parseInt(form.values.providerType, 10),
+            providerType: form.values.providerType as ProviderType,
             apiKey: form.values.apiKey,
             baseUrl: form.values.apiEndpoint ?? undefined,
             organizationId: form.values.organizationId ?? undefined,

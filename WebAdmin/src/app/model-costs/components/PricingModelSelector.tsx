@@ -127,7 +127,7 @@ export function PricingModelSelector({
 
   const handleModelChange = (value: string | null) => {
     if (value) {
-      const model = Number(value) as PricingModel;
+      const model = value as PricingModel;
       onPricingModelChange(model);
 
       // Set default configuration for the selected model

@@ -54,7 +54,7 @@ namespace ConduitLLM.Core.Http
                 var response = await base.SendAsync(request, cancellationToken);
 
                 // Log response correlation
-                if (response.Headers.TryGetValues("X-Correlation-ID", out var responseCorrelationIds))
+                if (response.Headers.TryGetValues("x-request-id", out var responseCorrelationIds))
                 {
                     _logger.LogDebug(
                         "Received response with correlation ID: {ResponseCorrelationId} for request {CorrelationId}",

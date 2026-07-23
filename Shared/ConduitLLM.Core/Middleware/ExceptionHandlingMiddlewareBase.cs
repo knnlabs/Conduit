@@ -14,7 +14,7 @@ namespace ConduitLLM.Core.Middleware;
 /// Base middleware for global exception handling. Catches unhandled exceptions,
 /// logs them with request context, maps them via <see cref="ExceptionToResponseMapper"/>,
 /// and writes a JSON error response.
-/// Subclasses control the response format (e.g., <c>ErrorResponseDto</c> vs <c>OpenAIErrorResponse</c>).
+/// Subclasses control the response format (RFC Problem Details vs the OpenAI error envelope).
 /// </summary>
 public abstract class ExceptionHandlingMiddlewareBase
 {
@@ -32,6 +32,7 @@ public abstract class ExceptionHandlingMiddlewareBase
     /// Display name used in log messages (e.g., "AdminExceptionMiddleware").
     /// </summary>
     protected abstract string MiddlewareName { get; }
+    protected virtual string ErrorContentType => "application/json";
 
     protected ExceptionHandlingMiddlewareBase(
         RequestDelegate next,
@@ -114,8 +115,8 @@ public abstract class ExceptionHandlingMiddlewareBase
 
         // Set common response headers
         context.Response.StatusCode = mapping.StatusCode;
-        context.Response.ContentType = "application/json";
-        context.Response.Headers["X-Request-Id"] = traceId;
+        context.Response.ContentType = ErrorContentType;
+        context.Response.Headers["x-request-id"] = traceId;
 
         if (exception is RateLimitExceededException rateLimitEx && rateLimitEx.RetryAfterSeconds.HasValue)
         {
@@ -123,7 +124,7 @@ public abstract class ExceptionHandlingMiddlewareBase
         }
 
         // Serialize and write the format-specific response
-        var json = CreateErrorResponseJson(message, mapping);
+        var json = CreateErrorResponseJson(message, mapping, traceId);
         await context.Response.WriteAsync(json);
     }
 
@@ -139,9 +140,10 @@ public abstract class ExceptionHandlingMiddlewareBase
 
     /// <summary>
     /// Creates the JSON response body for the error. Subclasses produce their format
-    /// (e.g., <c>ErrorResponseDto</c> or <c>OpenAIErrorResponse</c>).
+    /// (RFC Problem Details or the OpenAI error envelope).
     /// </summary>
     protected abstract string CreateErrorResponseJson(
         string message,
-        ExceptionToResponseMapper.ExceptionMappingResult mapping);
+        ExceptionToResponseMapper.ExceptionMappingResult mapping,
+        string traceId);
 }

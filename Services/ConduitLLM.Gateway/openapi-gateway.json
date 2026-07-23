@@ -15,6 +15,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -25,6 +33,14 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -60,6 +76,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -70,6 +94,14 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -80,6 +112,14 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -115,48 +155,22 @@
                   }
                 ]
               }
-            },
-            "text/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
-                  }
-                ]
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/components/schemas/GenerateEphemeralKeyRequest"
-                  }
-                ]
-              }
             }
           }
         },
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EphemeralKeyResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EphemeralKeyResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/EphemeralKeyResponse"
                 }
@@ -165,18 +179,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -185,18 +197,16 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -232,24 +242,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "type": "array",
                   "items": {
@@ -261,18 +263,16 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -295,16 +295,6 @@
               "schema": {
                 "$ref": "#/components/schemas/RerankRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RerankRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/RerankRequest"
-              }
             }
           },
           "required": true
@@ -312,6 +302,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -340,16 +338,6 @@
               "schema": {
                 "$ref": "#/components/schemas/EmbeddingRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmbeddingRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/EmbeddingRequest"
-              }
             }
           },
           "required": true
@@ -357,18 +345,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmbeddingResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/EmbeddingResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/EmbeddingResponse"
                 }
@@ -377,18 +363,16 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -397,18 +381,16 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -435,16 +417,6 @@
               "schema": {
                 "$ref": "#/components/schemas/ChatCompletionRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChatCompletionRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChatCompletionRequest"
-              }
             }
           },
           "required": true
@@ -452,18 +424,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChatCompletionResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ChatCompletionResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ChatCompletionResponse"
                 }
@@ -477,18 +447,16 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -497,18 +465,16 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -541,6 +507,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -566,6 +540,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -601,6 +583,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -642,6 +632,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -682,6 +680,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -717,6 +723,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -751,7 +765,15 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "No Content",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -806,6 +828,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -828,19 +858,18 @@
           "Batch Operations"
         ],
         "operationId": "BatchOperations_StartSpendUpdates",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchSpendUpdateRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchSpendUpdateRequest"
-              }
-            },
-            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/BatchSpendUpdateRequest"
               }
@@ -851,18 +880,16 @@
         "responses": {
           "202": {
             "description": "Accepted",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStartResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStartResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BatchOperationStartResponse"
                 }
@@ -871,40 +898,36 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
@@ -929,16 +952,6 @@
               "schema": {
                 "$ref": "#/components/schemas/BatchVirtualKeyUpdateRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchVirtualKeyUpdateRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchVirtualKeyUpdateRequest"
-              }
             }
           },
           "required": true
@@ -946,18 +959,16 @@
         "responses": {
           "202": {
             "description": "Accepted",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStartResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStartResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BatchOperationStartResponse"
                 }
@@ -966,40 +977,36 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
@@ -1024,16 +1031,6 @@
               "schema": {
                 "$ref": "#/components/schemas/BatchWebhookSendRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchWebhookSendRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/BatchWebhookSendRequest"
-              }
             }
           },
           "required": true
@@ -1041,18 +1038,16 @@
         "responses": {
           "202": {
             "description": "Accepted",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStartResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStartResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BatchOperationStartResponse"
                 }
@@ -1061,40 +1056,36 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
@@ -1126,18 +1117,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStatusResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchOperationStatusResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BatchOperationStatusResponse"
                 }
@@ -1146,20 +1135,18 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
@@ -1190,44 +1177,48 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "No Content",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "409": {
             "description": "Conflict",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
@@ -1249,18 +1240,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchingStatistics"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BatchingStatistics"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/BatchingStatistics"
                 }
@@ -1280,6 +1269,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1305,6 +1302,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1330,6 +1335,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1355,6 +1368,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1376,18 +1397,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConnectionStatistics"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ConnectionStatistics"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/ConnectionStatistics"
                 }
@@ -1407,18 +1426,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QueueStatistics"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QueueStatistics"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/QueueStatistics"
                 }
@@ -1438,6 +1455,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1473,6 +1498,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1509,6 +1542,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1544,6 +1585,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1565,6 +1614,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1600,6 +1657,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1625,6 +1690,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1643,19 +1716,18 @@
           "Functions"
         ],
         "operationId": "Functions_Execute",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "content": {
             "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FunctionExecutionRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FunctionExecutionRequest"
-              }
-            },
-            "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/FunctionExecutionRequest"
               }
@@ -1666,6 +1738,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1676,46 +1756,57 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1745,6 +1836,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1755,26 +1854,39 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              },
-              "text/plain": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
               }
             }
           },
           "500": {
-            "description": "Internal Server Error"
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenAIErrorResponse"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -1858,6 +1970,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1886,16 +2006,6 @@
               "schema": {
                 "$ref": "#/components/schemas/TextToSpeechRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/TextToSpeechRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/TextToSpeechRequest"
-              }
             }
           },
           "required": true
@@ -1903,6 +2013,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "audio/mpeg": {
                 "schema": {
@@ -1958,6 +2076,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -1993,6 +2119,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2028,6 +2162,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/octet-stream": {
                 "schema": {
@@ -2057,7 +2199,15 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [ ]
@@ -2082,6 +2232,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2110,16 +2268,6 @@
               "schema": {
                 "$ref": "#/components/schemas/GenerateUrlRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateUrlRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateUrlRequest"
-              }
             }
           },
           "required": true
@@ -2127,6 +2275,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2170,6 +2326,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/octet-stream": {
                 "schema": {
@@ -2203,7 +2367,15 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -2225,16 +2397,6 @@
               "schema": {
                 "$ref": "#/components/schemas/ImageGenerationRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ImageGenerationRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ImageGenerationRequest"
-              }
             }
           },
           "required": true
@@ -2242,6 +2404,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2270,16 +2440,6 @@
               "schema": {
                 "$ref": "#/components/schemas/ImageGenerationRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ImageGenerationRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/ImageGenerationRequest"
-              }
             }
           },
           "required": true
@@ -2287,6 +2447,14 @@
         "responses": {
           "202": {
             "description": "Accepted",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2322,6 +2490,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2357,6 +2533,14 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -2385,16 +2569,6 @@
               "schema": {
                 "$ref": "#/components/schemas/VideoGenerationRequest"
               }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/VideoGenerationRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/VideoGenerationRequest"
-              }
             }
           },
           "required": true
@@ -2402,18 +2576,16 @@
         "responses": {
           "202": {
             "description": "Accepted",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VideoGenerationTaskResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VideoGenerationTaskResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VideoGenerationTaskResponse"
                 }
@@ -2422,18 +2594,16 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2442,18 +2612,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2462,18 +2630,16 @@
           },
           "403": {
             "description": "Forbidden",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2482,18 +2648,16 @@
           },
           "429": {
             "description": "Too Many Requests",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2502,18 +2666,16 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2547,18 +2709,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VideoGenerationTaskStatus"
                 }
@@ -2567,18 +2727,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2587,18 +2745,16 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2607,18 +2763,16 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2652,18 +2806,16 @@
         "responses": {
           "200": {
             "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VideoGenerationTaskStatus"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/VideoGenerationTaskStatus"
                 }
@@ -2672,18 +2824,16 @@
           },
           "400": {
             "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2692,18 +2842,16 @@
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2712,18 +2860,16 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2732,18 +2878,16 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2776,22 +2920,28 @@
         ],
         "responses": {
           "204": {
-            "description": "No Content"
+            "description": "No Content",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "401": {
             "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2800,18 +2950,16 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2820,18 +2968,16 @@
           },
           "409": {
             "description": "Conflict",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -2840,18 +2986,16 @@
           },
           "500": {
             "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
             "content": {
               "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/OpenAIErrorResponse"
-                }
-              },
-              "text/plain": {
                 "schema": {
                   "$ref": "#/components/schemas/OpenAIErrorResponse"
                 }
@@ -3739,7 +3883,12 @@
         }
       },
       "CircuitState": {
-        "type": "integer"
+        "enum": [
+          "closed",
+          "open",
+          "half_open",
+          "isolated"
+        ]
       },
       "ConnectionDetailsResponse": {
         "required": [
@@ -4611,13 +4760,6 @@
               "object"
             ],
             "description": "Optional metadata to associate with the execution."
-          },
-          "idempotencyKey": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Optional idempotency key to prevent duplicate executions."
           }
         },
         "description": "Request model for function execution."
@@ -5093,7 +5235,12 @@
         }
       },
       "MediaType": {
-        "type": "integer"
+        "enum": [
+          "image",
+          "video",
+          "audio",
+          "other"
+        ]
       },
       "MediaUploadResponse": {
         "required": [
@@ -5497,7 +5644,31 @@
         "type": "object",
         "properties": {
           "error": {
-            "$ref": "#/components/schemas/OpenAIError"
+            "required": [
+              "message",
+              "type"
+            ],
+            "type": "object",
+            "properties": {
+              "message": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "param": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "code": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            }
           }
         }
       },
@@ -5603,46 +5774,24 @@
           }
         }
       },
-      "ProblemDetails": {
-        "type": "object",
-        "properties": {
-          "type": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "title": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "status": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
       "ProviderType": {
-        "type": "integer"
+        "enum": [
+          "unknown",
+          "open_ai",
+          "groq",
+          "replicate",
+          "fireworks",
+          "open_ai_compatible",
+          "mini_max",
+          "ultravox",
+          "eleven_labs",
+          "cerebras",
+          "samba_nova",
+          "deep_infra",
+          "cloudflare",
+          "open_router",
+          "meta"
+        ]
       },
       "QueueStatistics": {
         "type": "object",
@@ -6144,7 +6293,15 @@
         }
       },
       "TaskState": {
-        "type": "integer"
+        "enum": [
+          "pending",
+          "processing",
+          "completed",
+          "failed",
+          "cancelled",
+          "timed_out",
+          "indeterminate"
+        ]
       },
       "TextToSpeechRequest": {
         "required": [

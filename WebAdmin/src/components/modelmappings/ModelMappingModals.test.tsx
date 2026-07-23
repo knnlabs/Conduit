@@ -25,7 +25,7 @@ jest.mock('@/lib/notifications', () => ({
   notify: { error: jest.fn(), success: jest.fn(), warning: jest.fn() },
 }));
 jest.mock('@/lib/utils/providerTypeUtils', () => ({
-  getProviderTypeFromDto: jest.fn(() => 13),
+  getProviderTypeFromDto: jest.fn(() => 'openRouter'),
   getProviderDisplayName: jest.fn(() => 'OpenRouter'),
 }));
 jest.mock('./AssociationProviderSelect', () => ({
@@ -70,14 +70,14 @@ beforeEach(() => {
       speedScore: null,
       qualityScore: null,
       isPrimary: true,
-      availableProviders: [{ providerId: 9, providerName: 'OpenRouter', providerType: 13 }],
+      availableProviders: [{ providerId: 9, providerName: 'OpenRouter', providerType: 'openRouter' }],
     }],
     isLoading: false,
   } as unknown as ReturnType<typeof useModelAssociations>);
   jest.mocked(useProviders).mockReturnValue({
     providers: [{
       id: 9,
-      providerType: 13,
+      providerType: 'openRouter',
       providerName: 'OpenRouter',
       keyCount: 1,
       trustProviderReportedCosts: false,
@@ -87,7 +87,7 @@ beforeEach(() => {
       updatedAt: '2026-01-01T00:00:00Z',
     }],
     isLoading: false,
-  } as ReturnType<typeof useProviders>);
+  } as unknown as ReturnType<typeof useProviders>);
 });
 
 it('creates a same-alias mapping for a different provider with exact foreign keys', async () => {

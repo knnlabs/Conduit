@@ -129,7 +129,7 @@ describe('ImportProviderToolsModal', () => {
     renderModal({ onSuccess });
     selectJson(JSON.stringify([{
       id: 99,
-      provider: 1,
+      provider: 'openAI',
       toolName: ' browser_search ',
       costPerUnit: 0.01,
       isActive: true,
@@ -139,7 +139,7 @@ describe('ImportProviderToolsModal', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Confirm import (1)' }));
 
     await waitFor(() => expect(importProviderTools).toHaveBeenCalledWith([{
-      provider: 1,
+      provider: 'openAI',
       toolName: 'browser_search',
       toolParameters: null,
       costPerUnit: 0.01,
@@ -150,5 +150,17 @@ describe('ImportProviderToolsModal', () => {
     expect(await screen.findByText('1 imported')).toBeInTheDocument();
     expect(screen.getByText('0 skipped')).toBeInTheDocument();
     expect(onSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it('normalizes legacy numeric providers before submission', async () => {
+    importProviderTools.mockResolvedValue({ imported: 1, skipped: 0, total: 1, errors: [] });
+    renderModal();
+    selectJson(JSON.stringify([{ provider: 1, toolName: 'browser_search' }]));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Confirm import (1)' }));
+
+    await waitFor(() => expect(importProviderTools).toHaveBeenCalledWith([
+      expect.objectContaining({ provider: 'openAI', toolName: 'browser_search' }),
+    ]));
   });
 });

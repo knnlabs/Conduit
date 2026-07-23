@@ -198,7 +198,7 @@ describe('contract-native model-family mutations', () => {
       speedScore: null,
       qualityScore: null,
       providerVariation: null,
-      normalizedProvider: 2,
+      normalizedProvider: 'groq',
       providerName: 'Groq',
     });
 

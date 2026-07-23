@@ -138,8 +138,7 @@ namespace ConduitLLM.Core.Services
             var correlationId = CorrelationId;
             if (!string.IsNullOrEmpty(correlationId))
             {
-                headers["X-Correlation-ID"] = correlationId;
-                headers["X-Request-ID"] = correlationId;
+                headers["x-request-id"] = correlationId;
             }
 
             // Add W3C Trace Context if available

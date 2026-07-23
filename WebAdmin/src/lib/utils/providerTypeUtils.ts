@@ -24,7 +24,7 @@ export const getProviderTypeFromDisplayName = (displayName: string): ProviderTyp
   const entry = Object.entries(PROVIDER_REGISTRY).find(
     ([, metadata]) => metadata.name === displayName || metadata.label === displayName
   );
-  return entry ? parseInt(entry[0], 10) as ProviderType : undefined;
+  return entry ? entry[0] as ProviderType : undefined;
 };
 
 // Convert ProviderType to select options using SDK registry
@@ -42,16 +42,16 @@ export const providerTypeToString = (providerType: ProviderType): string => {
 
 // Convert string back to ProviderType
 export const stringToProviderType = (str: string): ProviderType => {
-  const num = parseInt(str, 10);
-  if (isNaN(num)) {
+  const value = Object.values(ProviderType).find(candidate => candidate === str);
+  if (!value) {
     throw new Error(`Invalid provider type string: ${str}`);
   }
-  return num as ProviderType;
+  return value;
 };
 
 // Type guard to check if a value is a valid ProviderType
 export const isValidProviderType = (value: unknown): value is ProviderType => {
-  return typeof value === 'number' && value in ProviderType;
+  return typeof value === 'string' && Object.values(ProviderType).includes(value as ProviderType);
 };
 
 
@@ -66,6 +66,11 @@ export const providerTypeToName = (providerType: ProviderType): string => {
 };
 
 // Helper to get ProviderType from a DTO
-export const getProviderTypeFromDto = (dto: { providerType: number }): ProviderType => {
-  return dto.providerType as ProviderType;
+export const getProviderTypeFromDto = (dto: { providerType: string | number }): ProviderType => {
+  if (typeof dto.providerType === 'number') {
+    return Object.values(ProviderType).filter(value => value !== ProviderType.Unknown)[dto.providerType - 1]
+      ?? ProviderType.Unknown;
+  }
+  return Object.values(ProviderType).find(value => value === dto.providerType)
+    ?? ProviderType.Unknown;
 };

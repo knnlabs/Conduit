@@ -314,7 +314,7 @@ describe('contract-native model reads', () => {
       qualityScore: 0.8,
       providerVariation: 'fast',
       modelCostId: 12,
-      normalizedProvider: 2,
+      normalizedProvider: 'groq',
       providerName: 'Groq',
     }]);
 
@@ -366,7 +366,7 @@ describe('contract-native model reads', () => {
           identifier: 'provider/nova-chat',
           provider: 2,
           isPrimary: true,
-          normalizedProvider: 2,
+          normalizedProvider: 'groq',
           providerName: 'Groq',
         }],
       }],

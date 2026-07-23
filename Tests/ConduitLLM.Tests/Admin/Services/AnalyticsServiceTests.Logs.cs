@@ -33,9 +33,9 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(1, result.Page);
+            Assert.Equal(1, result.CurrentPage);
             Assert.Equal(10, result.PageSize);
-            Assert.Equal(25, result.TotalItems);
+            Assert.Equal(25, result.TotalCount);
             Assert.Equal(3, result.TotalPages);
             Assert.Equal(10, result.Items.Count);
         }

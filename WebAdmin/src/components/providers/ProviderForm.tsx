@@ -57,8 +57,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
   } = handlers;
 
   const getProviderHelp = (providerType: string) => {
-    const providerTypeNum = parseInt(providerType, 10) as ProviderType;
-    const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
+    const config = PROVIDER_CONFIG_REQUIREMENTS[providerType as ProviderType];
     if (!config?.helpText) {
       return null;
     }
@@ -81,7 +80,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
   };
 
   const providerHelp = getProviderHelp(form.values.providerType);
-  const providerTypeNum = parseInt(form.values.providerType, 10) as ProviderType;
+  const providerTypeNum = form.values.providerType as ProviderType;
   const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
 
   return (

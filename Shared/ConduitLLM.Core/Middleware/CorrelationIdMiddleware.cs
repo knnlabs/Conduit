@@ -9,7 +9,7 @@ namespace ConduitLLM.Core.Middleware
 {
     /// <summary>
     /// Middleware for managing correlation IDs across distributed requests.
-    /// Extracts correlation IDs from incoming headers (X-Correlation-ID, X-Request-ID, traceparent, etc.)
+    /// Extracts the canonical request ID from x-request-id or creates one.
     /// or generates new ones, then propagates them through the request pipeline via logging scopes,
     /// OpenTelemetry Activity baggage, and response headers.
     /// </summary>
@@ -20,14 +20,7 @@ namespace ConduitLLM.Core.Middleware
         private readonly CorrelationIdOptions _options;
 
         // Common header names for correlation IDs
-        private static readonly string[] IncomingHeaderNames = new[]
-        {
-            "X-Correlation-ID",
-            "X-Request-ID",
-            "X-Trace-ID",
-            "X-Amzn-Trace-Id",
-            "TraceId"
-        };
+        private static readonly string[] IncomingHeaderNames = ["x-request-id"];
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CorrelationIdMiddleware"/> class.
@@ -169,7 +162,7 @@ namespace ConduitLLM.Core.Middleware
         /// <summary>
         /// Gets or sets the response header name for correlation ID.
         /// </summary>
-        public string ResponseHeader { get; set; } = "X-Correlation-ID";
+        public string ResponseHeader { get; set; } = "x-request-id";
 
         /// <summary>
         /// Gets or sets whether to include correlation ID in response headers.

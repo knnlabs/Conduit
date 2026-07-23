@@ -100,12 +100,12 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (request.From > request.To)
             {
-                return Results.BadRequest("From date must be before or equal to To date");
+                return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
             if (request.PageSize > 1000)
             {
-                return Results.BadRequest("Page size cannot exceed 1000");
+                return AdminResults.BadRequest("Page size cannot exceed 1000");
             }
 
             using var timer = BillingAuditQueryDuration.WithLabels("query").NewTimer();
@@ -148,7 +148,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (from > to)
             {
-                return Results.BadRequest("From date must be before or equal to To date");
+                return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
             using var timer = BillingAuditQueryDuration.WithLabels("summary").NewTimer();
@@ -171,7 +171,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (from > to)
             {
-                return Results.BadRequest("From date must be before or equal to To date");
+                return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
             using var timer = BillingAuditQueryDuration.WithLabels("anomalies").NewTimer();
@@ -201,7 +201,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (from > to)
             {
-                return Results.BadRequest("From date must be before or equal to To date");
+                return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
             using var timer = BillingAuditQueryDuration.WithLabels("revenue-loss").NewTimer();
@@ -221,7 +221,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (request.From > request.To)
             {
-                return Results.BadRequest("From date must be before or equal to To date");
+                return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
             using var timer = BillingAuditQueryDuration.WithLabels("export").NewTimer();
@@ -251,11 +251,11 @@ namespace ConduitLLM.Admin.Endpoints
 
                 case ExportFormat.Excel:
                     BillingAuditExports.WithLabels("excel", "not_implemented").Inc();
-                    return Results.BadRequest("Excel export not yet implemented");
+                    return AdminResults.BadRequest("Excel export not yet implemented");
 
                 default:
                     BillingAuditExports.WithLabels(request.Format.ToString(), "unsupported").Inc();
-                    return Results.BadRequest($"Unsupported export format: {request.Format}");
+                    return AdminResults.BadRequest($"Unsupported export format: {request.Format}");
             }
         }
 

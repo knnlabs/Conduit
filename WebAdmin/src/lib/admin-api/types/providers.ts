@@ -20,7 +20,7 @@ export interface ProviderMetadata {
 /**
  * Provider configuration registry
  */
-export const PROVIDER_REGISTRY: Record<number, ProviderMetadata> = {
+export const PROVIDER_REGISTRY: Partial<Record<ProviderType, ProviderMetadata>> = {
   [ProviderType.OpenAI]: {
     value: ProviderType.OpenAI,
     name: 'OpenAI',
@@ -161,20 +161,15 @@ export const PROVIDER_REGISTRY: Record<number, ProviderMetadata> = {
  * Get list of available providers for dropdown/selection
  */
 export function getAvailableProviders(): ProviderMetadata[] {
-  return Object.values(PROVIDER_REGISTRY);
+  return Object.values(PROVIDER_REGISTRY).filter(
+    (provider): provider is ProviderMetadata => provider !== undefined
+  );
 }
 
 /**
  * Get provider metadata by type
  */
 export function getProviderMetadata(provider: string | number): ProviderMetadata | undefined {
-  // Try parsing as number first
-  const numProvider = typeof provider === 'number' ? provider : parseInt(provider, 10);
-  if (!isNaN(numProvider) && numProvider in PROVIDER_REGISTRY) {
-    return PROVIDER_REGISTRY[numProvider];
-  }
-
-  // Try case-insensitive match
   const normalizedProvider = normalizeProviderType(provider);
   if (normalizedProvider !== undefined) {
     return PROVIDER_REGISTRY[normalizedProvider];
@@ -197,22 +192,27 @@ export function getProviderTypeName(value: ProviderType): string {
 export function normalizeProviderType(provider: string | number): ProviderType | undefined {
   if (!provider && provider !== 0) return undefined;
 
-  // If it's already a number, check if it's valid
+  // Numeric values are accepted only as a compatibility bridge for persisted UI state.
   if (typeof provider === 'number') {
-    return provider in PROVIDER_REGISTRY ? provider as ProviderType : undefined;
+    return Object.values(ProviderType).filter(value => value !== ProviderType.Unknown)[provider - 1];
   }
 
-  // Try to parse as number
   const numValue = parseInt(provider, 10);
-  if (!isNaN(numValue) && numValue in PROVIDER_REGISTRY) {
-    return numValue as ProviderType;
+  if (!isNaN(numValue)) {
+    return normalizeProviderType(numValue);
   }
 
-  // Try case-insensitive match against provider names
+  const direct = Object.values(ProviderType).find(
+    value => value.toLowerCase() === provider.toLowerCase()
+  );
+  if (direct) {
+    return direct;
+  }
+
   const upperProvider = provider.toUpperCase();
   for (const [key, metadata] of Object.entries(PROVIDER_REGISTRY)) {
-    if (metadata.name.toUpperCase() === upperProvider) {
-      return Number(key) as ProviderType;
+    if (metadata?.name.toUpperCase() === upperProvider) {
+      return key as ProviderType;
     }
   }
 
@@ -300,4 +300,12 @@ export function getProviderConstraints(): ProviderConstraints {
       max: 200000
     }
   };
+}
+
+/** Converts a canonical wire provider value for legacy numeric association fields. */
+export function providerTypeToOrdinal(provider: ProviderType): number {
+  if (provider === ProviderType.Unknown) return 0;
+  return Object.values(ProviderType)
+    .filter(value => value !== ProviderType.Unknown)
+    .indexOf(provider) + 1;
 }

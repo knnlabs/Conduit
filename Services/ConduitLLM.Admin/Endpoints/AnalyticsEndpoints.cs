@@ -99,12 +99,12 @@ public class AnalyticsEndpoints
         // Validate parameters
         if (page < 1)
         {
-            return Results.BadRequest("Page must be greater than or equal to 1");
+            return AdminResults.BadRequest("Page must be greater than or equal to 1");
         }
 
         if (pageSize < 1 || pageSize > 100)
         {
-            return Results.BadRequest("Page size must be between 1 and 100");
+            return AdminResults.BadRequest("Page size must be between 1 and 100");
         }
 
         var result = await _analyticsService.GetLogsAsync(
@@ -155,7 +155,7 @@ public class AnalyticsEndpoints
     {
         if (timeframe is not ("daily" or "weekly" or "monthly"))
         {
-            return Results.BadRequest("Timeframe must be one of: daily, weekly, monthly");
+            return AdminResults.BadRequest("Timeframe must be one of: daily, weekly, monthly");
         }
 
         var summary = await _analyticsService.GetCostSummaryAsync(timeframe, startDate, endDate);
@@ -176,7 +176,7 @@ public class AnalyticsEndpoints
     {
         if (period is not ("daily" or "weekly" or "monthly"))
         {
-            return Results.BadRequest("Period must be one of: daily, weekly, monthly");
+            return AdminResults.BadRequest("Period must be one of: daily, weekly, monthly");
         }
 
         var trends = await _analyticsService.GetCostTrendsAsync(period, startDate, endDate);
@@ -233,7 +233,7 @@ public class AnalyticsEndpoints
     {
         if (timeframe is not ("daily" or "weekly" or "monthly"))
         {
-            return Results.BadRequest("Timeframe must be one of: daily, weekly, monthly");
+            return AdminResults.BadRequest("Timeframe must be one of: daily, weekly, monthly");
         }
 
         var summary = await _analyticsService.GetAnalyticsSummaryAsync(timeframe, startDate, endDate);
@@ -275,7 +275,7 @@ public class AnalyticsEndpoints
         // Validate format
         if (format.ToLower() != "csv" && format.ToLower() != "json")
         {
-            return Results.BadRequest("Format must be one of: csv, json");
+            return AdminResults.BadRequest("Format must be one of: csv, json");
         }
 
         using var activity = AdminRequestMetrics.StartCsvActivity("export", "analytics");
@@ -301,7 +301,7 @@ public class AnalyticsEndpoints
     {
         if (_analyticsMetrics == null)
         {
-            return Results.NotFound("Metrics collection is not enabled");
+            return AdminResults.NotFound("Metrics collection is not enabled");
         }
 
         var metrics = _analyticsMetrics.GetCacheStatistics();
@@ -324,7 +324,7 @@ public class AnalyticsEndpoints
     {
         if (_analyticsMetrics == null)
         {
-            return Results.NotFound("Metrics collection is not enabled");
+            return AdminResults.NotFound("Metrics collection is not enabled");
         }
 
         var metrics = _analyticsMetrics.GetOperationStatistics();

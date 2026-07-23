@@ -273,7 +273,7 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
     {
         if (string.IsNullOrEmpty(key))
         {
-            return BadRequest(new { message = "Key value is required" });
+            return BadRequest("Key value is required");
         }
 
         var result = await _virtualKeyService.GetUsageByKeyAsync(key);

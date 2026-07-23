@@ -1042,7 +1042,8 @@ export interface components {
       message: components["schemas"]["Message"];
       logprobs?: unknown;
     };
-    CircuitState: number;
+    /** @enum {unknown} */
+    CircuitState: "closed" | "open" | "half_open" | "isolated";
     /** @description Detailed active SignalR connections. */
     ConnectionDetailsResponse: {
       activeConnections: components["schemas"]["ConnectionInfo"][];
@@ -1299,8 +1300,6 @@ export interface components {
       parameters?: null | Record<string, never>;
       /** @description Optional metadata to associate with the execution. */
       metadata?: null | Record<string, never>;
-      /** @description Optional idempotency key to prevent duplicate executions. */
-      idempotencyKey?: null | string;
     };
     /** @description Response model for function execution. */
     FunctionExecutionResponse: {
@@ -1452,7 +1451,8 @@ export interface components {
         [key: string]: string;
       };
     };
-    MediaType: number;
+    /** @enum {unknown} */
+    MediaType: "image" | "video" | "audio" | "other";
     /** @description Media upload response. */
     MediaUploadResponse: {
       success: boolean;
@@ -1551,7 +1551,12 @@ export interface components {
       code?: null | string;
     };
     OpenAIErrorResponse: {
-      error: components["schemas"]["OpenAIError"];
+      error: {
+        message: string;
+        type: string;
+        param?: null | string;
+        code?: null | string;
+      };
     };
     PerformanceMetrics: {
       /** Format: int64 */
@@ -1578,15 +1583,23 @@ export interface components {
       /** Format: int32 */
       total_tokens?: null | number | string;
     };
-    ProblemDetails: {
-      type?: null | string;
-      title?: null | string;
-      /** Format: int32 */
-      status?: null | number | string;
-      detail?: null | string;
-      instance?: null | string;
-    };
-    ProviderType: number;
+    /** @enum {unknown} */
+    ProviderType:
+      | "unknown"
+      | "open_ai"
+      | "groq"
+      | "replicate"
+      | "fireworks"
+      | "open_ai_compatible"
+      | "mini_max"
+      | "ultravox"
+      | "eleven_labs"
+      | "cerebras"
+      | "samba_nova"
+      | "deep_infra"
+      | "cloudflare"
+      | "open_router"
+      | "meta";
     /** @description Statistics about the message queue */
     QueueStatistics: {
       /** Format: int32 */
@@ -1710,7 +1723,15 @@ export interface components {
       /** Format: int32 */
       priority?: number | string;
     };
-    TaskState: number;
+    /** @enum {unknown} */
+    TaskState:
+      | "pending"
+      | "processing"
+      | "completed"
+      | "failed"
+      | "cancelled"
+      | "timed_out"
+      | "indeterminate";
     TextToSpeechRequest: {
       model: string;
       input: string;
@@ -1908,6 +1929,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -1917,6 +1940,8 @@ export interface operations {
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -1939,6 +1964,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -1948,6 +1975,8 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -1957,6 +1986,8 @@ export interface operations {
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -1977,46 +2008,40 @@ export interface operations {
         "application/json":
           | null
           | components["schemas"]["GenerateEphemeralKeyRequest"];
-        "text/json":
-          | null
-          | components["schemas"]["GenerateEphemeralKeyRequest"];
-        "application/*+json":
-          | null
-          | components["schemas"]["GenerateEphemeralKeyRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["EphemeralKeyResponse"];
-          "text/json": components["schemas"]["EphemeralKeyResponse"];
-          "text/plain": components["schemas"]["EphemeralKeyResponse"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2035,23 +2060,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": string[];
-          "text/json": string[];
-          "text/plain": string[];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2066,14 +2091,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["RerankRequest"];
-        "text/json": components["schemas"]["RerankRequest"];
-        "application/*+json": components["schemas"]["RerankRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2092,42 +2117,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["EmbeddingRequest"];
-        "text/json": components["schemas"]["EmbeddingRequest"];
-        "application/*+json": components["schemas"]["EmbeddingRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["EmbeddingResponse"];
-          "text/json": components["schemas"]["EmbeddingResponse"];
-          "text/plain": components["schemas"]["EmbeddingResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2142,43 +2165,41 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ChatCompletionRequest"];
-        "text/json": components["schemas"]["ChatCompletionRequest"];
-        "application/*+json": components["schemas"]["ChatCompletionRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ChatCompletionResponse"];
-          "text/json": components["schemas"]["ChatCompletionResponse"];
-          "text/plain": components["schemas"]["ChatCompletionResponse"];
           "text/event-stream": string;
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2197,6 +2218,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2217,6 +2240,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2239,6 +2264,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2262,6 +2289,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2284,6 +2313,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2306,6 +2337,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2328,6 +2361,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -2351,6 +2386,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2362,49 +2399,49 @@ export interface operations {
   BatchOperations_StartSpendUpdates: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        "Idempotency-Key"?: string;
+      };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
         "application/json": components["schemas"]["BatchSpendUpdateRequest"];
-        "text/json": components["schemas"]["BatchSpendUpdateRequest"];
-        "application/*+json": components["schemas"]["BatchSpendUpdateRequest"];
       };
     };
     responses: {
       /** @description Accepted */
       202: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/plain": components["schemas"]["BatchOperationStartResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2419,42 +2456,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
-        "text/json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
-        "application/*+json": components["schemas"]["BatchVirtualKeyUpdateRequest"];
       };
     };
     responses: {
       /** @description Accepted */
       202: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/plain": components["schemas"]["BatchOperationStartResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2469,42 +2504,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["BatchWebhookSendRequest"];
-        "text/json": components["schemas"]["BatchWebhookSendRequest"];
-        "application/*+json": components["schemas"]["BatchWebhookSendRequest"];
       };
     };
     responses: {
       /** @description Accepted */
       202: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/json": components["schemas"]["BatchOperationStartResponse"];
-          "text/plain": components["schemas"]["BatchOperationStartResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2523,23 +2556,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BatchOperationStatusResponse"];
-          "text/json": components["schemas"]["BatchOperationStatusResponse"];
-          "text/plain": components["schemas"]["BatchOperationStatusResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2558,6 +2591,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -2565,23 +2600,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -2598,12 +2633,12 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BatchingStatistics"];
-          "text/json": components["schemas"]["BatchingStatistics"];
-          "text/plain": components["schemas"]["BatchingStatistics"];
         };
       };
     };
@@ -2620,6 +2655,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2640,6 +2677,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2660,6 +2699,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2680,6 +2721,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2700,12 +2743,12 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ConnectionStatistics"];
-          "text/json": components["schemas"]["ConnectionStatistics"];
-          "text/plain": components["schemas"]["ConnectionStatistics"];
         };
       };
     };
@@ -2722,12 +2765,12 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["QueueStatistics"];
-          "text/json": components["schemas"]["QueueStatistics"];
-          "text/plain": components["schemas"]["QueueStatistics"];
         };
       };
     };
@@ -2744,6 +2787,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2766,6 +2811,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2788,6 +2835,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2810,6 +2859,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2830,6 +2881,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2852,6 +2905,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2872,6 +2927,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2883,21 +2940,23 @@ export interface operations {
   Functions_Execute: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        "Idempotency-Key"?: string;
+      };
       path?: never;
       cookie?: never;
     };
     requestBody: {
       content: {
         "application/json": components["schemas"]["FunctionExecutionRequest"];
-        "text/json": components["schemas"]["FunctionExecutionRequest"];
-        "application/*+json": components["schemas"]["FunctionExecutionRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2907,31 +2966,35 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
       };
     };
   };
@@ -2949,6 +3012,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -2958,20 +3023,24 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
       };
     };
   };
@@ -3004,6 +3073,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3022,14 +3093,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["TextToSpeechRequest"];
-        "text/json": components["schemas"]["TextToSpeechRequest"];
-        "application/*+json": components["schemas"]["TextToSpeechRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3059,6 +3130,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3081,6 +3154,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3103,6 +3178,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3125,6 +3202,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -3145,6 +3224,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3163,14 +3244,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["GenerateUrlRequest"];
-        "text/json": components["schemas"]["GenerateUrlRequest"];
-        "application/*+json": components["schemas"]["GenerateUrlRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3195,6 +3276,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3217,6 +3300,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -3233,14 +3318,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ImageGenerationRequest"];
-        "text/json": components["schemas"]["ImageGenerationRequest"];
-        "application/*+json": components["schemas"]["ImageGenerationRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3259,14 +3344,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ImageGenerationRequest"];
-        "text/json": components["schemas"]["ImageGenerationRequest"];
-        "application/*+json": components["schemas"]["ImageGenerationRequest"];
       };
     };
     responses: {
       /** @description Accepted */
       202: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3289,6 +3374,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3311,6 +3398,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -3329,75 +3418,73 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["VideoGenerationRequest"];
-        "text/json": components["schemas"]["VideoGenerationRequest"];
-        "application/*+json": components["schemas"]["VideoGenerationRequest"];
       };
     };
     responses: {
       /** @description Accepted */
       202: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VideoGenerationTaskResponse"];
-          "text/json": components["schemas"]["VideoGenerationTaskResponse"];
-          "text/plain": components["schemas"]["VideoGenerationTaskResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Too Many Requests */
       429: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3416,45 +3503,45 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VideoGenerationTaskStatus"];
-          "text/json": components["schemas"]["VideoGenerationTaskStatus"];
-          "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3473,56 +3560,56 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VideoGenerationTaskStatus"];
-          "text/json": components["schemas"]["VideoGenerationTaskStatus"];
-          "text/plain": components["schemas"]["VideoGenerationTaskStatus"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };
@@ -3541,6 +3628,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -3548,45 +3637,45 @@ export interface operations {
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
       /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/json": components["schemas"]["OpenAIErrorResponse"];
-          "text/plain": components["schemas"]["OpenAIErrorResponse"];
         };
       };
     };

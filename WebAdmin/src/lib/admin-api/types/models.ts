@@ -3,6 +3,9 @@
  */
 
 import { ProviderType } from './providers';
+import type { components } from '../generated/admin-api';
+
+type ModelCapabilitySource = components['schemas']['ModelCapabilitySource'];
 
 /**
  * Provider type association for model identifiers
@@ -21,7 +24,7 @@ export interface ProviderTypeAssociation {
   inputModalities?: string[] | null;
   outputModalities?: string[] | null;
   operationalCapabilities?: ProviderOperationalCapabilities | null;
-  capabilitySource?: number | null;
+  capabilitySource?: ModelCapabilitySource | null;
   capabilitiesLastVerifiedAt?: string | null;
 }
 
@@ -54,7 +57,7 @@ export interface ProviderTypeAssociationInput {
   inputModalities?: string[] | null;
   outputModalities?: string[] | null;
   operationalCapabilities?: ProviderOperationalCapabilities | null;
-  capabilitySource?: number | null;
+  capabilitySource?: ModelCapabilitySource | null;
   capabilitiesLastVerifiedAt?: string | null;
 }
 

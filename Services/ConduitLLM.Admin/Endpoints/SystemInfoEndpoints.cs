@@ -58,9 +58,9 @@ public static class SystemInfoEndpoints
     {
         var cache = services.GetService<IFunctionDiscoveryCacheService>();
         return cache is null
-            ? Results.NotFound(new CacheServiceUnavailableResponse(
-                "Function discovery cache service is not configured",
-                "The cache service must be registered in the DI container"))
+            ? AdminResults.NotFound(
+                "Function discovery cache service is not configured. The cache service must be registered in the DI container.",
+                "cache_service_unavailable")
             : Results.Ok(await cache.GetStatisticsAsync());
     }
 

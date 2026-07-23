@@ -29,9 +29,9 @@ const createMappings = jest.fn();
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useProviders).mockReturnValue({
-    providers: [{ id: 9, providerName: 'Primary OpenAI', providerType: 1 }],
+    providers: [{ id: 9, providerName: 'Primary OpenAI', providerType: 'openAI' }],
     isLoading: false,
-  } as ReturnType<typeof useProviders>);
+  } as unknown as ReturnType<typeof useProviders>);
   jest.mocked(useBulkDiscoverModels).mockReturnValue({
     discoverModels,
     isDiscovering: false,

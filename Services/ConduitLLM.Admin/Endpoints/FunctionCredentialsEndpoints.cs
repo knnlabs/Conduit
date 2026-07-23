@@ -21,20 +21,20 @@ public static class FunctionCredentialsEndpoints
         group.MapGet("/", List).WithName("FunctionCredentials_List").Produces<List<FunctionCredential>>();
         group.MapGet("/configuration/{functionConfigurationId:int}", GetByConfiguration)
             .WithName("FunctionCredentials_GetByConfiguration").Produces<List<FunctionCredential>>()
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/{id:int}", GetById).WithName("FunctionCredentials_GetById")
-            .Produces<FunctionCredential>().Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<FunctionCredential>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/", Create).WithName("FunctionCredentials_Create")
             .Produces<FunctionCredential>(StatusCodes.Status201Created)
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapPut("/{id:int}", Update).WithName("FunctionCredentials_Update")
-            .Produces<FunctionCredential>().Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<FunctionCredential>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapDelete("/{id:int}", Delete).WithName("FunctionCredentials_Delete")
-            .Produces(StatusCodes.Status204NoContent).Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/test", Test).WithName("FunctionCredentials_Test")
             .Produces<FunctionCredentialTestResultDto>()
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         return app;
     }
 

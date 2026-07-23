@@ -32,7 +32,7 @@ public static class MediaEndpoints
             .Produces<List<MediaRecordResponse>>();
         media.MapGet("/search", SearchMedia).WithName("Media_Search")
             .Produces<List<MediaRecordResponse>>()
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         media.MapDelete("/{mediaId}", DeleteMedia).WithName("Media_Delete")
             .Produces<MediaDeletionResponseDto>()
             .Produces(StatusCodes.Status404NotFound);
@@ -42,7 +42,7 @@ public static class MediaEndpoints
             .Produces<MediaCleanupResponseDto>();
         media.MapPost("/cleanup/prune", PruneOldMedia).WithName("Media_Prune")
             .Produces<MediaCleanupResponseDto>()
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
 
         var cleanup = app.MapGroup("/api/admin/media-cleanup")
             .RequireAuthorization("MasterKeyPolicy")
@@ -89,7 +89,7 @@ public static class MediaEndpoints
         [FromQuery] string? pattern = null)
     {
         if (string.IsNullOrWhiteSpace(pattern))
-            return Results.BadRequest(new ErrorResponseDto("Search pattern is required"));
+            return AdminResults.BadRequest("Search pattern is required");
         return Results.Ok((await mediaService.SearchMediaByStorageKeyAsync(pattern)).Select(ToResponse).ToList());
     }
 
@@ -132,7 +132,7 @@ public static class MediaEndpoints
         [FromServices] ILogger<MediaEndpointLog> logger)
     {
         if (request.DaysToKeep is null or <= 0)
-            return Results.BadRequest(new ErrorResponseDto("DaysToKeep must be a positive number"));
+            return AdminResults.BadRequest("DaysToKeep must be a positive number");
         var count = await mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
         AdminAudit.Log(context, logger, "Pruned", "Media", detail: $"DaysToKeep: {request.DaysToKeep}, DeletedCount: {count}");
         return Results.Ok(new MediaCleanupResponseDto

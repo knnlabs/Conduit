@@ -24,11 +24,11 @@ import {
 import { useState, useEffect } from 'react';
 import { formatters } from '@/lib/utils/formatters';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { 
-  VirtualKeyGroupDto, 
-  VirtualKeyGroupTransactionDto,
+import {
   TransactionType,
-  ReferenceType 
+  ReferenceType,
+  type VirtualKeyGroupDto,
+  type VirtualKeyGroupTransactionDto,
 } from '@/lib/admin-api';
 
 interface TransactionHistoryModalProps {
@@ -84,14 +84,14 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
   };
 
   const getTransactionIcon = (type: TransactionType) => {
-    switch (type as number) {
-      case 1: // Credit
+    switch (type) {
+      case TransactionType.Credit:
         return <IconArrowUp size={16} />;
-      case 2: // Debit
+      case TransactionType.Debit:
         return <IconArrowDown size={16} />;
-      case 3: // Refund
+      case TransactionType.Refund:
         return <IconRefresh size={16} />;
-      case 4: // Adjustment
+      case TransactionType.Adjustment:
         return <IconCash size={16} />;
       default:
         return <IconCash size={16} />;
@@ -99,12 +99,12 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
   };
 
   const getTransactionColor = (type: TransactionType) => {
-    switch (type as number) {
-      case 1: // Credit
-      case 3: // Refund
-      case 4: // Adjustment (positive)
+    switch (type) {
+      case TransactionType.Credit:
+      case TransactionType.Refund:
+      case TransactionType.Adjustment:
         return 'green';
-      case 2: // Debit
+      case TransactionType.Debit:
         return 'red';
       default:
         return 'gray';
@@ -118,21 +118,21 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
   };
 
   const getTransactionTypeLabel = (type: TransactionType): string => {
-    switch (type as number) {
-      case 1: return 'Credit';
-      case 2: return 'Debit';
-      case 3: return 'Refund';
-      case 4: return 'Adjustment';
+    switch (type) {
+      case TransactionType.Credit: return 'Credit';
+      case TransactionType.Debit: return 'Debit';
+      case TransactionType.Refund: return 'Refund';
+      case TransactionType.Adjustment: return 'Adjustment';
       default: return 'Unknown';
     }
   };
 
   const getReferenceTypeLabel = (type: ReferenceType): string => {
-    switch (type as number) {
-      case 1: return 'Manual';
-      case 2: return 'Virtual Key';
-      case 3: return 'System';
-      case 4: return 'Initial';
+    switch (type) {
+      case ReferenceType.Manual: return 'Manual';
+      case ReferenceType.VirtualKey: return 'Virtual Key';
+      case ReferenceType.System: return 'System';
+      case ReferenceType.Initial: return 'Initial';
       default: return 'Unknown';
     }
   };
@@ -240,7 +240,9 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
                             fw={500}
                             c={transaction.amount >= 0 ? 'green' : 'red'}
                           >
-                            {transaction.transactionType === 1 || transaction.transactionType === 3 ? '+' : '-'}{formatters.currency(transaction.amount)}
+                            {transaction.transactionType === TransactionType.Credit ||
+                            transaction.transactionType === TransactionType.Refund ? '+' : '-'}
+                            {formatters.currency(transaction.amount)}
                           </Text>
                         </Table.Td>
                         <Table.Td>

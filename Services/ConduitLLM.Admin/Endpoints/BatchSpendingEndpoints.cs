@@ -18,7 +18,7 @@ public static class BatchSpendingEndpoints
             .WithTags("BatchSpending");
         group.MapPost("/flush", Flush).WithName("BatchSpending_Flush")
             .Produces<BatchSpendingFlushResponse>(StatusCodes.Status202Accepted)
-            .Produces<ConduitLLM.Configuration.DTOs.ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapGet("/status", GetStatus).WithName("BatchSpending_GetStatus").Produces<BatchSpendingStatusResponse>();
         group.MapGet("/info", GetInformation).WithName("BatchSpending_GetInformation").Produces<BatchSpendingInformationResponse>();
         return app;

@@ -18,7 +18,7 @@ export interface FunctionProviderMetadata {
 /**
  * Function provider configuration registry
  */
-export const FUNCTION_PROVIDER_REGISTRY: Record<number, FunctionProviderMetadata> = {
+export const FUNCTION_PROVIDER_REGISTRY: Record<FunctionProviderType, FunctionProviderMetadata> = {
   [FunctionProviderType.Exa]: {
     value: FunctionProviderType.Exa,
     name: 'Exa',
@@ -83,13 +83,6 @@ export function getAvailableFunctionProviders(): FunctionProviderMetadata[] {
  * Get function provider metadata by type
  */
 export function getFunctionProviderMetadata(provider: string | number): FunctionProviderMetadata | undefined {
-  // Try parsing as number first
-  const numProvider = typeof provider === 'number' ? provider : parseInt(provider, 10);
-  if (!isNaN(numProvider) && numProvider in FUNCTION_PROVIDER_REGISTRY) {
-    return FUNCTION_PROVIDER_REGISTRY[numProvider];
-  }
-
-  // Try case-insensitive match
   const normalizedProvider = normalizeFunctionProviderType(provider);
   if (normalizedProvider !== undefined) {
     return FUNCTION_PROVIDER_REGISTRY[normalizedProvider];
@@ -114,20 +107,31 @@ export function normalizeFunctionProviderType(provider: string | number): Functi
 
   // If it's already a number, check if it's valid
   if (typeof provider === 'number') {
-    return provider in FUNCTION_PROVIDER_REGISTRY ? provider as FunctionProviderType : undefined;
+    const legacyValues = [
+      FunctionProviderType.Exa,
+      FunctionProviderType.Perplexity,
+      FunctionProviderType.CustomRAG,
+      FunctionProviderType.Tavily,
+      FunctionProviderType.Mcp,
+    ];
+    return provider === 99 ? FunctionProviderType.Custom : legacyValues[provider - 1];
   }
 
   // Try to parse as number
   const numValue = parseInt(provider, 10);
-  if (!isNaN(numValue) && numValue in FUNCTION_PROVIDER_REGISTRY) {
-    return numValue as FunctionProviderType;
+  if (!isNaN(numValue)) {
+    return normalizeFunctionProviderType(numValue);
   }
 
-  // Try case-insensitive match against provider names
+  const direct = Object.values(FunctionProviderType).find(
+    value => value.toLowerCase() === provider.toLowerCase()
+  );
+  if (direct) return direct;
+
   const upperProvider = provider.toUpperCase();
   for (const [key, metadata] of Object.entries(FUNCTION_PROVIDER_REGISTRY)) {
     if (metadata.name.toUpperCase() === upperProvider) {
-      return Number(key) as FunctionProviderType;
+      return key as FunctionProviderType;
     }
   }
 

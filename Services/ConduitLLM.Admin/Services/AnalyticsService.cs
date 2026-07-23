@@ -112,9 +112,9 @@ public partial class AnalyticsService : IAnalyticsService
 
             return new PagedResult<LogRequestDto>
             {
-                Page = page,
+                CurrentPage = page,
                 PageSize = pageSize,
-                TotalItems = totalCount,
+                TotalCount = totalCount,
                 TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
                 Items = pagedLogs
             };
@@ -126,9 +126,9 @@ public partial class AnalyticsService : IAnalyticsService
             
             return new PagedResult<LogRequestDto>
             {
-                Page = page,
+                CurrentPage = page,
                 PageSize = pageSize,
-                TotalItems = 0,
+                TotalCount = 0,
                 TotalPages = 0,
                 Items = new List<LogRequestDto>()
             };

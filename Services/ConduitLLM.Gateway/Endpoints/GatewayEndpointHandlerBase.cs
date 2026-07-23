@@ -45,11 +45,17 @@ public abstract class GatewayEndpointHandlerBase
     protected static IResult Ok() => Results.Ok();
     protected static IResult BadRequest<T>(T value) => Results.BadRequest(value);
     protected static IResult NotFound<T>(T value) => Results.NotFound(value);
-    protected static IResult NotFound() => Results.NotFound();
+    protected static IResult NotFound() =>
+        GatewayResults.OpenAIError(StatusCodes.Status404NotFound, "Resource not found", "not_found", "not_found_error");
     protected static IResult Unauthorized<T>(T value) => Results.Json(value, statusCode: StatusCodes.Status401Unauthorized);
     protected static IResult Conflict<T>(T value) => Results.Conflict(value);
     protected static IResult Accepted<T>(T value) => Results.Json(value, statusCode: StatusCodes.Status202Accepted);
-    protected static IResult Forbid(params string[] _) => Results.Forbid();
+    protected static IResult Forbid(params string[] messages) =>
+        GatewayResults.OpenAIError(
+            StatusCodes.Status403Forbidden,
+            messages.FirstOrDefault() ?? "Access forbidden",
+            "forbidden",
+            "permission_error");
     protected static IResult NoContent() => Results.NoContent();
     protected static IResult File(Stream stream, string contentType, string? fileDownloadName = null, bool enableRangeProcessing = false) =>
         Results.Stream(stream, contentType, fileDownloadName, enableRangeProcessing: enableRangeProcessing);

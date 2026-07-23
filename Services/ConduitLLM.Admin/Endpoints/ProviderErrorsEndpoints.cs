@@ -54,15 +54,15 @@ namespace ConduitLLM.Admin.Endpoints
             group.MapGet("/summary", ([FromServices] ProviderErrorsEndpoints e) => e.GetErrorSummary())
                 .WithName("ProviderErrors_GetSummary").Produces<List<ProviderErrorSummaryDto>>();
             group.MapGet("/keys/{keyId}", ([FromServices] ProviderErrorsEndpoints e, int keyId) => e.GetKeyErrors(keyId))
-                .WithName("ProviderErrors_GetKeyErrors").Produces<KeyErrorDetailsDto>().Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+                .WithName("ProviderErrors_GetKeyErrors").Produces<KeyErrorDetailsDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
             group.MapPost("/keys/{keyId}/clear", ([FromServices] ProviderErrorsEndpoints e, int keyId, ClearErrorsRequest request) => e.ClearKeyErrors(keyId, request))
-                .WithName("ProviderErrors_ClearKeyErrors").Produces<ClearKeyErrorsResponseDto>().Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+                .WithName("ProviderErrors_ClearKeyErrors").Produces<ClearKeyErrorsResponseDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
             group.MapGet("/stats", ([FromServices] ProviderErrorsEndpoints e, int hours = 24) => e.GetErrorStatistics(hours))
                 .WithName("ProviderErrors_GetStatistics").Produces<ErrorStatisticsDto>();
             group.MapGet("/providers/{providerId}/key-errors", ([FromServices] ProviderErrorsEndpoints e, int providerId, int hours = 1) => e.GetErrorCountsByKey(providerId, hours))
                 .WithName("ProviderErrors_GetCountsByKey").Produces<Dictionary<int, int>>();
             group.MapPost("/keys/{keyId}/disable", ([FromServices] ProviderErrorsEndpoints e, int keyId, string reason) => e.DisableKey(keyId, reason))
-                .WithName("ProviderErrors_DisableKey").Accepts<string>("application/json").Produces<DisableKeyResponseDto>().Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+                .WithName("ProviderErrors_DisableKey").Accepts<string>("application/json").Produces<DisableKeyResponseDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
             return app;
         }
 
@@ -204,7 +204,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (!request.ConfirmReenable && request.ReenableKey)
             {
-                return Results.BadRequest(new ErrorResponseDto("Must confirm re-enabling the key"));
+                return AdminResults.BadRequest("Must confirm re-enabling the key");
             }
 
             // Look up the key to get its providerId for proper cleanup
@@ -312,7 +312,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (string.IsNullOrWhiteSpace(reason))
             {
-                return Results.BadRequest(new ErrorResponseDto("Reason is required for disabling a key"));
+                return AdminResults.BadRequest("Reason is required for disabling a key");
             }
 
             await _errorService.DisableKeyAsync(keyId, $"Manual disable: {reason}");

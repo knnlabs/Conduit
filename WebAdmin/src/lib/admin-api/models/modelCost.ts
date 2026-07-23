@@ -3,18 +3,16 @@ import { ProviderType } from './providerType';
 import { ModelType } from './modelType';
 
 /** Pricing model type that determines how costs are calculated */
-export enum PricingModel {
-  Standard = 0,
-  PerVideo = 1,
-  PerSecondVideo = 2,
-  InferenceSteps = 3,
-  TieredTokens = 4,
-  PerImage = 5,
-  /** Flexible rules-based pricing using JSON configuration */
-  RulesBased = 6,
-  PerMinuteAudio = 7,
-  PerThousandCharacters = 8
-}
+export const PricingModel = {
+  Standard: 'standard',
+  PerVideo: 'perVideo',
+  PerSecondVideo: 'perSecondVideo',
+  InferenceSteps: 'inferenceSteps',
+  TieredTokens: 'tieredTokens',
+  PerImage: 'perImage',
+  RulesBased: 'rulesBased',
+} as const;
+export type PricingModel = (typeof PricingModel)[keyof typeof PricingModel];
 
 // Matches the wire `ModelCostDto` (modelType narrows the wire string to a client enum — asserted
 // with SameKeys). Media/inference pricing is carried in the polymorphic pricingConfiguration JSON,

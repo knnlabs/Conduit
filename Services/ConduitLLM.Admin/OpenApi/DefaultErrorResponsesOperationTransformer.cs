@@ -1,42 +1,52 @@
+using ConduitLLM.Admin.DTOs;
+
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
-using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Admin.OpenApi;
 
-/// <summary>
-/// Adds a default "500 Internal Server Error" response to every operation in the OpenAPI document,
-/// documenting the Admin API's universal error behavior (the global <c>AdminExceptionMiddleware</c>
-/// maps unhandled exceptions to a standardized <c>ErrorResponseDto</c>).
-/// </summary>
-/// <remarks>
-/// This lets endpoint mappings omit repeated 500-response metadata — every endpoint can return
-/// 500, so it is documented once here.
-/// </remarks>
+/// <summary>Documents the canonical RFC 9457 error body and request ID on every response.</summary>
 public sealed class DefaultErrorResponsesOperationTransformer : IOpenApiOperationTransformer
 {
-    /// <inheritdoc/>
     public async Task TransformAsync(
         OpenApiOperation operation,
         OpenApiOperationTransformerContext context,
         CancellationToken cancellationToken)
     {
         operation.Responses ??= new OpenApiResponses();
+        operation.Responses.TryAdd("500", new OpenApiResponse { Description = "Internal Server Error" });
 
-        if (!operation.Responses.ContainsKey("500"))
+        var schema = await context.GetOrCreateSchemaAsync(
+            typeof(AdminProblemDetails),
+            parameterDescription: null,
+            cancellationToken);
+        var document = context.Document ?? throw new InvalidOperationException("An OpenAPI document is required.");
+        var components = document.Components ??= new OpenApiComponents();
+        components.Schemas ??= new Dictionary<string, IOpenApiSchema>();
+        components.Schemas["AdminProblemDetails"] = schema;
+        var problemReference = new OpenApiSchemaReference("AdminProblemDetails", document);
+
+        foreach (var responseEntry in operation.Responses)
         {
-            var schema = await context.GetOrCreateSchemaAsync(
-                typeof(ErrorResponseDto),
-                parameterDescription: null,
-                cancellationToken);
-            operation.Responses["500"] = new OpenApiResponse
+            if (responseEntry.Value is not OpenApiResponse response)
             {
-                Description = "Internal server error. Returns a standardized ErrorResponseDto.",
-                Content = new Dictionary<string, OpenApiMediaType>
-                {
-                    ["application/json"] = new() { Schema = schema }
-                }
+                continue;
+            }
+
+            response.Headers ??= new Dictionary<string, IOpenApiHeader>();
+            response.Headers["x-request-id"] = new OpenApiHeader
+            {
+                Description = "Request identifier for support and distributed tracing.",
+                Schema = new OpenApiSchema { Type = JsonSchemaType.String }
             };
+
+            if (int.TryParse(responseEntry.Key, out var status) && status >= 400)
+            {
+                response.Content = new Dictionary<string, OpenApiMediaType>
+                {
+                    ["application/problem+json"] = new() { Schema = problemReference }
+                };
+            }
         }
     }
 }

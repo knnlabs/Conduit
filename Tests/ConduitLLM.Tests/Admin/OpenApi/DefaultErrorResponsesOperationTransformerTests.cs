@@ -90,12 +90,12 @@ namespace ConduitLLM.Tests.Admin.OpenApi
                     responses.TryGetProperty("500", out var errorResponse).Should().BeTrue(
                         $"operation {member.Name.ToUpperInvariant()} {path.Name} should document a 500");
                     var schema = errorResponse.GetProperty("content")
-                        .GetProperty("application/json")
+                        .GetProperty("application/problem+json")
                         .GetProperty("schema");
-                    var properties = schema.GetProperty("properties");
-                    properties.TryGetProperty("error", out _).Should().BeTrue();
-                    properties.TryGetProperty("details", out _).Should().BeTrue();
-                    properties.TryGetProperty("code", out _).Should().BeTrue();
+                    schema.GetProperty("$ref").GetString()
+                        .Should().Be("#/components/schemas/AdminProblemDetails");
+                    errorResponse.GetProperty("headers").TryGetProperty("x-request-id", out _)
+                        .Should().BeTrue();
                 }
             }
 

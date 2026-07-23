@@ -402,7 +402,7 @@ export default function FunctionConfigurationsPage() {
           <Select
             label="Provider Type"
             value={formData.providerType.toString()}
-            onChange={(value) => setFormData({ ...formData, providerType: Number(value) as FunctionProviderType })}
+            onChange={(value) => setFormData({ ...formData, providerType: value as FunctionProviderType })}
             data={getAvailableFunctionProviders().map(p => ({
               value: p.value.toString(),
               label: p.label
@@ -430,7 +430,7 @@ export default function FunctionConfigurationsPage() {
           <Select
             label="Purpose"
             value={formData.purpose.toString()}
-            onChange={(value) => setFormData({ ...formData, purpose: Number(value) as FunctionPurpose })}
+            onChange={(value) => setFormData({ ...formData, purpose: value as FunctionPurpose })}
             data={[
               { value: FunctionPurpose.Search.toString(), label: 'Search' },
               { value: FunctionPurpose.Answer.toString(), label: 'Answer' },
@@ -451,7 +451,7 @@ export default function FunctionConfigurationsPage() {
           <Select
             label="Execution Mode"
             value={formData.defaultExecutionMode?.toString() ?? FunctionExecutionMode.Synchronous.toString()}
-            onChange={(value) => setFormData({ ...formData, defaultExecutionMode: Number(value) as FunctionExecutionMode })}
+            onChange={(value) => setFormData({ ...formData, defaultExecutionMode: value as FunctionExecutionMode })}
             data={[
               { value: FunctionExecutionMode.Synchronous.toString(), label: 'Synchronous' },
               { value: FunctionExecutionMode.Asynchronous.toString(), label: 'Asynchronous' },

@@ -91,7 +91,7 @@ public static class GatewayApiEndpoints
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Batch Operations");
-        batch.MapPost("/spend-updates", ([FromServices] BatchOperationsEndpoints endpoints, BatchSpendUpdateRequest request) => endpoints.StartBatchSpendUpdate(request))
+        batch.MapPost("/spend-updates", ([FromServices] BatchOperationsEndpoints endpoints, BatchSpendUpdateRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey) => endpoints.StartBatchSpendUpdate(request, idempotencyKey))
             .WithName("BatchOperations_StartSpendUpdates").Produces<BatchOperationStartResponse>(202).Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(401);
         batch.MapPost("/virtual-key-updates", ([FromServices] BatchOperationsEndpoints endpoints, BatchVirtualKeyUpdateRequest request) => endpoints.StartBatchVirtualKeyUpdate(request))
             .WithName("BatchOperations_StartVirtualKeyUpdates").Produces<BatchOperationStartResponse>(202).Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(401);
@@ -139,7 +139,7 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<RequireBalanceEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Functions");
-        functions.MapPost("/execute", ([FromServices] FunctionsEndpoints endpoints, FunctionsEndpoints.FunctionExecutionRequest request, CancellationToken cancellationToken) => endpoints.ExecuteFunction(request, cancellationToken))
+        functions.MapPost("/execute", ([FromServices] FunctionsEndpoints endpoints, FunctionsEndpoints.FunctionExecutionRequest request, [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken cancellationToken) => endpoints.ExecuteFunction(request, idempotencyKey, cancellationToken))
             .WithName("Functions_Execute").Produces<FunctionsEndpoints.FunctionExecutionResponse>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(404).Produces(500);
         functions.MapGet("/executions/{executionId}", ([FromServices] FunctionsEndpoints endpoints, Guid executionId, CancellationToken cancellationToken) => endpoints.GetExecution(executionId, cancellationToken))
             .WithName("Functions_GetExecution").Produces<FunctionsEndpoints.FunctionExecutionResponse>().Produces<OpenAIErrorResponse>(404).Produces(500);
@@ -228,7 +228,7 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<RequireBalanceEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Chat").WithName("Chat_CreateCompletion")
-            .Produces<ChatCompletionResponse>(200, "application/json", "text/json", "text/plain")
+            .Produces<ChatCompletionResponse>(200, "application/json")
             .Produces<OpenAIErrorResponse>(400)
             .Produces<OpenAIErrorResponse>(500);
 

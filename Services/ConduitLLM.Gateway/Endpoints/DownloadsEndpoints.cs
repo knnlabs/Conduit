@@ -1,7 +1,6 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Endpoints
@@ -43,13 +42,13 @@ namespace ConduitLLM.Gateway.Endpoints
             // Validate ownership
             if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+                return OpenAIError(404, "File not found", "not_found", "not_found_error");
             }
 
             var result = await _fileRetrievalService.RetrieveFileAsync(fileId);
             if (result == null)
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+                return OpenAIError(404, "File not found", "not_found", "not_found_error");
             }
 
             using (result)
@@ -87,13 +86,13 @@ namespace ConduitLLM.Gateway.Endpoints
             var virtualKeyId = GetVirtualKeyId();
             if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+                return OpenAIError(404, "File not found", "not_found", "not_found_error");
             }
 
             var metadata = await _fileRetrievalService.GetFileMetadataAsync(fileId);
             if (metadata == null)
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+                return OpenAIError(404, "File not found", "not_found", "not_found_error");
             }
 
             return Ok(new FileMetadataResponse(
@@ -117,7 +116,7 @@ namespace ConduitLLM.Gateway.Endpoints
         {
             if (string.IsNullOrWhiteSpace(request.FileId))
             {
-                return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("File ID is required", "invalid_request_error")));
+                return OpenAIError(400, "File ID is required", "invalid_request", "invalid_request_error");
             }
 
             var virtualKeyId = GetVirtualKeyId();
@@ -127,13 +126,13 @@ namespace ConduitLLM.Gateway.Endpoints
             // Validate ownership
             if (!await ValidateFileOwnership(request.FileId, virtualKeyId))
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found", "not_found")));
+                return OpenAIError(404, "File not found", "not_found", "not_found_error");
             }
 
             var expirationMinutes = request.ExpirationMinutes ?? 60; // Default 1 hour
             if (expirationMinutes < 1 || expirationMinutes > 10080) // Max 1 week
             {
-                return BadRequest(new ErrorResponseDto(new ErrorDetailsDto("Expiration must be between 1 minute and 1 week", "invalid_request_error")));
+                return OpenAIError(400, "Expiration must be between 1 minute and 1 week", "invalid_request", "invalid_request_error");
             }
 
             var expiration = TimeSpan.FromMinutes(expirationMinutes);
@@ -141,7 +140,7 @@ namespace ConduitLLM.Gateway.Endpoints
 
             if (string.IsNullOrEmpty(url))
             {
-                return NotFound(new ErrorResponseDto(new ErrorDetailsDto("File not found or URL generation failed", "not_found")));
+                return OpenAIError(404, "File not found or URL generation failed", "not_found", "not_found_error");
             }
 
             return Ok(new DownloadUrlResponse(

@@ -244,10 +244,9 @@ namespace ConduitLLM.Tests.Core.Services
             var headers = _service.GetPropagationHeaders();
 
             // Assert
-            headers.Should().ContainKey("X-Correlation-ID");
-            headers["X-Correlation-ID"].Should().Be(correlationId);
-            headers.Should().ContainKey("X-Request-ID");
-            headers["X-Request-ID"].Should().Be(correlationId);
+            headers.Should().ContainSingle();
+            headers.Should().ContainKey("x-request-id");
+            headers["x-request-id"].Should().Be(correlationId);
         }
 
         [Fact]

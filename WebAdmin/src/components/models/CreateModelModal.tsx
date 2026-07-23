@@ -7,7 +7,7 @@ import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
 import { EntityFormModal } from '@/components/common/EntityFormModal';
-import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
+import { TOKENIZER_SELECT_OPTIONS, TokenizerType, isValidTokenizerType } from '@/lib/utils/tokenizerTypes';
 import type { CreateModelDto, ModelSeriesDto } from '@/lib/admin-api';
 
 interface CreateModelModalProps {
@@ -26,7 +26,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
     initialValues: {
       name: '',
       modelSeriesId: '',
-      tokenizerType: TokenizerType.Cl100KBase,
+      tokenizerType: TokenizerType.Cl100KBase as TokenizerType,
       isActive: true,
       capabilitiesKnown: true,
       inputModalities: ['text'] as string[],
@@ -48,11 +48,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       name: (value) => !value ? 'Name is required' : null,
       tokenizerType: (value: TokenizerType | null | undefined) => {
         if (value === null || value === undefined) return 'Tokenizer type is required';
-        if (typeof value !== 'number') return 'Invalid tokenizer type';
-        const isValidEnum = Object.values(TokenizerType)
-          .filter((v): v is number => typeof v === 'number')
-          .includes(value);
-        if (!isValidEnum) return 'Invalid tokenizer type';
+        if (!isValidTokenizerType(value)) return 'Invalid tokenizer type';
         return null;
       }
     }
@@ -87,7 +83,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         isActive: values.isActive,
         inputModalities: values.capabilitiesKnown ? values.inputModalities : null,
         outputModalities: values.capabilitiesKnown ? values.outputModalities : null,
-        capabilitySource: values.capabilitiesKnown ? 4 : 0,
+        capabilitySource: values.capabilitiesKnown ? 'manual' : 'unknown',
         supportsChat: values.supportsChat,
         supportsVision: values.capabilitiesKnown && values.inputModalities.includes('image'),
         supportsFunctionCalling: values.supportsFunctionCalling,
@@ -141,7 +137,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         data={TOKENIZER_SELECT_OPTIONS}
         placeholder="Select tokenizer type"
         value={form.values.tokenizerType.toString()}
-        onChange={(value) => form.setFieldValue('tokenizerType', value ? parseInt(value) : TokenizerType.Cl100KBase)}
+        onChange={(value) => form.setFieldValue('tokenizerType', value as TokenizerType ?? TokenizerType.Cl100KBase)}
         required
         searchable
         error={form.errors.tokenizerType}

@@ -135,7 +135,7 @@ export default function FunctionCredentialsPage() {
   };
 
   const handleProviderChange = (value: string | null) => {
-    const providerType = Number(value) as FunctionProviderType;
+    const providerType = value as FunctionProviderType;
     // MCP credentials are per-server, so default them to config-scoped.
     const scopeToConfig = providerType === FunctionProviderType.Mcp;
     setForm({

@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Auditing;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Models.ProviderSync;
 using ConduitLLM.Configuration.DTOs;
@@ -20,17 +21,17 @@ public static class ProviderSyncEndpoints
             .WithTags("ProviderSync");
         group.MapGet("/drift", ListDrift).WithName("ProviderSync_ListDrift").Produces<List<DriftItemDto>>();
         group.MapGet("/drift/{id:int}", GetDrift).WithName("ProviderSync_GetDrift")
-            .Produces<DriftItemDto>().Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<DriftItemDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/drift/{id:int}/apply", Apply).WithName("ProviderSync_ApplyDrift")
             .Produces<DriftActionResultDto>();
         group.MapPost("/drift/{id:int}/dismiss", Dismiss).WithName("ProviderSync_DismissDrift")
             .Produces<DriftActionResultDto>();
         group.MapPost("/drift/bulk/apply", ApplyBulk).WithName("ProviderSync_ApplyDriftBulk")
-            .Produces<BulkDriftActionResponse>().Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<BulkDriftActionResponse>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapPost("/drift/bulk/dismiss", DismissBulk).WithName("ProviderSync_DismissDriftBulk")
-            .Produces<BulkDriftActionResponse>().Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<BulkDriftActionResponse>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapPost("/run", Run).WithName("ProviderSync_Run")
-            .Produces<ProviderSyncRunDto>().Produces<ErrorResponseDto>(StatusCodes.Status409Conflict);
+            .Produces<ProviderSyncRunDto>().Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
         group.MapGet("/runs", ListRuns).WithName("ProviderSync_ListRuns").Produces<List<ProviderSyncRunDto>>();
         return app;
     }

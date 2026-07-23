@@ -123,7 +123,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       }
 
       const payload = {
-        providerType: parseInt(values.providerType, 10), // Send numeric provider type
+        providerType: values.providerType as ProviderType,
         providerName: providerName,
         apiKey: values.apiKey,
         baseUrl: values.apiEndpoint ?? undefined,
@@ -167,7 +167,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
     try {
       const result = await withAdminClient(client => 
         client.providers.testConfig({
-          providerType: parseInt(form.values.providerType, 10),
+          providerType: form.values.providerType as ProviderType,
           apiKey: form.values.apiKey,
           baseUrl: form.values.apiEndpoint ?? undefined,
           organizationId: form.values.organizationId ?? undefined,
@@ -193,8 +193,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
   };
 
   const getProviderHelp = (providerType: string) => {
-    const providerTypeNum = parseInt(providerType, 10) as ProviderType;
-    const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
+    const config = PROVIDER_CONFIG_REQUIREMENTS[providerType as ProviderType];
     if (!config?.helpText) {
       return null;
     }
@@ -255,8 +254,7 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
           />
 
           {(() => {
-            const providerTypeNum = parseInt(form.values.providerType, 10) as ProviderType;
-            const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
+            const config = PROVIDER_CONFIG_REQUIREMENTS[form.values.providerType as ProviderType];
             if (!config) return null;
 
             return (

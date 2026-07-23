@@ -53,7 +53,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
 
             // Assert
             Assert.Equal(404, _httpContext.Response.StatusCode);
-            Assert.Equal("application/json", _httpContext.Response.ContentType);
+            Assert.Equal("application/problem+json", _httpContext.Response.ContentType);
 
             var (error, code) = GetErrorResponse(_httpContext);
 
@@ -288,7 +288,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
         }
 
         [Fact]
-        public async Task ContentType_IsJson()
+        public async Task ContentType_IsProblemJson()
         {
             // Arrange
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
@@ -298,7 +298,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             await _middleware.InvokeAsync(_httpContext);
 
             // Assert
-            Assert.Equal("application/json", _httpContext.Response.ContentType);
+            Assert.Equal("application/problem+json", _httpContext.Response.ContentType);
         }
 
         [Fact]
@@ -356,8 +356,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
         }
 
         /// <summary>
-        /// Deserializes the response body and extracts the error message and code.
-        /// ErrorResponseDto.error is object type, which deserializes as JsonElement.
+        /// Deserializes the RFC 9457 response body and extracts detail and code.
         /// </summary>
         private static (string error, string? code) GetErrorResponse(HttpContext context)
         {
@@ -368,7 +367,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             using var doc = JsonDocument.Parse(body);
             var root = doc.RootElement;
 
-            var error = root.GetProperty("error").GetString() ?? string.Empty;
+            var error = root.GetProperty("detail").GetString() ?? string.Empty;
             var code = root.TryGetProperty("code", out var codeElement)
                 ? codeElement.GetString()
                 : null;

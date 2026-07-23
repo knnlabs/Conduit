@@ -7,7 +7,7 @@ import { ProviderType } from './providerType';
 import { ModelType } from './modelType';
 
 /** Provider display configuration */
-export const PROVIDER_DISPLAY_NAMES: Record<ProviderType, string> = {
+export const PROVIDER_DISPLAY_NAMES: Partial<Record<ProviderType, string>> = {
   [ProviderType.OpenAI]: 'OpenAI',
   [ProviderType.Groq]: 'Groq',
   [ProviderType.Replicate]: 'Replicate',
@@ -35,7 +35,7 @@ export enum ProviderCategory {
 }
 
 /** Map providers to their primary categories */
-export const PROVIDER_CATEGORIES: Record<ProviderType, ProviderCategory[]> = {
+export const PROVIDER_CATEGORIES: Partial<Record<ProviderType, ProviderCategory[]>> = {
   [ProviderType.OpenAI]: [ProviderCategory.Chat, ProviderCategory.Audio, ProviderCategory.Image, ProviderCategory.Embedding],
   [ProviderType.Groq]: [ProviderCategory.Chat],
   [ProviderType.Replicate]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Video],
@@ -63,7 +63,7 @@ export interface ProviderConfigRequirements {
   supportedModelTypes: ModelType[];
 }
 
-export const PROVIDER_CONFIG_REQUIREMENTS: Record<ProviderType, ProviderConfigRequirements> = {
+export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, ProviderConfigRequirements>> = {
   [ProviderType.OpenAI]: {
     requiresApiKey: true,
     requiresEndpoint: false,
@@ -196,10 +196,10 @@ export const ProviderConfigUtils = {
    */
   getSelectOptions: () => {
     return Object.values(ProviderType)
-      .filter((value): value is ProviderType => typeof value === 'number')
+      .filter((value): value is ProviderType => value !== ProviderType.Unknown)
       .map(type => ({
         value: type.toString(),
-        label: PROVIDER_DISPLAY_NAMES[type],
+        label: PROVIDER_DISPLAY_NAMES[type] ?? type,
         categories: PROVIDER_CATEGORIES[type]
       }));
   },
@@ -210,14 +210,15 @@ export const ProviderConfigUtils = {
   getLLMProviderSelectOptions: () => {
     return Object.values(ProviderType)
       .filter((value): value is ProviderType => {
-        if (typeof value !== 'number') return false;
+        if (value === ProviderType.Unknown) return false;
         const categories = PROVIDER_CATEGORIES[value];
-        return categories?.includes(ProviderCategory.Chat) ||
-               categories?.includes(ProviderCategory.Embedding);
+        return categories?.some(category =>
+          category === ProviderCategory.Chat || category === ProviderCategory.Embedding
+        ) ?? false;
       })
       .map(type => ({
         value: type.toString(),
-        label: PROVIDER_DISPLAY_NAMES[type],
+        label: PROVIDER_DISPLAY_NAMES[type] ?? type,
         categories: PROVIDER_CATEGORIES[type]
       }));
   },
@@ -228,13 +229,13 @@ export const ProviderConfigUtils = {
   getProvidersByCategory: (category: ProviderCategory) => {
     return Object.values(ProviderType)
       .filter((value): value is ProviderType => {
-        if (typeof value !== 'number') return false;
+        if (value === ProviderType.Unknown) return false;
         const categories = PROVIDER_CATEGORIES[value];
-        return categories?.includes(category);
+        return categories?.includes(category) ?? false;
       })
       .map(type => ({
         value: type.toString(),
-        label: PROVIDER_DISPLAY_NAMES[type],
+        label: PROVIDER_DISPLAY_NAMES[type] ?? type,
         categories: PROVIDER_CATEGORIES[type]
       }));
   },
@@ -246,10 +247,10 @@ export const ProviderConfigUtils = {
     return Object.entries(PROVIDER_CONFIG_REQUIREMENTS)
       .filter(([, config]) => config.supportedModelTypes.includes(modelType))
       .map(([providerType]) => {
-        const type = parseInt(providerType) as ProviderType;
+        const type = providerType as ProviderType;
         return {
           value: type.toString(),
-          label: PROVIDER_DISPLAY_NAMES[type],
+          label: PROVIDER_DISPLAY_NAMES[type] ?? type,
           categories: PROVIDER_CATEGORIES[type]
         };
       });

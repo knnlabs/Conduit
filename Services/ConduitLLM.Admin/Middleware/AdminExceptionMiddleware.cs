@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Middleware;
 
@@ -11,7 +11,7 @@ namespace ConduitLLM.Admin.Middleware;
 /// <summary>
 /// Global exception handling middleware for the Admin API.
 /// Catches any unhandled exceptions that escape controller-level error handling
-/// and returns standardized <see cref="ErrorResponseDto"/> responses.
+/// and returns standardized <see cref="AdminProblemDetails"/> responses.
 /// </summary>
 /// <remarks>
 /// This is the common safety net for exceptions raised by Admin endpoints.
@@ -21,6 +21,7 @@ namespace ConduitLLM.Admin.Middleware;
 public class AdminExceptionMiddleware : ExceptionHandlingMiddlewareBase
 {
     protected override string MiddlewareName => "AdminExceptionMiddleware";
+    protected override string ErrorContentType => "application/problem+json";
 
     public AdminExceptionMiddleware(
         RequestDelegate next,
@@ -33,10 +34,19 @@ public class AdminExceptionMiddleware : ExceptionHandlingMiddlewareBase
     /// <inheritdoc/>
     protected override string CreateErrorResponseJson(
         string message,
-        ExceptionToResponseMapper.ExceptionMappingResult mapping)
+        ExceptionToResponseMapper.ExceptionMappingResult mapping,
+        string traceId)
     {
-        var errorResponse = new ErrorResponseDto(message) { Code = mapping.ErrorCode };
-        return JsonSerializer.Serialize(errorResponse, ErrorJsonOptions);
+        var problem = new AdminProblemDetails
+        {
+            Type = $"https://httpstatuses.com/{mapping.StatusCode}",
+            Title = mapping.StatusCode >= 500 ? "Internal Server Error" : "Request Failed",
+            Status = mapping.StatusCode,
+            Detail = message,
+            Code = mapping.ErrorCode,
+            TraceId = traceId
+        };
+        return JsonSerializer.Serialize(problem, ErrorJsonOptions);
     }
 }
 

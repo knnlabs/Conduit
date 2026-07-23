@@ -81,7 +81,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (!ProviderTypeCatalog.IsConfigurable(testRequest.ProviderType))
             {
-                return BadRequest(new ErrorResponseDto("Provider type must identify a configurable provider."));
+                return BadRequest("Provider type must identify a configurable provider.");
             }
 
             // Create a temporary provider for testing
@@ -167,13 +167,13 @@ namespace ConduitLLM.Admin.Endpoints
             var key = await _keyRepository.GetByIdAsync(keyId);
             if (key == null || key.ProviderId != providerId)
             {
-                return NotFound(new ErrorResponseDto("Key credential not found"));
+                return NotFound("Key credential not found");
             }
 
             var provider = await _providerRepository.GetByIdAsync(providerId);
             if (provider == null)
             {
-                return NotFound(new ErrorResponseDto("Provider not found"));
+                return NotFound("Provider not found");
             }
 
             // Check if this provider type doesn't support testing

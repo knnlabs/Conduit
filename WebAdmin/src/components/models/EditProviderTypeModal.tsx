@@ -127,7 +127,7 @@ export function EditProviderTypeModal({
           supportsRerank: values.supportsRerank,
           supportsVision: values.overrideModalities && values.inputModalities.includes('image')
         } : null,
-        capabilitySource: values.overrideModalities || values.overrideOperations ? 4 : null
+        capabilitySource: values.overrideModalities || values.overrideOperations ? 'manual' : null
       };
       
       if (association?.id) {

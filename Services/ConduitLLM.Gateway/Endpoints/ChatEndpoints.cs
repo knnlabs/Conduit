@@ -100,7 +100,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 var virtualKeyId = CurrentVirtualKeyId;
                 var accountingContext = HttpContext.GetOrCreateRequestAccountingContext();
                 accountingContext.SetOperation(RequestOperation.ChatCompletion, virtualKeyId, request.Model);
-                Response.Headers["X-Request-ID"] = accountingContext.BillingRequestId;
+                Response.Headers["x-request-id"] = accountingContext.BillingRequestId;
 
                 var admissionError = await ReserveChatSpendAsync(
                     request,

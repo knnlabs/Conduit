@@ -38,10 +38,12 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
     /// Executes a function with the provided parameters.
     /// </summary>
     /// <param name="request">The function execution request</param>
+    /// <param name="idempotencyKey">Optional key used to deduplicate retries.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>The function execution result</returns>
     public async Task<IResult> ExecuteFunction(
         FunctionExecutionRequest request,
+        string? idempotencyKey,
         CancellationToken cancellationToken = default)
     {
         try
@@ -114,7 +116,7 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
                 request.FunctionConfigurationId,
                 keyId,
                 request.Parameters ?? new Dictionary<string, object>(),
-                request.IdempotencyKey,
+                idempotencyKey,
                 request.Metadata,
                 cancellationToken: cancellationToken);
 
@@ -246,10 +248,6 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
         /// </summary>
         public Dictionary<string, object>? Metadata { get; set; }
 
-        /// <summary>
-        /// Optional idempotency key to prevent duplicate executions.
-        /// </summary>
-        public string? IdempotencyKey { get; set; }
     }
 
     /// <summary>

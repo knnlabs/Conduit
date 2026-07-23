@@ -32,7 +32,7 @@ namespace ConduitLLM.Tests.Admin.Integration
     /// HTTP-level integration tests for the Tier 3 Minimal-API <see cref="ModelAuthorEndpoints"/>
     /// (#906), which replaced the MVC <c>ModelAuthorController</c>. These lock down the migrated
     /// behavior end-to-end — routing, model binding, the not-found/conflict branches, and the
-    /// throw → <c>AdminExceptionMiddleware</c> → standardized <c>ErrorResponseDto</c> mapping that
+    /// throw → <c>AdminExceptionMiddleware</c> → standardized RFC Problem Details mapping that
     /// the endpoints rely on (previously only unit-level controller coverage, now none existed).
     /// </summary>
     /// <remarks>
@@ -81,7 +81,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                     webHost.Configure(app =>
                     {
                         app.UseRouting();
-                        // Real global handler: endpoint throws map to ErrorResponseDto exactly as in production.
+                        // Real global handler: endpoint throws map to RFC Problem Details exactly as in production.
                         app.UseAdminExceptionHandling();
                         app.UseAuthentication();
                         app.UseAuthorization();
@@ -334,7 +334,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             _repository.Verify(r => r.DeleteAsync(9, It.IsAny<CancellationToken>()), Times.Once);
         }
 
-        /// <summary>Reads the <c>code</c> field from an <c>ErrorResponseDto</c> body, tolerant of casing.</summary>
+        /// <summary>Reads the <c>code</c> extension from an RFC Problem Details body, tolerant of casing.</summary>
         private static async Task<string?> ReadCodeAsync(HttpResponseMessage response)
         {
             using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());

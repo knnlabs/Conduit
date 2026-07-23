@@ -19,8 +19,8 @@ public static class TasksEndpoints
             .Produces<TaskCleanupResponseDto>(StatusCodes.Status200OK);
         group.MapPost("/{taskId}/resolve", Resolve).WithName("Tasks_ResolveIndeterminate")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         return app;
     }
 

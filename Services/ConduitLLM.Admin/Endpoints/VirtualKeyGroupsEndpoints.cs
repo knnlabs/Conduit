@@ -364,22 +364,22 @@ namespace ConduitLLM.Admin.Endpoints
             // Validate request
             if (string.IsNullOrEmpty(request.ModelId))
             {
-                return BadRequest(new { message = "Model ID is required" });
+                return BadRequest("Model ID is required");
             }
 
             if (string.IsNullOrEmpty(request.RefundReason))
             {
-                return BadRequest(new { message = "Refund reason is required" });
+                return BadRequest("Refund reason is required");
             }
 
             if (string.IsNullOrWhiteSpace(request.OriginalTransactionId))
             {
-                return BadRequest(new { message = "Original transaction ID is required" });
+                return BadRequest("Original transaction ID is required");
             }
 
             if (string.IsNullOrWhiteSpace(idempotencyKey) || idempotencyKey.Trim().Length > 100)
             {
-                return BadRequest(new { message = "Idempotency-Key header is required and must be at most 100 characters" });
+                return BadRequest("Idempotency-Key header is required and must be at most 100 characters");
             }
 
             // Get user info for audit trail
@@ -408,7 +408,7 @@ namespace ConduitLLM.Admin.Endpoints
             }
             catch (Configuration.Exceptions.IdempotencyConflictException ex)
             {
-                return Conflict(new { message = ex.Message });
+                return Conflict(ex.Message);
             }
 
             // Get updated group info for balance

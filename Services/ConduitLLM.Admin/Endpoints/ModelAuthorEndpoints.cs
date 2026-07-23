@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Auditing;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Models.ModelAuthors;
 using ConduitLLM.Configuration.DTOs;
@@ -33,11 +34,11 @@ namespace ConduitLLM.Admin.Endpoints
                 .Produces<IEnumerable<ModelAuthorDto>>(StatusCodes.Status200OK);
             group.MapGet("/{id:int}", GetById).WithName("ModelAuthors_GetById")
                 .Produces<ModelAuthorDto>(StatusCodes.Status200OK)
-                .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+                .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
             group.MapGet("/{id:int}/series", GetSeriesByAuthor)
                 .WithName("ModelAuthors_ListSeries")
                 .Produces<IEnumerable<SimpleModelSeriesDto>>(StatusCodes.Status200OK)
-                .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+                .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
             group.MapPost("/", Create)
                 .WithName("ModelAuthors_Create")
                 .Produces<ModelAuthorDto>(StatusCodes.Status201Created)
@@ -124,7 +125,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (id != dto.Id)
             {
-                return Results.BadRequest("ID mismatch");
+                return AdminResults.BadRequest("ID mismatch");
             }
 
             var author = await repository.GetByIdAsync(id);

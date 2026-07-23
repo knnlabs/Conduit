@@ -67,7 +67,8 @@ namespace ConduitLLM.Core.Middleware
         /// <inheritdoc/>
         protected override string CreateErrorResponseJson(
             string message,
-            ExceptionToResponseMapper.ExceptionMappingResult mapping)
+            ExceptionToResponseMapper.ExceptionMappingResult mapping,
+            string traceId)
         {
             var errorResponse = new OpenAIErrorResponse
             {

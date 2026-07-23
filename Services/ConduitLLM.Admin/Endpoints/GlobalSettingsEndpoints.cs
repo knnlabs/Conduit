@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Auditing;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
@@ -19,21 +20,21 @@ public static class GlobalSettingsEndpoints
             .WithTags("GlobalSettings");
         group.MapGet("/", List).WithName("GlobalSettings_List").Produces<IEnumerable<GlobalSettingDto>>();
         group.MapGet("/{id:int}", GetById).WithName("GlobalSettings_GetById")
-            .Produces<GlobalSettingDto>().Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<GlobalSettingDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/by-key/{key}", GetByKey).WithName("GlobalSettings_GetByKey")
-            .Produces<GlobalSettingDto>().Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<GlobalSettingDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/", Create).WithName("GlobalSettings_Create")
             .Produces<GlobalSettingDto>(StatusCodes.Status201Created)
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapPut("/{id:int}", Update).WithName("GlobalSettings_Update")
-            .Produces(StatusCodes.Status204NoContent).Produces<string>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPut("/by-key", UpdateByKey).WithName("GlobalSettings_UpdateByKey")
-            .Produces(StatusCodes.Status204NoContent).Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapDelete("/{id:int}", Delete).WithName("GlobalSettings_Delete")
-            .Produces(StatusCodes.Status204NoContent).Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapDelete("/by-key/{key}", DeleteByKey).WithName("GlobalSettings_DeleteByKey")
-            .Produces(StatusCodes.Status204NoContent).Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/cache/stats", GetCacheStats).WithName("GlobalSettings_GetCacheStats")
             .Produces<GlobalSettingCacheStatsDto>();
         group.MapPost("/cache/reload", ReloadCache).WithName("GlobalSettings_ReloadCache")
@@ -80,7 +81,7 @@ public static class GlobalSettingsEndpoints
     {
         if (id != setting.Id)
         {
-            return Results.BadRequest("ID in route must match ID in body");
+            return AdminResults.BadRequest("ID in route must match ID in body");
         }
         var preState = await service.GetSettingByIdAsync(id) ?? throw new KeyNotFoundException();
         if (!await service.UpdateSettingAsync(setting))

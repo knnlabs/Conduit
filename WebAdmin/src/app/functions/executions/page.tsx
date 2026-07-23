@@ -83,7 +83,7 @@ export default function FunctionExecutionsPage() {
       let response;
       if (filterState !== 'all') {
         response = await executeWithAdmin(client =>
-          client.functionExecutions.getByState(Number(filterState) as ExecutionState)
+          client.functionExecutions.getByState(filterState as ExecutionState)
         );
       } else if (filterConfigId !== 'all') {
         response = await executeWithAdmin(client =>

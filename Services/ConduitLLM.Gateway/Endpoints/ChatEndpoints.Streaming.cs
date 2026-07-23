@@ -113,7 +113,7 @@ namespace ConduitLLM.Gateway.Endpoints
 
             var accountingContext = HttpContext.GetOrCreateRequestAccountingContext();
             var requestId = accountingContext.BillingRequestId;
-            response.Headers["X-Request-ID"] = requestId;
+            response.Headers["x-request-id"] = requestId;
 
             var modelMapping = await _modelMappingService.GetMappingByModelAliasAsync(request.Model);
             var providerId = modelMapping?.ProviderId.ToString() ?? "unknown";

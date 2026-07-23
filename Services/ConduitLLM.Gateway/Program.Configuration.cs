@@ -17,11 +17,23 @@ public partial class Program
         {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters = { new UtcDateTimeConverter(), new NullableUtcDateTimeConverter() }
+            Converters =
+            {
+                new JsonStringEnumConverter(
+                    JsonNamingPolicy.SnakeCaseLower,
+                    allowIntegerValues: false),
+                new UtcDateTimeConverter(),
+                new NullableUtcDateTimeConverter()
+            }
         };
 
         // Store JsonSerializerOptions in the builder's services for later use
         builder.Services.AddSingleton(jsonSerializerOptions);
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            options.SerializerOptions.Converters.Add(
+                new JsonStringEnumConverter(
+                    JsonNamingPolicy.SnakeCaseLower,
+                    allowIntegerValues: false)));
 
         // 1. Configure Conduit Settings
         builder.Services.AddOptions<ConduitSettings>()

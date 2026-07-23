@@ -46,12 +46,12 @@ namespace ConduitLLM.Tests.Core.Middleware
         }
 
         [Fact]
-        public async Task ExtractsCorrelationId_FromXCorrelationIDHeader()
+        public async Task IgnoresLegacyCorrelationHeader()
         {
             // Arrange
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
-            context.Request.Headers["X-Correlation-ID"] = "abc-123";
+            context.Request.Headers["X-Correlation-ID"] = "legacy-id";
             string? capturedTraceId = null;
 
             RequestDelegate next = ctx =>
@@ -66,7 +66,8 @@ namespace ConduitLLM.Tests.Core.Middleware
             await middleware.InvokeAsync(context);
 
             // Assert
-            Assert.Equal("abc-123", capturedTraceId);
+            Assert.NotEqual("legacy-id", capturedTraceId);
+            Assert.True(Guid.TryParse(capturedTraceId, out _));
         }
 
         [Fact]
@@ -75,7 +76,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             // Arrange
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
-            context.Request.Headers["X-Request-ID"] = "req-456";
+            context.Request.Headers["x-request-id"] = "req-456";
             string? capturedTraceId = null;
 
             RequestDelegate next = ctx =>
@@ -94,7 +95,7 @@ namespace ConduitLLM.Tests.Core.Middleware
         }
 
         [Fact]
-        public async Task ExtractsCorrelationId_FromXTraceIDHeader()
+        public async Task IgnoresLegacyTraceIdHeader()
         {
             // Arrange
             var context = new DefaultHttpContext();
@@ -114,7 +115,8 @@ namespace ConduitLLM.Tests.Core.Middleware
             await middleware.InvokeAsync(context);
 
             // Assert
-            Assert.Equal("trace-789", capturedTraceId);
+            Assert.NotEqual("trace-789", capturedTraceId);
+            Assert.True(Guid.TryParse(capturedTraceId, out _));
         }
 
         [Fact]
@@ -147,7 +149,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             // Arrange
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
-            context.Request.Headers["X-Correlation-ID"] = "test-corr-id";
+            context.Request.Headers["x-request-id"] = "test-corr-id";
             object? capturedItemValue = null;
 
             RequestDelegate next = ctx =>
@@ -177,7 +179,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             features.Set<IHttpResponseFeature>(new TestResponseFeature(onStartingCallbacks));
             features.Set<IHttpRequestFeature>(new HttpRequestFeature());
             var context = new DefaultHttpContext(features);
-            context.Request.Headers["X-Correlation-ID"] = "resp-header-test";
+            context.Request.Headers["x-request-id"] = "resp-header-test";
 
             RequestDelegate next = _ => Task.CompletedTask;
 
@@ -194,7 +196,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             }
 
             // Assert
-            Assert.Equal("resp-header-test", context.Response.Headers["X-Correlation-ID"]);
+            Assert.Equal("resp-header-test", context.Response.Headers["x-request-id"]);
         }
 
         [Fact]
@@ -203,7 +205,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             // Arrange
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
-            context.Request.Headers["X-Correlation-ID"] = "no-resp-header";
+            context.Request.Headers["x-request-id"] = "no-resp-header";
 
             RequestDelegate next = ctx => Task.CompletedTask;
 
@@ -214,7 +216,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             await middleware.InvokeAsync(context);
 
             // Assert
-            Assert.False(context.Response.Headers.ContainsKey("X-Correlation-ID"));
+            Assert.False(context.Response.Headers.ContainsKey("x-request-id"));
         }
 
         [Fact]
@@ -277,7 +279,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             // Arrange
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
-            context.Request.Headers["X-Correlation-ID"] = "scope-test-id";
+            context.Request.Headers["x-request-id"] = "scope-test-id";
 
             Dictionary<string, object>? capturedScope = null;
             _mockLogger
@@ -309,7 +311,7 @@ namespace ConduitLLM.Tests.Core.Middleware
             // Arrange
             var context = new DefaultHttpContext();
             context.Response.Body = new MemoryStream();
-            context.Request.Headers["X-Correlation-ID"] = "activity-test-id";
+            context.Request.Headers["x-request-id"] = "activity-test-id";
 
             RequestDelegate next = _ => Task.CompletedTask;
             var middleware = new CorrelationIdMiddleware(next, _mockLogger.Object);

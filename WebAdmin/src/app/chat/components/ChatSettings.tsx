@@ -42,13 +42,19 @@ export function ChatSettings({
   const parameters = activeSession.parameters;
 
   // Helper to get provider type name
-  const getProviderTypeName = (providerType: number): string => {
+  const getProviderTypeName = (providerType: string): string => {
     switch (providerType) {
-      case 1:
+      case 'exa':
         return 'Exa';
-      case 2:
+      case 'tavily':
         return 'Tavily';
-      case 3:
+      case 'perplexity':
+        return 'Perplexity';
+      case 'mcp':
+        return 'MCP';
+      case 'customRAG':
+        return 'Custom RAG';
+      case 'custom':
         return 'Custom';
       default:
         return 'Unknown';
@@ -150,7 +156,7 @@ export function ChatSettings({
                 return (
                   <div>
                     <Text size="sm" fw={500}>{func.configurationName || 'Unnamed Function'}</Text>
-                    <Text size="xs" c="dimmed">{getProviderTypeName(func.providerType || 3)}</Text>
+                    <Text size="xs" c="dimmed">{getProviderTypeName(func.providerType || 'customRAG')}</Text>
                   </div>
                 );
               }}

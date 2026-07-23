@@ -449,7 +449,7 @@ export default function FunctionCostsPage() {
               <Select
                 label="Provider Type"
                 value={formData.providerType.toString()}
-                onChange={(value) => setFormData({ ...formData, providerType: Number(value) as FunctionProviderType })}
+                onChange={(value) => setFormData({ ...formData, providerType: value as FunctionProviderType })}
                 data={getAvailableFunctionProviders().map(p => ({
                   value: p.value.toString(),
                   label: p.label
@@ -461,7 +461,7 @@ export default function FunctionCostsPage() {
                 label="Purpose"
                 placeholder="Any"
                 value={formData.purpose?.toString() ?? ''}
-                onChange={(value) => setFormData({ ...formData, purpose: value ? Number(value) as FunctionPurpose : undefined })}
+                onChange={(value) => setFormData({ ...formData, purpose: value ? value as FunctionPurpose : undefined })}
                 data={[
                   { value: '', label: 'Any' },
                   { value: FunctionPurpose.Search.toString(), label: 'Search' },
@@ -474,7 +474,7 @@ export default function FunctionCostsPage() {
               <Select
                 label="Pricing Model"
                 value={formData.pricingModel.toString()}
-                onChange={(value) => handlePricingModelChange(Number(value) as FunctionPricingModel)}
+                onChange={(value) => handlePricingModelChange(value as FunctionPricingModel)}
                 data={[
                   { value: FunctionPricingModel.FlatRate.toString(), label: 'Flat Rate' },
                   { value: FunctionPricingModel.PerResult.toString(), label: 'Per Result' },

@@ -5,7 +5,7 @@ namespace ConduitLLM.Core.Exceptions;
 /// <summary>
 /// Maps exceptions to standardized HTTP response information.
 /// Single source of truth for exception-to-response mapping across both
-/// Admin API (ErrorResponseDto) and Gateway API (OpenAIErrorResponse).
+/// Admin API (RFC Problem Details) and Gateway API (OpenAI error envelope).
 /// </summary>
 public static class ExceptionToResponseMapper
 {

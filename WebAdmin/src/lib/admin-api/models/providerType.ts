@@ -1,47 +1,20 @@
-/**
- * Strongly-typed enumeration of supported LLM providers.
- * These numeric values must match the C# ProviderType enum exactly.
- */
-export enum ProviderType {
-  /** OpenAI provider (GPT models) */
-  OpenAI = 1,
+/** Provider values as serialized by the Admin API. */
+export const ProviderType = {
+  Unknown: 'unknown',
+  OpenAI: 'openAI',
+  Groq: 'groq',
+  Replicate: 'replicate',
+  Fireworks: 'fireworks',
+  OpenAICompatible: 'openAICompatible',
+  MiniMax: 'miniMax',
+  Ultravox: 'ultravox',
+  ElevenLabs: 'elevenLabs',
+  Cerebras: 'cerebras',
+  SambaNova: 'sambaNova',
+  DeepInfra: 'deepInfra',
+  Cloudflare: 'cloudflare',
+  OpenRouter: 'openRouter',
+  Meta: 'meta',
+} as const;
 
-  /** Groq */
-  Groq = 2,
-
-  /** Replicate */
-  Replicate = 3,
-
-  /** Fireworks AI */
-  Fireworks = 4,
-
-  /** OpenAI-compatible generic provider */
-  OpenAICompatible = 5,
-
-  /** MiniMax */
-  MiniMax = 6,
-
-  /** Ultravox */
-  Ultravox = 7,
-
-  /** ElevenLabs (audio) */
-  ElevenLabs = 8,
-
-  /** Cerebras (high-performance inference) */
-  Cerebras = 9,
-
-  /** SambaNova Cloud (ultra-fast inference provider) */
-  SambaNova = 10,
-
-  /** DeepInfra (OpenAI-compatible LLM inference platform) */
-  DeepInfra = 11,
-
-  /** Cloudflare Workers AI (serverless AI inference on Cloudflare's global network) */
-  Cloudflare = 12,
-
-  /** OpenRouter (multi-provider routing via OpenAI-compatible API) */
-  OpenRouter = 13,
-
-  /** Meta AI (Meta Model API, Muse Spark models) */
-  Meta = 14
-}
+export type ProviderType = (typeof ProviderType)[keyof typeof ProviderType];

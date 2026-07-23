@@ -75,9 +75,9 @@ public abstract class AdminEndpointHandlerBase
     }
 
     protected static IResult Ok<T>(T value) => Results.Ok(value);
-    protected static IResult BadRequest<T>(T value) => Results.BadRequest(value);
-    protected static IResult NotFound<T>(T value) => Results.NotFound(value);
-    protected static IResult Conflict<T>(T value) => Results.Conflict(value);
+    protected static IResult BadRequest(string message) => AdminResults.BadRequest(message);
+    protected static IResult NotFound(string message) => AdminResults.NotFound(message);
+    protected static IResult Conflict(string message) => AdminResults.Conflict(message);
     protected static IResult NoContent() => Results.NoContent();
     protected static IResult StatusCode<T>(int statusCode, T value) => Results.Json(value, statusCode: statusCode);
 }

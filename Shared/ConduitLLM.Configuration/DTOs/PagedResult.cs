@@ -48,24 +48,5 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public bool HasNextPage => CurrentPage < TotalPages;
 
-        // Backwards compatibility properties
-
-        /// <summary>
-        /// Alias for CurrentPage for backwards compatibility
-        /// </summary>
-        public int Page
-        {
-            get => CurrentPage;
-            set => CurrentPage = value;
-        }
-
-        /// <summary>
-        /// Alias for TotalCount for backwards compatibility
-        /// </summary>
-        public int TotalItems
-        {
-            get => TotalCount;
-            set => TotalCount = value;
-        }
     }
 }

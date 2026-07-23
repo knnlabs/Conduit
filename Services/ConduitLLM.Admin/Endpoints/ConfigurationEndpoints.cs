@@ -30,7 +30,7 @@ public static class ConfigurationEndpoints
         group.MapPut("/routing/defaults", PutRoutingDefaults)
             .WithName("Configuration_UpdateRoutingDefaults")
             .Produces<RoutingDefaultsDto>()
-            .Produces<string>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapGet("/routing/aliases/{alias}", GetAliasRouting)
             .WithName("Configuration_GetAliasRouting")
             .Produces<RoutePolicyDto>()
@@ -38,7 +38,7 @@ public static class ConfigurationEndpoints
         group.MapPut("/routing/aliases/{alias}", PutAliasRouting)
             .WithName("Configuration_UpdateAliasRouting")
             .Produces<RoutePolicyDto>()
-            .Produces<string>(StatusCodes.Status400BadRequest)
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces(StatusCodes.Status404NotFound);
 
         return app;
@@ -135,7 +135,7 @@ public static class ConfigurationEndpoints
     {
         if (dto.CostWeight + dto.SpeedWeight + dto.QualityWeight <= 0)
         {
-            return Results.BadRequest("At least one route score weight must be positive.");
+            return AdminResults.BadRequest("At least one route score weight must be positive.");
         }
 
         await using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);
@@ -179,7 +179,7 @@ public static class ConfigurationEndpoints
         await using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         var policy = await context.ModelRoutePolicies.AsNoTracking()
             .SingleOrDefaultAsync(item => item.ModelAlias == alias, cancellationToken);
-        return policy is null ? Results.NotFound() : Results.Ok(ToRoutePolicyDto(policy));
+        return policy is null ? AdminResults.NotFound("Alias routing policy not found") : Results.Ok(ToRoutePolicyDto(policy));
     }
 
     private static async Task<IResult> PutAliasRouting(
@@ -191,13 +191,13 @@ public static class ConfigurationEndpoints
         if (!dto.Strategy.Equals("Balanced", StringComparison.OrdinalIgnoreCase)
             || dto.CostWeight + dto.SpeedWeight + dto.QualityWeight <= 0)
         {
-            return Results.BadRequest("A valid Balanced policy is required.");
+            return AdminResults.BadRequest("A valid Balanced policy is required.");
         }
 
         await using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);
         if (!await context.ModelProviderMappings.AnyAsync(mapping => mapping.ModelAlias == alias, cancellationToken))
         {
-            return Results.NotFound();
+            return AdminResults.NotFound("Alias routing policy not found");
         }
 
         var policy = await context.ModelRoutePolicies.SingleOrDefaultAsync(

@@ -22,18 +22,18 @@ public static class FunctionCostsEndpoints
 
         group.MapGet("/", List).WithName("FunctionCosts_List").Produces<List<FunctionCostDto>>();
         group.MapGet("/{id:int}", GetById).WithName("FunctionCosts_GetById")
-            .Produces<FunctionCostDto>().Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<FunctionCostDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/configuration/{functionConfigurationId:int}", GetByConfiguration)
             .WithName("FunctionCosts_GetByConfiguration")
-            .Produces<FunctionCostDto>().Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<FunctionCostDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/", Create).WithName("FunctionCosts_Create")
             .Produces<FunctionCostDto>(StatusCodes.Status201Created)
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapPut("/{id:int}", Update).WithName("FunctionCosts_Update")
-            .Produces<FunctionCostDto>().Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<FunctionCostDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapDelete("/{id:int}", Delete).WithName("FunctionCosts_Delete")
-            .Produces(StatusCodes.Status204NoContent).Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/cache/clear", ClearCache).WithName("FunctionCosts_ClearCache")
             .Produces<FunctionCostCacheClearResultDto>();
         return app;

@@ -2,6 +2,7 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import { HttpMethod } from '../client/HttpMethod';
+import type { ProviderType } from '../models/providerType';
 
 export type ProviderTool = components['schemas']['ProviderToolDto'] & Required<Pick<components['schemas']['ProviderToolDto'], 'id' | 'provider' | 'toolName' | 'isActive' | 'updatedAt'>>;
 export type CreateProviderTool = components['schemas']['CreateProviderToolDto'];
@@ -22,7 +23,7 @@ export class ProviderToolsService {
    * @param provider Optional provider type filter
    * @param isActive Optional active status filter
    */
-  async getProviderTools(provider?: number, isActive?: boolean, config?: RequestConfig): Promise<ProviderTool[]> {
+  async getProviderTools(provider?: ProviderType, isActive?: boolean, config?: RequestConfig): Promise<ProviderTool[]> {
     const query = { provider, isActive };
     const params = new URLSearchParams();
     if (provider !== undefined) params.set('provider', String(provider));

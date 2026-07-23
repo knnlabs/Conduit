@@ -97,7 +97,7 @@ public class FunctionConfigurationsEndpoints
     {
         if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionProviderType>(providerType, true, out var providerEnum))
         {
-            return Results.BadRequest(new ErrorResponseDto($"Invalid provider type: {providerType}"));
+            return AdminResults.BadRequest($"Invalid provider type: {providerType}");
         }
 
         var configurations = await _configurationRepository.GetByProviderTypeAsync(providerEnum);
@@ -113,7 +113,7 @@ public class FunctionConfigurationsEndpoints
     {
         if (!Enum.TryParse<ConduitLLM.Functions.Enums.FunctionPurpose>(purpose, true, out var purposeEnum))
         {
-            return Results.BadRequest(new ErrorResponseDto($"Invalid purpose: {purpose}"));
+            return AdminResults.BadRequest($"Invalid purpose: {purpose}");
         }
 
         var configurations = await _configurationRepository.GetByPurposeAsync(purposeEnum);
@@ -129,7 +129,7 @@ public class FunctionConfigurationsEndpoints
     {
         if (request == null)
         {
-            return Results.BadRequest(new ErrorResponseDto("Function configuration data is required"));
+            return AdminResults.BadRequest("Function configuration data is required");
         }
 
         var configuration = new FunctionConfiguration
@@ -173,7 +173,10 @@ public class FunctionConfigurationsEndpoints
         }
 
         return created is null
-            ? Results.Problem("Function configuration was created but could not be reloaded.", statusCode: 500)
+            ? AdminResults.Problem(
+                StatusCodes.Status500InternalServerError,
+                "Function configuration was created but could not be reloaded.",
+                "function_configuration_reload_failed")
             : Results.Created($"/api/FunctionConfigurations/{id}", ToDto(created));
     }
 
@@ -189,7 +192,7 @@ public class FunctionConfigurationsEndpoints
     {
         if (request == null)
         {
-            return Results.BadRequest(new ErrorResponseDto("Function configuration data is required"));
+            return AdminResults.BadRequest("Function configuration data is required");
         }
 
         var existing = await _configurationRepository.GetByIdAsync(id);
@@ -222,7 +225,7 @@ public class FunctionConfigurationsEndpoints
 
         if (updated == null)
         {
-            return Results.NotFound(new ErrorResponseDto("Function configuration not found after update"));
+            return AdminResults.NotFound("Function configuration not found after update");
         }
 
         LogAdminAudit("Updated", "FunctionConfiguration", id,

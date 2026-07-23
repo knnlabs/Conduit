@@ -13,6 +13,7 @@ import {
   getAvailableProviders,
   getProviderConstraints,
   getProviderTypeName,
+  providerTypeToOrdinal,
   ProviderMetadata,
   ProviderConstraints
 } from '../types/providers';
@@ -133,7 +134,9 @@ export class FetchModelService {
     // Normalize provider types in the response
     return identifiers.map(identifier => {
       // Provider is now a number from the API
-      const normalizedProvider = identifier.provider ? identifier.provider as ProviderType : null;
+      const normalizedProvider = identifier.provider
+        ? normalizeProviderType(identifier.provider) ?? null
+        : null;
       return {
         ...identifier,
         normalizedProvider: normalizedProvider ?? null,
@@ -262,7 +265,7 @@ export class FetchModelService {
       const identifiers = model.identifiers ?? [];
 
       const providers = identifiers.map(i => {
-        const normalizedProvider = i.provider ? i.provider as ProviderType : null;
+        const normalizedProvider = i.provider ? normalizeProviderType(i.provider) ?? null : null;
         return {
           id: i.id ?? 0,
           identifier: i.identifier ?? '',
@@ -334,7 +337,7 @@ export class FetchModelService {
       const identifiers = model.identifiers ?? [];
 
       const providers = identifiers.map(i => {
-        const normalizedProvider = i.provider ? i.provider as ProviderType : null;
+        const normalizedProvider = i.provider ? normalizeProviderType(i.provider) ?? null : null;
         return {
           id: i.id ?? 0,
           identifier: i.identifier ?? '',
@@ -458,8 +461,7 @@ export class FetchModelService {
       if (!normalized) {
         throw new InvalidProviderTypeError(String(data.provider));
       }
-      // Keep as numeric value for API
-      data.provider = normalized;
+      data.provider = providerTypeToOrdinal(normalized);
     }
 
     // Apply provider defaults
@@ -482,7 +484,9 @@ export class FetchModelService {
     );
 
     // Return normalized result (provider is now a number from API)
-    const normalizedProvider = result.provider ? result.provider as ProviderType : null;
+    const normalizedProvider = result.provider
+      ? normalizeProviderType(result.provider) ?? null
+      : null;
     return {
       ...result,
       normalizedProvider: normalizedProvider ?? null,
@@ -511,8 +515,7 @@ export class FetchModelService {
       if (!normalized) {
         throw new InvalidProviderTypeError(String(data.provider));
       }
-      // Keep as numeric value for API
-      data.provider = normalized;
+      data.provider = providerTypeToOrdinal(normalized);
     }
 
     // Apply provider defaults

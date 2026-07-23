@@ -97,7 +97,7 @@ export class FetchModelCostService {
       `/api/ModelCosts${queryString ? `?${queryString}` : ''}`,
       (contractClient, options) => contractClient.GET('/api/ModelCosts', { ...options, params: { query } }), config);
     return { items: result.items ?? [], totalCount: result.totalCount ?? 0,
-      page: result.page ?? result.currentPage ?? 1, pageSize: result.pageSize ?? 50,
+      page: result.currentPage ?? 1, pageSize: result.pageSize ?? 50,
       totalPages: result.totalPages ?? 0 } as PagedResult<ModelCostDto>;
   }
 

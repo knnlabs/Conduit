@@ -30,8 +30,6 @@ import {
   IconStairs,
   IconVideo,
   IconPhoto,
-  IconMicrophone,
-  IconLetterT,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { fetchModelCosts, useDeleteModelCost } from '../hooks/useModelCostsApi';
@@ -134,8 +132,6 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       [PricingModel.InferenceSteps]: { label: 'Steps', color: 'teal', icon: <IconStairs size={14} /> },
       [PricingModel.TieredTokens]: { label: 'Tiered', color: 'orange' },
       [PricingModel.PerImage]: { label: 'Per Image', color: 'pink', icon: <IconPhoto size={14} /> },
-      [PricingModel.PerMinuteAudio]: { label: 'Per Minute', color: 'cyan', icon: <IconMicrophone size={14} /> },
-      [PricingModel.PerThousandCharacters]: { label: 'Per 1K Chars', color: 'lime', icon: <IconLetterT size={14} /> },
       [PricingModel.RulesBased]: { label: 'Rules-Based', color: 'blue', icon: <IconAdjustments size={14} /> },
     };
     

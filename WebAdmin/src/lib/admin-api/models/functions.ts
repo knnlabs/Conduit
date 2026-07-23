@@ -1,46 +1,51 @@
 /** Function provider type (e.g., Exa, Tavily) */
-export enum FunctionProviderType {
-  Exa = 1,
-  Perplexity = 2,
-  CustomRAG = 3,
-  Tavily = 4,
-  Mcp = 5,
-  Custom = 99
-}
+export const FunctionProviderType = {
+  Exa: 'exa',
+  Perplexity: 'perplexity',
+  CustomRAG: 'customRAG',
+  Tavily: 'tavily',
+  Mcp: 'mcp',
+  Custom: 'custom',
+} as const;
+export type FunctionProviderType = (typeof FunctionProviderType)[keyof typeof FunctionProviderType];
 
 /** Function purpose category */
-export enum FunctionPurpose {
-  Search = 1,
-  Answer = 2,
-  ContentRetrieval = 3,
-  RAG = 4
-}
+export const FunctionPurpose = {
+  Search: 'search',
+  Answer: 'answer',
+  ContentRetrieval: 'contentRetrieval',
+  RAG: 'rag',
+} as const;
+export type FunctionPurpose = (typeof FunctionPurpose)[keyof typeof FunctionPurpose];
 
 /** Function execution mode */
-export enum FunctionExecutionMode {
-  Synchronous = 1,
-  Asynchronous = 2
-}
+export const FunctionExecutionMode = {
+  Synchronous: 'synchronous',
+  Asynchronous: 'asynchronous',
+} as const;
+export type FunctionExecutionMode = (typeof FunctionExecutionMode)[keyof typeof FunctionExecutionMode];
 
 /** Function execution state */
-export enum ExecutionState {
-  Pending = 1,
-  Running = 2,
-  Completed = 3,
-  Failed = 4,
-  Cancelled = 5,
-  TimedOut = 6
-}
+export const ExecutionState = {
+  Pending: 'pending',
+  Running: 'running',
+  Completed: 'completed',
+  Failed: 'failed',
+  Cancelled: 'cancelled',
+  TimedOut: 'timedOut',
+} as const;
+export type ExecutionState = (typeof ExecutionState)[keyof typeof ExecutionState];
 
 /** Function cost pricing model */
-export enum FunctionPricingModel {
-  FlatRate = 1,
-  PerResult = 2,
-  PerToken = 3,
-  TimeBased = 4,
-  Tiered = 5,
-  Hybrid = 6
-}
+export const FunctionPricingModel = {
+  FlatRate: 'flatRate',
+  PerResult: 'perResult',
+  PerToken: 'perToken',
+  TimeBased: 'timeBased',
+  Tiered: 'tiered',
+  Hybrid: 'hybrid',
+} as const;
+export type FunctionPricingModel = (typeof FunctionPricingModel)[keyof typeof FunctionPricingModel];
 
 // ============================================================================
 // Function Configuration
@@ -232,27 +237,27 @@ export interface BasePricingConfig {
 
 /** Flat rate pricing - single fixed cost per execution */
 export interface FlatRatePricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.FlatRate;
+  pricingModel: typeof FunctionPricingModel.FlatRate;
   costPerExecution: number;
 }
 
 /** Per-result pricing - cost scales with number of results */
 export interface PerResultPricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.PerResult;
+  pricingModel: typeof FunctionPricingModel.PerResult;
   costPerResult: number;
   minimumCost?: number;
 }
 
 /** Per-token pricing - similar to LLM pricing */
 export interface PerTokenPricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.PerToken;
+  pricingModel: typeof FunctionPricingModel.PerToken;
   costPerMillionTokens: number;
   minimumCost?: number;
 }
 
 /** Time-based pricing - cost by execution duration */
 export interface TimeBasedPricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.TimeBased;
+  pricingModel: typeof FunctionPricingModel.TimeBased;
   costPerSecond: number;
   minimumCost?: number;
   roundUpToNearestSecond?: boolean;
@@ -260,7 +265,7 @@ export interface TimeBasedPricingConfig extends BasePricingConfig {
 
 /** Tiered pricing - different rates for different result count ranges */
 export interface TieredPricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.Tiered;
+  pricingModel: typeof FunctionPricingModel.Tiered;
   tiers: Array<{
     minResults: number;
     maxResults?: number;
@@ -271,7 +276,7 @@ export interface TieredPricingConfig extends BasePricingConfig {
 
 /** Hybrid pricing - combines multiple cost factors (Exa-specific) */
 export interface ExaHybridPricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.Hybrid;
+  pricingModel: typeof FunctionPricingModel.Hybrid;
   // Search costs
   neuralSearchCosts: {
     tier1: { minResults: number; maxResults: number; costPerResult: number }; // 1-25
@@ -291,7 +296,7 @@ export interface ExaHybridPricingConfig extends BasePricingConfig {
 
 /** Tavily search pricing - credit-based model (Tavily-specific) */
 export interface TavilySearchPricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.Hybrid;
+  pricingModel: typeof FunctionPricingModel.Hybrid;
   // Credit costs
   costPerCredit: number; // Default: 0.008 USD
   basicSearchCredits: number; // Default: 1
@@ -306,7 +311,7 @@ export interface TavilySearchPricingConfig extends BasePricingConfig {
 
 /** Perplexity pricing - base request plus separate input/output token rates */
 export interface PerplexityHybridPricingConfig extends BasePricingConfig {
-  pricingModel: FunctionPricingModel.Hybrid;
+  pricingModel: typeof FunctionPricingModel.Hybrid;
   baseRequestCost: number;
   inputTokenCostPerMillion: number;
   outputTokenCostPerMillion: number;

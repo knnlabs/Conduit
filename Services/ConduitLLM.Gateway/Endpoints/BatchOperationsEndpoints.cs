@@ -8,7 +8,7 @@ namespace ConduitLLM.Gateway.Endpoints
 {
     /// <summary>
     /// API controller for managing batch operations with real-time progress tracking.
-    /// Supports idempotency tokens via X-Idempotency-Token header.
+    /// Supports idempotency via the Idempotency-Key header.
     /// </summary>
     public class BatchOperationsEndpoints : GatewayEndpointHandlerBase
     {
@@ -37,15 +37,18 @@ namespace ConduitLLM.Gateway.Endpoints
 
         /// <summary>
         /// Start a batch spend update operation.
-        /// Supports idempotency via X-Idempotency-Token header to prevent duplicate processing.
+        /// Supports idempotency via the Idempotency-Key header to prevent duplicate processing.
         /// </summary>
         /// <param name="request">Batch spend update request</param>
+        /// <param name="idempotencyKey">Optional key used to deduplicate retries.</param>
         /// <returns>Operation result with tracking ID</returns>
         /// <remarks>
-        /// Include X-Idempotency-Token header to enable duplicate detection.
+        /// Include the Idempotency-Key header to enable duplicate detection.
         /// Duplicate requests with the same token will return the cached result.
         /// </remarks>
-        public async Task<IResult> StartBatchSpendUpdate(BatchSpendUpdateRequest request)
+        public async Task<IResult> StartBatchSpendUpdate(
+            BatchSpendUpdateRequest request,
+            string? idempotencyKey)
         {
             var virtualKeyId = GetVirtualKeyId();
 
@@ -86,21 +89,18 @@ namespace ConduitLLM.Gateway.Endpoints
                 RequestMetadata = u.Metadata
             }).ToList();
 
-            // Get idempotency token from header (optional)
-            var idempotencyToken = HttpContext.Request.Headers["X-Idempotency-Token"].FirstOrDefault();
-
             // Execute batch spend update operation
             var result = await _batchSpendUpdateOperation.ExecuteAsync(
                 spendUpdates,
                 virtualKeyId,
-                idempotencyToken,
+                idempotencyKey,
                 HttpContext.RequestAborted);
 
             Logger.LogInformation(
                 "Started batch spend update operation {OperationId} with {Count} items (Idempotent: {Idempotent})",
                 result.OperationId,
                 request.Updates.Count(),
-                !string.IsNullOrWhiteSpace(idempotencyToken));
+                !string.IsNullOrWhiteSpace(idempotencyKey));
 
             GatewayOpsMetrics.RecordBatchOperation("spend_update", "accepted", request.Updates.Count());
             return Accepted(new BatchOperationStartResponse

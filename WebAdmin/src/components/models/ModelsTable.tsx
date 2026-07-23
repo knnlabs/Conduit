@@ -36,7 +36,7 @@ type ModelWithMappingStatus = ModelDto & {
     identifier: string;
     provider: number | null;
     isPrimary: boolean;
-    normalizedProvider?: number | null;
+    normalizedProvider?: string | null;
     providerName?: string | null;
   }>;
   seriesParameters?: string | null;
@@ -405,8 +405,8 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   )}
                 </Table.Td>
                 <Table.Td>
-                  <Tooltip label={getTokenizerDisplayName(model.tokenizerType ?? 0, false)}>
-                    <Text size="sm">{getTokenizerDisplayName(model.tokenizerType ?? 0, true)}</Text>
+                  <Tooltip label={getTokenizerDisplayName(model.tokenizerType ?? 'none', false)}>
+                    <Text size="sm">{getTokenizerDisplayName(model.tokenizerType ?? 'none', true)}</Text>
                   </Tooltip>
                 </Table.Td>
                 <Table.Td>

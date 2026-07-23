@@ -61,7 +61,7 @@ namespace ConduitLLM.Admin.Endpoints
             g.MapPut("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id,UpdateModelCostDto d)=>e.UpdateModelCost(id,d)).WithName("ModelCosts_Update").Produces<ModelCostDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             g.MapDelete("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id)=>e.DeleteModelCost(id)).WithName("ModelCosts_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             g.MapGet("/overview", ([FromServices] ModelCostsEndpoints e,DateTime? startDate=null,DateTime? endDate=null)=>e.GetModelCostOverview(startDate ?? default,endDate ?? default)).WithName("ModelCosts_GetOverview").Produces<IEnumerable<ModelCostOverviewDto>>().Produces(StatusCodes.Status400BadRequest);
-            g.MapPost("/import", ([FromServices] ModelCostsEndpoints e,IEnumerable<CreateModelCostDto> d)=>e.ImportModelCosts(d)).WithName("ModelCosts_Import").Accepts<IEnumerable<CreateModelCostDto>>("application/json", "text/json", "application/*+json").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
+            g.MapPost("/import", ([FromServices] ModelCostsEndpoints e,IEnumerable<CreateModelCostDto> d)=>e.ImportModelCosts(d)).WithName("ModelCosts_Import").Accepts<IEnumerable<CreateModelCostDto>>("application/json").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
             g.MapGet("/export/csv", ([FromServices] ModelCostsEndpoints e,int? providerId=null)=>e.ExportCsv(providerId)).WithName("ModelCosts_ExportCsv").Produces(StatusCodes.Status200OK,typeof(void),"text/csv");
             g.MapGet("/export/json", ([FromServices] ModelCostsEndpoints e,int? providerId=null)=>e.ExportJson(providerId)).WithName("ModelCosts_ExportJson").Produces(StatusCodes.Status200OK,typeof(void),"application/json");
             g.MapPost("/import/csv", ([FromServices] ModelCostsEndpoints e,IFormFile file)=>e.ImportCsv(file)).WithName("ModelCosts_ImportCsv").DisableAntiforgery().Accepts<IFormFile>("multipart/form-data").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
@@ -108,7 +108,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 Items = modelCosts.Skip((effectivePage - 1) * effectivePageSize).Take(effectivePageSize).ToList(),
                 TotalCount = totalCount,
-                Page = effectivePage,
+                CurrentPage = effectivePage,
                 PageSize = effectivePageSize,
                 TotalPages = (int)Math.Ceiling(totalCount / (double)effectivePageSize)
             });
@@ -219,7 +219,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (startDate > endDate)
             {
-                return Results.BadRequest("Start date cannot be after end date");
+                return AdminResults.BadRequest("Start date cannot be after end date");
             }
 
             var result = await _modelCostService.GetModelCostOverviewAsync(startDate, endDate);
@@ -235,7 +235,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (modelCosts == null || !modelCosts.Any())
             {
-                return Results.BadRequest("No model costs provided for import");
+                return AdminResults.BadRequest("No model costs provided for import");
             }
 
             var result = await _modelCostService.ImportModelCostsAsync(modelCosts);
@@ -278,12 +278,12 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (file == null || file.Length == 0)
             {
-                return Results.BadRequest(new ErrorResponseDto("No file provided for import"));
+                return AdminResults.BadRequest("No file provided for import");
             }
 
             if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
             {
-                return Results.BadRequest(new ErrorResponseDto("File must be a CSV file"));
+                return AdminResults.BadRequest("File must be a CSV file");
             }
 
             using var reader = new StreamReader(file.OpenReadStream());
@@ -315,12 +315,12 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (file == null || file.Length == 0)
             {
-                return Results.BadRequest("No file provided for import");
+                return AdminResults.BadRequest("No file provided for import");
             }
 
             if (!file.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             {
-                return Results.BadRequest("File must be a JSON file");
+                return AdminResults.BadRequest("File must be a JSON file");
             }
 
             using var reader = new StreamReader(file.OpenReadStream());
@@ -355,7 +355,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (request == null || string.IsNullOrWhiteSpace(request.PricingConfiguration))
             {
-                return Results.BadRequest(new ErrorResponseDto("Pricing configuration is required"));
+                return AdminResults.BadRequest("Pricing configuration is required");
             }
 
             // Verify the model cost exists
@@ -498,7 +498,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (request == null || string.IsNullOrWhiteSpace(request.PricingConfiguration))
             {
-                return Results.BadRequest(new ErrorResponseDto("Pricing configuration is required"));
+                return AdminResults.BadRequest("Pricing configuration is required");
             }
 
             await Task.CompletedTask;

@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using ConduitLLM.Admin.Auditing;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
@@ -31,12 +32,12 @@ public static class PromptCachingEndpoints
         group.MapGet("/config", GetConfig).WithName("PromptCaching_GetConfig")
             .Produces<PromptCachingConfigDto>().Produces<ProblemDetails>(StatusCodes.Status409Conflict);
         group.MapPut("/config", UpdateConfig).WithName("PromptCaching_UpdateConfig")
-            .Produces<PromptCachingConfigDto>().Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<PromptCachingConfigDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapGet("/capabilities", GetCapabilities).WithName("PromptCaching_GetCapabilities")
             .Produces<IReadOnlyList<PromptCachingCapabilityDto>>();
         group.MapGet("/analytics", GetAnalytics).WithName("PromptCaching_GetAnalytics")
-            .Produces<PromptCachingAnalyticsDto>().Produces<string>(StatusCodes.Status400BadRequest)
-            .Produces<string>(StatusCodes.Status503ServiceUnavailable);
+            .Produces<PromptCachingAnalyticsDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status503ServiceUnavailable, "application/problem+json");
         return app;
     }
 
@@ -68,14 +69,10 @@ public static class PromptCachingEndpoints
         var errors = config is null ? Array.Empty<string>() : PromptCachingPolicyResolver.Validate(config);
         if (config is null || errors.Count > 0)
         {
-            return Results.Problem(
-                title: "Prompt caching configuration is invalid",
-                detail: config is null ? "The stored configuration is malformed." : string.Join("; ", errors),
-                statusCode: StatusCodes.Status409Conflict,
-                extensions: new Dictionary<string, object?>
-                {
-                    ["code"] = "prompt_caching_config_version_unsupported"
-                });
+            return AdminResults.Problem(
+                StatusCodes.Status409Conflict,
+                config is null ? "The stored configuration is malformed." : string.Join("; ", errors),
+                "prompt_caching_config_version_unsupported");
         }
         return Results.Ok(ToDto(config));
     }
@@ -173,13 +170,13 @@ public static class PromptCachingEndpoints
         var dbContextFactory = services.GetService<IDbContextFactory<ConduitDbContext>>();
         if (dbContextFactory is null)
         {
-            return Results.Json("Analytics storage is unavailable.", statusCode: StatusCodes.Status503ServiceUnavailable);
+            return AdminResults.ServiceUnavailable("Analytics storage is unavailable.");
         }
         var end = to?.ToUniversalTime() ?? DateTime.UtcNow;
         var start = from?.ToUniversalTime() ?? end.AddHours(-24);
         if (start > end || end - start > TimeSpan.FromDays(90))
         {
-            return Results.BadRequest("The analytics range must be ordered and no longer than 90 days.");
+            return AdminResults.BadRequest("The analytics range must be ordered and no longer than 90 days.");
         }
 
         await using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);

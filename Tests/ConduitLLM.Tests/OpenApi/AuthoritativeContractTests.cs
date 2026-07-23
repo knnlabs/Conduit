@@ -112,13 +112,107 @@ public sealed class AuthoritativeContractTests : IDisposable
     [Fact]
     public void Admin_Universal500UsesTheStandardErrorShape()
     {
-        var properties = Operation(_admin, "/api/VirtualKeys", "get")
+        var schema = Operation(_admin, "/api/VirtualKeys", "get")
             .GetProperty("responses").GetProperty("500").GetProperty("content")
-            .GetProperty("application/json").GetProperty("schema").GetProperty("properties");
+            .GetProperty("application/problem+json").GetProperty("schema");
 
-        properties.TryGetProperty("error", out _).Should().BeTrue();
-        properties.TryGetProperty("details", out _).Should().BeTrue();
-        properties.TryGetProperty("code", out _).Should().BeTrue();
+        schema.GetProperty("$ref").GetString()
+            .Should().Be("#/components/schemas/AdminProblemDetails");
+    }
+
+    [Fact]
+    public void Contracts_PublishRequestIdAndCanonicalErrorShapeOnEveryResponse()
+    {
+        foreach (var (name, document, mediaType, schemaName) in new[]
+        {
+            ("admin", _admin, "application/problem+json", "AdminProblemDetails"),
+            ("gateway", _gateway, "application/json", "OpenAIErrorResponse")
+        })
+        {
+            foreach (var (operationName, path, operation) in Operations(document))
+            {
+                foreach (var response in operation.GetProperty("responses").EnumerateObject())
+                {
+                    response.Value.GetProperty("headers").TryGetProperty("x-request-id", out _)
+                        .Should().BeTrue($"{name} {operationName} {path} response {response.Name} must expose its request ID");
+
+                    if (!int.TryParse(response.Name, out var status) || status < 400)
+                    {
+                        continue;
+                    }
+
+                    var content = response.Value.GetProperty("content");
+                    content.EnumerateObject().Select(item => item.Name)
+                        .Should().Equal(mediaType);
+                    content.GetProperty(mediaType).GetProperty("schema")
+                        .GetProperty("$ref").GetString()
+                        .Should().Be($"#/components/schemas/{schemaName}");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void Contracts_UseStringEnumsAndCanonicalMediaTypes()
+    {
+        foreach (var (name, document) in new[] { ("admin", _admin), ("gateway", _gateway) })
+        {
+            foreach (var element in Descendants(document.RootElement))
+            {
+                if (element.ValueKind == JsonValueKind.Object &&
+                    element.TryGetProperty("enum", out var values))
+                {
+                    values.EnumerateArray().Should().NotContain(
+                        value => value.ValueKind == JsonValueKind.Number,
+                        $"{name} enum values must not use wire-unstable integer ordinals");
+                }
+
+                if (element.ValueKind == JsonValueKind.Object &&
+                    element.TryGetProperty("content", out var content) &&
+                    content.ValueKind == JsonValueKind.Object)
+                {
+                    content.EnumerateObject().Select(item => item.Name)
+                        .Should().NotContain(mediaType =>
+                            mediaType == "text/json" || mediaType == "text/plain" ||
+                            mediaType.StartsWith("application/", StringComparison.Ordinal) &&
+                            mediaType.EndsWith("+json", StringComparison.Ordinal) &&
+                            mediaType != "application/problem+json");
+                }
+            }
+        }
+    }
+
+    [Fact]
+    public void Gateway_IdempotentCommandsUseOnlyTheCanonicalHeader()
+    {
+        foreach (var path in new[] { "/v1/functions/execute", "/v1/batch/spend-updates" })
+        {
+            var operation = Operation(_gateway, path, "post");
+            operation.GetProperty("parameters").EnumerateArray()
+                .Should().ContainSingle(parameter =>
+                    parameter.GetProperty("in").GetString() == "header" &&
+                    parameter.GetProperty("name").GetString() == "Idempotency-Key");
+
+            var requestSchema = operation.GetProperty("requestBody").GetProperty("content")
+                .GetProperty("application/json").GetProperty("schema");
+            ResolveSchema(_gateway, requestSchema).GetProperty("properties").EnumerateObject()
+                .Select(property => property.Name)
+                .Should().NotContain(name =>
+                    name.Contains("idempotency", StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
+    [Fact]
+    public void Admin_PagedResultsDoNotPublishDeprecatedAliases()
+    {
+        var schemas = _admin.RootElement.GetProperty("components").GetProperty("schemas");
+        foreach (var schema in schemas.EnumerateObject()
+            .Where(item => item.Name.StartsWith("PagedResultOf", StringComparison.Ordinal)))
+        {
+            schema.Value.GetProperty("properties").EnumerateObject()
+                .Select(property => property.Name)
+                .Should().NotContain(["page", "totalItems"]);
+        }
     }
 
     [Fact]
@@ -426,6 +520,58 @@ public sealed class AuthoritativeContractTests : IDisposable
     private static JsonElement RequestSchema(JsonDocument document, string path, string method) =>
         Operation(document, path, method).GetProperty("requestBody").GetProperty("content")
             .GetProperty("application/json").GetProperty("schema");
+
+    private static IEnumerable<(string Method, string Path, JsonElement Operation)> Operations(
+        JsonDocument document)
+    {
+        var methods = new HashSet<string>(
+            ["get", "put", "post", "delete", "options", "head", "patch", "trace"],
+            StringComparer.Ordinal);
+        foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            foreach (var operation in path.Value.EnumerateObject().Where(item => methods.Contains(item.Name)))
+            {
+                yield return (operation.Name.ToUpperInvariant(), path.Name, operation.Value);
+            }
+        }
+    }
+
+    private static IEnumerable<JsonElement> Descendants(JsonElement element)
+    {
+        yield return element;
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var property in element.EnumerateObject())
+            {
+                foreach (var descendant in Descendants(property.Value))
+                {
+                    yield return descendant;
+                }
+            }
+        }
+        else if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+            {
+                foreach (var descendant in Descendants(item))
+                {
+                    yield return descendant;
+                }
+            }
+        }
+    }
+
+    private static JsonElement ResolveSchema(JsonDocument document, JsonElement schema)
+    {
+        if (!schema.TryGetProperty("$ref", out var reference))
+        {
+            return schema;
+        }
+
+        var schemaName = reference.GetString()!.Split('/').Last();
+        return document.RootElement.GetProperty("components").GetProperty("schemas")
+            .GetProperty(schemaName);
+    }
 
     private static bool IsGenericSuccessSchema(JsonElement schema)
     {

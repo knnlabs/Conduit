@@ -97,13 +97,13 @@ public class ModelProviderMappingEndpoints
             m.ProviderId == mappingDto.ProviderId);
         if (existingMapping != null)
         {
-            return Results.Conflict(new ErrorResponseDto($"A mapping for alias '{mappingDto.ModelAlias}' and provider {mappingDto.ProviderId} already exists"));
+            return AdminResults.Conflict($"A mapping for alias '{mappingDto.ModelAlias}' and provider {mappingDto.ProviderId} already exists");
         }
 
         var optionsError = ValidateProviderOptions(mappingDto.ProviderOptions);
         if (optionsError != null)
         {
-            return Results.BadRequest(new ErrorResponseDto(optionsError));
+            return AdminResults.BadRequest(optionsError);
         }
 
         var mapping = mappingDto.ToEntity();
@@ -111,7 +111,7 @@ public class ModelProviderMappingEndpoints
 
         if (!success)
         {
-            return Results.BadRequest(new ErrorResponseDto("Failed to create model provider mapping. Please check the provider ID."));
+            return AdminResults.BadRequest("Failed to create model provider mapping. Please check the provider ID.");
         }
 
         var createdMapping = await _mappingService.GetMappingByIdAsync(mapping.Id);
@@ -144,14 +144,14 @@ public class ModelProviderMappingEndpoints
             mapping.ModelAlias.Equals(mappingDto.ModelAlias, StringComparison.OrdinalIgnoreCase) &&
             mapping.ProviderId == mappingDto.ProviderId))
         {
-            return Results.Conflict(new ErrorResponseDto(
-                $"A mapping for alias '{mappingDto.ModelAlias}' and provider {mappingDto.ProviderId} already exists"));
+            return AdminResults.Conflict(
+                $"A mapping for alias '{mappingDto.ModelAlias}' and provider {mappingDto.ProviderId} already exists");
         }
 
         var optionsError = ValidateProviderOptions(mappingDto.ProviderOptions);
         if (optionsError != null)
         {
-            return Results.BadRequest(new ErrorResponseDto(optionsError));
+            return AdminResults.BadRequest(optionsError);
         }
 
         existingMapping.UpdateFromDto(mappingDto);
@@ -268,7 +268,7 @@ public class ModelProviderMappingEndpoints
     {
         if (request?.Mappings == null || request.Mappings.Count == 0)
         {
-            return Results.BadRequest(new ErrorResponseDto("No mappings provided"));
+            return AdminResults.BadRequest("No mappings provided");
         }
 
         return Results.Ok(await _mappingService.PreviewBulkMappingsAsync(request));
@@ -282,7 +282,7 @@ public class ModelProviderMappingEndpoints
     {
         if (request?.Mappings == null || request.Mappings.Count == 0)
         {
-            return Results.BadRequest(new ErrorResponseDto("No mappings provided"));
+            return AdminResults.BadRequest("No mappings provided");
         }
 
         var result = await _mappingService.CreateBulkMappingsAsync(request);
@@ -304,7 +304,7 @@ public class ModelProviderMappingEndpoints
     {
         if (ids == null || ids.Count == 0)
         {
-            return Results.BadRequest(new ErrorResponseDto("No mapping IDs provided"));
+            return AdminResults.BadRequest("No mapping IDs provided");
         }
 
         var deleted = new List<int>();
@@ -377,7 +377,7 @@ public class ModelProviderMappingEndpoints
     {
         if (ids == null || ids.Count == 0)
         {
-            return Results.BadRequest(new ErrorResponseDto("No mapping IDs provided"));
+            return AdminResults.BadRequest("No mapping IDs provided");
         }
 
         var updated = new List<ModelProviderMappingDto>();

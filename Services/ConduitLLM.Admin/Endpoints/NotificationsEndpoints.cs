@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Auditing;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Extensions;
@@ -21,22 +22,22 @@ public static class NotificationsEndpoints
             .Produces<IEnumerable<NotificationDto>>(StatusCodes.Status200OK);
         group.MapGet("/{id}", GetById).WithName("Notifications_GetById")
             .Produces<NotificationDto>(StatusCodes.Status200OK)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/", Create).WithName("Notifications_Create")
             .Produces<NotificationDto>(StatusCodes.Status201Created)
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapPut("/{id}", Update).WithName("Notifications_Update")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ErrorResponseDto>(StatusCodes.Status400BadRequest)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/{id}/read", MarkAsRead).WithName("Notifications_MarkAsRead")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/mark-all-read", MarkAllAsRead).WithName("Notifications_MarkAllAsRead")
             .Produces<int>(StatusCodes.Status200OK);
         group.MapDelete("/{id}", Delete).WithName("Notifications_Delete")
             .Produces(StatusCodes.Status204NoContent)
-            .Produces<ErrorResponseDto>(StatusCodes.Status404NotFound);
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         return app;
     }
 

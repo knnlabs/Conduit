@@ -7,6 +7,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Security.Middleware;
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using JasperFx;
 using Microsoft.AspNetCore.OpenApi;
@@ -45,6 +46,15 @@ public partial class Program
         // Keep Minimal API JSON aligned with the established Admin contract.
         builder.Services.ConfigureHttpJsonOptions(options =>
             ConfigureAdminJson(options.SerializerOptions));
+        builder.Services.AddProblemDetails(options =>
+            options.CustomizeProblemDetails = context =>
+            {
+                context.ProblemDetails.Extensions["code"] =
+                    context.ProblemDetails.Status == StatusCodes.Status400BadRequest
+                        ? "validation_error"
+                        : "request_failed";
+                context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
+            });
 
         builder.Services.AddScoped<BillingAuditEndpoints>();
         builder.Services.AddHttpContextAccessor();
@@ -275,6 +285,8 @@ public partial class Program
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
         options.PropertyNameCaseInsensitive = true;
+        options.Converters.Add(
+            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
         options.Converters.Add(new UtcDateTimeConverter());
         options.Converters.Add(new NullableUtcDateTimeConverter());
     }

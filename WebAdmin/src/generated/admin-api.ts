@@ -3022,6 +3022,23 @@ export interface components {
       amount: number;
       description?: null | string;
     };
+    /** @description RFC 9457 error response used by every Admin API error path. */
+    AdminProblemDetails: {
+      type?: null | string;
+      title?: null | string;
+      /** Format: int32 */
+      status?: null | number;
+      detail?: null | string;
+      instance?: null | string;
+      /** @description Stable machine-readable error code. */
+      code?: null | string;
+      /** @description Request identifier returned in the x-request-id response header. */
+      traceId?: null | string;
+      /** @description Optional field-level validation errors. */
+      errors?: null | {
+        [key: string]: string[];
+      };
+    };
     /** @description Comprehensive application metrics including database, application, and system metrics. */
     AllMetricsDto: {
       /**
@@ -3120,12 +3137,12 @@ export interface components {
     };
     /** @enum {unknown} */
     ApiKeyTestResult:
-      | "Success"
-      | "InvalidKey"
-      | "Ignored"
-      | "ProviderDown"
-      | "RateLimited"
-      | "UnknownError";
+      | "success"
+      | "invalidKey"
+      | "ignored"
+      | "providerDown"
+      | "rateLimited"
+      | "unknownError";
     /** @description Application identity information. */
     ApplicationInfoDto: {
       /** @description The application name. */
@@ -3268,7 +3285,28 @@ export interface components {
       /** @description Additional metadata */
       metadata?: null | Record<string, never>;
     };
-    BillingAuditEventType: number;
+    /** @enum {unknown} */
+    BillingAuditEventType:
+      | "usageTracked"
+      | "usageEstimated"
+      | "zeroCostSkipped"
+      | "missingCostConfig"
+      | "missingUsageData"
+      | "spendUpdateFailed"
+      | "errorResponseSkipped"
+      | "streamingUsageMissing"
+      | "noVirtualKey"
+      | "jsonParseError"
+      | "unexpectedError"
+      | "toolUsageTracked"
+      | "toolUsageMissingCostConfig"
+      | "pricingCalculationFailed"
+      | "billingReconciliationMismatch"
+      | "invalidPricingConfiguration"
+      | "configuredZeroCost"
+      | "unpricedUsage"
+      | "modelCostCanaryFailed"
+      | null;
     BillingAuditEventTypeResponse: {
       value: components["schemas"]["BillingAuditEventType"];
       name: string;
@@ -3456,7 +3494,20 @@ export interface components {
       isSuccess: boolean;
       isPartialSuccess: boolean;
     };
-    BulkModelMappingErrorType: number;
+    /** @enum {unknown} */
+    BulkModelMappingErrorType:
+      | "validation"
+      | "providerNotFound"
+      | "associationNotFound"
+      | "associationProviderMismatch"
+      | "associationDisabled"
+      | "ambiguousAssociation"
+      | "existingMapping"
+      | "existingMappingMismatch"
+      | "duplicateRequest"
+      | "canonicalModelMismatch"
+      | "systemError"
+      | null;
     BulkModelMappingItemDto: {
       modelAlias: string;
       /** Format: int32 */
@@ -4226,11 +4277,6 @@ export interface components {
        */
       expiresInSeconds?: number;
     };
-    ErrorResponseDto: {
-      error?: unknown;
-      details?: null | string;
-      code?: null | string;
-    };
     /** @description DTO for error statistics */
     ErrorStatisticsDto: {
       /**
@@ -4269,10 +4315,21 @@ export interface components {
        */
       generatedAt: string;
     };
-    ExecutionMode: number;
-    ExecutionState: number;
-    /** @description Export format options */
-    ExportFormat: number;
+    /** @enum {unknown} */
+    ExecutionMode: "synchronous" | "asynchronous";
+    /** @enum {unknown} */
+    ExecutionState:
+      | "pending"
+      | "running"
+      | "completed"
+      | "failed"
+      | "cancelled"
+      | "timedOut";
+    /**
+     * @description Export format options
+     * @enum {unknown}
+     */
+    ExportFormat: "json" | "csv" | "excel";
     /** @description DTO for fatal error information */
     FatalErrorDto: {
       /** @description Type of error */
@@ -4300,7 +4357,8 @@ export interface components {
        */
       lastStatusCode: null | number;
     };
-    FlushPriority: number;
+    /** @enum {unknown} */
+    FlushPriority: "normal" | "high";
     FunctionConfigurationDto: {
       /** Format: int32 */
       id?: number;
@@ -4443,9 +4501,24 @@ export interface components {
       progressPercentage?: null | number;
       statusMessage?: null | string;
     };
-    FunctionPricingModel: number;
-    FunctionProviderType: number;
-    FunctionPurpose: number;
+    /** @enum {unknown} */
+    FunctionPricingModel:
+      | "flatRate"
+      | "perResult"
+      | "perToken"
+      | "tiered"
+      | "timeBased"
+      | "hybrid";
+    /** @enum {unknown} */
+    FunctionProviderType:
+      | "exa"
+      | "perplexity"
+      | "customRAG"
+      | "tavily"
+      | "mcp"
+      | "custom";
+    /** @enum {unknown} */
+    FunctionPurpose: "search" | "answer" | "contentRetrieval" | "rag" | null;
     GlobalSettingCacheStatsDto: {
       /** Format: int32 */
       cacheSize: number;
@@ -5079,7 +5152,13 @@ export interface components {
       /** Format: int32 */
       maxOutputTokens: null | number;
     };
-    ModelCapabilitySource: number;
+    /** @enum {unknown} */
+    ModelCapabilitySource:
+      | "unknown"
+      | "legacyInferred"
+      | "curated"
+      | "providerApi"
+      | "manual";
     ModelCostBreakdownDto: {
       /** Format: date-time */
       startDate?: string;
@@ -5566,8 +5645,10 @@ export interface components {
       /** Format: date-time */
       createdAt?: string;
     };
-    NotificationSeverity: number;
-    NotificationType: number;
+    /** @enum {unknown} */
+    NotificationSeverity: "info" | "warning" | "error";
+    /** @enum {unknown} */
+    NotificationType: "budgetWarning" | "expirationWarning" | "system";
     /** @description Information about a condition operator */
     OperatorInfo: {
       /** @description The operator identifier */
@@ -5610,10 +5691,6 @@ export interface components {
       totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
-      /** Format: int32 */
-      page?: number;
-      /** Format: int32 */
-      totalItems?: number;
     };
     PagedResultOfModelCostDto: {
       items: components["schemas"]["ModelCostDto"][];
@@ -5627,10 +5704,6 @@ export interface components {
       totalPages: number;
       hasPreviousPage: boolean;
       hasNextPage: boolean;
-      /** Format: int32 */
-      page: number;
-      /** Format: int32 */
-      totalItems: number;
     };
     PagedResultOfModelDto: {
       items: components["schemas"]["ModelDto"][];
@@ -5644,10 +5717,6 @@ export interface components {
       totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
-      /** Format: int32 */
-      page?: number;
-      /** Format: int32 */
-      totalItems?: number;
     };
     PagedResultOfProviderDto: {
       items: components["schemas"]["ProviderDto"][];
@@ -5661,10 +5730,6 @@ export interface components {
       totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
-      /** Format: int32 */
-      page?: number;
-      /** Format: int32 */
-      totalItems?: number;
     };
     PagedResultOfVirtualKeyGroupDto: {
       items: components["schemas"]["VirtualKeyGroupDto"][];
@@ -5678,10 +5743,6 @@ export interface components {
       totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
-      /** Format: int32 */
-      page?: number;
-      /** Format: int32 */
-      totalItems?: number;
     };
     PagedResultOfVirtualKeyGroupTransactionDto: {
       items: components["schemas"]["VirtualKeyGroupTransactionDto"][];
@@ -5695,10 +5756,6 @@ export interface components {
       totalPages: number;
       hasPreviousPage?: boolean;
       hasNextPage?: boolean;
-      /** Format: int32 */
-      page?: number;
-      /** Format: int32 */
-      totalItems?: number;
     };
     /** @description Period comparison for trend analysis */
     PeriodComparison: {
@@ -5865,7 +5922,15 @@ export interface components {
       maxSteps?: null | number;
       allowedResolutions?: null | string[];
     };
-    PricingModel: number;
+    /** @enum {unknown} */
+    PricingModel:
+      | "standard"
+      | "perVideo"
+      | "perSecondVideo"
+      | "inferenceSteps"
+      | "tieredTokens"
+      | "perImage"
+      | "rulesBased";
     PricingRule: {
       conditions?: Record<string, never>;
       /** Format: double */
@@ -6271,7 +6336,23 @@ export interface components {
       /** @description Error messages for tools that could not be imported, or null if there were none */
       errors?: null | string[];
     };
-    ProviderType: number;
+    /** @enum {unknown} */
+    ProviderType:
+      | "unknown"
+      | "openAI"
+      | "groq"
+      | "replicate"
+      | "fireworks"
+      | "openAICompatible"
+      | "miniMax"
+      | "ultravox"
+      | "elevenLabs"
+      | "cerebras"
+      | "sambaNova"
+      | "deepInfra"
+      | "cloudflare"
+      | "openRouter"
+      | "meta";
     /** @description Request model for pruning old media. */
     PruneMediaRequest: {
       /**
@@ -6292,7 +6373,8 @@ export interface components {
       /** Format: int32 */
       modelMappings?: number;
     };
-    ReferenceType: number;
+    /** @enum {unknown} */
+    ReferenceType: "manual" | "virtualKey" | "system" | "initial";
     RefundBreakdownDto: {
       /** Format: double */
       inputTokenRefund?: number;
@@ -6327,7 +6409,8 @@ export interface components {
       validationMessages?: string[];
       breakdown?: null | components["schemas"]["RefundBreakdownDto"];
     };
-    RequestBillingMethod: number;
+    /** @enum {unknown} */
+    RequestBillingMethod: "modelCost" | "providerReportedCost" | null;
     ResolveIndeterminateTaskDto: {
       resolution: string;
       reason: string;
@@ -6807,7 +6890,32 @@ export interface components {
        */
       end?: string;
     };
-    TokenizerType: number;
+    /** @enum {unknown} */
+    TokenizerType:
+      | "none"
+      | "cl100KBase"
+      | "p50KBase"
+      | "p50KEdit"
+      | "r50KBase"
+      | "o200KBase"
+      | "claude"
+      | "claude3"
+      | "gemini"
+      | "paLM"
+      | "lLaMA"
+      | "lLaMA2"
+      | "lLaMA3"
+      | "mistral"
+      | "cohere"
+      | "o200KHarmony"
+      | "kimi"
+      | "groq"
+      | "cerebras"
+      | "miniMax"
+      | "sentencePiece"
+      | "bpe"
+      | "wordPiece"
+      | "tiktoken";
     /** @description DTO describing a provider type that supports tools */
     ToolProviderDto: {
       /**
@@ -6845,7 +6953,8 @@ export interface components {
        */
       riskScore?: number;
     };
-    TransactionType: number;
+    /** @enum {unknown} */
+    TransactionType: "credit" | "debit" | "refund" | "adjustment";
     UpdateFunctionConfigurationRequest: {
       configurationName?: null | string;
       purpose?: null | components["schemas"]["FunctionPurpose"];
@@ -7493,23 +7602,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelAuthorDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7530,6 +7639,8 @@ export interface operations {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -7539,21 +7650,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
-      500: {
-        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7572,6 +7685,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -7581,23 +7696,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7620,6 +7735,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -7627,28 +7744,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
       };
       /** @description Not Found */
       404: {
         headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
-      500: {
-        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7667,6 +7790,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -7674,28 +7799,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
       };
       /** @description Not Found */
       404: {
         headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
-      500: {
-        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7714,6 +7845,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -7723,23 +7856,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7756,23 +7889,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelSeriesDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7793,6 +7926,8 @@ export interface operations {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -7802,32 +7937,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7846,6 +7983,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -7855,23 +7994,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7894,6 +8033,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -7901,41 +8042,45 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -7954,6 +8099,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -7961,32 +8108,34 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8005,6 +8154,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8014,23 +8165,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8047,23 +8198,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["NotificationDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8084,6 +8235,8 @@ export interface operations {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8093,23 +8246,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8126,23 +8279,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["NotificationDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8161,6 +8314,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8170,23 +8325,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8209,6 +8364,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -8216,32 +8373,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8260,6 +8419,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -8267,23 +8428,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8302,6 +8463,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -8309,23 +8472,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8342,23 +8505,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": number;
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8377,23 +8540,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["TaskCleanupResponseDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8416,6 +8579,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -8423,32 +8588,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8465,6 +8632,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8474,21 +8643,23 @@ export interface operations {
       /** @description Unauthorized */
       401: {
         headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
-      500: {
-        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8505,23 +8676,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SystemInfoDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8538,23 +8709,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["HealthStatusDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8571,23 +8742,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CacheInvalidationPublishedResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8604,6 +8775,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8613,23 +8786,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CacheServiceUnavailableResponse"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8646,23 +8819,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CacheInvalidationPublishedResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8679,23 +8852,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DatabasePoolMetricsDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8712,23 +8885,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AllMetricsDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8745,23 +8918,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["RoutingConfigurationDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8778,23 +8951,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["RoutingDefaultsDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8815,6 +8988,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8824,23 +8999,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": string;
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8859,6 +9034,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8868,21 +9045,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
-      500: {
-        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8905,6 +9084,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8914,30 +9095,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": string;
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
-      500: {
-        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8954,23 +9139,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BundledModelCatalogImportResult"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -8989,6 +9174,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -8998,23 +9185,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9033,23 +9220,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9068,23 +9255,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9103,6 +9290,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9112,23 +9301,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9145,23 +9334,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9178,23 +9367,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionExecutionDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9213,6 +9402,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9222,23 +9413,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9255,23 +9446,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionCostDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9292,6 +9483,8 @@ export interface operations {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9301,23 +9494,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9336,6 +9529,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9345,23 +9540,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9384,6 +9579,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9393,32 +9590,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9437,6 +9636,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -9444,23 +9645,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9479,6 +9680,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9488,23 +9691,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9521,23 +9724,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionCostCacheClearResultDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9554,23 +9757,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionCredential"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9591,6 +9794,8 @@ export interface operations {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9600,23 +9805,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9635,6 +9840,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9644,23 +9851,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9679,6 +9886,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9688,23 +9897,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9727,6 +9936,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9736,32 +9947,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9780,6 +9993,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -9787,23 +10002,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9824,6 +10039,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9833,23 +10050,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9871,6 +10088,8 @@ export interface operations {
       /** @description Accepted */
       202: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9880,23 +10099,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9913,23 +10132,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BatchSpendingStatusResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9946,23 +10165,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BatchSpendingInformationResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -9979,6 +10198,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -9988,23 +10209,23 @@ export interface operations {
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10025,6 +10246,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10034,23 +10257,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10067,23 +10290,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PromptCachingCapabilityDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10106,6 +10329,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10115,32 +10340,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": string;
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Service Unavailable */
       503: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": string;
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10163,23 +10390,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DriftItemDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10198,6 +10425,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10207,23 +10436,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10242,23 +10471,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DriftActionResultDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10277,23 +10506,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DriftActionResultDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10314,6 +10543,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10323,23 +10554,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10360,6 +10591,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10369,23 +10602,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10402,6 +10635,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10411,23 +10646,23 @@ export interface operations {
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10447,23 +10682,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderSyncRunDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10480,23 +10715,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["GlobalSettingDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10517,6 +10752,8 @@ export interface operations {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10526,23 +10763,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10561,6 +10798,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10570,23 +10809,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10609,6 +10848,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -10616,32 +10857,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": string;
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10660,6 +10903,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -10667,23 +10912,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10702,6 +10947,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -10711,23 +10958,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10746,6 +10993,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -10753,23 +11002,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10790,6 +11039,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -10797,23 +11048,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10830,23 +11081,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["GlobalSettingCacheStatsDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10863,21 +11114,21 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10896,21 +11147,21 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10929,25 +11180,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OverallMediaStorageStats"];
-          "text/json": components["schemas"]["OverallMediaStorageStats"];
-          "text/plain": components["schemas"]["OverallMediaStorageStats"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -10966,25 +11215,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaStorageStats"];
-          "text/json": components["schemas"]["MediaStorageStats"];
-          "text/plain": components["schemas"]["MediaStorageStats"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11001,31 +11248,25 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": {
-            [key: string]: number;
-          };
-          "text/json": {
-            [key: string]: number;
-          };
-          "text/plain": {
             [key: string]: number;
           };
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11042,31 +11283,25 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": {
-            [key: string]: number;
-          };
-          "text/json": {
-            [key: string]: number;
-          };
-          "text/plain": {
             [key: string]: number;
           };
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11085,25 +11320,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaRecordResponse"][];
-          "text/json": components["schemas"]["MediaRecordResponse"][];
-          "text/plain": components["schemas"]["MediaRecordResponse"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11122,34 +11355,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaRecordResponse"][];
-          "text/json": components["schemas"]["MediaRecordResponse"][];
-          "text/plain": components["schemas"]["MediaRecordResponse"][];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11168,36 +11401,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaDeletionResponseDto"];
-          "text/json": components["schemas"]["MediaDeletionResponseDto"];
-          "text/plain": components["schemas"]["MediaDeletionResponseDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11214,25 +11445,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaCleanupResponseDto"];
-          "text/json": components["schemas"]["MediaCleanupResponseDto"];
-          "text/plain": components["schemas"]["MediaCleanupResponseDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11249,25 +11478,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaCleanupResponseDto"];
-          "text/json": components["schemas"]["MediaCleanupResponseDto"];
-          "text/plain": components["schemas"]["MediaCleanupResponseDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11282,42 +11509,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["PruneMediaRequest"];
-        "text/json": components["schemas"]["PruneMediaRequest"];
-        "application/*+json": components["schemas"]["PruneMediaRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaCleanupResponseDto"];
-          "text/json": components["schemas"]["MediaCleanupResponseDto"];
-          "text/plain": components["schemas"]["MediaCleanupResponseDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11334,25 +11559,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaCleanupStatusDto"];
-          "text/json": components["schemas"]["MediaCleanupStatusDto"];
-          "text/plain": components["schemas"]["MediaCleanupStatusDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11369,25 +11592,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaCleanupEnabledDto"];
-          "text/json": components["schemas"]["MediaCleanupEnabledDto"];
-          "text/plain": components["schemas"]["MediaCleanupEnabledDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11402,33 +11623,29 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
-        "text/json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
-        "application/*+json": components["schemas"]["UpdateMediaCleanupEnabledRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaCleanupEnabledChangedDto"];
-          "text/json": components["schemas"]["MediaCleanupEnabledChangedDto"];
-          "text/plain": components["schemas"]["MediaCleanupEnabledChangedDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11445,25 +11662,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SimpleRetentionResponse"];
-          "text/json": components["schemas"]["SimpleRetentionResponse"];
-          "text/plain": components["schemas"]["SimpleRetentionResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11478,33 +11693,29 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateSimpleRetentionRequest"];
-        "text/json": components["schemas"]["UpdateSimpleRetentionRequest"];
-        "application/*+json": components["schemas"]["UpdateSimpleRetentionRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SimpleRetentionResponse"];
-          "text/json": components["schemas"]["SimpleRetentionResponse"];
-          "text/plain": components["schemas"]["SimpleRetentionResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11524,25 +11735,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PagedResultOfProviderDto"];
-          "text/json": components["schemas"]["PagedResultOfProviderDto"];
-          "text/plain": components["schemas"]["PagedResultOfProviderDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11557,44 +11766,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateProviderRequest"];
-        "text/json": components["schemas"]["CreateProviderRequest"];
-        "application/*+json": components["schemas"]["CreateProviderRequest"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderDto"];
-          "text/json": components["schemas"]["ProviderDto"];
-          "text/plain": components["schemas"]["ProviderDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11613,36 +11818,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderDto"];
-          "text/json": components["schemas"]["ProviderDto"];
-          "text/plain": components["schemas"]["ProviderDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11659,55 +11862,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateProviderRequest"];
-        "text/json": components["schemas"]["UpdateProviderRequest"];
-        "application/*+json": components["schemas"]["UpdateProviderRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderDto"];
-          "text/json": components["schemas"]["ProviderDto"];
-          "text/plain": components["schemas"]["ProviderDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11726,6 +11925,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -11733,25 +11934,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11770,36 +11969,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderKeyCredentialDto"][];
-          "text/json": components["schemas"]["ProviderKeyCredentialDto"][];
-          "text/plain": components["schemas"]["ProviderKeyCredentialDto"][];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11816,55 +12013,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateKeyRequest"];
-        "text/json": components["schemas"]["CreateKeyRequest"];
-        "application/*+json": components["schemas"]["CreateKeyRequest"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderKeyCredentialDto"];
-          "text/json": components["schemas"]["ProviderKeyCredentialDto"];
-          "text/plain": components["schemas"]["ProviderKeyCredentialDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11884,36 +12077,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderKeyCredentialDto"];
-          "text/json": components["schemas"]["ProviderKeyCredentialDto"];
-          "text/plain": components["schemas"]["ProviderKeyCredentialDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11931,55 +12122,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateKeyRequest"];
-        "text/json": components["schemas"]["UpdateKeyRequest"];
-        "application/*+json": components["schemas"]["UpdateKeyRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderKeyCredentialDto"];
-          "text/json": components["schemas"]["ProviderKeyCredentialDto"];
-          "text/plain": components["schemas"]["ProviderKeyCredentialDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -11999,6 +12186,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -12006,25 +12195,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12044,6 +12231,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -12051,36 +12240,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12099,36 +12286,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["StandardApiKeyTestResponse"];
-          "text/json": components["schemas"]["StandardApiKeyTestResponse"];
-          "text/plain": components["schemas"]["StandardApiKeyTestResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12143,44 +12328,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["TestProviderRequest"];
-        "text/json": components["schemas"]["TestProviderRequest"];
-        "application/*+json": components["schemas"]["TestProviderRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["StandardApiKeyTestResponse"];
-          "text/json": components["schemas"]["StandardApiKeyTestResponse"];
-          "text/plain": components["schemas"]["StandardApiKeyTestResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12200,36 +12381,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["StandardApiKeyTestResponse"];
-          "text/json": components["schemas"]["StandardApiKeyTestResponse"];
-          "text/plain": components["schemas"]["StandardApiKeyTestResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12250,25 +12429,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelDto"][];
-          "text/json": components["schemas"]["ModelDto"][];
-          "text/plain": components["schemas"]["ModelDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12283,55 +12460,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateModelDto"];
-        "text/json": components["schemas"]["CreateModelDto"];
-        "application/*+json": components["schemas"]["CreateModelDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelDto"];
-          "text/json": components["schemas"]["ModelDto"];
-          "text/plain": components["schemas"]["ModelDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12354,25 +12527,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PagedResultOfModelDto"];
-          "text/json": components["schemas"]["PagedResultOfModelDto"];
-          "text/plain": components["schemas"]["PagedResultOfModelDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12391,36 +12562,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelDto"];
-          "text/json": components["schemas"]["ModelDto"];
-          "text/plain": components["schemas"]["ModelDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12437,66 +12606,62 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateModelDto"];
-        "text/json": components["schemas"]["UpdateModelDto"];
-        "application/*+json": components["schemas"]["UpdateModelDto"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelDto"];
-          "text/json": components["schemas"]["ModelDto"];
-          "text/plain": components["schemas"]["ModelDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12515,6 +12680,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -12522,36 +12689,34 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12570,25 +12735,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelDto"][];
-          "text/json": components["schemas"]["ModelDto"][];
-          "text/plain": components["schemas"]["ModelDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12607,36 +12770,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelWithProviderIdDto"][];
-          "text/json": components["schemas"]["ModelWithProviderIdDto"][];
-          "text/plain": components["schemas"]["ModelWithProviderIdDto"][];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12655,36 +12816,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelIdentifierDto"][];
-          "text/json": components["schemas"]["ModelIdentifierDto"][];
-          "text/plain": components["schemas"]["ModelIdentifierDto"][];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12701,66 +12860,62 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateModelIdentifierDto"];
-        "text/json": components["schemas"]["CreateModelIdentifierDto"];
-        "application/*+json": components["schemas"]["CreateModelIdentifierDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CreatedModelIdentifierDto"];
-          "text/json": components["schemas"]["CreatedModelIdentifierDto"];
-          "text/plain": components["schemas"]["CreatedModelIdentifierDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12779,36 +12934,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelProviderAvailabilityDto"][];
-          "text/json": components["schemas"]["ModelProviderAvailabilityDto"][];
-          "text/plain": components["schemas"]["ModelProviderAvailabilityDto"][];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12826,14 +12979,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateModelIdentifierDto"];
-        "text/json": components["schemas"]["UpdateModelIdentifierDto"];
-        "application/*+json": components["schemas"]["UpdateModelIdentifierDto"];
       };
     };
     responses: {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -12841,47 +12994,45 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12901,6 +13052,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -12908,25 +13061,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12945,36 +13096,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelProviderMappingDto"][];
-          "text/json": components["schemas"]["ModelProviderMappingDto"][];
-          "text/plain": components["schemas"]["ModelProviderMappingDto"][];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -12991,66 +13140,62 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ModelProviderMappingDto"];
-        "text/json": components["schemas"]["ModelProviderMappingDto"];
-        "application/*+json": components["schemas"]["ModelProviderMappingDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ModelProviderMappingDto"];
-          "text/plain": components["schemas"]["ModelProviderMappingDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13068,14 +13213,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ModelProviderMappingDto"];
-        "text/json": components["schemas"]["ModelProviderMappingDto"];
-        "application/*+json": components["schemas"]["ModelProviderMappingDto"];
       };
     };
     responses: {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -13083,36 +13228,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13132,6 +13275,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -13139,25 +13284,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13177,25 +13320,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
-          "text/json": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
-          "text/plain": components["schemas"]["PagedResultOfVirtualKeyGroupDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13210,33 +13351,29 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateVirtualKeyGroupRequestDto"];
-        "text/json": components["schemas"]["CreateVirtualKeyGroupRequestDto"];
-        "application/*+json": components["schemas"]["CreateVirtualKeyGroupRequestDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/plain": components["schemas"]["VirtualKeyGroupDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13255,36 +13392,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/plain": components["schemas"]["VirtualKeyGroupDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13301,14 +13436,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
-        "text/json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
-        "application/*+json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
       };
     };
     responses: {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -13316,25 +13451,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13353,6 +13486,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -13360,36 +13495,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13406,55 +13539,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["AdjustBalanceDto"];
-        "text/json": components["schemas"]["AdjustBalanceDto"];
-        "application/*+json": components["schemas"]["AdjustBalanceDto"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/plain": components["schemas"]["VirtualKeyGroupDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13476,36 +13605,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PagedResultOfVirtualKeyGroupTransactionDto"];
-          "text/json": components["schemas"]["PagedResultOfVirtualKeyGroupTransactionDto"];
-          "text/plain": components["schemas"]["PagedResultOfVirtualKeyGroupTransactionDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13524,36 +13651,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyDto"][];
-          "text/json": components["schemas"]["VirtualKeyDto"][];
-          "text/plain": components["schemas"]["VirtualKeyDto"][];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13572,66 +13697,62 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ProcessRefundRequestDto"];
-        "text/json": components["schemas"]["ProcessRefundRequestDto"];
-        "application/*+json": components["schemas"]["ProcessRefundRequestDto"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["RefundResultDto"];
-          "text/json": components["schemas"]["RefundResultDto"];
-          "text/plain": components["schemas"]["RefundResultDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13650,25 +13771,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyDto"][];
-          "text/json": components["schemas"]["VirtualKeyDto"][];
-          "text/plain": components["schemas"]["VirtualKeyDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13683,66 +13802,62 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateVirtualKeyRequestDto"];
-        "text/json": components["schemas"]["CreateVirtualKeyRequestDto"];
-        "application/*+json": components["schemas"]["CreateVirtualKeyRequestDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CreateVirtualKeyResponseDto"];
-          "text/json": components["schemas"]["CreateVirtualKeyResponseDto"];
-          "text/plain": components["schemas"]["CreateVirtualKeyResponseDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13761,36 +13876,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyDto"];
-          "text/json": components["schemas"]["VirtualKeyDto"];
-          "text/plain": components["schemas"]["VirtualKeyDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13807,14 +13920,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateVirtualKeyRequestDto"];
-        "text/json": components["schemas"]["UpdateVirtualKeyRequestDto"];
-        "application/*+json": components["schemas"]["UpdateVirtualKeyRequestDto"];
       };
     };
     responses: {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -13822,58 +13935,56 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13892,6 +14003,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -13899,47 +14012,45 @@ export interface operations {
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -13954,44 +14065,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ValidateVirtualKeyRequest"];
-        "text/json": components["schemas"]["ValidateVirtualKeyRequest"];
-        "application/*+json": components["schemas"]["ValidateVirtualKeyRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyValidationResult"];
-          "text/json": components["schemas"]["VirtualKeyValidationResult"];
-          "text/plain": components["schemas"]["VirtualKeyValidationResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14010,36 +14117,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyValidationInfoDto"];
-          "text/json": components["schemas"]["VirtualKeyValidationInfoDto"];
-          "text/plain": components["schemas"]["VirtualKeyValidationInfoDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14056,6 +14161,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -14063,36 +14170,34 @@ export interface operations {
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14113,36 +14218,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyDiscoveryPreviewDto"];
-          "text/json": components["schemas"]["VirtualKeyDiscoveryPreviewDto"];
-          "text/plain": components["schemas"]["VirtualKeyDiscoveryPreviewDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14161,36 +14264,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/json": components["schemas"]["VirtualKeyGroupDto"];
-          "text/plain": components["schemas"]["VirtualKeyGroupDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14209,69 +14310,67 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyUsageDto"];
-          "text/json": components["schemas"]["VirtualKeyUsageDto"];
-          "text/plain": components["schemas"]["VirtualKeyUsageDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14288,25 +14387,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IpFilterDto"][];
-          "text/json": components["schemas"]["IpFilterDto"][];
-          "text/plain": components["schemas"]["IpFilterDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14321,66 +14418,62 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateIpFilterDto"];
-        "text/json": components["schemas"]["CreateIpFilterDto"];
-        "application/*+json": components["schemas"]["CreateIpFilterDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IpFilterDto"];
-          "text/json": components["schemas"]["IpFilterDto"];
-          "text/plain": components["schemas"]["IpFilterDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14397,25 +14490,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IpFilterDto"][];
-          "text/json": components["schemas"]["IpFilterDto"][];
-          "text/plain": components["schemas"]["IpFilterDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14434,25 +14525,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IpFilterDto"][];
-          "text/json": components["schemas"]["IpFilterDto"][];
-          "text/plain": components["schemas"]["IpFilterDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14471,36 +14560,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IpFilterDto"];
-          "text/json": components["schemas"]["IpFilterDto"];
-          "text/plain": components["schemas"]["IpFilterDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14517,14 +14604,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateIpFilterDto"];
-        "text/json": components["schemas"]["UpdateIpFilterDto"];
-        "application/*+json": components["schemas"]["UpdateIpFilterDto"];
       };
     };
     responses: {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -14532,58 +14619,56 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14602,6 +14687,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -14609,47 +14696,45 @@ export interface operations {
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14666,25 +14751,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IpFilterSettingsDto"];
-          "text/json": components["schemas"]["IpFilterSettingsDto"];
-          "text/plain": components["schemas"]["IpFilterSettingsDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14699,14 +14782,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["IpFilterSettingsDto"];
-        "text/json": components["schemas"]["IpFilterSettingsDto"];
-        "application/*+json": components["schemas"]["IpFilterSettingsDto"];
       };
     };
     responses: {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -14714,47 +14797,45 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Unauthorized */
       401: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Forbidden */
       403: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14773,36 +14854,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IpCheckResult"];
-          "text/json": components["schemas"]["IpCheckResult"];
-          "text/plain": components["schemas"]["IpCheckResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14819,25 +14898,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ServiceHealthResponse"];
-          "text/json": components["schemas"]["ServiceHealthResponse"];
-          "text/plain": components["schemas"]["ServiceHealthResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14856,25 +14933,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["IncidentsResponse"];
-          "text/json": components["schemas"]["IncidentsResponse"];
-          "text/plain": components["schemas"]["IncidentsResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14893,25 +14968,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["HealthHistoryResponse"];
-          "text/json": components["schemas"]["HealthHistoryResponse"];
-          "text/plain": components["schemas"]["HealthHistoryResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14930,25 +15003,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["SecurityEventsResponse"];
-          "text/json": components["schemas"]["SecurityEventsResponse"];
-          "text/plain": components["schemas"]["SecurityEventsResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -14965,25 +15036,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ThreatAnalyticsResponse"];
-          "text/json": components["schemas"]["ThreatAnalyticsResponse"];
-          "text/plain": components["schemas"]["ThreatAnalyticsResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15000,25 +15069,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ComplianceMetricsResponse"];
-          "text/json": components["schemas"]["ComplianceMetricsResponse"];
-          "text/plain": components["schemas"]["ComplianceMetricsResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15033,44 +15100,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["BillingAuditQueryRequest"];
-        "text/json": components["schemas"]["BillingAuditQueryRequest"];
-        "application/*+json": components["schemas"]["BillingAuditQueryRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BillingAuditResponse"];
-          "text/json": components["schemas"]["BillingAuditResponse"];
-          "text/plain": components["schemas"]["BillingAuditResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15091,36 +15154,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BillingAuditSummary"];
-          "text/json": components["schemas"]["BillingAuditSummary"];
-          "text/plain": components["schemas"]["BillingAuditSummary"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15140,36 +15201,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BillingAnomaly"][];
-          "text/json": components["schemas"]["BillingAnomaly"][];
-          "text/plain": components["schemas"]["BillingAnomaly"][];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15189,36 +15248,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BillingRevenueLossResponse"];
-          "text/json": components["schemas"]["BillingRevenueLossResponse"];
-          "text/plain": components["schemas"]["BillingRevenueLossResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15233,14 +15290,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["BillingAuditExportRequest"];
-        "text/json": components["schemas"]["BillingAuditExportRequest"];
-        "application/*+json": components["schemas"]["BillingAuditExportRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -15251,25 +15308,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15286,25 +15341,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BillingAuditEventTypeResponse"][];
-          "text/json": components["schemas"]["BillingAuditEventTypeResponse"][];
-          "text/plain": components["schemas"]["BillingAuditEventTypeResponse"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15329,36 +15382,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PagedResultOfLogRequestDto"];
-          "text/json": components["schemas"]["PagedResultOfLogRequestDto"];
-          "text/plain": components["schemas"]["PagedResultOfLogRequestDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15377,36 +15428,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["LogRequestDto"];
-          "text/json": components["schemas"]["LogRequestDto"];
-          "text/plain": components["schemas"]["LogRequestDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15423,25 +15472,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": string[];
-          "text/json": string[];
-          "text/plain": string[];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15462,36 +15509,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CostDashboardDto"];
-          "text/json": components["schemas"]["CostDashboardDto"];
-          "text/plain": components["schemas"]["CostDashboardDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15512,36 +15557,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CostTrendDto"];
-          "text/json": components["schemas"]["CostTrendDto"];
-          "text/plain": components["schemas"]["CostTrendDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15562,25 +15605,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelCostBreakdownDto"];
-          "text/json": components["schemas"]["ModelCostBreakdownDto"];
-          "text/plain": components["schemas"]["ModelCostBreakdownDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15601,25 +15642,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyCostBreakdownDto"];
-          "text/json": components["schemas"]["VirtualKeyCostBreakdownDto"];
-          "text/plain": components["schemas"]["VirtualKeyCostBreakdownDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15640,36 +15679,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AnalyticsSummaryDto"];
-          "text/json": components["schemas"]["AnalyticsSummaryDto"];
-          "text/plain": components["schemas"]["AnalyticsSummaryDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15691,25 +15728,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["UsageStatisticsDto"];
-          "text/json": components["schemas"]["UsageStatisticsDto"];
-          "text/plain": components["schemas"]["UsageStatisticsDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15732,6 +15767,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -15742,25 +15779,23 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15777,36 +15812,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AnalyticsCacheMetricsResponse"];
-          "text/json": components["schemas"]["AnalyticsCacheMetricsResponse"];
-          "text/plain": components["schemas"]["AnalyticsCacheMetricsResponse"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15823,16 +15856,12 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": {
-            [key: string]: number;
-          };
-          "text/json": {
-            [key: string]: number;
-          };
-          "text/plain": {
             [key: string]: number;
           };
         };
@@ -15840,25 +15869,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15877,23 +15904,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["AnalyticsCacheInvalidationResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15910,25 +15937,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionConfigurationDto"][];
-          "text/json": components["schemas"]["FunctionConfigurationDto"][];
-          "text/plain": components["schemas"]["FunctionConfigurationDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15943,44 +15968,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateFunctionConfigurationRequest"];
-        "text/json": components["schemas"]["CreateFunctionConfigurationRequest"];
-        "application/*+json": components["schemas"]["CreateFunctionConfigurationRequest"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionConfigurationDto"];
-          "text/json": components["schemas"]["FunctionConfigurationDto"];
-          "text/plain": components["schemas"]["FunctionConfigurationDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -15999,36 +16020,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionConfigurationDto"];
-          "text/json": components["schemas"]["FunctionConfigurationDto"];
-          "text/plain": components["schemas"]["FunctionConfigurationDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16045,55 +16064,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateFunctionConfigurationRequest"];
-        "text/json": components["schemas"]["UpdateFunctionConfigurationRequest"];
-        "application/*+json": components["schemas"]["UpdateFunctionConfigurationRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionConfigurationDto"];
-          "text/json": components["schemas"]["FunctionConfigurationDto"];
-          "text/plain": components["schemas"]["FunctionConfigurationDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16112,6 +16127,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -16119,25 +16136,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16156,25 +16171,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionConfigurationDto"][];
-          "text/json": components["schemas"]["FunctionConfigurationDto"][];
-          "text/plain": components["schemas"]["FunctionConfigurationDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16193,25 +16206,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["FunctionConfigurationDto"][];
-          "text/json": components["schemas"]["FunctionConfigurationDto"][];
-          "text/plain": components["schemas"]["FunctionConfigurationDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16232,25 +16243,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderErrorDto"][];
-          "text/json": components["schemas"]["ProviderErrorDto"][];
-          "text/plain": components["schemas"]["ProviderErrorDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16267,25 +16276,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderErrorSummaryDto"][];
-          "text/json": components["schemas"]["ProviderErrorSummaryDto"][];
-          "text/plain": components["schemas"]["ProviderErrorSummaryDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16304,36 +16311,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["KeyErrorDetailsDto"];
-          "text/json": components["schemas"]["KeyErrorDetailsDto"];
-          "text/plain": components["schemas"]["KeyErrorDetailsDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
-          "text/json": components["schemas"]["ErrorResponseDto"];
-          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16350,44 +16355,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ClearErrorsRequest"];
-        "text/json": components["schemas"]["ClearErrorsRequest"];
-        "application/*+json": components["schemas"]["ClearErrorsRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ClearKeyErrorsResponseDto"];
-          "text/json": components["schemas"]["ClearKeyErrorsResponseDto"];
-          "text/plain": components["schemas"]["ClearKeyErrorsResponseDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
-          "text/json": components["schemas"]["ErrorResponseDto"];
-          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16406,25 +16407,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ErrorStatisticsDto"];
-          "text/json": components["schemas"]["ErrorStatisticsDto"];
-          "text/plain": components["schemas"]["ErrorStatisticsDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16445,31 +16444,25 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": {
-            [key: string]: number;
-          };
-          "text/json": {
-            [key: string]: number;
-          };
-          "text/plain": {
             [key: string]: number;
           };
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16488,44 +16481,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": string;
-        "text/json": string;
-        "application/*+json": string;
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["DisableKeyResponseDto"];
-          "text/json": components["schemas"]["DisableKeyResponseDto"];
-          "text/plain": components["schemas"]["DisableKeyResponseDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ErrorResponseDto"];
-          "text/json": components["schemas"]["ErrorResponseDto"];
-          "text/plain": components["schemas"]["ErrorResponseDto"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16542,25 +16531,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaRetentionPolicyDto"][];
-          "text/json": components["schemas"]["MediaRetentionPolicyDto"][];
-          "text/plain": components["schemas"]["MediaRetentionPolicyDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16575,44 +16562,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateMediaRetentionPolicyRequest"];
-        "text/json": components["schemas"]["CreateMediaRetentionPolicyRequest"];
-        "application/*+json": components["schemas"]["CreateMediaRetentionPolicyRequest"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaRetentionPolicyDto"];
-          "text/json": components["schemas"]["MediaRetentionPolicyDto"];
-          "text/plain": components["schemas"]["MediaRetentionPolicyDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16631,36 +16614,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaRetentionPolicyDetailDto"];
-          "text/json": components["schemas"]["MediaRetentionPolicyDetailDto"];
-          "text/plain": components["schemas"]["MediaRetentionPolicyDetailDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16677,55 +16658,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
-        "text/json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
-        "application/*+json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["MediaRetentionPolicyDto"];
-          "text/json": components["schemas"]["MediaRetentionPolicyDto"];
-          "text/plain": components["schemas"]["MediaRetentionPolicyDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16744,6 +16721,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -16751,36 +16730,34 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16800,6 +16777,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -16809,25 +16788,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16846,6 +16823,8 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
@@ -16855,25 +16834,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16894,36 +16871,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["CleanupResultDto"];
-          "text/json": components["schemas"]["CleanupResultDto"];
-          "text/plain": components["schemas"]["CleanupResultDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16943,25 +16918,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderToolDto"][];
-          "text/json": components["schemas"]["ProviderToolDto"][];
-          "text/plain": components["schemas"]["ProviderToolDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -16976,44 +16949,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateProviderToolDto"];
-        "text/json": components["schemas"]["CreateProviderToolDto"];
-        "application/*+json": components["schemas"]["CreateProviderToolDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderToolDto"];
-          "text/json": components["schemas"]["ProviderToolDto"];
-          "text/plain": components["schemas"]["ProviderToolDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17032,36 +17001,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderToolDto"];
-          "text/json": components["schemas"]["ProviderToolDto"];
-          "text/plain": components["schemas"]["ProviderToolDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17078,55 +17045,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateProviderToolDto"];
-        "text/json": components["schemas"]["UpdateProviderToolDto"];
-        "application/*+json": components["schemas"]["UpdateProviderToolDto"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderToolDto"];
-          "text/json": components["schemas"]["ProviderToolDto"];
-          "text/plain": components["schemas"]["ProviderToolDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17145,6 +17108,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -17152,25 +17117,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17187,25 +17150,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ToolProviderDto"][];
-          "text/json": components["schemas"]["ToolProviderDto"][];
-          "text/plain": components["schemas"]["ToolProviderDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17222,25 +17183,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": string[];
-          "text/json": string[];
-          "text/plain": string[];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17255,33 +17214,29 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateProviderToolDto"][];
-        "text/json": components["schemas"]["CreateProviderToolDto"][];
-        "application/*+json": components["schemas"]["CreateProviderToolDto"][];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderToolImportResultDto"];
-          "text/json": components["schemas"]["ProviderToolImportResultDto"];
-          "text/plain": components["schemas"]["ProviderToolImportResultDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17298,25 +17253,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderToolDto"][];
-          "text/json": components["schemas"]["ProviderToolDto"][];
-          "text/plain": components["schemas"]["ProviderToolDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17333,25 +17286,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PricingTypeInfo"][];
-          "text/json": components["schemas"]["PricingTypeInfo"][];
-          "text/plain": components["schemas"]["PricingTypeInfo"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17368,25 +17319,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["OperatorInfo"][];
-          "text/json": components["schemas"]["OperatorInfo"][];
-          "text/plain": components["schemas"]["OperatorInfo"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17405,25 +17354,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PricingTemplateResponse"];
-          "text/json": components["schemas"]["PricingTemplateResponse"];
-          "text/plain": components["schemas"]["PricingTemplateResponse"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17438,44 +17385,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["PricingValidationRequest"];
-        "text/json": components["schemas"]["PricingValidationRequest"];
-        "application/*+json": components["schemas"]["PricingValidationRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PricingValidationResponse"];
-          "text/json": components["schemas"]["PricingValidationResponse"];
-          "text/plain": components["schemas"]["PricingValidationResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17490,44 +17433,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["PricingSimulationRequest"];
-        "text/json": components["schemas"]["PricingSimulationRequest"];
-        "application/*+json": components["schemas"]["PricingSimulationRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PricingSimulationResponse"];
-          "text/json": components["schemas"]["PricingSimulationResponse"];
-          "text/plain": components["schemas"]["PricingSimulationResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17542,44 +17481,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["PricingAuditQueryRequest"];
-        "text/json": components["schemas"]["PricingAuditQueryRequest"];
-        "application/*+json": components["schemas"]["PricingAuditQueryRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PricingAuditQueryResponse"];
-          "text/json": components["schemas"]["PricingAuditQueryResponse"];
-          "text/plain": components["schemas"]["PricingAuditQueryResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17599,36 +17534,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PricingAuditSummary"];
-          "text/json": components["schemas"]["PricingAuditSummary"];
-          "text/plain": components["schemas"]["PricingAuditSummary"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17647,36 +17580,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PricingAuditEventDto"][];
-          "text/json": components["schemas"]["PricingAuditEventDto"][];
-          "text/plain": components["schemas"]["PricingAuditEventDto"][];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17693,25 +17624,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelProviderMappingDto"][];
-          "text/json": components["schemas"]["ModelProviderMappingDto"][];
-          "text/plain": components["schemas"]["ModelProviderMappingDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17726,55 +17655,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateModelProviderMappingDto"];
-        "text/json": components["schemas"]["CreateModelProviderMappingDto"];
-        "application/*+json": components["schemas"]["CreateModelProviderMappingDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ModelProviderMappingDto"];
-          "text/plain": components["schemas"]["ModelProviderMappingDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17793,36 +17718,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelProviderMappingDto"];
-          "text/json": components["schemas"]["ModelProviderMappingDto"];
-          "text/plain": components["schemas"]["ModelProviderMappingDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17839,14 +17762,14 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateModelProviderMappingDto"];
-        "text/json": components["schemas"]["UpdateModelProviderMappingDto"];
-        "application/*+json": components["schemas"]["UpdateModelProviderMappingDto"];
       };
     };
     responses: {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -17854,47 +17777,45 @@ export interface operations {
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Conflict */
       409: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17913,6 +17834,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -17920,25 +17843,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17955,25 +17876,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ProviderDto"][];
-          "text/json": components["schemas"]["ProviderDto"][];
-          "text/plain": components["schemas"]["ProviderDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -17988,44 +17907,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["BulkModelMappingPreviewRequest"];
-        "text/json": components["schemas"]["BulkModelMappingPreviewRequest"];
-        "application/*+json": components["schemas"]["BulkModelMappingPreviewRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkModelMappingPreviewResponse"];
-          "text/json": components["schemas"]["BulkModelMappingPreviewResponse"];
-          "text/plain": components["schemas"]["BulkModelMappingPreviewResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18040,44 +17955,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["BulkModelMappingCreateRequest"];
-        "text/json": components["schemas"]["BulkModelMappingCreateRequest"];
-        "application/*+json": components["schemas"]["BulkModelMappingCreateRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkModelMappingCreateResponse"];
-          "text/json": components["schemas"]["BulkModelMappingCreateResponse"];
-          "text/plain": components["schemas"]["BulkModelMappingCreateResponse"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18092,44 +18003,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": number[];
-        "text/json": number[];
-        "application/*+json": number[];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkDeleteResult"];
-          "text/json": components["schemas"]["BulkDeleteResult"];
-          "text/plain": components["schemas"]["BulkDeleteResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18144,44 +18051,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": number[];
-        "text/json": number[];
-        "application/*+json": number[];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkUpdateResult"];
-          "text/json": components["schemas"]["BulkUpdateResult"];
-          "text/plain": components["schemas"]["BulkUpdateResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18196,44 +18099,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": number[];
-        "text/json": number[];
-        "application/*+json": number[];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkUpdateResult"];
-          "text/json": components["schemas"]["BulkUpdateResult"];
-          "text/plain": components["schemas"]["BulkUpdateResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18256,25 +18155,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["PagedResultOfModelCostDto"];
-          "text/json": components["schemas"]["PagedResultOfModelCostDto"];
-          "text/plain": components["schemas"]["PagedResultOfModelCostDto"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18289,44 +18186,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateModelCostDto"];
-        "text/json": components["schemas"]["CreateModelCostDto"];
-        "application/*+json": components["schemas"]["CreateModelCostDto"];
       };
     };
     responses: {
       /** @description Created */
       201: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelCostDto"];
-          "text/json": components["schemas"]["ModelCostDto"];
-          "text/plain": components["schemas"]["ModelCostDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18345,36 +18238,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelCostDto"];
-          "text/json": components["schemas"]["ModelCostDto"];
-          "text/plain": components["schemas"]["ModelCostDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18391,55 +18282,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["UpdateModelCostDto"];
-        "text/json": components["schemas"]["UpdateModelCostDto"];
-        "application/*+json": components["schemas"]["UpdateModelCostDto"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelCostDto"];
-          "text/json": components["schemas"]["ModelCostDto"];
-          "text/plain": components["schemas"]["ModelCostDto"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18458,6 +18345,8 @@ export interface operations {
       /** @description No Content */
       204: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -18465,25 +18354,23 @@ export interface operations {
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18502,25 +18389,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelCostDto"][];
-          "text/json": components["schemas"]["ModelCostDto"][];
-          "text/plain": components["schemas"]["ModelCostDto"][];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18539,36 +18424,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelCostDto"];
-          "text/json": components["schemas"]["ModelCostDto"];
-          "text/plain": components["schemas"]["ModelCostDto"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18588,36 +18471,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ModelCostOverviewDto"][];
-          "text/json": components["schemas"]["ModelCostOverviewDto"][];
-          "text/plain": components["schemas"]["ModelCostOverviewDto"][];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18632,44 +18513,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["CreateModelCostDto"][];
-        "text/json": components["schemas"]["CreateModelCostDto"][];
-        "application/*+json": components["schemas"]["CreateModelCostDto"][];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkImportResult"];
-          "text/json": components["schemas"]["BulkImportResult"];
-          "text/plain": components["schemas"]["BulkImportResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18688,23 +18565,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "text/csv": string;
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18723,23 +18600,23 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": string;
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18763,36 +18640,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkImportResult"];
-          "text/json": components["schemas"]["BulkImportResult"];
-          "text/plain": components["schemas"]["BulkImportResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18816,36 +18691,34 @@ export interface operations {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["BulkImportResult"];
-          "text/json": components["schemas"]["BulkImportResult"];
-          "text/plain": components["schemas"]["BulkImportResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18862,55 +18735,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ValidatePricingRulesRequest"];
-        "text/json": components["schemas"]["ValidatePricingRulesRequest"];
-        "application/*+json": components["schemas"]["ValidatePricingRulesRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ValidationResult"];
-          "text/json": components["schemas"]["ValidationResult"];
-          "text/plain": components["schemas"]["ValidationResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Not Found */
       404: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };
@@ -18925,44 +18794,40 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ValidatePricingRulesRequest"];
-        "text/json": components["schemas"]["ValidatePricingRulesRequest"];
-        "application/*+json": components["schemas"]["ValidatePricingRulesRequest"];
       };
     };
     responses: {
       /** @description OK */
       200: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
           "application/json": components["schemas"]["ValidationResult"];
-          "text/json": components["schemas"]["ValidationResult"];
-          "text/plain": components["schemas"]["ValidationResult"];
         };
       };
       /** @description Bad Request */
       400: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ProblemDetails"];
-          "text/json": components["schemas"]["ProblemDetails"];
-          "text/plain": components["schemas"]["ProblemDetails"];
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal server error. Returns a standardized ErrorResponseDto. */
+      /** @description Internal Server Error */
       500: {
         headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            error?: unknown;
-            details?: null | string;
-            code?: null | string;
-          };
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
     };

@@ -7,7 +7,7 @@ import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
 import { EntityFormModal } from '@/components/common/EntityFormModal';
-import type { CreateProviderTool, ToolProviderOption } from '@/lib/admin-api';
+import { ProviderType, normalizeProviderType, type CreateProviderTool, type ToolProviderOption } from '@/lib/admin-api';
 
 interface CreateProviderToolModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export function CreateProviderToolModal({ isOpen, onClose, onSuccess }: CreatePr
 
   const form = useForm<CreateProviderTool>({
     initialValues: {
-      provider: 0,
+      provider: ProviderType.Unknown,
       toolName: '',
       toolParameters: null,
       costPerUnit: 0,
@@ -30,7 +30,7 @@ export function CreateProviderToolModal({ isOpen, onClose, onSuccess }: CreatePr
       isActive: true,
     },
     validate: {
-      provider: (value) => value === 0 ? 'Provider is required' : null,
+      provider: (value) => value === ProviderType.Unknown ? 'Provider is required' : null,
       toolName: (value) => !value?.trim() ? 'Tool name is required' : null,
       costPerUnit: (value) => value !== null && value !== undefined && value < 0 ? 'Cost must be non-negative' : null,
     },
@@ -89,7 +89,10 @@ export function CreateProviderToolModal({ isOpen, onClose, onSuccess }: CreatePr
           label: p.name,
         }))}
         {...form.getInputProps('provider')}
-        onChange={(value) => form.setFieldValue('provider', value ? parseInt(value) : 0)}
+        onChange={(value) => form.setFieldValue(
+          'provider',
+          value ? normalizeProviderType(value) ?? ProviderType.Unknown : ProviderType.Unknown
+        )}
         value={form.values.provider.toString()}
         required
       />

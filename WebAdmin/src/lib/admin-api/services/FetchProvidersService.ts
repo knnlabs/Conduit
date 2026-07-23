@@ -276,7 +276,7 @@ export class FetchProvidersService {
   async getAvailableProviderTypes(): Promise<ProviderType[]> {
     // Get all provider types from the enum
     const allProviderTypes = Object.values(ProviderType)
-      .filter((value): value is ProviderType => typeof value === 'number');
+      .filter((value): value is ProviderType => value !== ProviderType.Unknown);
 
     // Return all provider types (allowing multiple instances of same type)
     return allProviderTypes;

@@ -14,12 +14,12 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (request.From > request.To)
             {
-                return Results.BadRequest("From date must be before or equal to To date");
+                return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
             if (request.PageSize > 1000)
             {
-                return Results.BadRequest("Page size cannot exceed 1000");
+                return AdminResults.BadRequest("Page size cannot exceed 1000");
             }
 
             using var timer = PricingOperationDuration.WithLabels("audit_query").NewTimer();
@@ -68,7 +68,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (from > to)
             {
-                return Results.BadRequest("From date must be before or equal to To date");
+                return AdminResults.BadRequest("From date must be before or equal to To date");
             }
 
             using var timer = PricingOperationDuration.WithLabels("audit_summary").NewTimer();

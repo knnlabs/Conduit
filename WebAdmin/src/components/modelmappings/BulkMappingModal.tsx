@@ -95,7 +95,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
       if (!provider.providerType) {
         throw new Error('Provider must have providerType');
       }
-      const providerType = getProviderTypeFromDto(provider as { providerType: number });
+      const providerType = getProviderTypeFromDto(provider);
       const providerName = providerTypeToName(providerType);
       const result = await discoverModels(providerId, providerName);
       setDiscoveredModels(result.models.map(model => ({
