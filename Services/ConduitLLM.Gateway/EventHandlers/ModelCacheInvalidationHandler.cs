@@ -13,13 +13,16 @@ namespace ConduitLLM.Gateway.EventHandlers
     public class ModelCacheInvalidationHandler : IEventHandler<ModelUpdated>
     {
         private readonly IDiscoveryCacheService _discoveryCacheService;
+        private readonly IModelCapabilityService _modelCapabilityService;
         private readonly ILogger<ModelCacheInvalidationHandler> _logger;
 
         public ModelCacheInvalidationHandler(
             IDiscoveryCacheService discoveryCacheService,
+            IModelCapabilityService modelCapabilityService,
             ILogger<ModelCacheInvalidationHandler> logger)
         {
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
+            _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -38,6 +41,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             try
             {
                 await _discoveryCacheService.InvalidateAllDiscoveryAsync();
+                await _modelCapabilityService.RefreshCacheAsync();
 
                 _logger.LogInformation(
                     "Invalidated all discovery cache entries after {ChangeType} of model {ModelName} (ID: {ModelId})",

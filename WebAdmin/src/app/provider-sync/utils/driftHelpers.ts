@@ -63,6 +63,9 @@ const FIELD_LABELS: Record<string, string> = {
   supportsVision: 'Vision',
   supportsFunctionCalling: 'Function calling',
   supportsImageGeneration: 'Image generation',
+  supportsVideoGeneration: 'Video generation',
+  inputModalities: 'Accepted inputs',
+  outputModalities: 'Produced outputs',
 };
 
 export function fieldLabel(key: string): string {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { TextInput, Select, Switch, Group, NumberInput, Divider } from '@mantine/core';
+import { TextInput, Select, Switch, Group, NumberInput, Divider, MultiSelect, Text } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
@@ -16,6 +16,7 @@ interface CreateModelModalProps {
   onSuccess: () => void;
 }
 
+const MODALITY_OPTIONS = ['text', 'image', 'audio', 'video', 'file'];
 
 export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModalProps) {
   const [series, setSeries] = useState<ModelSeriesDto[]>([]);
@@ -27,6 +28,9 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       modelSeriesId: '',
       tokenizerType: TokenizerType.Cl100KBase,
       isActive: true,
+      capabilitiesKnown: true,
+      inputModalities: ['text'] as string[],
+      outputModalities: ['text'] as string[],
       supportsChat: true,
       supportsVision: false,
       supportsFunctionCalling: false,
@@ -34,6 +38,9 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       supportsImageGeneration: false,
       supportsVideoGeneration: false,
       supportsEmbeddings: false,
+      supportsSpeechToText: false,
+      supportsTextToSpeech: false,
+      supportsRerank: false,
       maxInputTokens: undefined as number | undefined,
       maxOutputTokens: undefined as number | undefined
     },
@@ -78,13 +85,19 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         modelSeriesId: values.modelSeriesId ? parseInt(values.modelSeriesId) : undefined,
         tokenizerType: values.tokenizerType,
         isActive: values.isActive,
+        inputModalities: values.capabilitiesKnown ? values.inputModalities : null,
+        outputModalities: values.capabilitiesKnown ? values.outputModalities : null,
+        capabilitySource: values.capabilitiesKnown ? 4 : 0,
         supportsChat: values.supportsChat,
-        supportsVision: values.supportsVision,
+        supportsVision: values.capabilitiesKnown && values.inputModalities.includes('image'),
         supportsFunctionCalling: values.supportsFunctionCalling,
         supportsStreaming: values.supportsStreaming,
         supportsImageGeneration: values.supportsImageGeneration,
         supportsVideoGeneration: values.supportsVideoGeneration,
         supportsEmbeddings: values.supportsEmbeddings,
+        supportsSpeechToText: values.supportsSpeechToText,
+        supportsTextToSpeech: values.supportsTextToSpeech,
+        supportsRerank: values.supportsRerank,
         maxInputTokens: values.maxInputTokens ?? undefined,
         maxOutputTokens: values.maxOutputTokens ?? undefined
       } as CreateModelDto;
@@ -134,17 +147,42 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         error={form.errors.tokenizerType}
       />
 
-      <Divider label="Model Capabilities" labelPosition="center" my="md" />
+      <Divider label="Directional Modalities" labelPosition="center" my="md" />
+
+      <Switch
+        label="Directional metadata is known"
+        description="Turn off to store unknown. Empty selections explicitly mean unsupported."
+        {...form.getInputProps('capabilitiesKnown', { type: 'checkbox' })}
+      />
+
+      {form.values.capabilitiesKnown && (
+        <>
+          <MultiSelect
+            label="Accepted inputs"
+            data={MODALITY_OPTIONS}
+            searchable
+            {...form.getInputProps('inputModalities')}
+          />
+          <MultiSelect
+            label="Produced outputs"
+            data={MODALITY_OPTIONS}
+            searchable
+            {...form.getInputProps('outputModalities')}
+          />
+          <Text size="xs" c="dimmed">
+            Video input and video generation are independent. A model may analyze video while only producing text.
+          </Text>
+        </>
+      )}
+
+      <Divider label="Operations" labelPosition="center" my="md" />
 
       <Group grow>
         <Switch
           label="Supports Chat"
           {...form.getInputProps('supportsChat', { type: 'checkbox' })}
         />
-        <Switch
-          label="Supports Vision"
-          {...form.getInputProps('supportsVision', { type: 'checkbox' })}
-        />
+        <Switch label="Image input (legacy vision flag)" checked={form.values.inputModalities.includes('image')} disabled />
       </Group>
 
       <Group grow>
@@ -173,6 +211,21 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         label="Supports Embeddings"
         {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
       />
+
+      <Group grow>
+        <Switch
+          label="Speech to Text"
+          {...form.getInputProps('supportsSpeechToText', { type: 'checkbox' })}
+        />
+        <Switch
+          label="Text to Speech"
+          {...form.getInputProps('supportsTextToSpeech', { type: 'checkbox' })}
+        />
+        <Switch
+          label="Rerank"
+          {...form.getInputProps('supportsRerank', { type: 'checkbox' })}
+        />
+      </Group>
 
       <Divider label="Token Limits" labelPosition="center" my="md" />
 

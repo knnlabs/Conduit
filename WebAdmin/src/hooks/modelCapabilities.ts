@@ -2,6 +2,13 @@ import type { ModelDto } from '@/lib/admin-api';
 
 export interface DiscoveredModelCapabilities {
   supportsVision: boolean;
+  supportsImageInput?: boolean;
+  supportsVideoInput?: boolean;
+  supportsAudioInput?: boolean;
+  supportsFileInput?: boolean;
+  supportsVideoUnderstanding?: boolean;
+  inputModalities?: string[] | null;
+  outputModalities?: string[] | null;
   supportsImageGeneration: boolean;
   supportsAudioTranscription: boolean;
   supportsTextToSpeech: boolean;
@@ -18,6 +25,13 @@ export interface DiscoveredModelCapabilities {
 export function mapDiscoveredModelCapabilities(model: ModelDto): DiscoveredModelCapabilities {
   return {
     supportsVision: model.supportsVision ?? false,
+    supportsImageInput: model.supportsImageInput ?? false,
+    supportsVideoInput: model.supportsVideoInput ?? false,
+    supportsAudioInput: model.supportsAudioInput ?? false,
+    supportsFileInput: model.supportsFileInput ?? false,
+    supportsVideoUnderstanding: model.supportsVideoUnderstanding ?? false,
+    inputModalities: model.inputModalities ?? null,
+    outputModalities: model.outputModalities ?? null,
     supportsImageGeneration: model.supportsImageGeneration ?? false,
     supportsAudioTranscription: model.supportsSpeechToText ?? false,
     supportsTextToSpeech: model.supportsTextToSpeech ?? false,

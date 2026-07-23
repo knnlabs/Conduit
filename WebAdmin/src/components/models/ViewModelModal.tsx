@@ -94,7 +94,10 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
         // Use capabilities directly from the model (flat structure)
         const capList: string[] = [];
         if (model.supportsChat) capList.push('Chat');
-        if (model.supportsVision) capList.push('Vision');
+        if (model.supportsImageInput) capList.push('Image Input');
+        if (model.supportsVideoInput) capList.push('Video Input');
+        if (model.supportsAudioInput) capList.push('Audio Input');
+        if (model.supportsFileInput) capList.push('File Input');
         if (model.supportsImageGeneration) capList.push('Image Gen');
         if (model.supportsVideoGeneration) capList.push('Video Gen');
         if (model.supportsEmbeddings) capList.push('Embeddings');

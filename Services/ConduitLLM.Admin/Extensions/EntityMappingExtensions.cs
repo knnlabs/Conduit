@@ -3,6 +3,7 @@ using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.DTOs.IpFilter;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Entities;
 
@@ -56,6 +57,7 @@ namespace ConduitLLM.Admin.Extensions
         /// </summary>
         public static ModelDto ToDto(this Model model)
         {
+            var capabilities = ModelCapabilityResolver.Resolve(model);
             return new ModelDto
             {
                 Id = model.Id,
@@ -66,6 +68,15 @@ namespace ConduitLLM.Admin.Extensions
                 UpdatedAt = model.UpdatedAt,
                 Series = model.Series?.ToDto(),
                 ModelParameters = model.ModelParameters,
+                InputModalities = capabilities.InputModalities,
+                OutputModalities = capabilities.OutputModalities,
+                CapabilitySource = capabilities.Source,
+                CapabilitiesLastVerifiedAt = capabilities.LastVerifiedAt,
+                SupportsImageInput = capabilities.SupportsImageInput,
+                SupportsVideoInput = capabilities.SupportsVideoInput,
+                SupportsAudioInput = capabilities.SupportsAudioInput,
+                SupportsFileInput = capabilities.SupportsFileInput,
+                SupportsVideoUnderstanding = capabilities.SupportsVideoUnderstanding,
                 SupportsChat = model.SupportsChat,
                 SupportsVision = model.SupportsVision,
                 SupportsImageGeneration = model.SupportsImageGeneration,
@@ -90,7 +101,12 @@ namespace ConduitLLM.Admin.Extensions
                     SpeedScore = i.SpeedScore,
                     QualityScore = i.QualityScore,
                     ProviderVariation = i.ProviderVariation,
-                    ModelCostId = i.ModelCostId
+                    ModelCostId = i.ModelCostId,
+                    InputModalities = ModelModalities.Parse(i.InputModalitiesJson),
+                    OutputModalities = ModelModalities.Parse(i.OutputModalitiesJson),
+                    OperationalCapabilities = ModelCapabilityResolver.DeserializeOverrides(i.OperationalCapabilitiesJson),
+                    CapabilitySource = i.CapabilitySource,
+                    CapabilitiesLastVerifiedAt = i.CapabilitiesLastVerifiedAt
                 }).ToList()
             };
         }

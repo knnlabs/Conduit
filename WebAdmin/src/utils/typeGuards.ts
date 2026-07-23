@@ -42,6 +42,13 @@ export function extractCapabilities(model: ModelDto) {
   return {
     supportsChat: model.supportsChat ?? false,
     supportsVision: model.supportsVision ?? false,
+    supportsImageInput: model.supportsImageInput ?? false,
+    supportsVideoInput: model.supportsVideoInput ?? false,
+    supportsAudioInput: model.supportsAudioInput ?? false,
+    supportsFileInput: model.supportsFileInput ?? false,
+    supportsVideoUnderstanding: model.supportsVideoUnderstanding ?? false,
+    inputModalities: model.inputModalities ?? null,
+    outputModalities: model.outputModalities ?? null,
     supportsImageGeneration: model.supportsImageGeneration ?? false,
     supportsVideoGeneration: model.supportsVideoGeneration ?? false,
     supportsEmbeddings: model.supportsEmbeddings ?? false,

@@ -188,6 +188,23 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 });
             }
 
+            foreach (var videoUrl in ProviderHelpers.ContentHelper.ExtractVideoUrls(content))
+            {
+                contentParts.Add(new
+                {
+                    type = "video_url",
+                    video_url = new
+                    {
+                        url = videoUrl.Url,
+                        detail = videoUrl.Detail,
+                        max_frames = videoUrl.MaxFrames,
+                        sample_rate = videoUrl.SampleRate,
+                        start_time = videoUrl.StartTime,
+                        end_time = videoUrl.EndTime
+                    }
+                });
+            }
+
             // If no parts were added, return an empty string
             if (contentParts.Count == 0)
                 return "";

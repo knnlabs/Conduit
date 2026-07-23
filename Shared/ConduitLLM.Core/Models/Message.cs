@@ -15,7 +15,7 @@ public class Message
 
     /// <summary>
     /// The contents of the message. Can be a simple string or, for multimodal models,
-    /// a list containing text and image_url content parts.
+    /// a list containing text, image_url, video_url, audio, or file content parts.
     /// </summary>
     [JsonPropertyName("content")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

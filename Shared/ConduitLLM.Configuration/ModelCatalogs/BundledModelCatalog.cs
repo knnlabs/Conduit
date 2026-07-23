@@ -1,5 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.ModelCatalogs;
 
@@ -62,10 +64,14 @@ public sealed class BundledModelCatalog
             ?? throw new InvalidOperationException($"Bundled model catalog resource '{fileName}' is empty or invalid.");
     }
 
-    private static readonly JsonSerializerOptions SerializerOptions = new()
+    private static readonly JsonSerializerOptions SerializerOptions = CreateSerializerOptions();
+
+    private static JsonSerializerOptions CreateSerializerOptions()
     {
-        PropertyNameCaseInsensitive = true
-    };
+        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+        options.Converters.Add(new JsonStringEnumConverter());
+        return options;
+    }
 }
 
 public sealed record BundledProviderCatalog(
@@ -101,6 +107,15 @@ public sealed class ProviderCatalogModel
     public bool SupportsFunctionCalling { get; set; }
     public bool SupportsEmbeddings { get; set; }
     public bool SupportsAudio { get; set; }
+    public bool SupportsImageGeneration { get; set; }
+    public bool SupportsVideoGeneration { get; set; }
+    public bool SupportsSpeechToText { get; set; }
+    public bool SupportsTextToSpeech { get; set; }
+    public bool SupportsRerank { get; set; }
+    public IReadOnlyList<string>? InputModalities { get; set; }
+    public IReadOnlyList<string>? OutputModalities { get; set; }
+    public ModelCapabilitySource CapabilitySource { get; set; } = ModelCapabilitySource.Curated;
+    public DateTime? CapabilitiesLastVerifiedAt { get; set; }
     public decimal InputPricePerMillion { get; set; }
     public decimal OutputPricePerMillion { get; set; }
     public int? SpeedTokensPerSec { get; set; }

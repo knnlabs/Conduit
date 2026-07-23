@@ -229,7 +229,12 @@ export function ChatInterface() {
               />
               {currentDiscoveryModel?.capabilities?.vision && (
                 <Badge variant="light" color="blue">
-                  Vision Enabled
+                  Image Input
+                </Badge>
+              )}
+              {currentDiscoveryModel?.capabilities?.video_input && (
+                <Badge variant="light" color="grape">
+                  Video Input
                 </Badge>
               )}
               {!chatLayout.compactMode && currentDiscoveryModel && (
@@ -319,7 +324,9 @@ export function ChatInterface() {
               id: currentDiscoveryModel.id,
               providerId: '',
               displayName: currentDiscoveryModel.display_name ?? currentDiscoveryModel.id,
-              supportsVision: currentDiscoveryModel.capabilities?.vision === true
+              supportsVision: currentDiscoveryModel.capabilities?.image_input === true
+                || currentDiscoveryModel.capabilities?.vision === true,
+              supportsVideoInput: currentDiscoveryModel.capabilities?.video_input === true
             } : undefined}
             onInputChange={setCurrentInputText}
             onImagesChange={setCurrentInputImages}

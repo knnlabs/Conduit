@@ -155,6 +155,17 @@ foreach (var modelProp in modelsNode.EnumerateObject())
         SupportsFunctionCalling = modelData.GetProperty("supportsFunctionCalling").GetBoolean(),
         SupportsEmbeddings = modelData.GetProperty("supportsEmbeddings").GetBoolean(),
         SupportsAudio = modelData.TryGetProperty("supportsAudio", out var audio) ? audio.GetBoolean() : false,
+        SupportsImageGeneration = GetBoolean(modelData, "supportsImageGeneration"),
+        SupportsVideoGeneration = GetBoolean(modelData, "supportsVideoGeneration"),
+        SupportsSpeechToText = GetBoolean(modelData, "supportsSpeechToText"),
+        SupportsTextToSpeech = GetBoolean(modelData, "supportsTextToSpeech"),
+        SupportsRerank = GetBoolean(modelData, "supportsRerank"),
+        InputModalities = GetModalities(modelData, "inputModalities"),
+        OutputModalities = GetModalities(modelData, "outputModalities"),
+        CapabilitySource = GetCapabilitySource(modelData),
+        CapabilitiesLastVerifiedAt = modelData.TryGetProperty("capabilitiesLastVerifiedAt", out var verified)
+            && verified.ValueKind == JsonValueKind.String
+            && verified.TryGetDateTime(out var verifiedAt) ? verifiedAt : null,
         InputPricePerMillion = modelData.GetProperty("inputPricePerMillion").GetDouble(),
         OutputPricePerMillion = modelData.GetProperty("outputPricePerMillion").GetDouble(),
         SpeedTokensPerSec = modelData.TryGetProperty("speedTokensPerSec", out var speed) && speed.ValueKind != JsonValueKind.Null ? speed.GetInt32() : (int?)null,
@@ -200,6 +211,12 @@ static async Task GenerateSQLOutput(List<ProviderModel> models, string outputFil
         var standardParameters = "{}"; // Providers use standard OpenAI-compatible parameters
         var description = model.Notes != null ? $"'{EscapeSqlString(model.Notes)}'" : "NULL";
         var modelCardUrl = config.ModelCardUrl;
+        var inputModalities = FormatJsonb(model.InputModalities ?? InferInputModalities(model));
+        var outputModalities = FormatJsonb(model.OutputModalities ?? InferOutputModalities(model));
+        var operationalCapabilities = FormatOperationalCapabilities(model);
+        var verifiedAt = model.CapabilitiesLastVerifiedAt.HasValue
+            ? $"'{model.CapabilitiesLastVerifiedAt.Value.ToUniversalTime():O}'::timestamptz"
+            : "NULL";
 
         sql.AppendLine($"-- Model: {model.ModelId}");
         sql.AppendLine();
@@ -241,12 +258,16 @@ static async Task GenerateSQLOutput(List<ProviderModel> models, string outputFil
         sql.AppendLine($"      \"Name\", \"Version\", \"Description\", \"ModelCardUrl\", \"ModelSeriesId\",");
         sql.AppendLine($"      \"SupportsVision\", \"SupportsImageGeneration\", \"SupportsVideoGeneration\",");
         sql.AppendLine($"      \"SupportsEmbeddings\", \"SupportsChat\", \"SupportsFunctionCalling\", \"SupportsStreaming\",");
+        sql.AppendLine($"      \"SupportsSpeechToText\", \"SupportsTextToSpeech\", \"SupportsRerank\",");
+        sql.AppendLine($"      \"InputModalities\", \"OutputModalities\", \"CapabilitySource\", \"CapabilitiesLastVerifiedAt\",");
         sql.AppendLine($"      \"TokenizerType\", \"MaxInputTokens\", \"MaxOutputTokens\",");
         sql.AppendLine($"      \"IsActive\", \"Parameters\", \"CreatedAt\", \"UpdatedAt\"");
         sql.AppendLine($"    ) VALUES (");
         sql.AppendLine($"      '{EscapeSqlString(model.Name)}', NULL, {description}, '{modelCardUrl}', v_series_id,");
-        sql.AppendLine($"      {FormatBool(model.SupportsVision)}, false, false,");
+        sql.AppendLine($"      {FormatBool(model.SupportsVision)}, {FormatBool(model.SupportsImageGeneration)}, {FormatBool(model.SupportsVideoGeneration)},");
         sql.AppendLine($"      {FormatBool(model.SupportsEmbeddings)}, {FormatBool(model.SupportsChat)}, {FormatBool(model.SupportsFunctionCalling)}, {FormatBool(model.SupportsStreaming)},");
+        sql.AppendLine($"      {FormatBool(model.SupportsSpeechToText)}, {FormatBool(model.SupportsTextToSpeech)}, {FormatBool(model.SupportsRerank)},");
+        sql.AppendLine($"      {inputModalities}, {outputModalities}, {model.CapabilitySource}, {verifiedAt},");
         sql.AppendLine($"      {tokenizerTypeEnum}, {model.MaxInputTokens}, {model.MaxOutputTokens},");
         sql.AppendLine($"      true, '{standardParameters}', NOW(), NOW()");
         sql.AppendLine($"    ) RETURNING \"Id\" INTO v_model_id;");
@@ -256,6 +277,13 @@ static async Task GenerateSQLOutput(List<ProviderModel> models, string outputFil
         sql.AppendLine($"      \"Description\" = {description},");
         sql.AppendLine($"      \"MaxInputTokens\" = {model.MaxInputTokens},");
         sql.AppendLine($"      \"MaxOutputTokens\" = {model.MaxOutputTokens},");
+        sql.AppendLine($"      \"SupportsVision\" = CASE WHEN \"CapabilitySource\" IN (0, 1, 3) THEN {FormatBool(model.SupportsVision)} ELSE \"SupportsVision\" END,");
+        sql.AppendLine($"      \"SupportsImageGeneration\" = CASE WHEN \"CapabilitySource\" IN (0, 1, 3) THEN {FormatBool(model.SupportsImageGeneration)} ELSE \"SupportsImageGeneration\" END,");
+        sql.AppendLine($"      \"SupportsVideoGeneration\" = CASE WHEN \"CapabilitySource\" IN (0, 1, 3) THEN {FormatBool(model.SupportsVideoGeneration)} ELSE \"SupportsVideoGeneration\" END,");
+        sql.AppendLine($"      \"InputModalities\" = CASE WHEN \"CapabilitySource\" IN (0, 1, 3) THEN {inputModalities} ELSE \"InputModalities\" END,");
+        sql.AppendLine($"      \"OutputModalities\" = CASE WHEN \"CapabilitySource\" IN (0, 1, 3) THEN {outputModalities} ELSE \"OutputModalities\" END,");
+        sql.AppendLine($"      \"CapabilitySource\" = CASE WHEN \"CapabilitySource\" IN (0, 1, 3) THEN {model.CapabilitySource} ELSE \"CapabilitySource\" END,");
+        sql.AppendLine($"      \"CapabilitiesLastVerifiedAt\" = CASE WHEN \"CapabilitySource\" IN (0, 1, 3) THEN {verifiedAt} ELSE \"CapabilitiesLastVerifiedAt\" END,");
         sql.AppendLine($"      \"UpdatedAt\" = NOW()");
         sql.AppendLine($"    WHERE \"Id\" = v_model_id;");
         sql.AppendLine($"  END IF;");
@@ -288,15 +316,22 @@ static async Task GenerateSQLOutput(List<ProviderModel> models, string outputFil
         sql.AppendLine($"  -- Insert or update model identifier");
         sql.AppendLine($"  INSERT INTO \"ModelIdentifiers\" (");
         sql.AppendLine($"    \"ModelId\", \"Identifier\", \"Provider\", \"IsEnabled\",");
-        sql.AppendLine($"    \"MaxInputTokens\", \"MaxOutputTokens\", \"IsPrimary\", \"ModelCostId\"");
+        sql.AppendLine($"    \"MaxInputTokens\", \"MaxOutputTokens\", \"IsPrimary\", \"ModelCostId\",");
+        sql.AppendLine($"    \"InputModalities\", \"OutputModalities\", \"OperationalCapabilities\", \"CapabilitySource\", \"CapabilitiesLastVerifiedAt\"");
         sql.AppendLine($"  ) VALUES (");
         sql.AppendLine($"    v_model_id, '{EscapeSqlString(model.ModelId)}', {config.ProviderType}, true,");
-        sql.AppendLine($"    {model.MaxInputTokens}, {model.MaxOutputTokens}, true, v_cost_id");
+        sql.AppendLine($"    {model.MaxInputTokens}, {model.MaxOutputTokens}, true, v_cost_id,");
+        sql.AppendLine($"    {inputModalities}, {outputModalities}, {operationalCapabilities}, {model.CapabilitySource}, {verifiedAt}");
         sql.AppendLine($"  )");
         sql.AppendLine($"  ON CONFLICT (\"Provider\", \"Identifier\") DO UPDATE SET");
         sql.AppendLine($"    \"ModelCostId\" = EXCLUDED.\"ModelCostId\",");
         sql.AppendLine($"    \"MaxInputTokens\" = EXCLUDED.\"MaxInputTokens\",");
-        sql.AppendLine($"    \"MaxOutputTokens\" = EXCLUDED.\"MaxOutputTokens\";");
+        sql.AppendLine($"    \"MaxOutputTokens\" = EXCLUDED.\"MaxOutputTokens\",");
+        sql.AppendLine($"    \"InputModalities\" = EXCLUDED.\"InputModalities\",");
+        sql.AppendLine($"    \"OutputModalities\" = EXCLUDED.\"OutputModalities\",");
+        sql.AppendLine($"    \"OperationalCapabilities\" = EXCLUDED.\"OperationalCapabilities\",");
+        sql.AppendLine($"    \"CapabilitySource\" = EXCLUDED.\"CapabilitySource\",");
+        sql.AppendLine($"    \"CapabilitiesLastVerifiedAt\" = EXCLUDED.\"CapabilitiesLastVerifiedAt\";");
         sql.AppendLine();
         sql.AppendLine($"END $$;");
         sql.AppendLine();
@@ -343,6 +378,81 @@ static int MapTokenizerTypeToEnum(string tokenizerType)
 
 static string FormatBool(bool value) => value ? "true" : "false";
 
+static bool GetBoolean(JsonElement element, string propertyName) =>
+    element.TryGetProperty(propertyName, out var property) &&
+    property.ValueKind is JsonValueKind.True or JsonValueKind.False &&
+    property.GetBoolean();
+
+static IReadOnlyList<string>? GetModalities(JsonElement element, string propertyName) =>
+    element.TryGetProperty(propertyName, out var property) && property.ValueKind == JsonValueKind.Array
+        ? property.EnumerateArray()
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()!)
+            .ToArray()
+        : null;
+
+static int GetCapabilitySource(JsonElement element)
+{
+    if (!element.TryGetProperty("capabilitySource", out var source))
+        return 2; // Curated
+    if (source.ValueKind == JsonValueKind.Number)
+        return source.GetInt32();
+    return source.GetString() switch
+    {
+        "Unknown" => 0,
+        "LegacyInferred" => 1,
+        "ProviderApi" => 3,
+        "Manual" => 4,
+        _ => 2
+    };
+}
+
+static string FormatJsonb(IEnumerable<string> values)
+{
+    var json = "[" + string.Join(",", values.Select(value =>
+        $"\"{JsonEncodedText.Encode(value)}\"")) + "]";
+    return $"'{EscapeSqlString(json)}'::jsonb";
+}
+
+static string FormatOperationalCapabilities(ProviderModel model)
+{
+    var json = "{" + string.Join(",", new[]
+    {
+        $"\"supportsChat\":{FormatBool(model.SupportsChat)}",
+        $"\"supportsStreaming\":{FormatBool(model.SupportsStreaming)}",
+        $"\"supportsVision\":{FormatBool(model.SupportsVision)}",
+        $"\"supportsImageGeneration\":{FormatBool(model.SupportsImageGeneration)}",
+        $"\"supportsVideoGeneration\":{FormatBool(model.SupportsVideoGeneration)}",
+        $"\"supportsEmbeddings\":{FormatBool(model.SupportsEmbeddings)}",
+        $"\"supportsFunctionCalling\":{FormatBool(model.SupportsFunctionCalling)}",
+        $"\"supportsSpeechToText\":{FormatBool(model.SupportsSpeechToText)}",
+        $"\"supportsTextToSpeech\":{FormatBool(model.SupportsTextToSpeech)}",
+        $"\"supportsRerank\":{FormatBool(model.SupportsRerank)}"
+    }) + "}";
+    return $"'{json}'::jsonb";
+}
+
+static IReadOnlyList<string> InferInputModalities(ProviderModel model)
+{
+    var values = new List<string>();
+    if (model.SupportsChat || model.SupportsEmbeddings || model.SupportsImageGeneration ||
+        model.SupportsVideoGeneration || model.SupportsTextToSpeech || model.SupportsRerank)
+        values.Add("text");
+    if (model.SupportsVision) values.Add("image");
+    if (model.SupportsSpeechToText || model.SupportsAudio) values.Add("audio");
+    return values;
+}
+
+static IReadOnlyList<string> InferOutputModalities(ProviderModel model)
+{
+    var values = new List<string>();
+    if (model.SupportsChat || model.SupportsSpeechToText || model.SupportsRerank) values.Add("text");
+    if (model.SupportsImageGeneration) values.Add("image");
+    if (model.SupportsVideoGeneration) values.Add("video");
+    if (model.SupportsTextToSpeech) values.Add("audio");
+    return values;
+}
+
 static string EscapeSqlString(string value)
 {
     return value.Replace("'", "''");
@@ -374,6 +484,15 @@ record ProviderModel
     public bool SupportsFunctionCalling { get; init; }
     public bool SupportsEmbeddings { get; init; }
     public bool SupportsAudio { get; init; }
+    public bool SupportsImageGeneration { get; init; }
+    public bool SupportsVideoGeneration { get; init; }
+    public bool SupportsSpeechToText { get; init; }
+    public bool SupportsTextToSpeech { get; init; }
+    public bool SupportsRerank { get; init; }
+    public IReadOnlyList<string>? InputModalities { get; init; }
+    public IReadOnlyList<string>? OutputModalities { get; init; }
+    public int CapabilitySource { get; init; } = 2;
+    public DateTime? CapabilitiesLastVerifiedAt { get; init; }
     public double InputPricePerMillion { get; init; }
     public double OutputPricePerMillion { get; init; }
     public int? SpeedTokensPerSec { get; init; }

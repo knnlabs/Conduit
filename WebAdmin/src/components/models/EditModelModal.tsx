@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
+import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid, Tooltip, ActionIcon, MultiSelect, Badge } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { IconAlertCircle, IconSettings, IconLink, IconTransform } from '@tabler/icons-react';
@@ -23,6 +23,7 @@ import type {
 // and tokenizerType directly
 type ExtendedModelDto = ModelDto;
 
+const MODALITY_OPTIONS = ['text', 'image', 'audio', 'video', 'file'];
 
 
 interface EditModelModalProps {
@@ -54,6 +55,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     isActive: boolean;
     modelParameters: string;
     tokenizerType: number;
+    capabilitiesKnown: boolean;
+    inputModalities: string[];
+    outputModalities: string[];
     supportsChat: boolean;
     supportsVision: boolean;
     supportsFunctionCalling: boolean;
@@ -61,6 +65,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     supportsImageGeneration: boolean;
     supportsVideoGeneration: boolean;
     supportsEmbeddings: boolean;
+    supportsSpeechToText: boolean;
+    supportsTextToSpeech: boolean;
+    supportsRerank: boolean;
     maxInputTokens: number | null;
     maxOutputTokens: number | null;
   }>({
@@ -70,6 +77,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       isActive: model?.isActive ?? true,
       modelParameters: model?.modelParameters ?? '',
       tokenizerType: model?.tokenizerType ?? TokenizerType.Cl100KBase,
+      capabilitiesKnown: model?.inputModalities !== null && model?.outputModalities !== null,
+      inputModalities: model?.inputModalities ?? [],
+      outputModalities: model?.outputModalities ?? [],
       // Capability fields from the model directly (flat structure)
       supportsChat: model?.supportsChat ?? false,
       supportsVision: model?.supportsVision ?? false,
@@ -78,6 +88,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       supportsImageGeneration: model?.supportsImageGeneration ?? false,
       supportsVideoGeneration: model?.supportsVideoGeneration ?? false,
       supportsEmbeddings: model?.supportsEmbeddings ?? false,
+      supportsSpeechToText: model?.supportsSpeechToText ?? false,
+      supportsTextToSpeech: model?.supportsTextToSpeech ?? false,
+      supportsRerank: model?.supportsRerank ?? false,
       maxInputTokens: model?.maxInputTokens ?? null,
       maxOutputTokens: model?.maxOutputTokens ?? null
     },
@@ -125,6 +138,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         isActive: model.isActive ?? true,
         modelParameters: model.modelParameters ?? '',
         tokenizerType: model.tokenizerType ?? TokenizerType.Cl100KBase,
+        capabilitiesKnown: model.inputModalities !== null && model.outputModalities !== null,
+        inputModalities: model.inputModalities ?? [],
+        outputModalities: model.outputModalities ?? [],
         // Update capability fields from the model directly (flat structure)
         supportsChat: model.supportsChat ?? false,
         supportsVision: model.supportsVision ?? false,
@@ -133,6 +149,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         supportsImageGeneration: model.supportsImageGeneration ?? false,
         supportsVideoGeneration: model.supportsVideoGeneration ?? false,
         supportsEmbeddings: model.supportsEmbeddings ?? false,
+        supportsSpeechToText: model.supportsSpeechToText ?? false,
+        supportsTextToSpeech: model.supportsTextToSpeech ?? false,
+        supportsRerank: model.supportsRerank ?? false,
         maxInputTokens: model.maxInputTokens ?? null,
         maxOutputTokens: model.maxOutputTokens ?? null
       });
@@ -183,14 +202,21 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         modelSeriesId: (values.modelSeriesId && values.modelSeriesId !== 0) ? values.modelSeriesId : null,
         isActive: values.isActive,
         tokenizerType: values.tokenizerType,
+        inputModalities: values.capabilitiesKnown ? values.inputModalities : undefined,
+        outputModalities: values.capabilitiesKnown ? values.outputModalities : undefined,
+        capabilitySource: values.capabilitiesKnown ? 4 : undefined,
+        clearDirectionalCapabilities: !values.capabilitiesKnown,
         // Always include boolean capability fields
         supportsChat: values.supportsChat,
-        supportsVision: values.supportsVision,
+        supportsVision: values.capabilitiesKnown && values.inputModalities.includes('image'),
         supportsFunctionCalling: values.supportsFunctionCalling,
         supportsStreaming: values.supportsStreaming,
         supportsImageGeneration: values.supportsImageGeneration,
         supportsVideoGeneration: values.supportsVideoGeneration,
         supportsEmbeddings: values.supportsEmbeddings,
+        supportsSpeechToText: values.supportsSpeechToText,
+        supportsTextToSpeech: values.supportsTextToSpeech,
+        supportsRerank: values.supportsRerank,
       };
       
       // Only include optional string fields if they have content
@@ -357,7 +383,38 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
 
           <Paper p="md" withBorder>
             <Stack gap="sm">
-              <Text size="sm" fw={500}>Capabilities</Text>
+              <Group justify="space-between">
+                <Text size="sm" fw={500}>Directional modalities</Text>
+                <Badge variant="light">Source: {model.capabilitySource ?? 'unknown'}</Badge>
+              </Group>
+
+              <Switch
+                label="Directional metadata is known"
+                description="Turn off to store unknown. Empty selections explicitly mean unsupported."
+                {...form.getInputProps('capabilitiesKnown', { type: 'checkbox' })}
+              />
+
+              {form.values.capabilitiesKnown && (
+                <>
+                  <MultiSelect
+                    label="Accepted inputs"
+                    data={MODALITY_OPTIONS}
+                    searchable
+                    {...form.getInputProps('inputModalities')}
+                  />
+                  <MultiSelect
+                    label="Produced outputs"
+                    data={MODALITY_OPTIONS}
+                    searchable
+                    {...form.getInputProps('outputModalities')}
+                  />
+                  <Text size="xs" c="dimmed">
+                    Video input means analysis/understanding; video output plus the Video Generation operation means generation.
+                  </Text>
+                </>
+              )}
+
+              <Text size="sm" fw={500} mt="sm">Operations</Text>
               
               <SimpleGrid cols={2} spacing="sm">
                 <Checkbox
@@ -365,8 +422,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                   {...form.getInputProps('supportsChat', { type: 'checkbox' })}
                 />
                 <Checkbox
-                  label="Vision"
-                  {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+                  label="Image input (legacy vision flag)"
+                  checked={form.values.inputModalities.includes('image')}
+                  disabled
                 />
                 <Checkbox
                   label="Function Calling"
@@ -387,6 +445,18 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                 <Checkbox
                   label="Embeddings"
                   {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Speech to Text"
+                  {...form.getInputProps('supportsSpeechToText', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Text to Speech"
+                  {...form.getInputProps('supportsTextToSpeech', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Rerank"
+                  {...form.getInputProps('supportsRerank', { type: 'checkbox' })}
                 />
                 <TextInput
                   label="Max Input Tokens"

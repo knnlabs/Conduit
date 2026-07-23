@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Models;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Caching.Memory;
@@ -24,6 +25,7 @@ namespace ConduitLLM.Core.Services
         private readonly TimeSpan _memoryCacheExpiration = TimeSpan.FromMinutes(5);
         private readonly TimeSpan _distributedCacheExpiration = TimeSpan.FromMinutes(30);
         private const string CacheKeyPrefix = "ModelCapability:";
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> KnownCacheKeys = new();
         private readonly JsonSerializerOptions _jsonOptions;
 
         public DatabaseModelCapabilityService(
@@ -58,7 +60,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsVision ?? false;
+                var association = mapping?.ModelProviderTypeAssociation;
+                var result = association?.Model is not null &&
+                    ModelCapabilityResolver.Resolve(association.Model, association).SupportsImageInput;
                 await SetInHybridCacheAsync(cacheKey, result);
                 return result;
             }
@@ -69,6 +73,32 @@ namespace ConduitLLM.Core.Services
             }
         }
 
+        /// <inheritdoc/>
+        public async Task<bool> SupportsVideoInputAsync(string model)
+        {
+            var cacheKey = $"{CacheKeyPrefix}VideoInput:{model}";
+
+            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            if (cachedResult.HasValue)
+            {
+                return cachedResult.Value;
+            }
+
+            try
+            {
+                var mapping = await GetMappingByModelNameAsync(model);
+                var association = mapping?.ModelProviderTypeAssociation;
+                var result = association?.Model is not null &&
+                    ModelCapabilityResolver.Resolve(association.Model, association).SupportsVideoInput;
+                await SetInHybridCacheAsync(cacheKey, result);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking video input capability for model {Model}", model);
+                return false;
+            }
+        }
 
         /// <inheritdoc/>
         public async Task<bool> SupportsVideoGenerationAsync(string model)
@@ -85,7 +115,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsVideoGeneration ?? false;
+                var association = mapping?.ModelProviderTypeAssociation;
+                var result = association?.Model is not null &&
+                    ModelCapabilityResolver.Resolve(association.Model, association).SupportsVideoGeneration;
                 await SetInHybridCacheAsync(cacheKey, result);
                 return result;
             }
@@ -110,7 +142,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsSpeechToText ?? false;
+                var association = mapping?.ModelProviderTypeAssociation;
+                var result = association?.Model is not null &&
+                    ModelCapabilityResolver.Resolve(association.Model, association).SupportsSpeechToText;
                 await SetInHybridCacheAsync(cacheKey, result);
                 return result;
             }
@@ -135,7 +169,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsTextToSpeech ?? false;
+                var association = mapping?.ModelProviderTypeAssociation;
+                var result = association?.Model is not null &&
+                    ModelCapabilityResolver.Resolve(association.Model, association).SupportsTextToSpeech;
                 await SetInHybridCacheAsync(cacheKey, result);
                 return result;
             }
@@ -160,7 +196,9 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var mapping = await GetMappingByModelNameAsync(model);
-                var result = mapping?.ModelProviderTypeAssociation?.Model?.SupportsRerank ?? false;
+                var association = mapping?.ModelProviderTypeAssociation;
+                var result = association?.Model is not null &&
+                    ModelCapabilityResolver.Resolve(association.Model, association).SupportsRerank;
                 await SetInHybridCacheAsync(cacheKey, result);
                 return result;
             }
@@ -233,21 +271,16 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task RefreshCacheAsync()
         {
-            // Clear memory cache entries by compacting
-            if (_memoryCache is MemoryCache mc)
+            foreach (var cacheKey in KnownCacheKeys.Keys)
             {
-                mc.Compact(1.0);
+                _memoryCache.Remove(cacheKey);
+                if (_distributedCache is not null)
+                {
+                    await _distributedCache.RemoveAsync(cacheKey);
+                }
             }
-            
-            // For distributed cache, we'd need to scan for keys with our prefix
-            // This is a simplified implementation - Redis keys will expire naturally
-            if (_distributedCache != null)
-            {
-                _logger.LogInformation("Distributed cache entries will expire naturally - consider implementing Redis SCAN for immediate invalidation");
-            }
-            
+
             _logger.LogInformation("Model capability cache refresh completed");
-            await Task.CompletedTask;
         }
 
         /// <summary>
@@ -296,6 +329,7 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
+                KnownCacheKeys.TryAdd(key, 0);
                 // Set in distributed cache first
                 if (_distributedCache != null)
                 {

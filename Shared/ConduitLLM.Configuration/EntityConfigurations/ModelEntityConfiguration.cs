@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.EntityConfigurations
 {
@@ -12,6 +13,9 @@ namespace ConduitLLM.Configuration.EntityConfigurations
     {
         public void Configure(EntityTypeBuilder<Model> builder)
         {
+            builder.Property(e => e.CapabilitySource)
+                .HasDefaultValue(ModelCapabilitySource.LegacyInferred);
+
             // Index for querying models by series
             builder.HasIndex(e => e.ModelSeriesId)
                 .HasDatabaseName("IX_Model_ModelSeriesId");

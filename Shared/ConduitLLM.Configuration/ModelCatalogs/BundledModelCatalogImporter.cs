@@ -1,12 +1,16 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Configuration.ModelCatalogs;
 
-/// <summary>Merges the immutable bundled model snapshot without modifying matched records.</summary>
+/// <summary>
+/// Merges the bundled model snapshot. Provider-owned capability metadata is refreshed
+/// while manually curated canonical metadata remains authoritative.
+/// </summary>
 public interface IBundledModelCatalogImporter
 {
     Task<BundledModelCatalogImportResult?> ImportAsync(
@@ -115,8 +119,16 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
             foreach (var (identifier, catalogModel) in providerCatalog.Models)
             {
                 var identifierKey = IdentifierKey(providerCatalog.Configuration.ProviderType, identifier);
-                if (identifiers.ContainsKey(identifierKey))
+                if (identifiers.TryGetValue(identifierKey, out var existingAssociation))
                 {
+                    if (existingAssociation.CapabilitySource != ModelCapabilitySource.Manual)
+                    {
+                        ApplyCatalogCapabilities(existingAssociation, catalogModel);
+                    }
+                    if (CanRefreshCanonical(existingAssociation.Model))
+                    {
+                        ApplyCatalogCapabilities(existingAssociation.Model, catalogModel);
+                    }
                     providerResult.SkippedExistingIdentifiers++;
                     result.SkippedExistingIdentifiers++;
                     continue;
@@ -186,6 +198,11 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
                         ModelCardUrl = providerCatalog.Configuration.ModelCardUrl,
                         Series = modelSeries,
                         SupportsVision = catalogModel.SupportsVision,
+                        SupportsImageGeneration = catalogModel.SupportsImageGeneration,
+                        SupportsVideoGeneration = catalogModel.SupportsVideoGeneration,
+                        SupportsSpeechToText = catalogModel.SupportsSpeechToText,
+                        SupportsTextToSpeech = catalogModel.SupportsTextToSpeech,
+                        SupportsRerank = catalogModel.SupportsRerank,
                         SupportsEmbeddings = catalogModel.SupportsEmbeddings,
                         SupportsChat = catalogModel.SupportsChat,
                         SupportsFunctionCalling = catalogModel.SupportsFunctionCalling,
@@ -193,6 +210,10 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
                         TokenizerType = MapTokenizer(catalogModel.TokenizerType),
                         MaxInputTokens = catalogModel.MaxInputTokens,
                         MaxOutputTokens = catalogModel.MaxOutputTokens,
+                        InputModalitiesJson = SerializeInputModalities(catalogModel),
+                        OutputModalitiesJson = SerializeOutputModalities(catalogModel),
+                        CapabilitySource = catalogModel.CapabilitySource,
+                        CapabilitiesLastVerifiedAt = catalogModel.CapabilitiesLastVerifiedAt,
                         IsActive = true,
                         ModelParameters = "{}"
                     };
@@ -236,6 +257,12 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
                     IsPrimary = true,
                     MaxInputTokens = catalogModel.MaxInputTokens,
                     MaxOutputTokens = catalogModel.MaxOutputTokens,
+                    InputModalitiesJson = SerializeInputModalities(catalogModel),
+                    OutputModalitiesJson = SerializeOutputModalities(catalogModel),
+                    OperationalCapabilitiesJson = ModelCapabilityResolver.SerializeOverrides(
+                        ToProviderOverrides(catalogModel)),
+                    CapabilitySource = catalogModel.CapabilitySource,
+                    CapabilitiesLastVerifiedAt = catalogModel.CapabilitiesLastVerifiedAt,
                     ModelCost = cost
                 };
                 context.ModelProviderTypeAssociations.Add(association);
@@ -248,6 +275,88 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
 
         return result;
     }
+
+    private static bool CanRefreshCanonical(Model model) =>
+        model.CapabilitySource is ModelCapabilitySource.Unknown
+            or ModelCapabilitySource.LegacyInferred
+            or ModelCapabilitySource.ProviderApi;
+
+    private static void ApplyCatalogCapabilities(Model model, ProviderCatalogModel catalog)
+    {
+        model.SupportsChat = catalog.SupportsChat;
+        model.SupportsStreaming = catalog.SupportsStreaming;
+        model.SupportsVision = catalog.SupportsVision;
+        model.SupportsImageGeneration = catalog.SupportsImageGeneration;
+        model.SupportsVideoGeneration = catalog.SupportsVideoGeneration;
+        model.SupportsEmbeddings = catalog.SupportsEmbeddings;
+        model.SupportsFunctionCalling = catalog.SupportsFunctionCalling;
+        model.SupportsSpeechToText = catalog.SupportsSpeechToText;
+        model.SupportsTextToSpeech = catalog.SupportsTextToSpeech;
+        model.SupportsRerank = catalog.SupportsRerank;
+        model.InputModalitiesJson = SerializeInputModalities(catalog);
+        model.OutputModalitiesJson = SerializeOutputModalities(catalog);
+        model.CapabilitySource = catalog.CapabilitySource;
+        model.CapabilitiesLastVerifiedAt = catalog.CapabilitiesLastVerifiedAt;
+        model.MaxInputTokens = catalog.MaxInputTokens;
+        model.MaxOutputTokens = catalog.MaxOutputTokens;
+        model.UpdatedAt = DateTime.UtcNow;
+    }
+
+    private static void ApplyCatalogCapabilities(
+        ModelProviderTypeAssociation association,
+        ProviderCatalogModel catalog)
+    {
+        association.InputModalitiesJson = SerializeInputModalities(catalog);
+        association.OutputModalitiesJson = SerializeOutputModalities(catalog);
+        association.OperationalCapabilitiesJson =
+            ModelCapabilityResolver.SerializeOverrides(ToProviderOverrides(catalog));
+        association.CapabilitySource = catalog.CapabilitySource;
+        association.CapabilitiesLastVerifiedAt = catalog.CapabilitiesLastVerifiedAt;
+        association.MaxInputTokens = catalog.MaxInputTokens;
+        association.MaxOutputTokens = catalog.MaxOutputTokens;
+    }
+
+    private static string SerializeInputModalities(ProviderCatalogModel catalog) =>
+        ModelModalities.Serialize(catalog.InputModalities ?? InferInputModalities(catalog))!;
+
+    private static string SerializeOutputModalities(ProviderCatalogModel catalog) =>
+        ModelModalities.Serialize(catalog.OutputModalities ?? InferOutputModalities(catalog))!;
+
+    private static IReadOnlyList<string> InferInputModalities(ProviderCatalogModel model)
+    {
+        var values = new List<string>();
+        if (model.SupportsChat || model.SupportsEmbeddings || model.SupportsImageGeneration ||
+            model.SupportsVideoGeneration || model.SupportsTextToSpeech || model.SupportsRerank)
+            values.Add(ModelModalities.Text);
+        if (model.SupportsVision) values.Add(ModelModalities.Image);
+        if (model.SupportsSpeechToText || model.SupportsAudio) values.Add(ModelModalities.Audio);
+        return values;
+    }
+
+    private static IReadOnlyList<string> InferOutputModalities(ProviderCatalogModel model)
+    {
+        var values = new List<string>();
+        if (model.SupportsChat || model.SupportsSpeechToText || model.SupportsRerank)
+            values.Add(ModelModalities.Text);
+        if (model.SupportsImageGeneration) values.Add(ModelModalities.Image);
+        if (model.SupportsVideoGeneration) values.Add(ModelModalities.Video);
+        if (model.SupportsTextToSpeech) values.Add(ModelModalities.Audio);
+        return values;
+    }
+
+    private static ProviderOperationalCapabilities ToProviderOverrides(ProviderCatalogModel model) => new()
+    {
+        SupportsChat = model.SupportsChat,
+        SupportsStreaming = model.SupportsStreaming,
+        SupportsVision = model.SupportsVision,
+        SupportsImageGeneration = model.SupportsImageGeneration,
+        SupportsVideoGeneration = model.SupportsVideoGeneration,
+        SupportsEmbeddings = model.SupportsEmbeddings,
+        SupportsFunctionCalling = model.SupportsFunctionCalling,
+        SupportsSpeechToText = model.SupportsSpeechToText,
+        SupportsTextToSpeech = model.SupportsTextToSpeech,
+        SupportsRerank = model.SupportsRerank
+    };
 
     private static void AddConflict(
         BundledModelCatalogImportResult result,

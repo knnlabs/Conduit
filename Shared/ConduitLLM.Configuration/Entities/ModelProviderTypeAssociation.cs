@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Models;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -44,6 +46,34 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [Range(1024, int.MaxValue)]
         public int? MaxOutputTokens { get; set; }
+
+        /// <summary>
+        /// Provider-specific JSON array of accepted modalities. Null inherits the canonical model value.
+        /// </summary>
+        [Column("InputModalities", TypeName = "jsonb")]
+        public string? InputModalitiesJson { get; set; }
+
+        /// <summary>
+        /// Provider-specific JSON array of produced modalities. Null inherits the canonical model value.
+        /// </summary>
+        [Column("OutputModalities", TypeName = "jsonb")]
+        public string? OutputModalitiesJson { get; set; }
+
+        /// <summary>
+        /// Provider-specific nullable operation overrides serialized as JSON.
+        /// </summary>
+        [Column("OperationalCapabilities", TypeName = "jsonb")]
+        public string? OperationalCapabilitiesJson { get; set; }
+
+        /// <summary>
+        /// Source of provider-specific capability metadata. Null inherits the canonical source.
+        /// </summary>
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+
+        /// <summary>
+        /// When provider-specific capability metadata was last verified.
+        /// </summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
 
 
         /// <summary>

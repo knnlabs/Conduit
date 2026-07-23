@@ -3,6 +3,8 @@ using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.Models;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,7 +36,12 @@ namespace ConduitLLM.Admin.Endpoints
                 SpeedScore = i.SpeedScore,
                 QualityScore = i.QualityScore,
                 ProviderVariation = i.ProviderVariation,
-                ModelCostId = i.ModelCostId
+                ModelCostId = i.ModelCostId,
+                InputModalities = ModelModalities.Parse(i.InputModalitiesJson),
+                OutputModalities = ModelModalities.Parse(i.OutputModalitiesJson),
+                OperationalCapabilities = ModelCapabilityResolver.DeserializeOverrides(i.OperationalCapabilitiesJson),
+                CapabilitySource = i.CapabilitySource,
+                CapabilitiesLastVerifiedAt = i.CapabilitiesLastVerifiedAt
             }).ToList();
 
             return Ok(identifiers);
@@ -89,6 +96,12 @@ namespace ConduitLLM.Admin.Endpoints
                         SpeedScore = association.SpeedScore,
                         QualityScore = association.QualityScore,
                         IsPrimary = association.IsPrimary,
+                        InputModalities = ModelModalities.Parse(association.InputModalitiesJson),
+                        OutputModalities = ModelModalities.Parse(association.OutputModalitiesJson),
+                        OperationalCapabilities =
+                            ModelCapabilityResolver.DeserializeOverrides(association.OperationalCapabilitiesJson),
+                        CapabilitySource = association.CapabilitySource,
+                        CapabilitiesLastVerifiedAt = association.CapabilitiesLastVerifiedAt,
                         AvailableProviders = matchingProviders.Select(p => new AvailableProviderDto
                         {
                             ProviderId = p.Id,
@@ -116,6 +129,10 @@ namespace ConduitLLM.Admin.Endpoints
                 return NotFound($"Model with ID {id} not found");
             }
 
+            var invalidModalities = GetInvalidModalities(dto.InputModalities, dto.OutputModalities);
+            if (invalidModalities.Length > 0)
+                return BadRequest($"Unknown model modalities: {string.Join(", ", invalidModalities)}");
+
             // Parse provider if provided as integer
             ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
 
@@ -140,11 +157,17 @@ namespace ConduitLLM.Admin.Endpoints
                 MaxOutputTokens = dto.MaxOutputTokens,
                 SpeedScore = dto.SpeedScore,
                 QualityScore = dto.QualityScore,
-                ProviderVariation = dto.ProviderVariation
+                ProviderVariation = dto.ProviderVariation,
+                InputModalitiesJson = ModelModalities.Serialize(dto.InputModalities),
+                OutputModalitiesJson = ModelModalities.Serialize(dto.OutputModalities),
+                OperationalCapabilitiesJson = ModelCapabilityResolver.SerializeOverrides(dto.OperationalCapabilities),
+                CapabilitySource = dto.CapabilitySource,
+                CapabilitiesLastVerifiedAt = dto.CapabilitiesLastVerifiedAt
             };
 
             model.Identifiers.Add(identifier);
             await _modelRepository.UpdateModelAsync(model);
+            await PublishIdentifierCapabilityChangeAsync(model, "Created");
 
             LogAdminAudit("Created", "ModelIdentifier", identifier.Id,
                 $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
@@ -159,7 +182,12 @@ namespace ConduitLLM.Admin.Endpoints
                 MaxOutputTokens = identifier.MaxOutputTokens,
                 SpeedScore = identifier.SpeedScore,
                 QualityScore = identifier.QualityScore,
-                ProviderVariation = identifier.ProviderVariation
+                ProviderVariation = identifier.ProviderVariation,
+                InputModalities = ModelModalities.Parse(identifier.InputModalitiesJson),
+                OutputModalities = ModelModalities.Parse(identifier.OutputModalitiesJson),
+                OperationalCapabilities = ModelCapabilityResolver.DeserializeOverrides(identifier.OperationalCapabilitiesJson),
+                CapabilitySource = identifier.CapabilitySource,
+                CapabilitiesLastVerifiedAt = identifier.CapabilitiesLastVerifiedAt
             });
         }
 
@@ -177,6 +205,10 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 return NotFound($"Model with ID {id} not found");
             }
+
+            var invalidModalities = GetInvalidModalities(dto.InputModalities, dto.OutputModalities);
+            if (invalidModalities.Length > 0)
+                return BadRequest($"Unknown model modalities: {string.Join(", ", invalidModalities)}");
 
             var identifier = model.Identifiers.FirstOrDefault(i => i.Id == identifierId);
             if (identifier == null)
@@ -210,8 +242,15 @@ namespace ConduitLLM.Admin.Endpoints
             identifier.SpeedScore = dto.SpeedScore;
             identifier.QualityScore = dto.QualityScore;
             identifier.ProviderVariation = dto.ProviderVariation;
+            identifier.InputModalitiesJson = ModelModalities.Serialize(dto.InputModalities);
+            identifier.OutputModalitiesJson = ModelModalities.Serialize(dto.OutputModalities);
+            identifier.OperationalCapabilitiesJson =
+                ModelCapabilityResolver.SerializeOverrides(dto.OperationalCapabilities);
+            identifier.CapabilitySource = dto.CapabilitySource;
+            identifier.CapabilitiesLastVerifiedAt = dto.CapabilitiesLastVerifiedAt;
 
             await _modelRepository.UpdateModelAsync(model);
+            await PublishIdentifierCapabilityChangeAsync(model, "Updated");
 
             LogAdminAudit("Updated", "ModelIdentifier", identifierId,
                 $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
@@ -227,6 +266,10 @@ namespace ConduitLLM.Admin.Endpoints
         /// <returns>No content on success</returns>
         public async Task<IResult> DeleteModelIdentifier(int id, int identifierId)
         {
+            var model = await _modelRepository.GetByIdAsync(id);
+            if (model == null)
+                return NotFound($"Model with ID {id} not found");
+
             // Directly delete the identifier from the repository
             var deleted = await _modelRepository.DeleteIdentifierAsync(id, identifierId);
 
@@ -236,8 +279,26 @@ namespace ConduitLLM.Admin.Endpoints
             }
 
             LogAdminAudit("Deleted", "ModelIdentifier", identifierId, $"ModelId: {id}");
+            await PublishIdentifierCapabilityChangeAsync(model, "Deleted");
 
             return NoContent();
+        }
+
+        private async Task PublishIdentifierCapabilityChangeAsync(Model model, string changeType)
+        {
+            await _eventBus.PublishAsync(new ModelUpdated
+            {
+                ModelId = model.Id,
+                ModelName = model.Name,
+                ModelSeriesId = model.ModelSeriesId,
+                ChangeType = $"Identifier{changeType}",
+                ChangedProperties =
+                [
+                    "InputModalities",
+                    "OutputModalities",
+                    "OperationalCapabilities"
+                ]
+            });
         }
     }
 }

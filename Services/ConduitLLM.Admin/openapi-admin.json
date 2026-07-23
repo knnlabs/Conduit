@@ -22380,6 +22380,51 @@
               "null",
               "string"
             ]
+          },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "operationalCapabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
+              }
+            ]
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         },
         "description": "DTO returned after creating a model identifier."
@@ -22757,6 +22802,45 @@
             "description": "Gets or sets the ID of the model series this model will belong to.\nThe foreign key reference to an existing ModelSeries.",
             "format": "int32"
           },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Modalities accepted by the model, or null when unknown."
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Modalities produced by the model, or null when unknown."
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Where the supplied directional metadata originated.",
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the supplied directional metadata was last verified.",
+            "format": "date-time"
+          },
           "supportsChat": {
             "type": "boolean",
             "description": "Gets or sets whether the model supports chat/conversation interactions."
@@ -22901,6 +22985,51 @@
               "string"
             ],
             "description": "Model variation or quantization level (e.g., \"GGUF\", \"Q4_K_M\", \"instruct\")"
+          },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "operationalCapabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
+              }
+            ]
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         },
         "description": "DTO for creating a model identifier"
@@ -25643,6 +25772,11 @@
       },
       "ModelCapabilitiesDto": {
         "required": [
+          "supportsImageInput",
+          "supportsVideoInput",
+          "supportsAudioInput",
+          "supportsFileInput",
+          "supportsVideoUnderstanding",
           "supportsVision",
           "supportsImageGeneration",
           "supportsVideoGeneration",
@@ -25658,6 +25792,49 @@
         ],
         "type": "object",
         "properties": {
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "capabilitySource": {
+            "$ref": "#/components/schemas/ModelCapabilitySource"
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "supportsImageInput": {
+            "type": "boolean"
+          },
+          "supportsVideoInput": {
+            "type": "boolean"
+          },
+          "supportsAudioInput": {
+            "type": "boolean"
+          },
+          "supportsFileInput": {
+            "type": "boolean"
+          },
+          "supportsVideoUnderstanding": {
+            "type": "boolean"
+          },
           "supportsVision": {
             "type": "boolean"
           },
@@ -25703,6 +25880,9 @@
             "format": "int32"
           }
         }
+      },
+      "ModelCapabilitySource": {
+        "type": "integer"
       },
       "ModelCostBreakdownDto": {
         "type": "object",
@@ -25971,6 +26151,58 @@
             "description": "Gets or sets the ID of the model series this model belongs to.\nThe foreign key reference to the ModelSeries entity.",
             "format": "int32"
           },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Modalities accepted by the model, or null when unknown."
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Modalities produced by the model, or null when unknown."
+          },
+          "capabilitySource": {
+            "description": "Where the directional capability metadata originated.",
+            "$ref": "#/components/schemas/ModelCapabilitySource"
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the directional capability metadata was last verified.",
+            "format": "date-time"
+          },
+          "supportsImageInput": {
+            "type": "boolean",
+            "description": "Whether image input is explicitly supported."
+          },
+          "supportsVideoInput": {
+            "type": "boolean",
+            "description": "Whether video input is explicitly supported."
+          },
+          "supportsAudioInput": {
+            "type": "boolean",
+            "description": "Whether audio input is explicitly supported."
+          },
+          "supportsFileInput": {
+            "type": "boolean",
+            "description": "Whether file input is explicitly supported."
+          },
+          "supportsVideoUnderstanding": {
+            "type": "boolean",
+            "description": "Whether the model can accept video and produce a text response."
+          },
           "supportsChat": {
             "type": "boolean",
             "description": "Gets or sets whether the model supports chat/conversation interactions."
@@ -26152,6 +26384,54 @@
             ],
             "description": "Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.",
             "format": "int32"
+          },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Provider-specific accepted modality override; null inherits the model."
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Provider-specific output modality override; null inherits the model."
+          },
+          "operationalCapabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Provider-specific operation overrides; null members inherit the model.",
+                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
+              }
+            ]
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         },
         "description": "Lightweight DTO for a model's provider type association (identifier)."
@@ -26230,6 +26510,56 @@
           "isPrimary": {
             "type": "boolean",
             "description": "Gets or sets whether this association is primary."
+          },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Provider-specific input modality override; null inherits the canonical model."
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Provider-specific output modality override; null inherits the canonical model."
+          },
+          "operationalCapabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Provider-specific operation overrides.",
+                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
+              }
+            ]
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Source of provider-specific capability metadata.",
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When provider-specific capability metadata was last verified.",
+            "format": "date-time"
           },
           "availableProviders": {
             "type": "array",
@@ -26447,6 +26777,58 @@
             "type": "integer",
             "description": "Gets or sets the ID of the model series this model belongs to.\nThe foreign key reference to the ModelSeries entity.",
             "format": "int32"
+          },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Modalities accepted by the model, or null when unknown."
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Modalities produced by the model, or null when unknown."
+          },
+          "capabilitySource": {
+            "description": "Where the directional capability metadata originated.",
+            "$ref": "#/components/schemas/ModelCapabilitySource"
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When the directional capability metadata was last verified.",
+            "format": "date-time"
+          },
+          "supportsImageInput": {
+            "type": "boolean",
+            "description": "Whether image input is explicitly supported."
+          },
+          "supportsVideoInput": {
+            "type": "boolean",
+            "description": "Whether video input is explicitly supported."
+          },
+          "supportsAudioInput": {
+            "type": "boolean",
+            "description": "Whether audio input is explicitly supported."
+          },
+          "supportsFileInput": {
+            "type": "boolean",
+            "description": "Whether file input is explicitly supported."
+          },
+          "supportsVideoUnderstanding": {
+            "type": "boolean",
+            "description": "Whether the model can accept video and produce a text response."
           },
           "supportsChat": {
             "type": "boolean",
@@ -28156,6 +28538,71 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "ProviderOperationalCapabilities": {
+        "type": "object",
+        "properties": {
+          "supportsChat": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsStreaming": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsVision": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsImageGeneration": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsVideoGeneration": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsEmbeddings": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsFunctionCalling": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsSpeechToText": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsTextToSpeech": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "supportsRerank": {
+            "type": [
+              "null",
+              "boolean"
+            ]
           }
         }
       },
@@ -30069,6 +30516,52 @@
             "description": "Gets or sets the new model series ID.\nThe new series ID, or null to keep existing.",
             "format": "int32"
           },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Replaces the model's accepted modalities when provided."
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Replaces the model's output modalities when provided."
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Updates the provenance for directional capability metadata.",
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Updates when the directional capability metadata was verified.",
+            "format": "date-time"
+          },
+          "clearDirectionalCapabilities": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Clears directional metadata and marks it unknown. This is distinct from\r\nsupplying empty arrays, which explicitly means no modalities are supported."
+          },
           "supportsChat": {
             "type": [
               "null",
@@ -30239,6 +30732,51 @@
               "string"
             ],
             "description": "Model variation or quantization level (e.g., \"GGUF\", \"Q4_K_M\", \"instruct\")"
+          },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "operationalCapabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
+              }
+            ]
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         },
         "description": "DTO for updating a model identifier"

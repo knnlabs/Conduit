@@ -13,6 +13,13 @@ namespace ConduitLLM.Core.Interfaces
         /// <returns>True if the model supports vision inputs, false otherwise.</returns>
         Task<bool> SupportsVisionAsync(string model);
 
+        /// <summary>
+        /// Determines if a model accepts video as an input modality.
+        /// This is independent from video generation support.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model accepts video input, false otherwise.</returns>
+        Task<bool> SupportsVideoInputAsync(string model);
 
         /// <summary>
         /// Determines if a model supports video generation.

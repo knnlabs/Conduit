@@ -10,7 +10,7 @@ export function getModelPrimaryType(model?: ModelDto): string {
   if (model.supportsVideoGeneration) return 'Video';
   if (model.supportsImageGeneration) return 'Image';
   if (model.supportsEmbeddings) return 'Embedding';
-  if (model.supportsChat || model.supportsVision) return 'Chat';
+  if (model.supportsChat || model.supportsImageInput || model.supportsVideoInput) return 'Chat';
   
   return 'Unknown';
 }
@@ -37,7 +37,10 @@ export function getModelCapabilityList(model?: ModelDto): string[] {
   const capabilityList: string[] = [];
   
   if (model.supportsChat) capabilityList.push('Chat');
-  if (model.supportsVision) capabilityList.push('Vision');
+  if (model.supportsImageInput) capabilityList.push('Image Input');
+  if (model.supportsVideoInput) capabilityList.push('Video Input');
+  if (model.supportsAudioInput) capabilityList.push('Audio Input');
+  if (model.supportsFileInput) capabilityList.push('File Input');
   if (model.supportsFunctionCalling) capabilityList.push('Functions');
   if (model.supportsStreaming) capabilityList.push('Streaming');
   if (model.supportsImageGeneration) capabilityList.push('Image Gen');

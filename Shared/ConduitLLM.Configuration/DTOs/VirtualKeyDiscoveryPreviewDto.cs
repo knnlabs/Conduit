@@ -39,6 +39,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Model capabilities
         /// </summary>
-        public Dictionary<string, object> Capabilities { get; set; } = new Dictionary<string, object>();
+        public Dictionary<string, object?> Capabilities { get; set; } = new Dictionary<string, object?>();
     }
 }

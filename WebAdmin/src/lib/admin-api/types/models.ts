@@ -18,6 +18,24 @@ export interface ProviderTypeAssociation {
   speedScore?: number | null;
   qualityScore?: number | null;
   providerVariation?: string | null;
+  inputModalities?: string[] | null;
+  outputModalities?: string[] | null;
+  operationalCapabilities?: ProviderOperationalCapabilities | null;
+  capabilitySource?: number | null;
+  capabilitiesLastVerifiedAt?: string | null;
+}
+
+export interface ProviderOperationalCapabilities {
+  supportsChat?: boolean | null;
+  supportsStreaming?: boolean | null;
+  supportsVision?: boolean | null;
+  supportsImageGeneration?: boolean | null;
+  supportsVideoGeneration?: boolean | null;
+  supportsEmbeddings?: boolean | null;
+  supportsFunctionCalling?: boolean | null;
+  supportsSpeechToText?: boolean | null;
+  supportsTextToSpeech?: boolean | null;
+  supportsRerank?: boolean | null;
 }
 
 /**
@@ -33,6 +51,11 @@ export interface ProviderTypeAssociationInput {
   speedScore?: number | null;
   qualityScore?: number | null;
   providerVariation?: string | null;
+  inputModalities?: string[] | null;
+  outputModalities?: string[] | null;
+  operationalCapabilities?: ProviderOperationalCapabilities | null;
+  capabilitySource?: number | null;
+  capabilitiesLastVerifiedAt?: string | null;
 }
 
 /**

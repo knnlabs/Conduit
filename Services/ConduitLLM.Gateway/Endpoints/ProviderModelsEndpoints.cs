@@ -58,85 +58,15 @@ namespace ConduitLLM.Gateway.Endpoints
                 });
             }
 
-            // Get all models that have the appropriate capabilities for this provider type
-            // For now, we'll return model identifiers that are commonly used with this provider type
-            var query = dbContext.Models
-                .Include(m => m.Identifiers)
-                .Where(m => m.IsActive);
-
-            // Filter models based on provider type capabilities
-            switch (provider.ProviderType)
-            {
-                case ProviderType.OpenAI:
-                case ProviderType.OpenAICompatible:
-                    query = query.Where(m => m.SupportsChat ||
-                                             m.SupportsImageGeneration ||
-                                             m.SupportsEmbeddings);
-                    break;
-
-                case ProviderType.Replicate:
-                    // Replicate supports various model types including video
-                    query = query.Where(m => m.SupportsImageGeneration ||
-                                             m.SupportsVideoGeneration ||
-                                             m.SupportsChat);
-                    break;
-
-
-                case ProviderType.Groq:
-                case ProviderType.Cerebras:
-                case ProviderType.SambaNova:
-                case ProviderType.Fireworks:
-                    // Fast inference providers typically support chat models
-                    query = query.Where(m => m.SupportsChat);
-                    break;
-
-                default:
-                    // For other providers, return all active models
-                    break;
-            }
-
-            var models = await query
+            // Associations are the source of truth for provider compatibility. This avoids
+            // guessing from broad operation flags (for example, video input is not video generation).
+            var modelIdentifiers = await dbContext.ModelProviderTypeAssociations
                 .AsNoTracking()
+                .Where(a => a.IsEnabled &&
+                            a.Model.IsActive &&
+                            (a.Provider == provider.ProviderType || a.Provider == null))
+                .Select(a => a.Identifier)
                 .ToListAsync();
-
-            // Get the model identifiers that are most commonly used
-            // Prefer identifiers that match the provider type if available
-            var modelIdentifiers = new List<string>();
-
-            // Map provider type to enum for comparison
-            var providerType = provider.ProviderType;
-
-            foreach (var model in models)
-            {
-                // First, check if there's a provider-specific identifier
-                var providerSpecificId = model.Identifiers
-                    .FirstOrDefault(i => i.Provider.HasValue &&
-                                       i.Provider.Value == providerType);
-
-                if (providerSpecificId != null)
-                {
-                    modelIdentifiers.Add(providerSpecificId.Identifier);
-                }
-                else if (model.Identifiers.Any())
-                {
-                    // Prefer primary identifier if available
-                    var primaryId = model.Identifiers.FirstOrDefault(i => i.IsPrimary);
-                    if (primaryId != null)
-                    {
-                        modelIdentifiers.Add(primaryId.Identifier);
-                    }
-                    else
-                    {
-                        // Use the first available identifier
-                        modelIdentifiers.Add(model.Identifiers.First().Identifier);
-                    }
-                }
-                else
-                {
-                    // Fall back to the model name
-                    modelIdentifiers.Add(model.Name.ToLowerInvariant().Replace(" ", "-"));
-                }
-            }
 
             // Sort alphabetically for better UX
             var sortedIdentifiers = modelIdentifiers

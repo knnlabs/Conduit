@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Configuration.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -96,7 +97,8 @@ namespace ConduitLLM.Gateway.Services
                 // Warm cache for common capability filters
                 var commonCapabilities = _options.WarmupCapabilities ?? new List<string> 
                 { 
-                    "chat", "vision", "image_generation", "video_generation" 
+                    "chat", "image_input", "video_input", "audio_input", "file_input",
+                    "image_generation", "video_generation"
                 };
 
                 // First, warm the cache with all models (no filter)
@@ -175,7 +177,8 @@ namespace ConduitLLM.Gateway.Services
                         continue;
                     }
 
-                    var caps = mapping.ModelProviderTypeAssociation.Model;
+                    var model = mapping.ModelProviderTypeAssociation.Model;
+                    var caps = ModelCapabilityResolver.Resolve(model, mapping.ModelProviderTypeAssociation);
 
                     // Apply capability filter if specified
                     if (!string.IsNullOrEmpty(capability))
@@ -186,6 +189,11 @@ namespace ConduitLLM.Gateway.Services
                             "chat" => caps.SupportsChat,
                             "streaming" or "chat_stream" => caps.SupportsStreaming,
                             "vision" => caps.SupportsVision,
+                            "image_input" => caps.SupportsImageInput,
+                            "video_input" => caps.SupportsVideoInput,
+                            "audio_input" => caps.SupportsAudioInput,
+                            "file_input" => caps.SupportsFileInput,
+                            "video_understanding" => caps.SupportsVideoUnderstanding,
                             "video_generation" => caps.SupportsVideoGeneration,
                             "image_generation" => caps.SupportsImageGeneration,
                             "embeddings" => caps.SupportsEmbeddings,
@@ -200,8 +208,8 @@ namespace ConduitLLM.Gateway.Services
                     }
 
                     // Use overrides from association first, then fall back to model defaults
-                    var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
-                    var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;
+                    var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? model.MaxInputTokens ?? 0;
+                    var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? model.MaxOutputTokens ?? 0;
 
                     // Serialize to JsonElement for cache-safe storage (anonymous objects can't round-trip through JSON deserialization)
                     models.Add(JsonSerializer.SerializeToElement(new
@@ -217,7 +225,11 @@ namespace ConduitLLM.Gateway.Services
                         max_tokens = maxInputTokens + maxOutputTokens, // Total context window size
                         max_input_tokens = maxInputTokens,
                         max_output_tokens = maxOutputTokens,
-                        tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
+                        tokenizer_type = model.TokenizerType.ToString().ToLowerInvariant(),
+                        input_modalities = caps.InputModalities,
+                        output_modalities = caps.OutputModalities,
+                        capability_source = caps.Source.ToString().ToLowerInvariant(),
+                        capabilities_last_verified_at = caps.LastVerifiedAt,
 
                         // UI Parameters from Model or Series
                         parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
@@ -231,7 +243,11 @@ namespace ConduitLLM.Gateway.Services
                             image_generation = caps.SupportsImageGeneration,
                             vision = caps.SupportsVision,
                             video_generation = caps.SupportsVideoGeneration,
-                            video_understanding = false, // Not yet supported
+                            image_input = caps.SupportsImageInput,
+                            video_input = caps.SupportsVideoInput,
+                            audio_input = caps.SupportsAudioInput,
+                            file_input = caps.SupportsFileInput,
+                            video_understanding = caps.SupportsVideoUnderstanding,
                             function_calling = caps.SupportsFunctionCalling,
                             tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
                             json_mode = false, // Not yet tracked

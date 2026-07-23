@@ -52,6 +52,16 @@ namespace ConduitLLM.Core.Models.Configuration
         public bool SupportsVision { get; set; }
 
         /// <summary>
+        /// Gets or sets the accepted content modalities. Null means unknown.
+        /// </summary>
+        public string[]? InputModalities { get; set; }
+
+        /// <summary>
+        /// Gets or sets the produced content modalities. Null means unknown.
+        /// </summary>
+        public string[]? OutputModalities { get; set; }
+
+        /// <summary>
         /// Gets or sets whether the model supports function calling.
         /// </summary>
         public bool SupportsFunctionCalling { get; set; }

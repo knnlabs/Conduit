@@ -150,7 +150,14 @@ If unsure, search: "[Model Name] tokenizer" or "[Model Family] tokenizer"
 
 ### Step 5: Determine Capabilities
 
-For each model, determine boolean capabilities:
+For each model, determine directional modalities and operation capabilities:
+
+#### inputModalities / outputModalities
+- Allowed values: `text`, `image`, `audio`, `video`, `file`
+- Input and output are independent: `["text", "video"] -> ["text"]` means video understanding, not video generation
+- Omit the arrays when the provider does not publish enough information
+- Use an empty array only when the provider explicitly says no modalities are supported
+- Set `capabilitySource` to `Curated`, `ProviderApi`, or `Manual`, as appropriate
 
 #### supportsChat
 - **true** for: All instruct/chat models, conversational models
@@ -163,10 +170,8 @@ For each model, determine boolean capabilities:
 - Default: **true**
 
 #### supportsVision
-- **true** for: Models explicitly mentioning "multimodal", "vision", "image support"
-- **false** for: Pure text models
-- Check model documentation for phrases like "supports up to N images"
-- Examples: Llama-4-Maverick-17B-128E-Instruct (true)
+- Legacy compatibility alias for `inputModalities` containing `image`
+- New metadata and UI logic must use the directional modality array
 
 #### supportsFunctionCalling
 - **true** for: Models with OpenAI API compatibility and 70B+ parameters
@@ -180,10 +185,10 @@ For each model, determine boolean capabilities:
 - **false** for: All chat/instruct models
 - Default: **false**
 
-#### supportsAudio
-- **true** for: Whisper models, audio transcription models
-- **false** for: All text models
-- Default: **false**
+#### audio operations
+- `supportsSpeechToText`: audio input used for transcription
+- `supportsTextToSpeech`: audio output synthesized from text
+- General audio understanding is represented by `inputModalities` containing `audio`
 
 ### Step 6: Extract Parameter Counts
 
@@ -248,10 +253,16 @@ Each model entry follows this structure:
     "tokenizerType": "LLaMA3|Cl100KBase|Tiktoken|Mistral",
     "supportsChat": true,
     "supportsStreaming": true,
-    "supportsVision": false,
+    "inputModalities": ["text"],
+    "outputModalities": ["text"],
+    "capabilitySource": "Curated",
     "supportsFunctionCalling": true,
     "supportsEmbeddings": false,
-    "supportsAudio": false,
+    "supportsImageGeneration": false,
+    "supportsVideoGeneration": false,
+    "supportsSpeechToText": false,
+    "supportsTextToSpeech": false,
+    "supportsRerank": false,
     "inputPricePerMillion": 0.60,
     "outputPricePerMillion": 1.20,
     "speedTokensPerSec": 300,
@@ -284,8 +295,10 @@ Before saving the updated JSON, verify:
 - [ ] All boolean fields use `true`/`false` (not 1/0)
 - [ ] `speedTokensPerSec` is `null` (not "null" string) if unknown
 - [ ] Preview models have "Preview:" in notes field
-- [ ] Vision-capable models have `supportsVision: true`
-- [ ] Audio models have `supportsAudio: true`
+- [ ] Input and output modalities use only `text`, `image`, `audio`, `video`, and `file`
+- [ ] Video input is not confused with `supportsVideoGeneration`
+- [ ] Unknown modality data is omitted rather than stored as an empty array
+- [ ] `capabilitySource` reflects whether metadata is curated, provider-supplied, or manual
 - [ ] Model families and series are consistent across similar models
 - [ ] Owner names are lowercase
 
@@ -338,7 +351,7 @@ grep "Model:" <provider>-models.sql | wc -l
 2. **Check pricing page**: See $0.65 input / $1.30 output per million tokens
 3. **Determine family**: Llama family, Llama 3.4 Series, owner: meta
 4. **Tokenizer**: Llama 3.x uses LLaMA3
-5. **Capabilities**: 70B instruct model → chat: true, streaming: true, function calling: true, vision: false
+5. **Capabilities**: 70B instruct model → text input/output, chat: true, streaming: true, function calling: true
 6. **Parameters**: "70B" in name → 70 billion
 7. **Speed**: Check Artificial Analysis → 250 tokens/sec
 8. **Notes**: "128K context, optimized for instruction following"
@@ -354,10 +367,16 @@ grep "Model:" <provider>-models.sql | wc -l
   "tokenizerType": "LLaMA3",
   "supportsChat": true,
   "supportsStreaming": true,
-  "supportsVision": false,
+  "inputModalities": ["text"],
+  "outputModalities": ["text"],
+  "capabilitySource": "Curated",
   "supportsFunctionCalling": true,
   "supportsEmbeddings": false,
-  "supportsAudio": false,
+  "supportsImageGeneration": false,
+  "supportsVideoGeneration": false,
+  "supportsSpeechToText": false,
+  "supportsTextToSpeech": false,
+  "supportsRerank": false,
   "inputPricePerMillion": 0.65,
   "outputPricePerMillion": 1.30,
   "speedTokensPerSec": 250,

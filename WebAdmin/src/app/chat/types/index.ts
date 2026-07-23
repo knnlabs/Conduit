@@ -179,6 +179,7 @@ export interface ModelWithCapabilities {
   displayName: string;
   maxContextTokens?: number;
   supportsVision?: boolean;
+  supportsVideoInput?: boolean;
   supportsFunctionCalling?: boolean;
   supportsToolUsage?: boolean;
   supportsJsonMode?: boolean;

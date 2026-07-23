@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using ConduitLLM.Admin.Models.ModelSeries;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Admin.Models.Models
 {
@@ -42,6 +43,18 @@ namespace ConduitLLM.Admin.Models.Models
 
         /// <summary>Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.</summary>
         public int? ModelCostId { get; set; }
+
+        /// <summary>Provider-specific accepted modality override; null inherits the model.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Provider-specific output modality override; null inherits the model.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Provider-specific operation overrides; null members inherit the model.</summary>
+        public ProviderOperationalCapabilities? OperationalCapabilities { get; set; }
+
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
     }
 
     /// <summary>
@@ -103,6 +116,21 @@ namespace ConduitLLM.Admin.Models.Models
         [Required]
         public bool IsPrimary { get; set; }
 
+        /// <summary>Provider-specific input modality override; null inherits the canonical model.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Provider-specific output modality override; null inherits the canonical model.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Provider-specific operation overrides.</summary>
+        public ProviderOperationalCapabilities? OperationalCapabilities { get; set; }
+
+        /// <summary>Source of provider-specific capability metadata.</summary>
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+
+        /// <summary>When provider-specific capability metadata was last verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
+
         /// <summary>Gets or sets configured provider instances matching this association.</summary>
         [Required]
         public List<AvailableProviderDto> AvailableProviders { get; set; } = new();
@@ -152,6 +180,33 @@ namespace ConduitLLM.Admin.Models.Models
         public int ModelSeriesId { get; set; }
 
         // Capability fields embedded directly in ModelDto
+
+        /// <summary>Modalities accepted by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Modalities produced by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Where the directional capability metadata originated.</summary>
+        public ModelCapabilitySource CapabilitySource { get; set; }
+
+        /// <summary>When the directional capability metadata was last verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
+
+        /// <summary>Whether image input is explicitly supported.</summary>
+        public bool SupportsImageInput { get; set; }
+
+        /// <summary>Whether video input is explicitly supported.</summary>
+        public bool SupportsVideoInput { get; set; }
+
+        /// <summary>Whether audio input is explicitly supported.</summary>
+        public bool SupportsAudioInput { get; set; }
+
+        /// <summary>Whether file input is explicitly supported.</summary>
+        public bool SupportsFileInput { get; set; }
+
+        /// <summary>Whether the model can accept video and produce a text response.</summary>
+        public bool SupportsVideoUnderstanding { get; set; }
         
         /// <summary>
         /// Gets or sets whether the model supports chat/conversation interactions.

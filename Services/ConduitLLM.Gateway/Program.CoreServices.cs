@@ -99,7 +99,7 @@ public partial class Program
         builder.Services.AddSingleton<ISystemNotificationService, SystemNotificationService>();
 
         // Register Model Metadata Service
-        builder.Services.AddSingleton<IModelMetadataService, ModelMetadataService>();
+        builder.Services.AddScoped<IModelMetadataService, ModelMetadataService>();
 
         // ========== Audit Services ==========
 

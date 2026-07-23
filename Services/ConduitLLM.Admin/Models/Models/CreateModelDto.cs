@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.Models;
+
 namespace ConduitLLM.Admin.Models.Models
 {
     /// <summary>
@@ -47,6 +49,18 @@ namespace ConduitLLM.Admin.Models.Models
         public int ModelSeriesId { get; set; }
 
         // Capability fields embedded directly in CreateModelDto
+
+        /// <summary>Modalities accepted by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Modalities produced by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Where the supplied directional metadata originated.</summary>
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+
+        /// <summary>When the supplied directional metadata was last verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
         
         /// <summary>
         /// Gets or sets whether the model supports chat/conversation interactions.

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Helpers;
 using FluentAssertions;
 using Xunit;
@@ -167,6 +168,65 @@ public class ContentHelperTests
 
         // Assert
         result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsTextOnly_WithVideoUrl_ReturnsFalse()
+    {
+        var content = JsonSerializer.Deserialize<JsonElement>(
+            """[{"type":"video_url","video_url":{"url":"https://example.com/video.mp4"}}]""");
+
+        ContentHelper.IsTextOnly(content).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ExtractVideoUrls_PreservesTypedProcessingOptions()
+    {
+        var content = new List<object>
+        {
+            new VideoUrlContentPart
+            {
+                VideoUrl = new VideoUrl
+                {
+                    Url = "https://example.com/video.mp4",
+                    Detail = "high",
+                    MaxFrames = 24,
+                    SampleRate = 2.5
+                }
+            }
+        };
+
+        var result = ContentHelper.ExtractVideoUrls(content);
+
+        result.Should().ContainSingle();
+        result[0].Url.Should().Be("https://example.com/video.mp4");
+        result[0].Detail.Should().Be("high");
+        result[0].MaxFrames.Should().Be(24);
+        result[0].SampleRate.Should().Be(2.5);
+    }
+
+    [Fact]
+    public void ExtractVideoUrls_ParsesJsonContent()
+    {
+        var content = JsonSerializer.Deserialize<JsonElement>(
+            """
+            [
+              {
+                "type": "video_url",
+                "video_url": {
+                  "url": "https://example.com/video.mp4",
+                  "start_time": 1.5,
+                  "end_time": 8
+                }
+              }
+            ]
+            """);
+
+        var result = ContentHelper.ExtractVideoUrls(content);
+
+        result.Should().ContainSingle();
+        result[0].StartTime.Should().Be(1.5);
+        result[0].EndTime.Should().Be(8);
     }
 
 }

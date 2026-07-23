@@ -227,12 +227,12 @@ namespace ConduitLLM.Providers.Helpers
             {
                 foreach (var part in contentList)
                 {
-                    if (part is ImageUrlContentPart)
+                    if (part is ImageUrlContentPart or VideoUrlContentPart)
                         return false;
 
                     // Check for type property dynamically for custom implementations
                     var type = part.GetType().GetProperty("Type")?.GetValue(part)?.ToString();
-                    if (type == "image_url")
+                    if (type is "image_url" or "video_url")
                         return false;
                 }
 
@@ -251,7 +251,7 @@ namespace ConduitLLM.Providers.Helpers
                     foreach (var element in jsonElement.EnumerateArray())
                     {
                         if (element.TryGetProperty("type", out var typeElement) &&
-                            typeElement.GetString() == "image_url")
+                            typeElement.GetString() is "image_url" or "video_url")
                         {
                             return false; // Found an image
                         }
@@ -272,7 +272,7 @@ namespace ConduitLLM.Providers.Helpers
                     foreach (var element in root.EnumerateArray())
                     {
                         if (element.TryGetProperty("type", out var typeElement) &&
-                            typeElement.GetString() == "image_url")
+                            typeElement.GetString() is "image_url" or "video_url")
                         {
                             return false; // Found an image
                         }
@@ -423,6 +423,52 @@ namespace ConduitLLM.Providers.Helpers
             }
 
             return imageUrls;
+        }
+
+        /// <summary>Extracts video URLs from typed or JSON multimodal content.</summary>
+        public static List<VideoUrl> ExtractVideoUrls(object? content)
+        {
+            var videoUrls = new List<VideoUrl>();
+            if (content is null or string)
+                return videoUrls;
+
+            if (content is IEnumerable<object> contentList)
+            {
+                videoUrls.AddRange(contentList
+                    .OfType<VideoUrlContentPart>()
+                    .Select(part => part.VideoUrl));
+                if (videoUrls.Count > 0)
+                    return videoUrls;
+            }
+
+            if (content is JsonElement { ValueKind: JsonValueKind.Array } jsonElement)
+            {
+                foreach (var element in jsonElement.EnumerateArray())
+                {
+                    if (!element.TryGetProperty("type", out var type) ||
+                        type.GetString() != "video_url" ||
+                        !element.TryGetProperty("video_url", out var video))
+                        continue;
+
+                    var url = video.TryGetProperty("url", out var urlElement)
+                        ? urlElement.GetString()
+                        : null;
+                    if (string.IsNullOrWhiteSpace(url))
+                        continue;
+
+                    videoUrls.Add(new VideoUrl
+                    {
+                        Url = url,
+                        Detail = video.TryGetProperty("detail", out var detail) ? detail.GetString() : null,
+                        MaxFrames = video.TryGetProperty("max_frames", out var maxFrames) ? maxFrames.GetInt32() : null,
+                        SampleRate = video.TryGetProperty("sample_rate", out var sampleRate) ? sampleRate.GetDouble() : null,
+                        StartTime = video.TryGetProperty("start_time", out var startTime) ? startTime.GetDouble() : null,
+                        EndTime = video.TryGetProperty("end_time", out var endTime) ? endTime.GetDouble() : null
+                    });
+                }
+            }
+
+            return videoUrls;
         }
 
         /// <summary>

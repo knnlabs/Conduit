@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -120,6 +121,33 @@ namespace ConduitLLM.Configuration.DTOs
     /// </summary>
     public class ModelCapabilitiesDto
     {
+        /// <summary>Modalities accepted by this provider/model combination, or null when unknown.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Modalities produced by this provider/model combination, or null when unknown.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Where the effective capability metadata originated.</summary>
+        public ModelCapabilitySource CapabilitySource { get; set; }
+
+        /// <summary>When the effective capability metadata was last verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
+
+        [Required]
+        public bool SupportsImageInput { get; set; }
+
+        [Required]
+        public bool SupportsVideoInput { get; set; }
+
+        [Required]
+        public bool SupportsAudioInput { get; set; }
+
+        [Required]
+        public bool SupportsFileInput { get; set; }
+
+        [Required]
+        public bool SupportsVideoUnderstanding { get; set; }
+
         /// <summary>
         /// Indicates whether this model supports vision/image inputs
         /// </summary>

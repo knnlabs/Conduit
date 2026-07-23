@@ -52,7 +52,16 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Common capability filters to warm
         /// </summary>
-        public List<string> WarmupCapabilities { get; set; } = new() { "chat", "vision", "image_generation", "video_generation" };
+        public List<string> WarmupCapabilities { get; set; } = new()
+        {
+            "chat",
+            "image_input",
+            "video_input",
+            "audio_input",
+            "file_input",
+            "image_generation",
+            "video_generation"
+        };
     }
 
     /// <summary>

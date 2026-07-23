@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.Models;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
@@ -104,7 +105,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// Supports optional search and filtering.
         /// </summary>
         /// <param name="search">Optional search term for model name (case-insensitive partial match)</param>
-        /// <param name="capability">Optional capability filter: chat, vision, image, video, embeddings</param>
+        /// <param name="capability">Optional operation or directional modality filter.</param>
         /// <param name="hasProviders">Optional filter: true = only models with identifiers, false = without</param>
         /// <returns>List of all matching models</returns>
         public async Task<IResult> GetAllModels(
@@ -125,7 +126,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <param name="page">Page number (1-based).</param>
         /// <param name="pageSize">Items per page (max 100).</param>
         /// <param name="search">Optional search term for model name (case-insensitive partial match)</param>
-        /// <param name="capability">Optional capability filter: chat, vision, image, video, embeddings</param>
+        /// <param name="capability">Optional operation or directional modality filter.</param>
         /// <param name="hasProviders">Optional filter: true = only models with identifiers, false = without</param>
         /// <returns>A paginated result of matching models</returns>
         public async Task<IResult> GetPagedModels(
@@ -228,6 +229,15 @@ namespace ConduitLLM.Admin.Endpoints
                     Series = baseDto.Series,
                     ModelParameters = baseDto.ModelParameters,
                     // Copy capability fields
+                    InputModalities = baseDto.InputModalities,
+                    OutputModalities = baseDto.OutputModalities,
+                    CapabilitySource = baseDto.CapabilitySource,
+                    CapabilitiesLastVerifiedAt = baseDto.CapabilitiesLastVerifiedAt,
+                    SupportsImageInput = baseDto.SupportsImageInput,
+                    SupportsVideoInput = baseDto.SupportsVideoInput,
+                    SupportsAudioInput = baseDto.SupportsAudioInput,
+                    SupportsFileInput = baseDto.SupportsFileInput,
+                    SupportsVideoUnderstanding = baseDto.SupportsVideoUnderstanding,
                     SupportsChat = baseDto.SupportsChat,
                     SupportsVision = baseDto.SupportsVision,
                     SupportsFunctionCalling = baseDto.SupportsFunctionCalling,
@@ -262,6 +272,12 @@ namespace ConduitLLM.Admin.Endpoints
                 return BadRequest("Model name is required");
             }
 
+            var invalidModalities = GetInvalidModalities(dto.InputModalities, dto.OutputModalities);
+            if (invalidModalities.Length > 0)
+            {
+                return BadRequest($"Unknown model modalities: {string.Join(", ", invalidModalities)}");
+            }
+
             // Check if a model with the same name already exists
             var existing = await _modelRepository.GetByNameAsync(dto.Name);
             if (existing != null)
@@ -274,6 +290,13 @@ namespace ConduitLLM.Admin.Endpoints
                 Name = dto.Name,
                 ModelSeriesId = dto.ModelSeriesId,
                 ModelParameters = dto.ModelParameters,
+                InputModalitiesJson = ModelModalities.Serialize(dto.InputModalities),
+                OutputModalitiesJson = ModelModalities.Serialize(dto.OutputModalities),
+                CapabilitySource = dto.CapabilitySource ??
+                    (dto.InputModalities is null && dto.OutputModalities is null
+                        ? ModelCapabilitySource.LegacyInferred
+                        : ModelCapabilitySource.Manual),
+                CapabilitiesLastVerifiedAt = dto.CapabilitiesLastVerifiedAt,
                 IsActive = dto.IsActive ?? true,
                 // Set capability fields directly
                 SupportsChat = dto.SupportsChat,
@@ -319,6 +342,12 @@ namespace ConduitLLM.Admin.Endpoints
             if (dto == null)
             {
                 return BadRequest("Update data is required");
+            }
+
+            var invalidModalities = GetInvalidModalities(dto.InputModalities, dto.OutputModalities);
+            if (invalidModalities.Length > 0)
+            {
+                return BadRequest($"Unknown model modalities: {string.Join(", ", invalidModalities)}");
             }
 
             var model = await _modelRepository.GetByIdWithDetailsAsync(id);
@@ -368,6 +397,44 @@ namespace ConduitLLM.Admin.Endpoints
                 if (model.ModelParameters != newParams)
                     changes.Add(("ModelParameters", model.ModelParameters ?? "null", newParams ?? "null"));
                 model.ModelParameters = newParams;
+            }
+
+            if (dto.ClearDirectionalCapabilities == true)
+            {
+                changes.Add(("DirectionalCapabilities", "configured", "unknown"));
+                model.InputModalitiesJson = null;
+                model.OutputModalitiesJson = null;
+                model.CapabilitySource = ModelCapabilitySource.Unknown;
+                model.CapabilitiesLastVerifiedAt = null;
+            }
+            else if (dto.InputModalities is not null)
+            {
+                var serialized = ModelModalities.Serialize(dto.InputModalities);
+                if (model.InputModalitiesJson != serialized)
+                    changes.Add(("InputModalities", model.InputModalitiesJson ?? "unknown", serialized ?? "unknown"));
+                model.InputModalitiesJson = serialized;
+            }
+            if (dto.ClearDirectionalCapabilities != true && dto.OutputModalities is not null)
+            {
+                var serialized = ModelModalities.Serialize(dto.OutputModalities);
+                if (model.OutputModalitiesJson != serialized)
+                    changes.Add(("OutputModalities", model.OutputModalitiesJson ?? "unknown", serialized ?? "unknown"));
+                model.OutputModalitiesJson = serialized;
+            }
+            if (dto.ClearDirectionalCapabilities != true && dto.CapabilitySource.HasValue)
+            {
+                if (model.CapabilitySource != dto.CapabilitySource.Value)
+                    changes.Add(("CapabilitySource", model.CapabilitySource.ToString(), dto.CapabilitySource.Value.ToString()));
+                model.CapabilitySource = dto.CapabilitySource.Value;
+            }
+            else if (dto.ClearDirectionalCapabilities != true &&
+                     (dto.InputModalities is not null || dto.OutputModalities is not null))
+            {
+                model.CapabilitySource = ModelCapabilitySource.Manual;
+            }
+            if (dto.ClearDirectionalCapabilities != true && dto.CapabilitiesLastVerifiedAt.HasValue)
+            {
+                model.CapabilitiesLastVerifiedAt = dto.CapabilitiesLastVerifiedAt.Value;
             }
 
             // Update capability fields with change tracking
@@ -515,6 +582,11 @@ namespace ConduitLLM.Admin.Endpoints
 
             if (dto.Name != null) changedProps.Add("Name");
             if (dto.ModelSeriesId.HasValue) changedProps.Add("ModelSeriesId");
+            if (dto.InputModalities is not null) changedProps.Add("InputModalities");
+            if (dto.OutputModalities is not null) changedProps.Add("OutputModalities");
+            if (dto.CapabilitySource.HasValue) changedProps.Add("CapabilitySource");
+            if (dto.CapabilitiesLastVerifiedAt.HasValue) changedProps.Add("CapabilitiesLastVerifiedAt");
+            if (dto.ClearDirectionalCapabilities.HasValue) changedProps.Add("ClearDirectionalCapabilities");
             if (dto.IsActive.HasValue) changedProps.Add("IsActive");
             if (dto.ModelParameters != null) changedProps.Add("ModelParameters");
             if (dto.SupportsChat.HasValue) changedProps.Add("SupportsChat");
@@ -532,5 +604,14 @@ namespace ConduitLLM.Admin.Endpoints
 
             return changedProps.ToArray();
         }
+
+        private static string[] GetInvalidModalities(
+            IEnumerable<string>? inputModalities,
+            IEnumerable<string>? outputModalities) =>
+            (inputModalities ?? [])
+                .Concat(outputModalities ?? [])
+                .Where(value => string.IsNullOrWhiteSpace(value) || !ModelModalities.IsKnown(value.Trim()))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
     }
 }

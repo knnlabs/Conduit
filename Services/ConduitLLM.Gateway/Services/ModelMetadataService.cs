@@ -1,145 +1,81 @@
-using System.Text.Json;
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Models;
 
-namespace ConduitLLM.Gateway.Services
+namespace ConduitLLM.Gateway.Services;
+
+/// <summary>Retrieves effective model metadata from the configured routing database.</summary>
+public interface IModelMetadataService
 {
-    /// <summary>
-    /// Service for retrieving model metadata.
-    /// </summary>
-    public interface IModelMetadataService
+    Task<object?> GetModelMetadataAsync(string modelId);
+}
+
+/// <summary>
+/// Resolves metadata for the highest-priority enabled mapping instead of relying on a
+/// separately deployed static file that can drift from the active configuration.
+/// </summary>
+public sealed class ModelMetadataService : IModelMetadataService
+{
+    private readonly IModelProviderMappingRepository _mappingRepository;
+    private readonly ILogger<ModelMetadataService> _logger;
+
+    public ModelMetadataService(
+        IModelProviderMappingRepository mappingRepository,
+        ILogger<ModelMetadataService> logger)
     {
-        /// <summary>
-        /// Gets metadata for a specific model.
-        /// </summary>
-        /// <param name="modelId">The model ID.</param>
-        /// <returns>Model metadata or null if not found.</returns>
-        Task<object?> GetModelMetadataAsync(string modelId);
+        _mappingRepository = mappingRepository;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// Implementation of model metadata service that reads from static JSON.
-    /// </summary>
-    public class ModelMetadataService : IModelMetadataService
+    public async Task<object?> GetModelMetadataAsync(string modelId)
     {
-        private readonly ILogger<ModelMetadataService> _logger;
-        private readonly Dictionary<string, object> _metadataCache;
-        private readonly object _cacheLock = new();
-        private DateTime _lastCacheUpdate = DateTime.MinValue;
-        private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(5);
+        var mappings = await _mappingRepository.GetAllByModelNameAsync(modelId);
+        var mapping = mappings.FirstOrDefault(candidate =>
+            candidate.IsEnabled &&
+            candidate.Provider?.IsEnabled == true &&
+            candidate.ModelProviderTypeAssociation?.IsEnabled == true);
 
-        public ModelMetadataService(ILogger<ModelMetadataService> logger)
+        var association = mapping?.ModelProviderTypeAssociation;
+        var model = association?.Model;
+        if (model is null)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _metadataCache = new Dictionary<string, object>();
+            _logger.LogDebug("No enabled metadata found for model {ModelId}", modelId);
+            return null;
         }
 
-        public async Task<object?> GetModelMetadataAsync(string modelId)
+        var capabilities = ModelCapabilityResolver.Resolve(model, association);
+        return new
         {
-            try
+            id = modelId,
+            canonical_model_id = model.Id,
+            canonical_name = model.Name,
+            provider = mapping!.Provider?.ProviderType.ToString().ToLowerInvariant(),
+            provider_model_id = association!.Identifier,
+            description = model.Description,
+            model_card_url = model.ModelCardUrl,
+            input_modalities = capabilities.InputModalities,
+            output_modalities = capabilities.OutputModalities,
+            capability_source = capabilities.Source.ToString().ToLowerInvariant(),
+            capabilities_last_verified_at = capabilities.LastVerifiedAt,
+            capabilities = new
             {
-                await LoadMetadataIfNeededAsync();
-
-                lock (_cacheLock)
-                {
-                    if (_metadataCache.TryGetValue(modelId, out var metadata))
-                    {
-                        return metadata;
-                    }
-                }
-
-                _logger.LogDebug("No metadata found for model {ModelId}", modelId);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving metadata for model {ModelId}", modelId);
-                throw; // Re-throw to ensure errors are properly reported
-            }
-        }
-
-        private async Task LoadMetadataIfNeededAsync()
-        {
-            lock (_cacheLock)
-            {
-                if (DateTime.UtcNow - _lastCacheUpdate < _cacheExpiry && _metadataCache.Any())
-                {
-                    return;
-                }
-            }
-
-            try
-            {
-                var assemblyLocation = GetAssemblyDirectory();
-                var metadataPath = Path.Combine(assemblyLocation, "StaticModels", "model-metadata.json");
-                
-                _logger.LogDebug("Assembly location: {AssemblyLocation}", assemblyLocation);
-                _logger.LogDebug("Looking for metadata at: {MetadataPath}", metadataPath);
-
-                if (!File.Exists(metadataPath))
-                {
-                    // Try alternative paths
-                    var alternativePaths = new[]
-                    {
-                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "StaticModels", "model-metadata.json"),
-                        Path.Combine(Directory.GetCurrentDirectory(), "StaticModels", "model-metadata.json"),
-                        Path.Combine("/app", "StaticModels", "model-metadata.json")
-                    };
-
-                    foreach (var altPath in alternativePaths)
-                    {
-                        _logger.LogDebug("Trying alternative path: {Path}", altPath);
-                        if (File.Exists(altPath))
-                        {
-                            metadataPath = altPath;
-                            _logger.LogInformation("Found metadata file at alternative path: {Path}", altPath);
-                            break;
-                        }
-                    }
-
-                    if (!File.Exists(metadataPath))
-                    {
-                        _logger.LogWarning("Model metadata file not found at any location. Tried: {OriginalPath} and alternatives", metadataPath);
-                        return;
-                    }
-                }
-
-                var json = await File.ReadAllTextAsync(metadataPath);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    PropertyNameCaseInsensitive = true
-                };
-
-                var allMetadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, options);
-
-                if (allMetadata != null)
-                {
-                    lock (_cacheLock)
-                    {
-                        _metadataCache.Clear();
-                        foreach (var kvp in allMetadata)
-                        {
-                            _metadataCache[kvp.Key] = kvp.Value;
-                        }
-                        _lastCacheUpdate = DateTime.UtcNow;
-                    }
-
-                    _logger.LogInformation("Loaded metadata for {Count} models from {Path}", _metadataCache.Count, metadataPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading model metadata");
-                // Don't re-throw - just log and continue with empty cache
-                // This allows the service to continue working even if metadata is invalid
-            }
-        }
-
-        /// <summary>
-        /// Gets the assembly directory. Virtual to allow testing.
-        /// </summary>
-        protected virtual string GetAssemblyDirectory()
-        {
-            return Path.GetDirectoryName(typeof(ModelMetadataService).Assembly.Location)!;
-        }
+                chat = capabilities.SupportsChat,
+                chat_stream = capabilities.SupportsStreaming,
+                image_input = capabilities.SupportsImageInput,
+                video_input = capabilities.SupportsVideoInput,
+                audio_input = capabilities.SupportsAudioInput,
+                file_input = capabilities.SupportsFileInput,
+                vision = capabilities.SupportsVision,
+                video_understanding = capabilities.SupportsVideoUnderstanding,
+                image_generation = capabilities.SupportsImageGeneration,
+                video_generation = capabilities.SupportsVideoGeneration,
+                embeddings = capabilities.SupportsEmbeddings,
+                function_calling = capabilities.SupportsFunctionCalling,
+                speech_to_text = capabilities.SupportsSpeechToText,
+                text_to_speech = capabilities.SupportsTextToSpeech,
+                rerank = capabilities.SupportsRerank
+            },
+            max_input_tokens = association.MaxInputTokens ?? model.MaxInputTokens,
+            max_output_tokens = association.MaxOutputTokens ?? model.MaxOutputTokens
+        };
     }
 }

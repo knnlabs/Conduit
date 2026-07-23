@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.Models;
+
 namespace ConduitLLM.Admin.Models.Models
 {
     /// <summary>
@@ -55,6 +57,24 @@ namespace ConduitLLM.Admin.Models.Models
         /// </remarks>
         /// <value>The new series ID, or null to keep existing.</value>
         public int? ModelSeriesId { get; set; }
+
+        /// <summary>Replaces the model's accepted modalities when provided.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Replaces the model's output modalities when provided.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Updates the provenance for directional capability metadata.</summary>
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+
+        /// <summary>Updates when the directional capability metadata was verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
+
+        /// <summary>
+        /// Clears directional metadata and marks it unknown. This is distinct from
+        /// supplying empty arrays, which explicitly means no modalities are supported.
+        /// </summary>
+        public bool? ClearDirectionalCapabilities { get; set; }
 
         /// <summary>
         /// Gets or sets whether the model supports chat/conversation interactions.

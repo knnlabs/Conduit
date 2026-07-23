@@ -22,8 +22,11 @@ namespace ConduitLLM.Admin.Models.ProviderSync
     /// <summary>Capability snapshot for Capabilities drift.</summary>
     public class CapabilitiesDriftPayload
     {
+        public IReadOnlyList<string> InputModalities { get; set; } = [];
+        public IReadOnlyList<string> OutputModalities { get; set; } = [];
         public bool SupportsVision { get; set; }
         public bool SupportsFunctionCalling { get; set; }
         public bool SupportsImageGeneration { get; set; }
+        public bool SupportsVideoGeneration { get; set; }
     }
 }

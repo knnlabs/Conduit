@@ -4,9 +4,10 @@ This directory contains the canonical provider model catalogs plus an optional S
 
 The JSON files and `provider-config.json` are embedded in the shared Configuration
 assembly during every release build. A clean database imports that snapshot after
-migrations, and administrators can merge missing entries from WebAdmin's Models
-page. Runtime imports preserve matched database records; generated SQL is not used
-by the Docker images.
+migrations, and administrators can merge entries from WebAdmin's Models page.
+Runtime imports refresh provider-owned metadata while preserving associations marked
+as `Manual` and canonical models marked `Curated` or `Manual`; generated SQL is not
+used by the Docker images.
 
 ## Overview
 
@@ -68,10 +69,11 @@ dotnet run generate-provider-sql.cs -- openrouter
 The fetch script:
 - Calls `GET https://openrouter.ai/api/v1/models` (no auth required)
 - Converts per-token pricing to per-million-tokens
-- Infers capabilities from `supported_parameters` and `input_modalities`
+- Captures OpenRouter's exact `input_modalities` and `output_modalities`
+- Infers operation support such as function calling from `supported_parameters`
 - Maps OpenRouter tokenizer names to Conduit's tokenizer enum
 - Derives model family/series from naming patterns
-- Skips free-tier models (limited availability)
+- Retains free-tier variants so the bundled snapshot matches the public catalog
 - Outputs standard `openrouter-models.json` format
 
 ### Executing Generated SQL
@@ -140,10 +142,17 @@ Each model in `{provider}-models.json` includes:
     "tokenizerType": "LLaMA3|Cl100KBase|Tiktoken|Mistral",
     "supportsChat": true,
     "supportsStreaming": true,
-    "supportsVision": false,
+    "inputModalities": ["text", "image", "video"],
+    "outputModalities": ["text"],
+    "capabilitySource": "ProviderApi",
+    "capabilitiesLastVerifiedAt": "2026-07-23T00:00:00Z",
     "supportsFunctionCalling": true,
     "supportsEmbeddings": false,
-    "supportsAudio": false,
+    "supportsImageGeneration": false,
+    "supportsVideoGeneration": false,
+    "supportsSpeechToText": false,
+    "supportsTextToSpeech": false,
+    "supportsRerank": false,
     "inputPricePerMillion": 0.85,
     "outputPricePerMillion": 1.20,
     "speedTokensPerSec": 2100,
@@ -152,7 +161,10 @@ Each model in `{provider}-models.json` includes:
 }
 ```
 
-**Note**: `supportsAudio` field is optional and only needed for providers that offer audio transcription models.
+`inputModalities` and `outputModalities` are directional. For example, a model can
+accept `video` and return `text` without supporting `supportsVideoGeneration`.
+Use `null`/omission for unknown metadata and `[]` only when explicitly unsupported.
+Legacy `supportsVision` is retained as a compatibility alias for image input.
 
 ## Generated SQL Structure
 

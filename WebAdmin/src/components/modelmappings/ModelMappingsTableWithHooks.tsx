@@ -142,8 +142,11 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
     if (capabilities.supportsChat) {
       badges.push({ label: 'Chat', color: 'blue' });
     }
-    if (capabilities.supportsVision) {
-      badges.push({ label: 'Vision', color: 'green' });
+    if (capabilities.supportsImageInput) {
+      badges.push({ label: 'Image Input', color: 'green' });
+    }
+    if (capabilities.supportsVideoInput) {
+      badges.push({ label: 'Video Input', color: 'lime' });
     }
     if (capabilities.supportsImageGeneration) {
       badges.push({ label: 'Image Gen', color: 'violet' });

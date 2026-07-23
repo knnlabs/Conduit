@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Admin.Models.Models
 {
@@ -33,6 +34,12 @@ namespace ConduitLLM.Admin.Models.Models
 
         [Required]
         public string? ProviderVariation { get; set; }
+
+        public IReadOnlyList<string>? InputModalities { get; set; }
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+        public ProviderOperationalCapabilities? OperationalCapabilities { get; set; }
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
     }
 
     /// <summary>
@@ -85,6 +92,12 @@ namespace ConduitLLM.Admin.Models.Models
         /// Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct")
         /// </summary>
         public string? ProviderVariation { get; set; }
+
+        public IReadOnlyList<string>? InputModalities { get; set; }
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+        public ProviderOperationalCapabilities? OperationalCapabilities { get; set; }
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
     }
 
     /// <summary>
@@ -137,5 +150,11 @@ namespace ConduitLLM.Admin.Models.Models
         /// Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct")
         /// </summary>
         public string? ProviderVariation { get; set; }
+
+        public IReadOnlyList<string>? InputModalities { get; set; }
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+        public ProviderOperationalCapabilities? OperationalCapabilities { get; set; }
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
     }
 }

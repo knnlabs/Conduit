@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Globalization;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -76,7 +77,7 @@ foreach (var model in dataArray.EnumerateArray())
         continue;
     }
 
-    // Skip free models (pricing.prompt === "0" or missing)
+    // Free models are valid catalog entries; zero pricing must not make them disappear.
     var pricing = model.TryGetProperty("pricing", out var pricingProp) ? pricingProp : default;
     var promptPrice = pricing.ValueKind != JsonValueKind.Undefined
         ? pricing.TryGetProperty("prompt", out var pp) ? pp.GetString() ?? "0" : "0"
@@ -85,18 +86,12 @@ foreach (var model in dataArray.EnumerateArray())
         ? pricing.TryGetProperty("completion", out var cp) ? cp.GetString() ?? "0" : "0"
         : "0";
 
-    if (promptPrice == "0" && completionPrice == "0")
-    {
-        skipped++;
-        continue;
-    }
-
     // Extract owner from model ID prefix
     var owner = id.Split('/')[0];
 
     // Convert per-token pricing to per-million-tokens
-    var inputPricePerMillion = double.Parse(promptPrice) * 1_000_000;
-    var outputPricePerMillion = double.Parse(completionPrice) * 1_000_000;
+    var inputPricePerMillion = double.Parse(promptPrice, CultureInfo.InvariantCulture) * 1_000_000;
+    var outputPricePerMillion = double.Parse(completionPrice, CultureInfo.InvariantCulture) * 1_000_000;
 
     // Round to avoid floating point noise (e.g., 0.9600000000000001)
     inputPricePerMillion = Math.Round(inputPricePerMillion, 4);
@@ -142,9 +137,11 @@ foreach (var model in dataArray.EnumerateArray())
     var supportsVision = inputModalities.Contains("image");
     var supportsFunctionCalling = supportedParams.Contains("tools");
     var supportsImageGeneration = outputModalities.Contains("image");
+    var supportsVideoGeneration = outputModalities.Contains("video");
 
     // Map tokenizer
-    var tokenizerRaw = arch.TryGetProperty("tokenizer", out var tok)
+    var tokenizerRaw = model.TryGetProperty("architecture", out var tokenizerArchitecture)
+        && tokenizerArchitecture.TryGetProperty("tokenizer", out var tok)
         ? tok.GetString() ?? "Other" : "Other";
     var tokenizerType = MapTokenizer(tokenizerRaw);
 
@@ -177,6 +174,23 @@ foreach (var model in dataArray.EnumerateArray())
         ["supportsVision"] = supportsVision,
         ["supportsFunctionCalling"] = supportsFunctionCalling,
         ["supportsEmbeddings"] = false,
+        ["supportsImageGeneration"] = supportsImageGeneration,
+        ["supportsVideoGeneration"] = supportsVideoGeneration,
+        ["supportsSpeechToText"] = false,
+        ["supportsTextToSpeech"] = false,
+        ["supportsRerank"] = false,
+        ["inputModalities"] = new JsonArray(inputModalities
+            .Where(modality => !string.IsNullOrWhiteSpace(modality))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(modality => (JsonNode?)JsonValue.Create(modality))
+            .ToArray()),
+        ["outputModalities"] = new JsonArray(outputModalities
+            .Where(modality => !string.IsNullOrWhiteSpace(modality))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(modality => (JsonNode?)JsonValue.Create(modality))
+            .ToArray()),
+        ["capabilitySource"] = "ProviderApi",
+        ["capabilitiesLastVerifiedAt"] = DateTime.UtcNow,
         ["inputPricePerMillion"] = inputPricePerMillion,
         ["outputPricePerMillion"] = outputPricePerMillion,
         ["speedTokensPerSec"] = null,
@@ -195,7 +209,7 @@ var jsonOutput = output.ToJsonString(options);
 await File.WriteAllTextAsync(outputPath, jsonOutput);
 
 Console.WriteLine($"✅ Written {included} models to {outputPath}");
-Console.WriteLine($"   Skipped {skipped} models (free or no provider prefix)");
+Console.WriteLine($"   Skipped {skipped} models without a provider prefix");
 Console.WriteLine();
 
 // Summary by owner

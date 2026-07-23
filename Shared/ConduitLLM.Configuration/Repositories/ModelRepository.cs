@@ -103,8 +103,21 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
                 {
                     "chat" => query.Where(m => m.SupportsChat),
                     "vision" => query.Where(m => m.SupportsVision),
-                    "image" => query.Where(m => m.SupportsImageGeneration),
-                    "video" => query.Where(m => m.SupportsVideoGeneration),
+                    "image_input" => query.Where(m => m.InputModalitiesJson != null &&
+                        EF.Functions.JsonContains(m.InputModalitiesJson, "[\"image\"]")),
+                    "video_input" => query.Where(m => m.InputModalitiesJson != null &&
+                        EF.Functions.JsonContains(m.InputModalitiesJson, "[\"video\"]")),
+                    "audio_input" => query.Where(m => m.InputModalitiesJson != null &&
+                        EF.Functions.JsonContains(m.InputModalitiesJson, "[\"audio\"]")),
+                    "file_input" => query.Where(m => m.InputModalitiesJson != null &&
+                        EF.Functions.JsonContains(m.InputModalitiesJson, "[\"file\"]")),
+                    "video_understanding" => query.Where(m => m.SupportsChat &&
+                        m.InputModalitiesJson != null &&
+                        EF.Functions.JsonContains(m.InputModalitiesJson, "[\"video\"]") &&
+                        m.OutputModalitiesJson != null &&
+                        EF.Functions.JsonContains(m.OutputModalitiesJson, "[\"text\"]")),
+                    "image" or "image_generation" => query.Where(m => m.SupportsImageGeneration),
+                    "video" or "video_generation" => query.Where(m => m.SupportsVideoGeneration),
                     "embeddings" => query.Where(m => m.SupportsEmbeddings),
                     _ => query
                 };

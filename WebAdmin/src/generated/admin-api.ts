@@ -3577,6 +3577,14 @@ export interface components {
       /** Format: double */
       qualityScore: null | number;
       providerVariation: null | string;
+      inputModalities?: null | string[];
+      outputModalities?: null | string[];
+      operationalCapabilities?:
+        | null
+        | components["schemas"]["ProviderOperationalCapabilities"];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /** Format: date-time */
+      capabilitiesLastVerifiedAt?: null | string;
     };
     CreateFunctionCostDto: {
       costName: string;
@@ -3702,6 +3710,16 @@ export interface components {
        *     The foreign key reference to an existing ModelSeries.
        */
       modelSeriesId?: number;
+      /** @description Modalities accepted by the model, or null when unknown. */
+      inputModalities?: null | string[];
+      /** @description Modalities produced by the model, or null when unknown. */
+      outputModalities?: null | string[];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /**
+       * Format: date-time
+       * @description When the supplied directional metadata was last verified.
+       */
+      capabilitiesLastVerifiedAt?: null | string;
       /** @description Gets or sets whether the model supports chat/conversation interactions. */
       supportsChat?: boolean;
       /** @description Gets or sets whether the model supports vision/image understanding. */
@@ -3777,6 +3795,14 @@ export interface components {
       qualityScore?: null | number;
       /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
       providerVariation?: null | string;
+      inputModalities?: null | string[];
+      outputModalities?: null | string[];
+      operationalCapabilities?:
+        | null
+        | components["schemas"]["ProviderOperationalCapabilities"];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /** Format: date-time */
+      capabilitiesLastVerifiedAt?: null | string;
     };
     CreateModelProviderMappingDto: {
       modelAlias: string;
@@ -4940,6 +4966,16 @@ export interface components {
       updatedAt?: string;
     };
     ModelCapabilitiesDto: {
+      inputModalities?: null | string[];
+      outputModalities?: null | string[];
+      capabilitySource?: components["schemas"]["ModelCapabilitySource"];
+      /** Format: date-time */
+      capabilitiesLastVerifiedAt?: null | string;
+      supportsImageInput: boolean;
+      supportsVideoInput: boolean;
+      supportsAudioInput: boolean;
+      supportsFileInput: boolean;
+      supportsVideoUnderstanding: boolean;
       supportsVision: boolean;
       supportsImageGeneration: boolean;
       supportsVideoGeneration: boolean;
@@ -4955,6 +4991,7 @@ export interface components {
       /** Format: int32 */
       maxOutputTokens: null | number;
     };
+    ModelCapabilitySource: number;
     ModelCostBreakdownDto: {
       /** Format: date-time */
       startDate?: string;
@@ -5050,6 +5087,27 @@ export interface components {
        *     The foreign key reference to the ModelSeries entity.
        */
       modelSeriesId?: number;
+      /** @description Modalities accepted by the model, or null when unknown. */
+      inputModalities?: null | string[];
+      /** @description Modalities produced by the model, or null when unknown. */
+      outputModalities?: null | string[];
+      /** @description Where the directional capability metadata originated. */
+      capabilitySource?: components["schemas"]["ModelCapabilitySource"];
+      /**
+       * Format: date-time
+       * @description When the directional capability metadata was last verified.
+       */
+      capabilitiesLastVerifiedAt?: null | string;
+      /** @description Whether image input is explicitly supported. */
+      supportsImageInput?: boolean;
+      /** @description Whether video input is explicitly supported. */
+      supportsVideoInput?: boolean;
+      /** @description Whether audio input is explicitly supported. */
+      supportsAudioInput?: boolean;
+      /** @description Whether file input is explicitly supported. */
+      supportsFileInput?: boolean;
+      /** @description Whether the model can accept video and produce a text response. */
+      supportsVideoUnderstanding?: boolean;
       /** @description Gets or sets whether the model supports chat/conversation interactions. */
       supportsChat?: boolean;
       /** @description Gets or sets whether the model supports vision/image understanding. */
@@ -5147,6 +5205,16 @@ export interface components {
        * @description Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.
        */
       modelCostId?: null | number;
+      /** @description Provider-specific accepted modality override; null inherits the model. */
+      inputModalities?: null | string[];
+      /** @description Provider-specific output modality override; null inherits the model. */
+      outputModalities?: null | string[];
+      operationalCapabilities?:
+        | null
+        | components["schemas"]["ProviderOperationalCapabilities"];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /** Format: date-time */
+      capabilitiesLastVerifiedAt?: null | string;
     };
     /** @description A model-provider association together with the configured provider instances that can serve it. */
     ModelProviderAvailabilityDto: {
@@ -5186,6 +5254,19 @@ export interface components {
       qualityScore: null | number;
       /** @description Gets or sets whether this association is primary. */
       isPrimary: boolean;
+      /** @description Provider-specific input modality override; null inherits the canonical model. */
+      inputModalities?: null | string[];
+      /** @description Provider-specific output modality override; null inherits the canonical model. */
+      outputModalities?: null | string[];
+      operationalCapabilities?:
+        | null
+        | components["schemas"]["ProviderOperationalCapabilities"];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /**
+       * Format: date-time
+       * @description When provider-specific capability metadata was last verified.
+       */
+      capabilitiesLastVerifiedAt?: null | string;
       /** @description Gets or sets configured provider instances matching this association. */
       availableProviders: components["schemas"]["AvailableProviderDto"][];
     };
@@ -5309,6 +5390,27 @@ export interface components {
        *     The foreign key reference to the ModelSeries entity.
        */
       modelSeriesId?: number;
+      /** @description Modalities accepted by the model, or null when unknown. */
+      inputModalities?: null | string[];
+      /** @description Modalities produced by the model, or null when unknown. */
+      outputModalities?: null | string[];
+      /** @description Where the directional capability metadata originated. */
+      capabilitySource?: components["schemas"]["ModelCapabilitySource"];
+      /**
+       * Format: date-time
+       * @description When the directional capability metadata was last verified.
+       */
+      capabilitiesLastVerifiedAt?: null | string;
+      /** @description Whether image input is explicitly supported. */
+      supportsImageInput?: boolean;
+      /** @description Whether video input is explicitly supported. */
+      supportsVideoInput?: boolean;
+      /** @description Whether audio input is explicitly supported. */
+      supportsAudioInput?: boolean;
+      /** @description Whether file input is explicitly supported. */
+      supportsFileInput?: boolean;
+      /** @description Whether the model can accept video and produce a text response. */
+      supportsVideoUnderstanding?: boolean;
       /** @description Gets or sets whether the model supports chat/conversation interactions. */
       supportsChat?: boolean;
       /** @description Gets or sets whether the model supports vision/image understanding. */
@@ -6029,6 +6131,18 @@ export interface components {
       createdAt: string;
       /** Format: date-time */
       updatedAt: string;
+    };
+    ProviderOperationalCapabilities: {
+      supportsChat?: null | boolean;
+      supportsStreaming?: null | boolean;
+      supportsVision?: null | boolean;
+      supportsImageGeneration?: null | boolean;
+      supportsVideoGeneration?: null | boolean;
+      supportsEmbeddings?: null | boolean;
+      supportsFunctionCalling?: null | boolean;
+      supportsSpeechToText?: null | boolean;
+      supportsTextToSpeech?: null | boolean;
+      supportsRerank?: null | boolean;
     };
     ProviderReferenceDto: {
       /** Format: int32 */
@@ -6869,6 +6983,19 @@ export interface components {
        *     The new series ID, or null to keep existing.
        */
       modelSeriesId?: null | number;
+      /** @description Replaces the model's accepted modalities when provided. */
+      inputModalities?: null | string[];
+      /** @description Replaces the model's output modalities when provided. */
+      outputModalities?: null | string[];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /**
+       * Format: date-time
+       * @description Updates when the directional capability metadata was verified.
+       */
+      capabilitiesLastVerifiedAt?: null | string;
+      /** @description Clears directional metadata and marks it unknown. This is distinct from
+       *     supplying empty arrays, which explicitly means no modalities are supported. */
+      clearDirectionalCapabilities?: null | boolean;
       /** @description Gets or sets whether the model supports chat/conversation interactions.
        *     True to enable chat support, false to disable, or null to keep existing. */
       supportsChat?: null | boolean;
@@ -6951,6 +7078,14 @@ export interface components {
       qualityScore?: null | number;
       /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
       providerVariation?: null | string;
+      inputModalities?: null | string[];
+      outputModalities?: null | string[];
+      operationalCapabilities?:
+        | null
+        | components["schemas"]["ProviderOperationalCapabilities"];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /** Format: date-time */
+      capabilitiesLastVerifiedAt?: null | string;
     };
     UpdateModelProviderMappingDto: {
       modelAlias: string;

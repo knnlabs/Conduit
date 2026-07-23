@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.Extensions
 {
@@ -27,6 +28,11 @@ namespace ConduitLLM.Configuration.Extensions
         /// </summary>
         public static ModelProviderMappingDto ToDto(this ModelProviderMapping mapping)
         {
+            var association = mapping.ModelProviderTypeAssociation;
+            var capabilities = association?.Model is null
+                ? null
+                : ModelCapabilityResolver.Resolve(association.Model, association);
+
             return new ModelProviderMappingDto
             {
                 Id = mapping.Id,
@@ -41,17 +47,29 @@ namespace ConduitLLM.Configuration.Extensions
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
                 ProviderOptions = mapping.ProviderOptions,
-                Capabilities = mapping.ModelProviderTypeAssociation?.Model != null ? new ModelCapabilitiesDto
+                Capabilities = capabilities is not null ? new ModelCapabilitiesDto
                 {
-                    SupportsVision = mapping.ModelProviderTypeAssociation.Model.SupportsVision,
-                    SupportsImageGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsImageGeneration,
-                    SupportsVideoGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsVideoGeneration,
-                    SupportsEmbeddings = mapping.ModelProviderTypeAssociation.Model.SupportsEmbeddings,
-                    SupportsChat = mapping.ModelProviderTypeAssociation.Model.SupportsChat,
-                    SupportsFunctionCalling = mapping.ModelProviderTypeAssociation.Model.SupportsFunctionCalling,
-                    SupportsStreaming = mapping.ModelProviderTypeAssociation.Model.SupportsStreaming,
-                    MaxInputTokens = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens,
-                    MaxOutputTokens = mapping.ModelProviderTypeAssociation.Model.MaxOutputTokens
+                    InputModalities = capabilities.InputModalities,
+                    OutputModalities = capabilities.OutputModalities,
+                    CapabilitySource = capabilities.Source,
+                    CapabilitiesLastVerifiedAt = capabilities.LastVerifiedAt,
+                    SupportsImageInput = capabilities.SupportsImageInput,
+                    SupportsVideoInput = capabilities.SupportsVideoInput,
+                    SupportsAudioInput = capabilities.SupportsAudioInput,
+                    SupportsFileInput = capabilities.SupportsFileInput,
+                    SupportsVideoUnderstanding = capabilities.SupportsVideoUnderstanding,
+                    SupportsVision = capabilities.SupportsVision,
+                    SupportsImageGeneration = capabilities.SupportsImageGeneration,
+                    SupportsVideoGeneration = capabilities.SupportsVideoGeneration,
+                    SupportsEmbeddings = capabilities.SupportsEmbeddings,
+                    SupportsSpeechToText = capabilities.SupportsSpeechToText,
+                    SupportsTextToSpeech = capabilities.SupportsTextToSpeech,
+                    SupportsRerank = capabilities.SupportsRerank,
+                    SupportsChat = capabilities.SupportsChat,
+                    SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
+                    SupportsStreaming = capabilities.SupportsStreaming,
+                    MaxInputTokens = association!.MaxInputTokens ?? association.Model.MaxInputTokens,
+                    MaxOutputTokens = association.MaxOutputTokens ?? association.Model.MaxOutputTokens
                 } : null
             };
         }

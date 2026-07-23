@@ -14,10 +14,17 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 5.00,
-      "outputPricePerMillion": 7.00,
+      "inputPricePerMillion": 5,
+      "outputPricePerMillion": 7,
       "speedTokensPerSec": null,
-      "notes": "128K context, reasoning-focused model"
+      "notes": "128K context, reasoning-focused model",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "DeepSeek-V3-0324": {
       "name": "DeepSeek-V3-0324",
@@ -33,10 +40,17 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 3.00,
-      "outputPricePerMillion": 4.50,
+      "inputPricePerMillion": 3,
+      "outputPricePerMillion": 4.5,
       "speedTokensPerSec": 250,
-      "notes": "128K context, optimized for speed - up to 250 tokens/sec"
+      "notes": "128K context, optimized for speed - up to 250 tokens/sec",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "DeepSeek-V3.1": {
       "name": "DeepSeek-V3.1",
@@ -52,10 +66,17 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 3.00,
-      "outputPricePerMillion": 4.50,
+      "inputPricePerMillion": 3,
+      "outputPricePerMillion": 4.5,
       "speedTokensPerSec": null,
-      "notes": "128K context, latest DeepSeek V3 iteration"
+      "notes": "128K context, latest DeepSeek V3 iteration",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "DeepSeek-R1-Distill-Llama-70B": {
       "name": "DeepSeek-R1-Distill-Llama-70B",
@@ -71,10 +92,17 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 0.70,
-      "outputPricePerMillion": 1.40,
+      "inputPricePerMillion": 0.7,
+      "outputPricePerMillion": 1.4,
       "speedTokensPerSec": null,
-      "notes": "128K context, distilled reasoning model based on Llama 70B"
+      "notes": "128K context, distilled reasoning model based on Llama 70B",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "Meta-Llama-3.3-70B-Instruct": {
       "name": "Meta-Llama-3.3-70B-Instruct",
@@ -90,10 +118,17 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 0.60,
-      "outputPricePerMillion": 1.20,
+      "inputPricePerMillion": 0.6,
+      "outputPricePerMillion": 1.2,
       "speedTokensPerSec": null,
-      "notes": "128K context, versatile 70B instruction-tuned model"
+      "notes": "128K context, versatile 70B instruction-tuned model",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "Meta-Llama-3.1-8B-Instruct": {
       "name": "Meta-Llama-3.1-8B-Instruct",
@@ -109,10 +144,17 @@
       "supportsFunctionCalling": false,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 0.10,
-      "outputPricePerMillion": 0.20,
+      "inputPricePerMillion": 0.1,
+      "outputPricePerMillion": 0.2,
       "speedTokensPerSec": null,
-      "notes": "16K context, fast and efficient 8B model"
+      "notes": "16K context, fast and efficient 8B model",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "Llama-4-Maverick-17B-128E-Instruct": {
       "name": "Llama-4-Maverick-17B-128E-Instruct",
@@ -128,10 +170,18 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 0.20,
-      "outputPricePerMillion": 0.60,
+      "inputPricePerMillion": 0.2,
+      "outputPricePerMillion": 0.6,
       "speedTokensPerSec": null,
-      "notes": "Preview: Multimodal MoE model, 17B parameters, 128 experts, vision support (up to 5 images, 20MB max each)"
+      "notes": "Preview: Multimodal MoE model, 17B parameters, 128 experts, vision support (up to 5 images, 20MB max each)",
+      "inputModalities": [
+        "text",
+        "image"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "gpt-oss-120b": {
       "name": "gpt-oss-120b",
@@ -150,7 +200,14 @@
       "inputPricePerMillion": 0.22,
       "outputPricePerMillion": 0.59,
       "speedTokensPerSec": null,
-      "notes": "Preview: 128K context, OpenAI-compatible GPT model"
+      "notes": "Preview: 128K context, OpenAI-compatible GPT model",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "Whisper-Large-v3": {
       "name": "Whisper-Large-v3",
@@ -166,8 +223,20 @@
       "supportsFunctionCalling": false,
       "supportsEmbeddings": false,
       "supportsAudio": true,
-      "inputPricePerMillion": 0.0,
-      "outputPricePerMillion": 0.0,
+      "supportsImageGeneration": false,
+      "supportsVideoGeneration": false,
+      "supportsSpeechToText": true,
+      "supportsTextToSpeech": false,
+      "supportsRerank": false,
+      "inputModalities": [
+        "audio"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated",
+      "inputPricePerMillion": 0,
+      "outputPricePerMillion": 0,
       "speedTokensPerSec": null,
       "notes": "Preview: Audio transcription model, 25MB max file size, pricing typically per audio minute"
     },
@@ -185,10 +254,17 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 0.40,
-      "outputPricePerMillion": 0.80,
+      "inputPricePerMillion": 0.4,
+      "outputPricePerMillion": 0.8,
       "speedTokensPerSec": null,
-      "notes": "Preview: 8K context, 32B parameter model"
+      "notes": "Preview: 8K context, 32B parameter model",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "Llama-3.3-Swallow-70B-Instruct-v0.4": {
       "name": "Llama-3.3-Swallow-70B-Instruct-v0.4",
@@ -204,10 +280,17 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "supportsAudio": false,
-      "inputPricePerMillion": 0.60,
-      "outputPricePerMillion": 1.20,
+      "inputPricePerMillion": 0.6,
+      "outputPricePerMillion": 1.2,
       "speedTokensPerSec": null,
-      "notes": "Preview: 16K context, specialized variant by Tokyo Tech"
+      "notes": "Preview: 16K context, specialized variant by Tokyo Tech",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "E5-Mistral-7B-Instruct": {
       "name": "E5-Mistral-7B-Instruct",
@@ -223,10 +306,17 @@
       "supportsFunctionCalling": false,
       "supportsEmbeddings": true,
       "supportsAudio": false,
-      "inputPricePerMillion": 0.10,
-      "outputPricePerMillion": 0.20,
+      "inputPricePerMillion": 0.1,
+      "outputPricePerMillion": 0.2,
       "speedTokensPerSec": null,
-      "notes": "Preview: 4K context, embedding-optimized model"
+      "notes": "Preview: 4K context, embedding-optimized model",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     }
   }
 }

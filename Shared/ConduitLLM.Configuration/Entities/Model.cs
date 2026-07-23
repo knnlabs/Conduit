@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
 using ConduitLLM.Configuration.Entities.Interfaces;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.Entities
 {
@@ -102,6 +103,28 @@ namespace ConduitLLM.Configuration.Entities
         /// Indicates whether this model supports streaming responses.
         /// </summary>
         public bool SupportsStreaming { get; set; } = false;
+
+        /// <summary>
+        /// JSON array of content modalities accepted by the model. Null means unknown.
+        /// </summary>
+        [Column("InputModalities", TypeName = "jsonb")]
+        public string? InputModalitiesJson { get; set; }
+
+        /// <summary>
+        /// JSON array of content modalities produced by the model. Null means unknown.
+        /// </summary>
+        [Column("OutputModalities", TypeName = "jsonb")]
+        public string? OutputModalitiesJson { get; set; }
+
+        /// <summary>
+        /// Source of the current capability metadata.
+        /// </summary>
+        public ModelCapabilitySource CapabilitySource { get; set; } = ModelCapabilitySource.LegacyInferred;
+
+        /// <summary>
+        /// When the capability metadata was last verified against its source.
+        /// </summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
 
         /// <summary>
         /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").

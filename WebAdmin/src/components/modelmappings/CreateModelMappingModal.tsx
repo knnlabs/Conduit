@@ -189,9 +189,10 @@ export function CreateModelMappingModal({
                   <Text size="xs" fw={500} mb="xs">Model Capabilities:</Text>
                   <Flex gap="xs" wrap="wrap">
                     {selectedModel.supportsChat && <Badge size="sm" leftSection={<IconRobot size={12} />}>Chat</Badge>}
-                    {selectedModel.supportsVision && <Badge size="sm" leftSection={<IconEye size={12} />}>Vision</Badge>}
+                    {selectedModel.supportsImageInput && <Badge size="sm" leftSection={<IconEye size={12} />}>Image Input</Badge>}
+                    {selectedModel.supportsVideoInput && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video Input</Badge>}
                     {selectedModel.supportsImageGeneration && <Badge size="sm" leftSection={<IconBrush size={12} />}>Images</Badge>}
-                    {selectedModel.supportsVideoGeneration && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video</Badge>}
+                    {selectedModel.supportsVideoGeneration && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video Gen</Badge>}
                     {selectedModel.supportsEmbeddings && <Badge size="sm" leftSection={<IconBrain size={12} />}>Embeddings</Badge>}
                   </Flex>
                   <Text size="xs" mt="xs">Max Input Tokens: {selectedModel.maxInputTokens?.toLocaleString()}</Text>

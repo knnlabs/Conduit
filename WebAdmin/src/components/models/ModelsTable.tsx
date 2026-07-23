@@ -303,9 +303,12 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
 
   const capabilityOptions = [
     { value: 'chat', label: 'Text Chat' },
-    { value: 'vision', label: 'Text + Vision' },
-    { value: 'image', label: 'Image Generation' },
-    { value: 'video', label: 'Video Generation' }
+    { value: 'image_input', label: 'Image Input' },
+    { value: 'video_input', label: 'Video Input' },
+    { value: 'audio_input', label: 'Audio Input' },
+    { value: 'file_input', label: 'File Input' },
+    { value: 'image_generation', label: 'Image Generation' },
+    { value: 'video_generation', label: 'Video Generation' }
   ];
 
   const providerOptions = [

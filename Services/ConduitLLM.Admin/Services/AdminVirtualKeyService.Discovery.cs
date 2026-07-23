@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Services
@@ -23,9 +24,6 @@ namespace ConduitLLM.Admin.Services
                 return null;
             }
 
-            // Project to only the fields the loop reads — no full Provider/Model/Series graphs.
-            // Inner Caps is null when the mapping is missing its Model row, which preserves
-            // the existing "no model data" warning below.
             using var context = await _dbContextFactory.CreateDbContextAsync();
 
             var projections = await context.ModelProviderMappings
@@ -34,22 +32,9 @@ namespace ConduitLLM.Admin.Services
                 .Select(m => new
                 {
                     m.ModelAlias,
-                    Caps = m.ModelProviderTypeAssociation != null && m.ModelProviderTypeAssociation.Model != null
-                        ? new
-                        {
-                            m.ModelProviderTypeAssociation.Model.SupportsChat,
-                            m.ModelProviderTypeAssociation.Model.SupportsStreaming,
-                            m.ModelProviderTypeAssociation.Model.SupportsVision,
-                            m.ModelProviderTypeAssociation.Model.SupportsVideoGeneration,
-                            m.ModelProviderTypeAssociation.Model.SupportsImageGeneration,
-                            m.ModelProviderTypeAssociation.Model.SupportsEmbeddings,
-                            m.ModelProviderTypeAssociation.Model.SupportsFunctionCalling,
-                            m.ModelProviderTypeAssociation.Model.Description,
-                            m.ModelProviderTypeAssociation.Model.ModelCardUrl,
-                            m.ModelProviderTypeAssociation.Model.MaxInputTokens,
-                            m.ModelProviderTypeAssociation.Model.MaxOutputTokens,
-                            m.ModelProviderTypeAssociation.Model.TokenizerType
-                        }
+                    Association = m.ModelProviderTypeAssociation,
+                    Model = m.ModelProviderTypeAssociation != null
+                        ? m.ModelProviderTypeAssociation.Model
                         : null
                 })
                 .ToListAsync();
@@ -58,24 +43,33 @@ namespace ConduitLLM.Admin.Services
 
             foreach (var p in projections)
             {
-                if (p.Caps == null)
+                if (p.Association == null || p.Model == null)
                 {
                     _logger.LogWarning("Model mapping {ModelAlias} has no model data", p.ModelAlias);
                     continue;
                 }
+
+                var model = p.Model;
+                var caps = ModelCapabilityResolver.Resolve(model, p.Association);
 
                 if (!string.IsNullOrEmpty(capability))
                 {
                     var capabilityKey = capability.Replace("-", "_").ToLowerInvariant();
                     bool hasCapability = capabilityKey switch
                     {
-                        "chat" => p.Caps.SupportsChat,
-                        "streaming" or "chat_stream" => p.Caps.SupportsStreaming,
-                        "vision" => p.Caps.SupportsVision,
-                        "video_generation" => p.Caps.SupportsVideoGeneration,
-                        "image_generation" => p.Caps.SupportsImageGeneration,
-                        "embeddings" => p.Caps.SupportsEmbeddings,
-                        "function_calling" => p.Caps.SupportsFunctionCalling,
+                        "chat" => caps.SupportsChat,
+                        "streaming" or "chat_stream" => caps.SupportsStreaming,
+                        "vision" or "image_input" => caps.SupportsImageInput,
+                        "video_input" or "video_understanding" => caps.SupportsVideoInput,
+                        "audio_input" => caps.SupportsAudioInput,
+                        "file_input" => caps.SupportsFileInput,
+                        "video_generation" => caps.SupportsVideoGeneration,
+                        "image_generation" => caps.SupportsImageGeneration,
+                        "embeddings" => caps.SupportsEmbeddings,
+                        "function_calling" => caps.SupportsFunctionCalling,
+                        "speech_to_text" => caps.SupportsSpeechToText,
+                        "text_to_speech" => caps.SupportsTextToSpeech,
+                        "rerank" => caps.SupportsRerank,
                         _ => false
                     };
 
@@ -85,20 +79,32 @@ namespace ConduitLLM.Admin.Services
                     }
                 }
 
-                var capabilities = new Dictionary<string, object>
+                var capabilities = new Dictionary<string, object?>
                 {
-                    ["supports_chat"] = p.Caps.SupportsChat,
-                    ["supports_streaming"] = p.Caps.SupportsStreaming,
-                    ["supports_vision"] = p.Caps.SupportsVision,
-                    ["supports_function_calling"] = p.Caps.SupportsFunctionCalling,
-                    ["supports_video_generation"] = p.Caps.SupportsVideoGeneration,
-                    ["supports_image_generation"] = p.Caps.SupportsImageGeneration,
-                    ["supports_embeddings"] = p.Caps.SupportsEmbeddings,
-                    ["description"] = p.Caps.Description ?? "",
-                    ["model_card_url"] = p.Caps.ModelCardUrl ?? "",
-                    ["input_tokens"] = p.Caps.MaxInputTokens ?? 0,
-                    ["output_tokens"] = p.Caps.MaxOutputTokens ?? 0,
-                    ["tokenizer_type"] = p.Caps.TokenizerType.ToString().ToLowerInvariant()
+                    ["input_modalities"] = caps.InputModalities,
+                    ["output_modalities"] = caps.OutputModalities,
+                    ["capability_source"] = caps.Source.ToString(),
+                    ["capabilities_last_verified_at"] = caps.LastVerifiedAt?.ToString("O") ?? "",
+                    ["supports_chat"] = caps.SupportsChat,
+                    ["supports_streaming"] = caps.SupportsStreaming,
+                    ["supports_vision"] = caps.SupportsImageInput,
+                    ["supports_image_input"] = caps.SupportsImageInput,
+                    ["supports_video_input"] = caps.SupportsVideoInput,
+                    ["supports_video_understanding"] = caps.SupportsVideoUnderstanding,
+                    ["supports_audio_input"] = caps.SupportsAudioInput,
+                    ["supports_file_input"] = caps.SupportsFileInput,
+                    ["supports_function_calling"] = caps.SupportsFunctionCalling,
+                    ["supports_video_generation"] = caps.SupportsVideoGeneration,
+                    ["supports_image_generation"] = caps.SupportsImageGeneration,
+                    ["supports_embeddings"] = caps.SupportsEmbeddings,
+                    ["supports_speech_to_text"] = caps.SupportsSpeechToText,
+                    ["supports_text_to_speech"] = caps.SupportsTextToSpeech,
+                    ["supports_rerank"] = caps.SupportsRerank,
+                    ["description"] = model.Description ?? "",
+                    ["model_card_url"] = model.ModelCardUrl ?? "",
+                    ["input_tokens"] = p.Association.MaxInputTokens ?? model.MaxInputTokens ?? 0,
+                    ["output_tokens"] = p.Association.MaxOutputTokens ?? model.MaxOutputTokens ?? 0,
+                    ["tokenizer_type"] = model.TokenizerType.ToString().ToLowerInvariant()
                 };
 
                 models.Add(new DiscoveredModelDto

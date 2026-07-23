@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Models;
 using ConduitLLM.Core.Services;
 
 using Microsoft.EntityFrameworkCore;
@@ -229,11 +230,19 @@ namespace ConduitLLM.Admin.Services
                     var proposed = Deserialize<CapabilitiesDriftPayload>(item.ProposedValuesJson);
                     if (mpta?.Model == null)
                         throw new InvalidOperationException("Mapping has no model to update.");
-                    // Shared canonical Model flags (affects all providers routing this model).
-                    var tracked = await db.Models.FirstAsync(m => m.Id == mpta.Model.Id);
-                    tracked.SupportsVision = proposed.SupportsVision;
-                    tracked.SupportsFunctionCalling = proposed.SupportsFunctionCalling;
-                    tracked.SupportsImageGeneration = proposed.SupportsImageGeneration;
+                    // OpenRouter reports provider-scoped capabilities; do not mutate other providers.
+                    var tracked = await db.ModelProviderTypeAssociations.FirstAsync(a => a.Id == mpta.Id);
+                    tracked.InputModalitiesJson = ModelModalities.Serialize(proposed.InputModalities);
+                    tracked.OutputModalitiesJson = ModelModalities.Serialize(proposed.OutputModalities);
+                    tracked.OperationalCapabilitiesJson = ModelCapabilityResolver.SerializeOverrides(new()
+                    {
+                        SupportsVision = proposed.SupportsVision,
+                        SupportsFunctionCalling = proposed.SupportsFunctionCalling,
+                        SupportsImageGeneration = proposed.SupportsImageGeneration,
+                        SupportsVideoGeneration = proposed.SupportsVideoGeneration
+                    });
+                    tracked.CapabilitySource = ModelCapabilitySource.ProviderApi;
+                    tracked.CapabilitiesLastVerifiedAt = DateTime.UtcNow;
                     await db.SaveChangesAsync();
                     break;
                 }
@@ -274,11 +283,15 @@ namespace ConduitLLM.Admin.Services
                     });
                 case DriftType.Capabilities:
                     if (model == null) return null;
+                    var effective = ModelCapabilityResolver.Resolve(model, mpta);
                     return Serialize(new CapabilitiesDriftPayload
                     {
-                        SupportsVision = model.SupportsVision,
-                        SupportsFunctionCalling = model.SupportsFunctionCalling,
-                        SupportsImageGeneration = model.SupportsImageGeneration
+                        InputModalities = effective.InputModalities ?? [],
+                        OutputModalities = effective.OutputModalities ?? [],
+                        SupportsVision = effective.SupportsVision,
+                        SupportsFunctionCalling = effective.SupportsFunctionCalling,
+                        SupportsImageGeneration = effective.SupportsImageGeneration,
+                        SupportsVideoGeneration = effective.SupportsVideoGeneration
                     });
                 default:
                     return null; // MissingCost / ModelRemoved / ModelDeprecated: no meaningful current snapshot to guard.

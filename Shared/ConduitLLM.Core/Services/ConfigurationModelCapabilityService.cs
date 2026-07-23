@@ -54,9 +54,16 @@ namespace ConduitLLM.Core.Services
         public async Task<bool> SupportsVisionAsync(string model)
         {
             var capability = await GetModelCapabilityAsync(model);
-            return capability?.SupportsVision ?? false;
+            return capability?.InputModalities?.Contains("image", StringComparer.OrdinalIgnoreCase)
+                ?? capability?.SupportsVision
+                ?? false;
         }
 
+        public async Task<bool> SupportsVideoInputAsync(string model)
+        {
+            var capability = await GetModelCapabilityAsync(model);
+            return capability?.InputModalities?.Contains("video", StringComparer.OrdinalIgnoreCase) ?? false;
+        }
 
         public async Task<bool> SupportsVideoGenerationAsync(string model)
         {
@@ -118,7 +125,17 @@ namespace ConduitLLM.Core.Services
             var result = capabilityType.ToLowerInvariant() switch
             {
                 "chat" => models.FirstOrDefault(m => m.Capabilities.SupportsChat)?.ModelId,
-                "vision" => models.FirstOrDefault(m => m.Capabilities.SupportsVision)?.ModelId,
+                "vision" or "image_input" => models.FirstOrDefault(m =>
+                    m.Capabilities.InputModalities?.Contains("image", StringComparer.OrdinalIgnoreCase)
+                    ?? m.Capabilities.SupportsVision)?.ModelId,
+                "video_input" or "video_understanding" => models.FirstOrDefault(m =>
+                    m.Capabilities.InputModalities?.Contains("video", StringComparer.OrdinalIgnoreCase) == true)?.ModelId,
+                "audio_input" => models.FirstOrDefault(m =>
+                    m.Capabilities.InputModalities?.Contains("audio", StringComparer.OrdinalIgnoreCase) == true)?.ModelId,
+                "file_input" => models.FirstOrDefault(m =>
+                    m.Capabilities.InputModalities?.Contains("file", StringComparer.OrdinalIgnoreCase) == true)?.ModelId,
+                "image_generation" => models.FirstOrDefault(m => m.Capabilities.SupportsImageGeneration)?.ModelId,
+                "video_generation" => models.FirstOrDefault(m => m.Capabilities.SupportsVideoGeneration)?.ModelId,
                 "embeddings" => models.FirstOrDefault(m => m.Capabilities.SupportsEmbeddings)?.ModelId,
                 _ => null
             };

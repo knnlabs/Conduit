@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Configuration.Models;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -148,7 +149,7 @@ namespace ConduitLLM.Admin.Services
             {
                 ComputePricingDrift(catalog, cost, detected);
                 ComputeContextWindowDrift(catalog, mpta, model, detected);
-                ComputeCapabilitiesDrift(catalog, model, detected);
+                ComputeCapabilitiesDrift(catalog, mpta, model, detected);
 
                 if (!string.IsNullOrEmpty(catalog.ExpirationDate))
                     detected[DriftType.ModelDeprecated] = ("{}", Json(new { expirationDate = catalog.ExpirationDate }));
@@ -267,7 +268,7 @@ namespace ConduitLLM.Admin.Services
         }
 
         private static void ComputeCapabilitiesDrift(
-            OpenRouterCatalogModel catalog, Model? model,
+            OpenRouterCatalogModel catalog, ModelProviderTypeAssociation? association, Model? model,
             Dictionary<DriftType, (string current, string proposed)> detected)
         {
             if (model == null)
@@ -279,20 +280,30 @@ namespace ConduitLLM.Admin.Services
 
             var proposed = new CapabilitiesDriftPayload
             {
+                InputModalities = ModelModalities.Normalize(input),
+                OutputModalities = ModelModalities.Normalize(output),
                 SupportsVision = input.Contains("image", StringComparer.OrdinalIgnoreCase),
                 SupportsFunctionCalling = supported.Contains("tools", StringComparer.OrdinalIgnoreCase),
-                SupportsImageGeneration = output.Contains("image", StringComparer.OrdinalIgnoreCase)
+                SupportsImageGeneration = output.Contains("image", StringComparer.OrdinalIgnoreCase),
+                SupportsVideoGeneration = output.Contains("video", StringComparer.OrdinalIgnoreCase)
             };
+            var effective = ModelCapabilityResolver.Resolve(model, association);
             var current = new CapabilitiesDriftPayload
             {
-                SupportsVision = model.SupportsVision,
-                SupportsFunctionCalling = model.SupportsFunctionCalling,
-                SupportsImageGeneration = model.SupportsImageGeneration
+                InputModalities = effective.InputModalities ?? [],
+                OutputModalities = effective.OutputModalities ?? [],
+                SupportsVision = effective.SupportsVision,
+                SupportsFunctionCalling = effective.SupportsFunctionCalling,
+                SupportsImageGeneration = effective.SupportsImageGeneration,
+                SupportsVideoGeneration = effective.SupportsVideoGeneration
             };
 
-            if (proposed.SupportsVision != current.SupportsVision
+            if (!proposed.InputModalities.SequenceEqual(current.InputModalities, StringComparer.Ordinal)
+                || !proposed.OutputModalities.SequenceEqual(current.OutputModalities, StringComparer.Ordinal)
+                || proposed.SupportsVision != current.SupportsVision
                 || proposed.SupportsFunctionCalling != current.SupportsFunctionCalling
-                || proposed.SupportsImageGeneration != current.SupportsImageGeneration)
+                || proposed.SupportsImageGeneration != current.SupportsImageGeneration
+                || proposed.SupportsVideoGeneration != current.SupportsVideoGeneration)
             {
                 detected[DriftType.Capabilities] = (Json(current), Json(proposed));
             }
