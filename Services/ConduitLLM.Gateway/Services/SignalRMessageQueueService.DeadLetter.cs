@@ -1,14 +1,29 @@
+using System.Text.Json;
+
 using ConduitLLM.Gateway.Models;
 
 using Polly.CircuitBreaker;
 
 using StackExchange.Redis;
-using System.Text.Json;
 
 namespace ConduitLLM.Gateway.Services
 {
     public partial class SignalRMessageQueueService
     {
+        private const string MoveToDeadLetterScript = """
+            local deadLetterId = redis.call('XADD', KEYS[1], '*',
+                'data', ARGV[1],
+                'messageId', ARGV[2],
+                'hubName', ARGV[3],
+                'methodName', ARGV[4],
+                'reason', ARGV[5],
+                'deadLetteredAt', ARGV[6])
+            if ARGV[8] ~= '' then
+                redis.call('XACK', KEYS[2], ARGV[7], ARGV[8])
+            end
+            return deadLetterId
+            """;
+
         public QueueStatistics GetStatistics()
         {
             if (_redis == null)
@@ -17,6 +32,8 @@ namespace ConduitLLM.Gateway.Services
                 {
                     ProcessedMessages = _processedMessages,
                     FailedMessages = _failedMessages,
+                    ClaimedMessages = _claimedMessages,
+                    RetriedMessages = _retriedMessages,
                     LastProcessedAt = _lastProcessedAt,
                     CircuitBreakerState = _currentCircuitState,
                     ConsecutiveFailures = _consecutiveFailures
@@ -25,15 +42,32 @@ namespace ConduitLLM.Gateway.Services
 
             try
             {
-                var pendingMessages = _redis.StreamLength(_messageStreamKey);
+                var groupInfo = _redis.StreamGroupInfo(_messageStreamKey)
+                    .FirstOrDefault(group => group.Name == _consumerGroup);
+                var pendingInfo = _redis.StreamPending(_messageStreamKey, _consumerGroup);
+                var oldestPending = pendingInfo.PendingMessageCount == 0
+                    ? Array.Empty<StreamPendingMessageInfo>()
+                    : _redis.StreamPendingMessages(
+                        _messageStreamKey,
+                        _consumerGroup,
+                        count: 1,
+                        consumerName: RedisValue.Null);
+                var delayedMessages = _redis.SortedSetLength(_delayedMessageKey);
                 var deadLetterMessages = _redis.StreamLength(_deadLetterStreamKey);
+                var pendingMessages = groupInfo.PendingMessageCount + (groupInfo.Lag ?? 0) + delayedMessages;
 
                 return new QueueStatistics
                 {
-                    PendingMessages = (int)pendingMessages,
-                    DeadLetterMessages = (int)deadLetterMessages,
-                    ProcessedMessages = _processedMessages,
-                    FailedMessages = _failedMessages,
+                    PendingMessages = (int)Math.Min(int.MaxValue, pendingMessages),
+                    DelayedMessages = (int)Math.Min(int.MaxValue, delayedMessages),
+                    DeadLetterMessages = (int)Math.Min(int.MaxValue, deadLetterMessages),
+                    ClaimedMessages = Volatile.Read(ref _claimedMessages),
+                    RetriedMessages = Volatile.Read(ref _retriedMessages),
+                    OldestPendingAgeSeconds = oldestPending.Length == 0
+                        ? 0
+                        : oldestPending[0].IdleTimeInMilliseconds / 1000d,
+                    ProcessedMessages = Volatile.Read(ref _processedMessages),
+                    FailedMessages = Volatile.Read(ref _failedMessages),
                     LastProcessedAt = _lastProcessedAt,
                     CircuitBreakerState = _currentCircuitState,
                     ConsecutiveFailures = _consecutiveFailures
@@ -46,6 +80,8 @@ namespace ConduitLLM.Gateway.Services
                 {
                     ProcessedMessages = _processedMessages,
                     FailedMessages = _failedMessages,
+                    ClaimedMessages = _claimedMessages,
+                    RetriedMessages = _retriedMessages,
                     LastProcessedAt = _lastProcessedAt,
                     CircuitBreakerState = _currentCircuitState,
                     ConsecutiveFailures = _consecutiveFailures
@@ -72,7 +108,9 @@ namespace ConduitLLM.Gateway.Services
                         var dataField = entry.Values.FirstOrDefault(v => v.Name == "data");
                         if (dataField.Value.HasValue)
                         {
-                            var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!.ToString());
+                            var message = JsonSerializer.Deserialize<QueuedMessage>(
+                                dataField.Value!.ToString(),
+                                QueueSerializerOptions);
                             if (message != null)
                             {
                                 messages.Add(message);
@@ -124,7 +162,9 @@ namespace ConduitLLM.Gateway.Services
                     var dataField = targetEntry.Value.Values.FirstOrDefault(v => v.Name == "data");
                     if (dataField.Value.HasValue)
                     {
-                        var message = JsonSerializer.Deserialize<QueuedMessage>(dataField.Value!.ToString());
+                        var message = JsonSerializer.Deserialize<QueuedMessage>(
+                            dataField.Value!.ToString(),
+                            QueueSerializerOptions);
                         if (message != null)
                         {
                             message.IsDeadLetter = false;
@@ -168,24 +208,14 @@ namespace ConduitLLM.Gateway.Services
                 message.IsDeadLetter = true;
                 message.DeadLetterReason = reason;
 
-                var messageData = JsonSerializer.Serialize(message);
-                var streamFields = new NameValueEntry[]
-                {
-                    new("data", messageData),
-                    new("messageId", message.Message.MessageId),
-                    new("hubName", message.HubName),
-                    new("methodName", message.MethodName),
-                    new("reason", reason),
-                    new("deadLetteredAt", DateTime.UtcNow.ToString("O"))
-                };
-
-                await _redis.StreamAddAsync(_deadLetterStreamKey, streamFields);
-
-                // If we have the original entry ID, acknowledge it from the main stream
-                if (originalEntryId.HasValue)
-                {
-                    await _redis.StreamAcknowledgeAsync(_messageStreamKey, _consumerGroup, originalEntryId.Value);
-                }
+                var messageData = JsonSerializer.Serialize(message, QueueSerializerOptions);
+                await WriteDeadLetterAsync(
+                    messageData,
+                    message.Message.MessageId,
+                    message.HubName,
+                    message.MethodName,
+                    reason,
+                    originalEntryId);
 
                 _logger.LogWarning(
                     "Message {MessageId} moved to dead letter queue: {Reason}",
@@ -197,5 +227,50 @@ namespace ConduitLLM.Gateway.Services
                 throw;
             }
         }
+
+        private async Task MoveRawToDeadLetterAsync(
+            string rawData,
+            string reason,
+            RedisValue originalEntryId)
+        {
+            await WriteDeadLetterAsync(
+                rawData,
+                string.Empty,
+                string.Empty,
+                string.Empty,
+                reason,
+                originalEntryId);
+            Interlocked.Increment(ref _failedMessages);
+
+            _logger.LogWarning(
+                "Stream entry {EntryId} moved to the dead letter queue: {Reason}",
+                originalEntryId,
+                reason);
+        }
+
+        private async Task WriteDeadLetterAsync(
+            string data,
+            string messageId,
+            string hubName,
+            string methodName,
+            string reason,
+            RedisValue? originalEntryId)
+        {
+            await _redis!.ScriptEvaluateAsync(
+                MoveToDeadLetterScript,
+                new RedisKey[] { _deadLetterStreamKey, _messageStreamKey },
+                new RedisValue[]
+                {
+                    data,
+                    messageId,
+                    hubName,
+                    methodName,
+                    reason,
+                    DateTime.UtcNow.ToString("O"),
+                    _consumerGroup,
+                    originalEntryId?.ToString() ?? string.Empty
+                });
+        }
+
     }
 }

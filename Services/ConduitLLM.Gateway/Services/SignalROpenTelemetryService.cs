@@ -84,6 +84,7 @@ namespace ConduitLLM.Gateway.Services
                     deadLetterMessages = stats.DeadLetterMessages;
                     _metrics.UpdateQueueDepth(pendingMessages);
                     _metrics.UpdateDeadLetterQueueDepth(deadLetterMessages);
+                    _metrics.UpdateOldestPendingMessageAge(stats.OldestPendingAgeSeconds);
                 }
 
                 // Collect batching metrics
@@ -117,10 +118,10 @@ namespace ConduitLLM.Gateway.Services
         public override async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("SignalR Metrics Service stopping");
-            
+
             _metricsTimer?.Change(Timeout.Infinite, 0);
             _metricsTimer?.Dispose();
-            
+
             await base.StopAsync(cancellationToken);
         }
 

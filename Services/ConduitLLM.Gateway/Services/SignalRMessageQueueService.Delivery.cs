@@ -29,16 +29,16 @@ namespace ConduitLLM.Gateway.Services
 
                 if (result)
                 {
-                    _processedMessages++;
-                    _consecutiveFailures = 0;
+                    Interlocked.Increment(ref _processedMessages);
+                    Interlocked.Exchange(ref _consecutiveFailures, 0);
                     _logger.LogInformation(
                         "Successfully delivered message {MessageId} after {Attempts} attempts",
                         queuedMessage.Message.MessageId, queuedMessage.DeliveryAttempts);
                 }
                 else
                 {
-                    _failedMessages++;
-                    _consecutiveFailures++;
+                    Interlocked.Increment(ref _failedMessages);
+                    Interlocked.Increment(ref _consecutiveFailures);
                 }
 
                 return result;
@@ -57,8 +57,8 @@ namespace ConduitLLM.Gateway.Services
                     "Unexpected error delivering message {MessageId}",
                     queuedMessage.Message.MessageId);
                 queuedMessage.LastError = ex.Message;
-                _failedMessages++;
-                _consecutiveFailures++;
+                Interlocked.Increment(ref _failedMessages);
+                Interlocked.Increment(ref _consecutiveFailures);
                 return false;
             }
         }
@@ -133,7 +133,7 @@ namespace ConduitLLM.Gateway.Services
         private DateTime CalculateNextDeliveryTime(int attempts)
         {
             var delay = TimeSpan.FromSeconds(Math.Min(
-                _initialRetryDelay.TotalSeconds * Math.Pow(2, attempts),
+                _initialRetryDelay.TotalSeconds * Math.Pow(2, Math.Max(0, attempts - 1)),
                 _maxRetryDelay.TotalSeconds));
 
             return DateTime.UtcNow.Add(delay);

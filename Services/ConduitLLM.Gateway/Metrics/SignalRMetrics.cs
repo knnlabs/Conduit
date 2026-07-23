@@ -10,34 +10,34 @@ namespace ConduitLLM.Gateway.Metrics
     public class SignalRMetrics : ISignalRMetrics
     {
         private readonly Meter _meter;
-        
+
         // ISignalRMetrics properties - Connection metrics
         public Counter<long> ConnectionsTotal { get; }
         public UpDownCounter<long> ActiveConnections { get; }
         public Counter<long> AuthenticationFailures { get; }
         public Counter<long> ConnectionErrors { get; }
-        
+
         // ISignalRMetrics properties - Message metrics
         public Counter<long> MessagesSent { get; }
         public Counter<long> MessagesReceived { get; }
         public Histogram<double> MessageProcessingDuration { get; }
         public Counter<long> MessageErrors { get; }
-        
+
         // ISignalRMetrics properties - Hub operation metrics
         public Counter<long> HubMethodInvocations { get; }
         public Histogram<double> HubMethodDuration { get; }
         public Counter<long> HubErrors { get; }
-        
+
         // ISignalRMetrics properties - Reconnection metrics
         public Counter<long> ReconnectionAttempts { get; }
         public Counter<long> ReconnectionSuccesses { get; }
         public Counter<long> ReconnectionFailures { get; }
-        
+
         // ISignalRMetrics properties - Group management metrics
         public Counter<long> GroupJoins { get; }
         public Counter<long> GroupLeaves { get; }
         public UpDownCounter<long> ActiveGroups { get; }
-        
+
         // Additional metrics from new implementation
         private readonly Counter<long> _messagesDelivered;
         private readonly Counter<long> _messagesFailed;
@@ -46,7 +46,9 @@ namespace ConduitLLM.Gateway.Metrics
         private readonly Counter<long> _messagesQueued;
         private readonly Counter<long> _messagesBatched;
         private readonly Counter<long> _batchesSent;
-        
+        private readonly Counter<long> _queueMessagesClaimed;
+        private readonly Counter<long> _queueMessageRetries;
+
         // Additional histograms
         private readonly Histogram<double> _messageDeliveryDuration;
         private readonly Histogram<double> _messageAcknowledgmentDuration;
@@ -54,12 +56,16 @@ namespace ConduitLLM.Gateway.Metrics
         private readonly Histogram<double> _batchSize;
         private readonly Histogram<double> _batchLatency;
         private readonly Histogram<double> _queueProcessingDuration;
-        
+
         // Additional gauges
-        private readonly UpDownCounter<long> _queueDepth;
-        private readonly UpDownCounter<long> _deadLetterQueueDepth;
+        private readonly ObservableGauge<long> _queueDepth;
+        private readonly ObservableGauge<long> _deadLetterQueueDepth;
+        private readonly ObservableGauge<double> _oldestPendingMessageAge;
         private readonly UpDownCounter<long> _pendingAcknowledgments;
         private readonly UpDownCounter<long> _pendingBatches;
+        private long _queueDepthValue;
+        private long _deadLetterQueueDepthValue;
+        private double _oldestPendingMessageAgeSeconds;
 
         // Activity source for distributed tracing
         public static readonly ActivitySource ActivitySource = new("ConduitLLM.SignalR", "1.0.0");
@@ -190,6 +196,16 @@ namespace ConduitLLM.Gateway.Metrics
                 "batches",
                 "Number of message batches sent");
 
+            _queueMessagesClaimed = _meter.CreateCounter<long>(
+                "signalr.queue.claimed",
+                "messages",
+                "Number of abandoned stream messages claimed by a live consumer");
+
+            _queueMessageRetries = _meter.CreateCounter<long>(
+                "signalr.queue.retries",
+                "messages",
+                "Number of failed queue deliveries scheduled for retry");
+
             // Initialize additional histograms
             _messageDeliveryDuration = _meter.CreateHistogram<double>(
                 "signalr.message.delivery.duration",
@@ -222,15 +238,23 @@ namespace ConduitLLM.Gateway.Metrics
                 "Duration of queue processing operations");
 
             // Initialize additional gauges
-            _queueDepth = _meter.CreateUpDownCounter<long>(
+            _queueDepth = _meter.CreateObservableGauge(
                 "signalr.queue.depth",
+                () => Volatile.Read(ref _queueDepthValue),
                 "messages",
                 "Number of messages in the queue");
 
-            _deadLetterQueueDepth = _meter.CreateUpDownCounter<long>(
+            _deadLetterQueueDepth = _meter.CreateObservableGauge(
                 "signalr.queue.dead_letter.depth",
+                () => Volatile.Read(ref _deadLetterQueueDepthValue),
                 "messages",
                 "Number of messages in the dead letter queue");
+
+            _oldestPendingMessageAge = _meter.CreateObservableGauge(
+                "signalr.queue.pending.oldest_age",
+                () => Volatile.Read(ref _oldestPendingMessageAgeSeconds),
+                "seconds",
+                "Age of the oldest message in the Redis pending-entry list");
 
             _pendingAcknowledgments = _meter.CreateUpDownCounter<long>(
                 "signalr.acknowledgments.pending",
@@ -313,37 +337,37 @@ namespace ConduitLLM.Gateway.Metrics
 
         public void RecordMessageAcknowledged(string hub, string method)
         {
-            _messagesAcknowledged.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method } 
+            _messagesAcknowledged.Add(1, new TagList
+            {
+                { "hub", hub },
+                { "method", method }
             });
         }
 
         public void RecordMessageTimedOut(string hub, string method)
         {
-            _messagesTimedOut.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method } 
+            _messagesTimedOut.Add(1, new TagList
+            {
+                { "hub", hub },
+                { "method", method }
             });
         }
 
         public void RecordConnectionCreated(string hub, bool success)
         {
             var tags = new TagList { { "hub", hub } };
-            
+
             ConnectionsTotal.Add(1, tags);
-            
+
             if (!success)
                 ConnectionErrors.Add(1, tags);
         }
 
         public void RecordMessageQueued(string hub, string method, int priority)
         {
-            _messagesQueued.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
+            _messagesQueued.Add(1, new TagList
+            {
+                { "hub", hub },
                 { "method", method },
                 { "priority", priority.ToString() }
             });
@@ -351,67 +375,67 @@ namespace ConduitLLM.Gateway.Metrics
 
         public void RecordMessageBatched(string hub, string method)
         {
-            _messagesBatched.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
+            _messagesBatched.Add(1, new TagList
+            {
+                { "hub", hub },
                 { "method", method }
             });
         }
 
         public void RecordBatchSent(string hub, string method, int messageCount)
         {
-            _batchesSent.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
+            _batchesSent.Add(1, new TagList
+            {
+                { "hub", hub },
                 { "method", method }
             });
-            
-            _batchSize.Record(messageCount, new TagList 
-            { 
-                { "hub", hub }, 
+
+            _batchSize.Record(messageCount, new TagList
+            {
+                { "hub", hub },
                 { "method", method }
             });
         }
 
         public void RecordMessageDeliveryDuration(string hub, string method, double durationMs)
         {
-            _messageDeliveryDuration.Record(durationMs, new TagList 
-            { 
-                { "hub", hub }, 
+            _messageDeliveryDuration.Record(durationMs, new TagList
+            {
+                { "hub", hub },
                 { "method", method }
             });
         }
 
         public void RecordAcknowledgmentDuration(string hub, string method, double durationMs)
         {
-            _messageAcknowledgmentDuration.Record(durationMs, new TagList 
-            { 
-                { "hub", hub }, 
+            _messageAcknowledgmentDuration.Record(durationMs, new TagList
+            {
+                { "hub", hub },
                 { "method", method }
             });
         }
 
         public void RecordConnectionDuration(string hub, double durationSeconds)
         {
-            _connectionDuration.Record(durationSeconds, new TagList 
-            { 
+            _connectionDuration.Record(durationSeconds, new TagList
+            {
                 { "hub", hub }
             });
         }
 
         public void RecordBatchLatency(string hub, string method, double latencyMs)
         {
-            _batchLatency.Record(latencyMs, new TagList 
-            { 
-                { "hub", hub }, 
+            _batchLatency.Record(latencyMs, new TagList
+            {
+                { "hub", hub },
                 { "method", method }
             });
         }
 
         public void RecordQueueProcessingDuration(double durationMs, int messagesProcessed)
         {
-            _queueProcessingDuration.Record(durationMs, new TagList 
-            { 
+            _queueProcessingDuration.Record(durationMs, new TagList
+            {
                 { "messages_processed", messagesProcessed.ToString() }
             });
         }
@@ -426,14 +450,29 @@ namespace ConduitLLM.Gateway.Metrics
             ActiveGroups.Add(delta, new TagList { { "hub", hub } });
         }
 
-        public void UpdateQueueDepth(int delta)
+        public void UpdateQueueDepth(int value)
         {
-            _queueDepth.Add(delta);
+            Interlocked.Exchange(ref _queueDepthValue, value);
         }
 
-        public void UpdateDeadLetterQueueDepth(int delta)
+        public void UpdateDeadLetterQueueDepth(int value)
         {
-            _deadLetterQueueDepth.Add(delta);
+            Interlocked.Exchange(ref _deadLetterQueueDepthValue, value);
+        }
+
+        public void UpdateOldestPendingMessageAge(double ageSeconds)
+        {
+            Interlocked.Exchange(ref _oldestPendingMessageAgeSeconds, ageSeconds);
+        }
+
+        public void RecordQueueMessagesClaimed(int count)
+        {
+            _queueMessagesClaimed.Add(count);
+        }
+
+        public void RecordQueueMessageRetry()
+        {
+            _queueMessageRetries.Add(1);
         }
 
         public void UpdatePendingAcknowledgments(int delta)

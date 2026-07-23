@@ -110,6 +110,7 @@ public static class RedisKeys
     {
         // Message queue
         public const string MessageStream = "signalr:messages";
+        public const string DelayedMessages = "signalr:messages:delayed";
         public const string DeadLetterStream = "signalr:deadletter";
 
         // Acknowledgments
