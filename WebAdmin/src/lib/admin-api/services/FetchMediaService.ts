@@ -5,7 +5,7 @@ import type {
   MediaRecord, MediaStorageStats, OverallMediaStorageStats, MediaCleanupRequest,
   MediaCleanupResponse, MediaDeleteResponse, MediaCleanupStatus, MediaCleanupEnabledResponse,
   SimpleRetentionResponse, MediaRetentionPolicy, CreateMediaRetentionPolicyRequest,
-  UpdateMediaRetentionPolicyRequest,
+  UpdateMediaRetentionPolicyRequest, MediaCleanupPreview,
 } from '../models/media';
 
 /** Contract-native media, cleanup, and retention operations with UI-facing adapters. */
@@ -46,12 +46,21 @@ export class FetchMediaService {
   }
 
   async cleanupMedia(request: MediaCleanupRequest, config?: RequestConfig): Promise<MediaCleanupResponse> {
-    if (request.type === 'expired') return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/expired', HttpMethod.POST, (c, o) => c.POST('/v1/admin/media-assets/cleanup/expired', o), config) as Promise<MediaCleanupResponse>;
-    if (request.type === 'orphaned') return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/orphaned', HttpMethod.POST, (c, o) => c.POST('/v1/admin/media-assets/cleanup/orphaned', o), config) as Promise<MediaCleanupResponse>;
+    const force = request.force ?? false;
+    if (request.type === 'expired') return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/expired', HttpMethod.POST,
+      (c, o) => c.POST('/v1/admin/media-assets/cleanup/expired', { ...o, params: { query: { force } } }), config) as Promise<MediaCleanupResponse>;
+    if (request.type === 'orphaned') return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/orphaned', HttpMethod.POST,
+      (c, o) => c.POST('/v1/admin/media-assets/cleanup/orphaned', { ...o, params: { query: { force } } }), config) as Promise<MediaCleanupResponse>;
     if (request.type !== 'prune') throw new Error('Invalid cleanup type');
-    const body = request.daysToKeep ? { daysToKeep: request.daysToKeep } : {};
+    const body = { daysToKeep: request.daysToKeep, force };
     return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/prune', HttpMethod.POST,
       (c, o) => c.POST('/v1/admin/media-assets/cleanup/prune', { ...o, body }), config, body) as Promise<MediaCleanupResponse>;
+  }
+
+  async previewPruneMedia(daysToKeep: number, config?: RequestConfig): Promise<MediaCleanupPreview> {
+    const body = { daysToKeep, force: false };
+    return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/prune/preview', HttpMethod.POST,
+      (c, o) => c.POST('/v1/admin/media-assets/cleanup/prune/preview', { ...o, body }), config, body) as Promise<MediaCleanupPreview>;
   }
 
   async getCleanupServiceStatus(config?: RequestConfig): Promise<MediaCleanupStatus> {

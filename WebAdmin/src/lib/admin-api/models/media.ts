@@ -58,12 +58,23 @@ export interface MediaFilters {
 export interface MediaCleanupRequest {
   type: 'expired' | 'orphaned' | 'prune';
   daysToKeep?: number;
+  force?: boolean;
 }
 
 export interface MediaCleanupResponse {
   message: string;
   deletedCount: number;
   failedCount: number;
+  isDryRun: boolean;
+  wouldDeleteCount: number;
+  bytesWouldFree: number;
+  triggeredBy: string;
+}
+
+export interface MediaCleanupPreview {
+  fileCount: number;
+  sizeBytes: number;
+  confirmationPhrase: string;
 }
 
 // Search types
@@ -84,8 +95,10 @@ export interface MediaDeleteResponse {
 export interface MediaCleanupStatus {
   isEnabled: boolean;
   isDryRunMode: boolean;
+  storageBackend: string;
   lastRunTimeUtc: string | null;
   lastRunStatus: string | null;
+  lastRunTriggeredBy: string | null;
   lastRunFilesDeleted: number;
   lastRunBytesFreed: number;
   lastRunDurationSeconds: number | null;
@@ -112,6 +125,7 @@ export interface MediaCleanupOperationStatus {
   isEnabled: boolean;
   lastRunTimeUtc: string | null;
   lastRunStatus: string | null;
+  triggeredBy: string | null;
   lastRunFilesDeleted: number;
   lastRunBytesFreed: number;
   lastRunDurationSeconds: number | null;

@@ -30,25 +30,6 @@ namespace ConduitLLM.Admin.Interfaces
         Task<List<MediaRecord>> GetMediaByVirtualKeyAsync(int virtualKeyId);
 
         /// <summary>
-        /// Manually triggers cleanup of expired media.
-        /// </summary>
-        /// <returns>Deletion counts, including failures.</returns>
-        Task<MediaDeletionResult> CleanupExpiredMediaAsync();
-
-        /// <summary>
-        /// Manually triggers cleanup of orphaned media.
-        /// </summary>
-        /// <returns>Deletion counts, including failures.</returns>
-        Task<MediaDeletionResult> CleanupOrphanedMediaAsync();
-
-        /// <summary>
-        /// Manually triggers pruning of old media.
-        /// </summary>
-        /// <param name="daysToKeep">Number of days to keep media files.</param>
-        /// <returns>Deletion counts, including failures.</returns>
-        Task<MediaDeletionResult> PruneOldMediaAsync(int daysToKeep);
-
-        /// <summary>
         /// Deletes a specific media record.
         /// </summary>
         /// <param name="mediaId">The ID of the media record.</param>

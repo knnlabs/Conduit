@@ -19,6 +19,18 @@ namespace ConduitLLM.Admin.Metrics
                 });
 
         /// <summary>
+        /// Total cleanup runs split by operation trigger and outcome.
+        /// </summary>
+        public static readonly Counter CleanupRuns = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_runs_total",
+                "Total media cleanup runs by trigger",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "cleanup_type", "triggered_by", "status" }
+                });
+
+        /// <summary>
         /// Total files deleted during cleanup.
         /// </summary>
         public static readonly Counter FilesDeleted = Prometheus.Metrics

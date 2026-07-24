@@ -69,9 +69,9 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
             Mock.Of<ILogger<MediaCleanupStatusService>>());
 
         await service.RecordOperationCompletionAsync(
-            MediaCleanupTypes.Expiration, 2, 4096, 1.25, "Completed", "test-leader");
+            MediaCleanupTypes.Expiration, 2, 4096, 1.25, "Completed", "test-leader", "scheduled");
         await service.RecordOperationCompletionAsync(
-            MediaCleanupTypes.Retention, 1, 1024, 0.5, "Completed with errors", "test-leader");
+            MediaCleanupTypes.Retention, 1, 1024, 0.5, "Completed with errors", "test-leader", "manual");
 
         var status = await service.GetStatusAsync();
 
@@ -81,6 +81,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
             {
                 IsEnabled = true,
                 LastRunStatus = "Completed",
+                TriggeredBy = "scheduled",
                 LastRunFilesDeleted = 2,
                 LastRunBytesFreed = 4096L
             });

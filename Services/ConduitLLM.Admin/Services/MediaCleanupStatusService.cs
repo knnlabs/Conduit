@@ -93,6 +93,7 @@ namespace ConduitLLM.Admin.Services
                     IsEnabled = IsOperationEnabled(cleanupType),
                     LastRunTimeUtc = operationInfo?.LastRunTimeUtc,
                     LastRunStatus = operationInfo?.Status,
+                    TriggeredBy = operationInfo?.TriggeredBy,
                     LastRunFilesDeleted = operationInfo?.FilesDeleted ?? 0,
                     LastRunBytesFreed = operationInfo?.BytesFreed ?? 0,
                     LastRunDurationSeconds = operationInfo?.DurationSeconds
@@ -153,6 +154,7 @@ namespace ConduitLLM.Admin.Services
                 StorageBackend = MediaStorageConfigurationGuard.GetBackendName(storageService),
                 LastRunTimeUtc = lastRunInfo?.LastRunTimeUtc,
                 LastRunStatus = lastRunInfo?.Status,
+                LastRunTriggeredBy = lastRunInfo?.TriggeredBy,
                 LastRunFilesDeleted = lastRunInfo?.FilesDeleted ?? 0,
                 LastRunBytesFreed = lastRunInfo?.BytesFreed ?? 0,
                 LastRunDurationSeconds = lastRunInfo?.DurationSeconds,
@@ -178,10 +180,11 @@ namespace ConduitLLM.Admin.Services
             double durationSeconds,
             string status,
             string leaderInstanceId,
+            string triggeredBy,
             CancellationToken cancellationToken = default)
         {
             var runInfo = CreateRunInfo(
-                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId);
+                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId, triggeredBy);
             _lastRunFallback = runInfo;
             _leaderFallback = leaderInstanceId;
 
@@ -200,15 +203,11 @@ namespace ConduitLLM.Admin.Services
             double durationSeconds,
             string status,
             string leaderInstanceId,
+            string triggeredBy,
             CancellationToken cancellationToken = default)
         {
-            if (!MediaCleanupTypes.All.Contains(cleanupType, StringComparer.Ordinal))
-            {
-                throw new ArgumentException($"Unknown media cleanup type '{cleanupType}'", nameof(cleanupType));
-            }
-
             var runInfo = CreateRunInfo(
-                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId);
+                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId, triggeredBy);
             _operationRunFallback[cleanupType] = runInfo;
             _leaderFallback = leaderInstanceId;
 
@@ -248,14 +247,16 @@ namespace ConduitLLM.Admin.Services
             long bytesFreed,
             double durationSeconds,
             string status,
-            string leaderInstanceId) => new()
+            string leaderInstanceId,
+            string triggeredBy) => new()
         {
             LastRunTimeUtc = DateTime.UtcNow,
             FilesDeleted = filesDeleted,
             BytesFreed = bytesFreed,
             DurationSeconds = durationSeconds,
             Status = status,
-            LeaderInstanceId = leaderInstanceId
+            LeaderInstanceId = leaderInstanceId,
+            TriggeredBy = triggeredBy
         };
 
         /// <inheritdoc />
@@ -471,6 +472,7 @@ namespace ConduitLLM.Admin.Services
             public double DurationSeconds { get; set; }
             public string? Status { get; set; }
             public string? LeaderInstanceId { get; set; }
+            public string? TriggeredBy { get; set; }
         }
     }
 }

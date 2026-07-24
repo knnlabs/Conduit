@@ -200,10 +200,6 @@ namespace ConduitLLM.Core.Extensions
                 services.AddSingleton<IMediaStorageService, InMemoryMediaStorageService>();
             }
             
-            // Configure media management options
-            services.Configure<MediaManagementOptions>(
-                configuration.GetSection("ConduitLLM:MediaManagement"));
-            
             // Register media lifecycle service
             services.AddScoped<IMediaLifecycleService, MediaLifecycleService>();
 

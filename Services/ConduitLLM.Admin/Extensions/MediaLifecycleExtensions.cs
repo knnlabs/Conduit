@@ -44,6 +44,7 @@ namespace ConduitLLM.Admin.Extensions
 
             // Register media cleanup status service for tracking and management
             services.AddSingleton<IMediaCleanupStatusService, MediaCleanupStatusService>();
+            services.AddScoped<IMediaDeletionEngine, MediaDeletionEngine>();
 
             // Validate the storage backend before any cleanup background work starts.
             services.AddSingleton<MediaStorageConfigurationGuard>();

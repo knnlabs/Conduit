@@ -37,8 +37,10 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IMediaDeletionBudgetService> _mockBudgetService;
         private readonly Mock<IMediaRecordRepository> _mockMediaRepository;
         private readonly Mock<IMediaCleanupStatusService> _mockStatusService;
+        private readonly Mock<IMediaStorageConfigurationGuard> _mockStorageGuard;
         private readonly Mock<ILogger<MediaCleanupService>> _mockLogger;
         private readonly Mock<IDistributedLock> _mockLock;
+        private readonly MutableOptions<MediaLifecycleOptions> _engineOptions;
         private readonly ConduitDbContext _context;
         private readonly SqliteTestDatabase _database;
 
@@ -52,7 +54,10 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockBudgetService = new Mock<IMediaDeletionBudgetService>();
             _mockMediaRepository = new Mock<IMediaRecordRepository>();
             _mockStatusService = new Mock<IMediaCleanupStatusService>();
+            _mockStorageGuard = new Mock<IMediaStorageConfigurationGuard>();
             _mockLogger = new Mock<ILogger<MediaCleanupService>>();
+            _engineOptions = new MutableOptions<MediaLifecycleOptions>(
+                new MediaLifecycleOptions());
 
             // Set up lock mock
             _mockLock = new Mock<IDistributedLock>();
@@ -86,6 +91,9 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockStatusService
                 .Setup(x => x.GetSimpleRetentionOverrideAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync((int?)null);
+            _mockStorageGuard
+                .Setup(x => x.ValidateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
 
             // Set up service provider for scope factory
             var services = new ServiceCollection();
@@ -94,11 +102,16 @@ namespace ConduitLLM.Tests.Admin.Services
             services.AddSingleton(_mockBudgetService.Object);
             services.AddSingleton(_mockMediaRepository.Object);
             services.AddSingleton(_mockStatusService.Object);
+            services.AddSingleton(_mockStorageGuard.Object);
+            services.AddSingleton<IOptions<MediaLifecycleOptions>>(_engineOptions);
+            services.AddSingleton(Mock.Of<ILogger<MediaDeletionEngine>>());
+            services.AddScoped<IMediaDeletionEngine, MediaDeletionEngine>();
             _serviceProvider = services.BuildServiceProvider();
         }
 
         private MediaCleanupService CreateService(MediaLifecycleOptions options)
         {
+            _engineOptions.Value = options;
             return new MediaCleanupService(
                 _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
                 _mockLockService.Object,
@@ -331,6 +344,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 TaskCreationOptions.RunContinuationsAsynchronously);
             var allowDelete = new TaskCompletionSource(
                 TaskCreationOptions.RunContinuationsAsynchronously);
+            _engineOptions.Value = options;
 
             SeedTestGroup(1);
             SeedVirtualKey(1, 1);
@@ -774,6 +788,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 It.IsAny<double>(),
                 It.Is<string>(status => status.Contains(expectedStatusFragment, StringComparison.OrdinalIgnoreCase)),
                 It.IsAny<string>(),
+                It.IsAny<string>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -782,6 +797,12 @@ namespace ConduitLLM.Tests.Admin.Services
             _context?.Dispose();
             _serviceProvider?.Dispose();
             _database.Dispose();
+        }
+
+        private sealed class MutableOptions<T>(T value) : IOptions<T>
+            where T : class
+        {
+            public T Value { get; set; } = value;
         }
     }
 }

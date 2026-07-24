@@ -1,3 +1,4 @@
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
@@ -128,8 +129,13 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockVirtualKeyRepository.Setup(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
-                .ReturnsAsync(new MediaDeletionResult(5, 0));
+            _mockMediaLifecycleService.Setup(x => x.GetMediaByVirtualKeyAsync(1))
+                .ReturnsAsync(CreateMediaRecords(1, 5));
+            _mockMediaDeletionEngine
+                .Setup(x => x.DeleteAsync(
+                    It.IsAny<MediaDeletionRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaDeletionEngineResult(FilesDeleted: 5));
 
             // Act
             var result = await _service.DeleteVirtualKeyAsync(1);
@@ -137,7 +143,7 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.True(result);
             _mockVirtualKeyRepository.Verify(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
-            _mockMediaLifecycleService.Verify(x => x.DeleteMediaForVirtualKeyAsync(1), Times.Once);
+            _mockMediaLifecycleService.Verify(x => x.GetMediaByVirtualKeyAsync(1), Times.Once);
             _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyDeleted>(),
                 It.IsAny<CancellationToken>()), Times.Once);
@@ -160,7 +166,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockVirtualKeyRepository.Setup(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
+            _mockMediaLifecycleService.Setup(x => x.GetMediaByVirtualKeyAsync(1))
                 .ThrowsAsync(new Exception("Media service error"));
 
             await Assert.ThrowsAsync<Exception>(() => _service.DeleteVirtualKeyAsync(1));
@@ -181,17 +187,33 @@ namespace ConduitLLM.Tests.Admin.Services
             };
             _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingKey);
-            _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
-                .ReturnsAsync(new MediaDeletionResult(2, 1));
+            _mockMediaLifecycleService.Setup(x => x.GetMediaByVirtualKeyAsync(1))
+                .ReturnsAsync(CreateMediaRecords(1, 3));
+            _mockMediaDeletionEngine
+                .Setup(x => x.DeleteAsync(
+                    It.IsAny<MediaDeletionRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaDeletionEngineResult(FilesDeleted: 2, Failures: 1));
 
             var exception = await Assert.ThrowsAsync<InvalidOperationException>(
                 () => _service.DeleteVirtualKeyAsync(1));
 
-            Assert.Contains("1 media files", exception.Message);
+            Assert.Contains("failed=1", exception.Message);
             _mockVirtualKeyRepository.Verify(
                 x => x.DeleteAsync(1, It.IsAny<CancellationToken>()),
                 Times.Never);
         }
+
+        private static List<MediaRecord> CreateMediaRecords(int virtualKeyId, int count) =>
+            Enumerable.Range(0, count)
+                .Select(index => new MediaRecord
+                {
+                    Id = Guid.NewGuid(),
+                    VirtualKeyId = virtualKeyId,
+                    StorageKey = $"media-{index}",
+                    MediaType = "image"
+                })
+                .ToList();
 
         #endregion
     }

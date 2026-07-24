@@ -7797,6 +7797,16 @@
           "Media"
         ],
         "operationId": "Media_CleanupExpired",
+        "parameters": [
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -7812,6 +7822,24 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MediaCleanupResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
                 }
               }
             }
@@ -7848,6 +7876,16 @@
           "Media"
         ],
         "operationId": "Media_CleanupOrphaned",
+        "parameters": [
+          {
+            "name": "force",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -7863,6 +7901,158 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MediaCleanupResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/admin/media-assets/cleanup/prune/preview": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Preview the files and bytes matched by a prune operation",
+        "operationId": "Media_PreviewPrune",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PruneMediaRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupPreviewDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
                 }
               }
             }
@@ -7924,6 +8114,24 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MediaCleanupResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
                 }
               }
             }
@@ -27724,6 +27932,13 @@
             ],
             "description": "Outcome of the last run for this phase."
           },
+          "triggeredBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Source that triggered the last run of this phase."
+          },
           "lastRunFilesDeleted": {
             "type": "integer",
             "description": "Number of files deleted by the last run of this phase.",
@@ -27745,6 +27960,23 @@
         },
         "description": "Last known status for one scheduled media cleanup phase."
       },
+      "MediaCleanupPreviewDto": {
+        "type": "object",
+        "properties": {
+          "fileCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmationPhrase": {
+            "type": "string"
+          }
+        },
+        "description": "Non-destructive preview of a manual cleanup scope."
+      },
       "MediaCleanupResponseDto": {
         "type": "object",
         "properties": {
@@ -27761,6 +27993,24 @@
             "type": "integer",
             "description": "Number of media files that could not be deleted and remain tracked for retry.",
             "format": "int32"
+          },
+          "isDryRun": {
+            "type": "boolean",
+            "description": "Whether the operation only simulated deletion."
+          },
+          "wouldDeleteCount": {
+            "type": "integer",
+            "description": "Number of files that matched during a dry run.",
+            "format": "int32"
+          },
+          "bytesWouldFree": {
+            "type": "integer",
+            "description": "Bytes that would be freed during a dry run.",
+            "format": "int64"
+          },
+          "triggeredBy": {
+            "type": "string",
+            "description": "Source that triggered the cleanup."
           }
         },
         "description": "Response returned by media cleanup and pruning operations."
@@ -27794,6 +28044,13 @@
               "string"
             ],
             "description": "The result of the last cleanup run."
+          },
+          "lastRunTriggeredBy": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Source of the last run, such as scheduled or manual."
           },
           "lastRunFilesDeleted": {
             "type": "integer",
@@ -31041,6 +31298,10 @@
             ],
             "description": "Gets or sets the number of days to keep media files.",
             "format": "int32"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Explicitly overrides configured dry-run mode for this audited manual operation."
           }
         },
         "description": "Request model for pruning old media."

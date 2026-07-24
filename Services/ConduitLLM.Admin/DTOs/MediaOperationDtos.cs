@@ -30,6 +30,36 @@ namespace ConduitLLM.Admin.DTOs
         /// Number of media files that could not be deleted and remain tracked for retry.
         /// </summary>
         public int FailedCount { get; set; }
+
+        /// <summary>
+        /// Whether the operation only simulated deletion.
+        /// </summary>
+        public bool IsDryRun { get; set; }
+
+        /// <summary>
+        /// Number of files that matched during a dry run.
+        /// </summary>
+        public int WouldDeleteCount { get; set; }
+
+        /// <summary>
+        /// Bytes that would be freed during a dry run.
+        /// </summary>
+        public long BytesWouldFree { get; set; }
+
+        /// <summary>
+        /// Source that triggered the cleanup.
+        /// </summary>
+        public string TriggeredBy { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Non-destructive preview of a manual cleanup scope.
+    /// </summary>
+    public class MediaCleanupPreviewDto
+    {
+        public int FileCount { get; set; }
+        public long SizeBytes { get; set; }
+        public string ConfirmationPhrase { get; set; } = string.Empty;
     }
 
     /// <summary>

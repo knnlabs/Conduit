@@ -87,68 +87,6 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<MediaDeletionResult> CleanupExpiredMediaAsync()
-        {
-            try
-            {
-                _logger.LogInformation("Manually triggering expired media cleanup");
-                var result = await _mediaLifecycleService.CleanupExpiredMediaAsync();
-                _logger.LogInformation(
-                    "Expired media cleanup deleted {DeletedCount} files with {FailedCount} failures",
-                    result.DeletedCount, result.FailedCount);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during expired media cleanup");
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<MediaDeletionResult> CleanupOrphanedMediaAsync()
-        {
-            try
-            {
-                _logger.LogInformation("Manually triggering orphaned media cleanup");
-                var result = await _mediaLifecycleService.CleanupOrphanedMediaAsync();
-                _logger.LogInformation(
-                    "Orphaned media cleanup deleted {DeletedCount} files with {FailedCount} failures",
-                    result.DeletedCount, result.FailedCount);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during orphaned media cleanup");
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<MediaDeletionResult> PruneOldMediaAsync(int daysToKeep)
-        {
-            try
-            {
-                if (daysToKeep <= 0)
-                {
-                    throw new ArgumentException("Days to keep must be positive", nameof(daysToKeep));
-                }
-
-                _logger.LogInformation("Manually triggering old media pruning (keeping last {Days} days)", daysToKeep);
-                var result = await _mediaLifecycleService.PruneOldMediaAsync(daysToKeep, respectRecentAccess: true);
-                _logger.LogInformation(
-                    "Old media pruning deleted {DeletedCount} files with {FailedCount} failures",
-                    result.DeletedCount, result.FailedCount);
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during old media pruning");
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
         public async Task<bool> DeleteMediaAsync(Guid mediaId)
         {
             try

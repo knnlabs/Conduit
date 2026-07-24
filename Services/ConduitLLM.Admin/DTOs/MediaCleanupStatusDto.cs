@@ -33,6 +33,11 @@ namespace ConduitLLM.Admin.DTOs
         public string? LastRunStatus { get; set; }
 
         /// <summary>
+        /// Source of the last run, such as scheduled or manual.
+        /// </summary>
+        public string? LastRunTriggeredBy { get; set; }
+
+        /// <summary>
         /// Number of files deleted in the last run.
         /// </summary>
         public int LastRunFilesDeleted { get; set; }
@@ -141,6 +146,11 @@ namespace ConduitLLM.Admin.DTOs
         public string? LastRunStatus { get; set; }
 
         /// <summary>
+        /// Source that triggered the last run of this phase.
+        /// </summary>
+        public string? TriggeredBy { get; set; }
+
+        /// <summary>
         /// Number of files deleted by the last run of this phase.
         /// </summary>
         public int LastRunFilesDeleted { get; set; }
@@ -164,6 +174,7 @@ namespace ConduitLLM.Admin.DTOs
         public const string Expiration = "expiration";
         public const string Orphan = "orphan";
         public const string Retention = "retention";
+        public const string VirtualKey = "virtual-key";
 
         public static readonly IReadOnlyList<string> All =
             new[] { Expiration, Orphan, Retention };

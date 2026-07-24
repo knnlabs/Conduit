@@ -20,6 +20,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// <param name="durationSeconds">Duration of the run</param>
         /// <param name="status">Status message (e.g., "Completed", "Partial", "Failed")</param>
         /// <param name="leaderInstanceId">ID of the instance that ran the cleanup</param>
+        /// <param name="triggeredBy">Whether the run was scheduled or manually triggered</param>
         /// <param name="cancellationToken">Cancellation token</param>
         Task RecordRunCompletionAsync(
             int filesDeleted,
@@ -27,6 +28,7 @@ namespace ConduitLLM.Admin.Interfaces
             double durationSeconds,
             string status,
             string leaderInstanceId,
+            string triggeredBy,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -39,6 +41,7 @@ namespace ConduitLLM.Admin.Interfaces
             double durationSeconds,
             string status,
             string leaderInstanceId,
+            string triggeredBy,
             CancellationToken cancellationToken = default);
 
         /// <summary>

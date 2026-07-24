@@ -19,9 +19,7 @@ namespace ConduitLLM.Tests.Core.Services
         {
             return new MediaLifecycleService(
                 _mockMediaRepository.Object,
-                _mockStorageService.Object,
                 _mockLogger.Object,
-                _mockOptions.Object,
                 mockVirtualKeyRepository.Object
             );
         }
@@ -156,9 +154,7 @@ namespace ConduitLLM.Tests.Core.Services
             const int groupId = 1;
             var service = new MediaLifecycleService(
                 _mockMediaRepository.Object,
-                _mockStorageService.Object,
                 _mockLogger.Object,
-                _mockOptions.Object,
                 null // No virtual key repository
             );
 
