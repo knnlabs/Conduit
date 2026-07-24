@@ -1,6 +1,4 @@
-using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Models;
 using ConduitLLM.Core.Services;
 
 using Moq;
@@ -9,55 +7,15 @@ namespace ConduitLLM.Tests.Core.Services
 {
     public partial class MediaLifecycleServiceTests
     {
-        // Additional field for virtual key repository (not in the base class)
-        private Mock<IVirtualKeyRepository> CreateMockVirtualKeyRepository()
-        {
-            return new Mock<IVirtualKeyRepository>();
-        }
-
-        private MediaLifecycleService CreateServiceWithVirtualKeyRepository(Mock<IVirtualKeyRepository> mockVirtualKeyRepository)
-        {
-            return new MediaLifecycleService(
-                _mockMediaRepository.Object,
-                _mockLogger.Object,
-                mockVirtualKeyRepository.Object
-            );
-        }
+        private MediaLifecycleService CreateStatsService() => new(
+            _mockMediaRepository.Object,
+            _mockLogger.Object);
 
         [Fact]
         public async Task GetOverallStorageStatsAsync_WithoutGroupId_ReturnsAllStats()
         {
             // Arrange
-            var mockVirtualKeyRepository = CreateMockVirtualKeyRepository();
-            var service = CreateServiceWithVirtualKeyRepository(mockVirtualKeyRepository);
-            
-            var allMedia = new List<MediaRecord>
-            {
-                new MediaRecord 
-                { 
-                    Id = Guid.NewGuid(), 
-                    VirtualKeyId = 1, 
-                    MediaType = "image", 
-                    SizeBytes = 1000,
-                    Provider = ProviderType.Replicate.ToString()
-                },
-                new MediaRecord 
-                { 
-                    Id = Guid.NewGuid(), 
-                    VirtualKeyId = 2, 
-                    MediaType = "video", 
-                    SizeBytes = 5000,
-                    Provider = ProviderType.OpenAI.ToString()
-                },
-                new MediaRecord 
-                { 
-                    Id = Guid.NewGuid(), 
-                    VirtualKeyId = 1, 
-                    MediaType = "image", 
-                    SizeBytes = 2000,
-                    Provider = ProviderType.Replicate.ToString()
-                }
-            };
+            var service = CreateStatsService();
 
             var providerStats = new Dictionary<string, long>
             {
@@ -65,10 +23,26 @@ namespace ConduitLLM.Tests.Core.Services
                 { "OpenAI", 5000 }
             };
 
-            _mockMediaRepository.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
-                .ReturnsAsync(allMedia);
-            _mockMediaRepository.Setup(x => x.GetStorageStatsByProviderAsync())
-                .ReturnsAsync(providerStats);
+            _mockMediaRepository.Setup(x => x.GetAggregateStorageStatsAsync(
+                    null,
+                    100,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageAggregateStats
+                {
+                    TotalFiles = 3,
+                    TotalSizeBytes = 8000,
+                    ByProvider = providerStats,
+                    ByMediaType =
+                    [
+                        new MediaTypeStorageAggregate("image", 2, 3000),
+                        new MediaTypeStorageAggregate("video", 1, 5000)
+                    ],
+                    TopVirtualKeys =
+                    [
+                        new VirtualKeyStorageAggregate(2, 5000),
+                        new VirtualKeyStorageAggregate(1, 3000)
+                    ]
+                });
             // Act
             var result = await service.GetOverallStorageStatsAsync();
 
@@ -88,47 +62,32 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task GetOverallStorageStatsAsync_WithGroupId_ReturnsFilteredStats()
         {
             // Arrange
-            var mockVirtualKeyRepository = CreateMockVirtualKeyRepository();
-            var service = CreateServiceWithVirtualKeyRepository(mockVirtualKeyRepository);
-            
+            var service = CreateStatsService();
             const int groupId = 1;
-            var virtualKeys = new List<VirtualKey>
-            {
-                new VirtualKey { Id = 1, VirtualKeyGroupId = groupId },
-                new VirtualKey { Id = 3, VirtualKeyGroupId = groupId }
-            };
-
-            var mediaForKey1 = new List<MediaRecord>
-            {
-                new MediaRecord 
-                { 
-                    Id = Guid.NewGuid(), 
-                    VirtualKeyId = 1, 
-                    MediaType = "image", 
-                    SizeBytes = 1000,
-                    Provider = ProviderType.Replicate.ToString()
-                }
-            };
-
-            var mediaForKey3 = new List<MediaRecord>
-            {
-                new MediaRecord 
-                { 
-                    Id = Guid.NewGuid(), 
-                    VirtualKeyId = 3, 
-                    MediaType = "video", 
-                    SizeBytes = 2000,
-                    Provider = ProviderType.OpenAI.ToString()
-                }
-            };
-
-            mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
-                    groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((virtualKeys, virtualKeys.Count));
-            _mockMediaRepository.Setup(x => x.GetByVirtualKeyIdAsync(1))
-                .ReturnsAsync(mediaForKey1);
-            _mockMediaRepository.Setup(x => x.GetByVirtualKeyIdAsync(3))
-                .ReturnsAsync(mediaForKey3);
+            _mockMediaRepository.Setup(x => x.GetAggregateStorageStatsAsync(
+                    groupId,
+                    100,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageAggregateStats
+                {
+                    TotalFiles = 2,
+                    TotalSizeBytes = 3000,
+                    ByProvider = new Dictionary<string, long>
+                    {
+                        ["Replicate"] = 1000,
+                        ["OpenAI"] = 2000
+                    },
+                    ByMediaType =
+                    [
+                        new MediaTypeStorageAggregate("image", 1, 1000),
+                        new MediaTypeStorageAggregate("video", 1, 2000)
+                    ],
+                    TopVirtualKeys =
+                    [
+                        new VirtualKeyStorageAggregate(3, 2000),
+                        new VirtualKeyStorageAggregate(1, 1000)
+                    ]
+                });
 
             // Act
             var result = await service.GetOverallStorageStatsAsync(groupId);
@@ -145,35 +104,38 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task GetOverallStorageStatsAsync_WithGroupIdNoRepository_ThrowsException()
+        public async Task GetOverallStorageStatsAsync_WithGroupId_UsesAggregateRepository()
         {
             // Arrange
             const int groupId = 1;
-            var service = new MediaLifecycleService(
-                _mockMediaRepository.Object,
-                _mockLogger.Object,
-                null // No virtual key repository
-            );
+            var service = CreateStatsService();
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await service.GetOverallStorageStatsAsync(groupId)
-            );
+            _mockMediaRepository.Setup(x => x.GetAggregateStorageStatsAsync(
+                    groupId,
+                    100,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageAggregateStats());
+
+            var result = await service.GetOverallStorageStatsAsync(groupId);
+
+            Assert.Equal(0, result.TotalFiles);
+            _mockMediaRepository.Verify(x => x.GetAggregateStorageStatsAsync(
+                groupId,
+                100,
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
         public async Task GetOverallStorageStatsAsync_WithEmptyGroup_ReturnsEmptyStats()
         {
             // Arrange
-            var mockVirtualKeyRepository = CreateMockVirtualKeyRepository();
-            var service = CreateServiceWithVirtualKeyRepository(mockVirtualKeyRepository);
-            
+            var service = CreateStatsService();
             const int groupId = 999;
-            var virtualKeys = new List<VirtualKey>(); // Empty list
-
-            mockVirtualKeyRepository.Setup(x => x.GetByVirtualKeyGroupIdPaginatedAsync(
-                    groupId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync((virtualKeys, 0));
+            _mockMediaRepository.Setup(x => x.GetAggregateStorageStatsAsync(
+                    groupId,
+                    100,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageAggregateStats());
 
             // Act
             var result = await service.GetOverallStorageStatsAsync(groupId);
@@ -192,21 +154,22 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task GetOverallStorageStatsAsync_GroupsMediaByType()
         {
             // Arrange
-            var mockVirtualKeyRepository = CreateMockVirtualKeyRepository();
-            var service = CreateServiceWithVirtualKeyRepository(mockVirtualKeyRepository);
-            
-            var allMedia = new List<MediaRecord>
-            {
-                new MediaRecord { MediaType = "image", SizeBytes = 1000, VirtualKeyId = 1 },
-                new MediaRecord { MediaType = "image", SizeBytes = 2000, VirtualKeyId = 1 },
-                new MediaRecord { MediaType = "video", SizeBytes = 5000, VirtualKeyId = 2 },
-                new MediaRecord { MediaType = "video", SizeBytes = 3000, VirtualKeyId = 2 }
-            };
+            var service = CreateStatsService();
 
-            _mockMediaRepository.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
-                .ReturnsAsync(allMedia);
-            _mockMediaRepository.Setup(x => x.GetStorageStatsByProviderAsync())
-                .ReturnsAsync(new Dictionary<string, long>());
+            _mockMediaRepository.Setup(x => x.GetAggregateStorageStatsAsync(
+                    null,
+                    100,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageAggregateStats
+                {
+                    TotalFiles = 4,
+                    TotalSizeBytes = 11000,
+                    ByMediaType =
+                    [
+                        new MediaTypeStorageAggregate("image", 2, 3000),
+                        new MediaTypeStorageAggregate("video", 2, 8000)
+                    ]
+                });
             // Act
             var result = await service.GetOverallStorageStatsAsync();
 

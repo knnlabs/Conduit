@@ -91,6 +91,17 @@ S3 `SlowDown` outcomes retry with exponential backoff controlled by
 `MediaLifecycle__DeleteThrottleInitialBackoffMs`. Each provider call is bounded by
 `MediaLifecycle__R2OperationTimeoutSeconds`.
 
+Cleanup candidate queries use `(CreatedAt, Id)` keyset pages and project only the fields required
+for deletion. `MediaLifecycle__CleanupPageSize` controls the page size (1,000 by default), while
+`MediaLifecycle__MaxRecordsPerRun` applies one shared 10,000-record ceiling across purge,
+expiration, quota, and retention phases. A truncated run is reported as
+`Partial: record cap reached` in the overall and phase status so the next scheduled run can resume.
+Large-batch approval counts and bytes are computed with database aggregates before the first page.
+
+The overall media-storage statistics endpoint performs totals and groupings in the database.
+Its per-virtual-key breakdown returns only the 100 largest consumers, preventing the response and
+query materialization from growing with every virtual key.
+
 Retention policies may cap group storage with `MaxStorageSizeBytes`, `MaxFileCount`, or both.
 Before uploading generated media, Gateway resolves the owning group and runs an indexed SQL
 aggregate over that group's media records. A policy may reject a write that would exceed quota

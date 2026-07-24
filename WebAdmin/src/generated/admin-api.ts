@@ -5172,6 +5172,11 @@ export interface components {
        * @description Maximum batch size for deletions.
        */
       maxBatchSize?: number;
+      /**
+       * Format: int32
+       * @description Maximum media records considered during one scheduled cleanup run.
+       */
+      maxRecordsPerRun?: number;
       defaultRetentionPolicy?:
         | null
         | components["schemas"]["RetentionPolicySummaryDto"];

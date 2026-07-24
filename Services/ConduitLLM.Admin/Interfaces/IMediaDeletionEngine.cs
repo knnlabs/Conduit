@@ -58,7 +58,10 @@ public sealed record MediaDeletionRequest(
     ISet<Guid>? ProcessedRecordIds = null,
     string? StatusOverride = null,
     IReadOnlyCollection<MediaStorageObject>? UntrackedStorageObjects = null,
-    bool Purge = false);
+    bool Purge = false,
+    int? TotalEligibleCount = null,
+    long? TotalEligibleBytes = null,
+    bool IsFinalPage = true);
 
 /// <summary>
 /// Result of a guarded deletion operation.

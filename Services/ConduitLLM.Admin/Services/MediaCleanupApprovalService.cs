@@ -132,6 +132,7 @@ public sealed class MediaCleanupApprovalService : IMediaCleanupApprovalService
     public async Task RecordExecutionAsync(
         Guid id,
         MediaDeletionEngineResult result,
+        bool isFinalPage = true,
         CancellationToken cancellationToken = default)
     {
         var approval = await _context.MediaCleanupApprovals
@@ -141,7 +142,10 @@ public sealed class MediaCleanupApprovalService : IMediaCleanupApprovalService
             return;
         }
 
-        var completed = !result.BudgetExhausted && result.Failures == 0;
+        var completed =
+            isFinalPage &&
+            !result.BudgetExhausted &&
+            result.Failures == 0;
         approval.Status = completed
             ? MediaCleanupApprovalStatuses.Completed
             : MediaCleanupApprovalStatuses.Approved;
@@ -149,8 +153,11 @@ public sealed class MediaCleanupApprovalService : IMediaCleanupApprovalService
         approval.UpdatedAtUtc = approval.ExecutedAtUtc.Value;
         approval.ExecutionStatus = completed
             ? result.IsDryRun ? "Dry run completed" : "Completed"
-            : result.BudgetExhausted ? "Partially executed: deletion budget exhausted"
-            : "Partially executed with errors; queued for retry";
+            : result.BudgetExhausted
+                ? "Partially executed: deletion budget exhausted"
+                : result.Failures > 0
+                    ? "Partially executed with errors; queued for retry"
+                    : "Partially executed: more paged candidates remain";
         approval.FilesDeleted += result.FilesDeleted;
         approval.RecordsTombstoned += result.RecordsTombstoned;
         approval.Failures += result.Failures;

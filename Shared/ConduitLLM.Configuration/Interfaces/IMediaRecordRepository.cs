@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.Interfaces
 {
@@ -113,6 +114,15 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Dictionary of media types to total storage size.</returns>
         Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Computes overall media statistics in the database. The virtual-key breakdown is
+        /// limited to the largest consumers.
+        /// </summary>
+        Task<MediaStorageAggregateStats> GetAggregateStorageStatsAsync(
+            int? virtualKeyGroupId = null,
+            int virtualKeyLimit = 100,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets the count of media records for a virtual key.

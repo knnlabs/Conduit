@@ -28816,6 +28816,11 @@
             "description": "Maximum batch size for deletions.",
             "format": "int32"
           },
+          "maxRecordsPerRun": {
+            "type": "integer",
+            "description": "Maximum media records considered during one scheduled cleanup run.",
+            "format": "int32"
+          },
           "defaultRetentionPolicy": {
             "oneOf": [
               {

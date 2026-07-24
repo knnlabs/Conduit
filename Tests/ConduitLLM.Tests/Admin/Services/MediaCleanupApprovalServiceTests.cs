@@ -83,6 +83,32 @@ public sealed class MediaCleanupApprovalServiceTests : IDisposable
         stored.FilesDeleted.Should().Be(50);
     }
 
+    [Fact]
+    public async Task NonFinalPagedExecution_KeepsApprovalActiveUntilFinalPage()
+    {
+        var pending = await _service.CreateOrRefreshPendingAsync(
+            "expiration", null, 120, 4_000, DateTime.UtcNow);
+        await _service.ApproveAsync(pending.Id, "admin");
+
+        await _service.RecordExecutionAsync(
+            pending.Id,
+            new MediaDeletionEngineResult(FilesDeleted: 50, BytesFreed: 2_000),
+            isFinalPage: false);
+
+        var afterFirstPage = await _context.MediaCleanupApprovals.SingleAsync();
+        afterFirstPage.Status.Should().Be(MediaCleanupApprovalStatuses.Approved);
+        afterFirstPage.ExecutionStatus.Should().Contain("paged candidates remain");
+
+        await _service.RecordExecutionAsync(
+            pending.Id,
+            new MediaDeletionEngineResult(FilesDeleted: 70, BytesFreed: 2_000),
+            isFinalPage: true);
+
+        var completed = await _context.MediaCleanupApprovals.SingleAsync();
+        completed.Status.Should().Be(MediaCleanupApprovalStatuses.Completed);
+        completed.FilesDeleted.Should().Be(120);
+    }
+
     public void Dispose()
     {
         _context.Dispose();

@@ -123,6 +123,11 @@ namespace ConduitLLM.Admin.DTOs
         public int MaxBatchSize { get; set; }
 
         /// <summary>
+        /// Maximum media records considered during one scheduled cleanup run.
+        /// </summary>
+        public int MaxRecordsPerRun { get; set; }
+
+        /// <summary>
         /// Summary of the default retention policy.
         /// </summary>
         public RetentionPolicySummaryDto? DefaultRetentionPolicy { get; set; }

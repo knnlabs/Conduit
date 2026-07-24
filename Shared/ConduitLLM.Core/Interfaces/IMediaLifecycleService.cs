@@ -170,7 +170,7 @@ namespace ConduitLLM.Core.Interfaces
         public Dictionary<string, long> ByProvider { get; set; } = new();
 
         /// <summary>
-        /// Gets or sets the storage breakdown by virtual key ID.
+        /// Gets or sets the storage breakdown for the 100 largest virtual keys by usage.
         /// </summary>
         public Dictionary<string, long> StorageByVirtualKey { get; set; } = new();
 

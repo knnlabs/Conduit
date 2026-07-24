@@ -147,6 +147,8 @@ services:
       MediaLifecycle__SoftDeleteGracePeriodDays: "7"
       MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
       MediaLifecycle__MaxBatchSize: "1000"
+      MediaLifecycle__CleanupPageSize: "1000"
+      MediaLifecycle__MaxRecordsPerRun: "10000"
       MediaLifecycle__DelayBetweenBatchesMs: "500"
       MediaLifecycle__DeleteThrottleMaxRetries: "5"
       MediaLifecycle__DeleteThrottleInitialBackoffMs: "1000"

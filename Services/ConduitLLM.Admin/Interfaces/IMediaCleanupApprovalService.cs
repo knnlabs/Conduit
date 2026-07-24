@@ -37,6 +37,7 @@ public interface IMediaCleanupApprovalService
     Task RecordExecutionAsync(
         Guid id,
         MediaDeletionEngineResult result,
+        bool isFinalPage = true,
         CancellationToken cancellationToken = default);
 
     Task CompleteEmptyApprovalAsync(

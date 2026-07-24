@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Models;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -270,6 +271,75 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
                 .Select(g => new { MediaType = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
                 .ToDictionaryAsync(x => x.MediaType, x => x.TotalSize, cancellationToken),
             cancellationToken, "getting storage stats by media type");
+    }
+
+    /// <inheritdoc/>
+    public async Task<MediaStorageAggregateStats> GetAggregateStorageStatsAsync(
+        int? virtualKeyGroupId = null,
+        int virtualKeyLimit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaQuery = GetDbSet(context).AsNoTracking();
+            if (virtualKeyGroupId.HasValue)
+            {
+                mediaQuery = mediaQuery.Where(media => context.VirtualKeys.Any(key =>
+                    key.Id == media.VirtualKeyId &&
+                    key.VirtualKeyGroupId == virtualKeyGroupId.Value));
+            }
+
+            var totals = await mediaQuery
+                .GroupBy(_ => 1)
+                .Select(group => new
+                {
+                    TotalFiles = group.Count(),
+                    TotalSizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .SingleOrDefaultAsync(cancellationToken);
+            var providers = await mediaQuery
+                .GroupBy(media => media.Provider ?? "unknown")
+                .Select(group => new
+                {
+                    Provider = group.Key,
+                    SizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .ToDictionaryAsync(
+                    row => row.Provider,
+                    row => row.SizeBytes,
+                    cancellationToken);
+            var mediaTypes = await mediaQuery
+                .GroupBy(media => media.MediaType)
+                .Select(group => new MediaTypeStorageAggregate(
+                    group.Key,
+                    group.Count(),
+                    group.Sum(media => media.SizeBytes ?? 0)))
+                .ToListAsync(cancellationToken);
+            var topVirtualKeyRows = await mediaQuery
+                .GroupBy(media => media.VirtualKeyId)
+                .Select(group => new
+                {
+                    VirtualKeyId = group.Key,
+                    SizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .OrderByDescending(row => row.SizeBytes)
+                .ThenBy(row => row.VirtualKeyId)
+                .Take(Math.Clamp(virtualKeyLimit, 1, 1000))
+                .ToListAsync(cancellationToken);
+
+            return new MediaStorageAggregateStats
+            {
+                TotalFiles = totals?.TotalFiles ?? 0,
+                TotalSizeBytes = totals?.TotalSizeBytes ?? 0,
+                ByProvider = providers,
+                ByMediaType = mediaTypes,
+                TopVirtualKeys = topVirtualKeyRows
+                    .Select(row => new VirtualKeyStorageAggregate(
+                        row.VirtualKeyId,
+                        row.SizeBytes))
+                    .ToList()
+            };
+        }, cancellationToken, "getting aggregate media storage stats");
     }
 
     /// <inheritdoc/>

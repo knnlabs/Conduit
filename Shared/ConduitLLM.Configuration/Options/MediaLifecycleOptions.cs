@@ -101,6 +101,16 @@ namespace ConduitLLM.Configuration.Options
         public int MaxBatchSize { get; set; } = 1000;
 
         /// <summary>
+        /// Maximum number of media records loaded by one cleanup query.
+        /// </summary>
+        public int CleanupPageSize { get; set; } = 1000;
+
+        /// <summary>
+        /// Maximum media records considered across one scheduled cleanup run.
+        /// </summary>
+        public int MaxRecordsPerRun { get; set; } = 10_000;
+
+        /// <summary>
         /// Delay between batches in milliseconds.
         /// </summary>
         public int DelayBetweenBatchesMs { get; set; } = 500;

@@ -177,6 +177,7 @@ namespace ConduitLLM.Admin.Services
                 BudgetLastFailureAtUtc = budgetService.LastFailureAtUtc,
                 ScheduleIntervalMinutes = _options.ScheduleIntervalMinutes,
                 MaxBatchSize = _options.MaxBatchSize,
+                MaxRecordsPerRun = _options.MaxRecordsPerRun,
                 DefaultRetentionPolicy = defaultPolicy,
                 ActiveRetentionPoliciesCount = activePoliciesCount,
                 SimpleRetentionOverrideDays = simpleRetentionOverride,

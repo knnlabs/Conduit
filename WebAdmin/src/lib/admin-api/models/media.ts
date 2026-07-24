@@ -147,6 +147,7 @@ export interface MediaCleanupStatus {
   budgetLastFailureAtUtc: string | null;
   scheduleIntervalMinutes: number;
   maxBatchSize: number;
+  maxRecordsPerRun: number;
   defaultRetentionPolicy: RetentionPolicySummary | null;
   activeRetentionPoliciesCount: number;
   /** Simple retention override in days. When set, all media is deleted after this many days regardless of account balance. */

@@ -585,6 +585,10 @@ export default function MediaCleanupStatusContent() {
               <Text size="sm" fw={500}>{status.maxBatchSize} items</Text>
             </Group>
             <Group justify="space-between">
+              <Text size="sm" c="dimmed">Max Records per Run</Text>
+              <Text size="sm" fw={500}>{status.maxRecordsPerRun.toLocaleString()} records</Text>
+            </Group>
+            <Group justify="space-between">
               <Text size="sm" c="dimmed">Next Scheduled Run</Text>
               <Tooltip label={status.nextScheduledRunUtc ?? 'Not scheduled'}>
                 <Text size="sm" fw={500}>

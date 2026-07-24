@@ -430,6 +430,7 @@ public sealed class MediaDeletionEngineTests
         _approvals.Verify(service => service.RecordExecutionAsync(
             approval.Id,
             It.Is<MediaDeletionEngineResult>(execution => execution.FilesDeleted == 2),
+            true,
             It.IsAny<CancellationToken>()), Times.Once);
         _repository.Verify(repository => repository.HardDeleteAsync(
             records[2].Id, It.IsAny<CancellationToken>()), Times.Never);

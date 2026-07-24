@@ -454,6 +454,112 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
+        public async Task RunScheduledCleanupAsync_PaginatesExpiredMediaAndReportsRunCap()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableReconciliation = false;
+            options.EnableQuotaCleanup = false;
+            options.EnableRetentionCleanup = false;
+            options.CleanupPageSize = 2;
+            options.MaxRecordsPerRun = 3;
+            ArrangeLockAcquired();
+
+            SeedTestGroup(1);
+            SeedVirtualKey(1, 1);
+            var now = DateTime.UtcNow;
+            for (var index = 0; index < 5; index++)
+            {
+                _context.MediaRecords.Add(new MediaRecord
+                {
+                    Id = Guid.NewGuid(),
+                    VirtualKeyId = 1,
+                    StorageKey = $"paged-expired-{index}",
+                    MediaType = "image",
+                    SizeBytes = 100,
+                    CreatedAt = now.AddMinutes(-10 + index),
+                    ExpiresAt = now.AddMinutes(-1)
+                });
+            }
+            await _context.SaveChangesAsync();
+            var deletedKeys = new List<string>();
+            _mockStorageService
+                .Setup(storage => storage.DeleteManyAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback((IEnumerable<string> keys, CancellationToken _) =>
+                    deletedKeys.AddRange(keys))
+                .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+                    SuccessfulDelete(keys));
+
+            await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
+
+            deletedKeys.Should().BeEquivalentTo(
+                "paged-expired-0",
+                "paged-expired-1",
+                "paged-expired-2");
+            _mockStorageService.Verify(storage => storage.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()), Times.Exactly(2));
+            VerifyOperationStatus(MediaCleanupTypes.Expiration, "record cap reached");
+            _mockStatusService.Verify(status => status.RecordRunCompletionAsync(
+                It.IsAny<int>(),
+                It.IsAny<long>(),
+                It.IsAny<double>(),
+                It.Is<string>(value =>
+                    value.Contains("record cap reached", StringComparison.OrdinalIgnoreCase) &&
+                    value.Contains("3/3", StringComparison.Ordinal)),
+                It.IsAny<string>(),
+                "scheduled",
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task RunScheduledCleanupAsync_CountsFullEligibilityBeforePagedApproval()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableReconciliation = false;
+            options.EnableQuotaCleanup = false;
+            options.EnableRetentionCleanup = false;
+            options.CleanupPageSize = 2;
+            options.MaxRecordsPerRun = 10;
+            options.RequireManualApprovalForLargeBatches = true;
+            options.LargeBatchThreshold = 3;
+            ArrangeLockAcquired();
+
+            SeedTestGroup(1);
+            SeedVirtualKey(1, 1);
+            for (var index = 0; index < 5; index++)
+            {
+                _context.MediaRecords.Add(new MediaRecord
+                {
+                    Id = Guid.NewGuid(),
+                    VirtualKeyId = 1,
+                    StorageKey = $"approval-expired-{index}",
+                    MediaType = "image",
+                    SizeBytes = 100,
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-index - 1),
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(-1)
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
+
+            _mockApprovalService.Verify(approval =>
+                approval.CreateOrRefreshPendingAsync(
+                    MediaCleanupTypes.Expiration,
+                    null,
+                    5,
+                    500,
+                    It.IsAny<DateTime>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+            _mockStorageService.Verify(storage => storage.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        [Fact]
         public async Task RunScheduledCleanupAsync_PurgesOnlyTombstonesPastGracePeriod()
         {
             var options = CreateExecutionOptions();
@@ -510,6 +616,47 @@ namespace ConduitLLM.Tests.Admin.Services
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()), Times.Once);
             VerifyOperationStatus(MediaCleanupTypes.Purge, "Completed");
+        }
+
+        [Fact]
+        public async Task RunScheduledCleanupAsync_PaginatesPurgeCandidates()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableSoftDelete = true;
+            options.SoftDeleteGracePeriodDays = 3;
+            options.EnableExpirationCleanup = false;
+            options.EnableReconciliation = false;
+            options.EnableQuotaCleanup = false;
+            options.EnableRetentionCleanup = false;
+            options.CleanupPageSize = 1;
+            options.MaxRecordsPerRun = 10;
+            ArrangeLockAcquired();
+
+            SeedTestGroup(1);
+            SeedDefaultRetentionPolicy();
+            SeedVirtualKey(1, 1);
+            for (var index = 0; index < 2; index++)
+            {
+                _context.MediaRecords.Add(new MediaRecord
+                {
+                    Id = Guid.NewGuid(),
+                    VirtualKeyId = 1,
+                    StorageKey = $"paged-purge-{index}",
+                    MediaType = "image",
+                    SizeBytes = 100,
+                    CreatedAt = DateTime.UtcNow.AddDays(-10).AddMinutes(index),
+                    DeletedAt = DateTime.UtcNow.AddDays(-100)
+                });
+            }
+            await _context.SaveChangesAsync();
+
+            await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
+
+            VerifyBulkDelete("paged-purge-0", Times.Once());
+            VerifyBulkDelete("paged-purge-1", Times.Once());
+            _mockStorageService.Verify(storage => storage.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -647,6 +794,56 @@ namespace ConduitLLM.Tests.Admin.Services
                     It.Is<IEnumerable<string>>(keys => keys.Contains(eligible.StorageKey)),
                     It.IsAny<CancellationToken>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task RunScheduledCleanupAsync_QuotaPagingHonorsSharedRunCap()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableExpirationCleanup = false;
+            options.EnableReconciliation = false;
+            options.EnableRetentionCleanup = false;
+            options.CleanupPageSize = 2;
+            options.MaxRecordsPerRun = 3;
+            ArrangeLockAcquired();
+
+            SeedTestGroup(1);
+            SeedDefaultRetentionPolicy();
+            var policy = await _context.MediaRetentionPolicies.SingleAsync();
+            policy.MaxFileCount = 1;
+            policy.RespectRecentAccess = false;
+            SeedVirtualKey(1, 1);
+            var now = DateTime.UtcNow;
+            for (var index = 0; index < 5; index++)
+            {
+                _context.MediaRecords.Add(new MediaRecord
+                {
+                    Id = Guid.NewGuid(),
+                    VirtualKeyId = 1,
+                    StorageKey = $"quota-paged-{index}",
+                    MediaType = "image",
+                    SizeBytes = 100,
+                    CreatedAt = now.AddMinutes(-10 + index)
+                });
+            }
+            await _context.SaveChangesAsync();
+            var deletedKeys = new List<string>();
+            _mockStorageService
+                .Setup(storage => storage.DeleteManyAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback((IEnumerable<string> keys, CancellationToken _) =>
+                    deletedKeys.AddRange(keys))
+                .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+                    SuccessfulDelete(keys));
+
+            await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
+
+            deletedKeys.Should().BeEquivalentTo(
+                "quota-paged-0",
+                "quota-paged-1",
+                "quota-paged-2");
+            VerifyOperationStatus(MediaCleanupTypes.Quota, "record cap reached");
         }
 
         [Fact]
@@ -816,6 +1013,15 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Assert
             options.MaxBatchSize.Should().Be(1000);
+        }
+
+        [Fact]
+        public void CleanupQueryLimits_HaveBoundedDefaults()
+        {
+            var options = new MediaLifecycleOptions();
+
+            options.CleanupPageSize.Should().Be(1000);
+            options.MaxRecordsPerRun.Should().Be(10_000);
         }
 
         [Fact]

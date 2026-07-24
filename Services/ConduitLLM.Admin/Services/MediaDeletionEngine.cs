@@ -154,7 +154,9 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
 
         if (candidates.Count == 0 || !string.IsNullOrWhiteSpace(request.StatusOverride))
         {
-            if (candidates.Count == 0 && activeApproval != null)
+            if (candidates.Count == 0 &&
+                activeApproval != null &&
+                request.IsFinalPage)
             {
                 await _approvalService.CompleteEmptyApprovalAsync(
                     activeApproval.Id,
@@ -174,21 +176,24 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                 StatusOverride: "Blocked: unsafe storage configuration");
         }
 
+        var totalEligibleCount = request.TotalEligibleCount ?? candidates.Count;
+        var totalEligibleBytes = request.TotalEligibleBytes ??
+            candidates.Sum(candidate => candidate.SizeBytes);
         if (approvalEligible &&
-            candidates.Count > _options.LargeBatchThreshold &&
+            totalEligibleCount > _options.LargeBatchThreshold &&
             activeApproval == null)
         {
             await _approvalService.CreateOrRefreshPendingAsync(
                 request.Operation.CleanupType,
                 request.GroupId,
-                candidates.Count,
-                candidates.Sum(candidate => candidate.SizeBytes),
+                totalEligibleCount,
+                totalEligibleBytes,
                 DateTime.UtcNow,
                 cancellationToken);
             _logger.LogWarning(
                 "{CleanupType} cleanup batch of {Count} files exceeds threshold of {Threshold}. Manual approval required.",
                 request.Operation.CleanupType,
-                candidates.Count,
+                totalEligibleCount,
                 _options.LargeBatchThreshold);
             if (!isDryRun)
             {
@@ -280,6 +285,7 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
             await _approvalService.RecordExecutionAsync(
                 activeApproval.Id,
                 result,
+                request.IsFinalPage,
                 cancellationToken);
         }
 
