@@ -57,7 +57,10 @@ namespace ConduitLLM.Core.Services
                 if (error.IsFatal && await ShouldDisableKeyAsync(error.KeyCredentialId, error.ErrorType))
                 {
                     await DisableKeyAsync(error.KeyCredentialId, 
-                        $"Auto-disabled due to {error.ErrorType}: {error.ErrorMessage}");
+                        $"Auto-disabled due to {error.ErrorType}: {error.ErrorMessage}",
+                        error.ErrorType,
+                        isAutomatic: true,
+                        errorMessage: error.ErrorMessage);
                 }
                 
                 _logger.LogInformation(
@@ -111,7 +114,12 @@ namespace ConduitLLM.Core.Services
             return false;
         }
 
-        public async Task DisableKeyAsync(int keyId, string reason)
+        public async Task DisableKeyAsync(
+            int keyId,
+            string reason,
+            ProviderErrorType errorType = ProviderErrorType.Unknown,
+            bool isAutomatic = false,
+            string? errorMessage = null)
         {
             try
             {
@@ -182,7 +190,10 @@ namespace ConduitLLM.Core.Services
                         KeyId = keyId,
                         ProviderId = key.ProviderId,
                         Reason = reason,
-                        DisabledAt = disabledAt
+                        ErrorType = errorType.ToString(),
+                        ErrorMessage = errorMessage ?? reason,
+                        DisabledAt = disabledAt,
+                        IsAutomatic = isAutomatic
                     });
                 }
             }

@@ -95,6 +95,23 @@ namespace ConduitLLM.Configuration.Data
                 });
             });
 
+            // Provider-related notification references are nullable so notification history
+            // survives provider or key deletion (expand phase of the schema change).
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.Notification>(entity =>
+            {
+                entity.HasOne(e => e.Provider)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProviderId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
+
+                entity.HasOne(e => e.ProviderKeyCredential)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProviderKeyCredentialId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
+            });
+
 
             // Model entity configuration is now handled by ModelEntityConfiguration
             // via modelBuilder.ApplyModelConfigurations() in DbContext

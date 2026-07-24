@@ -26,6 +26,11 @@ namespace ConduitLLM.Configuration.Events
         /// Type of error that caused the disable
         /// </summary>
         public string ErrorType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Raw provider error text, truncated by consumers before display.
+        /// </summary>
+        public string ErrorMessage { get; set; } = string.Empty;
         
         /// <summary>
         /// When the key was disabled

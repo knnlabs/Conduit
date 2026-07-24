@@ -30584,6 +30584,20 @@
               "string"
             ]
           },
+          "providerId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "providerKeyCredentialId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "type": {
             "$ref": "#/components/schemas/NotificationType"
           },
@@ -30613,7 +30627,9 @@
         "enum": [
           "budgetWarning",
           "expirationWarning",
-          "system"
+          "system",
+          "providerKeyDisabled",
+          "providerKeyReenabled"
         ]
       },
       "OperatorInfo": {

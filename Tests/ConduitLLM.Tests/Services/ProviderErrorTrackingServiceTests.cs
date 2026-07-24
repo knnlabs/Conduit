@@ -129,7 +129,10 @@ namespace ConduitLLM.Tests.Services
             _publishEndpointMock.Verify(x => x.PublishAsync(
                 It.Is<ProviderKeyDisabledEvent>(e => 
                     e.KeyId == error.KeyCredentialId &&
-                    e.ProviderId == error.ProviderId),
+                    e.ProviderId == error.ProviderId &&
+                    e.ErrorType == ProviderErrorType.InvalidApiKey.ToString() &&
+                    e.ErrorMessage == error.ErrorMessage &&
+                    e.IsAutomatic),
                 It.IsAny<CancellationToken>()), 
                 Times.Once);
         }
@@ -415,6 +418,13 @@ namespace ConduitLLM.Tests.Services
             
             // Should not disable provider (other key is still enabled)
             _providerRepoMock.Verify(x => x.UpdateAsync(It.IsAny<Provider>(), It.IsAny<CancellationToken>()), Times.Never);
+            _publishEndpointMock.Verify(x => x.PublishAsync(
+                It.Is<ProviderKeyDisabledEvent>(e =>
+                    e.KeyId == keyId &&
+                    e.ErrorType == ProviderErrorType.Unknown.ToString() &&
+                    !e.IsAutomatic),
+                It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]

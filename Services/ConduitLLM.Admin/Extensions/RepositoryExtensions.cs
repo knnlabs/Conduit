@@ -90,6 +90,8 @@ namespace ConduitLLM.Admin.Extensions
                 Id = notification.Id,
                 VirtualKeyId = notification.VirtualKeyId,
                 VirtualKeyName = virtualKeyName ?? notification.VirtualKey?.KeyName,
+                ProviderId = notification.ProviderId,
+                ProviderKeyCredentialId = notification.ProviderKeyCredentialId,
                 Type = notification.Type,
                 Severity = notification.Severity,
                 Message = notification.Message,

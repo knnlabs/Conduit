@@ -29,7 +29,15 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="keyId">ID of the key to disable</param>
         /// <param name="reason">Reason for disabling</param>
-        Task DisableKeyAsync(int keyId, string reason);
+        /// <param name="errorType">Classified provider error type, or Unknown for a manual disable</param>
+        /// <param name="isAutomatic">Whether policy automatically initiated the disable</param>
+        /// <param name="errorMessage">Raw provider error text for operator notification</param>
+        Task DisableKeyAsync(
+            int keyId,
+            string reason,
+            ProviderErrorType errorType = ProviderErrorType.Unknown,
+            bool isAutomatic = false,
+            string? errorMessage = null);
         
         /// <summary>
         /// Get recent errors for monitoring
