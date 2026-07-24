@@ -138,6 +138,59 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
+        public async Task GetClientAsync_WithMultipleEnabledKeys_WrapsClientsForKeyFailover()
+        {
+            var mapping = new ModelProviderMapping
+            {
+                Id = 1,
+                ModelAlias = "test-model",
+                ProviderId = 1,
+                ProviderModelId = "gpt-4"
+            };
+            var provider = new Provider
+            {
+                Id = 1,
+                ProviderName = "TestProvider",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+            _mockMappingService.Setup(service => service.GetMappingByModelAliasAsync("test-model"))
+                .ReturnsAsync(mapping);
+            _mockCredentialService.Setup(service => service.GetProviderByIdAsync(1))
+                .ReturnsAsync(provider);
+            _mockCredentialService.Setup(service => service.GetKeyCredentialsByProviderIdAsync(1))
+                .ReturnsAsync(new List<ProviderKeyCredential>
+                {
+                    new()
+                    {
+                        Id = 10,
+                        ProviderId = 1,
+                        ApiKey = "fallback",
+                        IsEnabled = true
+                    },
+                    new()
+                    {
+                        Id = 20,
+                        ProviderId = 1,
+                        ApiKey = "primary",
+                        IsEnabled = true,
+                        IsPrimary = true
+                    },
+                    new()
+                    {
+                        Id = 30,
+                        ProviderId = 1,
+                        ApiKey = "disabled",
+                        IsEnabled = false
+                    }
+                });
+
+            var client = await _factory.GetClientAsync("test-model");
+
+            Assert.IsType<ProviderKeyFailoverLLMClient>(client);
+        }
+
+        [Fact]
         public async Task GetClientByProviderIdAsync_WithNonExistentProvider_ThrowsInvalidRequestException()
         {
             // Arrange
