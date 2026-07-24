@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestInfrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -316,6 +317,64 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockStorageService.Verify(
                 x => x.DeleteAsync(It.IsAny<string>()),
                 Times.Never);
+        }
+
+        [Fact]
+        public async Task RunScheduledCleanupAsync_TwoInstances_OnlyLeaderDeletes()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableOrphanCleanup = false;
+            options.EnableRetentionCleanup = false;
+            var lockService = new InMemoryDistributedLockService(
+                Mock.Of<ILogger<InMemoryDistributedLockService>>());
+            var deleteStarted = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowDelete = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
+
+            SeedTestGroup(1);
+            SeedVirtualKey(1, 1);
+            var expired = new MediaRecord
+            {
+                Id = Guid.NewGuid(),
+                VirtualKeyId = 1,
+                StorageKey = "leader-only-media",
+                MediaType = "image",
+                SizeBytes = 1024,
+                CreatedAt = DateTime.UtcNow.AddDays(-1),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(-1)
+            };
+            _context.MediaRecords.Add(expired);
+            await _context.SaveChangesAsync();
+            _mockStorageService
+                .Setup(storage => storage.DeleteAsync(expired.StorageKey))
+                .Returns(async () =>
+                {
+                    deleteStarted.TrySetResult();
+                    await allowDelete.Task;
+                    return true;
+                });
+
+            var first = new MediaCleanupService(
+                _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+                lockService,
+                Options.Create(options),
+                _mockLogger.Object);
+            var second = new MediaCleanupService(
+                _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+                lockService,
+                Options.Create(options),
+                _mockLogger.Object);
+
+            var firstRun = first.RunScheduledCleanupAsync(CancellationToken.None);
+            await deleteStarted.Task;
+            await second.RunScheduledCleanupAsync(CancellationToken.None);
+            allowDelete.TrySetResult();
+            await firstRun;
+
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(expired.StorageKey),
+                Times.Once);
         }
 
         [Fact]
