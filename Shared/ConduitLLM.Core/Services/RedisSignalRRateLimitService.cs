@@ -71,45 +71,74 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class RedisSignalRRateLimitService : ISignalRRateLimitService
     {
+        private const int MinuteWindowMs = 60_000;
+        private const int DayWindowMs = 86_400_000;
+
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisSignalRRateLimitService> _logger;
-        private readonly SlidingWindowRateLimiter _slidingWindow;
+        private readonly ISlidingWindowRateLimiter _slidingWindow;
 
         public RedisSignalRRateLimitService(
             IConnectionMultiplexer redis,
             ILogger<RedisSignalRRateLimitService> logger)
+            : this(redis, logger, new SlidingWindowRateLimiter(
+                redis ?? throw new ArgumentNullException(nameof(redis)),
+                logger ?? throw new ArgumentNullException(nameof(logger))))
+        {
+        }
+
+        /// <summary>
+        /// Test seam: lets unit tests drive the RPM/RPD matrix through a fake window.
+        /// </summary>
+        internal RedisSignalRRateLimitService(
+            IConnectionMultiplexer redis,
+            ILogger<RedisSignalRRateLimitService> logger,
+            ISlidingWindowRateLimiter slidingWindow)
         {
             _redis = redis ?? throw new ArgumentNullException(nameof(redis));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _slidingWindow = new SlidingWindowRateLimiter(redis, logger);
+            _slidingWindow = slidingWindow ?? throw new ArgumentNullException(nameof(slidingWindow));
         }
-        
+
+        /// <summary>
+        /// Checks a SignalR method invocation against both the per-minute and per-day windows.
+        /// </summary>
+        /// <remarks>
+        /// Quota semantics: RPM is evaluated first and a denial short-circuits, so a request
+        /// rejected by RPM does not consume daily quota. The reverse is not true — an RPD denial
+        /// happens after the RPM window has already recorded the invocation, so it costs one
+        /// minute-slot. This mirrors the HTTP path and is the same trade-off LiteLLM makes.
+        /// When both windows allow, the reported limit is the one with the fewest requests left.
+        /// </remarks>
         public async Task<SignalRRateLimitResult> CheckMethodInvocationAsync(
-            string virtualKeyHash, 
-            int? rpmLimit, 
+            string virtualKeyHash,
+            int? rpmLimit,
             int? rpdLimit)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
             {
                 return new SignalRRateLimitResult { IsAllowed = true };
             }
-            
+
             var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             // Get current connection count
             var connectionCount = await GetConnectionCountAsync(virtualKeyHash);
 
+            SlidingWindowResult? rpmResult = null;
+            SlidingWindowResult? rpdResult = null;
+
             // Check RPM limit first (more restrictive)
-            if (rpmLimit.HasValue && rpmLimit.Value > 0)
+            if (HasLimit(rpmLimit))
             {
                 var rpmKey = RedisKeys.SignalRRateLimit.Rpm(virtualKeyHash);
-                var rpmResult = await _slidingWindow.CheckAsync(rpmKey, now, 60000, rpmLimit.Value);
-                
+                rpmResult = await _slidingWindow.CheckAsync(rpmKey, now, MinuteWindowMs, rpmLimit!.Value);
+
                 if (!rpmResult.IsAllowed)
                 {
-                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPM limit: {Current}/{Limit}", 
+                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPM limit: {Current}/{Limit}",
                         virtualKeyHash, rpmResult.Current, rpmLimit.Value);
-                    
+
                     return new SignalRRateLimitResult
                     {
                         IsAllowed = false,
@@ -121,29 +150,20 @@ namespace ConduitLLM.Core.Services
                         ActiveConnections = connectionCount
                     };
                 }
-                
-                return new SignalRRateLimitResult
-                {
-                    IsAllowed = true,
-                    RequestsRemaining = Math.Max(0, rpmLimit.Value - rpmResult.Current),
-                    Limit = rpmLimit.Value,
-                    ResetsAt = DateTime.UtcNow.AddMinutes(1),
-                    LimitType = "RPM",
-                    ActiveConnections = connectionCount
-                };
             }
-            
-            // Check RPD limit
-            if (rpdLimit.HasValue && rpdLimit.Value > 0)
+
+            // Check RPD limit even when an RPM limit is configured — these are independent
+            // windows and a key under its per-minute ceiling can still be over its daily one.
+            if (HasLimit(rpdLimit))
             {
                 var rpdKey = RedisKeys.SignalRRateLimit.Rpd(virtualKeyHash);
-                var rpdResult = await _slidingWindow.CheckAsync(rpdKey, now, 86400000, rpdLimit.Value);
-                
+                rpdResult = await _slidingWindow.CheckAsync(rpdKey, now, DayWindowMs, rpdLimit!.Value);
+
                 if (!rpdResult.IsAllowed)
                 {
-                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPD limit: {Current}/{Limit}", 
+                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPD limit: {Current}/{Limit}",
                         virtualKeyHash, rpdResult.Current, rpdLimit.Value);
-                    
+
                     return new SignalRRateLimitResult
                     {
                         IsAllowed = false,
@@ -155,18 +175,38 @@ namespace ConduitLLM.Core.Services
                         ActiveConnections = connectionCount
                     };
                 }
-                
+            }
+
+            // Allowed by every configured window — report whichever has the least headroom.
+            var rpmRemaining = rpmResult is null ? int.MaxValue : Math.Max(0, rpmLimit!.Value - rpmResult.Current);
+            var rpdRemaining = rpdResult is null ? int.MaxValue : Math.Max(0, rpdLimit!.Value - rpdResult.Current);
+
+            if (rpmResult is not null && rpmRemaining <= rpdRemaining)
+            {
                 return new SignalRRateLimitResult
                 {
                     IsAllowed = true,
-                    RequestsRemaining = Math.Max(0, rpdLimit.Value - rpdResult.Current),
-                    Limit = rpdLimit.Value,
+                    RequestsRemaining = rpmRemaining,
+                    Limit = rpmLimit!.Value,
+                    ResetsAt = DateTime.UtcNow.AddMinutes(1),
+                    LimitType = "RPM",
+                    ActiveConnections = connectionCount
+                };
+            }
+
+            if (rpdResult is not null)
+            {
+                return new SignalRRateLimitResult
+                {
+                    IsAllowed = true,
+                    RequestsRemaining = rpdRemaining,
+                    Limit = rpdLimit!.Value,
                     ResetsAt = DateTime.UtcNow.Date.AddDays(1),
                     LimitType = "RPD",
                     ActiveConnections = connectionCount
                 };
             }
-            
+
             // No limits
             return new SignalRRateLimitResult
             {
@@ -174,6 +214,8 @@ namespace ConduitLLM.Core.Services
                 ActiveConnections = connectionCount
             };
         }
+
+        private static bool HasLimit(int? limit) => limit.HasValue && limit.Value > 0;
         
         public async Task<int> IncrementConnectionCountAsync(string virtualKeyHash)
         {

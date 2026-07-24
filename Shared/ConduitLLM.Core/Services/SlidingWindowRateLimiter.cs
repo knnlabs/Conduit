@@ -14,10 +14,20 @@ namespace ConduitLLM.Core.Services
     }
 
     /// <summary>
+    /// Atomic sliding-window rate limiter. Extracted as an interface so the services that
+    /// compose several windows (RPM + RPD, key + group) can be unit tested without Redis.
+    /// </summary>
+    public interface ISlidingWindowRateLimiter
+    {
+        /// <inheritdoc cref="SlidingWindowRateLimiter.CheckAsync"/>
+        Task<SlidingWindowResult> CheckAsync(string key, long nowMs, int windowMs, int limit);
+    }
+
+    /// <summary>
     /// Reusable sliding-window rate limiter backed by Redis sorted sets.
     /// Uses a Lua script for atomic check-and-increment to prevent race conditions.
     /// </summary>
-    public class SlidingWindowRateLimiter
+    public class SlidingWindowRateLimiter : ISlidingWindowRateLimiter
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger _logger;
