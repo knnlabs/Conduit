@@ -5150,6 +5150,17 @@ export interface components {
        * @description Percentage of monthly budget used (0-100).
        */
       monthlyBudgetUsedPercent?: number;
+      /** @description Active delete-budget counter backend (Redis or InMemory). */
+      budgetBackend?: string;
+      /** @description Whether the budget counter survives restarts and is shared across instances. */
+      isBudgetBackendPersistent?: boolean;
+      /** @description Configured behavior when the budget backend is unavailable. */
+      budgetFailureMode?: string;
+      /**
+       * Format: date-time
+       * @description Most recent budget backend failure observed by this process.
+       */
+      budgetLastFailureAtUtc?: null | string;
       /**
        * Format: int32
        * @description Interval between cleanup runs in minutes.

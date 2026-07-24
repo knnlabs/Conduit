@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
@@ -23,8 +24,8 @@ public sealed class AdminMediaServiceSoftDeleteTests : IAsyncDisposable
     private readonly SqliteTestDatabase _database = new();
     private readonly ConduitDbContext _context;
     private readonly Mock<IMediaRecordRepository> _repository = new();
-    private readonly Mock<IMediaStorageService> _storage = new();
     private readonly Mock<IDistributedLockService> _cleanupLock = new();
+    private readonly Mock<IMediaDeletionEngine> _deletionEngine = new();
 
     public AdminMediaServiceSoftDeleteTests()
     {
@@ -64,6 +65,13 @@ public sealed class AdminMediaServiceSoftDeleteTests : IAsyncDisposable
                 MediaCleanupLock.Duration,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Mock.Of<IDistributedLock>());
+        _deletionEngine
+            .Setup(engine => engine.ExecuteOperationAsync(
+                It.IsAny<MediaDeletionOperationContext>(),
+                It.IsAny<Func<Task<MediaDeletionEngineResult>>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns((MediaDeletionOperationContext _, Func<Task<MediaDeletionEngineResult>> action, CancellationToken _) =>
+                action());
     }
 
     [Fact]
@@ -81,7 +89,6 @@ public sealed class AdminMediaServiceSoftDeleteTests : IAsyncDisposable
         var result = await CreateService().DeleteMediaAsync(record.Id);
 
         result.Should().Be(new AdminMediaDeleteResult(true, Now.UtcDateTime));
-        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
         _repository.Verify(repository => repository.HardDeleteAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -115,6 +122,29 @@ public sealed class AdminMediaServiceSoftDeleteTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task DeleteMediaAsync_WithoutSoftDelete_UsesBudgetedDeletionEngine()
+    {
+        var record = CreateRecord();
+        _repository.Setup(repository => repository.GetByIdAsync(record.Id))
+            .ReturnsAsync(record);
+        _deletionEngine
+            .Setup(engine => engine.DeleteAsync(
+                It.IsAny<MediaDeletionRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaDeletionEngineResult(FilesDeleted: 1));
+
+        var result = await CreateService(enableSoftDelete: false).DeleteMediaAsync(record.Id);
+
+        result.Should().Be(new AdminMediaDeleteResult(false, null));
+        _deletionEngine.Verify(engine => engine.DeleteAsync(
+            It.Is<MediaDeletionRequest>(request =>
+                request.Operation.CleanupType == MediaCleanupTypes.Manual &&
+                request.Operation.Force &&
+                request.Purge),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task RestoreMediaAsync_WhenCleanupOwnsLock_ReturnsRetryableOutcome()
     {
         _cleanupLock.Setup(service => service.AcquireLockAsync(
@@ -131,15 +161,15 @@ public sealed class AdminMediaServiceSoftDeleteTests : IAsyncDisposable
             It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    private AdminMediaService CreateService() => new(
+    private AdminMediaService CreateService(bool enableSoftDelete = true) => new(
         _repository.Object,
         Mock.Of<IMediaLifecycleService>(),
-        _storage.Object,
         _context,
         _cleanupLock.Object,
+        _deletionEngine.Object,
         Options.Create(new MediaLifecycleOptions
         {
-            EnableSoftDelete = true,
+            EnableSoftDelete = enableSoftDelete,
             SoftDeleteGracePeriodDays = 7
         }),
         NullLogger<AdminMediaService>.Instance,

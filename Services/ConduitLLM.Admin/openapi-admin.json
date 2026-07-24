@@ -28783,6 +28783,26 @@
             "description": "Percentage of monthly budget used (0-100).",
             "format": "double"
           },
+          "budgetBackend": {
+            "type": "string",
+            "description": "Active delete-budget counter backend (Redis or InMemory)."
+          },
+          "isBudgetBackendPersistent": {
+            "type": "boolean",
+            "description": "Whether the budget counter survives restarts and is shared across instances."
+          },
+          "budgetFailureMode": {
+            "type": "string",
+            "description": "Configured behavior when the budget backend is unavailable."
+          },
+          "budgetLastFailureAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Most recent budget backend failure observed by this process.",
+            "format": "date-time"
+          },
           "scheduleIntervalMinutes": {
             "type": "integer",
             "description": "Interval between cleanup runs in minutes.",

@@ -43,16 +43,12 @@ public sealed class MediaDeletionEngineTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _budget
-            .Setup(budget => budget.WouldExceedBudgetAsync(
+            .Setup(budget => budget.ReserveAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-        _budget
-            .Setup(budget => budget.IncrementMonthlyDeleteCountAsync(
-                It.IsAny<int>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+            .ReturnsAsync((int requested, int _, CancellationToken _) =>
+                new MediaDeletionBudgetReservation(requested, requested, requested));
         _approvals
             .Setup(service => service.CreateOrRefreshPendingAsync(
                 It.IsAny<string>(),
@@ -102,7 +98,7 @@ public sealed class MediaDeletionEngineTests
         _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
         _repository.Verify(repository => repository.HardDeleteAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
-        _budget.Verify(budget => budget.WouldExceedBudgetAsync(
+        _budget.Verify(budget => budget.ReserveAsync(
             It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -133,24 +129,20 @@ public sealed class MediaDeletionEngineTests
             records[0].Id, It.IsAny<CancellationToken>()), Times.Once);
         _repository.Verify(repository => repository.HardDeleteAsync(
             records[1].Id, It.IsAny<CancellationToken>()), Times.Never);
-        _budget.Verify(budget => budget.IncrementMonthlyDeleteCountAsync(
-            1, It.IsAny<CancellationToken>()), Times.Once);
+        _budget.Verify(budget => budget.ReserveAsync(
+            2, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task DeleteAsync_WhenBudgetWouldBeExceeded_StopsBeforeDeletion()
     {
         _budget
-            .Setup(budget => budget.WouldExceedBudgetAsync(
+            .Setup(budget => budget.ReserveAsync(
                 It.IsAny<int>(),
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
-        _budget
-            .Setup(budget => budget.GetRemainingBudgetAsync(
-                It.IsAny<int>(),
-                It.IsAny<CancellationToken>()))
-            .ReturnsAsync(0);
+            .ReturnsAsync((int requested, int _, CancellationToken _) =>
+                new MediaDeletionBudgetReservation(requested, 0, 50));
         var engine = CreateEngine(new MediaLifecycleOptions
         {
             DryRunMode = false,
@@ -226,6 +218,83 @@ public sealed class MediaDeletionEngineTests
     }
 
     [Fact]
+    public async Task DeleteAsync_WhenBudgetHasPartialStride_DeletesGrantedPrefix()
+    {
+        _budget
+            .Setup(budget => budget.ReserveAsync(
+                2,
+                50,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new MediaDeletionBudgetReservation(2, 1, 50));
+        var records = CreateRecords(2);
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            DryRunMode = false,
+            EnableSoftDelete = false,
+            MonthlyDeleteBudget = 50,
+            MaxBatchSize = 10,
+            BudgetReservationStride = 10,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            records,
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Expiration, "scheduled", "test")));
+
+        result.BudgetExhausted.Should().BeTrue();
+        result.FilesDeleted.Should().Be(1);
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            records[0].Id, It.IsAny<CancellationToken>()), Times.Once);
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            records[1].Id, It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ReservesBeforeStorageInConfiguredCrashBoundedStrides()
+    {
+        var reservations = new List<int>();
+        var unconsumedReservations = 0;
+        _budget
+            .Setup(budget => budget.ReserveAsync(
+                It.IsAny<int>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((int requested, int _, CancellationToken _) =>
+            {
+                reservations.Add(requested);
+                unconsumedReservations += requested;
+                return new MediaDeletionBudgetReservation(requested, requested, requested);
+            });
+        _storage
+            .Setup(storage => storage.DeleteAsync(It.IsAny<string>()))
+            .ReturnsAsync(() =>
+            {
+                unconsumedReservations.Should().BeGreaterThan(0);
+                unconsumedReservations--;
+                return true;
+            });
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            DryRunMode = false,
+            EnableSoftDelete = false,
+            MaxBatchSize = 50,
+            BudgetReservationStride = 2,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            CreateRecords(5),
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Purge, "scheduled", "test"),
+            Purge: true));
+
+        result.FilesDeleted.Should().Be(5);
+        reservations.Should().Equal(2, 2, 1);
+        unconsumedReservations.Should().Be(0);
+    }
+
+    [Fact]
     public async Task DeleteAsync_ApprovedScope_ExecutesFreshLargerCandidateSet()
     {
         var cutoff = DateTime.UtcNow;
@@ -296,10 +365,8 @@ public sealed class MediaDeletionEngineTests
             It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
         _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
-        _budget.Verify(budget => budget.WouldExceedBudgetAsync(
+        _budget.Verify(budget => budget.ReserveAsync(
             It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
-        _budget.Verify(budget => budget.IncrementMonthlyDeleteCountAsync(
-            It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -348,8 +415,8 @@ public sealed class MediaDeletionEngineTests
             Times.Exactly(2));
         _repository.Verify(repository => repository.HardDeleteAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
-        _budget.Verify(budget => budget.IncrementMonthlyDeleteCountAsync(
-            2, It.IsAny<CancellationToken>()), Times.Once);
+        _budget.Verify(budget => budget.ReserveAsync(
+            2, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -373,6 +440,37 @@ public sealed class MediaDeletionEngineTests
         result.RecordsTombstoned.Should().Be(0);
         _repository.Verify(repository => repository.HardDeleteAsync(
             record[0].Id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(MediaCleanupTypes.Expiration, "scheduled", false)]
+    [InlineData(MediaCleanupTypes.Retention, "manual", false)]
+    [InlineData(MediaCleanupTypes.Reconciliation, "scheduled", false)]
+    [InlineData(MediaCleanupTypes.Purge, "scheduled", true)]
+    [InlineData(MediaCleanupTypes.VirtualKey, "system", true)]
+    public async Task DeleteAsync_EveryPermanentDeletionPath_ReservesBudget(
+        string cleanupType,
+        string triggeredBy,
+        bool purge)
+    {
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            EnableSoftDelete = false,
+            DryRunMode = false,
+            MaxBatchSize = 10,
+            BudgetReservationStride = 10,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        await engine.DeleteAsync(new MediaDeletionRequest(
+            CreateRecords(1),
+            new MediaDeletionOperationContext(cleanupType, triggeredBy, "test"),
+            Purge: purge));
+
+        _budget.Verify(budget => budget.ReserveAsync(
+            1,
+            It.IsAny<int>(),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

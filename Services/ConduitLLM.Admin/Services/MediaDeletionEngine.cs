@@ -209,32 +209,59 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         }
 
         var result = MediaDeletionEngineResult.Empty with { IsDryRun = isDryRun };
-        foreach (var batch in candidates.Chunk(_options.MaxBatchSize))
+        var reservationStride = Math.Max(
+            1,
+            Math.Min(_options.MaxBatchSize, _options.BudgetReservationStride));
+        var permanentBudgetExhausted = false;
+        foreach (var batch in candidates.Chunk(reservationStride))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var permanentDeleteCount = batch.Count(candidate =>
                 !ShouldTombstone(candidate, request));
-            if (!isDryRun &&
-                permanentDeleteCount > 0 &&
-                await _budgetService.WouldExceedBudgetAsync(
-                    permanentDeleteCount,
-                    _options.MonthlyDeleteBudget,
-                    cancellationToken))
+            var grantedPermanentDeletes = permanentDeleteCount;
+            if (!isDryRun && permanentDeleteCount > 0)
             {
-                var remaining = await _budgetService.GetRemainingBudgetAsync(
-                    _options.MonthlyDeleteBudget,
-                    cancellationToken);
-                _logger.LogWarning(
-                    "Monthly media-delete budget would be exceeded by batch {BatchSize}; {Remaining} deletes remain",
-                    permanentDeleteCount,
-                    remaining);
-                result = result with { BudgetExhausted = true };
-                break;
+                var reservation = permanentBudgetExhausted
+                    ? new MediaDeletionBudgetReservation(
+                        permanentDeleteCount,
+                        0,
+                        _options.MonthlyDeleteBudget)
+                    : await _budgetService.ReserveAsync(
+                        permanentDeleteCount,
+                        _options.MonthlyDeleteBudget,
+                        cancellationToken);
+                grantedPermanentDeletes = reservation.Granted;
+                if (reservation.StoreFailed)
+                {
+                    _logger.LogWarning(
+                        "Media delete budget store failed during {CleanupType}; applied {FailureMode}",
+                        request.Operation.CleanupType,
+                        reservation.FailureMode);
+                }
+
+                if (grantedPermanentDeletes < permanentDeleteCount)
+                {
+                    permanentBudgetExhausted = true;
+                    result = result with { BudgetExhausted = true };
+                    _logger.LogWarning(
+                        "Monthly media-delete budget granted {Granted} of {Requested} deletes for this stride",
+                        grantedPermanentDeletes,
+                        permanentDeleteCount);
+                }
+            }
+
+            var permittedBatch = SelectPermittedCandidates(
+                batch,
+                request,
+                grantedPermanentDeletes);
+            if (permittedBatch.Length == 0)
+            {
+                continue;
             }
 
             var batchResult = await ProcessBatchAsync(
-                batch,
+                permittedBatch,
                 request,
                 isDryRun,
                 cancellationToken);
@@ -255,6 +282,31 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         }
 
         return result;
+    }
+
+    private DeletionCandidate[] SelectPermittedCandidates(
+        DeletionCandidate[] candidates,
+        MediaDeletionRequest request,
+        int permanentDeleteAllowance)
+    {
+        var remainingPermanentDeletes = permanentDeleteAllowance;
+        return candidates
+            .Where(candidate =>
+            {
+                if (ShouldTombstone(candidate, request))
+                {
+                    return true;
+                }
+
+                if (remainingPermanentDeletes <= 0)
+                {
+                    return false;
+                }
+
+                remainingPermanentDeletes--;
+                return true;
+            })
+            .ToArray();
     }
 
     /// <inheritdoc />
@@ -376,16 +428,12 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
 
             if (filesDeleted > 0)
             {
-                var newTotal = await _budgetService.IncrementMonthlyDeleteCountAsync(
-                    filesDeleted,
-                    cancellationToken);
                 _logger.LogInformation(
-                    "{CleanupType} cleanup triggered by {TriggeredBy} deleted {Count} files for group {GroupId}; monthly count is {MonthlyCount}",
+                    "{CleanupType} cleanup triggered by {TriggeredBy} deleted {Count} files for group {GroupId}",
                     request.Operation.CleanupType,
                     request.Operation.TriggeredBy,
                     filesDeleted,
-                    request.GroupId,
-                    newTotal);
+                    request.GroupId);
             }
 
             if (failures > 0)

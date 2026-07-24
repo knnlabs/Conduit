@@ -93,6 +93,26 @@ namespace ConduitLLM.Admin.DTOs
         public double MonthlyBudgetUsedPercent { get; set; }
 
         /// <summary>
+        /// Active delete-budget counter backend (Redis or InMemory).
+        /// </summary>
+        public string BudgetBackend { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Whether the budget counter survives restarts and is shared across instances.
+        /// </summary>
+        public bool IsBudgetBackendPersistent { get; set; }
+
+        /// <summary>
+        /// Configured behavior when the budget backend is unavailable.
+        /// </summary>
+        public string BudgetFailureMode { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Most recent budget backend failure observed by this process.
+        /// </summary>
+        public DateTime? BudgetLastFailureAtUtc { get; set; }
+
+        /// <summary>
         /// Interval between cleanup runs in minutes.
         /// </summary>
         public int ScheduleIntervalMinutes { get; set; }
@@ -206,6 +226,7 @@ namespace ConduitLLM.Admin.DTOs
         public const string Reconciliation = "reconciliation";
         public const string Retention = "retention";
         public const string VirtualKey = "virtual-key";
+        public const string Manual = "manual";
 
         public static readonly IReadOnlyList<string> All =
             new[] { Purge, Expiration, Reconciliation, Retention };

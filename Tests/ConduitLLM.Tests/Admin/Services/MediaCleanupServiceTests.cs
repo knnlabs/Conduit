@@ -69,17 +69,12 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Default budget service setup - within budget
             _mockBudgetService
-                .Setup(x => x.WouldExceedBudgetAsync(
+                .Setup(x => x.ReserveAsync(
                     It.IsAny<int>(),
                     It.IsAny<int>(),
                     It.IsAny<CancellationToken>()))
-                .ReturnsAsync(false);
-
-            _mockBudgetService
-                .Setup(x => x.IncrementMonthlyDeleteCountAsync(
-                    It.IsAny<int>(),
-                    It.IsAny<CancellationToken>()))
-                .ReturnsAsync(100);
+                .ReturnsAsync((int requested, int _, CancellationToken _) =>
+                    new MediaDeletionBudgetReservation(requested, requested, requested));
 
             // Default storage service setup - successful deletes
             _mockStorageService
@@ -442,7 +437,8 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockStorageService.Verify(x => x.DeleteAsync("expired-media"), Times.Once);
             _mockMediaRepository.Verify(x => x.HardDeleteAsync(
                 expired.Id, It.IsAny<CancellationToken>()), Times.Once);
-            _mockBudgetService.Verify(x => x.IncrementMonthlyDeleteCountAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+            _mockBudgetService.Verify(x => x.ReserveAsync(
+                1, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
             VerifyOperationStatus(MediaCleanupTypes.Expiration, "Completed");
         }
 
@@ -494,8 +490,9 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockMediaRepository.Verify(repository => repository.HardDeleteAsync(
                 expiredTombstone.Id,
                 It.IsAny<CancellationToken>()), Times.Once);
-            _mockBudgetService.Verify(service => service.IncrementMonthlyDeleteCountAsync(
+            _mockBudgetService.Verify(service => service.ReserveAsync(
                 1,
+                It.IsAny<int>(),
                 It.IsAny<CancellationToken>()), Times.Once);
             VerifyOperationStatus(MediaCleanupTypes.Purge, "Completed");
         }
@@ -577,11 +574,14 @@ namespace ConduitLLM.Tests.Admin.Services
             await _context.SaveChangesAsync();
 
             _mockBudgetService
-                .Setup(x => x.WouldExceedBudgetAsync(1, options.MonthlyDeleteBudget, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(true);
-            _mockBudgetService
-                .Setup(x => x.GetRemainingBudgetAsync(options.MonthlyDeleteBudget, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(0);
+                .Setup(x => x.ReserveAsync(
+                    1,
+                    options.MonthlyDeleteBudget,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaDeletionBudgetReservation(
+                    1,
+                    0,
+                    options.MonthlyDeleteBudget));
             _mockBudgetService
                 .Setup(x => x.GetMonthlyDeleteCountAsync(It.IsAny<CancellationToken>()))
                 .ReturnsAsync(options.MonthlyDeleteBudget);

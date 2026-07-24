@@ -38,6 +38,8 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         budgetService
             .Setup(service => service.GetRemainingBudgetAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(88);
+        budgetService.SetupGet(service => service.BackendName).Returns("InMemory");
+        budgetService.SetupGet(service => service.IsPersistent).Returns(false);
 
         var settingRepository = new Mock<IGlobalSettingRepository>();
         settingRepository
@@ -122,6 +124,9 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         status.UntrackedBytes.Should().Be(8192);
         status.PendingApprovalCount.Should().Be(1);
         status.PendingApprovals.Single().CandidateCount.Should().Be(125);
+        status.BudgetBackend.Should().Be("InMemory");
+        status.IsBudgetBackendPersistent.Should().BeFalse();
+        status.BudgetFailureMode.Should().Be("FailClosed");
     }
 
     public void Dispose()

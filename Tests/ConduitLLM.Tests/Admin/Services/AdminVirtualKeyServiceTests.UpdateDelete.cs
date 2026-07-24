@@ -1,8 +1,10 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 using Moq;
 
@@ -129,8 +131,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockVirtualKeyRepository.Setup(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _mockMediaLifecycleService.Setup(x => x.GetMediaByVirtualKeyAsync(1))
-                .ReturnsAsync(CreateMediaRecords(1, 5));
+            await SeedMediaRecordsAsync(1, 5);
             _mockMediaDeletionEngine
                 .Setup(x => x.DeleteAsync(
                     It.IsAny<MediaDeletionRequest>(),
@@ -143,7 +144,11 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.True(result);
             _mockVirtualKeyRepository.Verify(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
-            _mockMediaLifecycleService.Verify(x => x.GetMediaByVirtualKeyAsync(1), Times.Once);
+            _mockMediaDeletionEngine.Verify(x => x.DeleteAsync(
+                It.Is<MediaDeletionRequest>(request =>
+                    request.Operation.CleanupType == MediaCleanupTypes.VirtualKey &&
+                    request.MediaRecords.Count == 5),
+                It.IsAny<CancellationToken>()), Times.Once);
             _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyDeleted>(),
                 It.IsAny<CancellationToken>()), Times.Once);
@@ -166,7 +171,11 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockVirtualKeyRepository.Setup(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _mockMediaLifecycleService.Setup(x => x.GetMediaByVirtualKeyAsync(1))
+            await SeedMediaRecordsAsync(1, 1);
+            _mockMediaDeletionEngine
+                .Setup(x => x.DeleteAsync(
+                    It.IsAny<MediaDeletionRequest>(),
+                    It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Media service error"));
 
             await Assert.ThrowsAsync<Exception>(() => _service.DeleteVirtualKeyAsync(1));
@@ -187,8 +196,7 @@ namespace ConduitLLM.Tests.Admin.Services
             };
             _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(existingKey);
-            _mockMediaLifecycleService.Setup(x => x.GetMediaByVirtualKeyAsync(1))
-                .ReturnsAsync(CreateMediaRecords(1, 3));
+            await SeedMediaRecordsAsync(1, 3);
             _mockMediaDeletionEngine
                 .Setup(x => x.DeleteAsync(
                     It.IsAny<MediaDeletionRequest>(),
@@ -214,6 +222,35 @@ namespace ConduitLLM.Tests.Admin.Services
                     MediaType = "image"
                 })
                 .ToList();
+
+        private async Task SeedMediaRecordsAsync(int virtualKeyId, int count)
+        {
+            await using var context = _database.CreateContext();
+            if (!await context.VirtualKeyGroups.AnyAsync(group => group.Id == 1))
+            {
+                context.VirtualKeyGroups.Add(new VirtualKeyGroup
+                {
+                    Id = 1,
+                    GroupName = "media-cleanup-tests",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            if (!await context.VirtualKeys.AnyAsync(key => key.Id == virtualKeyId))
+            {
+                context.VirtualKeys.Add(new VirtualKey
+                {
+                    Id = virtualKeyId,
+                    KeyName = "media-cleanup-key",
+                    KeyHash = $"media-cleanup-{virtualKeyId}",
+                    VirtualKeyGroupId = 1,
+                    IsEnabled = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            context.MediaRecords.AddRange(CreateMediaRecords(virtualKeyId, count));
+            await context.SaveChangesAsync();
+        }
 
         #endregion
     }

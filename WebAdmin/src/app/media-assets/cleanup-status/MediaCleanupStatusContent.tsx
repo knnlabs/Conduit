@@ -399,7 +399,17 @@ export default function MediaCleanupStatusContent() {
 
       {/* Budget Overview */}
       <Card withBorder shadow="sm">
-        <Title order={4} mb="md">Monthly Budget</Title>
+        <Group justify="space-between" mb="md">
+          <Title order={4}>Monthly Budget</Title>
+          <Group gap="xs">
+            <Badge color={status.isBudgetBackendPersistent ? 'blue' : 'yellow'} variant="light">
+              {status.budgetBackend}
+            </Badge>
+            <Badge color={status.budgetFailureMode === 'FailClosed' ? 'green' : 'orange'} variant="light">
+              {status.budgetFailureMode}
+            </Badge>
+          </Group>
+        </Group>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <Paper p="md" withBorder>
             <Group gap="xs" mb="xs">
@@ -438,6 +448,16 @@ export default function MediaCleanupStatusContent() {
           </Group>
           <Progress value={budgetPercent} color={budgetColor} size="lg" />
         </Stack>
+        {!status.isBudgetBackendPersistent && (
+          <Alert color="yellow" mt="md" icon={<IconAlertCircle size={16} />}>
+            Budget usage is process-local and resets when this Admin instance restarts.
+          </Alert>
+        )}
+        {status.budgetLastFailureAtUtc && (
+          <Alert color="red" mt="md" icon={<IconAlertCircle size={16} />}>
+            Last budget backend failure: {formatDate(status.budgetLastFailureAtUtc)}
+          </Alert>
+        )}
       </Card>
 
       {/* Reconciliation drift */}

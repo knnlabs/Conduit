@@ -111,6 +111,18 @@ namespace ConduitLLM.Configuration.Options
         public int MonthlyDeleteBudget { get; set; } = 500_000;
 
         /// <summary>
+        /// Maximum number of permanent deletes reserved before each storage sub-chunk.
+        /// Smaller values reduce the accounting exposure if a process crashes after reservation.
+        /// </summary>
+        public int BudgetReservationStride { get; set; } = 10;
+
+        /// <summary>
+        /// Behavior when the shared budget store cannot be read or updated.
+        /// </summary>
+        public MediaBudgetFailureMode BudgetFailureMode { get; set; } =
+            MediaBudgetFailureMode.FailClosed;
+
+        /// <summary>
         /// Enable detailed audit logging for all media deletions.
         /// </summary>
         public bool EnableAuditLogging { get; set; } = true;
@@ -124,5 +136,11 @@ namespace ConduitLLM.Configuration.Options
         /// Timeout for R2 operations in seconds.
         /// </summary>
         public int R2OperationTimeoutSeconds { get; set; } = 30;
+    }
+
+    public enum MediaBudgetFailureMode
+    {
+        FailClosed,
+        FailOpen
     }
 }

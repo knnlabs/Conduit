@@ -351,6 +351,24 @@ namespace ConduitLLM.Tests.Core.Services
             await _db.KeyDeleteAsync(monthKey);
         }
 
+        [Fact]
+        public async Task MultipleInstances_ReserveAtomicallyWithoutExceedingBudget()
+        {
+            SkipIfRedisNotAvailable();
+            var monthKey = GetCurrentMonthKey();
+            await _db!.KeyDeleteAsync(monthKey);
+            var service1 = new RedisMediaDeletionBudgetService(_redis!, _mockLogger.Object);
+            var service2 = new RedisMediaDeletionBudgetService(_redis!, _mockLogger.Object);
+
+            var reservations = await Task.WhenAll(
+                service1.ReserveAsync(8, 10),
+                service2.ReserveAsync(8, 10));
+
+            reservations.Sum(item => item.Granted).Should().Be(10);
+            (await service1.GetMonthlyDeleteCountAsync()).Should().Be(10);
+            await _db.KeyDeleteAsync(monthKey);
+        }
+
         #endregion
 
         #region Interface Compliance Tests

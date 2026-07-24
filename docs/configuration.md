@@ -74,6 +74,13 @@ Set `MediaLifecycle__Enabled=true` to start the scheduler and configure its poll
 set it to `false` only after reviewing the status endpoint and logs. All phases share
 `MediaLifecycle__MonthlyDeleteBudget`, batch-size, rate-limit, and dry-run safeguards.
 
+Permanent storage deletes reserve monthly budget before each sub-chunk. Configure the maximum
+reservation with `MediaLifecycle__BudgetReservationStride` (10 by default). A Redis failure uses
+`MediaLifecycle__BudgetFailureMode=FailClosed` by default; `FailOpen` is available when continuing
+cleanup is more important than enforcing the provider allowance. Failures increment
+`conduit_admin_media_cleanup_budget_store_failures_total`. The status page identifies Redis versus
+the development-only in-memory counter; the latter resets on restart and is not shared.
+
 Set `MediaLifecycle__RequireManualApprovalForLargeBatches=true` to pause scheduled scopes above
 `MediaLifecycle__LargeBatchThreshold`. The Admin cleanup status page and
 `/v1/admin/media-cleanup-jobs/approvals` expose the durable request with its candidate count,

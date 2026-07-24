@@ -37,12 +37,10 @@ public sealed class MediaReconciliationServiceTests : IDisposable
             .ReturnsAsync(true);
         _repository.Setup(repository => repository.DeleteAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
-        _budget.Setup(service => service.WouldExceedBudgetAsync(
+        _budget.Setup(service => service.ReserveAsync(
                 It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-        _budget.Setup(service => service.IncrementMonthlyDeleteCountAsync(
-                It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
+            .ReturnsAsync((int requested, int _, CancellationToken _) =>
+                new MediaDeletionBudgetReservation(requested, requested, requested));
         _guard.Setup(guard => guard.ValidateAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
     }

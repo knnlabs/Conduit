@@ -112,9 +112,9 @@ public static class ServiceCollectionExtensions
         {
             var mediaRepository = serviceProvider.GetRequiredService<IMediaRecordRepository>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>();
-            var storageService = serviceProvider.GetRequiredService<IMediaStorageService>();
             var configurationContext = serviceProvider.GetRequiredService<IConfigurationDbContext>();
             var cleanupLockService = serviceProvider.GetRequiredService<IDistributedLockService>();
+            var deletionEngine = serviceProvider.GetRequiredService<IMediaDeletionEngine>();
             var options = serviceProvider.GetRequiredService<
                 Microsoft.Extensions.Options.IOptions<MediaLifecycleOptions>>();
             var logger = serviceProvider.GetRequiredService<ILogger<AdminMediaService>>();
@@ -128,9 +128,9 @@ public static class ServiceCollectionExtensions
             return new AdminMediaService(
                 mediaRepository,
                 mediaLifecycleService,
-                storageService,
                 configurationContext,
                 cleanupLockService,
+                deletionEngine,
                 options,
                 logger);
         });

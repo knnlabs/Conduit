@@ -121,6 +121,10 @@ export interface MediaCleanupStatus {
   monthlyDeleteBudget: number;
   monthlyDeleteBudgetRemaining: number;
   monthlyBudgetUsedPercent: number;
+  budgetBackend: string;
+  isBudgetBackendPersistent: boolean;
+  budgetFailureMode: string;
+  budgetLastFailureAtUtc: string | null;
   scheduleIntervalMinutes: number;
   maxBatchSize: number;
   defaultRetentionPolicy: RetentionPolicySummary | null;

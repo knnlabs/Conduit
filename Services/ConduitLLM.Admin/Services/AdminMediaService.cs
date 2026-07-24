@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
@@ -15,9 +16,9 @@ namespace ConduitLLM.Admin.Services
     {
         private readonly IMediaRecordRepository _mediaRepository;
         private readonly IMediaLifecycleService _mediaLifecycleService;
-        private readonly IMediaStorageService _storageService;
         private readonly IConfigurationDbContext _configurationContext;
         private readonly IDistributedLockService _cleanupLockService;
+        private readonly IMediaDeletionEngine _deletionEngine;
         private readonly MediaLifecycleOptions _options;
         private readonly TimeProvider _timeProvider;
         private readonly ILogger<AdminMediaService> _logger;
@@ -27,29 +28,30 @@ namespace ConduitLLM.Admin.Services
         /// </summary>
         /// <param name="mediaRepository">The media record repository.</param>
         /// <param name="mediaLifecycleService">The media lifecycle service.</param>
-        /// <param name="storageService">The media storage service for S3/R2 operations.</param>
         /// <param name="configurationContext">Configuration data used to resolve retention policies.</param>
         /// <param name="cleanupLockService">Shared lock that serializes restore with permanent purge.</param>
+        /// <param name="deletionEngine">Shared guarded engine for permanent storage deletion.</param>
         /// <param name="options">Media lifecycle options.</param>
         /// <param name="logger">The logger instance.</param>
         /// <param name="timeProvider">Clock used to enforce the recovery window.</param>
         public AdminMediaService(
             IMediaRecordRepository mediaRepository,
             IMediaLifecycleService mediaLifecycleService,
-            IMediaStorageService storageService,
             IConfigurationDbContext configurationContext,
             IDistributedLockService cleanupLockService,
+            IMediaDeletionEngine deletionEngine,
             IOptions<MediaLifecycleOptions> options,
             ILogger<AdminMediaService> logger,
             TimeProvider? timeProvider = null)
         {
             _mediaRepository = mediaRepository ?? throw new ArgumentNullException(nameof(mediaRepository));
             _mediaLifecycleService = mediaLifecycleService ?? throw new ArgumentNullException(nameof(mediaLifecycleService));
-            _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
             _configurationContext = configurationContext ??
                 throw new ArgumentNullException(nameof(configurationContext));
             _cleanupLockService = cleanupLockService ??
                 throw new ArgumentNullException(nameof(cleanupLockService));
+            _deletionEngine = deletionEngine ??
+                throw new ArgumentNullException(nameof(deletionEngine));
             _options = options.Value;
             _timeProvider = timeProvider ?? TimeProvider.System;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -142,31 +144,39 @@ namespace ConduitLLM.Admin.Services
                     return new AdminMediaDeleteResult(true, deletedAt);
                 }
 
-                // Delete from storage first — abort if this fails to prevent orphaned files
-                var storageDeleted = await _storageService.DeleteAsync(mediaRecord.StorageKey);
-                if (!storageDeleted)
+                await using var lockHandle = await _cleanupLockService.AcquireLockAsync(
+                    MediaCleanupLock.Key,
+                    MediaCleanupLock.Duration);
+                if (lockHandle == null)
                 {
-                    _logger.LogError(
-                        "Failed to delete media {StorageKey} from storage for record {MediaId}. " +
-                        "Database record will be preserved to prevent orphaned storage.",
-                        mediaRecord.StorageKey, mediaId);
                     throw new InvalidOperationException(
-                        $"Failed to delete media from storage (key: {mediaRecord.StorageKey}). " +
-                        "The database record was preserved to allow retry.");
+                        "Media deletion is blocked while another cleanup operation is active.");
                 }
 
-                // Storage succeeded — now delete from database
-                var result = await _mediaRepository.HardDeleteAsync(mediaId);
-
-                if (result)
+                var operation = new MediaDeletionOperationContext(
+                    MediaCleanupTypes.Manual,
+                    "manual",
+                    $"manual:{mediaId}",
+                    Force: true);
+                var result = await _deletionEngine.ExecuteOperationAsync(
+                    operation,
+                    () => _deletionEngine.DeleteAsync(
+                        new MediaDeletionRequest(
+                            new[] { mediaRecord },
+                            operation,
+                            Purge: true)));
+                if (result.BudgetExhausted || result.Failures > 0 || result.FilesDeleted != 1)
                 {
-                    _logger.LogInformation("Successfully deleted media record {MediaId} and storage {StorageKey}",
-                        mediaId, mediaRecord.StorageKey);
+                    throw new InvalidOperationException(
+                        $"Media deletion was not completed " +
+                        $"(budgetExhausted={result.BudgetExhausted}, failures={result.Failures}).");
                 }
 
-                return result
-                    ? new AdminMediaDeleteResult(false, null)
-                    : null;
+                _logger.LogInformation(
+                    "Successfully deleted media record {MediaId} and storage {StorageKey}",
+                    mediaId,
+                    mediaRecord.StorageKey);
+                return new AdminMediaDeleteResult(false, null);
             }
             catch (InvalidOperationException)
             {
