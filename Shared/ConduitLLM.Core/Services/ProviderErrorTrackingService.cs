@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
@@ -148,26 +149,55 @@ namespace ConduitLLM.Core.Services
 
                 var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
                     keyRepo.GetByProviderIdPaginatedAsync, key.ProviderId);
-                var wasPrimary = key.IsPrimary;
-                var fallbackKey = allKeys.FirstOrDefault(k => k.Id != keyId && k.IsEnabled);
-                var disabledAt = DateTime.UtcNow;
+                var propagateBalanceFailure =
+                    errorType == ProviderErrorType.InsufficientBalance &&
+                    key.ProviderAccountGroup > 0;
+                var affectedKeys = propagateBalanceFailure
+                    ? allKeys
+                        .Where(candidate =>
+                            candidate.IsEnabled &&
+                            candidate.ProviderAccountGroup == key.ProviderAccountGroup)
+                        .ToList()
+                    : new List<ProviderKeyCredential> { key };
+                if (affectedKeys.All(candidate => candidate.Id != keyId))
+                {
+                    affectedKeys.Add(key);
+                }
 
-                // A primary key cannot remain primary while disabled because of the database
-                // constraint. Demote it before persisting; an enabled sibling is promoted below.
-                key.IsPrimary = false;
-                key.IsEnabled = false;
-                await keyRepo.UpdateAsync(key);
+                var affectedKeyIds = affectedKeys.Select(candidate => candidate.Id).ToHashSet();
+                var wasPrimary = affectedKeys.Any(candidate => candidate.IsPrimary);
+                var fallbackKey = allKeys.FirstOrDefault(candidate =>
+                    candidate.IsEnabled && !affectedKeyIds.Contains(candidate.Id));
+                var disabledAt = DateTime.UtcNow;
+                var effectiveReason = propagateBalanceFailure
+                    ? $"Shared account group {key.ProviderAccountGroup} balance exhausted " +
+                      $"(triggered by key {keyId}): {reason}"
+                    : reason;
+
+                foreach (var affectedKey in affectedKeys)
+                {
+                    // A primary key cannot remain primary while disabled because of the
+                    // database constraint.
+                    affectedKey.IsPrimary = false;
+                    affectedKey.IsEnabled = false;
+                    await keyRepo.UpdateAsync(affectedKey);
+
+                    await _errorStore.MarkKeyDisabledAsync(
+                        affectedKey.Id, disabledAt, errorType);
+                    await _errorStore.AddDisabledKeyToProviderAsync(
+                        key.ProviderId, affectedKey.Id);
+                }
 
                 if (wasPrimary && fallbackKey != null)
                 {
                     await keyRepo.SetPrimaryKeyAsync(key.ProviderId, fallbackKey.Id);
                 }
 
-                _logger.LogWarning("Disabled key {KeyId} for provider {ProviderId}: {Reason}",
-                    keyId, key.ProviderId, reason);
-
-                await _errorStore.MarkKeyDisabledAsync(keyId, disabledAt, errorType);
-                await _errorStore.AddDisabledKeyToProviderAsync(key.ProviderId, keyId);
+                _logger.LogWarning(
+                    "Disabled provider keys {KeyIds} for provider {ProviderId}: {Reason}",
+                    string.Join(",", affectedKeyIds),
+                    key.ProviderId,
+                    effectiveReason);
 
                 // The provider itself is only disabled when this was its last enabled key.
                 if (fallbackKey == null)
@@ -194,11 +224,15 @@ namespace ConduitLLM.Core.Services
                     {
                         KeyId = keyId,
                         ProviderId = key.ProviderId,
-                        Reason = reason,
+                        Reason = effectiveReason,
                         ErrorType = errorType.ToString(),
                         ErrorMessage = errorMessage ?? reason,
                         DisabledAt = disabledAt,
-                        IsAutomatic = isAutomatic
+                        IsAutomatic = isAutomatic,
+                        AffectedKeyIds = affectedKeyIds.OrderBy(id => id).ToArray(),
+                        ProviderAccountGroup = propagateBalanceFailure
+                            ? key.ProviderAccountGroup
+                            : (short)0
                     });
                 }
             }

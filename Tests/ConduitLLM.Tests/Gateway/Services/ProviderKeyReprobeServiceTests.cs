@@ -121,6 +121,58 @@ public class ProviderKeyReprobeServiceTests
             It.IsAny<DateTime>()), Times.Never);
     }
 
+    [Fact]
+    public async Task RunOnceAsync_GroupSuccessRestoresBalanceDisabledSiblings()
+    {
+        _key.ProviderAccountGroup = 2;
+        var sibling = new ProviderKeyCredential
+        {
+            Id = 8,
+            ProviderId = 42,
+            ProviderAccountGroup = 2,
+            IsEnabled = false
+        };
+        var providerKeys = new List<ProviderKeyCredential> { _key, sibling };
+        var service = CreateService();
+        _errorStore
+            .Setup(x => x.GetDisabledKeyReprobeStatesAsync())
+            .ReturnsAsync(new List<DisabledKeyReprobeState>
+            {
+                new()
+                {
+                    KeyId = 7,
+                    ErrorType = ProviderErrorType.InsufficientBalance,
+                    DisabledAt = Now.UtcDateTime.AddHours(-2)
+                },
+                new()
+                {
+                    KeyId = 8,
+                    ErrorType = ProviderErrorType.InsufficientBalance,
+                    DisabledAt = Now.UtcDateTime.AddHours(-2)
+                }
+            });
+        _keyRepository.Setup(x => x.GetByProviderIdPaginatedAsync(
+                42, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((providerKeys, providerKeys.Count));
+        _client
+            .Setup(x => x.ListModelsAsync(
+                It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { "model" });
+
+        await service.RunOnceAsync();
+
+        _keyRepository.Verify(x => x.UpdateAsync(
+            It.Is<ProviderKeyCredential>(key => key.Id == 8 && key.IsEnabled),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _errorStore.Verify(x => x.ClearErrorsForKeyAsync(8, 42), Times.Once);
+        _eventBus.Verify(x => x.PublishAsync(
+            It.Is<ProviderKeyReenabledEvent>(message =>
+                message.ProviderAccountGroup == 2 &&
+                message.AffectedKeyIds.OrderBy(id => id)
+                    .SequenceEqual(new[] { 7, 8 })),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
     private ProviderKeyReprobeService CreateService()
     {
         _errorStore

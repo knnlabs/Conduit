@@ -1,6 +1,7 @@
 using System.Net;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Events;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Exceptions;
@@ -179,10 +180,26 @@ public sealed class ProviderKeyReprobeService : BackgroundService
             summary?.ProviderDisabledAt != null &&
             summary.ProviderDisableReason == ProviderErrorTrackingService.AllKeysDisabledReason;
 
-        if (!key.IsEnabled)
+        var keysToRecover = new List<ProviderKeyCredential> { key };
+        if (key.ProviderAccountGroup > 0)
         {
-            key.IsEnabled = true;
-            await keyRepository.UpdateAsync(key, cancellationToken);
+            var reprobeStates = await _errorStore.GetDisabledKeyReprobeStatesAsync();
+            var balanceDisabledIds = reprobeStates
+                .Where(state => state.ErrorType == ProviderErrorType.InsufficientBalance)
+                .Select(state => state.KeyId)
+                .ToHashSet();
+            var allProviderKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                keyRepository.GetByProviderIdPaginatedAsync, provider.Id);
+            keysToRecover.AddRange(allProviderKeys.Where(candidate =>
+                candidate.Id != key.Id &&
+                candidate.ProviderAccountGroup == key.ProviderAccountGroup &&
+                balanceDisabledIds.Contains(candidate.Id)));
+        }
+
+        foreach (var recoveryKey in keysToRecover.Where(candidate => !candidate.IsEnabled))
+        {
+            recoveryKey.IsEnabled = true;
+            await keyRepository.UpdateAsync(recoveryKey, cancellationToken);
         }
 
         if (providerWasAutoDisabled && !provider.IsEnabled)
@@ -192,7 +209,10 @@ public sealed class ProviderKeyReprobeService : BackgroundService
             await _errorStore.ClearProviderDisabledAsync(provider.Id);
         }
 
-        await _errorStore.ClearErrorsForKeyAsync(key.Id, provider.Id);
+        foreach (var recoveryKey in keysToRecover)
+        {
+            await _errorStore.ClearErrorsForKeyAsync(recoveryKey.Id, provider.Id);
+        }
 
         var eventBus = serviceProvider.GetService<IEventBus>();
         if (eventBus != null)
@@ -203,7 +223,11 @@ public sealed class ProviderKeyReprobeService : BackgroundService
                 ProviderId = provider.Id,
                 ReenabledBy = "auto-reprobe",
                 Reason = "Provider balance or quota recovered",
-                ReenabledAt = _timeProvider.GetUtcNow().UtcDateTime
+                ReenabledAt = _timeProvider.GetUtcNow().UtcDateTime,
+                AffectedKeyIds = keysToRecover.Select(candidate => candidate.Id).ToArray(),
+                ProviderAccountGroup = keysToRecover.Count > 1
+                    ? key.ProviderAccountGroup
+                    : (short)0
             }, cancellationToken);
         }
 

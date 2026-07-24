@@ -41,6 +41,16 @@ namespace ConduitLLM.Configuration.Events
         /// Whether this was an automatic disable
         /// </summary>
         public bool IsAutomatic { get; set; } = true;
+
+        /// <summary>
+        /// All key IDs affected by this operation. Contains KeyId for a single-key disable.
+        /// </summary>
+        public IReadOnlyList<int> AffectedKeyIds { get; set; } = Array.Empty<int>();
+
+        /// <summary>
+        /// Shared provider account group, or 0 for an ungrouped key.
+        /// </summary>
+        public short ProviderAccountGroup { get; set; }
     }
     
     /// <summary>
@@ -72,6 +82,16 @@ namespace ConduitLLM.Configuration.Events
         /// When the key was re-enabled
         /// </summary>
         public DateTime ReenabledAt { get; set; } = DateTime.UtcNow;
+
+        /// <summary>
+        /// All key IDs restored by this operation.
+        /// </summary>
+        public IReadOnlyList<int> AffectedKeyIds { get; set; } = Array.Empty<int>();
+
+        /// <summary>
+        /// Shared provider account group, or 0 for an ungrouped key.
+        /// </summary>
+        public short ProviderAccountGroup { get; set; }
     }
     
     /// <summary>

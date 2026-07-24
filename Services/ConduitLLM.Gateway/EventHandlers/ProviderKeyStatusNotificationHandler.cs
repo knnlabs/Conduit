@@ -47,8 +47,14 @@ public sealed class ProviderKeyStatusNotificationHandler :
         var providerError = ToSingleLine(
             string.IsNullOrWhiteSpace(@event.ErrorMessage) ? @event.Reason : @event.ErrorMessage,
             MaxProviderErrorLength);
+        var affectedKeyIds = @event.AffectedKeyIds.Count > 0
+            ? @event.AffectedKeyIds
+            : new[] { @event.KeyId };
+        var affectedDescription = @event.ProviderAccountGroup > 0
+            ? $"account group {@event.ProviderAccountGroup} keys [{string.Join(", ", affectedKeyIds)}]"
+            : $"key \"{keyName}\" (ID {@event.KeyId})";
         var message = Truncate(
-            $"Provider \"{providerName}\" key \"{keyName}\" (ID {@event.KeyId}) was {origin} disabled. " +
+            $"Provider \"{providerName}\" {affectedDescription} was {origin} disabled. " +
             $"Error type: {errorType}. Provider error: {providerError}",
             MaxNotificationLength);
 
@@ -69,8 +75,14 @@ public sealed class ProviderKeyStatusNotificationHandler :
         var (providerName, keyName, providerExists, keyExists) =
             await ResolveNamesAsync(@event.ProviderId, @event.KeyId);
         var reason = ToSingleLine(@event.Reason, MaxProviderErrorLength);
+        var affectedKeyIds = @event.AffectedKeyIds.Count > 0
+            ? @event.AffectedKeyIds
+            : new[] { @event.KeyId };
+        var affectedDescription = @event.ProviderAccountGroup > 0
+            ? $"account group {@event.ProviderAccountGroup} keys [{string.Join(", ", affectedKeyIds)}]"
+            : $"key \"{keyName}\" (ID {@event.KeyId})";
         var message = Truncate(
-            $"Provider \"{providerName}\" key \"{keyName}\" (ID {@event.KeyId}) was re-enabled " +
+            $"Provider \"{providerName}\" {affectedDescription} was re-enabled " +
             $"by {@event.ReenabledBy}. Reason: {reason}",
             MaxNotificationLength);
 
