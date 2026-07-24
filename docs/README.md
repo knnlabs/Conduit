@@ -16,12 +16,14 @@ These four cover the system end to end:
   session affinity, and the kill switch behave.
 - **[Monitoring](./monitoring.md)** — health checks, metrics, real-time streams, and alerting.
 
-Two deeper operational runbooks stand on their own and are linked from Monitoring:
+Deeper operational runbooks stand on their own and are linked from Monitoring:
 
 - **[Billing correctness alerting](./billing-alerting.md)** — the cost canary, alert rules, and
   incident response.
 - **[SSE production validation](./sse-production-validation.md)** — deploying streaming behind a
   proxy.
+- **[Provider key auto-disable](./operations/provider-key-auto-disable.md)** — investigating fatal
+  credential/account errors and restoring keys safely.
 
 **[Versioning](./Versioning.md)** documents the release and version scheme.
 

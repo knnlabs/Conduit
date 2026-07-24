@@ -16,7 +16,9 @@ namespace ConduitLLM.Gateway.EventHandlers
         IEventHandler<ProviderKeyCredentialCreated>,
         IEventHandler<ProviderKeyCredentialUpdated>,
         IEventHandler<ProviderKeyCredentialDeleted>,
-        IEventHandler<ProviderKeyCredentialPrimaryChanged>
+        IEventHandler<ProviderKeyCredentialPrimaryChanged>,
+        IEventHandler<ProviderKeyDisabledEvent>,
+        IEventHandler<ProviderKeyReenabledEvent>
     {
         private readonly IProviderCache _cache;
         private readonly ILogger<ProviderKeyCredentialCacheInvalidationHandler> _logger;
@@ -145,6 +147,44 @@ namespace ConduitLLM.Gateway.EventHandlers
                     "Failed to invalidate cache after changing primary key for provider {ProviderId}",
                     @event.ProviderId);
                 throw; // Re-throw to trigger the endpoint retry policy
+            }
+        }
+
+        /// <summary>
+        /// Handles automatic and manual key disables.
+        /// </summary>
+        public Task HandleAsync(ProviderKeyDisabledEvent @event, IEventContext context) =>
+            InvalidateKeyStatusAsync(@event.ProviderId, @event.KeyId, "disabled");
+
+        /// <summary>
+        /// Handles automatic and manual key re-enables.
+        /// </summary>
+        public Task HandleAsync(ProviderKeyReenabledEvent @event, IEventContext context) =>
+            InvalidateKeyStatusAsync(@event.ProviderId, @event.KeyId, "re-enabled");
+
+        private async Task InvalidateKeyStatusAsync(int providerId, int keyId, string status)
+        {
+            try
+            {
+                _logger.LogInformation(
+                    "Invalidating provider {ProviderId} cache because key {KeyId} was {Status}",
+                    providerId,
+                    keyId,
+                    status);
+
+                // The cache entry contains both provider enabled state and all key states,
+                // so this also covers provider-level changes when the last key is disabled.
+                await _cache.InvalidateProviderAsync(providerId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to invalidate provider {ProviderId} cache after key {KeyId} was {Status}",
+                    providerId,
+                    keyId,
+                    status);
+                throw;
             }
         }
     }

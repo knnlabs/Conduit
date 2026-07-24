@@ -23,6 +23,16 @@ namespace ConduitLLM.Configuration.DTOs
         public string? VirtualKeyName { get; set; }
 
         /// <summary>
+        /// ID of the related provider, if applicable.
+        /// </summary>
+        public int? ProviderId { get; set; }
+
+        /// <summary>
+        /// ID of the related provider key credential, if applicable.
+        /// </summary>
+        public int? ProviderKeyCredentialId { get; set; }
+
+        /// <summary>
         /// Type of the notification
         /// </summary>
         public NotificationType Type { get; set; }

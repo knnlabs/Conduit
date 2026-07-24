@@ -62,6 +62,10 @@ namespace ConduitLLM.Gateway.Extensions
             services.AddEventHandler<Configuration.Events.ProviderKeyCredentialUpdated, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
             services.AddEventHandler<Configuration.Events.ProviderKeyCredentialDeleted, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
             services.AddEventHandler<Configuration.Events.ProviderKeyCredentialPrimaryChanged, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
+            services.AddEventHandler<Configuration.Events.ProviderKeyDisabledEvent, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
+            services.AddEventHandler<Configuration.Events.ProviderKeyReenabledEvent, Gateway.EventHandlers.ProviderKeyCredentialCacheInvalidationHandler>();
+            services.AddEventHandler<Configuration.Events.ProviderKeyDisabledEvent, Gateway.EventHandlers.ProviderKeyStatusNotificationHandler>();
+            services.AddEventHandler<Configuration.Events.ProviderKeyReenabledEvent, Gateway.EventHandlers.ProviderKeyStatusNotificationHandler>();
 
             return services;
         }

@@ -5928,6 +5928,10 @@ export interface components {
       /** Format: int32 */
       virtualKeyId?: null | number;
       virtualKeyName?: null | string;
+      /** Format: int32 */
+      providerId?: null | number;
+      /** Format: int32 */
+      providerKeyCredentialId?: null | number;
       type?: components["schemas"]["NotificationType"];
       severity?: components["schemas"]["NotificationSeverity"];
       message?: string;
@@ -5938,7 +5942,12 @@ export interface components {
     /** @enum {unknown} */
     NotificationSeverity: "info" | "warning" | "error";
     /** @enum {unknown} */
-    NotificationType: "budgetWarning" | "expirationWarning" | "system";
+    NotificationType:
+      | "budgetWarning"
+      | "expirationWarning"
+      | "system"
+      | "providerKeyDisabled"
+      | "providerKeyReenabled";
     /** @description Information about a condition operator */
     OperatorInfo: {
       /** @description The operator identifier */

@@ -361,6 +361,9 @@ if (isMetricsData(event.data)) {
 - **ProviderKeyCredential Entity**: API keys with ProviderAccountGroup for account separation
 - **ModelProviderMapping**: Links model aliases to Provider.Id (NOT ProviderType!)
 - **ModelCost**: Flexible cost configs via ModelCostMapping
+- **Provider key resilience**: Fatal credential/account errors disable keys, not healthy sibling
+  capacity. See [ADR 0003](docs/decisions/0003-provider-key-auto-disable-policy.md) and the
+  [operator runbook](docs/operations/provider-key-auto-disable.md).
 
 > Provider types live in the `ProviderType` enum (`Shared/ConduitLLM.Configuration`) — read it for the current set.
 

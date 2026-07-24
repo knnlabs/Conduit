@@ -3,8 +3,10 @@ using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -212,32 +214,98 @@ namespace ConduitLLM.Admin.Endpoints
             // Look up the key to get its providerId for proper cleanup
             var key = await _keyRepo.GetByIdAsync(keyId);
             int? providerId = key?.ProviderId;
+            var keyErrorDetails = key != null
+                ? await _errorService.GetKeyErrorDetailsAsync(keyId)
+                : null;
+            var providerSummary = providerId.HasValue
+                ? await _errorService.GetProviderSummaryAsync(providerId.Value)
+                : null;
+            var providerWasAutoDisabled =
+                providerSummary?.ProviderDisabledAt != null &&
+                providerSummary.ProviderDisableReason == ProviderErrorTrackingService.AllKeysDisabledReason;
 
-            // Clear errors from Redis (including provider disabled keys cleanup)
-            await _errorService.ClearErrorsForKeyAsync(keyId, providerId);
-
-            // Re-enable the key if requested
-            if (request.ReenableKey && key != null && !key.IsEnabled)
+            var keysToRecover = new List<ConduitLLM.Configuration.Entities.ProviderKeyCredential>();
+            if (key != null)
             {
-                key.IsEnabled = true;
-                await _keyRepo.UpdateAsync(key);
+                keysToRecover.Add(key);
 
-                // Publish event for UI update
+                var recoverAccountGroup =
+                    request.ReenableKey &&
+                    key.ProviderAccountGroup > 0 &&
+                    keyErrorDetails?.FatalError?.ErrorType == ProviderErrorType.InsufficientBalance;
+                if (recoverAccountGroup)
+                {
+                    var allProviderKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                        _keyRepo.GetByProviderIdPaginatedAsync, key.ProviderId);
+                    foreach (var candidate in allProviderKeys.Where(candidate =>
+                                 candidate.Id != keyId &&
+                                 candidate.ProviderAccountGroup == key.ProviderAccountGroup))
+                    {
+                        var candidateErrors =
+                            await _errorService.GetKeyErrorDetailsAsync(candidate.Id);
+                        if (candidateErrors?.FatalError?.ErrorType ==
+                            ProviderErrorType.InsufficientBalance)
+                        {
+                            keysToRecover.Add(candidate);
+                        }
+                    }
+                }
+            }
+
+            // Clear error state for every key that will be restored together.
+            if (keysToRecover.Count > 0)
+            {
+                foreach (var recoveryKey in keysToRecover)
+                {
+                    await _errorService.ClearErrorsForKeyAsync(
+                        recoveryKey.Id, recoveryKey.ProviderId);
+                }
+            }
+            else
+            {
+                await _errorService.ClearErrorsForKeyAsync(keyId, providerId);
+            }
+
+            // Re-enable the key or its nonzero shared-account group if requested.
+            if (request.ReenableKey && key != null)
+            {
+                foreach (var recoveryKey in keysToRecover.Where(candidate => !candidate.IsEnabled))
+                {
+                    recoveryKey.IsEnabled = true;
+                    await _keyRepo.UpdateAsync(recoveryKey);
+                }
+
                 _eventPublisher.PublishFireAndForget(new ProviderKeyReenabledEvent
                 {
                     KeyId = keyId,
                     ProviderId = key.ProviderId,
                     ReenabledBy = _httpContextAccessor.HttpContext?.User.Identity?.Name ?? "Admin",
                     Reason = request.Reason ?? "Manual re-enable after error resolution",
-                    ReenabledAt = DateTime.UtcNow
+                    ReenabledAt = DateTime.UtcNow,
+                    AffectedKeyIds = keysToRecover.Select(candidate => candidate.Id).ToArray(),
+                    ProviderAccountGroup = keysToRecover.Count > 1
+                        ? key.ProviderAccountGroup
+                        : (short)0
                 }, "ClearKeyErrors");
 
                 LogAdminAudit("ClearedErrorsAndReenabled", "ProviderKeyCredential", keyId,
-                    $"ProviderId: {key.ProviderId}");
+                    $"ProviderId: {key.ProviderId}, KeyIds: {string.Join(",", keysToRecover.Select(candidate => candidate.Id))}");
             }
             else
             {
                 LogAdminAudit("ClearedErrors", "ProviderKeyCredential", keyId);
+            }
+
+            if (request.ReenableKey && providerWasAutoDisabled && providerId.HasValue)
+            {
+                var provider = await _providerRepo.GetByIdAsync(providerId.Value);
+                if (provider != null && !provider.IsEnabled)
+                {
+                    provider.IsEnabled = true;
+                    await _providerRepo.UpdateAsync(provider);
+                }
+
+                await _errorService.ClearProviderDisabledAsync(providerId.Value);
             }
 
             return Results.Ok(new ClearKeyErrorsResponseDto

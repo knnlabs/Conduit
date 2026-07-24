@@ -120,8 +120,8 @@ namespace ConduitLLM.Providers
             {
                 var provider = await _credentialService.GetProviderByIdAsync(route.Mapping.ProviderId);
                 if (provider is null || !provider.IsEnabled) continue;
-                var credential = await ValidateProviderAndGetCredentialAsync(provider);
-                routes.Add((route.Mapping, CreateClientForProvider(provider, credential,
+                var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+                routes.Add((route.Mapping, CreateClientForProvider(provider, credentials,
                     route.Mapping.ProviderModelId, route.Mapping.ProviderOptions)));
             }
             if (routes.Count == 0)
@@ -188,8 +188,8 @@ namespace ConduitLLM.Providers
                 throw new ServiceUnavailableException($"Provider for model '{modelName}' is not available.", "Provider");
             }
 
-            var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
-            return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId, mapping.ProviderOptions);
+            var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+            return CreateClientForProvider(provider, credentials, mapping.ProviderModelId, mapping.ProviderOptions);
         }
 
         /// <inheritdoc />
@@ -210,8 +210,8 @@ namespace ConduitLLM.Providers
                 throw new InvalidRequestException($"Provider with ID '{providerId}' not found.", "provider_not_found", "providerId");
             }
 
-            var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
-            return CreateClientForProvider(provider, primaryKey, providerModelId);
+            var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+            return CreateClientForProvider(provider, credentials, providerModelId);
         }
 
         /// <inheritdoc />
@@ -236,8 +236,8 @@ namespace ConduitLLM.Providers
                 throw new InvalidRequestException($"No provider configured for type '{providerType}'.", "provider_type_not_found", "providerType");
             }
 
-            var primaryKey = await ValidateProviderAndGetCredentialAsync(provider);
-            return CreateClientForProvider(provider, primaryKey, "default-model-id");
+            var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+            return CreateClientForProvider(provider, credentials, "default-model-id");
         }
 
         /// <inheritdoc />
@@ -263,13 +263,13 @@ namespace ConduitLLM.Providers
             // Use a minimal model ID for testing - providers should accept this for auth verification
             const string testModelId = "test-model";
 
-            return CreateClientForProvider(provider, keyCredential, testModelId);
+            return CreateSingleClientForProvider(provider, keyCredential, testModelId);
         }
 
         /// <summary>
         /// Validates that a provider is enabled, then retrieves its primary key credential.
         /// </summary>
-        private async Task<ProviderKeyCredential> ValidateProviderAndGetCredentialAsync(Provider provider)
+        private async Task<IReadOnlyList<ProviderKeyCredential>> ValidateProviderAndGetCredentialsAsync(Provider provider)
         {
             if (!provider.IsEnabled)
             {
@@ -278,26 +278,66 @@ namespace ConduitLLM.Providers
                     $"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
             }
 
-            return await GetPrimaryKeyCredentialAsync(provider);
+            return await GetEnabledKeyCredentialsAsync(provider);
         }
 
-        private async Task<ProviderKeyCredential> GetPrimaryKeyCredentialAsync(Provider provider)
+        private async Task<IReadOnlyList<ProviderKeyCredential>> GetEnabledKeyCredentialsAsync(Provider provider)
         {
             var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
 
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled)
-                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
+            var enabledKeys = keyCredentials
+                .Where(key => key.IsEnabled)
+                .OrderByDescending(key => key.IsPrimary)
+                .ThenBy(key => key.Id)
+                .ToArray();
 
-            if (primaryKey == null)
+            if (enabledKeys.Length == 0)
             {
                 _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
                 throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
             }
 
-            return primaryKey;
+            return enabledKeys;
         }
 
-        private ILLMClient CreateClientForProvider(Provider provider, ProviderKeyCredential keyCredential, string modelId, string? providerOptionsJson = null)
+        private ILLMClient CreateClientForProvider(
+            Provider provider,
+            IReadOnlyList<ProviderKeyCredential> keyCredentials,
+            string modelId,
+            string? providerOptionsJson = null)
+        {
+            var primaryClient = CreateSingleClientForProvider(
+                provider,
+                keyCredentials[0],
+                modelId,
+                providerOptionsJson);
+
+            if (keyCredentials.Count == 1)
+            {
+                return primaryClient;
+            }
+
+            var targets = keyCredentials
+                .Select((credential, index) => new ProviderKeyFailoverTarget(
+                    credential.Id,
+                    credential.ProviderAccountGroup,
+                    index == 0
+                        ? () => primaryClient
+                        : () => CreateSingleClientForProvider(
+                            provider,
+                            credential,
+                            modelId,
+                            providerOptionsJson)))
+                .ToArray();
+
+            return new ProviderKeyFailoverLLMClient(targets, _logger);
+        }
+
+        private ILLMClient CreateSingleClientForProvider(
+            Provider provider,
+            ProviderKeyCredential keyCredential,
+            string modelId,
+            string? providerOptionsJson = null)
         {
             var providerName = provider.ProviderType.ToString().ToLowerInvariant();
 

@@ -7,6 +7,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Endpoints;
+using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Providers.Extensions;
 using Microsoft.Extensions.Caching.Distributed;
@@ -72,6 +73,9 @@ public partial class Program
         // Provider error tracking service
         builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();
         builder.Services.AddSingleton<IProviderErrorTrackingService, ProviderErrorTrackingService>();
+        builder.Services.Configure<ProviderKeyReprobeOptions>(
+            builder.Configuration.GetSection(ProviderKeyReprobeOptions.SectionName));
+        builder.Services.AddHostedService<ProviderKeyReprobeService>();
 
         // Add performance metrics service
         builder.Services.AddSingleton<IPerformanceMetricsService, PerformanceMetricsService>();

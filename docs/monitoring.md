@@ -77,12 +77,15 @@ as the source of truth rather than a list here, which would drift.
 Conduit tracks provider trouble through **error tracking**, not an up/down health probe. Errors from
 each provider and key are counted and classified, and when a key (or provider) crosses a fatal
 threshold it is **automatically disabled** so routing stops sending traffic to it. Recovery is
-**manual** — a disabled key stays disabled until an operator re-enables it; there is no automatic
-half-open retry at the provider level. This error signal is what [routing](./routing.md#how-candidates-are-scored)
-reads when it scores mappings down for an unhealthy provider.
+manual for invalid credentials and permissions. Keys disabled for insufficient balance enter a
+delayed half-open reprobe with exponential backoff and can recover automatically. This error signal
+is what [routing](./routing.md#how-candidates-are-scored) reads when it scores mappings down for an
+unhealthy provider.
 
 You review and clear provider errors from the **Provider Errors** view in WebAdmin (backed by the
-Admin API). Note this is a poll/refresh view rather than a live stream.
+Admin API). Disable and recovery events also create durable admin notifications and best-effort
+live announcements. Thresholds, recovery procedures, Redis state, and reprobe troubleshooting are
+covered in **[Provider key auto-disable operations](./operations/provider-key-auto-disable.md)**.
 
 ## Alerting: billing correctness and security
 
@@ -116,4 +119,6 @@ settles. The ingress settings, a validation matrix, and a soak test are in
 
 - **[Configuration](./configuration.md)** — the health key, observability, and security settings.
 - **[Core concepts](./concepts.md)** — the request lifecycle these signals observe.
+- **[Provider key auto-disable operations](./operations/provider-key-auto-disable.md)** — fatal
+  credential/account errors, notifications, and recovery.
 - **[Billing correctness alerting](./billing-alerting.md)** · **[SSE production validation](./sse-production-validation.md)** — the two deep operational runbooks.

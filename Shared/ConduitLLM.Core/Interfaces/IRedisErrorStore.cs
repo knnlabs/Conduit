@@ -45,11 +45,54 @@ namespace ConduitLLM.Core.Interfaces
         Task<FatalErrorData?> GetFatalErrorDataAsync(int keyId);
 
         /// <summary>
+        /// Count distinct request IDs for an error type within a rolling window.
+        /// </summary>
+        Task<long> GetDistinctFatalRequestCountAsync(
+            int keyId,
+            ProviderErrorType errorType,
+            TimeSpan window);
+
+        /// <summary>
+        /// Acquire the short-lived single-writer guard for disabling a key.
+        /// </summary>
+        Task<bool> TryAcquireKeyDisableAsync(int keyId, TimeSpan ttl);
+
+        /// <summary>
         /// Mark a key as disabled in Redis
         /// </summary>
         /// <param name="keyId">The key credential ID</param>
         /// <param name="disabledAt">When the key was disabled</param>
-        Task MarkKeyDisabledAsync(int keyId, DateTime disabledAt);
+        /// <param name="errorType">Classified error responsible for the disable</param>
+        Task MarkKeyDisabledAsync(
+            int keyId,
+            DateTime disabledAt,
+            ProviderErrorType errorType);
+
+        /// <summary>
+        /// Get disabled-key state used by the balance reprobe worker.
+        /// </summary>
+        Task<IReadOnlyList<DisabledKeyReprobeState>> GetDisabledKeyReprobeStatesAsync();
+
+        /// <summary>
+        /// Acquire the distributed single-prober guard for a key.
+        /// </summary>
+        Task<bool> TryAcquireKeyReprobeAsync(int keyId, TimeSpan ttl);
+
+        /// <summary>
+        /// Record a failed reprobe and its next eligible time.
+        /// </summary>
+        Task RecordKeyReprobeAttemptAsync(
+            int keyId,
+            int attemptCount,
+            DateTime attemptedAt,
+            DateTime nextAttemptAt);
+
+        /// <summary>
+        /// Reclassify a reprobe as requiring manual credential repair.
+        /// </summary>
+        Task MarkKeyReprobeRequiresManualAsync(
+            int keyId,
+            ProviderErrorType errorType);
 
         /// <summary>
         /// Update provider disabled status
@@ -58,6 +101,12 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="disabledAt">When the provider was disabled</param>
         /// <param name="reason">The reason for disabling</param>
         Task MarkProviderDisabledAsync(int providerId, DateTime disabledAt, string reason);
+
+        /// <summary>
+        /// Clear the automatic provider-disabled marker after recovery.
+        /// </summary>
+        /// <param name="providerId">The provider ID</param>
+        Task ClearProviderDisabledAsync(int providerId);
 
         /// <summary>
         /// Add a key to the provider's disabled keys set
@@ -130,6 +179,19 @@ namespace ConduitLLM.Core.Interfaces
         public string? LastErrorMessage { get; set; }
         public int? LastStatusCode { get; set; }
         public DateTime? DisabledAt { get; set; }
+    }
+
+    /// <summary>
+    /// Redis-backed state for an automatically disabled key awaiting a balance reprobe.
+    /// </summary>
+    public class DisabledKeyReprobeState
+    {
+        public int KeyId { get; set; }
+        public ProviderErrorType ErrorType { get; set; }
+        public DateTime DisabledAt { get; set; }
+        public int AttemptCount { get; set; }
+        public DateTime? LastAttemptAt { get; set; }
+        public DateTime? NextAttemptAt { get; set; }
     }
 
     /// <summary>
