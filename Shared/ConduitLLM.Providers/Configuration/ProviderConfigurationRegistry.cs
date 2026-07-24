@@ -118,7 +118,8 @@ namespace ConduitLLM.Providers.Configuration
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
                 EmbeddingsEndpoint = "/embeddings",
-                SupportsModelsList = false,
+                // Model discovery is supported via the native /ai/models/search endpoint
+                // (see CloudflareClient.GetModelsAsync), not the OpenAI-style /models path.
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {

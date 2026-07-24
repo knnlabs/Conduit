@@ -140,26 +140,38 @@ namespace ConduitLLM.Providers.Cloudflare
         {
             // BaseUrl is like: https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1
             // We need:          https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/run/{MODEL_ID}
+            return $"{BuildAiBaseUrl()}/run/{modelId}";
+        }
+
+        /// <summary>
+        /// Derives the account-scoped <c>/ai</c> base URL from the configured OpenAI-compatible base URL.
+        /// Cloudflare's native (non-OpenAI) endpoints — image generation (<c>/run/{model}</c>) and model
+        /// discovery (<c>/models/search</c>) — live as siblings of the <c>/ai/v1</c> OpenAI-compatible path.
+        /// </summary>
+        /// <returns>The <c>.../ai</c> base URL, without a trailing slash.</returns>
+        private string BuildAiBaseUrl()
+        {
+            // BaseUrl is like: https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai/v1
+            // We need the /ai root: https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/ai
             var baseUrl = BaseUrl.TrimEnd('/');
 
             // Strip the /v1 suffix to get the /ai base
-            var aiBasePath = baseUrl;
-            if (aiBasePath.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+            if (baseUrl.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
             {
-                aiBasePath = aiBasePath[..^3];
-            }
-            else if (aiBasePath.EndsWith("/ai", StringComparison.OrdinalIgnoreCase))
-            {
-                // Already at /ai level
-            }
-            else
-            {
-                // Fallback: append /ai if the URL doesn't follow expected pattern
-                Logger.LogWarning("Cloudflare base URL '{BaseUrl}' doesn't match expected pattern. Appending /run directly.", baseUrl);
-                aiBasePath = baseUrl;
+                return baseUrl[..^3];
             }
 
-            return $"{aiBasePath}/run/{modelId}";
+            if (baseUrl.EndsWith("/ai", StringComparison.OrdinalIgnoreCase))
+            {
+                // Already at the /ai level
+                return baseUrl;
+            }
+
+            // Fallback: the URL doesn't follow the expected pattern; use it as-is as the /ai base.
+            Logger.LogWarning(
+                "Cloudflare base URL '{BaseUrl}' doesn't match the expected '/ai/v1' pattern; using it as the /ai base.",
+                baseUrl);
+            return baseUrl;
         }
 
         /// <summary>
