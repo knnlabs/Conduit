@@ -181,7 +181,31 @@ public class AuthenticationIntegrationTests : CriticalPathTestBase
         successfulRequests.Should().BeGreaterThanOrEqualTo(2, "At least first 2 requests should succeed");
         rateLimitedRequests.Should().BeGreaterThan(0, "Some requests should be rate limited");
 
-        _output.WriteLine($"Successful: {successfulRequests}, Rate limited: {rateLimitedRequests}");
+        // The test is named for Retry-After, so assert it rather than only the status codes.
+        var throttled = responses.First(r => r.StatusCode == 429);
+
+        var retryAfter = throttled.Header("Retry-After");
+        retryAfter.Should().NotBeNullOrEmpty("a 429 must tell the caller when to come back");
+        var retryAfterSeconds = int.Parse(retryAfter!);
+        retryAfterSeconds.Should().BeInRange(1, 60,
+            "the RPM window is 60 seconds, so the wait can never exceed it");
+
+        throttled.Header("X-RateLimit-Scope").Should().Be("RPM", "the caller needs to know which limit denied");
+        throttled.Header("X-RateLimit-Limit").Should().Be("2");
+        throttled.Header("X-RateLimit-Remaining").Should().Be("0");
+
+        // The advertised reset must be in the future and inside the rolling window — a calendar
+        // boundary or a stale value would send the caller back too early (#1206).
+        var reset = long.Parse(throttled.Header("X-RateLimit-Reset")!);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        reset.Should().BeInRange(now, now + 61);
+
+        // Allowed responses carry the same family so clients can pace before being throttled.
+        var allowed = responses.First(r => r.StatusCode == 200);
+        allowed.Header("X-RateLimit-Limit").Should().Be("2");
+        allowed.Header("X-RateLimit-Remaining").Should().NotBeNullOrEmpty();
+
+        _output.WriteLine($"Successful: {successfulRequests}, Rate limited: {rateLimitedRequests}, Retry-After: {retryAfterSeconds}s");
     }
 
     [Fact(DisplayName = "Rate Limit RPD - Exceeds limit returns 429")]

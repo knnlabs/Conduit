@@ -16,63 +16,37 @@ namespace ConduitLLM.Tests.Core.Services
     /// <summary>
     /// Integration tests for Redis-based distributed rate limiting
     /// Verifies that rate limits are properly enforced across multiple instances
-    /// NOTE: Requires Redis to be running. Tests will be skipped if Redis is not available.
     /// </summary>
+    /// <remarks>
+    /// These run against the Redis service container in CI, where TEST_REDIS_CONNECTION is set
+    /// and an unreachable server fails rather than skips — see <see cref="RedisTestServer"/>.
+    /// </remarks>
+    [Trait("Category", "Unit")]
+    [Trait("Component", "RedisRateLimitService")]
     public class RedisRateLimitServiceTests : IDisposable
     {
-        private readonly ConnectionMultiplexer _redis;
-        private readonly IDatabase _db;
-        private readonly Mock<ILogger<RedisVirtualKeyRateLimitService>> _mockLogger;
-        private readonly Mock<ILogger<RedisSignalRRateLimitService>> _mockSignalRLogger;
-        private readonly RedisVirtualKeyRateLimitService _rateLimitService;
-        private readonly RedisSignalRRateLimitService _signalRService;
-        private readonly string _testKeyPrefix = $"test:{Guid.NewGuid()}:";
+        private readonly Mock<ILogger<RedisVirtualKeyRateLimitService>> _mockLogger = new();
+        private readonly Mock<ILogger<RedisSignalRRateLimitService>> _mockSignalRLogger = new();
+        private readonly string _testKeyPrefix = RedisTestServer.NewKeyPrefix("rate-limit-service");
 
-        public RedisRateLimitServiceTests()
-        {
-            // Use TestContainers or local Redis for testing
-            var redisConnectionString = Environment.GetEnvironmentVariable("TEST_REDIS_CONNECTION") ?? "localhost:6379,allowAdmin=true";
-            
-            try
-            {
-                var options = ConfigurationOptions.Parse(redisConnectionString);
-                options.ConnectTimeout = 1000; // 1 second timeout for tests
-                options.SyncTimeout = 1000;
-                options.AbortOnConnectFail = false;
-                
-                _redis = ConnectionMultiplexer.Connect(options);
-                _db = _redis.GetDatabase();
-                
-                // Test connection
-                _db.Ping();
-            }
-            catch (Exception)
-            {
-                // If Redis is not available, mark for skipping
-                _redis = null;
-                _db = null;
-                return;
-            }
+        private IConnectionMultiplexer _redis;
+        private IDatabase _db;
+        private RedisVirtualKeyRateLimitService _rateLimitService;
+        private RedisSignalRRateLimitService _signalRService;
 
-            _mockLogger = new Mock<ILogger<RedisVirtualKeyRateLimitService>>();
-            _mockSignalRLogger = new Mock<ILogger<RedisSignalRRateLimitService>>();
-            
-            if (_redis != null && _redis.IsConnected)
-            {
-                _rateLimitService = new RedisVirtualKeyRateLimitService(_redis, _mockLogger.Object);
-                _signalRService = new RedisSignalRRateLimitService(_redis, _mockSignalRLogger.Object);
-            }
-        }
-
+        /// <summary>
+        /// Skips when Redis is genuinely absent, and fails when it was declared mandatory but
+        /// unreachable — a Redis-less CI run must not report these as passing.
+        /// </summary>
         private void SkipIfRedisNotAvailable()
         {
-            if (_redis == null || !_redis.IsConnected || _rateLimitService == null)
-            {
-                throw new SkipException("Redis is not available for testing. Set TEST_REDIS_CONNECTION environment variable or ensure Redis is running.");
-            }
+            _redis = RedisTestServer.Require();
+            _db = _redis.GetDatabase();
+            _rateLimitService ??= new RedisVirtualKeyRateLimitService(_redis, _mockLogger.Object);
+            _signalRService ??= new RedisSignalRRateLimitService(_redis, _mockSignalRLogger.Object);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task CheckRateLimitAsync_RPM_ShouldEnforceMinuteLimit()
         {
             SkipIfRedisNotAvailable();
@@ -99,7 +73,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(5, deniedRequests);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task CheckRateLimitAsync_RPD_ShouldEnforceDailyLimit()
         {
             SkipIfRedisNotAvailable();
@@ -126,7 +100,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(5, deniedRequests);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task CheckRateLimitAsync_MultipleInstances_ShouldShareRateLimitState()
         {
             SkipIfRedisNotAvailable();
@@ -192,7 +166,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(5, totalDenied);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task SignalRRateLimitService_ConnectionTracking_ShouldBeDistributed()
         {
             SkipIfRedisNotAvailable();
@@ -222,7 +196,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(2, afterDecrement);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task SignalRRateLimitService_MethodInvocation_ShouldEnforceRPMLimit()
         {
             SkipIfRedisNotAvailable();
@@ -250,7 +224,7 @@ namespace ConduitLLM.Tests.Core.Services
             });
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task SlidingWindow_ShouldExpireOldRequests()
         {
             SkipIfRedisNotAvailable();
@@ -281,7 +255,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.True(result4.IsAllowed);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task RateLimitUsage_ShouldReturnAccurateStatistics()
         {
             SkipIfRedisNotAvailable();
@@ -320,7 +294,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.True(usage.DayWindowStart <= DateTime.UtcNow);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task RemoveRateLimits_ShouldClearAllData()
         {
             SkipIfRedisNotAvailable();
@@ -345,37 +319,9 @@ namespace ConduitLLM.Tests.Core.Services
 
         public void Dispose()
         {
-            // Clean up test data
-            if (_redis?.IsConnected == true)
-            {
-                var server = _redis.GetServer(_redis.GetEndPoints().First());
-                var keys = server.Keys(pattern: $"{_testKeyPrefix}*");
-                foreach (var key in keys)
-                {
-                    _db.KeyDelete(key);
-                }
-                
-                _redis.Dispose();
-            }
+            // The multiplexer is shared across the suite, so clean up keys but leave it open.
+            RedisTestServer.CleanupAsync(_testKeyPrefix).GetAwaiter().GetResult();
+            GC.SuppressFinalize(this);
         }
-    }
-
-    /// <summary>
-    /// Helper class for conditional test skipping
-    /// </summary>
-    public static class Skip
-    {
-        public static void IfNot(bool condition, string reason)
-        {
-            if (!condition)
-            {
-                throw new SkipException(reason);
-            }
-        }
-    }
-
-    public class SkipException : Exception
-    {
-        public SkipException(string reason) : base(reason) { }
     }
 }

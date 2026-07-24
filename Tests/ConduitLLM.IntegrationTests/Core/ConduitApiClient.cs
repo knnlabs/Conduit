@@ -127,6 +127,8 @@ public class ConduitApiClient : IDisposable
             var responseContent = await response.Content.ReadAsStringAsync();
             _logger.LogDebug("Response ({StatusCode}): {Content}", response.StatusCode, responseContent);
             
+            var headers = CollectHeaders(response);
+
             if (response.IsSuccessStatusCode)
             {
                 if (string.IsNullOrWhiteSpace(responseContent))
@@ -135,16 +137,18 @@ public class ConduitApiClient : IDisposable
                     {
                         Success = true,
                         StatusCode = (int)response.StatusCode,
-                        Data = default
+                        Data = default,
+                        Headers = headers
                     };
                 }
-                
+
                 var data = JsonSerializer.Deserialize<T>(responseContent, _jsonOptions);
                 return new ApiResponse<T>
                 {
                     Success = true,
                     StatusCode = (int)response.StatusCode,
-                    Data = data
+                    Data = data,
+                    Headers = headers
                 };
             }
             else
@@ -156,7 +160,8 @@ public class ConduitApiClient : IDisposable
                     Success = false,
                     StatusCode = (int)response.StatusCode,
                     Error = string.IsNullOrWhiteSpace(responseContent) ? $"HTTP {response.StatusCode}" : responseContent,
-                    Data = default
+                    Data = default,
+                    Headers = headers
                 };
             }
         }
@@ -185,6 +190,23 @@ public class ConduitApiClient : IDisposable
     public void SetTimeout(TimeSpan timeout)
     {
         _httpClient.Timeout = timeout;
+    }
+
+    private static Dictionary<string, string> CollectHeaders(HttpResponseMessage response)
+    {
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var header in response.Headers)
+        {
+            headers[header.Key] = string.Join(",", header.Value);
+        }
+
+        foreach (var header in response.Content.Headers)
+        {
+            headers[header.Key] = string.Join(",", header.Value);
+        }
+
+        return headers;
     }
 
     /// <summary>
@@ -230,6 +252,14 @@ public class ApiResponse<T>
     public int StatusCode { get; set; }
     public T? Data { get; set; }
     public string? Error { get; set; }
+
+    /// <summary>
+    /// Response headers, so tests can assert on the parts of the contract that never appear in
+    /// the body — Retry-After and the X-RateLimit-* family in particular.
+    /// </summary>
+    public Dictionary<string, string> Headers { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public string? Header(string name) => Headers.TryGetValue(name, out var value) ? value : null;
 }
 
 // DTOs moved to ApiDtos.cs for better organization
