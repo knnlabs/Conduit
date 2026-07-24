@@ -28,8 +28,13 @@ public static class RedisKeys
         public static string VirtualKeyRpm(string hash) => $"rate:vk:{hash}:rpm";
         public static string VirtualKeyRpd(string hash) => $"rate:vk:{hash}:rpd";
         public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
-        public static string VirtualKeyRpmSeq(string hash) => $"rate:vk:{hash}:rpm:seq";
-        public static string VirtualKeyRpdSeq(string hash) => $"rate:vk:{hash}:rpd:seq";
+
+        /// <summary>
+        /// Companion key holding the total weight currently inside a sliding window, so reading
+        /// the window's usage is O(1). Written by the limiter's Lua script — this builder exists
+        /// for cleanup paths that need to delete a window wholesale.
+        /// </summary>
+        public static string WindowSum(string windowKey) => $"{windowKey}:sum";
     }
 
     /// <summary>

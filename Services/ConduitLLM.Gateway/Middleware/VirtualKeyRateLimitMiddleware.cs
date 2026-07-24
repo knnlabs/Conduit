@@ -117,16 +117,28 @@ namespace ConduitLLM.Gateway.Middleware
             // Headers are informational — set on both allow and deny so clients can pace themselves.
             context.Response.Headers["X-RateLimit-Limit"] = result.Limit.ToString();
             context.Response.Headers["X-RateLimit-Remaining"] = result.RequestsRemaining.ToString();
-            context.Response.Headers["X-RateLimit-Reset"] = ((DateTimeOffset)result.ResetsAt).ToUnixTimeSeconds().ToString();
+            context.Response.Headers["X-RateLimit-Reset"] = ResetUnixSeconds(result.ResetsAt).ToString();
             if (!string.IsNullOrEmpty(result.LimitType))
             {
                 context.Response.Headers["X-RateLimit-Scope"] = result.LimitType;
             }
         }
 
+        /// <summary>
+        /// Rounds the reset instant up to the next whole second. Truncating would advertise a
+        /// moment fractionally before the window actually frees, so a client retrying exactly
+        /// on the hint would be rejected again.
+        /// </summary>
+        private static long ResetUnixSeconds(DateTime resetsAt)
+        {
+            var ms = new DateTimeOffset(DateTime.SpecifyKind(resetsAt, DateTimeKind.Utc)).ToUnixTimeMilliseconds();
+            return (ms + 999) / 1000;
+        }
+
         private static async Task WriteRateLimitedResponseAsync(HttpContext context, RateLimitCheckResult result)
         {
-            var retryAfterSeconds = Math.Max(1, (int)(result.ResetsAt - DateTime.UtcNow).TotalSeconds);
+            // Ceiling, not truncation — see ResetUnixSeconds. A 4.2s wait must be advertised as 5.
+            var retryAfterSeconds = Math.Max(1, (int)Math.Ceiling((result.ResetsAt - DateTime.UtcNow).TotalSeconds));
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             context.Response.Headers["Retry-After"] = retryAfterSeconds.ToString();
             context.Response.ContentType = "application/json";

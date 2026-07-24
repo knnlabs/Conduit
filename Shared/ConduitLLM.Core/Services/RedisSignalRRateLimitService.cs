@@ -104,11 +104,10 @@ namespace ConduitLLM.Core.Services
         /// Checks a SignalR method invocation against both the per-minute and per-day windows.
         /// </summary>
         /// <remarks>
-        /// Quota semantics: RPM is evaluated first and a denial short-circuits, so a request
-        /// rejected by RPM does not consume daily quota. The reverse is not true — an RPD denial
-        /// happens after the RPM window has already recorded the invocation, so it costs one
-        /// minute-slot. This mirrors the HTTP path and is the same trade-off LiteLLM makes.
-        /// When both windows allow, the reported limit is the one with the fewest requests left.
+        /// Both windows are evaluated before either is written, so an invocation rejected by the
+        /// daily ceiling does not consume a minute slot. When both allow, the reported limit is
+        /// whichever has the fewest invocations left, and the reset instant is when that window
+        /// genuinely frees room rather than a calendar boundary.
         /// </remarks>
         public async Task<SignalRRateLimitResult> CheckMethodInvocationAsync(
             string virtualKeyHash,
@@ -120,97 +119,64 @@ namespace ConduitLLM.Core.Services
                 return new SignalRRateLimitResult { IsAllowed = true };
             }
 
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var windows = new List<RateLimitWindow>(2);
+
+            if (HasLimit(rpmLimit))
+            {
+                windows.Add(new RateLimitWindow(
+                    RedisKeys.SignalRRateLimit.Rpm(virtualKeyHash), "RPM", MinuteWindowMs, rpmLimit!.Value));
+            }
+
+            // The daily window is evaluated even when an RPM limit is configured — these are
+            // independent, and a key under its per-minute ceiling can still be over its daily one.
+            if (HasLimit(rpdLimit))
+            {
+                windows.Add(new RateLimitWindow(
+                    RedisKeys.SignalRRateLimit.Rpd(virtualKeyHash), "RPD", DayWindowMs, rpdLimit!.Value));
+            }
 
             // Get current connection count
             var connectionCount = await GetConnectionCountAsync(virtualKeyHash);
 
-            SlidingWindowResult? rpmResult = null;
-            SlidingWindowResult? rpdResult = null;
-
-            // Check RPM limit first (more restrictive)
-            if (HasLimit(rpmLimit))
-            {
-                var rpmKey = RedisKeys.SignalRRateLimit.Rpm(virtualKeyHash);
-                rpmResult = await _slidingWindow.CheckAsync(rpmKey, now, MinuteWindowMs, rpmLimit!.Value);
-
-                if (!rpmResult.IsAllowed)
-                {
-                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPM limit: {Current}/{Limit}",
-                        virtualKeyHash, rpmResult.Current, rpmLimit.Value);
-
-                    return new SignalRRateLimitResult
-                    {
-                        IsAllowed = false,
-                        DenialReason = "Rate limit exceeded. Please try again later.",
-                        RequestsRemaining = 0,
-                        Limit = rpmLimit.Value,
-                        ResetsAt = DateTime.UtcNow.AddMinutes(1),
-                        LimitType = "RPM",
-                        ActiveConnections = connectionCount
-                    };
-                }
-            }
-
-            // Check RPD limit even when an RPM limit is configured — these are independent
-            // windows and a key under its per-minute ceiling can still be over its daily one.
-            if (HasLimit(rpdLimit))
-            {
-                var rpdKey = RedisKeys.SignalRRateLimit.Rpd(virtualKeyHash);
-                rpdResult = await _slidingWindow.CheckAsync(rpdKey, now, DayWindowMs, rpdLimit!.Value);
-
-                if (!rpdResult.IsAllowed)
-                {
-                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPD limit: {Current}/{Limit}",
-                        virtualKeyHash, rpdResult.Current, rpdLimit.Value);
-
-                    return new SignalRRateLimitResult
-                    {
-                        IsAllowed = false,
-                        DenialReason = "Daily rate limit exceeded. Please try again tomorrow.",
-                        RequestsRemaining = 0,
-                        Limit = rpdLimit.Value,
-                        ResetsAt = DateTime.UtcNow.Date.AddDays(1),
-                        LimitType = "RPD",
-                        ActiveConnections = connectionCount
-                    };
-                }
-            }
-
-            // Allowed by every configured window — report whichever has the least headroom.
-            var rpmRemaining = rpmResult is null ? int.MaxValue : Math.Max(0, rpmLimit!.Value - rpmResult.Current);
-            var rpdRemaining = rpdResult is null ? int.MaxValue : Math.Max(0, rpdLimit!.Value - rpdResult.Current);
-
-            if (rpmResult is not null && rpmRemaining <= rpdRemaining)
+            if (windows.Count == 0)
             {
                 return new SignalRRateLimitResult
                 {
                     IsAllowed = true,
-                    RequestsRemaining = rpmRemaining,
-                    Limit = rpmLimit!.Value,
-                    ResetsAt = DateTime.UtcNow.AddMinutes(1),
-                    LimitType = "RPM",
                     ActiveConnections = connectionCount
                 };
             }
 
-            if (rpdResult is not null)
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var result = await _slidingWindow.CheckAsync(windows, now);
+
+            if (!result.IsAllowed && result.DeniedWindow is { } denied)
             {
+                _logger.LogWarning("SignalR virtual key {KeyHash} exceeded {LimitType} limit: {Current}/{Limit}",
+                    virtualKeyHash, denied.Scope, denied.Current, denied.Limit);
+
                 return new SignalRRateLimitResult
                 {
-                    IsAllowed = true,
-                    RequestsRemaining = rpdRemaining,
-                    Limit = rpdLimit!.Value,
-                    ResetsAt = DateTime.UtcNow.Date.AddDays(1),
-                    LimitType = "RPD",
+                    IsAllowed = false,
+                    DenialReason = denied.Scope == "RPD"
+                        ? "Daily rate limit exceeded. Please try again tomorrow."
+                        : "Rate limit exceeded. Please try again later.",
+                    RequestsRemaining = 0,
+                    Limit = (int)denied.Limit,
+                    ResetsAt = denied.ResetsAt,
+                    LimitType = denied.Scope,
                     ActiveConnections = connectionCount
                 };
             }
 
-            // No limits
+            var tightest = result.TightestWindow;
             return new SignalRRateLimitResult
             {
                 IsAllowed = true,
+                RequestsRemaining = tightest is null ? 0 : (int)Math.Min(int.MaxValue, tightest.Remaining),
+                Limit = tightest is null ? 0 : (int)tightest.Limit,
+                ResetsAt = tightest?.ResetsAt ?? DateTime.UtcNow.AddMinutes(1),
+                LimitType = tightest?.Scope ?? "",
                 ActiveConnections = connectionCount
             };
         }

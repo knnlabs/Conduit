@@ -151,6 +151,63 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
+        public async Task Retry_After_rounds_up_so_the_advertised_retry_actually_succeeds()
+        {
+            // The window frees 4.2s from now. Truncating to 4 would send the client back
+            // before capacity exists; the hint must be 5.
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.RateLimitRpm"] = 10;
+
+            var resetsAt = DateTime.UtcNow.AddMilliseconds(4200);
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", 10, null))
+                .ReturnsAsync(new RateLimitCheckResult
+                {
+                    IsAllowed = false,
+                    Limit = 10,
+                    RequestsRemaining = 0,
+                    ResetsAt = resetsAt,
+                    LimitType = "RPM"
+                });
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            var retryAfter = int.Parse(ctx.Response.Headers["Retry-After"].ToString());
+            retryAfter.Should().Be(5);
+
+            // X-RateLimit-Reset must land on or after the true expiry, never before it.
+            var reset = long.Parse(ctx.Response.Headers["X-RateLimit-Reset"].ToString());
+            reset.Should().BeGreaterThanOrEqualTo(new DateTimeOffset(resetsAt).ToUnixTimeSeconds());
+        }
+
+        [Fact]
+        public async Task Reports_the_window_reset_verbatim_rather_than_a_calendar_boundary()
+        {
+            // #1206: RPD enforcement is a rolling 24h window, so a key exhausted at 23:50
+            // must not be told it recovers at midnight.
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.RateLimitRpd"] = 1000;
+
+            var resetsAt = DateTime.UtcNow.AddHours(23);
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", null, 1000))
+                .ReturnsAsync(new RateLimitCheckResult
+                {
+                    IsAllowed = false,
+                    Limit = 1000,
+                    RequestsRemaining = 0,
+                    ResetsAt = resetsAt,
+                    LimitType = "RPD"
+                });
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            var retryAfter = int.Parse(ctx.Response.Headers["Retry-After"].ToString());
+            retryAfter.Should().BeInRange(23 * 3600 - 5, 23 * 3600 + 5);
+            ctx.Response.Headers["X-RateLimit-Scope"].ToString().Should().Be("RPD");
+        }
+
+        [Fact]
         public async Task Fails_open_when_service_throws()
         {
             // If Redis is down, we'd rather let the request through than tank the gateway.
