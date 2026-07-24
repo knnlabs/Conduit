@@ -104,6 +104,7 @@ public class TestContext
     public int? ProviderId { get; set; }
     public string? ProviderKeyId { get; set; }
     public int? ModelMappingId { get; set; }
+    public int? ModelProviderTypeAssociationId { get; set; }
     public string? ModelAlias { get; set; }  // Store the unique model alias
     public int? ModelCostId { get; set; }
     public int? VirtualKeyGroupId { get; set; }

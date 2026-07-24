@@ -72,10 +72,20 @@ public class AuthenticationIntegrationTests : CriticalPathTestBase
         var (virtualKey, groupId, balance) = await CreateRateLimitedKeyAsync(initialCredit: 10.00m);
 
         // Disable the key
-        await DisableVirtualKeyAsync(virtualKey);
+        await DisableVirtualKeyAsync(groupId);
 
-        // Act - Try to use the disabled key
-        var response = await _apiClient.CoreGetAsync<object>("/v1/models", virtualKey);
+        // Act - Try to use the disabled key. Key-state changes propagate via events,
+        // so poll briefly until the Gateway observes the disable.
+        ApiResponse<object> response = null!;
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            response = await _apiClient.CoreGetAsync<object>("/v1/models", virtualKey);
+            if (!response.Success)
+            {
+                break;
+            }
+            await Task.Delay(1000);
+        }
 
         // Assert
         response.Success.Should().BeFalse("Disabled virtual key should be rejected");
@@ -98,7 +108,7 @@ public class AuthenticationIntegrationTests : CriticalPathTestBase
         };
 
         var groupResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyGroupResponse>(
-            "/api/VirtualKeyGroups",
+            "/v1/admin/virtual-key-groups",
             createGroupRequest);
         groupResponse.Success.Should().BeTrue();
 
@@ -109,7 +119,7 @@ public class AuthenticationIntegrationTests : CriticalPathTestBase
         };
 
         var keyResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyResponse>(
-            "/api/VirtualKeys",
+            "/v1/admin/virtual-keys",
             createKeyRequest);
         keyResponse.Success.Should().BeTrue();
 

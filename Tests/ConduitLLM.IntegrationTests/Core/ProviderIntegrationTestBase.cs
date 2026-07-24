@@ -42,7 +42,10 @@ public abstract class ProviderIntegrationTestBase : IClassFixture<TestFixture>
             
             // Step 2: Create Provider Key
             await CreateProviderKey();
-            
+
+            // Step 2b: Create model catalog entries (author/series/model/identifier)
+            await CreateModelCatalog();
+
             // Step 3: Create Model Mapping
             await CreateModelMapping();
             
@@ -69,18 +72,16 @@ public abstract class ProviderIntegrationTestBase : IClassFixture<TestFixture>
     protected async Task CreateProvider()
     {
         _logger.LogInformation("Step 1: Creating {Provider} provider", _providerConfig.Provider.Type);
-        
-        var providerTypeEnum = GetProviderTypeEnum(_providerConfig.Provider.Type);
-        
+
         var createProviderRequest = new CreateProviderRequest
         {
             ProviderName = $"{_config.Defaults.TestPrefix}{_providerConfig.Provider.Name}_{_context.TestRunId}",
-            ProviderType = providerTypeEnum,
+            ProviderType = _providerConfig.Provider.Type,
             BaseUrl = _providerConfig.Provider.BaseUrl,
             IsEnabled = true
         };
         
-        var providerResponse = await _apiClient.AdminPostAsync<CreateProviderResponse>("/api/ProviderCredentials", createProviderRequest);
+        var providerResponse = await _apiClient.AdminPostAsync<CreateProviderResponse>("/v1/admin/providers", createProviderRequest);
         providerResponse.Success.Should().BeTrue($"Provider creation should succeed: {providerResponse.Error}");
         providerResponse.Data.Should().NotBeNull();
         _context.ProviderId = providerResponse.Data!.Id;
@@ -99,7 +100,7 @@ public abstract class ProviderIntegrationTestBase : IClassFixture<TestFixture>
         };
         
         var keyResponse = await _apiClient.AdminPostAsync<CreateProviderKeyResponse>(
-            $"/api/ProviderCredentials/{_context.ProviderId}/keys", 
+            $"/v1/admin/providers/{_context.ProviderId}/keys",
             createKeyRequest);
         
         keyResponse.Success.Should().BeTrue($"Key creation should succeed: {keyResponse.Error}");
@@ -109,22 +110,42 @@ public abstract class ProviderIntegrationTestBase : IClassFixture<TestFixture>
         _logger.LogInformation("✓ Provider key created: {KeyId}", _context.ProviderKeyId);
     }
     
+    protected async Task CreateModelCatalog()
+    {
+        if (_context.ModelProviderTypeAssociationId != null)
+        {
+            return;
+        }
+
+        _logger.LogInformation("Step 2b: Resolving model catalog association");
+
+        var modelConfig = _providerConfig.Models[0];
+        _context.ModelProviderTypeAssociationId = await ModelCatalogSetup.ResolveAssociationAsync(
+            _apiClient,
+            _context.ProviderId!.Value,
+            $"{modelConfig.Alias}_{_context.TestRunId}",
+            modelConfig.Actual,
+            _logger);
+    }
+
     protected async Task CreateModelMapping()
     {
+        // Mapping creation requires a model catalog association
+        await CreateModelCatalog();
+
         _logger.LogInformation("Step 3: Creating model mapping");
-        
+
         var modelConfig = _providerConfig.Models[0];
         var createMappingRequest = new CreateModelMappingRequest
         {
-            ModelId = $"{modelConfig.Alias}_{_context.TestRunId}",
+            ModelAlias = $"{modelConfig.Alias}_{_context.TestRunId}",
             ProviderId = _context.ProviderId!.Value,
             ProviderModelId = modelConfig.Actual,
-            SupportsChat = modelConfig.Capabilities.Chat,
-            SupportsStreaming = modelConfig.Capabilities.Streaming
+            ModelProviderTypeAssociationId = _context.ModelProviderTypeAssociationId!.Value
         };
-        
+
         var mappingResponse = await _apiClient.AdminPostAsync<CreateModelMappingResponse>(
-            "/api/ModelProviderMapping", 
+            "/v1/admin/model-provider-mappings",
             createMappingRequest);
         
         mappingResponse.Success.Should().BeTrue($"Model mapping should succeed: {mappingResponse.Error}");
@@ -143,13 +164,13 @@ public abstract class ProviderIntegrationTestBase : IClassFixture<TestFixture>
         var createCostRequest = new CreateModelCostRequest
         {
             CostName = $"{_context.ModelAlias}_cost",
-            ModelProviderMappingIds = new List<int> { _context.ModelMappingId!.Value },
+            ModelProviderTypeAssociationIds = new List<int> { _context.ModelProviderTypeAssociationId!.Value },
             InputCostPerMillionTokens = modelConfig.Cost.InputPerMillion,
             OutputCostPerMillionTokens = modelConfig.Cost.OutputPerMillion
         };
-        
+
         var costResponse = await _apiClient.AdminPostAsync<CreateModelCostResponse>(
-            "/api/ModelCosts", 
+            "/v1/admin/model-costs",
             createCostRequest);
         
         costResponse.Success.Should().BeTrue($"Model cost creation should succeed: {costResponse.Error}");
@@ -171,7 +192,7 @@ public abstract class ProviderIntegrationTestBase : IClassFixture<TestFixture>
         };
         
         var groupResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyGroupResponse>(
-            "/api/VirtualKeyGroups", 
+            "/v1/admin/virtual-key-groups",
             createGroupRequest);
         
         groupResponse.Success.Should().BeTrue($"Virtual key group creation should succeed: {groupResponse.Error}");
@@ -197,7 +218,7 @@ public abstract class ProviderIntegrationTestBase : IClassFixture<TestFixture>
         };
         
         var vkeyResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyResponse>(
-            "/api/VirtualKeys", 
+            "/v1/admin/virtual-keys",
             createVKeyRequest);
         
         vkeyResponse.Success.Should().BeTrue($"Virtual key creation should succeed: {vkeyResponse.Error}");

@@ -24,7 +24,9 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
         return _fixture.ServiceProvider.GetRequiredService<ILogger<StreamingWithToolCallsTest>>();
     }
 
-    [Fact(DisplayName = "Streaming with Tool Calls - Should Emit tool-executing Events")]
+    [Fact(DisplayName = "Streaming with Tool Calls - Should Emit tool-executing Events",
+        Skip = "Inline JavaScript function configurations were removed; functions are now provider-typed " +
+               "(Exa, Tavily, MCP, ...). Rewrite against a function provider or a local MCP server.")]
     public async Task StreamingWithToolCalls_ShouldEmitToolExecutingEvents()
     {
         // This test verifies the complete tool execution lifecycle during streaming:
