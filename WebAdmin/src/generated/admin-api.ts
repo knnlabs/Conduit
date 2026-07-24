@@ -5096,6 +5096,8 @@ export interface components {
       softDeleteGracePeriodDays?: number;
       /** @description The resolved media storage backend (for example, S3 or InMemory). */
       storageBackend?: string;
+      /** @description Whether generated media URLs use a configured public base URL or CDN. */
+      isPublicMediaBaseUrlConfigured?: boolean;
       /**
        * Format: int32
        * @description Storage objects with no matching MediaRecord after the latest reconciliation.

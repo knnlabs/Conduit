@@ -505,20 +505,62 @@ public static class MediaEndpoints
             cancellationToken);
     }
 
-    private static Task<List<MediaRecord>> QueryPruneCandidatesAsync(
+    internal static async Task<List<MediaRecord>> QueryPruneCandidatesAsync(
         IConfigurationDbContext context,
         int daysToKeep,
         CancellationToken cancellationToken)
     {
         var cutoff = DateTime.UtcNow.AddDays(-daysToKeep);
-        var recentAccessCutoff = DateTime.UtcNow.AddDays(-30);
-        return context.MediaRecords
+        var now = DateTime.UtcNow;
+        var baseQuery = context.MediaRecords
             .AsNoTracking()
-            .Where(media => media.CreatedAt < cutoff)
-            .Where(media =>
-                media.LastAccessedAt == null ||
-                media.LastAccessedAt < recentAccessCutoff)
+            .Where(media => media.CreatedAt < cutoff);
+        var policySettings = await context.MediaRetentionPolicies
+            .AsNoTracking()
+            .Select(policy => new
+            {
+                policy.Id,
+                policy.IsDefault,
+                policy.IsActive,
+                policy.RespectRecentAccess,
+                policy.RecentAccessWindowDays
+            })
             .ToListAsync(cancellationToken);
+        var defaultPolicy = policySettings
+            .FirstOrDefault(policy => policy.IsDefault && policy.IsActive);
+
+        var unassignedQuery = baseQuery.Where(media => context.VirtualKeys.Any(key =>
+            key.Id == media.VirtualKeyId &&
+            key.VirtualKeyGroup.MediaRetentionPolicyId == null));
+        if (defaultPolicy?.RespectRecentAccess == true)
+        {
+            var recentAccessCutoff = now.AddDays(
+                -Math.Max(0, defaultPolicy.RecentAccessWindowDays));
+            unassignedQuery = unassignedQuery.Where(media =>
+                media.LastAccessedAt == null ||
+                media.LastAccessedAt < recentAccessCutoff);
+        }
+
+        IQueryable<MediaRecord> candidates = unassignedQuery;
+        foreach (var policy in policySettings)
+        {
+            var policyId = policy.Id;
+            var assignedQuery = baseQuery.Where(media => context.VirtualKeys.Any(key =>
+                key.Id == media.VirtualKeyId &&
+                key.VirtualKeyGroup.MediaRetentionPolicyId == policyId));
+            if (policy.RespectRecentAccess)
+            {
+                var recentAccessCutoff = now.AddDays(
+                    -Math.Max(0, policy.RecentAccessWindowDays));
+                assignedQuery = assignedQuery.Where(media =>
+                    media.LastAccessedAt == null ||
+                    media.LastAccessedAt < recentAccessCutoff);
+            }
+
+            candidates = candidates.Concat(assignedQuery);
+        }
+
+        return await candidates.ToListAsync(cancellationToken);
     }
 
     private static MediaCleanupResponseDto ToCleanupResponse(

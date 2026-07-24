@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Options;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestInfrastructure;
 using FluentAssertions;
@@ -77,7 +78,11 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         var service = new MediaCleanupStatusService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(options),
-            Mock.Of<ILogger<MediaCleanupStatusService>>());
+            Mock.Of<ILogger<MediaCleanupStatusService>>(),
+            s3Options: Options.Create(new S3StorageOptions
+            {
+                PublicBaseUrl = "https://cdn.example.com"
+            }));
         _approvalService
             .Setup(approvals => approvals.ListPendingAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new[]
@@ -122,6 +127,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
             .LastRunStatus.Should().Be("Completed with errors");
         status.CurrentLeaderInstanceId.Should().Be("test-leader");
         status.StorageBackend.Should().Be("InMemory");
+        status.IsPublicMediaBaseUrlConfigured.Should().BeTrue();
         status.UntrackedObjectCount.Should().Be(4);
         status.UntrackedBytes.Should().Be(8192);
         status.PendingApprovalCount.Should().Be(1);

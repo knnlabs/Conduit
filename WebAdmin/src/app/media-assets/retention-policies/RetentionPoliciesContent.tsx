@@ -73,6 +73,7 @@ export default function RetentionPoliciesContent() {
   const [policies, setPolicies] = useState<MediaRetentionPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [publicMediaBaseUrlConfigured, setPublicMediaBaseUrlConfigured] = useState(false);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -93,6 +94,15 @@ export default function RetentionPoliciesContent() {
         client.media.getRetentionPolicies()
       );
       setPolicies(result);
+      try {
+        const status = await withAdminClient(client =>
+          client.media.getCleanupServiceStatus()
+        );
+        setPublicMediaBaseUrlConfigured(status.isPublicMediaBaseUrlConfigured);
+      } catch (statusError) {
+        console.warn('Failed to load media storage URL status:', statusError);
+        setPublicMediaBaseUrlConfigured(false);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch policies';
       setError(message);
@@ -275,7 +285,7 @@ export default function RetentionPoliciesContent() {
       </Table.Td>
       <Table.Td>
         {policy.respectRecentAccess ? (
-          <Tooltip label={`Within ${policy.recentAccessWindowDays} days`}>
+          <Tooltip label={`API-proxied access within ${policy.recentAccessWindowDays} days`}>
             <Badge color="teal" variant="light">Yes</Badge>
           </Tooltip>
         ) : (
@@ -363,6 +373,16 @@ export default function RetentionPoliciesContent() {
           </Group>
         </Group>
       </Card>
+
+      <Alert
+        icon={<IconAlertCircle size={16} />}
+        color={publicMediaBaseUrlConfigured ? 'yellow' : 'blue'}
+        title="Recent-access tracking excludes CDN traffic"
+      >
+        Recent access is updated only when media is served through the Conduit media API.
+        Requests sent directly to a public base URL or CDN do not refresh the access timestamp
+        and cannot protect an asset from retention cleanup.
+      </Alert>
 
       {/* Policies table */}
       {policies.length === 0 ? (
@@ -502,7 +522,7 @@ export default function RetentionPoliciesContent() {
           <SimpleGrid cols={2}>
             <Switch
               label="Respect Recent Access"
-              description="Don't delete recently accessed media"
+              description="Protect media recently served through the Conduit API"
               checked={formData.respectRecentAccess}
               onChange={(e) => setFormData({ ...formData, respectRecentAccess: e.currentTarget.checked })}
             />
@@ -513,6 +533,18 @@ export default function RetentionPoliciesContent() {
               onChange={(e) => setFormData({ ...formData, isActive: e.currentTarget.checked })}
             />
           </SimpleGrid>
+
+          {formData.respectRecentAccess && publicMediaBaseUrlConfigured && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              color="yellow"
+              title="Public URL/CDN traffic is not measured"
+            >
+              A public media base URL is configured. Direct CDN requests will not update
+              LastAccessedAt, so popular CDN-served assets can still appear idle and become
+              eligible for cleanup.
+            </Alert>
+          )}
 
           {modalMode === 'create' && (
             <Switch

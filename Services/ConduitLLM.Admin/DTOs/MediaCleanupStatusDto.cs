@@ -32,6 +32,11 @@ namespace ConduitLLM.Admin.DTOs
         public string StorageBackend { get; set; } = "Unavailable";
 
         /// <summary>
+        /// Whether generated media URLs use a configured public base URL or CDN.
+        /// </summary>
+        public bool IsPublicMediaBaseUrlConfigured { get; set; }
+
+        /// <summary>
         /// Storage objects with no matching MediaRecord after the latest reconciliation.
         /// </summary>
         public int UntrackedObjectCount { get; set; }

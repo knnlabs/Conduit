@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Options;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -21,6 +22,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConnectionMultiplexer? _redis;
         private readonly MediaLifecycleOptions _options;
+        private readonly bool _isPublicMediaBaseUrlConfigured;
         private readonly ILogger<MediaCleanupStatusService> _logger;
 
         // Redis keys
@@ -63,12 +65,15 @@ namespace ConduitLLM.Admin.Services
             IServiceScopeFactory scopeFactory,
             IOptions<MediaLifecycleOptions> options,
             ILogger<MediaCleanupStatusService> logger,
-            IConnectionMultiplexer? redis = null)
+            IConnectionMultiplexer? redis = null,
+            IOptions<S3StorageOptions>? s3Options = null)
         {
             _scopeFactory = scopeFactory;
             _options = options.Value;
             _logger = logger;
             _redis = redis;
+            _isPublicMediaBaseUrlConfigured =
+                !string.IsNullOrWhiteSpace(s3Options?.Value.PublicBaseUrl);
         }
 
         /// <inheritdoc />
@@ -159,6 +164,7 @@ namespace ConduitLLM.Admin.Services
                 IsSoftDeleteEnabled = _options.EnableSoftDelete,
                 SoftDeleteGracePeriodDays = _options.SoftDeleteGracePeriodDays,
                 StorageBackend = MediaStorageConfigurationGuard.GetBackendName(storageService),
+                IsPublicMediaBaseUrlConfigured = _isPublicMediaBaseUrlConfigured,
                 UntrackedObjectCount = reconciliationDrift.UntrackedObjectCount,
                 UntrackedBytes = reconciliationDrift.UntrackedBytes,
                 LastRunTimeUtc = lastRunInfo?.LastRunTimeUtc,

@@ -129,6 +129,7 @@ export interface MediaCleanupStatus {
   isSoftDeleteEnabled: boolean;
   softDeleteGracePeriodDays: number;
   storageBackend: string;
+  isPublicMediaBaseUrlConfigured: boolean;
   untrackedObjectCount: number;
   untrackedBytes: number;
   lastRunTimeUtc: string | null;

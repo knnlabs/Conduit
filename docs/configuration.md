@@ -130,6 +130,19 @@ tombstone does not consume the monthly delete budget; the later permanent purge 
 virtual key is the deliberate exception: all of that key's active and tombstoned media is
 permanently removed before the database cascade, because no owner remains for later recovery.
 
+> **Recent-access protection and CDNs:** `RespectRecentAccess` uses `MediaRecord.LastAccessedAt`,
+> which is refreshed only when media is served through the Conduit media API. If
+> `CONDUIT_S3_PUBLIC_BASE_URL` points clients at a CDN or public bucket URL, those direct requests
+> bypass Conduit and do not protect an asset from retention or quota cleanup. The retention-policy
+> editor detects this configuration and displays a warning. Manual prune applies each group's
+> `RecentAccessWindowDays`; groups with recent-access protection disabled use age alone.
+>
+> The current decision is **document and warn**, without exempting every record that has a
+> `PublicUrl` and without ingesting provider analytics. `PublicUrl` indicates that an asset can be
+> reached publicly, not that it is still used, so treating it as an exemption could retain abandoned
+> media forever. CDN analytics ingestion is provider-specific, needs additional credentials and
+> reconciliation semantics, and is deferred until there is a supported cross-provider design.
+
 Storage reconciliation enumerates the configured S3-compatible bucket (or in-memory development
 store), compares object keys with `MediaRecord` rows, and reports the count and bytes that are
 untracked. In a non-dry run it deletes untracked objects only after they are older than
