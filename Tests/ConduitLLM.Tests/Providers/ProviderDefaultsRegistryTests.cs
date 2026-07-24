@@ -90,4 +90,62 @@ public class ProviderDefaultsRegistryTests
             .Should()
             .Be("https://proxy.example.test/groq");
     }
+
+    [Fact]
+    public void Cloudflare_Should_Declare_A_Required_AccountId_UrlPathToken_Setting()
+    {
+        ProviderConfigurationRegistry.TryGetConfiguration(ProviderType.Cloudflare, out var config)
+            .Should().BeTrue();
+
+        var accountId = config!.Settings.Should().ContainSingle(s => s.Key == "account_id").Subject;
+        accountId.Required.Should().BeTrue();
+        accountId.Secret.Should().BeFalse();
+        accountId.Binding.Should().Be(ProviderSettingBinding.UrlPathToken);
+    }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Substitute_AccountId_Into_The_Cloudflare_Default_Url()
+    {
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Cloudflare,
+            ProviderName = "cf",
+            Settings = new Dictionary<string, string> { ["account_id"] = "0123456789abcdef0123456789abcdef" }
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai/v1");
+    }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Throw_Actionable_Error_When_AccountId_Missing()
+    {
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Cloudflare,
+            ProviderName = "cf"
+        };
+
+        var action = () => ProviderConfigurationRegistry.ResolveBaseUrl(provider);
+
+        action.Should().Throw<ConfigurationException>()
+            .WithMessage("*Account ID*");
+    }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Honor_A_Raw_BaseUrl_With_The_AccountId_Already_Embedded()
+    {
+        // Dual-read: operators who configured the full URL before structured settings keep working.
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Cloudflare,
+            ProviderName = "cf",
+            BaseUrl = "https://api.cloudflare.com/client/v4/accounts/deadbeefdeadbeefdeadbeefdeadbeef/ai/v1"
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://api.cloudflare.com/client/v4/accounts/deadbeefdeadbeefdeadbeefdeadbeef/ai/v1");
+    }
 }

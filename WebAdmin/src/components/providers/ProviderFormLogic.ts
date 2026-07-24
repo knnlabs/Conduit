@@ -15,6 +15,8 @@ export interface ProviderFormData {
   apiKey: string;
   apiEndpoint?: string;
   organizationId?: string;
+  /** Structured, provider-scoped settings (for example a Cloudflare account ID), keyed by setting key. */
+  settings: Record<string, string>;
   isEnabled: boolean;
   trustProviderReportedCosts: boolean;
   providerCostMarkupMultiplier: number;
@@ -65,6 +67,7 @@ export function useProviderFormLogic(
     apiKey: '',
     apiEndpoint: '',
     organizationId: '',
+    settings: {},
     isEnabled: true,
     trustProviderReportedCosts: false,
     providerCostMarkupMultiplier: 1,
@@ -144,6 +147,7 @@ export function useProviderFormLogic(
             apiEndpoint: apiProvider.baseUrl ?? '',
             organizationId: (provider as { organization?: string; organizationId?: string }).organization ??
                           (provider as { organization?: string; organizationId?: string }).organizationId ?? '',
+            settings: { ...(provider.settings ?? {}) },
             isEnabled: provider.isEnabled === true,
             trustProviderReportedCosts: provider.trustProviderReportedCosts === true,
             providerCostMarkupMultiplier: provider.providerCostMarkupMultiplier ?? 1,

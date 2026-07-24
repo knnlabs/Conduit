@@ -3146,7 +3146,8 @@ export interface components {
       | "ignored"
       | "providerDown"
       | "rateLimited"
-      | "unknownError";
+      | "unknownError"
+      | "configuration";
     /** @description Application identity information. */
     ApplicationInfoDto: {
       /** @description The application name. */
@@ -4007,6 +4008,12 @@ export interface components {
        *     Only consulted when bool CreateProviderRequest.TrustProviderReportedCosts is true.
        */
       providerCostMarkupMultiplier?: number;
+      /** @description Structured, provider-scoped settings supplied in addition to the API key (for example a
+       *     Cloudflare account ID). Keys correspond to the setting definitions declared for the
+       *     provider type. Non-secret values only. */
+      settings?: null | {
+        [key: string]: string;
+      };
     };
     CreateProviderToolDto: {
       provider: components["schemas"]["ProviderType"];
@@ -6091,6 +6098,9 @@ export interface components {
       providerType: components["schemas"]["ProviderType"];
       providerName: string;
       baseUrl?: null | string;
+      settings?: null | {
+        [key: string]: string;
+      };
       /** Format: int32 */
       keyCount: number;
       trustProviderReportedCosts: boolean;
@@ -6742,6 +6752,11 @@ export interface components {
       baseUrl?: null | string;
       /** @description The organization to test (optional) */
       organization?: null | string;
+      /** @description Structured, provider-scoped settings to test (for example a Cloudflare account ID).
+       *     Required settings must be present or the test returns an actionable configuration error. */
+      settings?: null | {
+        [key: string]: string;
+      };
     };
     /** @description Aggregate security metrics for threat analytics. */
     ThreatAnalyticsMetricsDto: {
@@ -7217,6 +7232,11 @@ export interface components {
        *     Defaults to 1.0 when omitted, so a partial update never silently zeroes the markup.
        */
       providerCostMarkupMultiplier?: number;
+      /** @description Structured, provider-scoped settings supplied in addition to the API key (for example a
+       *     Cloudflare account ID). When provided, replaces the stored settings. Non-secret values only. */
+      settings?: null | {
+        [key: string]: string;
+      };
     };
     UpdateProviderToolDto: {
       isActive?: boolean;

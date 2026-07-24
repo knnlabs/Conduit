@@ -485,6 +485,9 @@ namespace ConduitLLM.Configuration
             // Apply ProviderMetadataDriftItem configuration (string enums + partial unique index)
             modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderMetadataDriftItemConfiguration());
 
+            // Apply Provider configuration (structured Settings as jsonb)
+            modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderEntityConfiguration());
+
             // Note: ModelProviderMapping and Provider are now included in test environments
             // as they are required by the application code during tests
         }

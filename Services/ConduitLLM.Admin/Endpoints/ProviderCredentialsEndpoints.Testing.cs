@@ -91,6 +91,7 @@ namespace ConduitLLM.Admin.Endpoints
                 ProviderType = testRequest.ProviderType,
                 ProviderName = "Test Provider",
                 BaseUrl = testRequest.BaseUrl,
+                Settings = testRequest.Settings,
                 IsEnabled = true
             };
 
@@ -129,11 +130,13 @@ namespace ConduitLLM.Admin.Endpoints
                 IsPrimary = true,
                 IsEnabled = true
             };
-            var client = _clientFactory.CreateTestClient(testProvider, testKey);
-
             var startTime = DateTime.UtcNow;
             try
             {
+                // Client construction resolves the effective base URL (substituting structured
+                // settings such as a Cloudflare account ID), so it runs inside the try to classify
+                // configuration errors as actionable test failures rather than 500s.
+                var client = _clientFactory.CreateTestClient(testProvider, testKey);
                 var models = await client.ListModelsAsync();
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 var modelList = models?.Select(m => m.ToString()).ToArray();

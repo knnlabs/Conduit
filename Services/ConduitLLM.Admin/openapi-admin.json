@@ -23205,7 +23205,8 @@
           "ignored",
           "providerDown",
           "rateLimited",
-          "unknownError"
+          "unknownError",
+          "configuration"
         ]
       },
       "ApplicationInfoDto": {
@@ -25506,6 +25507,16 @@
             "type": "number",
             "description": "Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).\r\nOnly consulted when bool CreateProviderRequest.TrustProviderReportedCosts is true.",
             "format": "double"
+          },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Structured, provider-scoped settings supplied in addition to the API key (for example a\r\nCloudflare account ID). Keys correspond to the setting definitions declared for the\r\nprovider type. Non-secret values only."
           }
         },
         "description": "Request model for creating a provider"
@@ -30278,6 +30289,15 @@
               "string"
             ]
           },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
           "keyCount": {
             "type": "integer",
             "format": "int32"
@@ -31665,6 +31685,16 @@
               "string"
             ],
             "description": "The organization to test (optional)"
+          },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Structured, provider-scoped settings to test (for example a Cloudflare account ID).\r\nRequired settings must be present or the test returns an actionable configuration error."
           }
         },
         "description": "Request model for testing a provider connection"
@@ -32917,6 +32947,16 @@
             "type": "number",
             "description": "Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).\r\nDefaults to 1.0 when omitted, so a partial update never silently zeroes the markup.",
             "format": "double"
+          },
+          "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Structured, provider-scoped settings supplied in addition to the API key (for example a\r\nCloudflare account ID). When provided, replaces the stored settings. Non-secret values only."
           }
         },
         "description": "Request model for updating a provider"

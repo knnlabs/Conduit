@@ -25,6 +25,12 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         public string? BaseUrl { get; set; }
 
+        /// <summary>
+        /// Structured, provider-scoped settings supplied in addition to the API key (for example a
+        /// Cloudflare account ID). Non-secret values only.
+        /// </summary>
+        public Dictionary<string, string>? Settings { get; set; }
+
         /// <summary>Number of configured credentials for this provider.</summary>
         public required int KeyCount { get; set; }
 

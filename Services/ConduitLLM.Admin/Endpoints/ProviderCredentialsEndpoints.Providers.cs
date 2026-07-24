@@ -11,6 +11,8 @@ using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Providers.Configuration;
 
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Endpoints
@@ -151,12 +153,20 @@ namespace ConduitLLM.Admin.Endpoints
                 ProviderType = request.ProviderType,
                 ProviderName = request.ProviderName,
                 BaseUrl = request.BaseUrl,
+                Settings = request.Settings,
                 IsEnabled = request.IsEnabled,
                 TrustProviderReportedCosts = request.TrustProviderReportedCosts,
                 ProviderCostMarkupMultiplier = request.ProviderCostMarkupMultiplier,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
+
+            // Validate that required structured settings resolve (for example a Cloudflare account ID).
+            // Reuses the base-URL resolver so a full BaseUrl override is still accepted (dual-read).
+            if (!TryValidateProviderSettings(provider, out var settingsError))
+            {
+                return BadRequest(settingsError);
+            }
 
             var id = await _providerRepository.CreateAsync(provider);
             provider.Id = id;
@@ -226,6 +236,19 @@ namespace ConduitLLM.Admin.Endpoints
                 provider.ProviderCostMarkupMultiplier = request.ProviderCostMarkupMultiplier;
             }
 
+            // Settings replace wholesale when provided; null means "leave unchanged" (PATCH semantics).
+            if (request.Settings != null && !SettingsEqual(provider.Settings, request.Settings))
+            {
+                changes.Add(("Settings", null, null));
+                provider.Settings = request.Settings;
+            }
+
+            // Validate that required structured settings still resolve after the update.
+            if (!TryValidateProviderSettings(provider, out var settingsError))
+            {
+                return BadRequest(settingsError);
+            }
+
             provider.UpdatedAt = DateTime.UtcNow;
 
             await _providerRepository.UpdateAsync(provider);
@@ -257,6 +280,7 @@ namespace ConduitLLM.Admin.Endpoints
             ProviderType = provider.ProviderType,
             ProviderName = provider.ProviderName,
             BaseUrl = provider.BaseUrl,
+            Settings = provider.Settings,
             IsEnabled = provider.IsEnabled,
             TrustProviderReportedCosts = provider.TrustProviderReportedCosts,
             ProviderCostMarkupMultiplier = provider.ProviderCostMarkupMultiplier,
@@ -264,6 +288,54 @@ namespace ConduitLLM.Admin.Endpoints
             UpdatedAt = provider.UpdatedAt,
             KeyCount = provider.ProviderKeyCredentials?.Count ?? 0
         };
+
+        /// <summary>
+        /// Validates that a provider's required structured settings resolve into a usable base URL.
+        /// Reuses <see cref="ProviderConfigurationRegistry.ResolveBaseUrl"/> so a full BaseUrl override
+        /// with the identifier already embedded is still accepted (dual-read during migration).
+        /// </summary>
+        private static bool TryValidateProviderSettings(Provider provider, out string? error)
+        {
+            try
+            {
+                ProviderConfigurationRegistry.ResolveBaseUrl(provider);
+                error = null;
+                return true;
+            }
+            catch (ConfigurationException ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Ordinal equality for two structured-settings dictionaries, treating null and empty as equal.
+        /// </summary>
+        private static bool SettingsEqual(Dictionary<string, string>? left, Dictionary<string, string>? right)
+        {
+            var leftCount = left?.Count ?? 0;
+            var rightCount = right?.Count ?? 0;
+            if (leftCount != rightCount)
+            {
+                return false;
+            }
+
+            if (leftCount == 0)
+            {
+                return true;
+            }
+
+            foreach (var pair in left!)
+            {
+                if (!right!.TryGetValue(pair.Key, out var value) || !string.Equals(value, pair.Value, StringComparison.Ordinal))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
 
         /// <summary>
         /// Deletes a provider

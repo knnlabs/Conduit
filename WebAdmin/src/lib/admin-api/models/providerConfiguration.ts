@@ -52,6 +52,28 @@ export const PROVIDER_CATEGORIES: Partial<Record<ProviderType, ProviderCategory[
   [ProviderType.Meta]: [ProviderCategory.Chat],
 };
 
+/**
+ * A structured, provider-scoped setting an operator supplies in addition to the API key
+ * (for example a Cloudflare account ID). Mirrors the backend setting definitions declared in
+ * `ProviderConfigurationRegistry`; the backend remains authoritative for validation.
+ */
+export interface ProviderSettingField {
+  /** Stable machine key; also the storage key in the provider's `settings` map. */
+  key: string;
+  /** Human-readable field label. */
+  label: string;
+  /** Optional help text describing where to find the value. */
+  helpText?: string;
+  /** Whether the operator must supply this setting. */
+  required: boolean;
+  /** Whether the value is sensitive (rendered masked). */
+  secret?: boolean;
+  /** Optional regular-expression source the value must match. */
+  validationRegexSource?: string;
+  /** Optional placeholder shown in the input. */
+  placeholder?: string;
+}
+
 /** Provider-specific configuration requirements */
 export interface ProviderConfigRequirements {
   requiresApiKey: boolean;
@@ -61,6 +83,8 @@ export interface ProviderConfigRequirements {
   helpUrl?: string;
   helpText?: string;
   supportedModelTypes: ModelType[];
+  /** Structured settings supplied in addition to the API key. */
+  settings?: ProviderSettingField[];
 }
 
 export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, ProviderConfigRequirements>> = {
@@ -162,12 +186,24 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   },
   [ProviderType.Cloudflare]: {
     requiresApiKey: true,
-    requiresEndpoint: true,
+    // The account ID is entered as a structured setting below; the base URL is derived from it,
+    // so an explicit endpoint is optional (advanced override only).
+    requiresEndpoint: false,
     requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpUrl: 'https://developers.cloudflare.com/workers-ai/',
-    helpText: 'Create an API token at dash.cloudflare.com/profile/api-tokens. Base URL must include your account ID.',
-    supportedModelTypes: [ModelType.Chat, ModelType.Embedding, ModelType.Image]
+    helpText: 'Create an API token at dash.cloudflare.com/profile/api-tokens. Enter your account ID below — it is used to build the API base URL.',
+    supportedModelTypes: [ModelType.Chat, ModelType.Embedding, ModelType.Image],
+    settings: [
+      {
+        key: 'account_id',
+        label: 'Account ID',
+        helpText: 'Your Cloudflare account ID (shown in the dashboard URL and on the Workers AI page).',
+        required: true,
+        validationRegexSource: '^[0-9a-fA-F]{32}$',
+        placeholder: 'e.g. 0123456789abcdef0123456789abcdef',
+      },
+    ],
   },
   [ProviderType.OpenRouter]: {
     requiresApiKey: true,

@@ -39,6 +39,14 @@ namespace ConduitLLM.Configuration.Entities
         // Optional: Base URL if different from default
         public string? BaseUrl { get; set; }
 
+        /// <summary>
+        /// Gets or sets structured, provider-scoped settings the operator supplies in addition to the
+        /// API key (for example a Cloudflare account ID). Keys correspond to the setting definitions
+        /// declared for the provider type in the provider configuration registry. Stored as JSONB
+        /// (mapped in <see cref="EntityConfigurations.ProviderEntityConfiguration"/>). Non-secret values only.
+        /// </summary>
+        public Dictionary<string, string>? Settings { get; set; }
+
 
         /// <summary>
         /// Gets or sets a value indicating whether this provider is enabled and available for use.
