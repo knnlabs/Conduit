@@ -181,10 +181,119 @@ namespace ConduitLLM.Core.Services
                 When.NotExists);
         }
 
-        public async Task MarkKeyDisabledAsync(int keyId, DateTime disabledAt)
+        public async Task MarkKeyDisabledAsync(
+            int keyId,
+            DateTime disabledAt,
+            ProviderErrorType errorType)
         {
             var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
-            await _db.HashSetAsync(fatalKey, "disabled_at", disabledAt.ToString("O"));
+            await Task.WhenAll(
+                _db.HashSetAsync(fatalKey, new HashEntry[]
+                {
+                    new("disabled_at", disabledAt.ToString("O")),
+                    new("error_type", errorType.ToString()),
+                    new("reprobe_attempt_count", 0)
+                }),
+                _db.HashDeleteAsync(fatalKey, new RedisValue[]
+                {
+                    "last_reprobe_at",
+                    "next_reprobe_at"
+                }),
+                _db.SetAddAsync(CacheKeys.ProviderError.DisabledKeys, keyId));
+        }
+
+        public async Task<IReadOnlyList<DisabledKeyReprobeState>> GetDisabledKeyReprobeStatesAsync()
+        {
+            var members = await _db.SetMembersAsync(CacheKeys.ProviderError.DisabledKeys);
+            if (members.Length == 0)
+            {
+                return Array.Empty<DisabledKeyReprobeState>();
+            }
+
+            var stateTasks = members
+                .Where(member => member.HasValue)
+                .Select(async member =>
+                {
+                    var keyId = (int)member;
+                    var entries = await _db.HashGetAllAsync(
+                        CacheKeys.ProviderError.FatalByKey(keyId));
+                    if (entries.Length == 0)
+                    {
+                        await _db.SetRemoveAsync(CacheKeys.ProviderError.DisabledKeys, keyId);
+                        return null;
+                    }
+
+                    var values = entries.ToDictionary(
+                        entry => entry.Name.ToString(),
+                        entry => entry.Value.ToString());
+                    if (!Enum.TryParse<ProviderErrorType>(
+                            values.GetValueOrDefault("error_type"),
+                            out var errorType) ||
+                        !values.TryGetValue("disabled_at", out var disabledAtValue) ||
+                        !DateTime.TryParse(
+                            disabledAtValue,
+                            CultureInfo.InvariantCulture,
+                            DateTimeStyles.RoundtripKind,
+                            out var disabledAt))
+                    {
+                        return null;
+                    }
+
+                    return new DisabledKeyReprobeState
+                    {
+                        KeyId = keyId,
+                        ErrorType = errorType,
+                        DisabledAt = disabledAt,
+                        AttemptCount = int.TryParse(
+                            values.GetValueOrDefault("reprobe_attempt_count"),
+                            out var attempts) ? attempts : 0,
+                        LastAttemptAt = ParseOptionalDateTime(
+                            values.GetValueOrDefault("last_reprobe_at")),
+                        NextAttemptAt = ParseOptionalDateTime(
+                            values.GetValueOrDefault("next_reprobe_at"))
+                    };
+                })
+                .ToList();
+
+            var states = await Task.WhenAll(stateTasks);
+            return states.Where(state => state != null).Select(state => state!).ToList();
+        }
+
+        public Task<bool> TryAcquireKeyReprobeAsync(int keyId, TimeSpan ttl)
+        {
+            return _db.StringSetAsync(
+                CacheKeys.ProviderError.ReprobeGuard(keyId),
+                "1",
+                ttl,
+                When.NotExists);
+        }
+
+        public async Task RecordKeyReprobeAttemptAsync(
+            int keyId,
+            int attemptCount,
+            DateTime attemptedAt,
+            DateTime nextAttemptAt)
+        {
+            await _db.HashSetAsync(
+                CacheKeys.ProviderError.FatalByKey(keyId),
+                new HashEntry[]
+                {
+                    new("reprobe_attempt_count", attemptCount),
+                    new("last_reprobe_at", attemptedAt.ToString("O")),
+                    new("next_reprobe_at", nextAttemptAt.ToString("O"))
+                });
+        }
+
+        public async Task MarkKeyReprobeRequiresManualAsync(
+            int keyId,
+            ProviderErrorType errorType)
+        {
+            await Task.WhenAll(
+                _db.HashSetAsync(
+                    CacheKeys.ProviderError.FatalByKey(keyId),
+                    "error_type",
+                    errorType.ToString()),
+                _db.SetRemoveAsync(CacheKeys.ProviderError.DisabledKeys, keyId));
         }
 
         public async Task MarkProviderDisabledAsync(int providerId, DateTime disabledAt, string reason)
@@ -291,7 +400,8 @@ namespace ConduitLLM.Core.Services
             {
                 CacheKeys.ProviderError.FatalByKey(keyId),
                 CacheKeys.ProviderError.WarningsByKey(keyId),
-                CacheKeys.ProviderError.DisableGuard(keyId)
+                CacheKeys.ProviderError.DisableGuard(keyId),
+                CacheKeys.ProviderError.ReprobeGuard(keyId)
             };
             keysToDelete.AddRange(ErrorThresholdConfiguration.FatalErrorPolicies.Keys.Select(
                 errorType => (RedisKey)CacheKeys.ProviderError.FatalRequestsByType(
@@ -299,6 +409,7 @@ namespace ConduitLLM.Core.Services
 
             // Delete error keys
             await _db.KeyDeleteAsync(keysToDelete.ToArray());
+            await _db.SetRemoveAsync(CacheKeys.ProviderError.DisabledKeys, keyId);
 
             // Remove from provider's disabled keys set if providerId is known
             if (providerId.HasValue)
@@ -308,6 +419,13 @@ namespace ConduitLLM.Core.Services
 
             _logger.LogInformation("Cleared errors for key {KeyId}", keyId);
         }
+
+        private static DateTime? ParseOptionalDateTime(string? value) =>
+            DateTime.TryParse(
+                value,
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.RoundtripKind,
+                out var parsed) ? parsed : null;
 
         public async Task<KeyErrorData?> GetKeyErrorDataAsync(int keyId)
         {

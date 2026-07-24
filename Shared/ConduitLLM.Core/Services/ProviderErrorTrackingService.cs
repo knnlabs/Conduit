@@ -166,7 +166,7 @@ namespace ConduitLLM.Core.Services
                 _logger.LogWarning("Disabled key {KeyId} for provider {ProviderId}: {Reason}",
                     keyId, key.ProviderId, reason);
 
-                await _errorStore.MarkKeyDisabledAsync(keyId, disabledAt);
+                await _errorStore.MarkKeyDisabledAsync(keyId, disabledAt, errorType);
                 await _errorStore.AddDisabledKeyToProviderAsync(key.ProviderId, keyId);
 
                 // The provider itself is only disabled when this was its last enabled key.

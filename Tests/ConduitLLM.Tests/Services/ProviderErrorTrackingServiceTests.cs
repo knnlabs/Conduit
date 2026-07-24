@@ -144,6 +144,10 @@ namespace ConduitLLM.Tests.Services
                     e.IsAutomatic),
                 It.IsAny<CancellationToken>()), 
                 Times.Once);
+            _errorStoreMock.Verify(x => x.MarkKeyDisabledAsync(
+                error.KeyCredentialId,
+                It.IsAny<DateTime>(),
+                ProviderErrorType.InvalidApiKey), Times.Once);
         }
 
         [Fact]

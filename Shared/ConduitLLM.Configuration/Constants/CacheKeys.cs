@@ -273,6 +273,9 @@ public static class CacheKeys
         /// <summary>Key for recent errors feed (global)</summary>
         public const string RecentFeed = "provider:errors:recent";
 
+        /// <summary>Set of disabled key IDs considered by the balance reprobe worker.</summary>
+        public const string DisabledKeys = "provider:errors:disabled_keys";
+
         /// <summary>Builds a key for fatal error data by credential key ID</summary>
         /// <param name="keyId">The provider key credential ID</param>
         /// <returns>Full key like "provider:errors:key:123:fatal"</returns>
@@ -284,6 +287,9 @@ public static class CacheKeys
 
         /// <summary>Builds the short-lived guard key for a credential disable operation.</summary>
         public static string DisableGuard(int keyId) => $"provider:errors:key:{keyId}:disabling";
+
+        /// <summary>Builds the distributed lock key for a balance reprobe.</summary>
+        public static string ReprobeGuard(int keyId) => $"provider:errors:key:{keyId}:reprobing";
 
         /// <summary>Builds a key for warning data by credential key ID</summary>
         /// <param name="keyId">The provider key credential ID</param>
