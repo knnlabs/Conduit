@@ -84,12 +84,13 @@ namespace ConduitLLM.Admin.Endpoints
             // server uptime (replacing the previous 30-day placeholder).
             var dbHealthCheck = await CheckDatabaseHealth(dbContext, cancellationToken);
             var dbUptime = await GetDatabaseUptimeAsync(dbContext, cancellationToken);
+            var dbServerVersion = await GetDatabaseServerVersionAsync(dbContext, cancellationToken);
             services.Add(new ServiceStatusDto
             {
                 Id = "database",
                 Name = "PostgreSQL Database",
                 Status = dbHealthCheck.IsHealthy ? "healthy" : "unhealthy",
-                Version = dbContext.Database.GetDbConnection().ServerVersion,
+                Version = dbServerVersion,
                 Uptime = dbUptime,
                 LastCheck = DateTime.UtcNow,
                 ResponseTime = dbHealthCheck.ResponseTime,
@@ -576,6 +577,33 @@ namespace ConduitLLM.Admin.Endpoints
             catch
             {
                 return (false, -1);
+            }
+        }
+
+        /// <summary>
+        /// Best-effort database server version. <see cref="System.Data.Common.DbConnection.ServerVersion"/>
+        /// requires an <b>open</b> connection; the preceding SELECT 1 / uptime probes let EF close the
+        /// pooled connection again, so we must reopen before reading it. Returns <c>null</c> on any
+        /// failure rather than throwing — a version string is informational and must never fail the
+        /// whole health response (previously surfaced as an HTTP 400 for the entire endpoint).
+        /// </summary>
+        private static async Task<string?> GetDatabaseServerVersionAsync(
+            ConduitDbContext dbContext,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var connection = dbContext.Database.GetDbConnection();
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    await connection.OpenAsync(cancellationToken);
+                }
+
+                return connection.ServerVersion;
+            }
+            catch
+            {
+                return null; // best effort — version is informational only
             }
         }
 
