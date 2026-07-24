@@ -95,6 +95,8 @@ namespace ConduitLLM.Core.Messaging
             typeof(ConduitLLM.Configuration.Events.ProviderKeyCredentialUpdated),
             typeof(ConduitLLM.Configuration.Events.ProviderKeyCredentialDeleted),
             typeof(ConduitLLM.Configuration.Events.ProviderKeyCredentialPrimaryChanged),
+            typeof(ConduitLLM.Configuration.Events.ProviderKeyDisabledEvent),
+            typeof(ConduitLLM.Configuration.Events.ProviderKeyReenabledEvent),
         };
 
         /// <summary>
