@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -323,7 +322,9 @@ namespace ConduitLLM.Core.Decorators
                     return;
                 }
 
-                var errorType = ClassifyError(ex.StatusCode);
+                var errorType = ProviderErrorClassifier.Classify(
+                    ex.StatusCode,
+                    $"{ex.ResponseBody} {ex.Message}");
                 
                 // Only track errors that are meaningful for provider health
                 if (errorType == ProviderErrorType.Unknown)
@@ -339,7 +340,9 @@ namespace ConduitLLM.Core.Decorators
                     ErrorMessage = ex.Message,
                     HttpStatusCode = (int?)ex.StatusCode,
                     RetryAttempt = 0, // Direct error, not from retry
-                    RequestId = null
+                    RequestId = _serviceProvider
+                        .GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()
+                        ?.HttpContext?.TraceIdentifier
                 });
 
                 _logger?.LogInformation(
@@ -353,21 +356,5 @@ namespace ConduitLLM.Core.Decorators
             }
         }
 
-        private static ProviderErrorType ClassifyError(HttpStatusCode? statusCode)
-        {
-            return statusCode switch
-            {
-                HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
-                HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
-                HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
-                HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
-                HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
-                HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
-                HttpStatusCode.InternalServerError => ProviderErrorType.ServiceUnavailable,
-                _ => ProviderErrorType.Unknown
-            };
-        }
     }
 }

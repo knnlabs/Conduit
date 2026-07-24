@@ -76,6 +76,12 @@ another provider might survive, Conduit retries the next candidate:
 - **Not retried:** validation and authentication `4xx` responses — a bad request will fail the same
   way everywhere, so there is nothing to gain.
 
+There is a separate, narrower failover layer *inside* the selected provider. A fatal `401`, `402`,
+or `403` from one credential may retry up to two other enabled credentials for that same provider.
+An insufficient-balance failure skips credentials in the same shared account group. This does not
+move the request to another provider mapping; see
+[Provider key auto-disable operations](./operations/provider-key-auto-disable.md).
+
 **Streaming has one hard rule:** a streaming request can fail over only *before its first response
 chunk*. Once any output has been sent to the client, it is never replayed onto a different provider.
 
@@ -113,9 +119,10 @@ no redeploy required.
 
 Everything that is not a chat completion — embeddings, image generation, audio, rerank, and so on —
 uses **deterministic resolution**: the alias resolves to a single mapping, which is used directly.
-There is no scoring and no automatic failover for these request types. If you need redundancy for a
-non-chat model, that is a configuration choice (which mapping the alias points at), not something
-routing decides per request.
+There is no scoring or cross-provider failover for these request types. The selected provider may
+still retry another one of its enabled credentials after a fatal credential/account error. If you
+need redundancy across providers for a non-chat model, that is a configuration choice (which
+mapping the alias points at), not something routing decides per request.
 
 ## Where to go next
 

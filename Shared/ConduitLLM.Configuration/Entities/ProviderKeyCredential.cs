@@ -40,6 +40,7 @@ namespace ConduitLLM.Configuration.Entities
         /// Keys with the same ProviderAccountGroup share quota limits and billing.
         /// This is used for intelligent failover - if one account hits rate limits,
         /// the system can switch to keys from a different account group.
+        /// Group 0 means ungrouped: errors for one group-0 key never propagate to another.
         /// Note: This refers to external provider accounts, not Conduit user accounts.
         /// </summary>
         // Each key can be part of an account on that LLM Provider. This is not related to our own concept of accounts as this is solely for tracking the external account.

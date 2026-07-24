@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
@@ -18,6 +19,9 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class ProviderErrorTrackingService : IProviderErrorTrackingService
     {
+        public const string AllKeysDisabledReason = "All provider keys disabled automatically";
+        private static readonly TimeSpan DisableGuardTtl = TimeSpan.FromSeconds(30);
+
         private readonly IRedisErrorStore _errorStore;
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly ILogger<ProviderErrorTrackingService> _logger;
@@ -55,7 +59,10 @@ namespace ConduitLLM.Core.Services
                 if (error.IsFatal && await ShouldDisableKeyAsync(error.KeyCredentialId, error.ErrorType))
                 {
                     await DisableKeyAsync(error.KeyCredentialId, 
-                        $"Auto-disabled due to {error.ErrorType}: {error.ErrorMessage}");
+                        $"Auto-disabled due to {error.ErrorType}: {error.ErrorMessage}",
+                        error.ErrorType,
+                        isAutomatic: true,
+                        errorMessage: error.ErrorMessage);
                 }
                 
                 _logger.LogInformation(
@@ -87,32 +94,41 @@ namespace ConduitLLM.Core.Services
                 return true;
             }
             
-            // Check occurrence count within time window
-            var fatalData = await _errorStore.GetFatalErrorDataAsync(keyId);
-            
-            if (fatalData != null && 
-                fatalData.ErrorType == errorType.ToString() &&
-                fatalData.LastSeen.HasValue)
+            // Count distinct request IDs so retries within one request cannot disable a key.
+            var occurrenceCount = await _errorStore.GetDistinctFatalRequestCountAsync(
+                keyId, errorType, policy.TimeWindow);
+
+            if (occurrenceCount >= policy.RequiredOccurrences)
             {
-                var timeSinceLastError = DateTime.UtcNow - fatalData.LastSeen.Value;
-                
-                if (timeSinceLastError <= policy.TimeWindow && 
-                    fatalData.Count >= policy.RequiredOccurrences)
-                {
-                    _logger.LogWarning(
-                        "Key {KeyId} will be disabled: {Count} occurrences of {ErrorType} within {Window}",
-                        keyId, fatalData.Count, errorType, policy.TimeWindow);
-                    return true;
-                }
+                _logger.LogWarning(
+                    "Key {KeyId} will be disabled: {Count} distinct requests returned {ErrorType} within {Window}",
+                    keyId, occurrenceCount, errorType, policy.TimeWindow);
+                return true;
             }
-            
+
+            _logger.LogWarning(
+                "Key {KeyId} recorded {Count}/{RequiredCount} distinct {ErrorType} failures within {Window}; not disabling yet",
+                keyId, occurrenceCount, policy.RequiredOccurrences, errorType, policy.TimeWindow);
             return false;
         }
 
-        public async Task DisableKeyAsync(int keyId, string reason)
+        public async Task DisableKeyAsync(
+            int keyId,
+            string reason,
+            ProviderErrorType errorType = ProviderErrorType.Unknown,
+            bool isAutomatic = false,
+            string? errorMessage = null)
         {
             try
             {
+                if (!await _errorStore.TryAcquireKeyDisableAsync(keyId, DisableGuardTtl))
+                {
+                    _logger.LogDebug(
+                        "Another request is already disabling key {KeyId}; skipping duplicate disable",
+                        keyId);
+                    return;
+                }
+
                 // Update database
                 using var scope = _scopeFactory.CreateScope();
                 var keyRepo = scope.ServiceProvider.GetRequiredService<IProviderKeyCredentialRepository>();
@@ -125,82 +141,99 @@ namespace ConduitLLM.Core.Services
                     return;
                 }
 
-                // Check if this is a primary key
-                if (key.IsPrimary)
+                if (!key.IsEnabled)
                 {
-                    // For primary keys, disable the provider instead
+                    _logger.LogDebug("Key {KeyId} is already disabled", keyId);
+                    return;
+                }
+
+                var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    keyRepo.GetByProviderIdPaginatedAsync, key.ProviderId);
+                var propagateBalanceFailure =
+                    errorType == ProviderErrorType.InsufficientBalance &&
+                    key.ProviderAccountGroup > 0;
+                var affectedKeys = propagateBalanceFailure
+                    ? allKeys
+                        .Where(candidate =>
+                            candidate.IsEnabled &&
+                            candidate.ProviderAccountGroup == key.ProviderAccountGroup)
+                        .ToList()
+                    : new List<ProviderKeyCredential> { key };
+                if (affectedKeys.All(candidate => candidate.Id != keyId))
+                {
+                    affectedKeys.Add(key);
+                }
+
+                var affectedKeyIds = affectedKeys.Select(candidate => candidate.Id).ToHashSet();
+                var wasPrimary = affectedKeys.Any(candidate => candidate.IsPrimary);
+                var fallbackKey = allKeys.FirstOrDefault(candidate =>
+                    candidate.IsEnabled && !affectedKeyIds.Contains(candidate.Id));
+                var disabledAt = DateTime.UtcNow;
+                var effectiveReason = propagateBalanceFailure
+                    ? $"Shared account group {key.ProviderAccountGroup} balance exhausted " +
+                      $"(triggered by key {keyId}): {reason}"
+                    : reason;
+
+                foreach (var affectedKey in affectedKeys)
+                {
+                    // A primary key cannot remain primary while disabled because of the
+                    // database constraint.
+                    affectedKey.IsPrimary = false;
+                    affectedKey.IsEnabled = false;
+                    await keyRepo.UpdateAsync(affectedKey);
+
+                    await _errorStore.MarkKeyDisabledAsync(
+                        affectedKey.Id, disabledAt, errorType);
+                    await _errorStore.AddDisabledKeyToProviderAsync(
+                        key.ProviderId, affectedKey.Id);
+                }
+
+                if (wasPrimary && fallbackKey != null)
+                {
+                    await keyRepo.SetPrimaryKeyAsync(key.ProviderId, fallbackKey.Id);
+                }
+
+                _logger.LogWarning(
+                    "Disabled provider keys {KeyIds} for provider {ProviderId}: {Reason}",
+                    string.Join(",", affectedKeyIds),
+                    key.ProviderId,
+                    effectiveReason);
+
+                // The provider itself is only disabled when this was its last enabled key.
+                if (fallbackKey == null)
+                {
                     var provider = await providerRepo.GetByIdAsync(key.ProviderId);
                     if (provider != null && provider.IsEnabled)
                     {
                         provider.IsEnabled = false;
                         await providerRepo.UpdateAsync(provider);
-                        
+
                         _logger.LogWarning(
-                            "Disabled provider {ProviderId} ({ProviderName}) due to primary key failure: {Reason}",
-                            provider.Id, provider.ProviderName, reason);
-                        
-                        // Update Redis to track provider disable
-                        await _errorStore.MarkProviderDisabledAsync(provider.Id, DateTime.UtcNow, reason);
-                        
-                        // Publish event for UI update (could create a ProviderDisabledEvent)
-                        var eventBus = scope.ServiceProvider.GetService<IEventBus>();
-                        if (eventBus != null)
-                        {
-                            // Still publish key disabled event so UI knows something happened
-                            await eventBus.PublishAsync(new ProviderKeyDisabledEvent
-                            {
-                                KeyId = keyId,
-                                ProviderId = key.ProviderId,
-                                Reason = $"Provider disabled: {reason}",
-                                DisabledAt = DateTime.UtcNow
-                            });
-                        }
+                            "Disabled provider {ProviderId} ({ProviderName}) - all keys are disabled",
+                            provider.Id, provider.ProviderName);
+
+                        await _errorStore.MarkProviderDisabledAsync(
+                            provider.Id, disabledAt, AllKeysDisabledReason);
                     }
                 }
-                else if (key.IsEnabled)
+
+                var eventBus = scope.ServiceProvider.GetService<IEventBus>();
+                if (eventBus != null)
                 {
-                    // For secondary keys, disable the key normally
-                    key.IsEnabled = false;
-                    await keyRepo.UpdateAsync(key);
-                    
-                    _logger.LogWarning("Disabled secondary key {KeyId} for provider {ProviderId}: {Reason}",
-                        keyId, key.ProviderId, reason);
-                    
-                    // Update Redis
-                    await _errorStore.MarkKeyDisabledAsync(keyId, DateTime.UtcNow);
-                    await _errorStore.AddDisabledKeyToProviderAsync(key.ProviderId, keyId);
-                    
-                    // Check if all keys are now disabled - if so, disable the provider
-                    var allKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                        keyRepo.GetByProviderIdPaginatedAsync, key.ProviderId);
-                    if (allKeys.All(k => !k.IsEnabled))
+                    await eventBus.PublishAsync(new ProviderKeyDisabledEvent
                     {
-                        var provider = await providerRepo.GetByIdAsync(key.ProviderId);
-                        if (provider != null && provider.IsEnabled)
-                        {
-                            provider.IsEnabled = false;
-                            await providerRepo.UpdateAsync(provider);
-                            
-                            _logger.LogWarning(
-                                "Disabled provider {ProviderId} ({ProviderName}) - all keys are disabled",
-                                provider.Id, provider.ProviderName);
-                            
-                            await _errorStore.MarkProviderDisabledAsync(provider.Id, DateTime.UtcNow, "All keys disabled");
-                        }
-                    }
-                    
-                    // Publish event for UI update
-                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
-                    if (eventBus != null)
-                    {
-                        await eventBus.PublishAsync(new ProviderKeyDisabledEvent
-                        {
-                            KeyId = keyId,
-                            ProviderId = key.ProviderId,
-                            Reason = reason,
-                            DisabledAt = DateTime.UtcNow
-                        });
-                    }
+                        KeyId = keyId,
+                        ProviderId = key.ProviderId,
+                        Reason = effectiveReason,
+                        ErrorType = errorType.ToString(),
+                        ErrorMessage = errorMessage ?? reason,
+                        DisabledAt = disabledAt,
+                        IsAutomatic = isAutomatic,
+                        AffectedKeyIds = affectedKeyIds.OrderBy(id => id).ToArray(),
+                        ProviderAccountGroup = propagateBalanceFailure
+                            ? key.ProviderAccountGroup
+                            : (short)0
+                    });
                 }
             }
             catch (Exception ex)
@@ -268,6 +301,11 @@ namespace ConduitLLM.Core.Services
             await _errorStore.ClearErrorsForKeyAsync(keyId, providerId);
         }
 
+        public async Task ClearProviderDisabledAsync(int providerId)
+        {
+            await _errorStore.ClearProviderDisabledAsync(providerId);
+        }
+
         public async Task<KeyErrorDetails?> GetKeyErrorDetailsAsync(int keyId)
         {
             using var scope = _scopeFactory.CreateScope();
@@ -331,7 +369,9 @@ namespace ConduitLLM.Core.Services
                 FatalErrors = summaryData.FatalErrors,
                 Warnings = summaryData.Warnings,
                 DisabledKeyIds = summaryData.DisabledKeyIds,
-                LastError = summaryData.LastError
+                LastError = summaryData.LastError,
+                ProviderDisabledAt = summaryData.ProviderDisabledAt,
+                ProviderDisableReason = summaryData.ProviderDisableReason
             };
         }
 
