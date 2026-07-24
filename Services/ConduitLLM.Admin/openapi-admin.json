@@ -28720,6 +28720,18 @@
             "type": "boolean",
             "description": "Whether generated media URLs use a configured public base URL or CDN."
           },
+          "testScopeActive": {
+            "type": "boolean",
+            "description": "Whether cleanup is restricted to explicitly configured test groups."
+          },
+          "testVirtualKeyGroups": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "description": "Virtual key group IDs included in the progressive-rollout test scope."
+          },
           "untrackedObjectCount": {
             "type": "integer",
             "description": "Storage objects with no matching MediaRecord after the latest reconciliation.",
@@ -28788,6 +28800,11 @@
           "monthlyBudgetUsedPercent": {
             "type": "number",
             "description": "Percentage of monthly budget used (0-100).",
+            "format": "double"
+          },
+          "budgetAlertThresholdPercent": {
+            "type": "number",
+            "description": "Budget utilization percentage that emits an operational alert.",
             "format": "double"
           },
           "budgetBackend": {

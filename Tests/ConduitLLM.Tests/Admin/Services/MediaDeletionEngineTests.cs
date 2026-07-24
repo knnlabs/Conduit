@@ -1,9 +1,12 @@
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using FluentAssertions;
@@ -595,7 +598,84 @@ public sealed class MediaDeletionEngineTests
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
-    private MediaDeletionEngine CreateEngine(MediaLifecycleOptions options) => new(
+    [Fact]
+    public async Task ExecuteOperationAsync_DryRun_DoesNotIncrementDeletionMetrics()
+    {
+        var cleanupType = $"dry-run-test-{Guid.NewGuid():N}";
+        var filesDeleted = AdminMediaCleanupMetrics.FilesDeleted
+            .WithLabels(cleanupType);
+        var bytesFreed = AdminMediaCleanupMetrics.BytesFreed
+            .WithLabels(cleanupType);
+        var dryRunFiles = AdminMediaCleanupMetrics.DryRunFilesMatched
+            .WithLabels(cleanupType);
+        var dryRunBytes = AdminMediaCleanupMetrics.DryRunBytesMatched
+            .WithLabels(cleanupType);
+        var filesDeletedBefore = filesDeleted.Value;
+        var bytesFreedBefore = bytesFreed.Value;
+        var dryRunFilesBefore = dryRunFiles.Value;
+        var dryRunBytesBefore = dryRunBytes.Value;
+        var engine = CreateEngine(new MediaLifecycleOptions());
+
+        await engine.ExecuteOperationAsync(
+            new MediaDeletionOperationContext(cleanupType, "scheduled", "test"),
+            () => Task.FromResult(new MediaDeletionEngineResult(
+                FilesDeleted: 3,
+                BytesFreed: 900,
+                WouldDeleteCount: 3,
+                BytesWouldFree: 900,
+                IsDryRun: true)));
+
+        filesDeleted.Value.Should().Be(filesDeletedBefore);
+        bytesFreed.Value.Should().Be(bytesFreedBefore);
+        dryRunFiles.Value.Should().Be(dryRunFilesBefore + 3);
+        dryRunBytes.Value.Should().Be(dryRunBytesBefore + 900);
+    }
+
+    [Fact]
+    public async Task ExecuteOperationAsync_FailureAndHighBudget_PublishesOperationalAlerts()
+    {
+        var eventBus = new Mock<IEventBus>();
+        eventBus
+            .Setup(bus => bus.PublishAsync(
+                It.IsAny<MediaCleanupAlertRaised>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _budget
+            .Setup(budget => budget.GetMonthlyDeleteCountAsync(
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(95);
+        var engine = CreateEngine(
+            new MediaLifecycleOptions
+            {
+                MonthlyDeleteBudget = 100,
+                BudgetAlertThresholdPercent = 90
+            },
+            eventBus.Object);
+
+        await engine.ExecuteOperationAsync(
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Retention,
+                "scheduled",
+                "leader-1"),
+            () => Task.FromResult(new MediaDeletionEngineResult(Failures: 1)));
+
+        eventBus.Verify(bus => bus.PublishAsync(
+            It.Is<MediaCleanupAlertRaised>(alert =>
+                alert.Kind == MediaCleanupAlertKind.OperationFailure &&
+                alert.CleanupType == MediaCleanupTypes.Retention),
+            It.IsAny<CancellationToken>()), Times.Once);
+        eventBus.Verify(bus => bus.PublishAsync(
+            It.Is<MediaCleanupAlertRaised>(alert =>
+                alert.Kind == MediaCleanupAlertKind.BudgetThreshold &&
+                alert.MonthlyDeleteCount == 95 &&
+                alert.MonthlyDeleteBudget == 100 &&
+                alert.BudgetUsedPercent == 95),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    private MediaDeletionEngine CreateEngine(
+        MediaLifecycleOptions options,
+        IEventBus? eventBus = null) => new(
         _storage.Object,
         _budget.Object,
         _repository.Object,
@@ -603,7 +683,8 @@ public sealed class MediaDeletionEngineTests
         _approvals.Object,
         _storageGuard.Object,
         Options.Create(options),
-        Mock.Of<ILogger<MediaDeletionEngine>>());
+        Mock.Of<ILogger<MediaDeletionEngine>>(),
+        eventBus);
 
     private static MediaBulkDeleteResult SuccessfulDelete(IEnumerable<string> keys) => new()
     {

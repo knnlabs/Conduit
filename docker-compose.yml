@@ -145,7 +145,7 @@ services:
       MediaLifecycle__EnableQuotaCleanup: "true"
       MediaLifecycle__EnableSoftDelete: "true"
       MediaLifecycle__SoftDeleteGracePeriodDays: "7"
-      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
+      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Progressive rollout; shown prominently in cleanup status
       MediaLifecycle__MaxBatchSize: "1000"
       MediaLifecycle__CleanupPageSize: "1000"
       MediaLifecycle__MaxRecordsPerRun: "10000"
@@ -154,6 +154,7 @@ services:
       MediaLifecycle__DeleteThrottleInitialBackoffMs: "1000"
       MediaLifecycle__R2OperationTimeoutSeconds: "30"
       MediaLifecycle__MonthlyDeleteBudget: "500000"
+      MediaLifecycle__BudgetAlertThresholdPercent: "90"
       # Discovery Cache configuration
       Discovery__CacheDurationMinutes: "360"  # 6 hours
       Discovery__EnableCaching: "true"

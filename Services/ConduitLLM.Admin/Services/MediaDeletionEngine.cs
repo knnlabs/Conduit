@@ -4,7 +4,9 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Options;
@@ -22,6 +24,7 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
     private readonly IMediaCleanupStatusService _statusService;
     private readonly IMediaCleanupApprovalService _approvalService;
     private readonly IMediaStorageConfigurationGuard _storageGuard;
+    private readonly IEventBus? _eventBus;
     private readonly MediaLifecycleOptions _options;
     private readonly ILogger<MediaDeletionEngine> _logger;
 
@@ -33,7 +36,8 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         IMediaCleanupApprovalService approvalService,
         IMediaStorageConfigurationGuard storageGuard,
         IOptions<MediaLifecycleOptions> options,
-        ILogger<MediaDeletionEngine> logger)
+        ILogger<MediaDeletionEngine> logger,
+        IEventBus? eventBus = null)
     {
         _storageService = storageService;
         _budgetService = budgetService;
@@ -41,6 +45,7 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         _statusService = statusService;
         _approvalService = approvalService;
         _storageGuard = storageGuard;
+        _eventBus = eventBus;
         _options = options.Value;
         _logger = logger;
     }
@@ -91,6 +96,11 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                 cancellationToken);
 
             RecordMetrics(operation, result, operationStatus, stopwatch.Elapsed);
+            await PublishOperationalAlertsAsync(
+                operation,
+                result,
+                operationStatus,
+                cancellationToken);
         }
 
         return result with
@@ -637,23 +647,109 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         AdminMediaCleanupMetrics.LastRunSucceeded
             .WithLabels(operation.CleanupType)
             .Set(metricStatus is "completed" or "dry_run" ? 1 : 0);
-        if (result.FilesDeleted > 0)
+        if (result.IsDryRun)
+        {
+            if (result.WouldDeleteCount > 0)
+            {
+                AdminMediaCleanupMetrics.DryRunFilesMatched
+                    .WithLabels(operation.CleanupType)
+                    .Inc(result.WouldDeleteCount);
+            }
+            if (result.BytesWouldFree > 0)
+            {
+                AdminMediaCleanupMetrics.DryRunBytesMatched
+                    .WithLabels(operation.CleanupType)
+                    .Inc(result.BytesWouldFree);
+            }
+            if (result.WouldTombstoneCount > 0)
+            {
+                AdminMediaCleanupMetrics.DryRunRecordsMatched
+                    .WithLabels(operation.CleanupType)
+                    .Inc(result.WouldTombstoneCount);
+            }
+        }
+        else if (result.FilesDeleted > 0)
         {
             AdminMediaCleanupMetrics.FilesDeleted
                 .WithLabels(operation.CleanupType)
                 .Inc(result.FilesDeleted);
         }
-        if (result.BytesFreed > 0)
+        if (!result.IsDryRun && result.BytesFreed > 0)
         {
             AdminMediaCleanupMetrics.BytesFreed
                 .WithLabels(operation.CleanupType)
                 .Inc(result.BytesFreed);
         }
-        if (result.RecordsTombstoned > 0)
+        if (!result.IsDryRun && result.RecordsTombstoned > 0)
         {
             AdminMediaCleanupMetrics.RecordsTombstoned
                 .WithLabels(operation.CleanupType)
                 .Inc(result.RecordsTombstoned);
+        }
+    }
+
+    private async Task PublishOperationalAlertsAsync(
+        MediaDeletionOperationContext operation,
+        MediaDeletionEngineResult result,
+        string operationStatus,
+        CancellationToken cancellationToken)
+    {
+        if (_eventBus == null)
+            return;
+
+        try
+        {
+            if (result.Failures > 0 ||
+                operationStatus.StartsWith("Failed", StringComparison.OrdinalIgnoreCase))
+            {
+                await _eventBus.PublishAsync(new MediaCleanupAlertRaised
+                {
+                    Kind = MediaCleanupAlertKind.OperationFailure,
+                    CleanupType = operation.CleanupType,
+                    Status = operationStatus,
+                    TriggeredBy = operation.TriggeredBy,
+                    LeaderInstanceId = operation.LeaderInstanceId
+                }, cancellationToken);
+            }
+
+            if (_options.MonthlyDeleteBudget <= 0)
+                return;
+
+            var monthlyDeleteCount =
+                await _budgetService.GetMonthlyDeleteCountAsync(cancellationToken);
+            var budgetUsedPercent =
+                (double)monthlyDeleteCount / _options.MonthlyDeleteBudget * 100;
+            var alertThreshold = Math.Clamp(
+                _options.BudgetAlertThresholdPercent,
+                0,
+                100);
+            if (budgetUsedPercent < alertThreshold)
+                return;
+
+            await _eventBus.PublishAsync(new MediaCleanupAlertRaised
+            {
+                Kind = MediaCleanupAlertKind.BudgetThreshold,
+                CleanupType = operation.CleanupType,
+                Status = result.BudgetExhausted
+                    ? "Deletion budget exhausted"
+                    : "Deletion budget threshold reached",
+                TriggeredBy = operation.TriggeredBy,
+                LeaderInstanceId = operation.LeaderInstanceId,
+                MonthlyDeleteCount = monthlyDeleteCount,
+                MonthlyDeleteBudget = _options.MonthlyDeleteBudget,
+                BudgetUsedPercent = Math.Round(budgetUsedPercent, 2)
+            }, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // The cleanup operation owns this token; shutdown should not be delayed for alerts.
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Failed to publish operational alert for {CleanupType} media cleanup",
+                operation.CleanupType);
         }
     }
 

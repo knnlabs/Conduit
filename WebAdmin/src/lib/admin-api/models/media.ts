@@ -130,6 +130,8 @@ export interface MediaCleanupStatus {
   softDeleteGracePeriodDays: number;
   storageBackend: string;
   isPublicMediaBaseUrlConfigured: boolean;
+  testScopeActive: boolean;
+  testVirtualKeyGroups: number[];
   untrackedObjectCount: number;
   untrackedBytes: number;
   lastRunTimeUtc: string | null;
@@ -142,6 +144,7 @@ export interface MediaCleanupStatus {
   monthlyDeleteBudget: number;
   monthlyDeleteBudgetRemaining: number;
   monthlyBudgetUsedPercent: number;
+  budgetAlertThresholdPercent: number;
   budgetBackend: string;
   isBudgetBackendPersistent: boolean;
   budgetFailureMode: string;

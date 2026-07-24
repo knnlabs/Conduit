@@ -5098,6 +5098,10 @@ export interface components {
       storageBackend?: string;
       /** @description Whether generated media URLs use a configured public base URL or CDN. */
       isPublicMediaBaseUrlConfigured?: boolean;
+      /** @description Whether cleanup is restricted to explicitly configured test groups. */
+      testScopeActive?: boolean;
+      /** @description Virtual key group IDs included in the progressive-rollout test scope. */
+      testVirtualKeyGroups?: number[];
       /**
        * Format: int32
        * @description Storage objects with no matching MediaRecord after the latest reconciliation.
@@ -5153,6 +5157,11 @@ export interface components {
        * @description Percentage of monthly budget used (0-100).
        */
       monthlyBudgetUsedPercent?: number;
+      /**
+       * Format: double
+       * @description Budget utilization percentage that emits an operational alert.
+       */
+      budgetAlertThresholdPercent?: number;
       /** @description Active delete-budget counter backend (Redis or InMemory). */
       budgetBackend?: string;
       /** @description Whether the budget counter survives restarts and is shared across instances. */

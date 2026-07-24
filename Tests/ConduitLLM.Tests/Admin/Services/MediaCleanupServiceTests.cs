@@ -454,6 +454,31 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
+        public async Task RunScheduledCleanupAsync_ResolvesSimpleRetentionOverrideOncePerRun()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableExpirationCleanup = false;
+            options.EnableReconciliation = false;
+            options.EnableQuotaCleanup = false;
+            options.EnableRetentionCleanup = true;
+            ArrangeLockAcquired();
+            SeedTestGroup(1);
+            SeedTestGroup(2);
+            SeedDefaultRetentionPolicy();
+            _mockStatusService
+                .Setup(service => service.GetSimpleRetentionOverrideAsync(
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(14);
+
+            await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
+
+            _mockStatusService.Verify(service =>
+                service.GetSimpleRetentionOverrideAsync(
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task RunScheduledCleanupAsync_PaginatesExpiredMediaAndReportsRunCap()
         {
             var options = CreateExecutionOptions();

@@ -73,7 +73,9 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
             SoftDeleteGracePeriodDays = 9,
             EnableExpirationCleanup = true,
             EnableReconciliation = false,
-            EnableRetentionCleanup = true
+            EnableRetentionCleanup = true,
+            TestVirtualKeyGroups = [3, 1, 3],
+            BudgetAlertThresholdPercent = 85
         };
         var service = new MediaCleanupStatusService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
@@ -128,6 +130,8 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         status.CurrentLeaderInstanceId.Should().Be("test-leader");
         status.StorageBackend.Should().Be("InMemory");
         status.IsPublicMediaBaseUrlConfigured.Should().BeTrue();
+        status.TestScopeActive.Should().BeTrue();
+        status.TestVirtualKeyGroups.Should().Equal(1, 3);
         status.UntrackedObjectCount.Should().Be(4);
         status.UntrackedBytes.Should().Be(8192);
         status.PendingApprovalCount.Should().Be(1);
@@ -135,6 +139,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         status.BudgetBackend.Should().Be("InMemory");
         status.IsBudgetBackendPersistent.Should().BeFalse();
         status.BudgetFailureMode.Should().Be("FailClosed");
+        status.BudgetAlertThresholdPercent.Should().Be(85);
     }
 
     public void Dispose()

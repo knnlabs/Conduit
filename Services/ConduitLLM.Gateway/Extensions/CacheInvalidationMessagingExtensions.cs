@@ -47,6 +47,7 @@ namespace ConduitLLM.Gateway.Extensions
             services.AddEventHandler<AsyncTaskDeleted, Gateway.EventHandlers.AsyncTaskCacheInvalidationHandler>();
             services.AddEventHandler<MediaGenerationCompleted, Gateway.EventHandlers.MediaLifecycleHandler>();
             services.AddEventHandler<VideoGenerationStarted, Gateway.EventHandlers.VideoGenerationStartedHandler>();
+            services.AddEventHandler<MediaCleanupAlertRaised, Gateway.EventHandlers.MediaCleanupAlertHandler>();
 
             // Model-mapping / model-cost / ip-filter / provider-tool caches
             services.AddEventHandler<ModelMappingChanged, Gateway.Consumers.ModelMappingCacheInvalidationHandler>();

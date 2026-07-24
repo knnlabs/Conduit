@@ -37,6 +37,16 @@ namespace ConduitLLM.Admin.DTOs
         public bool IsPublicMediaBaseUrlConfigured { get; set; }
 
         /// <summary>
+        /// Whether cleanup is restricted to explicitly configured test groups.
+        /// </summary>
+        public bool TestScopeActive { get; set; }
+
+        /// <summary>
+        /// Virtual key group IDs included in the progressive-rollout test scope.
+        /// </summary>
+        public List<int> TestVirtualKeyGroups { get; set; } = new();
+
+        /// <summary>
         /// Storage objects with no matching MediaRecord after the latest reconciliation.
         /// </summary>
         public int UntrackedObjectCount { get; set; }
@@ -96,6 +106,11 @@ namespace ConduitLLM.Admin.DTOs
         /// Percentage of monthly budget used (0-100).
         /// </summary>
         public double MonthlyBudgetUsedPercent { get; set; }
+
+        /// <summary>
+        /// Budget utilization percentage that emits an operational alert.
+        /// </summary>
+        public double BudgetAlertThresholdPercent { get; set; }
 
         /// <summary>
         /// Active delete-budget counter backend (Redis or InMemory).

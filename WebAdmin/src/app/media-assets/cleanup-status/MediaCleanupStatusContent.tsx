@@ -204,6 +204,10 @@ export default function MediaCleanupStatusContent() {
 
   const budgetPercent = Math.min(status.monthlyBudgetUsedPercent, 100);
   const budgetColor = getBudgetColor(budgetPercent);
+  const failedOperations = status.operationStatuses.filter(operation => {
+    const operationStatus = operation.lastRunStatus?.toLowerCase() ?? '';
+    return operationStatus.startsWith('failed') || operationStatus.includes('errors');
+  });
 
   return (
     <Stack gap="lg">
@@ -217,6 +221,9 @@ export default function MediaCleanupStatusContent() {
             </Text>
           </div>
           <Group gap="md">
+            <Badge color="blue" variant="light" size="lg">
+              Storage: {status.storageBackend}
+            </Badge>
             <Badge
               color={status.isEnabled ? 'green' : 'gray'}
               variant="filled"
@@ -397,6 +404,30 @@ export default function MediaCleanupStatusContent() {
         )}
       </Card>
 
+      {status.testScopeActive && (
+        <Alert
+          color="orange"
+          icon={<IconAlertCircle size={16} />}
+          title="Progressive rollout scope is active"
+        >
+          Scheduled purge, expiration, quota, and retention cleanup are restricted to virtual
+          key groups {status.testVirtualKeyGroups.join(', ')}. Storage reconciliation is skipped
+          because untracked objects no longer have group ownership.
+        </Alert>
+      )}
+
+      {failedOperations.length > 0 && (
+        <Alert
+          color="red"
+          icon={<IconAlertCircle size={16} />}
+          title="Media cleanup requires attention"
+        >
+          The latest {failedOperations.map(operation => operation.cleanupType).join(', ')} cleanup
+          phase{failedOperations.length === 1 ? '' : 's'} reported failures. A health-monitoring
+          alert is emitted for failed runs; review the phase outcomes and Admin logs.
+        </Alert>
+      )}
+
       {/* Budget Overview */}
       <Card withBorder shadow="sm">
         <Group justify="space-between" mb="md">
@@ -456,6 +487,13 @@ export default function MediaCleanupStatusContent() {
         {status.budgetLastFailureAtUtc && (
           <Alert color="red" mt="md" icon={<IconAlertCircle size={16} />}>
             Last budget backend failure: {formatDate(status.budgetLastFailureAtUtc)}
+          </Alert>
+        )}
+        {status.monthlyBudgetUsedPercent >= status.budgetAlertThresholdPercent && (
+          <Alert color="red" mt="md" icon={<IconAlertCircle size={16} />}>
+            Monthly deletion budget has reached the {status.budgetAlertThresholdPercent.toFixed(0)}%
+            alert threshold. Cleanup runs emit a health-monitoring notification while usage
+            remains above this threshold.
           </Alert>
         )}
       </Card>

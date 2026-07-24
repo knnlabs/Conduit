@@ -69,6 +69,33 @@ namespace ConduitLLM.Admin.Metrics
                 new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
 
         /// <summary>
+        /// Files that a dry run determined would be permanently deleted.
+        /// </summary>
+        public static readonly Counter DryRunFilesMatched = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_dry_run_files_total",
+                "Files that media cleanup would delete while in dry-run mode",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
+        /// Bytes that a dry run determined would be freed.
+        /// </summary>
+        public static readonly Counter DryRunBytesMatched = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_dry_run_bytes_total",
+                "Bytes that media cleanup would free while in dry-run mode",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
+        /// Records that a dry run determined would be tombstoned.
+        /// </summary>
+        public static readonly Counter DryRunRecordsMatched = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_dry_run_records_total",
+                "Records that media cleanup would tombstone while in dry-run mode",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
         /// Total media records tombstoned. Tombstoning does not free storage or consume delete budget.
         /// </summary>
         public static readonly Counter RecordsTombstoned = Prometheus.Metrics

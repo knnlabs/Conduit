@@ -143,14 +143,9 @@ namespace ConduitLLM.Configuration.Options
             MediaBudgetFailureMode.FailClosed;
 
         /// <summary>
-        /// Enable detailed audit logging for all media deletions.
+        /// Percentage of the monthly delete budget that triggers an operational alert.
         /// </summary>
-        public bool EnableAuditLogging { get; set; } = true;
-
-        /// <summary>
-        /// Enable metrics collection for monitoring.
-        /// </summary>
-        public bool EnableMetrics { get; set; } = true;
+        public double BudgetAlertThresholdPercent { get; set; } = 90;
 
         /// <summary>
         /// Timeout for R2 operations in seconds.

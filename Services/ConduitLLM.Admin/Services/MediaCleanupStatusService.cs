@@ -165,6 +165,11 @@ namespace ConduitLLM.Admin.Services
                 SoftDeleteGracePeriodDays = _options.SoftDeleteGracePeriodDays,
                 StorageBackend = MediaStorageConfigurationGuard.GetBackendName(storageService),
                 IsPublicMediaBaseUrlConfigured = _isPublicMediaBaseUrlConfigured,
+                TestScopeActive = _options.TestVirtualKeyGroups.Count > 0,
+                TestVirtualKeyGroups = _options.TestVirtualKeyGroups
+                    .Distinct()
+                    .Order()
+                    .ToList(),
                 UntrackedObjectCount = reconciliationDrift.UntrackedObjectCount,
                 UntrackedBytes = reconciliationDrift.UntrackedBytes,
                 LastRunTimeUtc = lastRunInfo?.LastRunTimeUtc,
@@ -177,6 +182,10 @@ namespace ConduitLLM.Admin.Services
                 MonthlyDeleteBudget = _options.MonthlyDeleteBudget,
                 MonthlyDeleteBudgetRemaining = remainingBudget,
                 MonthlyBudgetUsedPercent = Math.Round(budgetUsedPercent, 2),
+                BudgetAlertThresholdPercent = Math.Clamp(
+                    _options.BudgetAlertThresholdPercent,
+                    0,
+                    100),
                 BudgetBackend = budgetService.BackendName,
                 IsBudgetBackendPersistent = budgetService.IsPersistent,
                 BudgetFailureMode = _options.BudgetFailureMode.ToString(),

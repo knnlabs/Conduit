@@ -266,13 +266,18 @@ namespace ConduitLLM.Admin.Services
 
                 if (_options.EnableRetentionCleanup)
                 {
+                    var simpleRetentionOverride =
+                        await ResolveSimpleRetentionOverrideAsync(
+                            statusService,
+                            stoppingToken);
                     var operation = new MediaDeletionOperationContext(
                         MediaCleanupTypes.Retention, "scheduled", _instanceId);
                     var result = await deletionEngine.ExecuteOperationAsync(
                         operation,
                         () => ProcessRetentionMediaAsync(
                             context, deletionEngine, operation,
-                            processedRecordIds, runLimiter, stoppingToken),
+                            processedRecordIds, runLimiter,
+                            simpleRetentionOverride, stoppingToken),
                         stoppingToken);
                     totalDeleted += result.FilesDeleted;
                     totalTombstoned += result.RecordsTombstoned;
@@ -429,6 +434,7 @@ namespace ConduitLLM.Admin.Services
             MediaDeletionOperationContext operation,
             HashSet<Guid> processedRecordIds,
             CleanupRunLimiter runLimiter,
+            int? simpleRetentionOverride,
             CancellationToken stoppingToken)
         {
             IQueryable<int> groupQuery = context.VirtualKeyGroups.Select(group => group.Id);
@@ -451,6 +457,7 @@ namespace ConduitLLM.Admin.Services
                     operation,
                     processedRecordIds,
                     runLimiter,
+                    simpleRetentionOverride,
                     stoppingToken);
                 result = result.Combine(groupResult);
 
@@ -647,6 +654,7 @@ namespace ConduitLLM.Admin.Services
             MediaDeletionOperationContext operation,
             HashSet<Guid> processedRecordIds,
             CleanupRunLimiter runLimiter,
+            int? simpleRetentionOverride,
             CancellationToken stoppingToken)
         {
             try
@@ -662,7 +670,11 @@ namespace ConduitLLM.Admin.Services
                     return MediaDeletionEngineResult.Empty;
                 }
 
-                var retention = await ResolveRetentionSettingsAsync(group, context, stoppingToken);
+                var retention = await ResolveRetentionSettingsAsync(
+                    group,
+                    context,
+                    simpleRetentionOverride,
+                    stoppingToken);
                 if (retention == null)
                     return MediaDeletionEngineResult.Empty;
 
@@ -711,15 +723,15 @@ namespace ConduitLLM.Admin.Services
         private async Task<(int retentionDays, bool respectRecentAccess, int recentAccessWindowDays)?> ResolveRetentionSettingsAsync(
             VirtualKeyGroup group,
             IConfigurationDbContext context,
+            int? simpleRetentionOverride,
             CancellationToken stoppingToken)
         {
-            var simpleOverride = await GetSimpleRetentionOverrideAsync(stoppingToken);
-            if (simpleOverride.HasValue)
+            if (simpleRetentionOverride.HasValue)
             {
                 _logger.LogDebug(
                     "Group {GroupId}: Using simple retention override of {Days} days (ignoring balance-based policy)",
-                    group.Id, simpleOverride.Value);
-                return (simpleOverride.Value, false, 0);
+                    group.Id, simpleRetentionOverride.Value);
+                return (simpleRetentionOverride.Value, false, 0);
             }
 
             // No override - use balance-aware policy-based retention
@@ -864,15 +876,15 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <summary>
-        /// Gets the simple retention override if one is set.
-        /// Returns null if using policy-based retention.
+        /// Resolves the simple retention override once for the entire scheduled run.
+        /// Returns null if the status service is unavailable or policy-based retention is active.
         /// </summary>
-        private async Task<int?> GetSimpleRetentionOverrideAsync(CancellationToken stoppingToken)
+        private async Task<int?> ResolveSimpleRetentionOverrideAsync(
+            IMediaCleanupStatusService? statusService,
+            CancellationToken stoppingToken)
         {
             try
             {
-                using var scope = _serviceScopeFactory.CreateScope();
-                var statusService = scope.ServiceProvider.GetService<IMediaCleanupStatusService>();
                 if (statusService == null)
                 {
                     return null;
