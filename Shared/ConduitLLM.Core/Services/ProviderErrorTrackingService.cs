@@ -19,6 +19,7 @@ namespace ConduitLLM.Core.Services
     public class ProviderErrorTrackingService : IProviderErrorTrackingService
     {
         public const string AllKeysDisabledReason = "All provider keys disabled automatically";
+        private static readonly TimeSpan DisableGuardTtl = TimeSpan.FromSeconds(30);
 
         private readonly IRedisErrorStore _errorStore;
         private readonly IServiceScopeFactory _scopeFactory;
@@ -92,25 +93,21 @@ namespace ConduitLLM.Core.Services
                 return true;
             }
             
-            // Check occurrence count within time window
-            var fatalData = await _errorStore.GetFatalErrorDataAsync(keyId);
-            
-            if (fatalData != null && 
-                fatalData.ErrorType == errorType.ToString() &&
-                fatalData.LastSeen.HasValue)
+            // Count distinct request IDs so retries within one request cannot disable a key.
+            var occurrenceCount = await _errorStore.GetDistinctFatalRequestCountAsync(
+                keyId, errorType, policy.TimeWindow);
+
+            if (occurrenceCount >= policy.RequiredOccurrences)
             {
-                var timeSinceLastError = DateTime.UtcNow - fatalData.LastSeen.Value;
-                
-                if (timeSinceLastError <= policy.TimeWindow && 
-                    fatalData.Count >= policy.RequiredOccurrences)
-                {
-                    _logger.LogWarning(
-                        "Key {KeyId} will be disabled: {Count} occurrences of {ErrorType} within {Window}",
-                        keyId, fatalData.Count, errorType, policy.TimeWindow);
-                    return true;
-                }
+                _logger.LogWarning(
+                    "Key {KeyId} will be disabled: {Count} distinct requests returned {ErrorType} within {Window}",
+                    keyId, occurrenceCount, errorType, policy.TimeWindow);
+                return true;
             }
-            
+
+            _logger.LogWarning(
+                "Key {KeyId} recorded {Count}/{RequiredCount} distinct {ErrorType} failures within {Window}; not disabling yet",
+                keyId, occurrenceCount, policy.RequiredOccurrences, errorType, policy.TimeWindow);
             return false;
         }
 
@@ -123,6 +120,14 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
+                if (!await _errorStore.TryAcquireKeyDisableAsync(keyId, DisableGuardTtl))
+                {
+                    _logger.LogDebug(
+                        "Another request is already disabling key {KeyId}; skipping duplicate disable",
+                        keyId);
+                    return;
+                }
+
                 // Update database
                 using var scope = _scopeFactory.CreateScope();
                 var keyRepo = scope.ServiceProvider.GetRequiredService<IProviderKeyCredentialRepository>();

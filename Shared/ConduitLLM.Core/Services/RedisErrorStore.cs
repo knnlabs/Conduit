@@ -31,6 +31,12 @@ namespace ConduitLLM.Core.Services
         public async Task TrackFatalErrorAsync(int keyId, ProviderErrorInfo error)
         {
             var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
+            var requestKey = CacheKeys.ProviderError.FatalRequestsByType(
+                keyId, error.ErrorType.ToString());
+            var requestId = string.IsNullOrWhiteSpace(error.RequestId)
+                ? $"{error.OccurredAt.Ticks}:{Guid.NewGuid():N}"
+                : error.RequestId;
+            var requestScore = new DateTimeOffset(error.OccurredAt).ToUnixTimeMilliseconds();
             
             var tasks = new List<Task>
             {
@@ -41,7 +47,8 @@ namespace ConduitLLM.Core.Services
                     new HashEntry("last_seen", error.OccurredAt.ToString("O")),
                     new HashEntry("last_error_message", error.ErrorMessage),
                     new HashEntry("last_status_code", error.HttpStatusCode ?? 0)
-                })
+                }),
+                _db.SortedSetAddAsync(requestKey, requestId, requestScore)
             };
             
             // Set first_seen only if it doesn't exist
@@ -51,7 +58,9 @@ namespace ConduitLLM.Core.Services
             await Task.WhenAll(tasks);
 
             // Set TTL of 30 days (same as warnings) to prevent unbounded growth
-            await _db.KeyExpireAsync(fatalKey, TimeSpan.FromDays(30));
+            await Task.WhenAll(
+                _db.KeyExpireAsync(fatalKey, TimeSpan.FromDays(30)),
+                _db.KeyExpireAsync(requestKey, TimeSpan.FromDays(30)));
         }
 
         public async Task TrackWarningAsync(int keyId, ProviderErrorInfo error)
@@ -141,6 +150,35 @@ namespace ConduitLLM.Core.Services
                 DisabledAt = dict.TryGetValue("disabled_at", out var disabledAt)
                     ? DateTime.Parse(disabledAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null
             };
+        }
+
+        public async Task<long> GetDistinctFatalRequestCountAsync(
+            int keyId,
+            ProviderErrorType errorType,
+            TimeSpan window)
+        {
+            var requestKey = CacheKeys.ProviderError.FatalRequestsByType(
+                keyId, errorType.ToString());
+            var cutoff = new DateTimeOffset(DateTime.UtcNow - window).ToUnixTimeMilliseconds();
+
+            await _db.SortedSetRemoveRangeByScoreAsync(
+                requestKey,
+                double.NegativeInfinity,
+                cutoff - 1);
+
+            return await _db.SortedSetLengthAsync(
+                requestKey,
+                cutoff,
+                double.PositiveInfinity);
+        }
+
+        public Task<bool> TryAcquireKeyDisableAsync(int keyId, TimeSpan ttl)
+        {
+            return _db.StringSetAsync(
+                CacheKeys.ProviderError.DisableGuard(keyId),
+                "1",
+                ttl,
+                When.NotExists);
         }
 
         public async Task MarkKeyDisabledAsync(int keyId, DateTime disabledAt)
@@ -249,12 +287,18 @@ namespace ConduitLLM.Core.Services
 
         public async Task ClearErrorsForKeyAsync(int keyId, int? providerId = null)
         {
-            // Delete error keys
-            await _db.KeyDeleteAsync(new RedisKey[]
+            var keysToDelete = new List<RedisKey>
             {
                 CacheKeys.ProviderError.FatalByKey(keyId),
-                CacheKeys.ProviderError.WarningsByKey(keyId)
-            });
+                CacheKeys.ProviderError.WarningsByKey(keyId),
+                CacheKeys.ProviderError.DisableGuard(keyId)
+            };
+            keysToDelete.AddRange(ErrorThresholdConfiguration.FatalErrorPolicies.Keys.Select(
+                errorType => (RedisKey)CacheKeys.ProviderError.FatalRequestsByType(
+                    keyId, errorType.ToString())));
+
+            // Delete error keys
+            await _db.KeyDeleteAsync(keysToDelete.ToArray());
 
             // Remove from provider's disabled keys set if providerId is known
             if (providerId.HasValue)

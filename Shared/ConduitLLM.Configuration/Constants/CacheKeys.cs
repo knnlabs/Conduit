@@ -278,6 +278,13 @@ public static class CacheKeys
         /// <returns>Full key like "provider:errors:key:123:fatal"</returns>
         public static string FatalByKey(int keyId) => $"provider:errors:key:{keyId}:fatal";
 
+        /// <summary>Builds a key for distinct fatal request IDs by key and error type.</summary>
+        public static string FatalRequestsByType(int keyId, string errorType) =>
+            $"provider:errors:key:{keyId}:fatal:{errorType.ToLowerInvariant()}:requests";
+
+        /// <summary>Builds the short-lived guard key for a credential disable operation.</summary>
+        public static string DisableGuard(int keyId) => $"provider:errors:key:{keyId}:disabling";
+
         /// <summary>Builds a key for warning data by credential key ID</summary>
         /// <param name="keyId">The provider key credential ID</param>
         /// <returns>Full key like "provider:errors:key:123:warnings"</returns>

@@ -45,6 +45,19 @@ namespace ConduitLLM.Core.Interfaces
         Task<FatalErrorData?> GetFatalErrorDataAsync(int keyId);
 
         /// <summary>
+        /// Count distinct request IDs for an error type within a rolling window.
+        /// </summary>
+        Task<long> GetDistinctFatalRequestCountAsync(
+            int keyId,
+            ProviderErrorType errorType,
+            TimeSpan window);
+
+        /// <summary>
+        /// Acquire the short-lived single-writer guard for disabling a key.
+        /// </summary>
+        Task<bool> TryAcquireKeyDisableAsync(int keyId, TimeSpan ttl);
+
+        /// <summary>
         /// Mark a key as disabled in Redis
         /// </summary>
         /// <param name="keyId">The key credential ID</param>

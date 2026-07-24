@@ -36,6 +36,10 @@ namespace ConduitLLM.Tests.Services
             _keyRepoMock = new Mock<IProviderKeyCredentialRepository>();
             _providerRepoMock = new Mock<IProviderRepository>();
             _publishEndpointMock = new Mock<IEventBus>();
+            _errorStoreMock
+                .Setup(x => x.TryAcquireKeyDisableAsync(
+                    It.IsAny<int>(), It.IsAny<TimeSpan>()))
+                .ReturnsAsync(true);
 
             SetupServiceScope();
 
@@ -111,6 +115,11 @@ namespace ConduitLLM.Tests.Services
 
             _keyRepoMock.Setup(x => x.GetByIdAsync(error.KeyCredentialId))
                 .ReturnsAsync(testKey);
+            _errorStoreMock.Setup(x => x.GetDistinctFatalRequestCountAsync(
+                    error.KeyCredentialId,
+                    ProviderErrorType.InvalidApiKey,
+                    TimeSpan.FromSeconds(60)))
+                .ReturnsAsync(2);
             _keyRepoMock.Setup(x => x.UpdateAsync(It.IsAny<ProviderKeyCredential>()))
                 .ReturnsAsync(true);
             var keyList = new List<ProviderKeyCredential> { testKey };
@@ -267,13 +276,32 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public async Task ShouldDisableKeyAsync_InvalidApiKey_ReturnsTrue()
+        public async Task ShouldDisableKeyAsync_InvalidApiKey_FirstDistinctRequestReturnsFalse()
         {
             // Arrange
             var keyId = 123;
             var errorType = ProviderErrorType.InvalidApiKey;
-            
-            // InvalidApiKey has immediate disable policy
+            _errorStoreMock.Setup(x => x.GetDistinctFatalRequestCountAsync(
+                    keyId, errorType, TimeSpan.FromSeconds(60)))
+                .ReturnsAsync(1);
+
+            // Act
+            var result = await _service.ShouldDisableKeyAsync(keyId, errorType);
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task ShouldDisableKeyAsync_InvalidApiKey_SecondDistinctRequestReturnsTrue()
+        {
+            // Arrange
+            var keyId = 123;
+            var errorType = ProviderErrorType.InvalidApiKey;
+            _errorStoreMock.Setup(x => x.GetDistinctFatalRequestCountAsync(
+                    keyId, errorType, TimeSpan.FromSeconds(60)))
+                .ReturnsAsync(2);
+
             // Act
             var result = await _service.ShouldDisableKeyAsync(keyId, errorType);
 
@@ -287,17 +315,9 @@ namespace ConduitLLM.Tests.Services
             // Arrange
             var keyId = 123;
             var errorType = ProviderErrorType.InsufficientBalance;
-            var lastSeenTime = DateTime.UtcNow.AddMinutes(-2); // Within 5 minute window
-            
-            var fatalData = new FatalErrorData
-            {
-                ErrorType = "InsufficientBalance",
-                Count = 2, // Threshold is 2
-                LastSeen = lastSeenTime
-            };
-            
-            _errorStoreMock.Setup(x => x.GetFatalErrorDataAsync(keyId))
-                .ReturnsAsync(fatalData);
+            _errorStoreMock.Setup(x => x.GetDistinctFatalRequestCountAsync(
+                    keyId, errorType, TimeSpan.FromMinutes(5)))
+                .ReturnsAsync(2);
 
             // Act
             var result = await _service.ShouldDisableKeyAsync(keyId, errorType);
@@ -313,15 +333,9 @@ namespace ConduitLLM.Tests.Services
             var keyId = 123;
             var errorType = ProviderErrorType.InsufficientBalance;
             
-            var fatalData = new FatalErrorData
-            {
-                ErrorType = "InsufficientBalance",
-                Count = 1, // Below threshold of 2
-                LastSeen = DateTime.UtcNow.AddMinutes(-2)
-            };
-            
-            _errorStoreMock.Setup(x => x.GetFatalErrorDataAsync(keyId))
-                .ReturnsAsync(fatalData);
+            _errorStoreMock.Setup(x => x.GetDistinctFatalRequestCountAsync(
+                    keyId, errorType, TimeSpan.FromMinutes(5)))
+                .ReturnsAsync(1);
 
             // Act
             var result = await _service.ShouldDisableKeyAsync(keyId, errorType);
@@ -480,6 +494,53 @@ namespace ConduitLLM.Tests.Services
                 providerId,
                 It.IsAny<DateTime>(),
                 ProviderErrorTrackingService.AllKeysDisabledReason),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task TrackErrorAsync_ConcurrentThresholdFailures_PublishesOneDisableEvent()
+        {
+            // Arrange
+            const int keyId = 123;
+            const int providerId = 456;
+            var key = new ProviderKeyCredential
+            {
+                Id = keyId,
+                ProviderId = providerId,
+                IsEnabled = true
+            };
+            var guardAttempts = 0;
+
+            _errorStoreMock.Setup(x => x.GetDistinctFatalRequestCountAsync(
+                    keyId,
+                    ProviderErrorType.InvalidApiKey,
+                    TimeSpan.FromSeconds(60)))
+                .ReturnsAsync(2);
+            _errorStoreMock.Setup(x => x.TryAcquireKeyDisableAsync(
+                    keyId, It.IsAny<TimeSpan>()))
+                .ReturnsAsync(() => Interlocked.Increment(ref guardAttempts) == 1);
+            _keyRepoMock.Setup(x => x.GetByIdAsync(keyId)).ReturnsAsync(key);
+            var keys = new List<ProviderKeyCredential> { key };
+            _keyRepoMock.Setup(x => x.GetByProviderIdPaginatedAsync(
+                    providerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((keys, keys.Count));
+
+            var errors = Enumerable.Range(0, 8).Select(index => new ProviderErrorInfo
+            {
+                KeyCredentialId = keyId,
+                ProviderId = providerId,
+                ErrorType = ProviderErrorType.InvalidApiKey,
+                ErrorMessage = "invalid",
+                RequestId = $"request-{index}"
+            });
+
+            // Act
+            await Task.WhenAll(errors.Select(_service.TrackErrorAsync));
+
+            // Assert
+            _publishEndpointMock.Verify(x => x.PublishAsync(
+                It.Is<ProviderKeyDisabledEvent>(e => e.KeyId == keyId),
+                It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 

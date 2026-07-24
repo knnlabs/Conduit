@@ -177,7 +177,9 @@ namespace ConduitLLM.Core.Models
         {
             [ProviderErrorType.InvalidApiKey] = new DisablePolicy
             {
-                DisableImmediately = true,
+                DisableImmediately = false,
+                RequiredOccurrences = 2,
+                TimeWindow = TimeSpan.FromSeconds(60),
                 RequiresManualReenable = true
             },
             

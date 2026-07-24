@@ -339,7 +339,9 @@ namespace ConduitLLM.Core.Decorators
                     ErrorMessage = ex.Message,
                     HttpStatusCode = (int?)ex.StatusCode,
                     RetryAttempt = 0, // Direct error, not from retry
-                    RequestId = null
+                    RequestId = _serviceProvider
+                        .GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()
+                        ?.HttpContext?.TraceIdentifier
                 });
 
                 _logger?.LogInformation(
