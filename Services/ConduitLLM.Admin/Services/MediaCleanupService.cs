@@ -23,6 +23,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IDistributedLockService _lockService;
         private readonly MediaLifecycleOptions _options;
         private readonly ILogger<MediaCleanupService> _logger;
+        private readonly IMediaStorageConfigurationGuard? _storageConfigurationGuard;
         private readonly string _instanceId;
 
         // Rate limiter for concurrent storage operations
@@ -35,16 +36,19 @@ namespace ConduitLLM.Admin.Services
         /// <param name="lockService">Distributed lock service for leader election</param>
         /// <param name="options">Media lifecycle configuration options</param>
         /// <param name="logger">Logger instance</param>
+        /// <param name="storageConfigurationGuard">Storage safety guard</param>
         public MediaCleanupService(
             IServiceScopeFactory serviceScopeFactory,
             IDistributedLockService lockService,
             IOptions<MediaLifecycleOptions> options,
-            ILogger<MediaCleanupService> logger)
+            ILogger<MediaCleanupService> logger,
+            IMediaStorageConfigurationGuard? storageConfigurationGuard = null)
         {
             _serviceScopeFactory = serviceScopeFactory;
             _lockService = lockService;
             _options = options.Value;
             _logger = logger;
+            _storageConfigurationGuard = storageConfigurationGuard;
             _instanceId = Guid.NewGuid().ToString("N")[..8];
         }
 
@@ -131,6 +135,15 @@ namespace ConduitLLM.Admin.Services
 
         internal async Task RunScheduledCleanupAsync(CancellationToken stoppingToken)
         {
+            if (_storageConfigurationGuard != null &&
+                !await _storageConfigurationGuard.ValidateAsync(stoppingToken))
+            {
+                _logger.LogCritical(
+                    "Instance {InstanceId} refused to run media cleanup because the storage configuration is unsafe.",
+                    _instanceId);
+                return;
+            }
+
             var lockKey = "media:cleanup:leader";
             var lockDuration = TimeSpan.FromMinutes(30); // Longer lock for actual cleanup work
 

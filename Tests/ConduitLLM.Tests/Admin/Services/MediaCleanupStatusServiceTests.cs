@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestInfrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
@@ -46,6 +47,8 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         services.AddSingleton<IConfigurationDbContext>(_context);
         services.AddSingleton(budgetService.Object);
         services.AddSingleton(settingRepository.Object);
+        services.AddSingleton<IMediaStorageService>(
+            new InMemoryMediaStorageService(Mock.Of<ILogger<InMemoryMediaStorageService>>()));
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -87,6 +90,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Retention)
             .LastRunStatus.Should().Be("Completed with errors");
         status.CurrentLeaderInstanceId.Should().Be("test-leader");
+        status.StorageBackend.Should().Be("InMemory");
     }
 
     public void Dispose()

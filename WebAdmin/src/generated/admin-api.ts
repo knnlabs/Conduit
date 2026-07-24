@@ -4934,6 +4934,8 @@ export interface components {
       isEnabled?: boolean;
       /** @description Whether the service is running in dry run mode (logs but doesn't delete). */
       isDryRunMode?: boolean;
+      /** @description The resolved media storage backend (for example, S3 or InMemory). */
+      storageBackend?: string;
       /**
        * Format: date-time
        * @description The timestamp of the last cleanup run (UTC).

@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 
@@ -33,8 +34,8 @@ namespace ConduitLLM.Admin.Extensions
             // Register distributed lock service (PostgreSQL-based, works without Redis)
             services.AddSingleton<IDistributedLockService, PostgresDistributedLockService>();
 
-            // Register media storage service based on configuration
-            RegisterMediaStorageService(services, configuration);
+            // Use the same media registration and environment-variable contract as Gateway.
+            services.AddMediaServices(configuration);
             services.AddSingleton<IMediaStorageHealthProbe>(serviceProvider =>
                 (IMediaStorageHealthProbe)serviceProvider.GetRequiredService<IMediaStorageService>());
 
@@ -43,6 +44,13 @@ namespace ConduitLLM.Admin.Extensions
 
             // Register media cleanup status service for tracking and management
             services.AddSingleton<IMediaCleanupStatusService, MediaCleanupStatusService>();
+
+            // Validate the storage backend before any cleanup background work starts.
+            services.AddSingleton<MediaStorageConfigurationGuard>();
+            services.AddSingleton<IMediaStorageConfigurationGuard>(
+                provider => provider.GetRequiredService<MediaStorageConfigurationGuard>());
+            services.AddHostedService<MediaStorageConfigurationGuard>(
+                provider => provider.GetRequiredService<MediaStorageConfigurationGuard>());
 
             // Register the unified cleanup service - it will check IsSchedulerEnabled internally
             // Uses distributed locking to ensure only one instance runs across a cluster
@@ -75,65 +83,5 @@ namespace ConduitLLM.Admin.Extensions
             }
         }
 
-        private static void RegisterMediaStorageService(
-            IServiceCollection services,
-            IConfiguration configuration)
-        {
-            // Check for S3-compatible storage configuration
-            var serviceUrl = configuration["CONDUIT_S3_SERVICE_URL"]
-                ?? configuration["ConduitLLM:Storage:S3:ServiceUrl"]
-                ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SERVICE_URL");
-
-            if (!string.IsNullOrEmpty(serviceUrl))
-            {
-                // Configure S3 options from environment variables
-                services.Configure<ConduitLLM.Core.Options.S3StorageOptions>(options =>
-                {
-                    options.ServiceUrl = serviceUrl;
-
-                    var accessKey = configuration["CONDUIT_S3_ACCESS_KEY_ID"]
-                        ?? configuration["CONDUIT_S3_ACCESS_KEY"]
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY_ID")
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_ACCESS_KEY");
-                    if (!string.IsNullOrEmpty(accessKey))
-                    {
-                        options.AccessKey = accessKey;
-                    }
-
-                    var secretKey = configuration["CONDUIT_S3_SECRET_ACCESS_KEY"]
-                        ?? configuration["CONDUIT_S3_SECRET_KEY"]
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_ACCESS_KEY")
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SECRET_KEY");
-                    if (!string.IsNullOrEmpty(secretKey))
-                    {
-                        options.SecretKey = secretKey;
-                    }
-
-                    var bucketName = configuration["CONDUIT_S3_BUCKET_NAME"]
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_BUCKET_NAME");
-                    if (!string.IsNullOrEmpty(bucketName))
-                    {
-                        options.BucketName = bucketName;
-                    }
-
-                    var region = configuration["CONDUIT_S3_REGION"]
-                        ?? Environment.GetEnvironmentVariable("CONDUIT_S3_REGION");
-                    if (!string.IsNullOrEmpty(region))
-                    {
-                        options.Region = region;
-                    }
-
-                    options.ForcePathStyle = true;
-                    options.AutoCreateBucket = true;
-                });
-
-                services.AddSingleton<IMediaStorageService, S3MediaStorageService>();
-            }
-            else
-            {
-                // Use in-memory storage for development/testing
-                services.AddSingleton<IMediaStorageService, InMemoryMediaStorageService>();
-            }
-        }
     }
 }

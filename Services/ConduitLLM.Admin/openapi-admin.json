@@ -27771,6 +27771,10 @@
             "type": "boolean",
             "description": "Whether the service is running in dry run mode (logs but doesn't delete)."
           },
+          "storageBackend": {
+            "type": "string",
+            "description": "The resolved media storage backend (for example, S3 or InMemory)."
+          },
           "lastRunTimeUtc": {
             "type": [
               "null",

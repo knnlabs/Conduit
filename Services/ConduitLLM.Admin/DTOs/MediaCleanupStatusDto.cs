@@ -17,6 +17,11 @@ namespace ConduitLLM.Admin.DTOs
         public bool IsDryRunMode { get; set; }
 
         /// <summary>
+        /// The resolved media storage backend (for example, S3 or InMemory).
+        /// </summary>
+        public string StorageBackend { get; set; } = "Unavailable";
+
+        /// <summary>
         /// The timestamp of the last cleanup run (UTC).
         /// Null if no cleanup has run yet.
         /// </summary>

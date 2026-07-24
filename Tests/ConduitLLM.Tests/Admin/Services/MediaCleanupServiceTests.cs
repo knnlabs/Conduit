@@ -105,6 +105,28 @@ namespace ConduitLLM.Tests.Admin.Services
                 _mockLogger.Object);
         }
 
+        [Fact]
+        public async Task RunScheduledCleanupAsync_WhenStorageGuardBlocks_DoesNotAcquireLock()
+        {
+            var storageGuard = new Mock<IMediaStorageConfigurationGuard>();
+            storageGuard
+                .Setup(guard => guard.ValidateAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+            var service = new MediaCleanupService(
+                _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
+                _mockLockService.Object,
+                Options.Create(CreateExecutionOptions()),
+                _mockLogger.Object,
+                storageGuard.Object);
+
+            await service.RunScheduledCleanupAsync(CancellationToken.None);
+
+            _mockLockService.Verify(lockService => lockService.AcquireLockAsync(
+                It.IsAny<string>(),
+                It.IsAny<TimeSpan>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
         private void SeedTestGroup(int groupId, decimal balance = 100m)
         {
             _context.VirtualKeyGroups.Add(new VirtualKeyGroup

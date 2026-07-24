@@ -75,6 +75,7 @@ namespace ConduitLLM.Admin.Services
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
             var budgetService = scope.ServiceProvider.GetRequiredService<IMediaDeletionBudgetService>();
+            var storageService = scope.ServiceProvider.GetService<IMediaStorageService>();
 
             // Get budget info
             var monthlyDeleteCount = await budgetService.GetMonthlyDeleteCountAsync(cancellationToken);
@@ -149,6 +150,7 @@ namespace ConduitLLM.Admin.Services
             {
                 IsEnabled = isEnabled,
                 IsDryRunMode = _options.DryRunMode,
+                StorageBackend = MediaStorageConfigurationGuard.GetBackendName(storageService),
                 LastRunTimeUtc = lastRunInfo?.LastRunTimeUtc,
                 LastRunStatus = lastRunInfo?.Status,
                 LastRunFilesDeleted = lastRunInfo?.FilesDeleted ?? 0,
