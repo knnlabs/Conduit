@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
@@ -23,6 +24,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
     private readonly ConduitDbContext _context;
     private readonly ServiceProvider _serviceProvider;
     private readonly SqliteTestDatabase _database;
+    private readonly Mock<IMediaCleanupApprovalService> _approvalService;
 
     public MediaCleanupStatusServiceTests()
     {
@@ -47,6 +49,11 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         services.AddSingleton<IConfigurationDbContext>(_context);
         services.AddSingleton(budgetService.Object);
         services.AddSingleton(settingRepository.Object);
+        _approvalService = new Mock<IMediaCleanupApprovalService>();
+        _approvalService
+            .Setup(service => service.ListPendingAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<MediaCleanupApprovalDto>());
+        services.AddSingleton(_approvalService.Object);
         services.AddSingleton<IMediaStorageService>(
             new InMemoryMediaStorageService(Mock.Of<ILogger<InMemoryMediaStorageService>>()));
         _serviceProvider = services.BuildServiceProvider();
@@ -69,6 +76,18 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             Options.Create(options),
             Mock.Of<ILogger<MediaCleanupStatusService>>());
+        _approvalService
+            .Setup(approvals => approvals.ListPendingAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new[]
+            {
+                new MediaCleanupApprovalDto
+                {
+                    Id = Guid.NewGuid(),
+                    CleanupType = MediaCleanupTypes.Retention,
+                    CandidateCount = 125,
+                    CandidateBytes = 4096
+                }
+            });
 
         await service.RecordOperationCompletionAsync(
             MediaCleanupTypes.Expiration, 2, 4096, 1.25, "Completed", "test-leader", "scheduled");
@@ -101,6 +120,8 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         status.StorageBackend.Should().Be("InMemory");
         status.UntrackedObjectCount.Should().Be(4);
         status.UntrackedBytes.Should().Be(8192);
+        status.PendingApprovalCount.Should().Be(1);
+        status.PendingApprovals.Single().CandidateCount.Should().Be(125);
     }
 
     public void Dispose()

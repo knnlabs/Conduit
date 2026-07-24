@@ -8613,6 +8613,443 @@
         ]
       }
     },
+    "/v1/admin/media-cleanup-jobs/approvals": {
+      "get": {
+        "tags": [
+          "Media Cleanup"
+        ],
+        "summary": "List large scheduled cleanup scopes awaiting approval",
+        "operationId": "MediaCleanup_GetPendingApprovals",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "1-based page number.",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "Items per page (maximum 100).",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "required": [
+                    "data",
+                    "pagination"
+                  ],
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MediaCleanupApprovalDto"
+                      }
+                    },
+                    "pagination": {
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "totalItems",
+                        "totalPages"
+                      ],
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "format": "int32"
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "format": "int32"
+                        },
+                        "totalItems": {
+                          "type": "integer",
+                          "format": "int32"
+                        },
+                        "totalPages": {
+                          "type": "integer",
+                          "format": "int32"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/admin/media-cleanup-jobs/approvals/{approvalId}/approve": {
+      "post": {
+        "tags": [
+          "Media Cleanup"
+        ],
+        "summary": "Approve a fresh execution of a large scheduled cleanup scope",
+        "operationId": "MediaCleanup_Approve",
+        "parameters": [
+          {
+            "name": "approvalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupApprovalActionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/admin/media-cleanup-jobs/approvals/{approvalId}/reject": {
+      "post": {
+        "tags": [
+          "Media Cleanup"
+        ],
+        "summary": "Reject a large scheduled cleanup scope",
+        "operationId": "MediaCleanup_Reject",
+        "parameters": [
+          {
+            "name": "approvalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaCleanupApprovalActionDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
     "/v1/admin/providers": {
       "get": {
         "tags": [
@@ -28044,6 +28481,71 @@
         },
         "description": "Information about a matched pricing rule"
       },
+      "MediaCleanupApprovalActionDto": {
+        "type": "object",
+        "properties": {
+          "approval": {
+            "$ref": "#/components/schemas/MediaCleanupApprovalDto"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "description": "Result of approving or rejecting a cleanup request."
+      },
+      "MediaCleanupApprovalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "cleanupType": {
+            "type": "string"
+          },
+          "virtualKeyGroupId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "candidateCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "candidateBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cutoffUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "expiresAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "executionStatus": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        },
+        "description": "Admin-facing snapshot of a large cleanup approval."
+      },
       "MediaCleanupEnabledChangedDto": {
         "type": "object",
         "properties": {
@@ -28328,6 +28830,18 @@
               "$ref": "#/components/schemas/MediaCleanupOperationStatusDto"
             },
             "description": "Last known outcome for each cleanup phase owned by the scheduler."
+          },
+          "pendingApprovals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaCleanupApprovalDto"
+            },
+            "description": "Large scheduler cleanup scopes currently awaiting administrator approval."
+          },
+          "pendingApprovalCount": {
+            "type": "integer",
+            "description": "Number of cleanup scopes awaiting administrator approval.",
+            "format": "int32"
           },
           "simpleRetentionOverrideDays": {
             "type": [

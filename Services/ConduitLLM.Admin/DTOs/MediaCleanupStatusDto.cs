@@ -128,6 +128,16 @@ namespace ConduitLLM.Admin.DTOs
         public List<MediaCleanupOperationStatusDto> OperationStatuses { get; set; } = new();
 
         /// <summary>
+        /// Large scheduler cleanup scopes currently awaiting administrator approval.
+        /// </summary>
+        public List<MediaCleanupApprovalDto> PendingApprovals { get; set; } = new();
+
+        /// <summary>
+        /// Number of cleanup scopes awaiting administrator approval.
+        /// </summary>
+        public int PendingApprovalCount => PendingApprovals.Count;
+
+        /// <summary>
         /// Simple retention override in days.
         /// When set, all media is deleted after this many days regardless of account balance.
         /// Null means using policy-based retention.

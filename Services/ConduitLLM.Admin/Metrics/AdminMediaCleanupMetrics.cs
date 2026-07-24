@@ -47,6 +47,14 @@ namespace ConduitLLM.Admin.Metrics
                 "Bytes held by storage objects with no matching MediaRecord");
 
         /// <summary>
+        /// Large cleanup scopes currently awaiting administrator approval.
+        /// </summary>
+        public static readonly Gauge PendingApprovals = Prometheus.Metrics
+            .CreateGauge(
+                "conduit_admin_media_cleanup_pending_approvals",
+                "Large media cleanup scopes awaiting administrator approval");
+
+        /// <summary>
         /// Total files deleted during cleanup.
         /// </summary>
         public static readonly Counter FilesDeleted = Prometheus.Metrics

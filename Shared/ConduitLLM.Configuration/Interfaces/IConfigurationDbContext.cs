@@ -68,6 +68,11 @@ namespace ConduitLLM.Configuration.Interfaces
         DbSet<MediaRecord> MediaRecords { get; }
 
         /// <summary>
+        /// Durable approvals for large scheduled media cleanup scopes.
+        /// </summary>
+        DbSet<MediaCleanupApproval> MediaCleanupApprovals { get; }
+
+        /// <summary>
         /// Database set for media retention policies
         /// </summary>
         DbSet<MediaRetentionPolicy> MediaRetentionPolicies { get; }

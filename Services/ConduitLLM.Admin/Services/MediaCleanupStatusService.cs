@@ -78,6 +78,7 @@ namespace ConduitLLM.Admin.Services
             var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
             var budgetService = scope.ServiceProvider.GetRequiredService<IMediaDeletionBudgetService>();
             var storageService = scope.ServiceProvider.GetService<IMediaStorageService>();
+            var approvalService = scope.ServiceProvider.GetRequiredService<IMediaCleanupApprovalService>();
 
             // Get budget info
             var monthlyDeleteCount = await budgetService.GetMonthlyDeleteCountAsync(cancellationToken);
@@ -144,6 +145,7 @@ namespace ConduitLLM.Admin.Services
 
             // Get simple retention override
             var simpleRetentionOverride = await GetSimpleRetentionOverrideAsync(cancellationToken);
+            var pendingApprovals = await approvalService.ListPendingAsync(cancellationToken);
 
             // Calculate budget percentage
             var budgetUsedPercent = _options.MonthlyDeleteBudget > 0
@@ -176,7 +178,8 @@ namespace ConduitLLM.Admin.Services
                 SimpleRetentionOverrideDays = simpleRetentionOverride,
                 NextScheduledRunUtc = nextScheduledRun,
                 CurrentLeaderInstanceId = currentLeader,
-                OperationStatuses = operationStatuses
+                OperationStatuses = operationStatuses,
+                PendingApprovals = pendingApprovals.ToList()
             };
         }
 

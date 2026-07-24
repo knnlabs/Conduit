@@ -38,6 +38,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IMediaDeletionBudgetService> _mockBudgetService;
         private readonly Mock<IMediaRecordRepository> _mockMediaRepository;
         private readonly Mock<IMediaCleanupStatusService> _mockStatusService;
+        private readonly Mock<IMediaCleanupApprovalService> _mockApprovalService;
         private readonly Mock<IMediaStorageConfigurationGuard> _mockStorageGuard;
         private readonly Mock<ILogger<MediaCleanupService>> _mockLogger;
         private readonly Mock<IDistributedLock> _mockLock;
@@ -55,6 +56,7 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockBudgetService = new Mock<IMediaDeletionBudgetService>();
             _mockMediaRepository = new Mock<IMediaRecordRepository>();
             _mockStatusService = new Mock<IMediaCleanupStatusService>();
+            _mockApprovalService = new Mock<IMediaCleanupApprovalService>();
             _mockStorageGuard = new Mock<IMediaStorageConfigurationGuard>();
             _mockLogger = new Mock<ILogger<MediaCleanupService>>();
             _engineOptions = new MutableOptions<MediaLifecycleOptions>(
@@ -117,6 +119,7 @@ namespace ConduitLLM.Tests.Admin.Services
             services.AddSingleton(_mockBudgetService.Object);
             services.AddSingleton(_mockMediaRepository.Object);
             services.AddSingleton(_mockStatusService.Object);
+            services.AddSingleton(_mockApprovalService.Object);
             services.AddSingleton(_mockStorageGuard.Object);
             services.AddSingleton<IOptions<MediaLifecycleOptions>>(_engineOptions);
             services.AddSingleton(Mock.Of<ILogger<MediaDeletionEngine>>());

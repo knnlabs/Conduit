@@ -125,6 +125,7 @@ public sealed class MediaReconciliationServiceTests : IDisposable
             _budget.Object,
             _repository.Object,
             _status.Object,
+            Mock.Of<IMediaCleanupApprovalService>(),
             _guard.Object,
             Options.Create(options),
             Mock.Of<ILogger<MediaDeletionEngine>>());

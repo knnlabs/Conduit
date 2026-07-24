@@ -4,6 +4,7 @@ import { HttpMethod } from '../client/HttpMethod';
 import type {
   MediaRecord, MediaStorageStats, OverallMediaStorageStats, MediaCleanupRequest,
   MediaCleanupResponse, MediaDeleteResponse, MediaRestoreResponse, MediaCleanupStatus, MediaCleanupEnabledResponse,
+  MediaCleanupApproval, MediaCleanupApprovalAction,
   SimpleRetentionResponse, MediaRetentionPolicy, CreateMediaRetentionPolicyRequest,
   UpdateMediaRetentionPolicyRequest, MediaCleanupPreview,
 } from '../models/media';
@@ -74,6 +75,19 @@ export class FetchMediaService {
 
   async getCleanupServiceStatus(config?: RequestConfig): Promise<MediaCleanupStatus> {
     return this.client['executeContractRead']('/v1/admin/media-cleanup-jobs/status', (c, o) => c.GET('/v1/admin/media-cleanup-jobs/status', o), config) as Promise<MediaCleanupStatus>;
+  }
+  async getPendingCleanupApprovals(config?: RequestConfig): Promise<MediaCleanupApproval[]> {
+    const result = await this.client['executeContractRead']('/v1/admin/media-cleanup-jobs/approvals',
+      (c, o) => c.GET('/v1/admin/media-cleanup-jobs/approvals', o), config);
+    return result.data as MediaCleanupApproval[];
+  }
+  async approveCleanup(id: string, config?: RequestConfig): Promise<MediaCleanupApprovalAction> {
+    return this.client['executeContractOperation'](`/v1/admin/media-cleanup-jobs/approvals/${encodeURIComponent(id)}/approve`, HttpMethod.POST,
+      (c, o) => c.POST('/v1/admin/media-cleanup-jobs/approvals/{approvalId}/approve', { ...o, params: { path: { approvalId: id } } }), config) as Promise<MediaCleanupApprovalAction>;
+  }
+  async rejectCleanup(id: string, config?: RequestConfig): Promise<MediaCleanupApprovalAction> {
+    return this.client['executeContractOperation'](`/v1/admin/media-cleanup-jobs/approvals/${encodeURIComponent(id)}/reject`, HttpMethod.POST,
+      (c, o) => c.POST('/v1/admin/media-cleanup-jobs/approvals/{approvalId}/reject', { ...o, params: { path: { approvalId: id } } }), config) as Promise<MediaCleanupApprovalAction>;
   }
   async getCleanupServiceEnabled(config?: RequestConfig): Promise<MediaCleanupEnabledResponse> {
     return this.client['executeContractRead']('/v1/admin/media-cleanup-jobs/enabled', (c, o) => c.GET('/v1/admin/media-cleanup-jobs/enabled', o), config) as Promise<MediaCleanupEnabledResponse>;

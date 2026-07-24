@@ -22,6 +22,7 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
     private readonly IMediaDeletionBudgetService _budgetService;
     private readonly IMediaRecordRepository _mediaRepository;
     private readonly IMediaCleanupStatusService _statusService;
+    private readonly IMediaCleanupApprovalService _approvalService;
     private readonly IMediaStorageConfigurationGuard _storageGuard;
     private readonly MediaLifecycleOptions _options;
     private readonly ILogger<MediaDeletionEngine> _logger;
@@ -31,6 +32,7 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         IMediaDeletionBudgetService budgetService,
         IMediaRecordRepository mediaRepository,
         IMediaCleanupStatusService statusService,
+        IMediaCleanupApprovalService approvalService,
         IMediaStorageConfigurationGuard storageGuard,
         IOptions<MediaLifecycleOptions> options,
         ILogger<MediaDeletionEngine> logger)
@@ -39,6 +41,7 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         _budgetService = budgetService;
         _mediaRepository = mediaRepository;
         _statusService = statusService;
+        _approvalService = approvalService;
         _storageGuard = storageGuard;
         _options = options.Value;
         _logger = logger;
@@ -112,7 +115,8 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
             .Select(record => new DeletionCandidate(
                 record.StorageKey,
                 record.SizeBytes ?? 0,
-                record.Id))
+                record.Id,
+                record.CreatedAt))
             .ToList();
         var trackedStorageKeys = trackedCandidates
             .Select(candidate => candidate.StorageKey)
@@ -125,14 +129,40 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
             .Select(item => new DeletionCandidate(
                 item.StorageKey,
                 item.SizeBytes,
-                MediaRecordId: null));
+                MediaRecordId: null,
+                item.LastModifiedUtc));
         var candidates = trackedCandidates
             .Concat(untrackedCandidates)
             .ToList();
 
         var isDryRun = _options.DryRunMode && !request.Operation.Force;
+        var approvalEligible =
+            _options.RequireManualApprovalForLargeBatches &&
+            request.Operation.TriggeredBy == "scheduled" &&
+            request.Operation.CleanupType != MediaCleanupTypes.VirtualKey &&
+            !request.Operation.Force;
+        var activeApproval = approvalEligible
+            ? await _approvalService.GetActiveApprovalAsync(
+                request.Operation.CleanupType,
+                request.GroupId,
+                cancellationToken)
+            : null;
+        if (activeApproval != null)
+        {
+            candidates = candidates
+                .Where(candidate => candidate.ScopeTimestampUtc <= activeApproval.CutoffUtc)
+                .ToList();
+        }
+
         if (candidates.Count == 0 || !string.IsNullOrWhiteSpace(request.StatusOverride))
         {
+            if (candidates.Count == 0 && activeApproval != null)
+            {
+                await _approvalService.CompleteEmptyApprovalAsync(
+                    activeApproval.Id,
+                    cancellationToken);
+            }
+
             return new MediaDeletionEngineResult(
                 StatusOverride: request.StatusOverride,
                 IsDryRun: isDryRun);
@@ -146,19 +176,28 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                 StatusOverride: "Blocked: unsafe storage configuration");
         }
 
-        if (_options.RequireManualApprovalForLargeBatches &&
+        if (approvalEligible &&
             candidates.Count > _options.LargeBatchThreshold &&
-            !isDryRun &&
-            !request.Operation.Force)
+            activeApproval == null)
         {
+            await _approvalService.CreateOrRefreshPendingAsync(
+                request.Operation.CleanupType,
+                request.GroupId,
+                candidates.Count,
+                candidates.Sum(candidate => candidate.SizeBytes),
+                DateTime.UtcNow,
+                cancellationToken);
             _logger.LogWarning(
                 "{CleanupType} cleanup batch of {Count} files exceeds threshold of {Threshold}. Manual approval required.",
                 request.Operation.CleanupType,
                 candidates.Count,
                 _options.LargeBatchThreshold);
-            return new MediaDeletionEngineResult(
-                StatusOverride: "Skipped: manual approval required",
-                IsDryRun: isDryRun);
+            if (!isDryRun)
+            {
+                return new MediaDeletionEngineResult(
+                    StatusOverride: "Skipped: pending manual approval",
+                    IsDryRun: false);
+            }
         }
 
         if (request.Operation.Force && _options.DryRunMode)
@@ -205,6 +244,14 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
             {
                 await Task.Delay(_options.DelayBetweenBatchesMs, cancellationToken);
             }
+        }
+
+        if (activeApproval != null)
+        {
+            await _approvalService.RecordExecutionAsync(
+                activeApproval.Id,
+                result,
+                cancellationToken);
         }
 
         return result;
@@ -475,5 +522,6 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
     private sealed record DeletionCandidate(
         string StorageKey,
         long SizeBytes,
-        Guid? MediaRecordId);
+        Guid? MediaRecordId,
+        DateTime ScopeTimestampUtc);
 }

@@ -85,6 +85,11 @@ namespace ConduitLLM.Configuration.Options
         public int LargeBatchThreshold { get; set; } = 100;
 
         /// <summary>
+        /// Number of hours before a pending or unused approval must be re-evaluated.
+        /// </summary>
+        public int LargeBatchApprovalExpirationHours { get; set; } = 24;
+
+        /// <summary>
         /// Maximum batch size for R2 operations.
         /// Conservative for free tier.
         /// </summary>

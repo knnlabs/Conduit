@@ -74,6 +74,14 @@ Set `MediaLifecycle__Enabled=true` to start the scheduler and configure its poll
 set it to `false` only after reviewing the status endpoint and logs. All phases share
 `MediaLifecycle__MonthlyDeleteBudget`, batch-size, rate-limit, and dry-run safeguards.
 
+Set `MediaLifecycle__RequireManualApprovalForLargeBatches=true` to pause scheduled scopes above
+`MediaLifecycle__LargeBatchThreshold`. The Admin cleanup status page and
+`/v1/admin/media-cleanup-jobs/approvals` expose the durable request with its candidate count,
+bytes, group, and cutoff snapshot. Approving re-queries eligible media under the cleanup lock and
+limits execution to objects that existed at that cutoff; it never persists or replays a stale ID
+list. Unused approvals expire after `MediaLifecycle__LargeBatchApprovalExpirationHours` (24 by
+default). The `conduit_admin_media_cleanup_pending_approvals` gauge reports outstanding requests.
+
 With `MediaLifecycle__EnableSoftDelete=true` (the default), expiration and retention cleanup mark
 tracked rows with a deletion timestamp. Tombstoned media is immediately hidden from Gateway
 serving, normal Admin lists, searches, and storage statistics, but its storage object remains

@@ -124,6 +124,11 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<MediaRecord> MediaRecords { get; set; } = null!;
 
         /// <summary>
+        /// Durable approvals for large scheduled media cleanup scopes.
+        /// </summary>
+        public virtual DbSet<MediaCleanupApproval> MediaCleanupApprovals { get; set; } = null!;
+
+        /// <summary>
         /// Database set for media retention policies
         /// </summary>
         public virtual DbSet<MediaRetentionPolicy> MediaRetentionPolicies { get; set; } = null!;
@@ -369,6 +374,18 @@ namespace ConduitLLM.Configuration
                       .WithMany()
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<MediaCleanupApproval>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CleanupType).HasMaxLength(64);
+                entity.Property(e => e.Status).HasMaxLength(32);
+                entity.Property(e => e.DecidedBy).HasMaxLength(256);
+                entity.Property(e => e.ExecutionStatus).HasMaxLength(512);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => new { e.CleanupType, e.VirtualKeyGroupId, e.Status });
+                entity.HasIndex(e => e.ExpiresAtUtc);
             });
 
             // MediaLifecycleRecord configuration removed - consolidated into MediaRecords

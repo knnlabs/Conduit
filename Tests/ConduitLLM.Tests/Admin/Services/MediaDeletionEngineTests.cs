@@ -20,6 +20,7 @@ public sealed class MediaDeletionEngineTests
     private readonly Mock<IMediaDeletionBudgetService> _budget = new();
     private readonly Mock<IMediaRecordRepository> _repository = new();
     private readonly Mock<IMediaCleanupStatusService> _status = new();
+    private readonly Mock<IMediaCleanupApprovalService> _approvals = new();
     private readonly Mock<IMediaStorageConfigurationGuard> _storageGuard = new();
 
     public MediaDeletionEngineTests()
@@ -52,6 +53,24 @@ public sealed class MediaDeletionEngineTests
                 It.IsAny<int>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(1);
+        _approvals
+            .Setup(service => service.CreateOrRefreshPendingAsync(
+                It.IsAny<string>(),
+                It.IsAny<int?>(),
+                It.IsAny<int>(),
+                It.IsAny<long>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string type, int? groupId, int count, long bytes, DateTime cutoff, CancellationToken _) =>
+                new MediaCleanupApproval
+                {
+                    Id = Guid.NewGuid(),
+                    CleanupType = type,
+                    VirtualKeyGroupId = groupId,
+                    CandidateCount = count,
+                    CandidateBytes = bytes,
+                    CutoffUtc = cutoff
+                });
     }
 
     [Fact]
@@ -175,6 +194,82 @@ public sealed class MediaDeletionEngineTests
 
         preview.WouldDeleteCount.Should().Be(2);
         forced.FilesDeleted.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_LargeScheduledBatch_CreatesPendingApproval()
+    {
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            DryRunMode = false,
+            EnableSoftDelete = false,
+            MaxBatchSize = 10,
+            RequireManualApprovalForLargeBatches = true,
+            LargeBatchThreshold = 1
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            CreateRecords(2),
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Retention, "scheduled", "scheduler"),
+            GroupId: 42));
+
+        result.StatusOverride.Should().Be("Skipped: pending manual approval");
+        _approvals.Verify(service => service.CreateOrRefreshPendingAsync(
+            MediaCleanupTypes.Retention,
+            42,
+            2,
+            300,
+            It.IsAny<DateTime>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_ApprovedScope_ExecutesFreshLargerCandidateSet()
+    {
+        var cutoff = DateTime.UtcNow;
+        var approval = new MediaCleanupApproval
+        {
+            Id = Guid.NewGuid(),
+            CleanupType = MediaCleanupTypes.Retention,
+            VirtualKeyGroupId = 42,
+            Status = MediaCleanupApprovalStatuses.Approved,
+            CutoffUtc = cutoff
+        };
+        _approvals
+            .Setup(service => service.GetActiveApprovalAsync(
+                MediaCleanupTypes.Retention,
+                42,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(approval);
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            DryRunMode = false,
+            EnableSoftDelete = false,
+            MaxBatchSize = 10,
+            RequireManualApprovalForLargeBatches = true,
+            LargeBatchThreshold = 1
+        });
+
+        var records = CreateRecords(3);
+        records[0].CreatedAt = cutoff.AddMinutes(-2);
+        records[1].CreatedAt = cutoff.AddMinutes(-1);
+        records[2].CreatedAt = cutoff.AddMinutes(1);
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            records,
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Retention, "scheduled", "scheduler"),
+            GroupId: 42));
+
+        result.FilesDeleted.Should().Be(2);
+        _approvals.Verify(service => service.RecordExecutionAsync(
+            approval.Id,
+            It.Is<MediaDeletionEngineResult>(execution => execution.FilesDeleted == 2),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            records[2].Id, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -310,6 +405,7 @@ public sealed class MediaDeletionEngineTests
         _budget.Object,
         _repository.Object,
         _status.Object,
+        _approvals.Object,
         _storageGuard.Object,
         Options.Create(options),
         Mock.Of<ILogger<MediaDeletionEngine>>());

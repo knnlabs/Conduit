@@ -44,6 +44,7 @@ namespace ConduitLLM.Admin.Extensions
 
             // Register media cleanup status service for tracking and management
             services.AddSingleton<IMediaCleanupStatusService, MediaCleanupStatusService>();
+            services.AddScoped<IMediaCleanupApprovalService, MediaCleanupApprovalService>();
             services.AddScoped<IMediaDeletionEngine, MediaDeletionEngine>();
             services.AddScoped<IMediaReconciliationService, MediaReconciliationService>();
 
@@ -56,7 +57,9 @@ namespace ConduitLLM.Admin.Extensions
 
             // Register the unified cleanup service - it will check IsSchedulerEnabled internally
             // Uses distributed locking to ensure only one instance runs across a cluster
-            services.AddHostedService<MediaCleanupService>();
+            services.AddSingleton<MediaCleanupService>();
+            services.AddHostedService(
+                provider => provider.GetRequiredService<MediaCleanupService>());
 
             return services;
         }

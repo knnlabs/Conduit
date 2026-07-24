@@ -28,6 +28,7 @@ import {
   IconX,
   IconCalendarTime,
   IconExternalLink,
+  IconShieldCheck,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notify } from '@/lib/notifications';
@@ -75,6 +76,7 @@ export default function MediaCleanupStatusContent() {
   const [loading, setLoading] = useState(true);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [retentionLoading, setRetentionLoading] = useState(false);
+  const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Local state for simple retention override
   const [simpleRetentionDays, setSimpleRetentionDays] = useState<number | null>(null);
@@ -158,6 +160,21 @@ export default function MediaCleanupStatusContent() {
   const handleClearOverride = () => {
     setSimpleRetentionDays(null);
     setHasUnsavedChanges(status?.simpleRetentionOverrideDays !== null);
+  };
+
+  const handleApproval = async (id: string, approve: boolean) => {
+    setApprovalLoading(id);
+    try {
+      const response = await withAdminClient(client =>
+        approve ? client.media.approveCleanup(id) : client.media.rejectCleanup(id)
+      );
+      notify.success(response.message);
+      await fetchStatus();
+    } catch (err) {
+      notify.error(err, `Failed to ${approve ? 'approve' : 'reject'} cleanup`);
+    } finally {
+      setApprovalLoading(null);
+    }
   };
 
   if (loading) {
@@ -304,6 +321,80 @@ export default function MediaCleanupStatusContent() {
           <strong>Tip:</strong> Use the simple override for quick cleanup adjustments.
           For fine-grained control based on account balances, leave this empty and configure retention policies.
         </Text>
+      </Card>
+
+      {/* Large cleanup approvals */}
+      <Card withBorder shadow="sm">
+        <Group justify="space-between" mb="md">
+          <div>
+            <Title order={4}>Pending Approvals</Title>
+            <Text size="sm" c="dimmed">
+              Large scheduled cleanup scopes require review before a fresh query can run.
+            </Text>
+          </div>
+          <Badge
+            color={status.pendingApprovalCount > 0 ? 'orange' : 'green'}
+            variant="filled"
+            size="lg"
+            leftSection={<IconShieldCheck size={14} />}
+          >
+            {status.pendingApprovalCount}
+          </Badge>
+        </Group>
+        {(status.pendingApprovals ?? []).length === 0 ? (
+          <Alert color="green" icon={<IconCheck size={16} />}>
+            No large cleanup scopes are waiting for approval.
+          </Alert>
+        ) : (
+          <Stack gap="sm">
+            {status.pendingApprovals.map((approval) => (
+              <Paper key={approval.id} p="md" withBorder>
+                <Group justify="space-between" align="flex-start">
+                  <Stack gap={4}>
+                    <Group gap="xs">
+                      <Badge color="orange" variant="light">{approval.cleanupType}</Badge>
+                      <Text size="sm" fw={600}>
+                        {approval.candidateCount.toLocaleString()} candidates
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        {formatBytes(approval.candidateBytes)}
+                      </Text>
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      Scope: {approval.virtualKeyGroupId === null
+                        ? 'all eligible groups'
+                        : `virtual key group ${approval.virtualKeyGroupId}`}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Snapshot {formatDate(approval.cutoffUtc)} · expires {formatDate(approval.expiresAtUtc)}
+                    </Text>
+                  </Stack>
+                  <Group gap="xs">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="red"
+                      disabled={approvalLoading !== null}
+                      loading={approvalLoading === approval.id}
+                      onClick={() => void handleApproval(approval.id, false)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      size="xs"
+                      color="orange"
+                      disabled={approvalLoading !== null}
+                      loading={approvalLoading === approval.id}
+                      onClick={() => void handleApproval(approval.id, true)}
+                    >
+                      Approve fresh run
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            ))}
+          </Stack>
+        )}
       </Card>
 
       {/* Budget Overview */}

@@ -129,7 +129,7 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
-        internal async Task RunScheduledCleanupAsync(CancellationToken stoppingToken)
+        public async Task RunScheduledCleanupAsync(CancellationToken stoppingToken)
         {
             if (_storageConfigurationGuard != null &&
                 !await _storageConfigurationGuard.ValidateAsync(stoppingToken))

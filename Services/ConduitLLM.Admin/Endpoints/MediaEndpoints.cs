@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
@@ -82,6 +83,29 @@ public static class MediaEndpoints
             .Produces<SimpleRetentionResponse>();
         cleanup.MapPost("/simple-retention", SetSimpleRetention).WithName("MediaCleanup_SetSimpleRetention")
             .Produces<SimpleRetentionResponse>();
+        cleanup.MapGet("/approvals", GetPendingApprovals)
+            .WithName("MediaCleanup_GetPendingApprovals")
+            .WithSummary("List large scheduled cleanup scopes awaiting approval")
+            .Produces<List<MediaCleanupApprovalDto>>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
+        cleanup.MapPost("/approvals/{approvalId:guid}/approve", ApproveCleanup)
+            .WithName("MediaCleanup_Approve")
+            .WithSummary("Approve a fresh execution of a large scheduled cleanup scope")
+            .Produces<MediaCleanupApprovalActionDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
+        cleanup.MapPost("/approvals/{approvalId:guid}/reject", RejectCleanup)
+            .WithName("MediaCleanup_Reject")
+            .WithSummary("Reject a large scheduled cleanup scope")
+            .Produces<MediaCleanupApprovalActionDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
         return app;
     }
 
@@ -340,6 +364,78 @@ public static class MediaEndpoints
             Message = message
         });
     }
+
+    private static async Task<IResult> GetPendingApprovals(
+        [FromServices] IMediaCleanupApprovalService approvalService,
+        CancellationToken cancellationToken) =>
+        Results.Ok(await approvalService.ListPendingAsync(cancellationToken));
+
+    private static async Task<IResult> ApproveCleanup(
+        Guid approvalId,
+        HttpContext context,
+        [FromServices] IMediaCleanupApprovalService approvalService,
+        [FromServices] MediaCleanupService cleanupService,
+        [FromServices] ILogger<MediaEndpointLog> logger,
+        CancellationToken cancellationToken)
+    {
+        var approval = await approvalService.ApproveAsync(
+            approvalId,
+            GetAdminActor(context),
+            cancellationToken);
+        if (approval == null)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        AdminAudit.Log(
+            context,
+            logger,
+            "Approved",
+            "MediaCleanupApproval",
+            approvalId,
+            $"Type: {approval.CleanupType}, GroupId: {approval.VirtualKeyGroupId?.ToString() ?? "all"}, " +
+            $"SnapshotCount: {approval.CandidateCount}, SnapshotBytes: {approval.CandidateBytes}");
+
+        await cleanupService.RunScheduledCleanupAsync(cancellationToken);
+        return Results.Ok(new MediaCleanupApprovalActionDto
+        {
+            Approval = MediaCleanupApprovalDto.FromEntity(approval),
+            Message = "Approval recorded and a fresh cleanup evaluation was triggered"
+        });
+    }
+
+    private static async Task<IResult> RejectCleanup(
+        Guid approvalId,
+        HttpContext context,
+        [FromServices] IMediaCleanupApprovalService approvalService,
+        [FromServices] ILogger<MediaEndpointLog> logger,
+        CancellationToken cancellationToken)
+    {
+        var approval = await approvalService.RejectAsync(
+            approvalId,
+            GetAdminActor(context),
+            cancellationToken);
+        if (approval == null)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        AdminAudit.Log(
+            context,
+            logger,
+            "Rejected",
+            "MediaCleanupApproval",
+            approvalId,
+            $"Type: {approval.CleanupType}, GroupId: {approval.VirtualKeyGroupId?.ToString() ?? "all"}");
+        return Results.Ok(new MediaCleanupApprovalActionDto
+        {
+            Approval = MediaCleanupApprovalDto.FromEntity(approval),
+            Message = "Cleanup approval rejected; the next scheduler evaluation may raise a new request"
+        });
+    }
+
+    private static string GetAdminActor(HttpContext context) =>
+        context.User.Identity?.Name ?? $"master-key:{context.TraceIdentifier}";
 
     private sealed class MediaEndpointLog;
 

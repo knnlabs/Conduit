@@ -133,6 +133,28 @@ export interface MediaCleanupStatus {
   currentLeaderInstanceId: string | null;
   /** Last known result for each scheduler-owned cleanup phase. */
   operationStatuses: MediaCleanupOperationStatus[];
+  /** Large scheduler cleanup scopes awaiting administrator approval. */
+  pendingApprovals: MediaCleanupApproval[];
+  pendingApprovalCount: number;
+}
+
+export interface MediaCleanupApproval {
+  id: string;
+  cleanupType: string;
+  virtualKeyGroupId: number | null;
+  candidateCount: number;
+  candidateBytes: number;
+  cutoffUtc: string;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  expiresAtUtc: string;
+  executionStatus: string | null;
+}
+
+export interface MediaCleanupApprovalAction {
+  approval: MediaCleanupApproval;
+  message: string;
 }
 
 export interface MediaCleanupOperationStatus {
