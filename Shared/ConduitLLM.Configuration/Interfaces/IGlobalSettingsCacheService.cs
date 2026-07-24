@@ -56,6 +56,12 @@ public interface IGlobalSettingsCacheService
     Task ReloadAllSettingsAsync();
 
     /// <summary>
+    /// Broadcasts a full reload to every process-local cache. Redis pub/sub is used when
+    /// configured; a Redis-less development process reloads itself.
+    /// </summary>
+    Task PublishReloadAsync(string requestId);
+
+    /// <summary>
     /// Gets cache statistics for monitoring and debugging.
     /// </summary>
     /// <returns>Dictionary containing cache hit/miss counts and other metrics.</returns>

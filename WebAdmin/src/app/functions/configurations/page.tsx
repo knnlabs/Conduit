@@ -33,6 +33,7 @@ import {
 } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { modals } from '@mantine/modals';
 import {
   FunctionConfigurationDto,
   CreateFunctionConfigurationDto,
@@ -57,6 +58,7 @@ export default function FunctionConfigurationsPage() {
   const [filterPurpose, setFilterPurpose] = useState<string>('all');
   const [testingConfig, setTestingConfig] = useState<FunctionConfigurationDto | null>(null);
   const [showTestModal, setShowTestModal] = useState(false);
+  const [invalidatingCache, setInvalidatingCache] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<CreateFunctionConfigurationDto>({
@@ -219,6 +221,33 @@ export default function FunctionConfigurationsPage() {
     return true;
   });
 
+  const confirmFunctionCacheInvalidation = () => {
+    modals.openConfirmModal({
+      title: 'Invalidate function discovery cache?',
+      children: (
+        <Text size="sm">
+          Cached function tool definitions will be cleared across Gateway instances and
+          rebuilt on demand.
+        </Text>
+      ),
+      labels: { confirm: 'Invalidate cache', cancel: 'Cancel' },
+      confirmProps: { color: 'orange' },
+      onConfirm: () => {
+        void (async () => {
+          setInvalidatingCache(true);
+          try {
+            await executeWithAdmin(client => client.system.invalidateFunctionDiscoveryCache());
+            notify.success('Function discovery cache invalidation requested');
+          } catch (error) {
+            notify.error(error, 'Failed to invalidate function discovery cache');
+          } finally {
+            setInvalidatingCache(false);
+          }
+        })();
+      },
+    });
+  };
+
   return (
     <Container size="xl">
       <Stack gap="md">
@@ -230,6 +259,14 @@ export default function FunctionConfigurationsPage() {
             </Text>
           </div>
           <Group gap="xs">
+            <Button
+              variant="light"
+              color="orange"
+              onClick={confirmFunctionCacheInvalidation}
+              loading={invalidatingCache}
+            >
+              Invalidate Function Discovery Cache
+            </Button>
             <Button
               leftSection={<IconRefresh size={16} />}
               variant="subtle"

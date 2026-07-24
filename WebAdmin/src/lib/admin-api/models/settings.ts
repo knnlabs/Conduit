@@ -22,6 +22,26 @@ export interface GlobalSettingCacheStats {
   cachedKeys: string[];
 }
 
+export interface GlobalSettingDefinitionDto {
+  key: string;
+  displayName: string;
+  description: string;
+  type: 'string' | 'boolean' | 'integer' | 'number' | 'json';
+  category: string;
+  defaultValue: string;
+  minimum?: number | null;
+  maximum?: number | null;
+  maxLength?: number | null;
+  featureRoute?: string | null;
+  isFeatureOwned: boolean;
+}
+
+export interface GlobalSettingsReloadAcceptedResponse {
+  message: string;
+  requestId: string;
+  acceptedAt: string;
+}
+
 export interface CreateGlobalSettingDto {
   key: string;
   value: string;

@@ -21,6 +21,7 @@ namespace ConduitLLM.Core.Extensions
         public static IServiceCollection AddSharedCacheInvalidationHandlers(this IServiceCollection services)
         {
             services.AddEventHandler<GlobalSettingChanged, GlobalSettingCacheInvalidationHandler>();
+            services.AddEventHandler<GlobalSettingsReloadRequested, GlobalSettingsReloadHandler>();
             services.AddEventHandler<FunctionConfigurationChanged, FunctionConfigurationCacheInvalidationHandler>();
             services.AddEventHandler<FunctionDiscoveryCacheInvalidationRequested, FunctionDiscoveryCacheInvalidationRequestHandler>();
             return services;
@@ -33,6 +34,7 @@ namespace ConduitLLM.Core.Extensions
         public static readonly IReadOnlyList<Type> BridgedEventTypes = new[]
         {
             typeof(GlobalSettingChanged),
+            typeof(GlobalSettingsReloadRequested),
             typeof(FunctionConfigurationChanged),
             typeof(FunctionDiscoveryCacheInvalidationRequested),
         };

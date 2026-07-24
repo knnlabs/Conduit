@@ -884,6 +884,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/admin/global-settings/definitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List typed global setting definitions */
+    get: operations["GlobalSettings_GetDefinitions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/admin/global-settings/{id}": {
     parameters: {
       query?: never;
@@ -3750,24 +3767,14 @@ export interface components {
       /** Format: int32 */
       virtualKeyId?: null | number;
     };
-    /** @description Request model for creating a key credential */
     CreateKeyRequest: {
-      /** @description The API key to create */
       apiKey?: string;
-      /** @description The name for the key credential */
       keyName?: string;
-      /** @description The organization for the key (optional) */
       organization?: null | string;
-      /** @description The base URL for the key (optional) */
       baseUrl?: null | string;
-      /** @description Whether this is the primary key for the provider */
       isPrimary?: boolean;
-      /** @description Whether the key is enabled */
       isEnabled?: boolean;
-      /**
-       * Format: int32
-       * @description The provider account group (optional)
-       */
+      /** Format: int32 */
       providerAccountGroup?: null | number;
     };
     /** @description Request model for creating a new media retention policy. */
@@ -3989,31 +3996,17 @@ export interface components {
       severity?: components["schemas"]["NotificationSeverity"];
       message?: string;
     };
-    /** @description Request model for creating a provider */
     CreateProviderRequest: {
-      /** @description The type of provider to create */
       providerType?: components["schemas"]["ProviderType"];
-      /** @description The name of the provider */
       providerName?: string;
-      /** @description The base URL for the provider (optional) */
       baseUrl?: null | string;
-      /** @description Whether the provider is enabled */
-      isEnabled?: boolean;
-      /** @description When true, the cost the provider reports per request is authoritative for billing
-       *     (falls back to ModelCost when no cost is reported). Defaults to false. */
-      trustProviderReportedCosts?: boolean;
-      /**
-       * Format: double
-       * @description Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).
-       *     Only consulted when bool CreateProviderRequest.TrustProviderReportedCosts is true.
-       */
-      providerCostMarkupMultiplier?: number;
-      /** @description Structured, provider-scoped settings supplied in addition to the API key (for example a
-       *     Cloudflare account ID). Keys correspond to the setting definitions declared for the
-       *     provider type. Non-secret values only. */
       settings?: null | {
         [key: string]: string;
       };
+      isEnabled?: boolean;
+      trustProviderReportedCosts?: boolean;
+      /** Format: double */
+      providerCostMarkupMultiplier?: number;
     };
     CreateProviderToolDto: {
       provider: components["schemas"]["ProviderType"];
@@ -4545,6 +4538,23 @@ export interface components {
       lastLoadTime: string;
       cachedKeys: string[];
     };
+    /** @description Server-owned metadata for a known global setting. */
+    GlobalSettingDefinitionDto: {
+      key?: string;
+      displayName?: string;
+      description?: string;
+      type?: string;
+      category?: string;
+      defaultValue?: string;
+      /** Format: double */
+      minimum?: null | number;
+      /** Format: double */
+      maximum?: null | number;
+      /** Format: int32 */
+      maxLength?: null | number;
+      featureRoute?: null | string;
+      isFeatureOwned?: boolean;
+    };
     GlobalSettingDto: {
       /** Format: int32 */
       id: number;
@@ -4555,6 +4565,12 @@ export interface components {
       createdAt: string;
       /** Format: date-time */
       updatedAt: string;
+    };
+    GlobalSettingsReloadAcceptedResponse: {
+      message: string;
+      requestId: string;
+      /** Format: date-time */
+      acceptedAt: string;
     };
     /** @description Health metrics for a single time interval. */
     HealthHistoryPointDto: {
@@ -6308,7 +6324,7 @@ export interface components {
       /** Format: int32 */
       virtualKeys?: number;
       /** Format: int32 */
-      requests?: number;
+      requests?: null | number;
       /** Format: int32 */
       settings?: number;
       /** Format: int32 */
@@ -6631,6 +6647,21 @@ export interface components {
        */
       total?: number;
     };
+    /** @description Health and build identity for one application service instance. */
+    ServiceInstanceStatusDto: {
+      instanceId?: string;
+      status?: string;
+      version?: string;
+      commitSha?: string;
+      buildTimestamp?: string;
+      uptime?: string;
+      /** Format: date-time */
+      lastHeartbeat?: string;
+      /** Format: double */
+      heartbeatAgeSeconds?: number;
+      /** Format: double */
+      heartbeatIntervalSeconds?: number;
+    };
     /** @description Health status for a single monitored service. */
     ServiceStatusDto: {
       /** @description Service identifier (e.g. core-api, admin-api, database). */
@@ -6639,6 +6670,11 @@ export interface components {
       name?: string;
       /** @description Health status of the service (healthy, degraded, or unhealthy). */
       status?: string;
+      /** @description Logical service version, `mixed` when active instances do not match, or null
+       *     for dependencies that do not expose an application version. */
+      version?: null | string;
+      /** @description Per-instance status for clustered application services. */
+      instances?: components["schemas"]["ServiceInstanceStatusDto"][];
       /** @description How long the service has been running, or `null` when it is not known
        *     (e.g. a service reporting via heartbeat that has not been seen yet). */
       uptime?: null | string;
@@ -6742,21 +6778,14 @@ export interface components {
       credentialId?: number;
       apiKeyOverride?: null | string;
     };
-    /** @description Request model for testing a provider connection */
     TestProviderRequest: {
-      /** @description The type of provider to test */
       providerType?: components["schemas"]["ProviderType"];
-      /** @description The API key to test */
       apiKey?: null | string;
-      /** @description The base URL to test (optional) */
       baseUrl?: null | string;
-      /** @description The organization to test (optional) */
-      organization?: null | string;
-      /** @description Structured, provider-scoped settings to test (for example a Cloudflare account ID).
-       *     Required settings must be present or the test returns an actionable configuration error. */
       settings?: null | {
         [key: string]: string;
       };
+      organization?: null | string;
     };
     /** @description Aggregate security metrics for threat analytics. */
     ThreatAnalyticsMetricsDto: {
@@ -6967,24 +6996,14 @@ export interface components {
       description?: null | string;
       isEnabled?: null | boolean;
     };
-    /** @description Request model for updating a key credential */
     UpdateKeyRequest: {
-      /** @description The new name for the key (optional) */
       keyName?: null | string;
-      /** @description The new API key (optional) */
       apiKey?: null | string;
-      /** @description The new organization (optional) */
       organization?: null | string;
-      /** @description The new base URL (optional) */
       baseUrl?: null | string;
-      /** @description Whether this should be the primary key (optional) */
       isPrimary?: null | boolean;
-      /** @description Whether the key is enabled (optional) */
       isEnabled?: null | boolean;
-      /**
-       * Format: int32
-       * @description The provider account group (optional)
-       */
+      /** Format: int32 */
       providerAccountGroup?: null | number;
     };
     /** @description Request to update the media cleanup enabled state. */
@@ -7215,28 +7234,16 @@ export interface components {
       enabled?: boolean;
       rules: components["schemas"]["PromptCachingRuleDto"][];
     };
-    /** @description Request model for updating a provider */
     UpdateProviderRequest: {
-      /** @description The new name for the provider (optional) */
       providerName?: null | string;
-      /** @description The new base URL for the provider (optional) */
       baseUrl?: null | string;
-      /** @description Whether the provider is enabled */
-      isEnabled?: boolean;
-      /** @description When true, the cost the provider reports per request is authoritative for billing
-       *     (falls back to ModelCost when no cost is reported). Defaults to false when omitted. */
-      trustProviderReportedCosts?: boolean;
-      /**
-       * Format: double
-       * @description Multiplier applied to the provider-reported cost when billing (1.0 = pass-through).
-       *     Defaults to 1.0 when omitted, so a partial update never silently zeroes the markup.
-       */
-      providerCostMarkupMultiplier?: number;
-      /** @description Structured, provider-scoped settings supplied in addition to the API key (for example a
-       *     Cloudflare account ID). When provided, replaces the stored settings. Non-secret values only. */
       settings?: null | {
         [key: string]: string;
       };
+      isEnabled?: boolean;
+      trustProviderReportedCosts?: boolean;
+      /** Format: double */
+      providerCostMarkupMultiplier?: number;
     };
     UpdateProviderToolDto: {
       isActive?: boolean;
@@ -7348,6 +7355,8 @@ export interface components {
     };
     VersionInfo: {
       appVersion?: string;
+      commitSha?: string;
+      buildTimestamp?: string;
       /** Format: date-time */
       buildDate?: null | string;
     };
@@ -11046,6 +11055,89 @@ export interface operations {
       };
     };
   };
+  GlobalSettings_GetDefinitions: {
+    parameters: {
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["GlobalSettingDefinitionDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   GlobalSettings_GetById: {
     parameters: {
       query?: never;
@@ -11373,14 +11465,16 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description Accepted */
+      202: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["GlobalSettingsReloadAcceptedResponse"];
+        };
       };
       /** @description Internal Server Error */
       500: {

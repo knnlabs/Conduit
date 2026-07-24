@@ -16,6 +16,11 @@ namespace ConduitLLM.Admin.Interfaces
         /// been recorded recently (never seen, or the stored snapshot has expired).
         /// </summary>
         Task<ServiceHeartbeatSnapshot?> GetAsync(string serviceId, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets all non-expired instance snapshots for a logical service.</summary>
+        Task<IReadOnlyList<ServiceHeartbeatSnapshot>> GetAllAsync(
+            string serviceId,
+            CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -32,6 +37,15 @@ namespace ConduitLLM.Admin.Interfaces
 
         /// <summary>Reported service version.</summary>
         public string Version { get; set; } = string.Empty;
+
+        /// <summary>Reported source commit.</summary>
+        public string CommitSha { get; set; } = "dev";
+
+        /// <summary>Reported UTC build timestamp.</summary>
+        public string BuildTimestamp { get; set; } = "unknown";
+
+        /// <summary>Readiness status reported by the instance.</summary>
+        public string Status { get; set; } = "healthy";
 
         /// <summary>Reported process uptime in seconds at the time of the heartbeat.</summary>
         public double UptimeSeconds { get; set; }

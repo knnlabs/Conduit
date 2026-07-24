@@ -1,4 +1,5 @@
 import type { RequestConfig } from '../../client/types';
+import type { components } from '../../generated/admin-api';
 import type {
   SystemInfoDto,
   HealthStatusDto,
@@ -15,6 +16,8 @@ import type {
 export interface BackendSystemInfoResponse {
   version: {
     appVersion: string;
+    commitSha: string;
+    buildTimestamp: string;
     buildDate: string | null; // DateTime? serialized as ISO string or null
   };
   operatingSystem: {
@@ -37,7 +40,7 @@ export interface BackendSystemInfoResponse {
   };
   recordCounts: {
     virtualKeys: number;
-    requests: number;
+    requests?: number | null;
     settings: number;
     providers: number;
     modelMappings: number;
@@ -86,9 +89,17 @@ export interface ExportResult {
 export interface ISystemService {
   getSystemInfo(config?: RequestConfig): Promise<SystemInfoDto>;
   getHealth(config?: RequestConfig): Promise<HealthStatusDto>;
+  getServiceHealth(
+    config?: RequestConfig,
+  ): Promise<components['schemas']['ServiceHealthResponse']>;
   getPerformanceMetrics(params?: MetricsParams, config?: RequestConfig): Promise<PerformanceMetrics>;
   exportPerformanceData(params: ExportParams, config?: RequestConfig): Promise<ExportResult>;
   getWebAdminVirtualKey(config?: RequestConfig): Promise<string>;
+  invalidateFunctionDiscoveryCache(config?: RequestConfig): Promise<{
+    message: string;
+    timestamp: string;
+    note?: string;
+  }>;
 }
 
 // Service interface for health operations

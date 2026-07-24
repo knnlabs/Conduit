@@ -2,7 +2,7 @@ import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
 import { FetchSystemService } from './FetchSystemService';
 
 const mockGetGlobalSetting = jest.fn();
-const mockCreateGlobalSetting = jest.fn();
+const mockUpdateGlobalSetting = jest.fn();
 const mockValidateVirtualKey = jest.fn();
 const mockCreateVirtualKey = jest.fn();
 const mockDeleteVirtualKey = jest.fn();
@@ -13,7 +13,7 @@ const mockDeleteGroup = jest.fn();
 jest.mock('./FetchSettingsService', () => ({
   FetchSettingsService: jest.fn(() => ({
     getGlobalSetting: mockGetGlobalSetting,
-    createGlobalSetting: mockCreateGlobalSetting,
+    updateGlobalSetting: mockUpdateGlobalSetting,
   })),
 }));
 
@@ -46,7 +46,7 @@ describe('FetchSystemService.getWebAdminVirtualKey', () => {
       virtualKey: 'vk_webadmin',
       keyInfo: { id: 11 },
     });
-    mockCreateGlobalSetting.mockResolvedValue({ key: 'WebAdmin_VirtualKey' });
+    mockUpdateGlobalSetting.mockResolvedValue(undefined);
   });
 
   it('shares one cold-start bootstrap across concurrent service instances', async () => {
@@ -63,7 +63,7 @@ describe('FetchSystemService.getWebAdminVirtualKey', () => {
     expect(secondKey).toBe('vk_webadmin');
     expect(mockCreateGroup).toHaveBeenCalledTimes(1);
     expect(mockCreateVirtualKey).toHaveBeenCalledTimes(1);
-    expect(mockCreateGlobalSetting).toHaveBeenCalledTimes(1);
+    expect(mockUpdateGlobalSetting).toHaveBeenCalledTimes(1);
   });
 
   it('reuses an existing internal group instead of funding another one', async () => {
@@ -86,7 +86,7 @@ describe('FetchSystemService.getWebAdminVirtualKey', () => {
     mockGetGlobalSetting
       .mockRejectedValueOnce(new Error('not found'))
       .mockResolvedValueOnce({ value: 'vk_winner' });
-    mockCreateGlobalSetting.mockRejectedValueOnce(new Error('setting already exists'));
+    mockUpdateGlobalSetting.mockRejectedValueOnce(new Error('setting already exists'));
     mockValidateVirtualKey.mockResolvedValueOnce({ isValid: true });
     const service = new FetchSystemService({} as FetchBaseApiClient);
 
@@ -95,5 +95,60 @@ describe('FetchSystemService.getWebAdminVirtualKey', () => {
     expect(key).toBe('vk_winner');
     expect(mockDeleteVirtualKey).toHaveBeenCalledWith('11', undefined);
     expect(mockDeleteGroup).toHaveBeenCalledWith(7, undefined);
+  });
+});
+
+describe('FetchSystemService diagnostics contracts', () => {
+  it('reads expanded service health from the health-status endpoint', async () => {
+    const health = {
+      overallStatus: 'degraded',
+      timestamp: '2026-07-23T18:00:00Z',
+      summary: { healthy: 5, degraded: 1, unhealthy: 0, unknown: 0, total: 6 },
+      services: [{
+        id: 'core-api',
+        name: 'Gateway API',
+        status: 'degraded',
+        instances: [{
+          instanceId: 'gateway-a',
+          status: 'healthy',
+          version: '3.0.0',
+          commitSha: 'abc123',
+          buildTimestamp: '2026-07-23T17:00:00Z',
+        }],
+      }],
+    };
+    const executeContractRead = jest.fn().mockResolvedValue(health);
+    const service = new FetchSystemService({
+      executeContractRead,
+    } as unknown as FetchBaseApiClient);
+
+    await expect(service.getServiceHealth()).resolves.toEqual(health);
+    expect(executeContractRead).toHaveBeenCalledWith(
+      '/v1/admin/health-status/services',
+      expect.any(Function),
+      undefined,
+    );
+  });
+
+  it('invalidates function discovery through the system metadata endpoint', async () => {
+    const result = {
+      message: 'accepted',
+      timestamp: '2026-07-23T18:00:00Z',
+    };
+    const post = jest.fn().mockResolvedValue(result);
+    const service = new FetchSystemService({
+      post,
+    } as unknown as FetchBaseApiClient);
+
+    await expect(service.invalidateFunctionDiscoveryCache()).resolves.toEqual(result);
+    expect(post).toHaveBeenCalledWith(
+      '/v1/admin/system-metadata/cache/invalidate-function-discovery',
+      {},
+      expect.objectContaining({
+        signal: undefined,
+        timeout: undefined,
+        headers: undefined,
+      }),
+    );
   });
 });

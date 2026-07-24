@@ -51,6 +51,22 @@ public class AdminGlobalSettingServiceTests
     }
 
     [Fact]
+    public async Task GetAllSettingsAsync_OmitsProtectedWebAdminKey()
+    {
+        _mockGlobalSettingRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<GlobalSetting>
+            {
+                new() { Id = 1, Key = "Visible", Value = "value" },
+                new() { Id = 2, Key = "WebAdmin_VirtualKey", Value = "secret" }
+            });
+
+        var result = await _service.GetAllSettingsAsync();
+
+        result.Should().ContainSingle(item => item.Key == "Visible");
+        result.Should().NotContain(item => item.Key == "WebAdmin_VirtualKey");
+    }
+
+    [Fact]
     public async Task GetSettingByIdAsync_WithExistingId_ShouldReturnDto()
     {
         // Arrange
@@ -139,6 +155,24 @@ public class AdminGlobalSettingServiceTests
     }
 
     [Fact]
+    public async Task CreateSettingAsync_RejectsProtectedWebAdminKey()
+    {
+        var action = () => _service.CreateSettingAsync(new CreateGlobalSettingDto
+        {
+            Key = "WebAdmin_VirtualKey",
+            Value = "secret"
+        });
+
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*explicit by-key bootstrap API*");
+        _mockGlobalSettingRepository.Verify(
+            repository => repository.CreateAsync(
+                It.IsAny<GlobalSetting>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task UpdateSettingAsync_WithExistingId_ShouldUpdateAndReturnTrue()
     {
         // Arrange
@@ -171,6 +205,67 @@ public class AdminGlobalSettingServiceTests
 
         // Assert
         result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateSettingAsync_RejectsProtectedWebAdminKey()
+    {
+        _mockGlobalSettingRepository.Setup(x => x.GetByIdAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GlobalSetting
+            {
+                Id = 7,
+                Key = "WebAdmin_VirtualKey",
+                Value = "secret"
+            });
+
+        var action = () => _service.UpdateSettingAsync(
+            7,
+            new UpdateGlobalSettingDto { Id = 7, Value = "replacement" });
+
+        await action.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*explicit by-key bootstrap API*");
+    }
+
+    [Fact]
+    public async Task UpdateSettingByKeyAsync_RejectsInvalidTypedValue()
+    {
+        var action = () => _service.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
+        {
+            Key = "Agentic.MaxIterations",
+            Value = "101"
+        });
+
+        await action.Should().ThrowAsync<ArgumentOutOfRangeException>();
+        _mockGlobalSettingRepository.Verify(
+            repository => repository.UpsertAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task UpdateSettingByKeyAsync_ValidatesAgenticIterationRelationship()
+    {
+        _mockGlobalSettingRepository
+            .Setup(repository => repository.GetByKeyAsync(
+                "Agentic.MaxIterations",
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GlobalSetting
+            {
+                Key = "Agentic.MaxIterations",
+                Value = "5"
+            });
+
+        var action = () => _service.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
+        {
+            Key = "Agentic.MinIterations",
+            Value = "6"
+        });
+
+        await action.Should().ThrowAsync<ArgumentException>()
+            .WithMessage("*cannot be greater*");
     }
 
     [Fact]
@@ -224,6 +319,22 @@ public class AdminGlobalSettingServiceTests
     }
 
     [Fact]
+    public async Task DeleteSettingAsync_RejectsProtectedWebAdminKey()
+    {
+        _mockGlobalSettingRepository.Setup(x => x.GetByIdAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GlobalSetting
+            {
+                Id = 7,
+                Key = "WebAdmin_VirtualKey",
+                Value = "secret"
+            });
+
+        var action = () => _service.DeleteSettingAsync(7);
+
+        await action.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task DeleteSettingByKeyAsync_WithExistingKey_ShouldDeleteAndReturnTrue()
     {
         // Arrange
@@ -252,5 +363,18 @@ public class AdminGlobalSettingServiceTests
 
         // Assert
         result.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task DeleteSettingByKeyAsync_RejectsProtectedWebAdminKey()
+    {
+        var action = () => _service.DeleteSettingByKeyAsync("WebAdmin_VirtualKey");
+
+        await action.Should().ThrowAsync<InvalidOperationException>();
+        _mockGlobalSettingRepository.Verify(
+            repository => repository.DeleteByKeyAsync(
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 }

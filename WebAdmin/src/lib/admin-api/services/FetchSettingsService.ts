@@ -6,6 +6,8 @@ import type {
   CreateGlobalSettingDto,
   UpdateGlobalSettingByKeyDto,
   GlobalSettingCacheStats,
+  GlobalSettingDefinitionDto,
+  GlobalSettingsReloadAcceptedResponse,
   SettingCategory,
 } from '../models/settings';
 
@@ -31,26 +33,46 @@ export class FetchSettingsService {
    * Get all global settings
    */
   async getGlobalSettings(config?: RequestConfig): Promise<SettingsDto> {
-    // Get all settings
-    const settings = await this.client['executeContractRead'](
+    const readPage = (page: number) => this.client['executeContractRead'](
       '/v1/admin/global-settings',
-      (contractClient, options) => contractClient.GET('/v1/admin/global-settings', options),
+      (contractClient, options) => contractClient.GET('/v1/admin/global-settings', {
+        ...options,
+        params: { query: { page, pageSize: 100 } },
+      }),
       config,
     );
+    const firstPage = await readPage(1);
+    const settings = [...firstPage.data];
+    for (let page = 2; page <= firstPage.pagination.totalPages; page++) {
+      settings.push(...(await readPage(page)).data);
+    }
 
     // The API does not return category metadata, so no categories can be derived.
     const categories: string[] = [];
 
     // Find the most recent update
-    const lastModified = settings.data
+    const lastModified = settings
       .map(s => s.updatedAt)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || new Date().toISOString();
 
     return {
-      settings: settings.data,
+      settings,
       categories,
       lastModified,
     };
+  }
+
+  /** Gets the server-owned registry used to render and validate typed settings. */
+  async getDefinitions(config?: RequestConfig): Promise<GlobalSettingDefinitionDto[]> {
+    const result = await this.client['executeContractRead'](
+      '/v1/admin/global-settings/definitions',
+      (contractClient, options) => contractClient.GET('/v1/admin/global-settings/definitions', {
+        ...options,
+        params: { query: { page: 1, pageSize: 100 } },
+      }),
+      config,
+    );
+    return result.data as GlobalSettingDefinitionDto[];
   }
 
   /**
@@ -274,8 +296,8 @@ export class FetchSettingsService {
   /**
    * Reload all global settings from database into cache
    */
-  async reloadCache(config?: RequestConfig): Promise<void> {
-    return this.client['executeContractOperation']<void>(
+  async reloadCache(config?: RequestConfig): Promise<GlobalSettingsReloadAcceptedResponse> {
+    return this.client['executeContractOperation']<GlobalSettingsReloadAcceptedResponse>(
       '/v1/admin/global-settings/cache/reload',
       HttpMethod.POST,
       (contractClient, options) => contractClient.POST('/v1/admin/global-settings/cache/reload', options),

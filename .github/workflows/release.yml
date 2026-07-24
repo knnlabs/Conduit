@@ -24,6 +24,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      commit_sha: ${{ steps.version.outputs.commit_sha }}
+      build_timestamp: ${{ steps.version.outputs.build_timestamp }}
 
     steps:
       - uses: actions/checkout@v4
@@ -36,6 +38,8 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "build_timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then
             echo "channel=beta" >> "$GITHUB_OUTPUT"
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
@@ -101,3 +105,7 @@ jobs:
             ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:${{ needs.release.outputs.channel }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          build-args: |
+            VERSION=${{ needs.release.outputs.version }}
+            COMMIT_SHA=${{ needs.release.outputs.commit_sha }}
+            BUILD_TIMESTAMP=${{ needs.release.outputs.build_timestamp }}

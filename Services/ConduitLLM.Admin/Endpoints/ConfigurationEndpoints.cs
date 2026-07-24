@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.DTOs;
@@ -130,7 +131,7 @@ public static class ConfigurationEndpoints
 
     private static async Task<IResult> PutRoutingDefaults(
         [FromBody] RoutingDefaultsDto dto,
-        [FromServices] IDbContextFactory<ConduitDbContext> dbContextFactory,
+        [FromServices] IAdminGlobalSettingService globalSettingService,
         CancellationToken cancellationToken)
     {
         if (dto.CostWeight + dto.SpeedWeight + dto.QualityWeight <= 0)
@@ -138,36 +139,19 @@ public static class ConfigurationEndpoints
             return AdminResults.BadRequest("At least one route score weight must be positive.");
         }
 
-        await using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);
-        var setting = await context.GlobalSettings.SingleOrDefaultAsync(
-            item => item.Key == "Routing.Defaults", cancellationToken);
-        if (setting is null)
+        cancellationToken.ThrowIfCancellationRequested();
+        await globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
         {
-            setting = new GlobalSetting
-            {
-                Key = "Routing.Defaults",
-                Description = "Default provider-aware chat routing policy"
-            };
-            context.GlobalSettings.Add(setting);
-        }
-
-        setting.Value = JsonSerializer.Serialize(dto);
-        setting.UpdatedAt = DateTime.UtcNow;
-        var switchSetting = await context.GlobalSettings.SingleOrDefaultAsync(
-            item => item.Key == "Routing.Chat.Enabled", cancellationToken);
-        if (switchSetting is null)
+            Key = "Routing.Defaults",
+            Value = JsonSerializer.Serialize(dto),
+            Description = "Default provider-aware chat routing policy"
+        });
+        await globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
         {
-            switchSetting = new GlobalSetting
-            {
-                Key = "Routing.Chat.Enabled",
-                Description = "Emergency provider-aware chat routing switch"
-            };
-            context.GlobalSettings.Add(switchSetting);
-        }
-
-        switchSetting.Value = dto.ChatRoutingEnabled.ToString();
-        switchSetting.UpdatedAt = DateTime.UtcNow;
-        await context.SaveChangesAsync(cancellationToken);
+            Key = "Routing.Chat.Enabled",
+            Value = dto.ChatRoutingEnabled.ToString(),
+            Description = "Emergency provider-aware chat routing switch"
+        });
         return Results.Ok(dto);
     }
 

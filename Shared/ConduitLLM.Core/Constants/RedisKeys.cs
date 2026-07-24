@@ -195,8 +195,15 @@ public static class RedisKeys
         /// <summary>Logical service id for the Gateway ("core-api") heartbeat.</summary>
         public const string GatewayServiceId = "gateway";
 
-        /// <summary>Last-seen heartbeat snapshot for a service, keyed by its logical service id.</summary>
-        public static string For(string serviceId) => $"health:heartbeat:{serviceId}";
+        /// <summary>Logical service id for Admin API heartbeats.</summary>
+        public const string AdminServiceId = "admin";
+
+        /// <summary>Heartbeat snapshot for a specific service instance.</summary>
+        public static string For(string serviceId, string instanceId) =>
+            $"health:heartbeat:{serviceId}:{instanceId}";
+
+        /// <summary>Index of instance ids that have reported for a logical service.</summary>
+        public static string Index(string serviceId) => $"health:heartbeat:{serviceId}:instances";
     }
 
     #endregion

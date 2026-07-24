@@ -61,6 +61,7 @@ public partial class Program
         // status. Singleton so its in-process fallback (used when Redis is absent) is shared
         // between the event handler (writer) and the dashboard endpoint (reader).
         builder.Services.AddSingleton<ConduitLLM.Admin.Interfaces.IServiceHeartbeatStore, ConduitLLM.Admin.Services.ServiceHeartbeatStore>();
+        builder.Services.AddHostedService<ConduitLLM.Admin.Services.AdminHeartbeatPublisher>();
 
         // Add media lifecycle services (scheduler, storage, distributed locking)
         builder.Services.AddMediaLifecycleServices(builder.Configuration);

@@ -27,6 +27,7 @@ import { FetchSystemMetricsService } from './FetchSystemMetricsService';
 const WEBADMIN_SETTING_KEY = 'WebAdmin_VirtualKey';
 const WEBADMIN_GROUP_EXTERNAL_ID = 'webadmin-internal';
 let webAdminVirtualKeyPromise: Promise<string> | null = null;
+export type ServiceHealthResponse = components['schemas']['ServiceHealthResponse'];
 
 /**
  * Type-safe System service using native fetch
@@ -110,6 +111,30 @@ export class FetchSystemService implements ISystemService {
       }
     );
     return response;
+  }
+
+  /** Gets logical service, dependency, and per-instance health. */
+  async getServiceHealth(config?: RequestConfig): Promise<ServiceHealthResponse> {
+    return this.client['executeContractRead'](
+      '/v1/admin/health-status/services',
+      (contractClient, options) => contractClient.GET('/v1/admin/health-status/services', options),
+      config,
+    );
+  }
+
+  /** Publishes an invalidation request for cached function tool definitions. */
+  async invalidateFunctionDiscoveryCache(
+    config?: RequestConfig,
+  ): Promise<{ message: string; timestamp: string; note?: string }> {
+    return this.client['post']<{ message: string; timestamp: string; note?: string }>(
+      '/v1/admin/system-metadata/cache/invalidate-function-discovery',
+      {},
+      {
+        signal: config?.signal,
+        timeout: config?.timeout,
+        headers: config?.headers,
+      },
+    );
   }
 
   /**
@@ -314,11 +339,12 @@ export class FetchSystemService implements ISystemService {
 
     // Store the unhashed key in GlobalSettings
     try {
-      await settingsService.createGlobalSetting({
-        key: WEBADMIN_SETTING_KEY,
-        value: response.virtualKey,
-        description: 'Virtual key for WebAdmin Gateway API access'
-      }, config);
+      await settingsService.updateGlobalSetting(
+        WEBADMIN_SETTING_KEY,
+        response.virtualKey,
+        'Virtual key for WebAdmin Gateway API access',
+        config,
+      );
     } catch (persistError) {
       try {
         const winner = await settingsService.getGlobalSetting(WEBADMIN_SETTING_KEY, config);
