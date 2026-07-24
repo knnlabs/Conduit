@@ -1,13 +1,52 @@
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { ApiKeyTestResult, type ProviderType } from '@/lib/admin-api';
+import { ApiKeyTestResult, PROVIDER_CONFIG_REQUIREMENTS, type ProviderType } from '@/lib/admin-api';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
 
 interface UseProviderFormHandlersParams {
   mode: 'add' | 'edit';
   providerId?: number;
   logic: ProviderFormLogicResult;
+}
+
+/** The declared structured-setting fields for the selected provider type. */
+function getSettingFields(providerType: string) {
+  return PROVIDER_CONFIG_REQUIREMENTS[providerType as unknown as ProviderType]?.settings ?? [];
+}
+
+/** Collects non-empty declared settings into the map sent to the backend, or undefined when none. */
+function collectSettings(values: ProviderFormData): Record<string, string> | undefined {
+  const result: Record<string, string> = {};
+  for (const field of getSettingFields(values.providerType)) {
+    const raw = values.settings?.[field.key]?.trim() ?? '';
+    if (raw) {
+      result[field.key] = raw;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/** Validates required/format for declared settings; returns a map of form-path -> error message. */
+function validateSettings(values: ProviderFormData): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const field of getSettingFields(values.providerType)) {
+    const raw = values.settings?.[field.key]?.trim() ?? '';
+    if (field.required && !raw) {
+      errors[`settings.${field.key}`] = `${field.label} is required`;
+      continue;
+    }
+    if (raw && field.validationRegexSource) {
+      try {
+        if (!new RegExp(field.validationRegexSource).test(raw)) {
+          errors[`settings.${field.key}`] = `${field.label} is not in the expected format`;
+        }
+      } catch {
+        // Ignore a malformed regex source rather than blocking submission.
+      }
+    }
+  }
+  return errors;
 }
 
 export function useProviderFormHandlers({ mode, providerId, logic }: UseProviderFormHandlersParams) {
@@ -24,6 +63,13 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
     setIsSubmitting(true);
     try {
       if (mode === 'add') {
+        // Validate declared structured settings (for example a required Cloudflare account ID).
+        const settingsErrors = validateSettings(values);
+        if (Object.keys(settingsErrors).length > 0) {
+          Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
+          return;
+        }
+
         let providerName = values.providerName.trim();
         if (!providerName) {
           const selectedProvider = availableProviders.find(p => p.value === values.providerType);
@@ -35,6 +81,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           providerType: values.providerType as ProviderType,
           providerName: providerName,
           baseUrl: values.apiEndpoint ?? undefined,
+          settings: collectSettings(values),
           isEnabled: values.isEnabled,
           trustProviderReportedCosts: values.trustProviderReportedCosts,
           providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
@@ -104,19 +151,27 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
       return;
     }
 
+    // Validate declared structured settings before hitting the provider.
+    const settingsErrors = validateSettings(form.values);
+    if (Object.keys(settingsErrors).length > 0) {
+      Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
+      return;
+    }
+
     setIsTesting(true);
     setTestResult(null);
 
     try {
       let result;
-      
+
       if (mode === 'add') {
-        result = await withAdminClient(client => 
+        result = await withAdminClient(client =>
           client.providers.testConfig({
             providerType: form.values.providerType as ProviderType,
             apiKey: form.values.apiKey,
             baseUrl: form.values.apiEndpoint ?? undefined,
             organizationId: form.values.organizationId ?? undefined,
+            settings: collectSettings(form.values),
           })
         );
       } else {

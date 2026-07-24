@@ -1,6 +1,9 @@
+using System.Text.RegularExpressions;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Providers;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Authentication;
 
 namespace ConduitLLM.Providers.Configuration
@@ -123,6 +126,19 @@ namespace ConduitLLM.Providers.Configuration
                     RateLimitExceeded = "Cloudflare Workers AI rate limit exceeded. Please try again later.",
                     ModelNotFound = "Model not found. Cloudflare Workers AI models use the @cf/provider/model-name format.",
                     MissingApiKey = "API token is required for Cloudflare Workers AI"
+                },
+                Settings = new[]
+                {
+                    new ProviderSettingDefinition
+                    {
+                        Key = "account_id",
+                        Label = "Account ID",
+                        HelpText = "Your Cloudflare account ID (shown in the dashboard URL and on the Workers AI page). Used to build the API base URL.",
+                        Required = true,
+                        Binding = ProviderSettingBinding.UrlPathToken,
+                        BindingTarget = "account_id",
+                        ValidationRegex = "^[0-9a-fA-F]{32}$"
+                    }
                 }
             },
 
@@ -269,13 +285,79 @@ namespace ConduitLLM.Providers.Configuration
         {
             ArgumentNullException.ThrowIfNull(provider);
 
-            if (!string.IsNullOrWhiteSpace(provider.BaseUrl))
+            var rawBaseUrl = !string.IsNullOrWhiteSpace(provider.BaseUrl)
+                ? provider.BaseUrl.TrimEnd('/')
+                : GetDefaultBaseUrl(provider.ProviderType)
+                    ?? throw new InvalidOperationException($"No default base URL is registered for {provider.ProviderType}.");
+
+            return ApplyUrlPathTokens(rawBaseUrl, provider.ProviderType, provider.Settings);
+        }
+
+        private static readonly Regex UnresolvedTokenPattern =
+            new(@"\{([a-zA-Z0-9_]+)\}", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Substitutes <c>{token}</c> placeholders in a base URL using the provider's structured
+        /// settings (for example Cloudflare's <c>{account_id}</c>). Any placeholder left unresolved
+        /// means a required setting was not supplied, which raises an actionable configuration error
+        /// rather than allowing a malformed request to be sent.
+        /// </summary>
+        /// <param name="baseUrl">The raw base URL, possibly containing <c>{token}</c> placeholders.</param>
+        /// <param name="providerType">The provider type whose setting definitions drive substitution.</param>
+        /// <param name="settings">The operator-supplied setting values, keyed by setting key.</param>
+        /// <returns>The base URL with all URL-path-token settings substituted.</returns>
+        /// <exception cref="ConfigurationException">Thrown when a required <c>{token}</c> is unresolved.</exception>
+        public static string ApplyUrlPathTokens(
+            string baseUrl,
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? settings)
+        {
+            var definitions = GetConfiguration(providerType)?.Settings
+                ?? (IReadOnlyList<ProviderSettingDefinition>)Array.Empty<ProviderSettingDefinition>();
+
+            var result = baseUrl;
+            foreach (var definition in definitions)
             {
-                return provider.BaseUrl.TrimEnd('/');
+                if (definition.Binding != ProviderSettingBinding.UrlPathToken)
+                {
+                    continue;
+                }
+
+                if (settings != null
+                    && settings.TryGetValue(definition.Key, out var value)
+                    && !string.IsNullOrWhiteSpace(value))
+                {
+                    result = result.Replace("{" + definition.EffectiveBindingTarget + "}", value.Trim());
+                }
             }
 
-            return GetDefaultBaseUrl(provider.ProviderType)
-                ?? throw new InvalidOperationException($"No default base URL is registered for {provider.ProviderType}.");
+            var unresolved = UnresolvedTokenPattern.Matches(result)
+                .Select(match => match.Groups[1].Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (unresolved.Count > 0)
+            {
+                var missing = string.Join(", ", unresolved.Select(token => DescribeSetting(providerType, token)));
+                throw new ConfigurationException(
+                    $"{providerType} is missing required configuration: {missing}. "
+                    + "Provide the value in the provider settings.");
+            }
+
+            return result.TrimEnd('/');
+        }
+
+        /// <summary>
+        /// Resolves a human-readable label for an unresolved URL token, preferring the declared
+        /// setting label and falling back to the raw token name.
+        /// </summary>
+        private static string DescribeSetting(ProviderType providerType, string token)
+        {
+            var definition = GetConfiguration(providerType)?.Settings
+                .FirstOrDefault(setting =>
+                    string.Equals(setting.EffectiveBindingTarget, token, StringComparison.OrdinalIgnoreCase));
+
+            return definition?.Label ?? token;
         }
 
         /// <summary>
@@ -387,6 +469,12 @@ namespace ConduitLLM.Providers.Configuration
         /// Error messages specific to this provider.
         /// </summary>
         public required ProviderErrorMessages ErrorMessages { get; init; }
+
+        /// <summary>
+        /// Structured, provider-scoped settings the operator supplies in addition to the API key
+        /// (for example a Cloudflare account ID). Empty for providers that need only a key and URL.
+        /// </summary>
+        public IReadOnlyList<ProviderSettingDefinition> Settings { get; init; } = Array.Empty<ProviderSettingDefinition>();
     }
 
     /// <summary>

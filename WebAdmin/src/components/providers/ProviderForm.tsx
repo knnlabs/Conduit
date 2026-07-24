@@ -203,6 +203,35 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                         />
                       )}
 
+                      {config.settings?.map((field) => (
+                        field.secret ? (
+                          <PasswordInput
+                            key={field.key}
+                            label={field.label}
+                            placeholder={field.placeholder ?? ''}
+                            description={field.helpText}
+                            required={field.required}
+                            autoComplete="off"
+                            {...form.getInputProps(`settings.${field.key}`)}
+                            size="md"
+                          />
+                        ) : (
+                          <TextInput
+                            key={field.key}
+                            label={field.label}
+                            placeholder={field.placeholder ?? ''}
+                            description={field.helpText}
+                            required={field.required}
+                            autoComplete="off"
+                            aria-autocomplete="none"
+                            list="autocompleteOff"
+                            data-form-type="other"
+                            {...form.getInputProps(`settings.${field.key}`)}
+                            size="md"
+                          />
+                        )
+                      ))}
+
                       {(config.requiresEndpoint || config.supportsCustomEndpoint) && (
                         <TextInput
                           label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}

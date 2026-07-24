@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Exceptions;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -47,6 +48,21 @@ namespace ConduitLLM.Admin.Services
                 {
                     Result = ApiKeyTestResult.Ignored,
                     Message = "Your API Key was untested because this provider doesn't support API Key testing without making a real API request that can cost money",
+                    Details = new ApiKeyTestDetails
+                    {
+                        ProviderMessage = exception.Message
+                    }
+                };
+            }
+
+            // A configuration error (for example a missing required setting such as a Cloudflare
+            // account ID) carries an already-actionable message; surface it directly.
+            if (exception is ConfigurationException)
+            {
+                return new StandardApiKeyTestResponse
+                {
+                    Result = ApiKeyTestResult.Configuration,
+                    Message = exception.Message,
                     Details = new ApiKeyTestDetails
                     {
                         ProviderMessage = exception.Message
@@ -106,6 +122,23 @@ namespace ConduitLLM.Admin.Services
                 };
             }
 
+            // Other 4xx client errors (400/404/405) usually mean the endpoint or base URL is wrong
+            // rather than the key. Report the status instead of bucketing to a generic unknown error.
+            if (statusCode is 400 or 404 or 405)
+            {
+                return new StandardApiKeyTestResponse
+                {
+                    Result = ApiKeyTestResult.Configuration,
+                    Message = $"The provider rejected the test request (HTTP {statusCode}). Verify the base URL and endpoint configuration for this provider.",
+                    Details = new ApiKeyTestDetails
+                    {
+                        StatusCode = statusCode,
+                        ProviderMessage = message,
+                        ErrorCode = errorCode
+                    }
+                };
+            }
+
             // Unknown error
             return new StandardApiKeyTestResponse
             {
@@ -131,22 +164,24 @@ namespace ConduitLLM.Admin.Services
             int? statusCode = null;
             string? errorCode = null;
 
-            // Try to extract HTTP status code from common exception types
-            if (exception is HttpRequestException httpEx)
+            // Prefer the typed status code when available (HttpRequestException in .NET 5+).
+            if (exception is HttpRequestException { StatusCode: { } typedStatus })
             {
-                // Try to parse status code from message
-                if (message.Contains("401"))
-                    statusCode = 401;
-                else if (message.Contains("403"))
-                    statusCode = 403;
-                else if (message.Contains("429"))
-                    statusCode = 429;
-                else if (message.Contains("500"))
-                    statusCode = 500;
-                else if (message.Contains("502"))
-                    statusCode = 502;
-                else if (message.Contains("503"))
-                    statusCode = 503;
+                statusCode = (int)typedStatus;
+            }
+
+            // Otherwise parse a known status code out of the message. Provider exceptions
+            // (for example LLMCommunicationException) surface the HTTP status in their text.
+            if (statusCode == null && !string.IsNullOrEmpty(message))
+            {
+                foreach (var candidate in new[] { 401, 403, 429, 400, 404, 405, 408, 500, 502, 503 })
+                {
+                    if (message.Contains(candidate.ToString()))
+                    {
+                        statusCode = candidate;
+                        break;
+                    }
+                }
             }
 
             return (statusCode, message, errorCode);
