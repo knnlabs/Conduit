@@ -93,7 +93,8 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 MediaType = determinedMediaType,
                 ContentType = file.ContentType ?? GetContentTypeFromExtension(extension),
-                FileName = file.FileName
+                FileName = file.FileName,
+                CreatedBy = CurrentVirtualKeyId?.ToString()
             };
 
             // Upload file using storage service

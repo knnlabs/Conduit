@@ -99,7 +99,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
 
         var status = await service.GetStatusAsync();
 
-        status.OperationStatuses.Should().HaveCount(4);
+        status.OperationStatuses.Should().HaveCount(5);
         status.IsSoftDeleteEnabled.Should().BeTrue();
         status.SoftDeleteGracePeriodDays.Should().Be(9);
         status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Purge)
@@ -116,6 +116,8 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Reconciliation)
             .Should().Match<MediaCleanupOperationStatusDto>(item =>
                 !item.IsEnabled && item.LastRunTimeUtc == null);
+        status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Quota)
+            .IsEnabled.Should().BeTrue();
         status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Retention)
             .LastRunStatus.Should().Be("Completed with errors");
         status.CurrentLeaderInstanceId.Should().Be("test-leader");

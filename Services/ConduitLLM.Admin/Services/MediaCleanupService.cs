@@ -238,6 +238,26 @@ namespace ConduitLLM.Admin.Services
                     operationFailures += result.Failures;
                 }
 
+                if (_options.EnableQuotaCleanup)
+                {
+                    var operation = new MediaDeletionOperationContext(
+                        MediaCleanupTypes.Quota, "scheduled", _instanceId);
+                    var quotaService = scope.ServiceProvider.GetRequiredService<IMediaQuotaService>();
+                    var result = await deletionEngine.ExecuteOperationAsync(
+                        operation,
+                        () => ProcessQuotaMediaAsync(
+                            context,
+                            quotaService,
+                            deletionEngine,
+                            operation,
+                            processedRecordIds,
+                            stoppingToken),
+                        stoppingToken);
+                    totalDeleted += result.FilesDeleted;
+                    totalBytesFreed += result.BytesFreed;
+                    operationFailures += result.Failures;
+                }
+
                 if (_options.EnableRetentionCleanup)
                 {
                     var operation = new MediaDeletionOperationContext(
@@ -421,6 +441,101 @@ namespace ConduitLLM.Admin.Services
 
             AdminMediaCleanupMetrics.GroupsProcessed.Observe(groupIds.Count);
             return result;
+        }
+
+        private async Task<MediaDeletionEngineResult> ProcessQuotaMediaAsync(
+            IConfigurationDbContext context,
+            IMediaQuotaService quotaService,
+            IMediaDeletionEngine deletionEngine,
+            MediaDeletionOperationContext operation,
+            HashSet<Guid> processedRecordIds,
+            CancellationToken stoppingToken)
+        {
+            var usages = await quotaService.GetGroupUsagesAsync(
+                cancellationToken: stoppingToken);
+            var overQuota = usages
+                .Where(usage => usage.IsOverQuota)
+                .Where(usage =>
+                    !_options.TestVirtualKeyGroups.Any() ||
+                    _options.TestVirtualKeyGroups.Contains(usage.VirtualKeyGroupId))
+                .ToList();
+            var result = MediaDeletionEngineResult.Empty;
+
+            foreach (var usage in overQuota)
+            {
+                stoppingToken.ThrowIfCancellationRequested();
+                var recentCutoff = DateTime.UtcNow.AddDays(-usage.RecentAccessWindowDays);
+                var candidates = await context.MediaRecords
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(media => context.VirtualKeys.Any(key =>
+                        key.Id == media.VirtualKeyId &&
+                        key.VirtualKeyGroupId == usage.VirtualKeyGroupId))
+                    .Where(media =>
+                        !usage.RespectRecentAccess ||
+                        media.DeletedAt != null ||
+                        media.LastAccessedAt == null ||
+                        media.LastAccessedAt < recentCutoff)
+                    .OrderBy(media => media.CreatedAt)
+                    .ThenBy(media => media.Id)
+                    .ToListAsync(stoppingToken);
+
+                var projectedFiles = usage.TotalFiles;
+                var projectedBytes = usage.TotalSizeBytes;
+                var evictions = new List<MediaRecord>();
+                foreach (var candidate in candidates)
+                {
+                    if (!ExceedsQuota(usage, projectedFiles, projectedBytes))
+                        break;
+
+                    evictions.Add(candidate);
+                    projectedFiles--;
+                    projectedBytes = Math.Max(0, projectedBytes - (candidate.SizeBytes ?? 0));
+                }
+
+                if (evictions.Count == 0)
+                {
+                    _logger.LogWarning(
+                        "Group {GroupId} is over media quota but recent-access protection left no eligible files",
+                        usage.VirtualKeyGroupId);
+                    continue;
+                }
+
+                _logger.LogInformation(
+                    "Group {GroupId} exceeds media quota ({Files}/{MaxFiles} files, {Bytes}/{MaxBytes} bytes); evicting {Count} oldest eligible files",
+                    usage.VirtualKeyGroupId,
+                    usage.TotalFiles,
+                    usage.MaxFileCount,
+                    usage.TotalSizeBytes,
+                    usage.MaxStorageSizeBytes,
+                    evictions.Count);
+
+                var groupResult = await deletionEngine.DeleteAsync(
+                    new MediaDeletionRequest(
+                        evictions,
+                        operation,
+                        usage.VirtualKeyGroupId,
+                        processedRecordIds,
+                        Purge: true),
+                    stoppingToken);
+                result = result.Combine(groupResult);
+
+                if (groupResult.BudgetExhausted)
+                    break;
+            }
+
+            return result;
+        }
+
+        private static bool ExceedsQuota(
+            MediaGroupQuotaUsage usage,
+            int projectedFiles,
+            long projectedBytes)
+        {
+            return
+                (usage.MaxFileCount.HasValue && projectedFiles > usage.MaxFileCount.Value) ||
+                (usage.MaxStorageSizeBytes.HasValue &&
+                    projectedBytes > usage.MaxStorageSizeBytes.Value);
         }
 
         private async Task<MediaDeletionEngineResult> ProcessGroupAsync(

@@ -224,12 +224,13 @@ namespace ConduitLLM.Admin.DTOs
         public const string Expiration = "expiration";
         public const string Purge = "purge";
         public const string Reconciliation = "reconciliation";
+        public const string Quota = "quota";
         public const string Retention = "retention";
         public const string VirtualKey = "virtual-key";
         public const string Manual = "manual";
 
         public static readonly IReadOnlyList<string> All =
-            new[] { Purge, Expiration, Reconciliation, Retention };
+            new[] { Purge, Expiration, Reconciliation, Quota, Retention };
     }
 
     /// <summary>

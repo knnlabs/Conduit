@@ -17,6 +17,7 @@ namespace ConduitLLM.Core.Services
         private readonly ConcurrentDictionary<string, MultipartUploadSession> _multipartSessions = new();
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<int, byte[]>> _multipartParts = new();
         private readonly ILogger<InMemoryMediaStorageService> _logger;
+        private readonly IMediaQuotaGuard? _quotaGuard;
         private readonly string _baseUrl;
 
         private class StoredMedia
@@ -28,10 +29,12 @@ namespace ConduitLLM.Core.Services
 
         public InMemoryMediaStorageService(
             ILogger<InMemoryMediaStorageService> logger,
-            string baseUrl = "http://localhost:5000")
+            string baseUrl = "http://localhost:5000",
+            IMediaQuotaGuard? quotaGuard = null)
         {
             _logger = logger;
             _baseUrl = baseUrl.TrimEnd('/');
+            _quotaGuard = quotaGuard;
         }
 
         /// <inheritdoc/>
@@ -53,6 +56,10 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 var data = memoryStream.ToArray();
+                if (_quotaGuard != null)
+                {
+                    await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
+                }
 
                 // Generate storage key
                 var contentHash = ComputeHash(data);
@@ -274,6 +281,10 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 var data = memoryStream.ToArray();
+                if (_quotaGuard != null)
+                {
+                    await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
+                }
 
                 // Generate storage key
                 var contentHash = ComputeHash(data);

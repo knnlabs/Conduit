@@ -453,6 +453,7 @@ namespace ConduitLLM.Admin.Services
             MediaCleanupTypes.Expiration => _options.EnableExpirationCleanup,
             MediaCleanupTypes.Purge => true,
             MediaCleanupTypes.Reconciliation => _options.EnableReconciliation,
+            MediaCleanupTypes.Quota => _options.EnableQuotaCleanup,
             MediaCleanupTypes.Retention => _options.EnableRetentionCleanup,
             _ => false
         };

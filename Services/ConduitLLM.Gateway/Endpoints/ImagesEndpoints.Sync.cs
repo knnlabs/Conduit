@@ -231,6 +231,7 @@ namespace ConduitLLM.Gateway.Endpoints
                                 ContentType = contentType,
                                 FileName = $"generated_{DateTime.UtcNow:yyyyMMddHHmmss}_{i}.{extension}",
                                 MediaType = MediaType.Image,
+                                CreatedBy = CurrentVirtualKeyId?.ToString(),
                                 CustomMetadata = new()
                                 {
                                     ["prompt"] = request.Prompt,

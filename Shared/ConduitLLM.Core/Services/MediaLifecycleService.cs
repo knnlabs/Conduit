@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Core.Services
 {
@@ -14,6 +15,8 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IMediaRecordRepository _mediaRepository;
         private readonly IVirtualKeyRepository? _virtualKeyRepository;
+        private readonly IMediaQuotaService? _mediaQuotaService;
+        private readonly IConfigurationDbContext? _configurationDbContext;
         private readonly ILogger<MediaLifecycleService> _logger;
 
         /// <summary>
@@ -25,11 +28,15 @@ namespace ConduitLLM.Core.Services
         public MediaLifecycleService(
             IMediaRecordRepository mediaRepository,
             ILogger<MediaLifecycleService> logger,
-            IVirtualKeyRepository? virtualKeyRepository = null)
+            IVirtualKeyRepository? virtualKeyRepository = null,
+            IMediaQuotaService? mediaQuotaService = null,
+            IConfigurationDbContext? configurationDbContext = null)
         {
             _mediaRepository = mediaRepository ?? throw new ArgumentNullException(nameof(mediaRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _virtualKeyRepository = virtualKeyRepository;
+            _mediaQuotaService = mediaQuotaService;
+            _configurationDbContext = configurationDbContext;
         }
 
         /// <inheritdoc/>
@@ -136,6 +143,11 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
+                if (_configurationDbContext != null)
+                {
+                    return await GetAggregatedOverallStorageStatsAsync(virtualKeyGroupId);
+                }
+
                 List<MediaRecord> allMedia;
                 Dictionary<string, long> byProvider;
                 
@@ -201,7 +213,10 @@ namespace ConduitLLM.Core.Services
                     OrphanedFiles = 0,
                     ByProvider = byProvider,
                     ByMediaType = byMediaType,
-                    StorageByVirtualKey = storageByVirtualKey
+                    StorageByVirtualKey = storageByVirtualKey,
+                    GroupQuotaUsage = _mediaQuotaService == null
+                        ? Array.Empty<MediaGroupQuotaUsage>()
+                        : await _mediaQuotaService.GetGroupUsagesAsync(virtualKeyGroupId)
                 };
 
                 return stats;
@@ -211,6 +226,74 @@ namespace ConduitLLM.Core.Services
                 _logger.LogError(ex, "Error getting overall storage stats");
                 throw;
             }
+        }
+
+        private async Task<OverallMediaStorageStats> GetAggregatedOverallStorageStatsAsync(
+            int? virtualKeyGroupId)
+        {
+            var mediaQuery = _configurationDbContext!.MediaRecords.AsNoTracking();
+            if (virtualKeyGroupId.HasValue)
+            {
+                mediaQuery = mediaQuery.Where(media =>
+                    _configurationDbContext.VirtualKeys.Any(key =>
+                        key.Id == media.VirtualKeyId &&
+                        key.VirtualKeyGroupId == virtualKeyGroupId.Value));
+            }
+
+            var totals = await mediaQuery
+                .GroupBy(_ => 1)
+                .Select(group => new
+                {
+                    TotalFiles = group.Count(),
+                    TotalSizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .SingleOrDefaultAsync();
+            var providerRows = await mediaQuery
+                .GroupBy(media => media.Provider ?? "unknown")
+                .Select(group => new
+                {
+                    Provider = group.Key,
+                    SizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .ToListAsync();
+            var typeRows = await mediaQuery
+                .GroupBy(media => media.MediaType)
+                .Select(group => new
+                {
+                    MediaType = group.Key,
+                    FileCount = group.Count(),
+                    SizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .ToListAsync();
+            var virtualKeyRows = await mediaQuery
+                .GroupBy(media => media.VirtualKeyId)
+                .Select(group => new
+                {
+                    VirtualKeyId = group.Key,
+                    SizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .ToListAsync();
+
+            return new OverallMediaStorageStats
+            {
+                TotalFiles = totals?.TotalFiles ?? 0,
+                TotalSizeBytes = totals?.TotalSizeBytes ?? 0,
+                OrphanedFiles = 0,
+                ByProvider = providerRows.ToDictionary(row => row.Provider, row => row.SizeBytes),
+                ByMediaType = typeRows.ToDictionary(
+                    row => row.MediaType,
+                    row => new MediaTypeStats
+                    {
+                        FileCount = row.FileCount,
+                        SizeBytes = row.SizeBytes
+                    }),
+                StorageByVirtualKey = virtualKeyRows.ToDictionary(
+                    row => row.VirtualKeyId.ToString(),
+                    row => row.SizeBytes),
+                GroupQuotaUsage = _mediaQuotaService == null
+                    ? Array.Empty<MediaGroupQuotaUsage>()
+                    : await _mediaQuotaService.GetGroupUsagesAsync(virtualKeyGroupId)
+            };
         }
 
         /// <inheritdoc/>

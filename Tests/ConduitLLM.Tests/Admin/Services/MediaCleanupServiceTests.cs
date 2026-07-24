@@ -119,6 +119,8 @@ namespace ConduitLLM.Tests.Admin.Services
             services.AddSingleton<IOptions<MediaLifecycleOptions>>(_engineOptions);
             services.AddSingleton(Mock.Of<ILogger<MediaDeletionEngine>>());
             services.AddSingleton(Mock.Of<ILogger<MediaReconciliationService>>());
+            services.AddSingleton(Mock.Of<ILogger<MediaQuotaService>>());
+            services.AddScoped<IMediaQuotaService, MediaQuotaService>();
             services.AddScoped<IMediaDeletionEngine, MediaDeletionEngine>();
             services.AddScoped<IMediaReconciliationService, MediaReconciliationService>();
             _serviceProvider = services.BuildServiceProvider();
@@ -550,6 +552,78 @@ namespace ConduitLLM.Tests.Admin.Services
 
             _mockStorageService.Verify(x => x.DeleteAsync("storage-key-1-0"), Times.Once);
             VerifyOperationStatus(MediaCleanupTypes.Retention, "Completed");
+        }
+
+        [Fact]
+        public async Task RunScheduledCleanupAsync_EvictsOldestMediaUntilGroupIsUnderQuota()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableExpirationCleanup = false;
+            options.EnableReconciliation = false;
+            options.EnableRetentionCleanup = false;
+            ArrangeLockAcquired();
+
+            SeedTestGroup(1);
+            SeedDefaultRetentionPolicy();
+            var policy = await _context.MediaRetentionPolicies.SingleAsync();
+            policy.MaxFileCount = 2;
+            policy.RespectRecentAccess = false;
+            SeedVirtualKey(1, 1);
+            var oldest = CreateMediaRecord("quota-oldest", 1);
+            oldest.CreatedAt = DateTime.UtcNow.AddDays(-3);
+            var middle = CreateMediaRecord("quota-middle", 1);
+            middle.CreatedAt = DateTime.UtcNow.AddDays(-2);
+            var newest = CreateMediaRecord("quota-newest", 1);
+            newest.CreatedAt = DateTime.UtcNow.AddDays(-1);
+            _context.MediaRecords.AddRange(oldest, middle, newest);
+            await _context.SaveChangesAsync();
+
+            await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
+
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(oldest.StorageKey),
+                Times.Once);
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(middle.StorageKey),
+                Times.Never);
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(newest.StorageKey),
+                Times.Never);
+            VerifyOperationStatus(MediaCleanupTypes.Quota, "Completed");
+        }
+
+        [Fact]
+        public async Task RunScheduledCleanupAsync_QuotaEvictionRespectsRecentAccess()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableExpirationCleanup = false;
+            options.EnableReconciliation = false;
+            options.EnableRetentionCleanup = false;
+            ArrangeLockAcquired();
+
+            SeedTestGroup(1);
+            SeedDefaultRetentionPolicy();
+            var policy = await _context.MediaRetentionPolicies.SingleAsync();
+            policy.MaxFileCount = 1;
+            policy.RespectRecentAccess = true;
+            policy.RecentAccessWindowDays = 7;
+            SeedVirtualKey(1, 1);
+            var protectedOldest = CreateMediaRecord("quota-recent", 1);
+            protectedOldest.CreatedAt = DateTime.UtcNow.AddDays(-10);
+            protectedOldest.LastAccessedAt = DateTime.UtcNow.AddHours(-1);
+            var eligible = CreateMediaRecord("quota-eligible", 1);
+            eligible.CreatedAt = DateTime.UtcNow.AddDays(-5);
+            _context.MediaRecords.AddRange(protectedOldest, eligible);
+            await _context.SaveChangesAsync();
+
+            await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
+
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(protectedOldest.StorageKey),
+                Times.Never);
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(eligible.StorageKey),
+                Times.Once);
         }
 
         [Fact]

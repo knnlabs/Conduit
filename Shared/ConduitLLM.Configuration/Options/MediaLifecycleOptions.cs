@@ -59,6 +59,11 @@ namespace ConduitLLM.Configuration.Options
         public bool EnableRetentionCleanup { get; set; } = true;
 
         /// <summary>
+        /// Enable permanent eviction when virtual-key groups exceed policy storage quotas.
+        /// </summary>
+        public bool EnableQuotaCleanup { get; set; } = true;
+
+        /// <summary>
         /// Enable soft delete with grace period before permanent deletion.
         /// </summary>
         public bool EnableSoftDelete { get; set; } = true;

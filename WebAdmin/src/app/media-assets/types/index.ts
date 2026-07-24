@@ -39,6 +39,21 @@ export interface OverallMediaStorageStats {
   byProvider: Record<string, number>;
   byMediaType: Record<string, MediaTypeStats>;
   storageByVirtualKey: Record<string, number>;
+  groupQuotaUsage: MediaGroupQuotaUsage[];
+}
+
+export interface MediaGroupQuotaUsage {
+  virtualKeyGroupId: number;
+  virtualKeyGroupName: string;
+  mediaRetentionPolicyName?: string | null;
+  totalSizeBytes: number;
+  totalFiles: number;
+  maxStorageSizeBytes?: number | null;
+  maxFileCount?: number | null;
+  quotaExceededBehavior: 'reject' | 'allowAndEvict';
+  isOverQuota: boolean;
+  storageUsagePercent?: number | null;
+  fileUsagePercent?: number | null;
 }
 
 export interface MediaFilters {

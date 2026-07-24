@@ -21,6 +21,7 @@ import {
   Switch,
   SimpleGrid,
   Tooltip,
+  Select,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -47,6 +48,9 @@ interface PolicyFormData {
   recentAccessWindowDays: number;
   isDefault: boolean;
   isActive: boolean;
+  maxStorageSizeMb: number | null;
+  maxFileCount: number | null;
+  quotaExceededBehavior: 'reject' | 'allowAndEvict';
 }
 
 const DEFAULT_FORM_DATA: PolicyFormData = {
@@ -60,6 +64,9 @@ const DEFAULT_FORM_DATA: PolicyFormData = {
   recentAccessWindowDays: 7,
   isDefault: false,
   isActive: true,
+  maxStorageSizeMb: null,
+  maxFileCount: null,
+  quotaExceededBehavior: 'reject',
 };
 
 export default function RetentionPoliciesContent() {
@@ -120,6 +127,11 @@ export default function RetentionPoliciesContent() {
       recentAccessWindowDays: policy.recentAccessWindowDays,
       isDefault: policy.isDefault,
       isActive: policy.isActive,
+      maxStorageSizeMb: policy.maxStorageSizeBytes
+        ? policy.maxStorageSizeBytes / (1024 * 1024)
+        : null,
+      maxFileCount: policy.maxFileCount ?? null,
+      quotaExceededBehavior: policy.quotaExceededBehavior,
     });
     setModalOpen(true);
   };
@@ -143,6 +155,11 @@ export default function RetentionPoliciesContent() {
           respectRecentAccess: formData.respectRecentAccess,
           recentAccessWindowDays: formData.recentAccessWindowDays,
           isDefault: formData.isDefault,
+          maxStorageSizeBytes: formData.maxStorageSizeMb === null
+            ? null
+            : Math.round(formData.maxStorageSizeMb * 1024 * 1024),
+          maxFileCount: formData.maxFileCount,
+          quotaExceededBehavior: formData.quotaExceededBehavior,
           // isActive removed from CreateMediaRetentionPolicyRequest in #1038 (create defaults active)
         };
         await withAdminClient(client =>
@@ -159,6 +176,11 @@ export default function RetentionPoliciesContent() {
           softDeleteGracePeriodDays: formData.softDeleteGracePeriodDays,
           respectRecentAccess: formData.respectRecentAccess,
           recentAccessWindowDays: formData.recentAccessWindowDays,
+          maxStorageSizeBytes: formData.maxStorageSizeMb === null
+            ? null
+            : Math.round(formData.maxStorageSizeMb * 1024 * 1024),
+          maxFileCount: formData.maxFileCount,
+          quotaExceededBehavior: formData.quotaExceededBehavior,
           isActive: formData.isActive,
         };
         await withAdminClient(client =>
@@ -261,6 +283,19 @@ export default function RetentionPoliciesContent() {
         )}
       </Table.Td>
       <Table.Td>
+        <Stack gap={2}>
+          <Text size="xs">
+            {policy.maxStorageSizeBytes
+              ? `${(policy.maxStorageSizeBytes / (1024 * 1024)).toLocaleString()} MB`
+              : 'Unlimited storage'}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {policy.maxFileCount?.toLocaleString() ?? 'Unlimited'} files ·{' '}
+            {policy.quotaExceededBehavior === 'reject' ? 'Reject' : 'Evict'}
+          </Text>
+        </Stack>
+      </Table.Td>
+      <Table.Td>
         <Menu shadow="md" width={200}>
           <Menu.Target>
             <ActionIcon variant="subtle" color="gray">
@@ -345,6 +380,7 @@ export default function RetentionPoliciesContent() {
                 <Table.Th>Negative Balance</Table.Th>
                 <Table.Th>Grace Period</Table.Th>
                 <Table.Th>Recent Access</Table.Th>
+                <Table.Th>Quota</Table.Th>
                 <Table.Th w={50}></Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -422,6 +458,46 @@ export default function RetentionPoliciesContent() {
               disabled={!formData.respectRecentAccess}
             />
           </SimpleGrid>
+
+          <SimpleGrid cols={2}>
+            <NumberInput
+              label="Storage Quota (MB)"
+              description="Leave blank for unlimited"
+              value={formData.maxStorageSizeMb ?? ''}
+              onChange={(val) => setFormData({
+                ...formData,
+                maxStorageSizeMb: typeof val === 'number' && val > 0 ? val : null,
+              })}
+              min={1}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="File Count Quota"
+              description="Leave blank for unlimited"
+              value={formData.maxFileCount ?? ''}
+              onChange={(val) => setFormData({
+                ...formData,
+                maxFileCount: typeof val === 'number' && val > 0 ? val : null,
+              })}
+              min={1}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+
+          <Select
+            label="When a generation would exceed quota"
+            description="Reject immediately or allow it and evict oldest media during cleanup"
+            data={[
+              { value: 'reject', label: 'Reject generation (HTTP 429)' },
+              { value: 'allowAndEvict', label: 'Allow and evict oldest media' },
+            ]}
+            value={formData.quotaExceededBehavior}
+            onChange={(value) => setFormData({
+              ...formData,
+              quotaExceededBehavior:
+                value === 'allowAndEvict' ? 'allowAndEvict' : 'reject',
+            })}
+          />
 
           <SimpleGrid cols={2}>
             <Switch

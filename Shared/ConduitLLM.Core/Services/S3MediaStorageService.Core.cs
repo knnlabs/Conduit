@@ -25,6 +25,7 @@ namespace ConduitLLM.Core.Services
         private readonly IAmazonS3 _s3Client;
         private readonly S3StorageOptions _options;
         private readonly ILogger<S3MediaStorageService> _logger;
+        private readonly IMediaQuotaGuard? _quotaGuard;
         private readonly string _bucketName;
         private readonly TransferUtility _transferUtility;
         private readonly ConcurrentDictionary<string, MultipartUploadState> _multipartUploads = new();
@@ -38,11 +39,13 @@ namespace ConduitLLM.Core.Services
         public S3MediaStorageService(
             IOptions<S3StorageOptions> options,
             ILogger<S3MediaStorageService> logger,
-            TimeProvider? timeProvider = null)
+            TimeProvider? timeProvider = null,
+            IMediaQuotaGuard? quotaGuard = null)
         {
             _options = options.Value;
             _logger = logger;
             _timeProvider = timeProvider ?? TimeProvider.System;
+            _quotaGuard = quotaGuard;
             
             // Validate required configuration
             if (string.IsNullOrEmpty(_options.AccessKey))
@@ -185,6 +188,13 @@ namespace ConduitLLM.Core.Services
                     await content.CopyToAsync(memoryStream);
                     memoryStream.Position = 0;
                     uploadStream = memoryStream;
+                }
+
+                if (_quotaGuard != null)
+                {
+                    await _quotaGuard.EnsureCanStoreAsync(
+                        metadata.CreatedBy,
+                        Math.Max(0, uploadStream.Length - uploadStream.Position));
                 }
 
                 // Wrap stream with progress reporting if needed

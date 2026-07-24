@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Logging;
@@ -143,6 +144,10 @@ namespace ConduitLLM.Core.Services.Strategies
             {
                 _logger.LogInformation("{MediaType} download cancelled for URL: {Url}", 
                     context.MediaType, url);
+                throw;
+            }
+            catch (RateLimitExceededException)
+            {
                 throw;
             }
             catch (Exception ex)

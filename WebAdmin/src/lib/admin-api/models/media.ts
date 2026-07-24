@@ -42,6 +42,26 @@ export interface OverallMediaStorageStats {
   byProvider: Record<string, number>;
   byMediaType: Record<string, MediaTypeStats>;
   storageByVirtualKey: Record<string, number>;
+  groupQuotaUsage: MediaGroupQuotaUsage[];
+}
+
+export type MediaQuotaExceededBehavior = 'reject' | 'allowAndEvict';
+
+export interface MediaGroupQuotaUsage {
+  virtualKeyGroupId: number;
+  virtualKeyGroupName: string;
+  mediaRetentionPolicyId?: number | null;
+  mediaRetentionPolicyName?: string | null;
+  totalSizeBytes: number;
+  totalFiles: number;
+  maxStorageSizeBytes?: number | null;
+  maxFileCount?: number | null;
+  quotaExceededBehavior: MediaQuotaExceededBehavior;
+  respectRecentAccess: boolean;
+  recentAccessWindowDays: number;
+  isOverQuota: boolean;
+  storageUsagePercent?: number | null;
+  fileUsagePercent?: number | null;
 }
 
 export interface MediaFilters {
@@ -223,6 +243,7 @@ export interface MediaRetentionPolicy {
   maxStorageSizeBytes?: number | null;
   /** Maximum number of media files (null means no limit) */
   maxFileCount?: number | null;
+  quotaExceededBehavior: MediaQuotaExceededBehavior;
   /** Whether this policy is active and can be assigned */
   isActive: boolean;
   createdAt: string;
@@ -244,6 +265,7 @@ export interface CreateMediaRetentionPolicyRequest {
   isDefault?: boolean;
   maxStorageSizeBytes?: number | null;
   maxFileCount?: number | null;
+  quotaExceededBehavior?: MediaQuotaExceededBehavior;
 }
 
 export interface UpdateMediaRetentionPolicyRequest {
@@ -258,5 +280,6 @@ export interface UpdateMediaRetentionPolicyRequest {
   isDefault?: boolean;
   maxStorageSizeBytes?: number | null;
   maxFileCount?: number | null;
+  quotaExceededBehavior?: MediaQuotaExceededBehavior;
   isActive?: boolean;
 }

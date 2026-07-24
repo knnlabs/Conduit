@@ -202,6 +202,8 @@ namespace ConduitLLM.Core.Extensions
             
             // Register media lifecycle service
             services.AddScoped<IMediaLifecycleService, MediaLifecycleService>();
+            services.AddScoped<IMediaQuotaService, MediaQuotaService>();
+            services.AddSingleton<IMediaQuotaGuard, MediaQuotaGuard>();
 
             // Register media lifecycle repository
             // MediaLifecycleRepository removed - consolidated into MediaRecordRepository

@@ -25982,6 +25982,9 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "quotaExceededBehavior": {
+            "$ref": "#/components/schemas/MediaQuotaExceededBehavior"
           }
         },
         "description": "Request model for creating a new media retention policy."
@@ -28900,6 +28903,86 @@
         },
         "description": "Response returned when a media record is deleted."
       },
+      "MediaGroupQuotaUsage": {
+        "type": "object",
+        "properties": {
+          "virtualKeyGroupId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "virtualKeyGroupName": {
+            "type": "string"
+          },
+          "mediaRetentionPolicyId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "mediaRetentionPolicyName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "totalSizeBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalFiles": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxStorageSizeBytes": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "maxFileCount": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "quotaExceededBehavior": {
+            "$ref": "#/components/schemas/MediaQuotaExceededBehavior"
+          },
+          "respectRecentAccess": {
+            "type": "boolean"
+          },
+          "recentAccessWindowDays": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isOverQuota": {
+            "type": "boolean"
+          },
+          "storageUsagePercent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "fileUsagePercent": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          }
+        }
+      },
+      "MediaQuotaExceededBehavior": {
+        "enum": [
+          "reject",
+          "allowAndEvict"
+        ]
+      },
       "MediaRecordResponse": {
         "required": [
           "id",
@@ -29091,6 +29174,9 @@
             ],
             "format": "int32"
           },
+          "quotaExceededBehavior": {
+            "$ref": "#/components/schemas/MediaQuotaExceededBehavior"
+          },
           "isActive": {
             "type": "boolean"
           },
@@ -29164,6 +29250,9 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "quotaExceededBehavior": {
+            "$ref": "#/components/schemas/MediaQuotaExceededBehavior"
           },
           "isActive": {
             "type": "boolean"
@@ -30563,6 +30652,12 @@
             "type": "object",
             "additionalProperties": {
               "$ref": "#/components/schemas/MediaTypeStats"
+            }
+          },
+          "groupQuotaUsage": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MediaGroupQuotaUsage"
             }
           }
         }
@@ -33638,6 +33733,16 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "quotaExceededBehavior": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MediaQuotaExceededBehavior"
+              }
+            ]
           },
           "isActive": {
             "type": [

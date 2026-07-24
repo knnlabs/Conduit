@@ -3883,6 +3883,7 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
     };
     /** @description Data transfer object for creating a new model author/organization. */
     CreateModelAuthorDto: {
@@ -5217,6 +5218,33 @@ export interface components {
        */
       deletedAt?: null | string;
     };
+    MediaGroupQuotaUsage: {
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      virtualKeyGroupName?: string;
+      /** Format: int32 */
+      mediaRetentionPolicyId?: null | number;
+      mediaRetentionPolicyName?: null | string;
+      /** Format: int64 */
+      totalSizeBytes?: number;
+      /** Format: int32 */
+      totalFiles?: number;
+      /** Format: int64 */
+      maxStorageSizeBytes?: null | number;
+      /** Format: int32 */
+      maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
+      respectRecentAccess?: boolean;
+      /** Format: int32 */
+      recentAccessWindowDays?: number;
+      isOverQuota?: boolean;
+      /** Format: double */
+      storageUsagePercent?: null | number;
+      /** Format: double */
+      fileUsagePercent?: null | number;
+    };
+    /** @enum {unknown} */
+    MediaQuotaExceededBehavior: "reject" | "allowAndEvict";
     MediaRecordResponse: {
       /** Format: uuid */
       id: string;
@@ -5273,6 +5301,7 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
       isActive?: boolean;
       /** Format: date-time */
       createdAt?: string;
@@ -5303,6 +5332,7 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
       isActive?: boolean;
       /** Format: date-time */
       createdAt?: string;
@@ -5922,6 +5952,7 @@ export interface components {
       byMediaType?: {
         [key: string]: components["schemas"]["MediaTypeStats"];
       };
+      groupQuotaUsage?: components["schemas"]["MediaGroupQuotaUsage"][];
     };
     PagedResultOfBillingAuditEventDto: {
       data?: components["schemas"]["BillingAuditEventDto"][];
@@ -7239,6 +7270,9 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?:
+        | null
+        | components["schemas"]["MediaQuotaExceededBehavior"];
       isActive?: null | boolean;
     };
     /** @description Data transfer object for updating an existing model author/organization. */

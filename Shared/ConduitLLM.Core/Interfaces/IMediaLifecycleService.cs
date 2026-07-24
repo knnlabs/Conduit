@@ -178,5 +178,11 @@ namespace ConduitLLM.Core.Interfaces
         /// Gets or sets the breakdown by media type.
         /// </summary>
         public Dictionary<string, MediaTypeStats> ByMediaType { get; set; } = new();
+
+        /// <summary>
+        /// Gets group-level usage and effective quotas.
+        /// </summary>
+        public IReadOnlyList<MediaGroupQuotaUsage> GroupQuotaUsage { get; set; } =
+            Array.Empty<MediaGroupQuotaUsage>();
     }
 }

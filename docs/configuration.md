@@ -64,13 +64,14 @@ of the areas, not a copy of that file:
 
 The Admin service is the single owner of scheduled media cleanup. Each cycle acquires a PostgreSQL
 distributed lock before running soft-delete purge, explicit expiration, storage reconciliation,
-and retention-policy cleanup, so a multi-instance deployment does not run the same cycle
+storage-quota eviction, and retention-policy cleanup, so a multi-instance deployment does not run the same cycle
 concurrently. The Gateway only records media lifecycle metadata; it does not schedule cleanup.
 
 Set `MediaLifecycle__Enabled=true` to start the scheduler and configure its polling interval with
-`MediaLifecycle__ScheduleIntervalMinutes`. The three phases can be controlled independently with
-`MediaLifecycle__EnableExpirationCleanup`, `MediaLifecycle__EnableReconciliation`, and
-`MediaLifecycle__EnableRetentionCleanup`. Cleanup defaults to `MediaLifecycle__DryRunMode=true`;
+`MediaLifecycle__ScheduleIntervalMinutes`. The configurable phases can be controlled independently with
+`MediaLifecycle__EnableExpirationCleanup`, `MediaLifecycle__EnableReconciliation`,
+`MediaLifecycle__EnableQuotaCleanup`, and `MediaLifecycle__EnableRetentionCleanup`. Cleanup
+defaults to `MediaLifecycle__DryRunMode=true`;
 set it to `false` only after reviewing the status endpoint and logs. All phases share
 `MediaLifecycle__MonthlyDeleteBudget`, batch-size, rate-limit, and dry-run safeguards.
 
@@ -80,6 +81,15 @@ reservation with `MediaLifecycle__BudgetReservationStride` (10 by default). A Re
 cleanup is more important than enforcing the provider allowance. Failures increment
 `conduit_admin_media_cleanup_budget_store_failures_total`. The status page identifies Redis versus
 the development-only in-memory counter; the latter resets on restart and is not shared.
+
+Retention policies may cap group storage with `MaxStorageSizeBytes`, `MaxFileCount`, or both.
+Before uploading generated media, Gateway resolves the owning group and runs an indexed SQL
+aggregate over that group's media records. A policy may reject a write that would exceed quota
+with HTTP 429, or allow it for eviction by the next Admin cleanup cycle. Quota cleanup counts
+active and recoverable tombstoned objects because both still occupy storage, then permanently
+evicts the oldest eligible objects until both limits are satisfied. Recent-access protection is
+honored. The media-assets statistics endpoint and page show current usage, effective limits, and
+over-quota state for every group.
 
 Set `MediaLifecycle__RequireManualApprovalForLargeBatches=true` to pause scheduled scopes above
 `MediaLifecycle__LargeBatchThreshold`. The Admin cleanup status page and
@@ -110,11 +120,11 @@ behind by a failed pre-cascade storage deletion or another partial write.
 
 The Admin media cleanup status endpoint reports whether soft delete is enabled, its fallback grace
 period, the aggregate cycle, and the last outcome of each phase. Prometheus metrics use a
-`cleanup_type` label with `purge`, `expiration`, `reconciliation`, or `retention`, expose
+`cleanup_type` label with `purge`, `expiration`, `reconciliation`, `quota`, or `retention`, expose
 `conduit_admin_media_cleanup_records_tombstoned_total`, and report untracked drift through
 `conduit_admin_media_cleanup_untracked_objects` and
 `conduit_admin_media_cleanup_untracked_bytes`. When `MediaLifecycle__TestVirtualKeyGroups` is set,
-purge, expiration, and retention are limited to those groups and reconciliation is skipped because
+purge, expiration, quota, and retention are limited to those groups and reconciliation is skipped because
 an untracked object no longer has group ownership that can be scoped safely.
 
 ### Reliable SignalR queue delivery
