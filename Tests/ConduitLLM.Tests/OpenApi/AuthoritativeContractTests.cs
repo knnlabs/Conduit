@@ -307,7 +307,8 @@ public sealed class AuthoritativeContractTests : IDisposable
             "/v1/embeddings",
             "/v1/images/generations",
             "/v1/models",
-            "/v1/models/{model}"
+            "/v1/models/{model}",
+            "/v1/responses"
         };
         var paths = _gateway.RootElement.GetProperty("paths").EnumerateObject()
             .Select(path => path.Name)

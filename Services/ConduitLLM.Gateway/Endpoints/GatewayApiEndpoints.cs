@@ -5,6 +5,7 @@ using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Gateway.Services;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Core.Models.Audio;
+using ConduitLLM.Core.Models.Responses;
 using ConduitLLM.Core.Models.Rerank;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Core.Interfaces;
@@ -34,6 +35,8 @@ public static class GatewayApiEndpoints
         services.AddScoped<ImagesEndpoints>();
         services.AddScoped<VideosEndpoints>();
         services.AddScoped<ChatEndpoints>();
+        services.AddScoped<IResponsesChatExecutor, ResponsesChatExecutor>();
+        services.AddScoped<ResponsesEndpoints>();
         return services;
     }
 
@@ -186,6 +189,20 @@ public static class GatewayApiEndpoints
             .WithTags("Chat").WithName("Chat_CreateCompletion")
             .Produces<ChatCompletionResponse>(200, "application/json")
             .Produces<OpenAIErrorResponse>(400)
+            .Produces<OpenAIErrorResponse>(500);
+
+        app.MapPost("/v1/responses", ([FromServices] ResponsesEndpoints endpoints, CreateResponseRequest request, CancellationToken cancellationToken) => endpoints.CreateResponse(request, cancellationToken))
+            .RequireAuthorization("VirtualKeyAuthentication")
+            .AddEndpointFilter<RequireBalanceEndpointFilter>()
+            .AddEndpointFilter<OperationLoggingEndpointFilter>()
+            .WithTags("Responses").WithName("Responses_Create")
+            .WithSummary("Create a stateless model response")
+            .Produces<ResponseObject>(200, "application/json")
+            .Produces<OpenAIErrorResponse>(400)
+            .Produces<OpenAIErrorResponse>(401)
+            .Produces<OpenAIErrorResponse>(402)
+            .Produces<OpenAIErrorResponse>(403)
+            .Produces<OpenAIErrorResponse>(429)
             .Produces<OpenAIErrorResponse>(500);
 
         return app;

@@ -117,6 +117,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/responses": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Create a stateless model response */
+    post: operations["Responses_Create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/conduit/discovery/models": {
     parameters: {
       query?: never;
@@ -705,6 +722,44 @@ export interface components {
       message: components["schemas"]["Message"];
       logprobs?: unknown;
     };
+    CreateResponseRequest: {
+      background?: null | components["schemas"]["JsonElement"];
+      context_management?: null | components["schemas"]["JsonElement"];
+      conversation?: null | components["schemas"]["JsonElement"];
+      include?: null | components["schemas"]["JsonElement"];
+      input?: null | components["schemas"]["JsonElement"];
+      instructions?: null | components["schemas"]["JsonElement"];
+      /** Format: int32 */
+      max_output_tokens?: null | number | string;
+      max_tool_calls?: null | components["schemas"]["JsonElement"];
+      metadata?: null | {
+        [key: string]: string;
+      };
+      model?: null | string;
+      moderation?: null | components["schemas"]["JsonElement"];
+      parallel_tool_calls?: null | components["schemas"]["JsonElement"];
+      previous_response_id?: null | components["schemas"]["JsonElement"];
+      prompt?: null | components["schemas"]["JsonElement"];
+      prompt_cache_key?: null | components["schemas"]["JsonElement"];
+      prompt_cache_options?: null | components["schemas"]["JsonElement"];
+      prompt_cache_retention?: null | components["schemas"]["JsonElement"];
+      reasoning?: null | components["schemas"]["JsonElement"];
+      safety_identifier?: null | components["schemas"]["JsonElement"];
+      service_tier?: null | components["schemas"]["JsonElement"];
+      store?: null | boolean;
+      stream?: null | boolean;
+      stream_options?: null | components["schemas"]["JsonElement"];
+      /** Format: double */
+      temperature?: null | number | string;
+      text?: null | components["schemas"]["JsonElement"];
+      tool_choice?: null | components["schemas"]["JsonElement"];
+      tools?: null | components["schemas"]["JsonElement"];
+      top_logprobs?: null | components["schemas"]["JsonElement"];
+      /** Format: double */
+      top_p?: null | number | string;
+      truncation?: null | components["schemas"]["JsonElement"];
+      user?: null | string;
+    };
     /** @description A model returned by the Conduit discovery extension. */
     DiscoveredModelDto: {
       id: string;
@@ -1107,6 +1162,91 @@ export interface components {
     ResponseFormat: {
       type?: null | string;
       json_schema?: null | components["schemas"]["JsonSchemaFormat"];
+    };
+    ResponseInputTokenDetails: {
+      /** Format: int32 */
+      cached_tokens: number | string;
+      /** Format: int32 */
+      cache_write_tokens: number | string;
+    };
+    ResponseObject: {
+      background?: unknown;
+      /** Format: int64 */
+      completed_at?: null | number | string;
+      conversation?: unknown;
+      /** Format: int64 */
+      created_at: number | string;
+      error: unknown;
+      id: string;
+      incomplete_details: unknown;
+      instructions: unknown;
+      /** Format: int32 */
+      max_output_tokens?: null | number | string;
+      /** Format: int32 */
+      max_tool_calls?: null | number | string;
+      metadata: {
+        [key: string]: string;
+      };
+      model: string;
+      moderation?: unknown;
+      object: string;
+      output: components["schemas"]["ResponseOutputMessage"][];
+      output_text?: null | string;
+      parallel_tool_calls: boolean;
+      previous_response_id?: null | string;
+      prompt?: unknown;
+      prompt_cache_key?: null | string;
+      prompt_cache_options?: unknown;
+      prompt_cache_retention?: null | string;
+      reasoning?: unknown;
+      safety_identifier?: null | string;
+      service_tier?: null | string;
+      status?: null | string;
+      /** Format: double */
+      temperature: null | number | string;
+      text?: null | components["schemas"]["ResponseTextConfiguration"];
+      tool_choice: unknown;
+      tools: unknown[];
+      /** Format: int32 */
+      top_logprobs?: null | number | string;
+      /** Format: double */
+      top_p: null | number | string;
+      truncation?: null | string;
+      usage?: null | components["schemas"]["ResponseUsage"];
+      user?: null | string;
+    };
+    ResponseOutputMessage: {
+      id: string;
+      type?: string;
+      role?: string;
+      content: components["schemas"]["ResponseOutputText"][];
+      status: string;
+    };
+    ResponseOutputText: {
+      type?: string;
+      text: string;
+      annotations?: unknown[];
+      logprobs?: unknown[];
+    };
+    ResponseOutputTokenDetails: {
+      /** Format: int32 */
+      reasoning_tokens: number | string;
+    };
+    ResponseTextConfiguration: {
+      format?: components["schemas"]["ResponseTextFormat"];
+    };
+    ResponseTextFormat: {
+      type?: string;
+    };
+    ResponseUsage: {
+      /** Format: int32 */
+      input_tokens: number | string;
+      input_tokens_details: components["schemas"]["ResponseInputTokenDetails"];
+      /** Format: int32 */
+      output_tokens: number | string;
+      output_tokens_details: components["schemas"]["ResponseOutputTokenDetails"];
+      /** Format: int32 */
+      total_tokens: number | string;
     };
     SearchUsageMetadata: {
       /** Format: int32 */
@@ -1851,6 +1991,136 @@ export interface operations {
         };
       };
       /** @description The request exceeded an applicable rate limit. */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The service is temporarily unavailable. */
+      503: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          /** @description Delay in seconds before retrying the request. */
+          "Retry-After"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+    };
+  };
+  Responses_Create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CreateResponseRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ResponseObject"];
+          "text/event-stream": string;
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Payment Required */
+      402: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request timed out. */
+      408: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description The request payload is too large. */
+      413: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Too Many Requests */
       429: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */

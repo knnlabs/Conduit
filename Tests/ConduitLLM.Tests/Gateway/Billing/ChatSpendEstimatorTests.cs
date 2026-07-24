@@ -59,4 +59,42 @@ public class ChatSpendEstimatorTests
         Assert.Equal(4096, result.MaximumOutputTokens);
         Assert.Equal(9, result.ModelCostId);
     }
+
+    [Fact]
+    public async Task EstimatePrefersResponsesCompatibleMaxCompletionTokens()
+    {
+        var mappingService = new Mock<IModelProviderMappingService>();
+        mappingService.Setup(x => x.GetMappingByModelAliasAsync("model"))
+            .ReturnsAsync(new ModelProviderMapping
+            {
+                ModelAlias = "model",
+                ProviderModelId = "provider-model",
+                ModelProviderTypeAssociation = new ModelProviderTypeAssociation { ModelCostId = 9 }
+            });
+        var tokenCounter = new Mock<ITokenCounter>();
+        tokenCounter.Setup(x => x.EstimateTokenCountAsync("model", It.IsAny<List<Message>>()))
+            .ReturnsAsync(10);
+        var costService = new Mock<ICostCalculationService>();
+        costService.Setup(x => x.CalculateCostByIdAsync(
+                9,
+                It.Is<Usage>(usage => usage.CompletionTokens == 64),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0.01m);
+        var estimator = new ChatSpendEstimator(
+            mappingService.Object,
+            tokenCounter.Object,
+            costService.Object,
+            Options.Create(new BillingAdmissionOptions()));
+
+        var result = await estimator.EstimateMaximumCostAsync(new ChatCompletionRequest
+        {
+            Model = "model",
+            Messages = [new Message { Role = "user", Content = "hello" }],
+            MaxTokens = 128,
+            MaxCompletionTokens = 64
+        });
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(64, result.MaximumOutputTokens);
+    }
 }

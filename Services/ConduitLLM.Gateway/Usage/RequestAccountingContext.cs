@@ -7,6 +7,7 @@ public enum RequestOperation
 {
     Unknown,
     ChatCompletion,
+    Responses,
     Embedding,
     Rerank,
     Function,

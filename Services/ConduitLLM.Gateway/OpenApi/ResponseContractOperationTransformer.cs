@@ -14,6 +14,7 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
         "Models_RetrieveModel",
         "Embeddings_Create",
         "Chat_CreateCompletion",
+        "Responses_Create",
         "Audio_CreateTranscription",
         "Audio_CreateSpeech",
         "Images_Create"
@@ -167,7 +168,8 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                 continue;
             }
 
-            if (responseEntry.Key == "200" && operation.OperationId == "Chat_CreateCompletion")
+            if (responseEntry.Key == "200" &&
+                operation.OperationId is "Chat_CreateCompletion" or "Responses_Create")
             {
                 response.Content!["text/event-stream"] = new OpenApiMediaType
                 {

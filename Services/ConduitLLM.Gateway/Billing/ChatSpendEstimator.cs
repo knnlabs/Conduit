@@ -51,7 +51,8 @@ public sealed class ChatSpendEstimator : IChatSpendEstimator
             return Failed("No active model-provider mapping is available");
         }
 
-        var maximumOutputTokens = request.MaxTokens ??
+        var maximumOutputTokens = request.MaxCompletionTokens ??
+                                  request.MaxTokens ??
                                   mapping.ModelProviderTypeAssociation?.MaxOutputTokens ??
                                   mapping.ModelProviderTypeAssociation?.Model?.MaxOutputTokens ??
                                   _options.DefaultMaximumOutputTokens;

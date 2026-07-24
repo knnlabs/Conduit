@@ -23,6 +23,25 @@ const chat = await client.chat.completions.create({
 });
 if (!chat.choices.length) throw new Error('Chat completion had no choices.');
 
+const modelResponse = await client.responses.create({
+  model: chatModel,
+  input: 'SDK smoke test',
+  store: false,
+});
+if (modelResponse.output_text !== 'ok') throw new Error('Responses output text was incorrect.');
+
+const responseStream = await client.responses.create({
+  model: chatModel,
+  input: 'SDK smoke test',
+  store: false,
+  stream: true,
+});
+let streamedResponseText = '';
+for await (const event of responseStream) {
+  if (event.type === 'response.output_text.delta') streamedResponseText += event.delta;
+}
+if (streamedResponseText !== 'ok') throw new Error('Responses stream output text was incorrect.');
+
 const embedding = await client.embeddings.create({
   model: embeddingModel,
   input: 'SDK smoke test',

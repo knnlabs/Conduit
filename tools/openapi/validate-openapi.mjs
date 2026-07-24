@@ -322,6 +322,7 @@ function buildOpenAiBaseline(officialDocument, commit) {
     ['GET', '/v1/models', '/models'],
     ['POST', '/v1/embeddings', '/embeddings'],
     ['POST', '/v1/chat/completions', '/chat/completions'],
+    ['POST', '/v1/responses', '/responses'],
     ['POST', '/v1/audio/transcriptions', '/audio/transcriptions'],
     ['POST', '/v1/audio/speech', '/audio/speech'],
     ['POST', '/v1/images/generations', '/images/generations'],

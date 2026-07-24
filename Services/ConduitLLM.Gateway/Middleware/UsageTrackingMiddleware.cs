@@ -125,6 +125,7 @@ public partial class UsageTrackingMiddleware
             return false;
 
         return path.Contains("/completions") ||
+               path.Contains("/responses") ||
                path.Contains("/embeddings") ||
                path.Contains("/images/generations") ||
                path.Contains("/audio/transcriptions") ||

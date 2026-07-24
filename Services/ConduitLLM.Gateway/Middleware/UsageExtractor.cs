@@ -18,6 +18,8 @@ namespace ConduitLLM.Gateway.Middleware
 
             if (pathValue.Contains("/chat/completions"))
                 return "chat";
+            if (pathValue.Contains("/responses"))
+                return "responses";
             if (pathValue.Contains("/completions"))
                 return "completion";
             if (pathValue.Contains("/embeddings"))

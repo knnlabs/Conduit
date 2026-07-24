@@ -29,6 +29,26 @@ chat = client.chat.completions.create(
 if not chat.choices:
     raise RuntimeError("Chat completion had no choices.")
 
+model_response = client.responses.create(
+    model=chat_model,
+    input="SDK smoke test",
+    store=False,
+)
+if model_response.output_text != "ok":
+    raise RuntimeError("Responses output text was incorrect.")
+
+streamed_response_text = ""
+with client.responses.stream(
+    model=chat_model,
+    input="SDK smoke test",
+    store=False,
+) as response_stream:
+    for event in response_stream:
+        if event.type == "response.output_text.delta":
+            streamed_response_text += event.delta
+if streamed_response_text != "ok":
+    raise RuntimeError("Responses stream output text was incorrect.")
+
 embedding = client.embeddings.create(
     model=embedding_model,
     input="SDK smoke test",

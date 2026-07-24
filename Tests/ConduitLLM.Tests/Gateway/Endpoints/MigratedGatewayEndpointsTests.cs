@@ -21,6 +21,24 @@ public sealed class MigratedGatewayEndpointsTests
     }
 
     [Fact]
+    public async Task ResponsesEndpoint_RequiresVirtualKeyAuthentication()
+    {
+        await using var host = await GatewayEndpointTestHost.StartAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/v1/responses");
+        request.Headers.Add("X-Test-Anonymous", "true");
+        request.Content = JsonContent.Create(new
+        {
+            model = "test",
+            input = "hello",
+            store = false
+        });
+
+        var response = await host.Client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task LegacyCompletions_PreservesNotImplementedResponse()
     {
         await using var host = await GatewayEndpointTestHost.StartAsync();
