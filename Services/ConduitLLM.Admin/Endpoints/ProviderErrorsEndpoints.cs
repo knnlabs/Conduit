@@ -212,6 +212,12 @@ namespace ConduitLLM.Admin.Endpoints
             // Look up the key to get its providerId for proper cleanup
             var key = await _keyRepo.GetByIdAsync(keyId);
             int? providerId = key?.ProviderId;
+            var providerSummary = providerId.HasValue
+                ? await _errorService.GetProviderSummaryAsync(providerId.Value)
+                : null;
+            var providerWasAutoDisabled =
+                providerSummary?.ProviderDisabledAt != null &&
+                providerSummary.ProviderDisableReason == ProviderErrorTrackingService.AllKeysDisabledReason;
 
             // Clear errors from Redis (including provider disabled keys cleanup)
             await _errorService.ClearErrorsForKeyAsync(keyId, providerId);
@@ -238,6 +244,18 @@ namespace ConduitLLM.Admin.Endpoints
             else
             {
                 LogAdminAudit("ClearedErrors", "ProviderKeyCredential", keyId);
+            }
+
+            if (request.ReenableKey && providerWasAutoDisabled && providerId.HasValue)
+            {
+                var provider = await _providerRepo.GetByIdAsync(providerId.Value);
+                if (provider != null && !provider.IsEnabled)
+                {
+                    provider.IsEnabled = true;
+                    await _providerRepo.UpdateAsync(provider);
+                }
+
+                await _errorService.ClearProviderDisabledAsync(providerId.Value);
             }
 
             return Results.Ok(new ClearKeyErrorsResponseDto

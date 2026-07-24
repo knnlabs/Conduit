@@ -328,7 +328,7 @@ namespace ConduitLLM.Tests.Services
         }
 
         [Fact]
-        public async Task DisableKeyAsync_PrimaryKey_DisablesProvider()
+        public async Task DisableKeyAsync_PrimaryKey_DisablesOnlyKeyAndPromotesFallback()
         {
             // Arrange
             var keyId = 123;
@@ -343,33 +343,35 @@ namespace ConduitLLM.Tests.Services
                 IsPrimary = true
             };
             
-            var provider = new Provider
+            var fallbackKey = new ProviderKeyCredential
             {
-                Id = providerId,
-                ProviderName = "Test Provider",
-                IsEnabled = true
+                Id = 124,
+                ProviderId = providerId,
+                IsEnabled = true,
+                IsPrimary = false
             };
 
             _keyRepoMock.Setup(x => x.GetByIdAsync(keyId))
                 .ReturnsAsync(primaryKey);
-            _providerRepoMock.Setup(x => x.GetByIdAsync(providerId, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(provider);
+            var providerKeys = new List<ProviderKeyCredential> { primaryKey, fallbackKey };
+            _keyRepoMock.Setup(x => x.GetByProviderIdPaginatedAsync(
+                    providerId, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((providerKeys, providerKeys.Count));
 
             // Act
             await _service.DisableKeyAsync(keyId, reason);
 
             // Assert
-            _providerRepoMock.Verify(x => x.UpdateAsync(
-                It.Is<Provider>(p => p.Id == providerId && !p.IsEnabled),
-                It.IsAny<CancellationToken>()), 
+            _keyRepoMock.Verify(x => x.UpdateAsync(
+                It.Is<ProviderKeyCredential>(k =>
+                    k.Id == keyId &&
+                    !k.IsEnabled &&
+                    !k.IsPrimary)),
                 Times.Once);
-            
-            _publishEndpointMock.Verify(x => x.PublishAsync(
-                It.Is<ProviderKeyDisabledEvent>(e => 
-                    e.KeyId == keyId &&
-                    e.Reason.Contains("Provider disabled")),
-                It.IsAny<CancellationToken>()), 
-                Times.Once);
+            _keyRepoMock.Verify(x => x.SetPrimaryKeyAsync(providerId, fallbackKey.Id), Times.Once);
+            _providerRepoMock.Verify(
+                x => x.UpdateAsync(It.IsAny<Provider>(), It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         [Fact]
@@ -428,7 +430,7 @@ namespace ConduitLLM.Tests.Services
                 Id = keyId,
                 ProviderId = providerId,
                 IsEnabled = true,
-                IsPrimary = false
+                IsPrimary = true
             };
             
             var key2 = new ProviderKeyCredential
@@ -436,7 +438,7 @@ namespace ConduitLLM.Tests.Services
                 Id = 124,
                 ProviderId = providerId,
                 IsEnabled = false, // Already disabled
-                IsPrimary = true
+                IsPrimary = false
             };
             
             var provider = new Provider
@@ -463,6 +465,11 @@ namespace ConduitLLM.Tests.Services
             _providerRepoMock.Verify(x => x.UpdateAsync(
                 It.Is<Provider>(p => p.Id == providerId && !p.IsEnabled),
                 It.IsAny<CancellationToken>()), 
+                Times.Once);
+            _errorStoreMock.Verify(x => x.MarkProviderDisabledAsync(
+                providerId,
+                It.IsAny<DateTime>(),
+                ProviderErrorTrackingService.AllKeysDisabledReason),
                 Times.Once);
         }
 

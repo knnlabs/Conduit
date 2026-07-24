@@ -60,6 +60,12 @@ namespace ConduitLLM.Core.Interfaces
         Task MarkProviderDisabledAsync(int providerId, DateTime disabledAt, string reason);
 
         /// <summary>
+        /// Clear the automatic provider-disabled marker after recovery.
+        /// </summary>
+        /// <param name="providerId">The provider ID</param>
+        Task ClearProviderDisabledAsync(int providerId);
+
+        /// <summary>
         /// Add a key to the provider's disabled keys set
         /// </summary>
         /// <param name="providerId">The provider ID</param>

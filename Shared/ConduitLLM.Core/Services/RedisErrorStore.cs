@@ -158,6 +158,16 @@ namespace ConduitLLM.Core.Services
             );
         }
 
+        public async Task ClearProviderDisabledAsync(int providerId)
+        {
+            var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
+            await _db.HashDeleteAsync(summaryKey, new RedisValue[]
+            {
+                "provider_disabled_at",
+                "provider_disable_reason"
+            });
+        }
+
         public async Task AddDisabledKeyToProviderAsync(int providerId, int keyId)
         {
             var setKey = CacheKeys.ProviderError.DisabledKeysByProvider(providerId);
