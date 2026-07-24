@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
 
 using Moq;
 
@@ -38,7 +39,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CleanupExpiredMediaAsync();
 
             // Assert
-            Assert.Equal(2, result);
+            Assert.Equal(2, result.DeletedCount);
+            Assert.Equal(0, result.FailedCount);
 
             foreach (var media in expiredMedia)
             {
@@ -57,13 +59,16 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CleanupExpiredMediaAsync();
 
             // Assert
-            Assert.Equal(0, result);
+            Assert.Equal(MediaDeletionResult.Empty, result);
             _mockMediaRepository.Verify(x => x.GetExpiredMediaAsync(It.IsAny<DateTime>()), Times.Never);
             _mockStorageService.Verify(x => x.DeleteAsync(It.IsAny<string>()), Times.Never);
         }
 
-        [Fact]
-        public async Task CleanupExpiredMediaAsync_WithStorageDeleteFailure_ShouldContinueWithOtherMedia()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CleanupExpiredMediaAsync_WithStorageDeleteFailure_PreservesFailedRecord(
+            bool throws)
         {
             // Arrange
             var expiredMedia = new List<MediaRecord>
@@ -85,9 +90,15 @@ namespace ConduitLLM.Tests.Core.Services
             _mockMediaRepository.Setup(x => x.GetExpiredMediaAsync(It.IsAny<DateTime>()))
                 .ReturnsAsync(expiredMedia);
 
-            // First storage delete fails, second succeeds
-            _mockStorageService.Setup(x => x.DeleteAsync("image/expired1.jpg"))
-                .ThrowsAsync(new Exception("Storage delete failed"));
+            var failedDelete = _mockStorageService.Setup(x => x.DeleteAsync("image/expired1.jpg"));
+            if (throws)
+            {
+                failedDelete.ThrowsAsync(new Exception("Storage delete failed"));
+            }
+            else
+            {
+                failedDelete.ReturnsAsync(false);
+            }
             _mockStorageService.Setup(x => x.DeleteAsync("image/expired2.jpg"))
                 .ReturnsAsync(true);
 
@@ -95,7 +106,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CleanupExpiredMediaAsync();
 
             // Assert
-            Assert.Equal(1, result); // Only one successful deletion
+            Assert.Equal(1, result.DeletedCount);
+            Assert.Equal(1, result.FailedCount);
 
             _mockStorageService.Verify(x => x.DeleteAsync("image/expired1.jpg"), Times.Once);
             _mockStorageService.Verify(x => x.DeleteAsync("image/expired2.jpg"), Times.Once);
@@ -137,7 +149,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CleanupOrphanedMediaAsync();
 
             // Assert
-            Assert.Equal(2, result);
+            Assert.Equal(2, result.DeletedCount);
+            Assert.Equal(0, result.FailedCount);
 
             foreach (var media in orphanedMedia)
             {
@@ -156,9 +169,40 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.CleanupOrphanedMediaAsync();
 
             // Assert
-            Assert.Equal(0, result);
+            Assert.Equal(MediaDeletionResult.Empty, result);
             _mockMediaRepository.Verify(x => x.GetOrphanedMediaAsync(), Times.Never);
             _mockStorageService.Verify(x => x.DeleteAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CleanupOrphanedMediaAsync_WithStorageDeleteFailure_PreservesRecord(
+            bool throws)
+        {
+            var media = new MediaRecord
+            {
+                Id = Guid.NewGuid(),
+                StorageKey = "image/orphaned-failure.jpg",
+                VirtualKeyId = 999
+            };
+            _mockMediaRepository.Setup(x => x.GetOrphanedMediaAsync())
+                .ReturnsAsync(new List<MediaRecord> { media });
+            var failedDelete = _mockStorageService.Setup(x => x.DeleteAsync(media.StorageKey));
+            if (throws)
+            {
+                failedDelete.ThrowsAsync(new Exception("Storage delete failed"));
+            }
+            else
+            {
+                failedDelete.ReturnsAsync(false);
+            }
+
+            var result = await _service.CleanupOrphanedMediaAsync();
+
+            Assert.Equal(0, result.DeletedCount);
+            Assert.Equal(1, result.FailedCount);
+            _mockMediaRepository.Verify(x => x.DeleteAsync(media.Id), Times.Never);
         }
 
         #endregion
@@ -198,7 +242,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.PruneOldMediaAsync(daysToKeep);
 
             // Assert
-            Assert.Equal(2, result);
+            Assert.Equal(2, result.DeletedCount);
+            Assert.Equal(0, result.FailedCount);
 
             foreach (var media in oldMedia)
             {
@@ -240,7 +285,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.PruneOldMediaAsync(daysToKeep, respectRecentAccess: true);
 
             // Assert
-            Assert.Equal(1, result); // Only one should be deleted
+            Assert.Equal(1, result.DeletedCount);
+            Assert.Equal(0, result.FailedCount);
 
             _mockStorageService.Verify(x => x.DeleteAsync("image/old1.jpg"), Times.Never);
             _mockStorageService.Verify(x => x.DeleteAsync("image/old2.jpg"), Times.Once);
@@ -259,7 +305,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.PruneOldMediaAsync(daysToKeep);
 
             // Assert
-            Assert.Equal(0, result);
+            Assert.Equal(MediaDeletionResult.Empty, result);
             _mockMediaRepository.Verify(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()), Times.Never);
         }
 
@@ -272,8 +318,39 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.PruneOldMediaAsync(invalidDaysToKeep);
 
             // Assert
-            Assert.Equal(0, result);
+            Assert.Equal(MediaDeletionResult.Empty, result);
             _mockMediaRepository.Verify(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task PruneOldMediaAsync_WithStorageDeleteFailure_PreservesRecord(
+            bool throws)
+        {
+            var media = new MediaRecord
+            {
+                Id = Guid.NewGuid(),
+                StorageKey = "image/prune-failure.jpg",
+                CreatedAt = DateTime.UtcNow.AddDays(-60)
+            };
+            _mockMediaRepository.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
+                .ReturnsAsync(new List<MediaRecord> { media });
+            var failedDelete = _mockStorageService.Setup(x => x.DeleteAsync(media.StorageKey));
+            if (throws)
+            {
+                failedDelete.ThrowsAsync(new Exception("Storage delete failed"));
+            }
+            else
+            {
+                failedDelete.ReturnsAsync(false);
+            }
+
+            var result = await _service.PruneOldMediaAsync(30);
+
+            Assert.Equal(0, result.DeletedCount);
+            Assert.Equal(1, result.FailedCount);
+            _mockMediaRepository.Verify(x => x.DeleteAsync(media.Id), Times.Never);
         }
 
         #endregion

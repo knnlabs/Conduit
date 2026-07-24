@@ -1,6 +1,7 @@
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
 
 using Moq;
 
@@ -128,7 +129,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(true);
 
             _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
-                .ReturnsAsync(5); // 5 media files deleted
+                .ReturnsAsync(new MediaDeletionResult(5, 0));
 
             // Act
             var result = await _service.DeleteVirtualKeyAsync(1);
@@ -143,7 +144,7 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
-        public async Task DeleteVirtualKeyAsync_MediaCleanupFails_StillDeletesKey()
+        public async Task DeleteVirtualKeyAsync_MediaCleanupThrows_BlocksKeyDeletion()
         {
             // Arrange
             var existingKey = new VirtualKey
@@ -162,12 +163,34 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
                 .ThrowsAsync(new Exception("Media service error"));
 
-            // Act
-            var result = await _service.DeleteVirtualKeyAsync(1);
+            await Assert.ThrowsAsync<Exception>(() => _service.DeleteVirtualKeyAsync(1));
 
-            // Assert
-            Assert.True(result); // Key deletion should succeed despite media cleanup failure
-            _mockVirtualKeyRepository.Verify(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+            _mockVirtualKeyRepository.Verify(
+                x => x.DeleteAsync(1, It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteVirtualKeyAsync_MediaCleanupReportsFailure_BlocksKeyDeletion()
+        {
+            var existingKey = new VirtualKey
+            {
+                Id = 1,
+                KeyName = "Test Key",
+                KeyHash = "hash123"
+            };
+            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(existingKey);
+            _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
+                .ReturnsAsync(new MediaDeletionResult(2, 1));
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => _service.DeleteVirtualKeyAsync(1));
+
+            Assert.Contains("1 media files", exception.Message);
+            _mockVirtualKeyRepository.Verify(
+                x => x.DeleteAsync(1, It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         #endregion

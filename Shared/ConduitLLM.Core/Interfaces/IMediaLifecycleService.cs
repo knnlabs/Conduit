@@ -25,28 +25,28 @@ namespace ConduitLLM.Core.Interfaces
         /// Deletes all media associated with a virtual key.
         /// </summary>
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
-        /// <returns>Number of media files deleted.</returns>
-        Task<int> DeleteMediaForVirtualKeyAsync(int virtualKeyId);
+        /// <returns>Deletion counts, including failures that were preserved for retry.</returns>
+        Task<MediaDeletionResult> DeleteMediaForVirtualKeyAsync(int virtualKeyId);
 
         /// <summary>
         /// Cleans up expired media files.
         /// </summary>
-        /// <returns>Number of media files cleaned up.</returns>
-        Task<int> CleanupExpiredMediaAsync();
+        /// <returns>Deletion counts, including failures that were preserved for retry.</returns>
+        Task<MediaDeletionResult> CleanupExpiredMediaAsync();
 
         /// <summary>
         /// Cleans up orphaned media files (where virtual key no longer exists).
         /// </summary>
-        /// <returns>Number of orphaned media files cleaned up.</returns>
-        Task<int> CleanupOrphanedMediaAsync();
+        /// <returns>Deletion counts, including failures that were preserved for retry.</returns>
+        Task<MediaDeletionResult> CleanupOrphanedMediaAsync();
 
         /// <summary>
         /// Prunes old media files based on retention policy.
         /// </summary>
         /// <param name="daysToKeep">Number of days to keep media files.</param>
         /// <param name="respectRecentAccess">If true, skip files accessed recently.</param>
-        /// <returns>Number of media files pruned.</returns>
-        Task<int> PruneOldMediaAsync(int daysToKeep, bool respectRecentAccess = true);
+        /// <returns>Deletion counts, including failures that were preserved for retry.</returns>
+        Task<MediaDeletionResult> PruneOldMediaAsync(int daysToKeep, bool respectRecentAccess = true);
 
         /// <summary>
         /// Updates access statistics for a media file.
@@ -75,6 +75,17 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
         /// <returns>List of media records.</returns>
         Task<List<MediaRecord>> GetMediaByVirtualKeyAsync(int virtualKeyId);
+    }
+
+    /// <summary>
+    /// Counts produced by a lifecycle deletion operation.
+    /// </summary>
+    public sealed record MediaDeletionResult(int DeletedCount, int FailedCount)
+    {
+        /// <summary>
+        /// An empty successful result.
+        /// </summary>
+        public static MediaDeletionResult Empty { get; } = new(0, 0);
     }
 
     /// <summary>

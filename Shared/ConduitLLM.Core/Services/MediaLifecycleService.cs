@@ -86,44 +86,36 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<int> DeleteMediaForVirtualKeyAsync(int virtualKeyId)
+        public async Task<MediaDeletionResult> DeleteMediaForVirtualKeyAsync(int virtualKeyId)
         {
             if (!_options.EnableAutoCleanup)
             {
                 _logger.LogWarning("Auto cleanup is disabled, skipping media deletion for virtual key {VirtualKeyId}", virtualKeyId);
-                return 0;
+                return MediaDeletionResult.Empty;
             }
 
             try
             {
                 var mediaRecords = await _mediaRepository.GetByVirtualKeyIdAsync(virtualKeyId);
                 var deletedCount = 0;
+                var failedCount = 0;
 
                 foreach (var media in mediaRecords)
                 {
-                    try
+                    if (await TryDeleteMediaAsync(media, "delete for virtual key"))
                     {
-                        // Delete from storage
-                        await _storageService.DeleteAsync(media.StorageKey);
-                        
-                        // Delete from database
-                        await _mediaRepository.DeleteAsync(media.Id);
-                        
                         deletedCount++;
-                        
                         _logger.LogInformation(
                             "Deleted media {StorageKey} for virtual key {VirtualKeyId}",
                             media.StorageKey, virtualKeyId);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex,
-                            "Failed to delete media {StorageKey} for virtual key {VirtualKeyId}",
-                            media.StorageKey, virtualKeyId);
+                        failedCount++;
                     }
                 }
 
-                return deletedCount;
+                return new MediaDeletionResult(deletedCount, failedCount);
             }
             catch (Exception ex)
             {
@@ -133,34 +125,32 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<int> CleanupExpiredMediaAsync()
+        public async Task<MediaDeletionResult> CleanupExpiredMediaAsync()
         {
             if (!_options.EnableAutoCleanup)
             {
                 _logger.LogDebug("Auto cleanup is disabled, skipping expired media cleanup");
-                return 0;
+                return MediaDeletionResult.Empty;
             }
 
             try
             {
                 var expiredMedia = await _mediaRepository.GetExpiredMediaAsync(DateTime.UtcNow);
                 var deletedCount = 0;
+                var failedCount = 0;
 
                 foreach (var media in expiredMedia)
                 {
-                    try
+                    if (await TryDeleteMediaAsync(media, "clean up expired"))
                     {
-                        await _storageService.DeleteAsync(media.StorageKey);
-                        await _mediaRepository.DeleteAsync(media.Id);
                         deletedCount++;
-                        
                         _logger.LogInformation(
                             "Cleaned up expired media {StorageKey} that expired at {ExpiresAt}",
                             media.StorageKey, media.ExpiresAt);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex, "Failed to cleanup expired media {StorageKey}", media.StorageKey);
+                        failedCount++;
                     }
                 }
 
@@ -169,7 +159,7 @@ namespace ConduitLLM.Core.Services
                     _logger.LogInformation("Cleaned up {Count} expired media files", deletedCount);
                 }
 
-                return deletedCount;
+                return new MediaDeletionResult(deletedCount, failedCount);
             }
             catch (Exception ex)
             {
@@ -179,34 +169,32 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<int> CleanupOrphanedMediaAsync()
+        public async Task<MediaDeletionResult> CleanupOrphanedMediaAsync()
         {
             if (!_options.OrphanCleanupEnabled)
             {
                 _logger.LogDebug("Orphan cleanup is disabled");
-                return 0;
+                return MediaDeletionResult.Empty;
             }
 
             try
             {
                 var orphanedMedia = await _mediaRepository.GetOrphanedMediaAsync();
                 var deletedCount = 0;
+                var failedCount = 0;
 
                 foreach (var media in orphanedMedia)
                 {
-                    try
+                    if (await TryDeleteMediaAsync(media, "clean up orphaned"))
                     {
-                        await _storageService.DeleteAsync(media.StorageKey);
-                        await _mediaRepository.DeleteAsync(media.Id);
                         deletedCount++;
-                        
                         _logger.LogInformation(
                             "Cleaned up orphaned media {StorageKey} for non-existent virtual key {VirtualKeyId}",
                             media.StorageKey, media.VirtualKeyId);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex, "Failed to cleanup orphaned media {StorageKey}", media.StorageKey);
+                        failedCount++;
                     }
                 }
 
@@ -215,7 +203,7 @@ namespace ConduitLLM.Core.Services
                     _logger.LogInformation("Cleaned up {Count} orphaned media files", deletedCount);
                 }
 
-                return deletedCount;
+                return new MediaDeletionResult(deletedCount, failedCount);
             }
             catch (Exception ex)
             {
@@ -225,12 +213,12 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<int> PruneOldMediaAsync(int daysToKeep, bool respectRecentAccess = true)
+        public async Task<MediaDeletionResult> PruneOldMediaAsync(int daysToKeep, bool respectRecentAccess = true)
         {
             if (!_options.EnableAutoCleanup || daysToKeep <= 0)
             {
                 _logger.LogDebug("Media pruning is disabled or invalid days to keep: {DaysToKeep}", daysToKeep);
-                return 0;
+                return MediaDeletionResult.Empty;
             }
 
             try
@@ -238,34 +226,32 @@ namespace ConduitLLM.Core.Services
                 var cutoffDate = DateTime.UtcNow.AddDays(-daysToKeep);
                 var oldMedia = await _mediaRepository.GetMediaOlderThanAsync(cutoffDate);
                 var deletedCount = 0;
+                var failedCount = 0;
                 var recentAccessCutoff = DateTime.UtcNow.AddDays(-30);
 
                 foreach (var media in oldMedia)
                 {
-                    try
+                    // Skip if accessed recently and respectRecentAccess is true
+                    if (respectRecentAccess &&
+                        media.LastAccessedAt.HasValue &&
+                        media.LastAccessedAt.Value > recentAccessCutoff)
                     {
-                        // Skip if accessed recently and respectRecentAccess is true
-                        if (respectRecentAccess && 
-                            media.LastAccessedAt.HasValue && 
-                            media.LastAccessedAt.Value > recentAccessCutoff)
-                        {
-                            _logger.LogDebug(
-                                "Skipping media {StorageKey} due to recent access at {LastAccessedAt}",
-                                media.StorageKey, media.LastAccessedAt);
-                            continue;
-                        }
+                        _logger.LogDebug(
+                            "Skipping media {StorageKey} due to recent access at {LastAccessedAt}",
+                            media.StorageKey, media.LastAccessedAt);
+                        continue;
+                    }
 
-                        await _storageService.DeleteAsync(media.StorageKey);
-                        await _mediaRepository.DeleteAsync(media.Id);
+                    if (await TryDeleteMediaAsync(media, "prune old"))
+                    {
                         deletedCount++;
-                        
                         _logger.LogInformation(
                             "Pruned old media {StorageKey} created at {CreatedAt}",
                             media.StorageKey, media.CreatedAt);
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogError(ex, "Failed to prune old media {StorageKey}", media.StorageKey);
+                        failedCount++;
                     }
                 }
 
@@ -274,12 +260,46 @@ namespace ConduitLLM.Core.Services
                     _logger.LogInformation("Pruned {Count} old media files", deletedCount);
                 }
 
-                return deletedCount;
+                return new MediaDeletionResult(deletedCount, failedCount);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during old media pruning");
                 throw;
+            }
+        }
+
+        private async Task<bool> TryDeleteMediaAsync(MediaRecord media, string operation)
+        {
+            try
+            {
+                var storageDeleted = await _storageService.DeleteAsync(media.StorageKey);
+                if (!storageDeleted)
+                {
+                    _logger.LogError(
+                        "Storage refused to {Operation} media {StorageKey}; database record {MediaId} was preserved for retry",
+                        operation, media.StorageKey, media.Id);
+                    return false;
+                }
+
+                var recordDeleted = await _mediaRepository.DeleteAsync(media.Id);
+                if (!recordDeleted)
+                {
+                    _logger.LogError(
+                        "Storage media {StorageKey} was deleted but database record {MediaId} could not be removed",
+                        media.StorageKey, media.Id);
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Failed to {Operation} media {StorageKey}; database record {MediaId} was preserved for retry",
+                    operation, media.StorageKey, media.Id);
+                return false;
             }
         }
 

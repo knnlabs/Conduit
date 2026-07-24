@@ -33,6 +33,9 @@ namespace ConduitLLM.Tests.Core.Services
             };
 
             _mockOptions.Setup(x => x.Value).Returns(_options);
+            _mockMediaRepository
+                .Setup(x => x.DeleteAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(true);
 
             _service = new MediaLifecycleService(
                 _mockMediaRepository.Object,

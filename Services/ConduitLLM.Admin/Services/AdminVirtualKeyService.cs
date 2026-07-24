@@ -78,15 +78,28 @@ namespace ConduitLLM.Admin.Services
             {
                 try
                 {
-                    var deletedMediaCount = await _mediaLifecycleService.DeleteMediaForVirtualKeyAsync(keyId);
-                    if (deletedMediaCount > 0)
+                    var result = await _mediaLifecycleService.DeleteMediaForVirtualKeyAsync(keyId);
+                    if (result.FailedCount > 0)
                     {
-                        Logger.LogInformation("Deleted {Count} media files for virtual key {KeyId}", deletedMediaCount, keyId);
+                        throw new InvalidOperationException(
+                            $"Virtual key deletion aborted: {result.FailedCount} media files could not be deleted from storage. " +
+                            $"{result.DeletedCount} media files were deleted successfully; retry the operation.");
+                    }
+
+                    if (result.DeletedCount > 0)
+                    {
+                        Logger.LogInformation(
+                            "Deleted {DeletedCount} media files for virtual key {KeyId}",
+                            result.DeletedCount, keyId);
                     }
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Failed to delete media files for virtual key {KeyId}, but continuing with key deletion", keyId);
+                    Logger.LogError(
+                        ex,
+                        "Failed to delete media files for virtual key {KeyId}; key deletion is blocked to preserve media tracking",
+                        keyId);
+                    throw;
                 }
             }
             else

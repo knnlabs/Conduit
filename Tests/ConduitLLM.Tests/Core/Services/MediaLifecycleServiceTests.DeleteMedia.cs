@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
 
 using Moq;
 
@@ -30,7 +31,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.DeleteMediaForVirtualKeyAsync(virtualKeyId);
 
             // Assert
-            Assert.Equal(3, result);
+            Assert.Equal(3, result.DeletedCount);
+            Assert.Equal(0, result.FailedCount);
 
             foreach (var media in mediaRecords)
             {
@@ -50,13 +52,16 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.DeleteMediaForVirtualKeyAsync(virtualKeyId);
 
             // Assert
-            Assert.Equal(0, result);
+            Assert.Equal(MediaDeletionResult.Empty, result);
             _mockMediaRepository.Verify(x => x.GetByVirtualKeyIdAsync(It.IsAny<int>()), Times.Never);
             _mockStorageService.Verify(x => x.DeleteAsync(It.IsAny<string>()), Times.Never);
         }
 
-        [Fact]
-        public async Task DeleteMediaForVirtualKeyAsync_WithStorageDeleteFailure_ShouldContinueWithOtherMedia()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task DeleteMediaForVirtualKeyAsync_WithStorageDeleteFailure_PreservesFailedRecord(
+            bool throws)
         {
             // Arrange
             var virtualKeyId = 1;
@@ -69,9 +74,15 @@ namespace ConduitLLM.Tests.Core.Services
             _mockMediaRepository.Setup(x => x.GetByVirtualKeyIdAsync(virtualKeyId))
                 .ReturnsAsync(mediaRecords);
 
-            // First storage delete fails, second succeeds
-            _mockStorageService.Setup(x => x.DeleteAsync("image/1.jpg"))
-                .ThrowsAsync(new Exception("Storage delete failed"));
+            var failedDelete = _mockStorageService.Setup(x => x.DeleteAsync("image/1.jpg"));
+            if (throws)
+            {
+                failedDelete.ThrowsAsync(new Exception("Storage delete failed"));
+            }
+            else
+            {
+                failedDelete.ReturnsAsync(false);
+            }
             _mockStorageService.Setup(x => x.DeleteAsync("image/2.jpg"))
                 .ReturnsAsync(true);
 
@@ -79,7 +90,8 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.DeleteMediaForVirtualKeyAsync(virtualKeyId);
 
             // Assert
-            Assert.Equal(1, result); // Only one successful deletion
+            Assert.Equal(1, result.DeletedCount);
+            Assert.Equal(1, result.FailedCount);
 
             _mockStorageService.Verify(x => x.DeleteAsync("image/1.jpg"), Times.Once);
             _mockStorageService.Verify(x => x.DeleteAsync("image/2.jpg"), Times.Once);
@@ -99,7 +111,7 @@ namespace ConduitLLM.Tests.Core.Services
             var result = await _service.DeleteMediaForVirtualKeyAsync(virtualKeyId);
 
             // Assert
-            Assert.Equal(0, result);
+            Assert.Equal(MediaDeletionResult.Empty, result);
             _mockStorageService.Verify(x => x.DeleteAsync(It.IsAny<string>()), Times.Never);
             _mockMediaRepository.Verify(x => x.DeleteAsync(It.IsAny<Guid>()), Times.Never);
         }

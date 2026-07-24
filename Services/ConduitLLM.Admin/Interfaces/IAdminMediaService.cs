@@ -32,21 +32,21 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Manually triggers cleanup of expired media.
         /// </summary>
-        /// <returns>Number of media files cleaned up.</returns>
-        Task<int> CleanupExpiredMediaAsync();
+        /// <returns>Deletion counts, including failures.</returns>
+        Task<MediaDeletionResult> CleanupExpiredMediaAsync();
 
         /// <summary>
         /// Manually triggers cleanup of orphaned media.
         /// </summary>
-        /// <returns>Number of orphaned media files cleaned up.</returns>
-        Task<int> CleanupOrphanedMediaAsync();
+        /// <returns>Deletion counts, including failures.</returns>
+        Task<MediaDeletionResult> CleanupOrphanedMediaAsync();
 
         /// <summary>
         /// Manually triggers pruning of old media.
         /// </summary>
         /// <param name="daysToKeep">Number of days to keep media files.</param>
-        /// <returns>Number of media files pruned.</returns>
-        Task<int> PruneOldMediaAsync(int daysToKeep);
+        /// <returns>Deletion counts, including failures.</returns>
+        Task<MediaDeletionResult> PruneOldMediaAsync(int daysToKeep);
 
         /// <summary>
         /// Deletes a specific media record.

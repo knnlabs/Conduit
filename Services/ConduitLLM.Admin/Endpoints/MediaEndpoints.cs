@@ -110,9 +110,11 @@ public static class MediaEndpoints
         [FromServices] IAdminMediaService mediaService,
         [FromServices] ILogger<MediaEndpointLog> logger)
     {
-        var count = await mediaService.CleanupExpiredMediaAsync();
-        AdminAudit.Log(context, logger, "CleanedUpExpired", "Media", detail: $"DeletedCount: {count}");
-        return Results.Ok(new MediaCleanupResponseDto { Message = $"Cleaned up {count} expired media files", DeletedCount = count });
+        var result = await mediaService.CleanupExpiredMediaAsync();
+        AdminAudit.Log(
+            context, logger, "CleanedUpExpired", "Media",
+            detail: $"DeletedCount: {result.DeletedCount}, FailedCount: {result.FailedCount}");
+        return Results.Ok(ToCleanupResponse("expired media", result));
     }
 
     private static async Task<IResult> CleanupOrphanedMedia(
@@ -120,9 +122,11 @@ public static class MediaEndpoints
         [FromServices] IAdminMediaService mediaService,
         [FromServices] ILogger<MediaEndpointLog> logger)
     {
-        var count = await mediaService.CleanupOrphanedMediaAsync();
-        AdminAudit.Log(context, logger, "CleanedUpOrphaned", "Media", detail: $"DeletedCount: {count}");
-        return Results.Ok(new MediaCleanupResponseDto { Message = $"Cleaned up {count} orphaned media files", DeletedCount = count });
+        var result = await mediaService.CleanupOrphanedMediaAsync();
+        AdminAudit.Log(
+            context, logger, "CleanedUpOrphaned", "Media",
+            detail: $"DeletedCount: {result.DeletedCount}, FailedCount: {result.FailedCount}");
+        return Results.Ok(ToCleanupResponse("orphaned media", result));
     }
 
     private static async Task<IResult> PruneOldMedia(
@@ -133,13 +137,12 @@ public static class MediaEndpoints
     {
         if (request.DaysToKeep is null or <= 0)
             return AdminResults.BadRequest("DaysToKeep must be a positive number");
-        var count = await mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
-        AdminAudit.Log(context, logger, "Pruned", "Media", detail: $"DaysToKeep: {request.DaysToKeep}, DeletedCount: {count}");
-        return Results.Ok(new MediaCleanupResponseDto
-        {
-            Message = $"Pruned {count} media files older than {request.DaysToKeep} days",
-            DeletedCount = count
-        });
+        var result = await mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
+        AdminAudit.Log(
+            context, logger, "Pruned", "Media",
+            detail: $"DaysToKeep: {request.DaysToKeep}, DeletedCount: {result.DeletedCount}, FailedCount: {result.FailedCount}");
+        return Results.Ok(ToCleanupResponse(
+            $"media files older than {request.DaysToKeep} days", result));
     }
 
     private static async Task<IResult> GetCleanupStatus([FromServices] IMediaCleanupStatusService service) =>
@@ -190,6 +193,17 @@ public static class MediaEndpoints
     }
 
     private sealed class MediaEndpointLog;
+
+    private static MediaCleanupResponseDto ToCleanupResponse(
+        string description,
+        MediaDeletionResult result) => new()
+    {
+        Message = result.FailedCount == 0
+            ? $"Deleted {result.DeletedCount} {description}"
+            : $"Deleted {result.DeletedCount} {description}; {result.FailedCount} failed and remain tracked for retry",
+        DeletedCount = result.DeletedCount,
+        FailedCount = result.FailedCount
+    };
 
     private static MediaRecordResponse ToResponse(MediaRecord media) => new(
         media.Id,

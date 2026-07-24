@@ -4926,6 +4926,11 @@ export interface components {
        * @description Number of media files deleted by the operation.
        */
       deletedCount?: number;
+      /**
+       * Format: int32
+       * @description Number of media files that could not be deleted and remain tracked for retry.
+       */
+      failedCount?: number;
     };
     /** @description Status information for the media cleanup service.
      *     Provides operational visibility into cleanup runs, budget usage, and configuration. */

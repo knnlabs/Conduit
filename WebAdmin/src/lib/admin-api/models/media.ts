@@ -63,6 +63,7 @@ export interface MediaCleanupRequest {
 export interface MediaCleanupResponse {
   message: string;
   deletedCount: number;
+  failedCount: number;
 }
 
 // Search types

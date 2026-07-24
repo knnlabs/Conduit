@@ -27756,6 +27756,11 @@
             "type": "integer",
             "description": "Number of media files deleted by the operation.",
             "format": "int32"
+          },
+          "failedCount": {
+            "type": "integer",
+            "description": "Number of media files that could not be deleted and remain tracked for retry.",
+            "format": "int32"
           }
         },
         "description": "Response returned by media cleanup and pruning operations."

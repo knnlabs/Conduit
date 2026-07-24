@@ -25,6 +25,11 @@ namespace ConduitLLM.Admin.DTOs
         /// Number of media files deleted by the operation.
         /// </summary>
         public int DeletedCount { get; set; }
+
+        /// <summary>
+        /// Number of media files that could not be deleted and remain tracked for retry.
+        /// </summary>
+        public int FailedCount { get; set; }
     }
 
     /// <summary>
