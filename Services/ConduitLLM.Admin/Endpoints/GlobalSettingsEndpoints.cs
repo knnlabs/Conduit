@@ -5,6 +5,8 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Configuration.Messaging;
 
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +21,13 @@ public static class GlobalSettingsEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("GlobalSettings");
         group.MapGet("/", List).WithName("GlobalSettings_List").Produces<IEnumerable<GlobalSettingDto>>();
+        group.MapGet("/definitions", GetDefinitions)
+            .WithName("GlobalSettings_GetDefinitions")
+            .WithSummary("List typed global setting definitions")
+            .Produces<IReadOnlyList<GlobalSettingDefinitionDto>>()
+            .Produces(StatusCodes.Status401Unauthorized)
+            .Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status429TooManyRequests);
         group.MapGet("/{id:int}", GetById).WithName("GlobalSettings_GetById")
             .Produces<GlobalSettingDto>().Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/by-key/{key}", GetByKey).WithName("GlobalSettings_GetByKey")
@@ -36,9 +45,11 @@ public static class GlobalSettingsEndpoints
         group.MapDelete("/by-key/{key}", DeleteByKey).WithName("GlobalSettings_DeleteByKey")
             .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapGet("/cache/stats", GetCacheStats).WithName("GlobalSettings_GetCacheStats")
+            .WithMetadata(new ObsoleteAttribute(
+                "Use conduit cache metrics in the Infrastructure Grafana dashboard."))
             .Produces<GlobalSettingCacheStatsDto>();
         group.MapPost("/cache/reload", ReloadCache).WithName("GlobalSettings_ReloadCache")
-            .Produces(StatusCodes.Status204NoContent);
+            .Produces<GlobalSettingsReloadAcceptedResponse>(StatusCodes.Status202Accepted);
         group.MapPost("/cache/invalidate/{key}", InvalidateCache).WithName("GlobalSettings_InvalidateCache")
             .Produces(StatusCodes.Status204NoContent);
         return app;
@@ -46,6 +57,9 @@ public static class GlobalSettingsEndpoints
 
     private static async Task<IResult> List([FromServices] IAdminGlobalSettingService service) =>
         Results.Ok(await service.GetAllSettingsAsync());
+
+    private static IResult GetDefinitions() =>
+        Results.Ok(GlobalSettingDefinitionRegistry.All);
 
     private static async Task<IResult> GetById(int id, [FromServices] IAdminGlobalSettingService service)
     {
@@ -157,13 +171,21 @@ public static class GlobalSettingsEndpoints
     }
 
     private static async Task<IResult> ReloadCache(
-        [FromServices] IGlobalSettingsCacheService cacheService,
+        [FromServices] IEventBus eventBus,
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
-        await cacheService.ReloadAllSettingsAsync();
+        var requestId = Guid.NewGuid().ToString();
+        await eventBus.PublishAsync(new GlobalSettingsReloadRequested
+        {
+            RequestedBy = "Admin User",
+            CorrelationId = requestId
+        });
         AdminAudit.Log(context, Logger(loggerFactory), "Reloaded", "GlobalSettingsCache");
-        return Results.NoContent();
+        return Results.Accepted(value: new GlobalSettingsReloadAcceptedResponse(
+            "Global settings cache reload was accepted for all Admin and Gateway instances.",
+            requestId,
+            DateTime.UtcNow));
     }
 
     private static async Task<IResult> InvalidateCache(

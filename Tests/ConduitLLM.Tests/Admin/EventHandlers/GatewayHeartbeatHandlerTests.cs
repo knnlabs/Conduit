@@ -35,6 +35,9 @@ public class GatewayHeartbeatHandlerTests
         {
             InstanceId = "host_1234",
             Version = "1.2.3.4",
+            CommitSha = "abc123",
+            BuildTimestamp = "2026-07-23T12:00:00Z",
+            Status = "degraded",
             UptimeSeconds = 99,
             IntervalSeconds = 30
         };
@@ -45,6 +48,9 @@ public class GatewayHeartbeatHandlerTests
         recorded!.ServiceId.Should().Be(RedisKeys.ServiceHeartbeat.GatewayServiceId);
         recorded.InstanceId.Should().Be("host_1234");
         recorded.Version.Should().Be("1.2.3.4");
+        recorded.CommitSha.Should().Be("abc123");
+        recorded.BuildTimestamp.Should().Be("2026-07-23T12:00:00Z");
+        recorded.Status.Should().Be("degraded");
         recorded.UptimeSeconds.Should().Be(99);
         recorded.IntervalSeconds.Should().Be(30);
         recorded.ReportedAtUtc.Should().Be(message.Timestamp);

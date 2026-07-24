@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using StackExchange.Redis;
 
 namespace ConduitLLM.Configuration.Services;
 
@@ -13,9 +14,12 @@ namespace ConduitLLM.Configuration.Services;
 /// </summary>
 public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheService
 {
+    private const string ReloadChannelName = "conduit:global-settings:reload";
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<GlobalSettingsCacheService> _logger;
+    private readonly IConnectionMultiplexer? _redis;
     private readonly ConcurrentDictionary<string, string> _cache = new();
+    private readonly ConcurrentDictionary<string, byte> _processedReloads = new();
     private readonly SemaphoreSlim _lock = new(1, 1);
 
     // Setting keys
@@ -40,10 +44,12 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
 
     public GlobalSettingsCacheService(
         IServiceScopeFactory scopeFactory,
-        ILogger<GlobalSettingsCacheService> logger)
+        ILogger<GlobalSettingsCacheService> logger,
+        IConnectionMultiplexer? redis = null)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _redis = redis;
     }
 
     /// <summary>
@@ -56,6 +62,16 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
 
         try
         {
+            if (_redis != null)
+            {
+                await _redis.GetSubscriber().SubscribeAsync(
+                    RedisChannel.Literal(ReloadChannelName),
+                    (channel, value) =>
+                    {
+                        _ = channel;
+                        _ = HandleReloadBroadcastAsync(value.ToString());
+                    });
+            }
             await LoadAllSettingsAsync(cancellationToken);
             _logger.LogInformation("GlobalSettingsCacheService started successfully - {Count} settings loaded", _cache.Count);
         }
@@ -70,11 +86,14 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
     /// Stops the service and clears the cache.
     /// Called automatically by the hosting infrastructure.
     /// </summary>
-    public Task StopAsync(CancellationToken cancellationToken)
+    public async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("GlobalSettingsCacheService stopping");
+        if (_redis != null)
+        {
+            await _redis.GetSubscriber().UnsubscribeAsync(RedisChannel.Literal(ReloadChannelName));
+        }
         _cache.Clear();
-        return Task.CompletedTask;
     }
 
     public async Task<int> GetMaxAgenticIterationsAsync()
@@ -219,6 +238,44 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
         finally
         {
             _lock.Release();
+        }
+    }
+
+    public async Task PublishReloadAsync(string requestId)
+    {
+        var id = string.IsNullOrWhiteSpace(requestId)
+            ? Guid.NewGuid().ToString("N")
+            : requestId;
+        if (_redis == null)
+        {
+            if (_processedReloads.TryAdd(id, 0))
+            {
+                await ReloadAllSettingsAsync();
+            }
+            return;
+        }
+
+        await _redis.GetSubscriber().PublishAsync(
+            RedisChannel.Literal(ReloadChannelName),
+            id);
+    }
+
+    private async Task HandleReloadBroadcastAsync(string requestId)
+    {
+        if (string.IsNullOrWhiteSpace(requestId) || !_processedReloads.TryAdd(requestId, 0))
+        {
+            return;
+        }
+
+        try
+        {
+            await ReloadAllSettingsAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "Failed to process cluster-wide global settings reload {RequestId}",
+                requestId);
         }
     }
 

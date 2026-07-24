@@ -97,6 +97,15 @@ namespace ConduitLLM.Admin.DTOs
         public string Status { get; set; } = string.Empty;
 
         /// <summary>
+        /// Logical service version, <c>mixed</c> when active instances do not match, or null
+        /// for dependencies that do not expose an application version.
+        /// </summary>
+        public string? Version { get; set; }
+
+        /// <summary>Per-instance status for clustered application services.</summary>
+        public List<ServiceInstanceStatusDto> Instances { get; set; } = new();
+
+        /// <summary>
         /// How long the service has been running, or <c>null</c> when it is not known
         /// (e.g. a service reporting via heartbeat that has not been seen yet).
         /// </summary>
@@ -117,6 +126,20 @@ namespace ConduitLLM.Admin.DTOs
         /// Service-specific detail values (shape varies per service).
         /// </summary>
         public object Details { get; set; } = new();
+    }
+
+    /// <summary>Health and build identity for one application service instance.</summary>
+    public class ServiceInstanceStatusDto
+    {
+        public string InstanceId { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public string Version { get; set; } = string.Empty;
+        public string CommitSha { get; set; } = "dev";
+        public string BuildTimestamp { get; set; } = "unknown";
+        public TimeSpan Uptime { get; set; }
+        public DateTime LastHeartbeat { get; set; }
+        public double HeartbeatAgeSeconds { get; set; }
+        public double HeartbeatIntervalSeconds { get; set; }
     }
 
     /// <summary>

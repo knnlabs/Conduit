@@ -9,6 +9,13 @@
     <AssemblyVersion>3.0.0</AssemblyVersion>
     <FileVersion>3.0.0</FileVersion>
     <InformationalVersion>3.0.0</InformationalVersion>
+
+    <!--
+      Reproducible service build identity. Release/container builds override these
+      values; local builds deliberately identify themselves as development builds.
+    -->
+    <ConduitCommitSha Condition="'$(ConduitCommitSha)' == ''">dev</ConduitCommitSha>
+    <ConduitBuildTimestamp Condition="'$(ConduitBuildTimestamp)' == ''">unknown</ConduitBuildTimestamp>
     
     <!-- Keep track of when releases occur -->
     <ReleaseDate>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd"))</ReleaseDate>
@@ -26,4 +33,9 @@
     <RepositoryUrl>https://github.com/nickna/Conduit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="ConduitCommitSha" Value="$(ConduitCommitSha)" />
+    <AssemblyMetadata Include="ConduitBuildTimestamp" Value="$(ConduitBuildTimestamp)" />
+  </ItemGroup>
 </Project>

@@ -61,6 +61,7 @@ const navigationSections = [
     items: [
       { id: 'ip-filtering', label: 'IP Filtering', href: '/ip-filtering', icon: IconShield },
       { id: 'system-info', label: 'System Info', href: '/system-info', icon: IconInfoCircle },
+      { id: 'settings', label: 'Settings', href: '/settings', icon: IconSettings },
       { id: 'virtualkeys-discovery-preview', label: 'Discovery Preview', href: '/virtualkeys/discovery-preview', icon: IconEye },
       { id: 'media-assets', label: 'Media Assets', href: '/media-assets', icon: IconDatabase },
       { id: 'media-cleanup', label: 'Media Cleanup', href: '/media-assets/cleanup-status', icon: IconCoin },

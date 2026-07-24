@@ -1,10 +1,10 @@
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs.Monitoring;
+using ConduitLLM.Core.Diagnostics;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -91,30 +91,13 @@ public class AdminSystemInfoService : IAdminSystemInfoService
 
     private VersionInfo GetVersionInfo()
     {
-        var assembly = Assembly.GetExecutingAssembly();
-        var version = assembly.GetName().Version;
-        var versionString = version?.ToString() ?? "Unknown";
-
-        // Try to get build date from assembly metadata if available
-        DateTime? buildDate = null;
-        var buildDateAttribute = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-        if (buildDateAttribute != null)
-        {
-            string? buildInfo = buildDateAttribute.InformationalVersion;
-            if (!string.IsNullOrEmpty(buildInfo) && buildInfo.Contains("+"))
-            {
-                string dateString = buildInfo.Split('+')[1];
-                if (DateTime.TryParse(dateString, out var parsedDate))
-                {
-                    buildDate = parsedDate;
-                }
-            }
-        }
+        var build = BuildMetadata.FromAssembly(typeof(AdminSystemInfoService).Assembly);
 
         return new VersionInfo
         {
-            AppVersion = versionString,
-            BuildDate = buildDate
+            AppVersion = build.Version,
+            CommitSha = build.CommitSha,
+            BuildTimestamp = build.BuildTimestamp
         };
     }
 
@@ -133,7 +116,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         {
             RuntimeVersion = RuntimeInformation.FrameworkDescription,
             StartTime = _startTime,
-            Uptime = DateTime.Now - _startTime
+            Uptime = DateTime.UtcNow - _startTime.ToUniversalTime()
         };
     }
 
@@ -297,13 +280,12 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         try
         {
             counts.VirtualKeys = await _dbContext.VirtualKeys.CountAsync();
-            counts.Requests = await _dbContext.RequestLogs.CountAsync();
             counts.Settings = await _dbContext.GlobalSettings.CountAsync();
             counts.Providers = await _dbContext.Providers.CountAsync();
             counts.ModelMappings = await _dbContext.ModelProviderMappings.CountAsync();
 
-            _logger.LogDebug("Record counts: VirtualKeys={VirtualKeys}, Requests={Requests}, Providers={Providers}, Mappings={Mappings}",
-                counts.VirtualKeys, counts.Requests, counts.Providers, counts.ModelMappings);
+            _logger.LogDebug("Configuration inventory: VirtualKeys={VirtualKeys}, Providers={Providers}, Mappings={Mappings}",
+                counts.VirtualKeys, counts.Providers, counts.ModelMappings);
         }
         catch (Exception ex)
         {

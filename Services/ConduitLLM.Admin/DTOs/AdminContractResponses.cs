@@ -115,6 +115,11 @@ public sealed record CacheInvalidationPublishedResponse(
 
 public sealed record CacheServiceUnavailableResponse(string Message, string Note);
 
+public sealed record GlobalSettingsReloadAcceptedResponse(
+    string Message,
+    string RequestId,
+    DateTime AcceptedAt);
+
 public sealed record MediaRecordResponse(
     Guid Id,
     string StorageKey,

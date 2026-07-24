@@ -25,6 +25,7 @@
     <PackageReference Include="Polly" />
     <PackageReference Include="Polly.Extensions.Http" />
     <PackageReference Include="prometheus-net" />
+    <PackageReference Include="StackExchange.Redis" />
   </ItemGroup>
 
   <ItemGroup>

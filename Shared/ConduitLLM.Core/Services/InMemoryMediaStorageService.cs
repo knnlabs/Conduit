@@ -11,7 +11,7 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// In-memory implementation of media storage for development and testing.
     /// </summary>
-    public class InMemoryMediaStorageService : IMediaStorageService
+    public class InMemoryMediaStorageService : IMediaStorageService, IMediaStorageHealthProbe
     {
         private readonly ConcurrentDictionary<string, StoredMedia> _storage = new();
         private readonly ConcurrentDictionary<string, MultipartUploadSession> _multipartSessions = new();
@@ -480,5 +480,13 @@ namespace ConduitLLM.Core.Services
 
             return Task.FromResult(presignedUrl);
         }
+
+        /// <inheritdoc />
+        public Task<MediaStorageHealthProbeResult> ProbeAsync(CancellationToken cancellationToken) =>
+            Task.FromResult(new MediaStorageHealthProbeResult(
+                "degraded",
+                "in-memory",
+                "Media storage is ephemeral and will be lost when this process restarts",
+                true));
     }
 }

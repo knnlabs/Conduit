@@ -4,11 +4,16 @@ using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Messaging.Wolverine;
+using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+using StackExchange.Redis;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -38,33 +43,42 @@ namespace ConduitLLM.Admin.Endpoints
         /// Gets current service health status.
         /// </summary>
         /// <param name="dbContextFactory">Factory for the configuration database context.</param>
-        /// <param name="systemInfoService">System information service (database size).</param>
         /// <param name="healthCheckService">The Admin's registered ASP.NET health checks.</param>
         /// <param name="heartbeatStore">Store of cross-service liveness heartbeats.</param>
+        /// <param name="configuration">Runtime configuration used to identify messaging mode.</param>
+        /// <param name="hostEnvironment">Hosting environment used to assess in-memory messaging.</param>
+        /// <param name="mediaStorageProbe">Non-mutating probe for the configured media store.</param>
+        /// <param name="serviceProvider">Service provider used to resolve optional Redis connectivity.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Service health information.</returns>
         private static async Task<IResult> GetServiceHealth(
             [FromServices] IDbContextFactory<ConduitDbContext> dbContextFactory,
-            [FromServices] IAdminSystemInfoService systemInfoService,
             [FromServices] HealthCheckService healthCheckService,
             [FromServices] IServiceHeartbeatStore heartbeatStore,
+            [FromServices] IConfiguration configuration,
+            [FromServices] IHostEnvironment hostEnvironment,
+            [FromServices] IMediaStorageHealthProbe mediaStorageProbe,
+            [FromServices] IServiceProvider serviceProvider,
             CancellationToken cancellationToken)
         {
             using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
             var services = new List<ServiceStatusDto>();
 
-            // Gateway API — real liveness from the Gateway's heartbeat (#1067). The Admin never
-            // probes the Gateway over HTTP; the Gateway publishes a heartbeat event that the
-            // GatewayHeartbeatHandler records, and we derive status from how stale it is.
-            var gatewayHeartbeat = await heartbeatStore.GetAsync(
+            var gatewayHeartbeatsTask = heartbeatStore.GetAllAsync(
                 RedisKeys.ServiceHeartbeat.GatewayServiceId, cancellationToken);
-            services.Add(BuildGatewayStatus(gatewayHeartbeat));
+            var adminHeartbeatsTask = heartbeatStore.GetAllAsync(
+                RedisKeys.ServiceHeartbeat.AdminServiceId, cancellationToken);
+            await Task.WhenAll(gatewayHeartbeatsTask, adminHeartbeatsTask);
 
-            // Admin API — real readiness from this process's registered health checks (mirrors
-            // /health/ready), replacing the previous hardcoded "healthy".
-            var configuredKeys = await dbContext.VirtualKeys.CountAsync(cancellationToken);
-            services.Add(await BuildAdminStatusAsync(healthCheckService, configuredKeys, cancellationToken));
+            services.Add(BuildClusterServiceStatus(
+                "core-api",
+                "Gateway API",
+                gatewayHeartbeatsTask.Result));
+            services.Add(BuildClusterServiceStatus(
+                "admin-api",
+                "Admin API",
+                adminHeartbeatsTask.Result));
 
             // Database — genuinely probed (SELECT 1) with a real response time and best-effort
             // server uptime (replacing the previous 30-day placeholder).
@@ -75,15 +89,26 @@ namespace ConduitLLM.Admin.Endpoints
                 Id = "database",
                 Name = "PostgreSQL Database",
                 Status = dbHealthCheck.IsHealthy ? "healthy" : "unhealthy",
+                Version = dbContext.Database.GetDbConnection().ServerVersion,
                 Uptime = dbUptime,
                 LastCheck = DateTime.UtcNow,
                 ResponseTime = dbHealthCheck.ResponseTime,
                 Details = new
                 {
                     ConnectionPooling = true,
-                    DatabaseSize = await GetDatabaseSize(systemInfoService)
+                    Provider = dbContext.Database.ProviderName ?? "unknown"
                 }
             });
+
+            services.Add(await BuildRedisStatusAsync(
+                serviceProvider.GetService<IConnectionMultiplexer>(),
+                cancellationToken));
+            services.Add(await BuildMessagingStatusAsync(
+                healthCheckService,
+                configuration,
+                hostEnvironment,
+                cancellationToken));
+            services.Add(await BuildMediaStorageStatusAsync(mediaStorageProbe, cancellationToken));
 
             // Calculate overall health. "unknown" services (e.g. a Gateway not seen yet) are
             // not counted as healthy — they pull the rollup down to at least "degraded".
@@ -251,126 +276,289 @@ namespace ConduitLLM.Admin.Endpoints
             });
         }
 
-        /// <summary>
-        /// Builds the Gateway API status from its most recent heartbeat (#1067). Freshness
-        /// thresholds are derived from the interval the Gateway itself reported, so the two
-        /// services need not share configuration. Staleness is measured against the Admin's
-        /// receive time to avoid cross-service clock skew.
-        /// </summary>
-        private static ServiceStatusDto BuildGatewayStatus(ServiceHeartbeatSnapshot? heartbeat)
+        internal static ServiceStatusDto BuildClusterServiceStatus(
+            string id,
+            string name,
+            IReadOnlyList<ServiceHeartbeatSnapshot> heartbeats,
+            DateTime? nowUtc = null)
         {
-            const string id = "core-api";
-            const string name = "Gateway API";
-
-            if (heartbeat == null)
+            var now = nowUtc ?? DateTime.UtcNow;
+            if (heartbeats.Count == 0)
             {
                 return new ServiceStatusDto
                 {
                     Id = id,
                     Name = name,
                     Status = "unknown",
-                    Uptime = null,
-                    LastCheck = DateTime.UtcNow,
-                    ResponseTime = null,
+                    LastCheck = now,
                     Details = new
                     {
                         Source = "heartbeat",
-                        Reason = "No heartbeat received from the Gateway yet"
+                        HealthyInstances = 0,
+                        TotalInstances = 0,
+                        Reason = "No instance heartbeat has been received"
                     }
                 };
             }
 
-            var intervalSeconds = heartbeat.IntervalSeconds > 0
-                ? heartbeat.IntervalSeconds
-                : ServiceHeartbeatEvaluator.DefaultIntervalSeconds;
-            var ageSeconds = Math.Max(0, (DateTime.UtcNow - heartbeat.ReceivedAtUtc).TotalSeconds);
+            var instances = heartbeats.Select(heartbeat =>
+            {
+                var interval = heartbeat.IntervalSeconds > 0
+                    ? heartbeat.IntervalSeconds
+                    : ServiceHeartbeatEvaluator.DefaultIntervalSeconds;
+                var age = Math.Max(0, (now - heartbeat.ReceivedAtUtc).TotalSeconds);
+                var freshness = ServiceHeartbeatEvaluator.EvaluateStatus(age, interval);
+                var reported = NormalizeReportedStatus(heartbeat.Status);
+                return new ServiceInstanceStatusDto
+                {
+                    InstanceId = heartbeat.InstanceId,
+                    Status = WorstStatus(freshness, reported),
+                    Version = heartbeat.Version,
+                    CommitSha = heartbeat.CommitSha,
+                    BuildTimestamp = heartbeat.BuildTimestamp,
+                    Uptime = TimeSpan.FromSeconds(Math.Max(0, heartbeat.UptimeSeconds)),
+                    LastHeartbeat = heartbeat.ReceivedAtUtc,
+                    HeartbeatAgeSeconds = Math.Round(age, 1),
+                    HeartbeatIntervalSeconds = interval
+                };
+            }).OrderBy(instance => instance.InstanceId, StringComparer.Ordinal).ToList();
 
-            // Fresh within 2 intervals → healthy; within 4 → degraded (heartbeats delayed);
-            // older → unhealthy (heartbeats lost — the Gateway is likely down or unreachable).
-            var status = ServiceHeartbeatEvaluator.EvaluateStatus(ageSeconds, intervalSeconds);
-
+            var healthy = instances.Count(instance => instance.Status == "healthy");
+            var versions = instances.Select(instance => instance.Version).Distinct(StringComparer.Ordinal).ToArray();
             return new ServiceStatusDto
             {
                 Id = id,
                 Name = name,
-                Status = status,
-                Uptime = TimeSpan.FromSeconds(heartbeat.UptimeSeconds),
-                LastCheck = heartbeat.ReceivedAtUtc,
-                ResponseTime = null, // liveness signal — no request/response latency to report
+                Status = healthy == instances.Count
+                    ? "healthy"
+                    : healthy > 0
+                        ? "degraded"
+                        : "unhealthy",
+                Version = versions.Length == 1 ? versions[0] : "mixed",
+                Instances = instances,
+                Uptime = instances.Max(instance => instance.Uptime),
+                LastCheck = instances.Max(instance => instance.LastHeartbeat),
+                ResponseTime = null,
                 Details = new
                 {
                     Source = "heartbeat",
-                    heartbeat.InstanceId,
-                    heartbeat.Version,
-                    LastHeartbeatUtc = heartbeat.ReceivedAtUtc,
-                    heartbeat.ReportedAtUtc,
-                    HeartbeatAgeSeconds = Math.Round(ageSeconds, 1),
-                    HeartbeatIntervalSeconds = intervalSeconds
+                    HealthyInstances = healthy,
+                    TotalInstances = instances.Count
                 }
             };
         }
 
-        /// <summary>
-        /// Builds the Admin API status from this process's registered readiness health checks,
-        /// mirroring the <c>/health/ready</c> endpoint (#1067). Replaces the previous hardcoded
-        /// "healthy" with a real status and a measured response time.
-        /// </summary>
-        private static async Task<ServiceStatusDto> BuildAdminStatusAsync(
-            HealthCheckService healthCheckService,
-            int configuredKeys,
-            CancellationToken cancellationToken)
+        internal static async Task<ServiceStatusDto> BuildRedisStatusAsync(
+            IConnectionMultiplexer? redis,
+            CancellationToken cancellationToken,
+            bool? configuredOverride = null)
         {
+            var configured = configuredOverride
+                ?? !string.IsNullOrWhiteSpace(RedisUrlParser.ResolveConnectionString());
+            if (!configured)
+            {
+                return new ServiceStatusDto
+                {
+                    Id = "redis",
+                    Name = "Redis",
+                    Status = "degraded",
+                    LastCheck = DateTime.UtcNow,
+                    Details = new
+                    {
+                        Configured = false,
+                        Mode = "in-memory fallback",
+                        Description = "Redis is not configured; cluster-wide ephemeral state is unavailable"
+                    }
+                };
+            }
+
+            if (redis == null)
+            {
+                return new ServiceStatusDto
+                {
+                    Id = "redis",
+                    Name = "Redis",
+                    Status = "unhealthy",
+                    LastCheck = DateTime.UtcNow,
+                    Details = new { Configured = true, Error = "Redis connection is unavailable" }
+                };
+            }
+
             var stopwatch = Stopwatch.StartNew();
-            HealthReport report;
             try
             {
-                // Same predicate as MapHealthChecks("/health/ready"): "ready"-tagged (or untagged) checks.
-                report = await healthCheckService.CheckHealthAsync(
-                    registration => registration.Tags.Contains("ready") || registration.Tags.Count == 0,
-                    cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                var ping = await redis.GetDatabase().PingAsync();
+                var endpoint = redis.GetEndPoints().FirstOrDefault();
+                var version = endpoint == null ? null : redis.GetServer(endpoint).Version?.ToString();
+                stopwatch.Stop();
+                return new ServiceStatusDto
+                {
+                    Id = "redis",
+                    Name = "Redis",
+                    Status = "healthy",
+                    Version = version,
+                    LastCheck = DateTime.UtcNow,
+                    ResponseTime = (int)stopwatch.ElapsedMilliseconds,
+                    Details = new
+                    {
+                        Configured = true,
+                        PingMilliseconds = Math.Round(ping.TotalMilliseconds, 1)
+                    }
+                };
             }
-            catch (Exception)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 stopwatch.Stop();
                 return new ServiceStatusDto
                 {
-                    Id = "admin-api",
-                    Name = "Admin API",
+                    Id = "redis",
+                    Name = "Redis",
                     Status = "unhealthy",
-                    Uptime = GetProcessUptime(),
                     LastCheck = DateTime.UtcNow,
                     ResponseTime = (int)stopwatch.ElapsedMilliseconds,
-                    Details = new { ConfiguredKeys = configuredKeys, Error = "Health check execution failed" }
+                    Details = new { Configured = true, Error = ex.Message }
                 };
             }
-            stopwatch.Stop();
-
-            return new ServiceStatusDto
-            {
-                Id = "admin-api",
-                Name = "Admin API",
-                Status = MapHealthStatus(report.Status),
-                Uptime = GetProcessUptime(),
-                LastCheck = DateTime.UtcNow,
-                ResponseTime = (int)stopwatch.ElapsedMilliseconds,
-                Details = new
-                {
-                    ConfiguredKeys = configuredKeys,
-                    Checks = report.Entries.Select(entry => new
-                    {
-                        Name = entry.Key,
-                        Status = entry.Value.Status.ToString(),
-                        entry.Value.Description,
-                        DurationMs = Math.Round(entry.Value.Duration.TotalMilliseconds, 1)
-                    }).ToArray()
-                }
-            };
         }
 
-        private static string MapHealthStatus(HealthStatus status) => status switch
+        internal static async Task<ServiceStatusDto> BuildMessagingStatusAsync(
+            HealthCheckService healthCheckService,
+            IConfiguration configuration,
+            IHostEnvironment hostEnvironment,
+            CancellationToken cancellationToken)
         {
-            HealthStatus.Healthy => "healthy",
-            HealthStatus.Degraded => "degraded",
+            if (WolverineMessagingExtensions.UsesInMemoryTransport(configuration))
+            {
+                return new ServiceStatusDto
+                {
+                    Id = "messaging",
+                    Name = "Messaging",
+                    Status = hostEnvironment.IsDevelopment() ? "healthy" : "degraded",
+                    LastCheck = DateTime.UtcNow,
+                    Details = new
+                    {
+                        Backend = "Wolverine",
+                        Transport = "in-memory",
+                        Durable = false,
+                        Description = hostEnvironment.IsDevelopment()
+                            ? "In-memory transport is expected in Development"
+                            : "In-memory transport is non-durable outside Development"
+                    }
+                };
+            }
+
+            try
+            {
+                var report = await healthCheckService.CheckHealthAsync(
+                    registration => registration.Tags.Contains("messaging"),
+                    cancellationToken);
+                var hasChecks = report.Entries.Count > 0;
+                return new ServiceStatusDto
+                {
+                    Id = "messaging",
+                    Name = "Messaging",
+                    Status = hasChecks ? MapHealthStatus(report.Status) : "unhealthy",
+                    LastCheck = DateTime.UtcNow,
+                    ResponseTime = (int)report.TotalDuration.TotalMilliseconds,
+                    Details = new
+                    {
+                        Backend = "Wolverine",
+                        Transport = "PostgreSQL",
+                        Durable = true,
+                        Checks = report.Entries.Select(entry => new
+                        {
+                            Name = entry.Key,
+                            Status = entry.Value.Status.ToString(),
+                            entry.Value.Description
+                        }).ToArray(),
+                        Error = hasChecks ? null : "No messaging readiness check is registered"
+                    }
+                };
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                return new ServiceStatusDto
+                {
+                    Id = "messaging",
+                    Name = "Messaging",
+                    Status = "unhealthy",
+                    LastCheck = DateTime.UtcNow,
+                    Details = new { Backend = "Wolverine", Error = ex.Message }
+                };
+            }
+        }
+
+        internal static async Task<ServiceStatusDto> BuildMediaStorageStatusAsync(
+            IMediaStorageHealthProbe probe,
+            CancellationToken cancellationToken)
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                var result = await probe.ProbeAsync(timeout.Token);
+                stopwatch.Stop();
+                return new ServiceStatusDto
+                {
+                    Id = "media-storage",
+                    Name = "Media Storage",
+                    Status = result.Status,
+                    LastCheck = DateTime.UtcNow,
+                    ResponseTime = (int)stopwatch.ElapsedMilliseconds,
+                    Details = new
+                    {
+                        result.Mode,
+                        result.Description,
+                        result.Ephemeral,
+                        result.Bucket,
+                        result.Endpoint
+                    }
+                };
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException
+                || !cancellationToken.IsCancellationRequested)
+            {
+                stopwatch.Stop();
+                return new ServiceStatusDto
+                {
+                    Id = "media-storage",
+                    Name = "Media Storage",
+                    Status = "unhealthy",
+                    LastCheck = DateTime.UtcNow,
+                    ResponseTime = (int)stopwatch.ElapsedMilliseconds,
+                    Details = new
+                    {
+                        Mode = "s3",
+                        Error = timeout.IsCancellationRequested
+                            ? "S3 bucket probe timed out after 3 seconds"
+                            : ex.Message
+                    }
+                };
+            }
+        }
+
+        private static string NormalizeReportedStatus(string? status) =>
+            status?.ToLowerInvariant() is "healthy" or "degraded" or "unhealthy"
+                ? status.ToLowerInvariant()
+                : "healthy";
+
+        private static string WorstStatus(string left, string right) =>
+            StatusRank(left) >= StatusRank(right) ? left : right;
+
+        private static int StatusRank(string status) => status switch
+        {
+            "unhealthy" => 2,
+            "degraded" => 1,
+            _ => 0
+        };
+
+        private static string MapHealthStatus(
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus status) => status switch
+        {
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy => "healthy",
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded => "degraded",
             _ => "unhealthy"
         };
 
@@ -421,23 +609,5 @@ namespace ConduitLLM.Admin.Endpoints
             }
         }
 
-        private static async Task<string> GetDatabaseSize(IAdminSystemInfoService systemInfoService)
-        {
-            try
-            {
-                var systemInfo = await systemInfoService.GetSystemInfoAsync();
-                var size = systemInfo.Database.Size;
-                return !string.IsNullOrEmpty(size) ? size : "Unknown";
-            }
-            catch
-            {
-                return "Unknown";
-            }
-        }
-
-        private static TimeSpan GetProcessUptime()
-        {
-            return DateTime.UtcNow - Process.GetCurrentProcess().StartTime.ToUniversalTime();
-        }
     }
 }

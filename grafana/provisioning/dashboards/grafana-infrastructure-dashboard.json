@@ -104,7 +104,7 @@
       "id": 4,
       "gridPos": {"h": 4, "w": 4, "x": 12, "y": 2},
       "type": "stat",
-      "title": "Cache Hit Rate",
+      "title": "Redis Keyspace Hit Rate",
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
@@ -640,8 +640,137 @@
       "collapsed": false
     },
     {
+      "id": 24,
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 40},
+      "type": "stat",
+      "title": "Application Cache Hit Rate",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "100 * sum(rate(conduit_gateway_cache_lookups_total{result=\"hit\"}[5m])) / sum(rate(conduit_gateway_cache_lookups_total[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 80},
+              {"color": "green", "value": 95}
+            ]
+          },
+          "unit": "percent",
+          "decimals": 1,
+          "noValue": "N/A"
+        }
+      }
+    },
+    {
+      "id": 25,
+      "gridPos": {"h": 6, "w": 18, "x": 6, "y": 40},
+      "type": "timeseries",
+      "title": "Application Cache Lookup Rate by Result",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (cache, result) (rate(conduit_gateway_cache_lookups_total[5m]))",
+          "legendFormat": "{{cache}} {{result}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "ops",
+          "noValue": "N/A"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 26,
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 46},
+      "type": "timeseries",
+      "title": "Application Cache p95 Latency",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "histogram_quantile(0.95, sum by (le, cache, operation) (rate(conduit_gateway_cache_latency_seconds_bucket[5m])))",
+          "legendFormat": "{{cache}} {{operation}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "s",
+          "noValue": "N/A"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 27,
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 46},
+      "type": "timeseries",
+      "title": "Application Cache Invalidations",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (cache, reason) (rate(conduit_gateway_cache_invalidations_total[5m]))",
+          "legendFormat": "{{cache}} {{reason}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "ops",
+          "noValue": "N/A"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
+      "id": 28,
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 46},
+      "type": "timeseries",
+      "title": "Application Cache Errors",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum by (cache, operation) (rate(conduit_gateway_cache_errors_total[5m]))",
+          "legendFormat": "{{cache}} {{operation}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "unit": "ops",
+          "noValue": "N/A"
+        }
+      },
+      "options": {
+        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
+        "tooltip": {"mode": "multi"}
+      }
+    },
+    {
       "id": 22,
-      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 40},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 52},
       "type": "timeseries",
       "title": "Process Memory",
       "targets": [
@@ -677,7 +806,7 @@
     },
     {
       "id": 23,
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 40},
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 52},
       "type": "timeseries",
       "title": "GC Collections",
       "targets": [

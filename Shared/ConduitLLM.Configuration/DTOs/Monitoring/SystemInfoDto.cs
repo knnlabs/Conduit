@@ -42,8 +42,19 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         public string AppVersion { get; set; } = string.Empty;
 
         /// <summary>
-        /// Build date
+        /// Source commit used for the build.
         /// </summary>
+        public string CommitSha { get; set; } = "dev";
+
+        /// <summary>
+        /// UTC build timestamp, or <c>unknown</c> for a local development build.
+        /// </summary>
+        public string BuildTimestamp { get; set; } = "unknown";
+
+        /// <summary>
+        /// Legacy parsed build date. Prefer <see cref="BuildTimestamp"/>.
+        /// </summary>
+        [Obsolete("Use BuildTimestamp.")]
         public DateTime? BuildDate { get; set; }
     }
 
@@ -138,7 +149,10 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         /// <summary>
         /// Number of request logs
         /// </summary>
-        public int Requests { get; set; }
+        [Obsolete("Request log counting is intentionally omitted because it is expensive.")]
+        [System.Text.Json.Serialization.JsonIgnore(
+            Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public int? Requests { get; set; }
 
         /// <summary>
         /// Number of global settings

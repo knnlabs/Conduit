@@ -592,6 +592,25 @@ namespace ConduitLLM.Tests.Configuration.Services
                 async () => await _service.ReloadAllSettingsAsync());
         }
 
+        [Fact]
+        public async Task PublishReloadAsync_WithoutRedis_ReloadsOncePerRequest()
+        {
+            _mockRepository
+                .SetupSequence(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([new GlobalSetting { Id = 1, Key = "old", Value = "1" }])
+                .ReturnsAsync([new GlobalSetting { Id = 2, Key = "new", Value = "2" }]);
+            await _service.StartAsync(CancellationToken.None);
+
+            await _service.PublishReloadAsync("reload-1");
+            await _service.PublishReloadAsync("reload-1");
+
+            var stats = await _service.GetCacheStatsAsync();
+            ((List<string>)stats["CachedKeys"]).Should().ContainSingle("new");
+            _mockRepository.Verify(
+                repository => repository.GetAllUnboundedAsync(It.IsAny<CancellationToken>()),
+                Times.Exactly(2));
+        }
+
         #endregion
 
         #region GetCacheStatsAsync Tests

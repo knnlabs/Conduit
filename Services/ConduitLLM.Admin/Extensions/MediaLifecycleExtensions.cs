@@ -35,6 +35,8 @@ namespace ConduitLLM.Admin.Extensions
 
             // Register media storage service based on configuration
             RegisterMediaStorageService(services, configuration);
+            services.AddSingleton<IMediaStorageHealthProbe>(serviceProvider =>
+                (IMediaStorageHealthProbe)serviceProvider.GetRequiredService<IMediaStorageService>());
 
             // Register media deletion budget tracking service
             RegisterBudgetTrackingService(services, configuration, options);

@@ -22,11 +22,13 @@ namespace ConduitLLM.Admin.Services
         /// TTL for the persisted snapshot. Comfortably longer than several heartbeat intervals
         /// so a brief gap doesn't evict it; the reader decides staleness from the age.
         /// </summary>
-        private static readonly TimeSpan SnapshotTtl = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan MinimumSnapshotTtl = TimeSpan.FromMinutes(5);
+        private static readonly TimeSpan MaximumSnapshotTtl = TimeSpan.FromMinutes(30);
 
         private readonly IConnectionMultiplexer? _redis;
         private readonly ILogger<ServiceHeartbeatStore> _logger;
         private readonly ConcurrentDictionary<string, ServiceHeartbeatSnapshot> _inProcess = new();
+        private readonly ConcurrentDictionary<string, ServiceHeartbeatSnapshot> _latestByService = new();
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ServiceHeartbeatStore"/> class.
@@ -47,7 +49,9 @@ namespace ConduitLLM.Admin.Services
             ArgumentNullException.ThrowIfNull(heartbeat);
 
             // Always keep an in-process copy so a Redis-less single instance still works.
-            _inProcess[heartbeat.ServiceId] = heartbeat;
+            var instanceKey = GetInProcessKey(heartbeat.ServiceId, heartbeat.InstanceId);
+            _inProcess[instanceKey] = heartbeat;
+            _latestByService[heartbeat.ServiceId] = heartbeat;
 
             if (_redis == null)
             {
@@ -58,7 +62,15 @@ namespace ConduitLLM.Admin.Services
             {
                 var db = _redis.GetDatabase();
                 var json = JsonSerializer.Serialize(heartbeat);
-                await db.StringSetAsync(RedisKeys.ServiceHeartbeat.For(heartbeat.ServiceId), json, SnapshotTtl);
+                var ttl = CalculateTtl(heartbeat.IntervalSeconds);
+                await db.StringSetAsync(
+                    RedisKeys.ServiceHeartbeat.For(heartbeat.ServiceId, heartbeat.InstanceId),
+                    json,
+                    ttl);
+                await db.SetAddAsync(
+                    RedisKeys.ServiceHeartbeat.Index(heartbeat.ServiceId),
+                    heartbeat.InstanceId);
+                await db.KeyExpireAsync(RedisKeys.ServiceHeartbeat.Index(heartbeat.ServiceId), ttl);
             }
             catch (Exception ex)
             {
@@ -71,29 +83,118 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<ServiceHeartbeatSnapshot?> GetAsync(string serviceId, CancellationToken cancellationToken = default)
         {
+            var snapshots = await GetAllAsync(serviceId, cancellationToken);
+            if (snapshots.Count > 0)
+            {
+                return snapshots
+                    .OrderByDescending(snapshot => snapshot.ReceivedAtUtc)
+                    .First();
+            }
+
+            return _latestByService.TryGetValue(serviceId, out var latest)
+                && !IsExpired(latest, DateTime.UtcNow)
+                    ? latest
+                    : null;
+        }
+
+        /// <inheritdoc />
+        public async Task<IReadOnlyList<ServiceHeartbeatSnapshot>> GetAllAsync(
+            string serviceId,
+            CancellationToken cancellationToken = default)
+        {
             if (_redis != null)
             {
                 try
                 {
                     var db = _redis.GetDatabase();
-                    var json = await db.StringGetAsync(RedisKeys.ServiceHeartbeat.For(serviceId));
+                    var indexKey = RedisKeys.ServiceHeartbeat.Index(serviceId);
+                    var instanceIds = await db.SetMembersAsync(indexKey);
+                    if (instanceIds.Length > 0)
+                    {
+                        var keys = instanceIds
+                            .Select(value => (RedisKey)RedisKeys.ServiceHeartbeat.For(
+                                serviceId,
+                                value.ToString()))
+                            .ToArray();
+                        var values = await db.StringGetAsync(keys);
+                        var snapshots = new List<ServiceHeartbeatSnapshot>(values.Length);
+                        var expiredMembers = new List<RedisValue>();
 
-                    // Redis is authoritative when present: a missing key means "not seen
-                    // recently" (TTL expired or never written), so return null rather than a
-                    // stale in-process copy.
-                    return json.IsNullOrEmpty
-                        ? null
-                        : JsonSerializer.Deserialize<ServiceHeartbeatSnapshot>(json.ToString());
+                        for (var index = 0; index < values.Length; index++)
+                        {
+                            if (values[index].IsNullOrEmpty)
+                            {
+                                expiredMembers.Add(instanceIds[index]);
+                                continue;
+                            }
+
+                            var snapshot = JsonSerializer.Deserialize<ServiceHeartbeatSnapshot>(
+                                values[index].ToString());
+                            if (snapshot != null)
+                            {
+                                snapshots.Add(snapshot);
+                            }
+                        }
+
+                        if (expiredMembers.Count > 0)
+                        {
+                            await db.SetRemoveAsync(indexKey, expiredMembers.ToArray());
+                        }
+
+                        if (snapshots.Count > 0)
+                        {
+                            return snapshots;
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex,
-                        "Failed to read {ServiceId} heartbeat from Redis; falling back to in-process copy",
+                        "Failed to read {ServiceId} heartbeats from Redis; falling back to in-process copies",
                         serviceId);
                 }
             }
 
-            return _inProcess.TryGetValue(serviceId, out var snapshot) ? snapshot : null;
+            var now = DateTime.UtcNow;
+            var snapshotsInProcess = new List<ServiceHeartbeatSnapshot>();
+            foreach (var pair in _inProcess)
+            {
+                var snapshot = pair.Value;
+                if (!snapshot.ServiceId.Equals(serviceId, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (IsExpired(snapshot, now))
+                {
+                    _inProcess.TryRemove(pair.Key, out _);
+                    continue;
+                }
+
+                snapshotsInProcess.Add(snapshot);
+            }
+
+            return snapshotsInProcess;
         }
+
+        internal static TimeSpan CalculateTtl(double intervalSeconds)
+        {
+            var cadence = intervalSeconds > 0
+                ? TimeSpan.FromSeconds(intervalSeconds)
+                : TimeSpan.FromSeconds(ServiceHeartbeatEvaluator.DefaultIntervalSeconds);
+            var calculated = TimeSpan.FromTicks(cadence.Ticks * 10);
+            return calculated < MinimumSnapshotTtl
+                ? MinimumSnapshotTtl
+                : calculated > MaximumSnapshotTtl
+                    ? MaximumSnapshotTtl
+                    : calculated;
+        }
+
+        private static bool IsExpired(ServiceHeartbeatSnapshot snapshot, DateTime now) =>
+            snapshot.ReceivedAtUtc != default
+            && now - snapshot.ReceivedAtUtc > CalculateTtl(snapshot.IntervalSeconds);
+
+        private static string GetInProcessKey(string serviceId, string instanceId) =>
+            $"{serviceId}\n{instanceId}";
     }
 }

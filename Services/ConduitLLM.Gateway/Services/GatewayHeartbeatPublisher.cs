@@ -1,7 +1,10 @@
 using System.Diagnostics;
 
 using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Core.Diagnostics;
 using ConduitLLM.Core.Events;
+
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -24,13 +27,14 @@ namespace ConduitLLM.Gateway.Services
         private static readonly string InstanceIdentifier =
             $"{Environment.MachineName}_{Environment.ProcessId}";
 
-        private static readonly string ServiceVersion =
-            typeof(GatewayHeartbeatPublisher).Assembly.GetName().Version?.ToString() ?? "unknown";
+        private static readonly BuildMetadata ServiceBuild =
+            BuildMetadata.FromAssembly(typeof(GatewayHeartbeatPublisher).Assembly);
 
         private static readonly DateTime ProcessStartUtc =
             Process.GetCurrentProcess().StartTime.ToUniversalTime();
 
         private readonly IServiceProvider _serviceProvider;
+        private readonly HealthCheckService _healthCheckService;
         private readonly ILogger<GatewayHeartbeatPublisher> _logger;
         private readonly TimeSpan _interval;
 
@@ -39,10 +43,12 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public GatewayHeartbeatPublisher(
             IServiceProvider serviceProvider,
+            HealthCheckService healthCheckService,
             IConfiguration configuration,
             ILogger<GatewayHeartbeatPublisher> logger)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+            _healthCheckService = healthCheckService ?? throw new ArgumentNullException(nameof(healthCheckService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
             var seconds = configuration.GetValue("GatewayHeartbeat:IntervalSeconds", 30);
@@ -81,11 +87,22 @@ namespace ConduitLLM.Gateway.Services
                 // (a singleton BackgroundService cannot inject it directly).
                 using var scope = _serviceProvider.CreateScope();
                 var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+                var readiness = await _healthCheckService.CheckHealthAsync(
+                    registration => registration.Tags.Contains("ready") || registration.Tags.Count == 0,
+                    cancellationToken);
 
                 await eventBus.PublishAsync(new GatewayHeartbeat
                 {
                     InstanceId = InstanceIdentifier,
-                    Version = ServiceVersion,
+                    Version = ServiceBuild.Version,
+                    CommitSha = ServiceBuild.CommitSha,
+                    BuildTimestamp = ServiceBuild.BuildTimestamp,
+                    Status = readiness.Status switch
+                    {
+                        HealthStatus.Healthy => "healthy",
+                        HealthStatus.Degraded => "degraded",
+                        _ => "unhealthy"
+                    },
                     UptimeSeconds = (DateTime.UtcNow - ProcessStartUtc).TotalSeconds,
                     IntervalSeconds = _interval.TotalSeconds
                 }, cancellationToken);

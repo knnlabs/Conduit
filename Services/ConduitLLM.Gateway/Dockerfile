@@ -25,6 +25,9 @@ RUN dotnet restore "Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj"
 # ===== CACHE INVALIDATION POINT =====
 # This argument forces rebuild from here down when .NET code changes
 ARG CACHEBUST=1
+ARG VERSION=3.0.0
+ARG COMMIT_SHA=dev
+ARG BUILD_TIMESTAMP=unknown
 
 # Copy all source code (this and everything after will rebuild)
 COPY . .
@@ -33,6 +36,10 @@ COPY . .
 RUN dotnet publish "Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj" \
     -c Release \
     -o /app/publish \
+    -p:Version="$VERSION" \
+    -p:InformationalVersion="$VERSION" \
+    -p:ConduitCommitSha="$COMMIT_SHA" \
+    -p:ConduitBuildTimestamp="$BUILD_TIMESTAMP" \
     --no-restore
 
 # Runtime stage - Debian-based for reliability

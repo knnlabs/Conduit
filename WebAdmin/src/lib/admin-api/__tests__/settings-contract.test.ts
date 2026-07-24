@@ -49,8 +49,31 @@ describe('Global Settings generated operations', () => {
 
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('GET');
-    expect(request.url).toBe('https://admin.test/v1/admin/global-settings');
+    expect(request.url).toBe('https://admin.test/v1/admin/global-settings?page=1&pageSize=100');
     expect(request.headers.get('X-Master-Key')).toBe('master-key');
+  });
+
+  it('loads every settings page for the Advanced editor', async () => {
+    const secondSetting = {
+      ...setting,
+      id: 2,
+      key: 'Custom.SecondPage',
+    };
+    mockFetch
+      .mockResolvedValueOnce(response({
+        data: [setting],
+        pagination: { page: 1, pageSize: 100, totalItems: 2, totalPages: 2 },
+      }))
+      .mockResolvedValueOnce(response({
+        data: [secondSetting],
+        pagination: { page: 2, pageSize: 100, totalItems: 2, totalPages: 2 },
+      }));
+
+    const result = await client().settings.getGlobalSettings();
+
+    expect(result.settings).toEqual([setting, secondSetting]);
+    expect((mockFetch.mock.calls[1]?.[0] as Request).url)
+      .toBe('https://admin.test/v1/admin/global-settings?page=2&pageSize=100');
   });
 
   it('gets and URL-encodes a setting key', async () => {
@@ -99,9 +122,36 @@ describe('Global Settings generated operations', () => {
     expect((mockFetch.mock.calls[0]?.[0] as Request).url).toBe('https://admin.test/v1/admin/global-settings/cache/stats');
   });
 
+  it('gets typed setting definitions', async () => {
+    const definitions = [{
+      key: 'Agentic.MaxIterations',
+      displayName: 'Maximum agentic iterations',
+      description: 'Maximum loop count',
+      type: 'integer',
+      category: 'Agentic',
+      defaultValue: '5',
+      minimum: 1,
+      maximum: 100,
+      isFeatureOwned: false,
+    }];
+    mockFetch.mockResolvedValueOnce(response({
+      data: definitions,
+      pagination: { page: 1, pageSize: 50, totalItems: 1, totalPages: 1 },
+    }));
+
+    await expect(client().settings.getDefinitions()).resolves.toEqual(definitions);
+    expect((mockFetch.mock.calls[0]?.[0] as Request).url)
+      .toBe('https://admin.test/v1/admin/global-settings/definitions?page=1&pageSize=100');
+  });
+
   it('reloads the cache', async () => {
-    mockFetch.mockResolvedValueOnce(response(undefined, 204));
-    await expect(client().settings.reloadCache()).resolves.toBeUndefined();
+    const accepted = {
+      message: 'Reload accepted',
+      requestId: 'reload-123',
+      acceptedAt: '2026-07-23T18:00:00Z',
+    };
+    mockFetch.mockResolvedValueOnce(response(accepted, 202));
+    await expect(client().settings.reloadCache()).resolves.toEqual(accepted);
     const request = mockFetch.mock.calls[0]?.[0] as Request;
     expect(request.method).toBe('POST');
     expect(request.url).toBe('https://admin.test/v1/admin/global-settings/cache/reload');

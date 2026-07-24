@@ -45,7 +45,12 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogDebug("Getting all global settings");
 
                 var settings = await _globalSettingRepository.GetAllUnboundedAsync();
-                return settings.Select(s => s.ToDto()).ToList();
+                return settings
+                    .Where(setting => !setting.Key.Equals(
+                        GlobalSettingDefinitionRegistry.ProtectedWebAdminKey,
+                        StringComparison.Ordinal))
+                    .Select(s => s.ToDto())
+                    .ToList();
             }
             catch (Exception ex)
             {
@@ -95,12 +100,22 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogDebug("Creating new global setting with key: {Key}", LoggingSanitizer.S(setting.Key));
 
+                if (setting.Key.Equals(
+                    GlobalSettingDefinitionRegistry.ProtectedWebAdminKey,
+                    StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "WebAdmin_VirtualKey can only be managed through the explicit by-key bootstrap API.");
+                }
+
                 // Check if a setting with the same key already exists
                 var existingSetting = await _globalSettingRepository.GetByKeyAsync(setting.Key);
                 if (existingSetting != null)
                 {
                     throw new InvalidOperationException($"A global setting with key '{setting.Key}' already exists");
                 }
+
+                await ValidateValueAsync(setting.Key, setting.Value);
 
                 // Convert to entity
                 var entity = setting.ToEntity();
@@ -150,6 +165,19 @@ namespace ConduitLLM.Admin.Services
                 {
                     _logger.LogWarning("Global setting with ID {Id} not found", id);
                     return false;
+                }
+
+                if (existingSetting.Key.Equals(
+                    GlobalSettingDefinitionRegistry.ProtectedWebAdminKey,
+                    StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "WebAdmin_VirtualKey can only be managed through the explicit by-key bootstrap API.");
+                }
+
+                if (setting.Value != null)
+                {
+                    await ValidateValueAsync(existingSetting.Key, setting.Value);
                 }
 
                 // Track changed properties for event publishing
@@ -218,6 +246,8 @@ namespace ConduitLLM.Admin.Services
                 // Get existing setting to determine if this is an update or create
                 var existingSetting = await _globalSettingRepository.GetByKeyAsync(setting.Key);
                 var isCreate = existingSetting == null;
+
+                await ValidateValueAsync(setting.Key, setting.Value);
                 
                 // Upsert the setting
                 var result = await _globalSettingRepository.UpsertAsync(setting.Key, setting.Value, setting.Description);
@@ -267,6 +297,14 @@ namespace ConduitLLM.Admin.Services
                     return false;
                 }
 
+                if (setting.Key.Equals(
+                    GlobalSettingDefinitionRegistry.ProtectedWebAdminKey,
+                    StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "WebAdmin_VirtualKey can only be managed through the explicit by-key bootstrap API.");
+                }
+
                 var result = await _globalSettingRepository.DeleteAsync(id);
                 
                 if (result)
@@ -301,6 +339,14 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogDebug("Deleting global setting with key: {Key}", LoggingSanitizer.S(key));
 
+                if (key.Equals(
+                    GlobalSettingDefinitionRegistry.ProtectedWebAdminKey,
+                    StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException(
+                        "WebAdmin_VirtualKey cannot be deleted through global settings APIs.");
+                }
+
                 // Get the setting before deleting for event publishing
                 var setting = await _globalSettingRepository.GetByKeyAsync(key);
                 if (setting == null)
@@ -333,6 +379,35 @@ namespace ConduitLLM.Admin.Services
             {
                 _logger.LogError(ex, "Error deleting global setting with key {Key}", LoggingSanitizer.S(key));
                 throw;
+            }
+        }
+
+        private async Task ValidateValueAsync(string key, string value)
+        {
+            GlobalSettingDefinitionRegistry.ValidateValue(key, value);
+
+            if (key is not ("Agentic.MinIterations" or "Agentic.MaxIterations"))
+            {
+                return;
+            }
+
+            var otherKey = key == "Agentic.MinIterations"
+                ? "Agentic.MaxIterations"
+                : "Agentic.MinIterations";
+            var other = await _globalSettingRepository.GetByKeyAsync(otherKey);
+            var otherDefault = otherKey == "Agentic.MaxIterations" ? 5 : 1;
+            var otherValue = int.TryParse(other?.Value, out var parsedOther)
+                ? parsedOther
+                : otherDefault;
+            var candidate = int.Parse(value, System.Globalization.CultureInfo.InvariantCulture);
+            var minimum = key == "Agentic.MinIterations" ? candidate : otherValue;
+            var maximum = key == "Agentic.MaxIterations" ? candidate : otherValue;
+
+            if (minimum > maximum)
+            {
+                throw new ArgumentException(
+                    "Agentic.MinIterations cannot be greater than Agentic.MaxIterations.",
+                    nameof(value));
             }
         }
     }

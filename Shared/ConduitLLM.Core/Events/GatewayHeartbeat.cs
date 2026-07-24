@@ -20,6 +20,15 @@ namespace ConduitLLM.Core.Events
         /// <summary>Assembly version of the reporting Gateway.</summary>
         public string Version { get; init; } = string.Empty;
 
+        /// <summary>Source commit of the reporting Gateway build.</summary>
+        public string CommitSha { get; init; } = "dev";
+
+        /// <summary>UTC timestamp of the reporting Gateway build.</summary>
+        public string BuildTimestamp { get; init; } = "unknown";
+
+        /// <summary>Readiness status reported by the Gateway instance.</summary>
+        public string Status { get; init; } = "healthy";
+
         /// <summary>Wall-clock seconds the reporting Gateway process has been running.</summary>
         public double UptimeSeconds { get; init; }
 

@@ -5,6 +5,8 @@ import type { MaintenanceTaskConfig, ConfigValue } from './common-types';
 // version/os/database/runtime/recordCounts objects, not the previous flat shape.
 export interface VersionInfo {
   appVersion?: string;
+  commitSha?: string;
+  buildTimestamp?: string;
   buildDate?: string | null;
 }
 
@@ -31,7 +33,7 @@ export interface RuntimeInfo {
 
 export interface RecordCountsDto {
   virtualKeys?: number;
-  requests?: number;
+  requests?: number | null;
   settings?: number;
   providers?: number;
   modelMappings?: number;
