@@ -2,16 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Table of Contents
-1. [⚠️ CRITICAL: Safety First](#️-critical-safety-first)
-2. [Quick Start Guide](#quick-start-guide)
-3. [Development Environment](#development-environment)
-4. [Build & Verification](#build--verification)
-5. [Code Quality Standards](#code-quality-standards)
-6. [Architecture Essentials](#architecture-essentials)
-7. [Documentation Index](#documentation-index)
-8. [Repository & Collaboration](#repository--collaboration)
-
 ---
 
 # ⚠️ CRITICAL: Safety First
@@ -372,26 +362,7 @@ if (isMetricsData(event.data)) {
 - **ModelProviderMapping**: Links model aliases to Provider.Id (NOT ProviderType!)
 - **ModelCost**: Flexible cost configs via ModelCostMapping
 
-### Available Provider Types
-```csharp
-public enum ProviderType
-{
-    OpenAI = 1,
-    Groq = 2,
-    Replicate = 3,
-    Fireworks = 4,
-    OpenAICompatible = 5,
-    MiniMax = 6,
-    Ultravox = 7,
-    ElevenLabs = 8,     // Audio provider
-    Cerebras = 9,       // High-performance inference
-    SambaNova = 10,     // Ultra-fast inference
-    DeepInfra = 11,     // OpenAI-compatible LLM inference
-    Cloudflare = 12,    // Serverless AI on Cloudflare's global network
-    OpenRouter = 13,    // Multi-provider routing via OpenAI-compatible API
-    Meta = 14           // Meta Model API (Muse Spark models)
-}
-```
+> Provider types live in the `ProviderType` enum (`Shared/ConduitLLM.Configuration`) — read it for the current set.
 
 **Documentation:**
 - `docs/architecture/provider-system/provider-architecture.md` - Detailed architecture
