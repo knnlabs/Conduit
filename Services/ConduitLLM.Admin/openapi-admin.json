@@ -7875,7 +7875,8 @@
         "tags": [
           "Media"
         ],
-        "operationId": "Media_CleanupOrphaned",
+        "summary": "Reconcile storage objects against MediaRecord tracking rows",
+        "operationId": "Media_ReconcileStorage",
         "parameters": [
           {
             "name": "force",
@@ -27911,7 +27912,7 @@
         "properties": {
           "cleanupType": {
             "type": "string",
-            "description": "Stable cleanup phase name: expiration, orphan, or retention."
+            "description": "Stable cleanup phase name: expiration, reconciliation, or retention."
           },
           "isEnabled": {
             "type": "boolean",
@@ -28029,6 +28030,16 @@
           "storageBackend": {
             "type": "string",
             "description": "The resolved media storage backend (for example, S3 or InMemory)."
+          },
+          "untrackedObjectCount": {
+            "type": "integer",
+            "description": "Storage objects with no matching MediaRecord after the latest reconciliation.",
+            "format": "int32"
+          },
+          "untrackedBytes": {
+            "type": "integer",
+            "description": "Bytes held by storage objects with no matching MediaRecord.",
+            "format": "int64"
           },
           "lastRunTimeUtc": {
             "type": [

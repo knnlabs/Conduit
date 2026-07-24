@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestInfrastructure;
 using FluentAssertions;
@@ -82,6 +83,12 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockStorageService
                 .Setup(x => x.DeleteAsync(It.IsAny<string>()))
                 .ReturnsAsync(true);
+            _mockStorageService
+                .Setup(x => x.ListObjectsAsync(
+                    It.IsAny<string?>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageObjectPage());
 
             // Default repository setup - successful deletes
             _mockMediaRepository
@@ -105,7 +112,9 @@ namespace ConduitLLM.Tests.Admin.Services
             services.AddSingleton(_mockStorageGuard.Object);
             services.AddSingleton<IOptions<MediaLifecycleOptions>>(_engineOptions);
             services.AddSingleton(Mock.Of<ILogger<MediaDeletionEngine>>());
+            services.AddSingleton(Mock.Of<ILogger<MediaReconciliationService>>());
             services.AddScoped<IMediaDeletionEngine, MediaDeletionEngine>();
+            services.AddScoped<IMediaReconciliationService, MediaReconciliationService>();
             _serviceProvider = services.BuildServiceProvider();
         }
 
@@ -336,7 +345,7 @@ namespace ConduitLLM.Tests.Admin.Services
         public async Task RunScheduledCleanupAsync_TwoInstances_OnlyLeaderDeletes()
         {
             var options = CreateExecutionOptions();
-            options.EnableOrphanCleanup = false;
+            options.EnableReconciliation = false;
             options.EnableRetentionCleanup = false;
             var lockService = new InMemoryDistributedLockService(
                 Mock.Of<ILogger<InMemoryDistributedLockService>>());
@@ -395,7 +404,7 @@ namespace ConduitLLM.Tests.Admin.Services
         public async Task RunScheduledCleanupAsync_CleansExpiredMediaWithinDistributedLock()
         {
             var options = CreateExecutionOptions();
-            options.EnableOrphanCleanup = false;
+            options.EnableReconciliation = false;
             options.EnableRetentionCleanup = false;
             ArrangeLockAcquired();
 
@@ -426,24 +435,37 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
-        public async Task RunScheduledCleanupAsync_CleansOrphanedMedia()
+        public async Task RunScheduledCleanupAsync_ReconcilesOldUntrackedStorageObject()
         {
             var options = CreateExecutionOptions();
             options.EnableExpirationCleanup = false;
             options.EnableRetentionCleanup = false;
             ArrangeLockAcquired();
 
-            var orphan = CreateMediaRecord("orphaned-media", virtualKeyId: 999);
-            _mockMediaRepository
-                .Setup(x => x.GetOrphanedMediaAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaRecord> { orphan });
+            _mockStorageService
+                .Setup(x => x.ListObjectsAsync(
+                    null,
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageObjectPage
+                {
+                    Objects =
+                    [
+                        new MediaStorageObject
+                        {
+                            StorageKey = "untracked-media",
+                            SizeBytes = 1024,
+                            LastModifiedUtc = DateTime.UtcNow.AddDays(-7)
+                        }
+                    ]
+                });
 
             var service = CreateService(options);
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
-            _mockStorageService.Verify(x => x.DeleteAsync("orphaned-media"), Times.Once);
-            _mockMediaRepository.Verify(x => x.DeleteAsync(orphan.Id), Times.Once);
-            VerifyOperationStatus(MediaCleanupTypes.Orphan, "Completed");
+            _mockStorageService.Verify(x => x.DeleteAsync("untracked-media"), Times.Once);
+            _mockMediaRepository.Verify(x => x.DeleteAsync(It.IsAny<Guid>()), Times.Never);
+            VerifyOperationStatus(MediaCleanupTypes.Reconciliation, "Completed");
         }
 
         [Fact]
@@ -451,7 +473,7 @@ namespace ConduitLLM.Tests.Admin.Services
         {
             var options = CreateExecutionOptions();
             options.EnableExpirationCleanup = false;
-            options.EnableOrphanCleanup = false;
+            options.EnableReconciliation = false;
             ArrangeLockAcquired();
 
             SeedTestGroup(1);
@@ -470,7 +492,7 @@ namespace ConduitLLM.Tests.Admin.Services
         public async Task RunScheduledCleanupAsync_StopsPhaseWhenDeletionBudgetWouldBeExceeded()
         {
             var options = CreateExecutionOptions();
-            options.EnableOrphanCleanup = false;
+            options.EnableReconciliation = false;
             options.EnableRetentionCleanup = false;
             ArrangeLockAcquired();
 
@@ -524,10 +546,23 @@ namespace ConduitLLM.Tests.Admin.Services
             });
             await _context.SaveChangesAsync();
 
-            var orphan = CreateMediaRecord("healthy-orphaned-media", virtualKeyId: 999);
-            _mockMediaRepository
-                .Setup(x => x.GetOrphanedMediaAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(new List<MediaRecord> { orphan });
+            _mockStorageService
+                .Setup(x => x.ListObjectsAsync(
+                    null,
+                    It.IsAny<int>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageObjectPage
+                {
+                    Objects =
+                    [
+                        new MediaStorageObject
+                        {
+                            StorageKey = "healthy-untracked-media",
+                            SizeBytes = 1024,
+                            LastModifiedUtc = DateTime.UtcNow.AddDays(-7)
+                        }
+                    ]
+                });
             _mockStorageService
                 .Setup(x => x.DeleteAsync("failing-expired-media"))
                 .ThrowsAsync(new InvalidOperationException("storage unavailable"));
@@ -535,9 +570,9 @@ namespace ConduitLLM.Tests.Admin.Services
             var service = CreateService(options);
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
-            _mockStorageService.Verify(x => x.DeleteAsync("healthy-orphaned-media"), Times.Once);
+            _mockStorageService.Verify(x => x.DeleteAsync("healthy-untracked-media"), Times.Once);
             VerifyOperationStatus(MediaCleanupTypes.Expiration, "errors");
-            VerifyOperationStatus(MediaCleanupTypes.Orphan, "Completed");
+            VerifyOperationStatus(MediaCleanupTypes.Reconciliation, "Completed");
         }
 
         #endregion

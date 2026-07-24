@@ -56,7 +56,7 @@ export interface MediaFilters {
 
 // Cleanup types
 export interface MediaCleanupRequest {
-  type: 'expired' | 'orphaned' | 'prune';
+  type: 'expired' | 'reconciliation' | 'prune';
   daysToKeep?: number;
   force?: boolean;
 }
@@ -96,6 +96,8 @@ export interface MediaCleanupStatus {
   isEnabled: boolean;
   isDryRunMode: boolean;
   storageBackend: string;
+  untrackedObjectCount: number;
+  untrackedBytes: number;
   lastRunTimeUtc: string | null;
   lastRunStatus: string | null;
   lastRunTriggeredBy: string | null;
@@ -121,7 +123,7 @@ export interface MediaCleanupStatus {
 }
 
 export interface MediaCleanupOperationStatus {
-  cleanupType: 'expiration' | 'orphan' | 'retention';
+  cleanupType: 'expiration' | 'reconciliation' | 'retention';
   isEnabled: boolean;
   lastRunTimeUtc: string | null;
   lastRunStatus: string | null;

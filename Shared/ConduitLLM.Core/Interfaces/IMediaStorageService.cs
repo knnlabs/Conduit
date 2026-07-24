@@ -53,6 +53,17 @@ namespace ConduitLLM.Core.Interfaces
         Task<bool> ExistsAsync(string storageKey);
 
         /// <summary>
+        /// Lists one page of objects in the configured media store.
+        /// </summary>
+        /// <param name="continuationToken">Opaque token returned by the previous page.</param>
+        /// <param name="pageSize">Maximum number of objects to return.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task<MediaStorageObjectPage> ListObjectsAsync(
+            string? continuationToken = null,
+            int pageSize = 1000,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Stores video content with support for large files and progress tracking.
         /// </summary>
         /// <param name="content">The video content stream.</param>

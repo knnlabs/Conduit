@@ -60,7 +60,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
             Enabled = true,
             MonthlyDeleteBudget = 100,
             EnableExpirationCleanup = true,
-            EnableOrphanCleanup = false,
+            EnableReconciliation = false,
             EnableRetentionCleanup = true
         };
         var service = new MediaCleanupStatusService(
@@ -72,6 +72,7 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
             MediaCleanupTypes.Expiration, 2, 4096, 1.25, "Completed", "test-leader", "scheduled");
         await service.RecordOperationCompletionAsync(
             MediaCleanupTypes.Retention, 1, 1024, 0.5, "Completed with errors", "test-leader", "manual");
+        await service.RecordReconciliationDriftAsync(4, 8192);
 
         var status = await service.GetStatusAsync();
 
@@ -85,13 +86,15 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
                 LastRunFilesDeleted = 2,
                 LastRunBytesFreed = 4096L
             });
-        status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Orphan)
+        status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Reconciliation)
             .Should().Match<MediaCleanupOperationStatusDto>(item =>
                 !item.IsEnabled && item.LastRunTimeUtc == null);
         status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Retention)
             .LastRunStatus.Should().Be("Completed with errors");
         status.CurrentLeaderInstanceId.Should().Be("test-leader");
         status.StorageBackend.Should().Be("InMemory");
+        status.UntrackedObjectCount.Should().Be(4);
+        status.UntrackedBytes.Should().Be(8192);
     }
 
     public void Dispose()

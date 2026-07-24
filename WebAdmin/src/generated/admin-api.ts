@@ -1134,7 +1134,8 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations["Media_CleanupOrphaned"];
+    /** Reconcile storage objects against MediaRecord tracking rows */
+    post: operations["Media_ReconcileStorage"];
     delete?: never;
     options?: never;
     head?: never;
@@ -4907,7 +4908,7 @@ export interface components {
     };
     /** @description Last known status for one scheduled media cleanup phase. */
     MediaCleanupOperationStatusDto: {
-      /** @description Stable cleanup phase name: expiration, orphan, or retention. */
+      /** @description Stable cleanup phase name: expiration, reconciliation, or retention. */
       cleanupType?: string;
       /** @description Whether this cleanup phase is enabled by deploy-time configuration. */
       isEnabled?: boolean;
@@ -4982,6 +4983,16 @@ export interface components {
       isDryRunMode?: boolean;
       /** @description The resolved media storage backend (for example, S3 or InMemory). */
       storageBackend?: string;
+      /**
+       * Format: int32
+       * @description Storage objects with no matching MediaRecord after the latest reconciliation.
+       */
+      untrackedObjectCount?: number;
+      /**
+       * Format: int64
+       * @description Bytes held by storage objects with no matching MediaRecord.
+       */
+      untrackedBytes?: number;
       /**
        * Format: date-time
        * @description The timestamp of the last cleanup run (UTC).
@@ -11920,7 +11931,7 @@ export interface operations {
       };
     };
   };
-  Media_CleanupOrphaned: {
+  Media_ReconcileStorage: {
     parameters: {
       query?: {
         force?: boolean;

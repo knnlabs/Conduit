@@ -128,9 +128,6 @@ namespace ConduitLLM.Tests.Core.Fixtures
             mock.Setup(x => x.GetExpiredMediaAsync(It.IsAny<DateTime>()))
                 .ReturnsAsync(new List<MediaRecord>());
 
-            mock.Setup(x => x.GetOrphanedMediaAsync())
-                .ReturnsAsync(new List<MediaRecord>());
-
             mock.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
                 .ReturnsAsync(new List<MediaRecord>());
 

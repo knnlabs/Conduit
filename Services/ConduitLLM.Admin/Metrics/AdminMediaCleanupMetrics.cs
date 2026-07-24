@@ -31,6 +31,22 @@ namespace ConduitLLM.Admin.Metrics
                 });
 
         /// <summary>
+        /// Storage objects with no matching MediaRecord after the latest reconciliation.
+        /// </summary>
+        public static readonly Gauge UntrackedObjects = Prometheus.Metrics
+            .CreateGauge(
+                "conduit_admin_media_cleanup_untracked_objects",
+                "Storage objects with no matching MediaRecord");
+
+        /// <summary>
+        /// Bytes held by storage objects with no matching MediaRecord.
+        /// </summary>
+        public static readonly Gauge UntrackedBytes = Prometheus.Metrics
+            .CreateGauge(
+                "conduit_admin_media_cleanup_untracked_bytes",
+                "Bytes held by storage objects with no matching MediaRecord");
+
+        /// <summary>
         /// Total files deleted during cleanup.
         /// </summary>
         public static readonly Counter FilesDeleted = Prometheus.Metrics

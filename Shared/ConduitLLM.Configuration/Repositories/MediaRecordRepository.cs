@@ -101,26 +101,6 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
     }
 
     /// <inheritdoc/>
-    public async Task<List<MediaRecord>> GetOrphanedMediaAsync(CancellationToken cancellationToken = default)
-    {
-        return await ExecuteAsync(async context =>
-        {
-            // Find media records where the virtual key no longer exists
-            var orphanedMedia = await GetDbSet(context)
-                .AsNoTracking()
-                .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
-                .ToListAsync(cancellationToken);
-
-            if (orphanedMedia.Count > 0)
-            {
-                Logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
-            }
-
-            return orphanedMedia;
-        }, cancellationToken, "getting orphaned media");
-    }
-
-    /// <inheritdoc/>
     public async Task<bool> UpdateAccessStatsAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>

@@ -41,7 +41,9 @@ public static class MediaEndpoints
         media.MapPost("/cleanup/expired", CleanupExpiredMedia).WithName("Media_CleanupExpired")
             .Produces<MediaCleanupResponseDto>()
             .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
-        media.MapPost("/cleanup/orphaned", CleanupOrphanedMedia).WithName("Media_CleanupOrphaned")
+        // Keep the legacy route for compatibility; it now performs storage-side reconciliation.
+        media.MapPost("/cleanup/orphaned", ReconcileStorage).WithName("Media_ReconcileStorage")
+            .WithSummary("Reconcile storage objects against MediaRecord tracking rows")
             .Produces<MediaCleanupResponseDto>()
             .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
         media.MapPost("/cleanup/prune/preview", PreviewPruneMedia).WithName("Media_PreviewPrune")
@@ -136,16 +138,20 @@ public static class MediaEndpoints
             lockService,
             statusService,
             logger,
-            () => configurationContext.MediaRecords
-                .AsNoTracking()
-                .Where(media => media.ExpiresAt != null && media.ExpiresAt <= DateTime.UtcNow)
-                .ToListAsync(cancellationToken),
+            operation => DeleteManualCandidatesAsync(
+                deletionEngine,
+                operation,
+                () => configurationContext.MediaRecords
+                    .AsNoTracking()
+                    .Where(media => media.ExpiresAt != null && media.ExpiresAt <= DateTime.UtcNow)
+                    .ToListAsync(cancellationToken),
+                cancellationToken),
             cancellationToken);
     }
 
-    private static async Task<IResult> CleanupOrphanedMedia(
+    private static async Task<IResult> ReconcileStorage(
         HttpContext context,
-        [FromServices] IMediaRecordRepository mediaRepository,
+        [FromServices] IMediaReconciliationService reconciliationService,
         [FromServices] IMediaDeletionEngine deletionEngine,
         [FromServices] IDistributedLockService lockService,
         [FromServices] IMediaCleanupStatusService statusService,
@@ -154,15 +160,17 @@ public static class MediaEndpoints
         CancellationToken cancellationToken = default)
     {
         return await ExecuteManualCleanupAsync(
-            MediaCleanupTypes.Orphan,
-            "orphaned media",
+            MediaCleanupTypes.Reconciliation,
+            "untracked storage objects",
             force,
             context,
             deletionEngine,
             lockService,
             statusService,
             logger,
-            () => mediaRepository.GetOrphanedMediaAsync(cancellationToken),
+            operation => reconciliationService.ReconcileAsync(
+                operation,
+                cancellationToken),
             cancellationToken);
     }
 
@@ -210,9 +218,13 @@ public static class MediaEndpoints
             lockService,
             statusService,
             logger,
-            () => QueryPruneCandidatesAsync(
-                configurationContext,
-                request.DaysToKeep.Value,
+            operation => DeleteManualCandidatesAsync(
+                deletionEngine,
+                operation,
+                () => QueryPruneCandidatesAsync(
+                    configurationContext,
+                    request.DaysToKeep.Value,
+                    cancellationToken),
                 cancellationToken),
             cancellationToken);
     }
@@ -275,7 +287,7 @@ public static class MediaEndpoints
         IDistributedLockService lockService,
         IMediaCleanupStatusService statusService,
         ILogger<MediaEndpointLog> logger,
-        Func<Task<List<MediaRecord>>> getCandidates,
+        Func<MediaDeletionOperationContext, Task<MediaDeletionEngineResult>> executeCleanup,
         CancellationToken cancellationToken)
     {
         await using var lockHandle = await lockService.AcquireLockAsync(
@@ -297,13 +309,7 @@ public static class MediaEndpoints
             force);
         var result = await deletionEngine.ExecuteOperationAsync(
             operation,
-            async () =>
-            {
-                var candidates = await getCandidates();
-                return await deletionEngine.DeleteAsync(
-                    new MediaDeletionRequest(candidates, operation),
-                    cancellationToken);
-            },
+            () => executeCleanup(operation),
             cancellationToken);
 
         await statusService.RecordRunCompletionAsync(
@@ -324,6 +330,18 @@ public static class MediaEndpoints
                 $"FailedCount: {result.Failures}, WouldDeleteCount: {result.WouldDeleteCount}");
 
         return Results.Ok(ToCleanupResponse(description, result));
+    }
+
+    private static async Task<MediaDeletionEngineResult> DeleteManualCandidatesAsync(
+        IMediaDeletionEngine deletionEngine,
+        MediaDeletionOperationContext operation,
+        Func<Task<List<MediaRecord>>> getCandidates,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await getCandidates();
+        return await deletionEngine.DeleteAsync(
+            new MediaDeletionRequest(candidates, operation),
+            cancellationToken);
     }
 
     private static Task<List<MediaRecord>> QueryPruneCandidatesAsync(

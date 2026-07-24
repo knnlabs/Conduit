@@ -41,13 +41,6 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<List<MediaRecord>> GetMediaOlderThanAsync(DateTime cutoffDate, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets orphaned media records (where virtual key no longer exists).
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>List of orphaned media records.</returns>
-        Task<List<MediaRecord>> GetOrphanedMediaAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Updates access statistics for a media record.
         /// </summary>
         /// <param name="id">The ID of the media record.</param>

@@ -68,6 +68,36 @@ namespace ConduitLLM.Core.Models
     }
 
     /// <summary>
+    /// Metadata returned while enumerating objects in the configured media store.
+    /// </summary>
+    public sealed class MediaStorageObject
+    {
+        /// <summary>Gets or sets the storage key.</summary>
+        public string StorageKey { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the object size in bytes.</summary>
+        public long SizeBytes { get; set; }
+
+        /// <summary>Gets or sets when the object was last modified in UTC.</summary>
+        public DateTime LastModifiedUtc { get; set; }
+    }
+
+    /// <summary>
+    /// One page of objects from the configured media store.
+    /// </summary>
+    public sealed class MediaStorageObjectPage
+    {
+        /// <summary>Gets or sets the objects in this page.</summary>
+        public IReadOnlyList<MediaStorageObject> Objects { get; set; } =
+            Array.Empty<MediaStorageObject>();
+
+        /// <summary>
+        /// Gets or sets the opaque token for the next page, or null when enumeration is complete.
+        /// </summary>
+        public string? NextContinuationToken { get; set; }
+    }
+
+    /// <summary>
     /// Represents information about stored media.
     /// </summary>
     public class MediaInfo

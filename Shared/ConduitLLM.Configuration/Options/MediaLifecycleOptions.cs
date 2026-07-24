@@ -38,9 +38,20 @@ namespace ConduitLLM.Configuration.Options
         public bool EnableExpirationCleanup { get; set; } = true;
 
         /// <summary>
-        /// Enable cleanup of media whose owning virtual key no longer exists.
+        /// Enable storage reconciliation for objects that have no MediaRecord.
         /// </summary>
-        public bool EnableOrphanCleanup { get; set; } = true;
+        public bool EnableReconciliation { get; set; } = true;
+
+        /// <summary>
+        /// Minimum age in hours before an untracked storage object may be deleted.
+        /// Protects uploads that have not finished writing their MediaRecord.
+        /// </summary>
+        public int ReconciliationMinimumAgeHours { get; set; } = 48;
+
+        /// <summary>
+        /// Number of storage objects inspected per reconciliation page.
+        /// </summary>
+        public int ReconciliationPageSize { get; set; } = 1000;
 
         /// <summary>
         /// Enable cleanup based on virtual key group retention policies.

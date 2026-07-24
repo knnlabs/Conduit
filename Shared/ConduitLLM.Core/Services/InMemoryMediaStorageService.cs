@@ -167,6 +167,41 @@ namespace ConduitLLM.Core.Services
             return Task.FromResult(_storage.ContainsKey(storageKey));
         }
 
+        /// <inheritdoc/>
+        public Task<MediaStorageObjectPage> ListObjectsAsync(
+            string? continuationToken = null,
+            int pageSize = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            pageSize = Math.Clamp(pageSize, 1, 1000);
+
+            var ordered = _storage
+                .Where(entry =>
+                    continuationToken == null ||
+                    string.CompareOrdinal(entry.Key, continuationToken) > 0)
+                .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                .Take(pageSize + 1)
+                .ToList();
+            var hasMore = ordered.Count > pageSize;
+            var pageEntries = ordered.Take(pageSize).ToList();
+
+            return Task.FromResult(new MediaStorageObjectPage
+            {
+                Objects = pageEntries
+                    .Select(entry => new MediaStorageObject
+                    {
+                        StorageKey = entry.Key,
+                        SizeBytes = entry.Value.Data.LongLength,
+                        LastModifiedUtc = entry.Value.Info.CreatedAt
+                    })
+                    .ToList(),
+                NextContinuationToken = hasMore
+                    ? pageEntries[^1].Key
+                    : null
+            });
+        }
+
         private static string ComputeHash(byte[] data)
         {
             using var sha256 = SHA256.Create();

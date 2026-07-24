@@ -167,7 +167,7 @@ public sealed class MediaDeletionEngineTests
     {
         var engine = CreateEngine(new MediaLifecycleOptions());
         var operation = new MediaDeletionOperationContext(
-            MediaCleanupTypes.Orphan, "manual", "manual:test");
+            MediaCleanupTypes.Reconciliation, "manual", "manual:test");
 
         var result = await engine.ExecuteOperationAsync(
             operation,
@@ -177,7 +177,7 @@ public sealed class MediaDeletionEngineTests
 
         result.OperationStatus.Should().Be("Completed");
         _status.Verify(status => status.RecordOperationCompletionAsync(
-            MediaCleanupTypes.Orphan,
+            MediaCleanupTypes.Reconciliation,
             3,
             900,
             It.IsAny<double>(),

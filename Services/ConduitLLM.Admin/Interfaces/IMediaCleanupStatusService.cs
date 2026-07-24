@@ -45,6 +45,14 @@ namespace ConduitLLM.Admin.Interfaces
             CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Records the untracked storage drift remaining after reconciliation.
+        /// </summary>
+        Task RecordReconciliationDriftAsync(
+            int untrackedObjectCount,
+            long untrackedBytes,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets whether the cleanup service is enabled via runtime toggle.
         /// </summary>
         Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default);

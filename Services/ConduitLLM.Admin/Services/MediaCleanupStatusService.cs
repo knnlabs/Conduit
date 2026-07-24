@@ -26,12 +26,14 @@ namespace ConduitLLM.Admin.Services
         // Redis keys
         private const string REDIS_KEY_LAST_RUN = "media:cleanup:last-run";
         private const string REDIS_KEY_OPERATION_PREFIX = "media:cleanup:last-run:";
+        private const string REDIS_KEY_RECONCILIATION_DRIFT = "media:cleanup:reconciliation-drift";
         private const string REDIS_KEY_LEADER = "media:cleanup:current-leader";
 
         // In-process fallback keeps status useful for single-instance deployments without Redis.
         private LastRunInfo? _lastRunFallback;
         private string? _leaderFallback;
         private readonly ConcurrentDictionary<string, LastRunInfo> _operationRunFallback = new();
+        private ReconciliationDriftInfo _reconciliationDriftFallback = new();
 
         /// <summary>
         /// GlobalSetting key for the runtime enabled toggle.
@@ -83,6 +85,7 @@ namespace ConduitLLM.Admin.Services
 
             // Get last run info from Redis
             var lastRunInfo = await GetLastRunInfoAsync();
+            var reconciliationDrift = await GetReconciliationDriftAsync();
             var operationStatuses = new List<MediaCleanupOperationStatusDto>();
             foreach (var cleanupType in MediaCleanupTypes.All)
             {
@@ -152,6 +155,8 @@ namespace ConduitLLM.Admin.Services
                 IsEnabled = isEnabled,
                 IsDryRunMode = _options.DryRunMode,
                 StorageBackend = MediaStorageConfigurationGuard.GetBackendName(storageService),
+                UntrackedObjectCount = reconciliationDrift.UntrackedObjectCount,
+                UntrackedBytes = reconciliationDrift.UntrackedBytes,
                 LastRunTimeUtc = lastRunInfo?.LastRunTimeUtc,
                 LastRunStatus = lastRunInfo?.Status,
                 LastRunTriggeredBy = lastRunInfo?.TriggeredBy,
@@ -217,6 +222,40 @@ namespace ConduitLLM.Admin.Services
             _logger.LogDebug(
                 "Recorded {CleanupType} cleanup completion: {Status}, {FilesDeleted} files, {Duration:F2}s",
                 cleanupType, status, filesDeleted, durationSeconds);
+        }
+
+        /// <inheritdoc />
+        public async Task RecordReconciliationDriftAsync(
+            int untrackedObjectCount,
+            long untrackedBytes,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var drift = new ReconciliationDriftInfo
+            {
+                UntrackedObjectCount = untrackedObjectCount,
+                UntrackedBytes = untrackedBytes,
+                ObservedAtUtc = DateTime.UtcNow
+            };
+            _reconciliationDriftFallback = drift;
+
+            if (_redis == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var db = _redis.GetDatabase();
+                await db.StringSetAsync(
+                    REDIS_KEY_RECONCILIATION_DRIFT,
+                    JsonSerializer.Serialize(drift),
+                    TimeSpan.FromDays(7));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording reconciliation drift");
+            }
         }
 
         private async Task PersistRunInfoAsync(
@@ -403,10 +442,33 @@ namespace ConduitLLM.Admin.Services
         private bool IsOperationEnabled(string cleanupType) => cleanupType switch
         {
             MediaCleanupTypes.Expiration => _options.EnableExpirationCleanup,
-            MediaCleanupTypes.Orphan => _options.EnableOrphanCleanup,
+            MediaCleanupTypes.Reconciliation => _options.EnableReconciliation,
             MediaCleanupTypes.Retention => _options.EnableRetentionCleanup,
             _ => false
         };
+
+        private async Task<ReconciliationDriftInfo> GetReconciliationDriftAsync()
+        {
+            if (_redis == null)
+            {
+                return _reconciliationDriftFallback;
+            }
+
+            try
+            {
+                var db = _redis.GetDatabase();
+                var json = await db.StringGetAsync(REDIS_KEY_RECONCILIATION_DRIFT);
+                return json.IsNullOrEmpty
+                    ? _reconciliationDriftFallback
+                    : JsonSerializer.Deserialize<ReconciliationDriftInfo>(json.ToString())
+                        ?? _reconciliationDriftFallback;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading reconciliation drift");
+                return _reconciliationDriftFallback;
+            }
+        }
 
         private async Task<LastRunInfo?> GetLastRunInfoAsync(string? cleanupType = null)
         {
@@ -473,6 +535,13 @@ namespace ConduitLLM.Admin.Services
             public string? Status { get; set; }
             public string? LeaderInstanceId { get; set; }
             public string? TriggeredBy { get; set; }
+        }
+
+        private sealed class ReconciliationDriftInfo
+        {
+            public int UntrackedObjectCount { get; set; }
+            public long UntrackedBytes { get; set; }
+            public DateTime? ObservedAtUtc { get; set; }
         }
     }
 }

@@ -22,6 +22,16 @@ namespace ConduitLLM.Admin.DTOs
         public string StorageBackend { get; set; } = "Unavailable";
 
         /// <summary>
+        /// Storage objects with no matching MediaRecord after the latest reconciliation.
+        /// </summary>
+        public int UntrackedObjectCount { get; set; }
+
+        /// <summary>
+        /// Bytes held by storage objects with no matching MediaRecord.
+        /// </summary>
+        public long UntrackedBytes { get; set; }
+
+        /// <summary>
         /// The timestamp of the last cleanup run (UTC).
         /// Null if no cleanup has run yet.
         /// </summary>
@@ -126,7 +136,7 @@ namespace ConduitLLM.Admin.DTOs
     public class MediaCleanupOperationStatusDto
     {
         /// <summary>
-        /// Stable cleanup phase name: expiration, orphan, or retention.
+        /// Stable cleanup phase name: expiration, reconciliation, or retention.
         /// </summary>
         public string CleanupType { get; set; } = string.Empty;
 
@@ -172,12 +182,12 @@ namespace ConduitLLM.Admin.DTOs
     public static class MediaCleanupTypes
     {
         public const string Expiration = "expiration";
-        public const string Orphan = "orphan";
+        public const string Reconciliation = "reconciliation";
         public const string Retention = "retention";
         public const string VirtualKey = "virtual-key";
 
         public static readonly IReadOnlyList<string> All =
-            new[] { Expiration, Orphan, Retention };
+            new[] { Expiration, Reconciliation, Retention };
     }
 
     /// <summary>

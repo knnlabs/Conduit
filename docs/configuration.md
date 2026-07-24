@@ -63,22 +63,31 @@ of the areas, not a copy of that file:
 ### Scheduled media lifecycle cleanup
 
 The Admin service is the single owner of scheduled media cleanup. Each cycle acquires a PostgreSQL
-distributed lock before running explicit expiration, orphan, and retention-policy cleanup, so a
-multi-instance deployment does not run the same cycle concurrently. The Gateway only records media
-lifecycle metadata; it does not schedule cleanup.
+distributed lock before running explicit expiration, storage reconciliation, and retention-policy
+cleanup, so a multi-instance deployment does not run the same cycle concurrently. The Gateway only
+records media lifecycle metadata; it does not schedule cleanup.
 
 Set `MediaLifecycle__Enabled=true` to start the scheduler and configure its polling interval with
 `MediaLifecycle__ScheduleIntervalMinutes`. The three phases can be controlled independently with
-`MediaLifecycle__EnableExpirationCleanup`, `MediaLifecycle__EnableOrphanCleanup`, and
+`MediaLifecycle__EnableExpirationCleanup`, `MediaLifecycle__EnableReconciliation`, and
 `MediaLifecycle__EnableRetentionCleanup`. Cleanup defaults to `MediaLifecycle__DryRunMode=true`;
 set it to `false` only after reviewing the status endpoint and logs. All phases share
 `MediaLifecycle__MonthlyDeleteBudget`, batch-size, rate-limit, and dry-run safeguards.
 
+Storage reconciliation enumerates the configured S3-compatible bucket (or in-memory development
+store), compares object keys with `MediaRecord` rows, and reports the count and bytes that are
+untracked. In a non-dry run it deletes untracked objects only after they are older than
+`MediaLifecycle__ReconciliationMinimumAgeHours` (48 hours by default); newer objects are never
+deleted. The `VirtualKey` → `MediaRecord` foreign key deliberately retains `ON DELETE CASCADE`.
+That keeps key deletion transactional, while the independent storage sweep recovers objects left
+behind by a failed pre-cascade storage deletion or another partial write.
+
 The Admin media cleanup status endpoint reports both the aggregate cycle and the last outcome of
-each phase. Prometheus metrics use a `cleanup_type` label with `expiration`, `orphan`, or
-`retention`. When `MediaLifecycle__TestVirtualKeyGroups` is set, expiration and retention are
-limited to those groups and orphan cleanup is skipped because an orphan no longer has group
-ownership that can be scoped safely.
+each phase. Prometheus metrics use a `cleanup_type` label with `expiration`, `reconciliation`, or
+`retention`, and expose `conduit_admin_media_cleanup_untracked_objects` and
+`conduit_admin_media_cleanup_untracked_bytes`. When `MediaLifecycle__TestVirtualKeyGroups` is set,
+expiration and retention are limited to those groups and reconciliation is skipped because an
+untracked object no longer has group ownership that can be scoped safely.
 
 ### Reliable SignalR queue delivery
 

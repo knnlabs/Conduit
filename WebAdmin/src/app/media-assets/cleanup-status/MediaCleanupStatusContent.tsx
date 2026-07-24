@@ -349,6 +349,29 @@ export default function MediaCleanupStatusContent() {
         </Stack>
       </Card>
 
+      {/* Reconciliation drift */}
+      <Card withBorder shadow="sm">
+        <Title order={4} mb="md">Storage Reconciliation</Title>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Paper p="md" withBorder>
+            <Text size="sm" c="dimmed">Untracked Objects</Text>
+            <Text size="xl" fw={700}>
+              {status.untrackedObjectCount.toLocaleString()}
+            </Text>
+          </Paper>
+          <Paper p="md" withBorder>
+            <Text size="sm" c="dimmed">Untracked Bytes</Text>
+            <Text size="xl" fw={700}>
+              {formatBytes(status.untrackedBytes)}
+            </Text>
+          </Paper>
+        </SimpleGrid>
+        <Text size="xs" c="dimmed" mt="md">
+          Latest observed storage objects without matching media records. The minimum-age safety
+          window protects uploads that may still be registering.
+        </Text>
+      </Card>
+
       {/* Last Run Info */}
       <Card withBorder shadow="sm">
         <Title order={4} mb="md">Last Run</Title>

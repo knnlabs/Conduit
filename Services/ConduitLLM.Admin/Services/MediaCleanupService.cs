@@ -177,8 +177,9 @@ namespace ConduitLLM.Admin.Services
 
             using var scope = _serviceScopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
-            var mediaRepository = scope.ServiceProvider.GetRequiredService<IMediaRecordRepository>();
             var deletionEngine = scope.ServiceProvider.GetRequiredService<IMediaDeletionEngine>();
+            var reconciliationService =
+                scope.ServiceProvider.GetRequiredService<IMediaReconciliationService>();
             var statusService = scope.ServiceProvider.GetService<IMediaCleanupStatusService>();
             var totalDeleted = 0;
             long totalBytesFreed = 0;
@@ -209,15 +210,14 @@ namespace ConduitLLM.Admin.Services
                     operationFailures += result.Failures;
                 }
 
-                if (_options.EnableOrphanCleanup)
+                if (_options.EnableReconciliation)
                 {
                     var operation = new MediaDeletionOperationContext(
-                        MediaCleanupTypes.Orphan, "scheduled", _instanceId);
+                        MediaCleanupTypes.Reconciliation, "scheduled", _instanceId);
                     var result = await deletionEngine.ExecuteOperationAsync(
                         operation,
-                        () => ProcessOrphanedMediaAsync(
-                            deletionEngine, operation, mediaRepository,
-                            processedRecordIds, stoppingToken),
+                        () => reconciliationService.ReconcileAsync(
+                            operation, stoppingToken),
                         stoppingToken);
                     totalDeleted += result.FilesDeleted;
                     totalBytesFreed += result.BytesFreed;
@@ -305,39 +305,6 @@ namespace ConduitLLM.Admin.Services
             return await deletionEngine.DeleteAsync(
                 new MediaDeletionRequest(
                     expiredMedia,
-                    operation,
-                    ProcessedRecordIds: processedRecordIds),
-                stoppingToken);
-        }
-
-        private async Task<MediaDeletionEngineResult> ProcessOrphanedMediaAsync(
-            IMediaDeletionEngine deletionEngine,
-            MediaDeletionOperationContext operation,
-            IMediaRecordRepository mediaRepository,
-            HashSet<Guid> processedRecordIds,
-            CancellationToken stoppingToken)
-        {
-            if (_options.TestVirtualKeyGroups.Any())
-            {
-                _logger.LogInformation(
-                    "Skipping orphan cleanup because test virtual key groups are configured and orphan ownership cannot be scoped safely");
-                return await deletionEngine.DeleteAsync(
-                    new MediaDeletionRequest(
-                        Array.Empty<MediaRecord>(),
-                        operation,
-                        ProcessedRecordIds: processedRecordIds,
-                        StatusOverride: "Skipped: test virtual key group scope is active"),
-                    stoppingToken);
-            }
-
-            var orphanedMedia = await mediaRepository.GetOrphanedMediaAsync(stoppingToken);
-            _logger.LogInformation(
-                "Found {Count} orphaned media files eligible for cleanup",
-                orphanedMedia.Count);
-
-            return await deletionEngine.DeleteAsync(
-                new MediaDeletionRequest(
-                    orphanedMedia,
                     operation,
                     ProcessedRecordIds: processedRecordIds),
                 stoppingToken);

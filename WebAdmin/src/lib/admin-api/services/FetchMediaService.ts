@@ -49,7 +49,7 @@ export class FetchMediaService {
     const force = request.force ?? false;
     if (request.type === 'expired') return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/expired', HttpMethod.POST,
       (c, o) => c.POST('/v1/admin/media-assets/cleanup/expired', { ...o, params: { query: { force } } }), config) as Promise<MediaCleanupResponse>;
-    if (request.type === 'orphaned') return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/orphaned', HttpMethod.POST,
+    if (request.type === 'reconciliation') return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/orphaned', HttpMethod.POST,
       (c, o) => c.POST('/v1/admin/media-assets/cleanup/orphaned', { ...o, params: { query: { force } } }), config) as Promise<MediaCleanupResponse>;
     if (request.type !== 'prune') throw new Error('Invalid cleanup type');
     const body = { daysToKeep: request.daysToKeep, force };

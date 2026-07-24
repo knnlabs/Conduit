@@ -214,19 +214,11 @@ namespace ConduitLLM.Tests.Core.Services
                 new MediaRecord { Id = Guid.NewGuid(), MediaType = "video", SizeBytes = 2500000 }
             };
 
-            var orphanedMedia = new List<MediaRecord>
-            {
-                new MediaRecord { Id = Guid.NewGuid() }
-            };
-
             _mockMediaRepository.Setup(x => x.GetStorageStatsByProviderAsync())
                 .ReturnsAsync(byProvider);
 
             _mockMediaRepository.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
                 .ReturnsAsync(allMedia);
-
-            _mockMediaRepository.Setup(x => x.GetOrphanedMediaAsync())
-                .ReturnsAsync(orphanedMedia);
 
             // Act
             var result = await _service.GetOverallStorageStatsAsync();
@@ -235,7 +227,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.NotNull(result);
             Assert.Equal(3000000, result.TotalSizeBytes); // Sum of all media sizes
             Assert.Equal(3, result.TotalFiles);
-            Assert.Equal(1, result.OrphanedFiles);
+            Assert.Equal(0, result.OrphanedFiles);
             Assert.Equal(byProvider, result.ByProvider);
             
             // Check byMediaType structure

@@ -159,7 +159,8 @@ namespace ConduitLLM.Core.Interfaces
         public int TotalFiles { get; set; }
 
         /// <summary>
-        /// Gets or sets the number of orphaned files.
+        /// Gets or sets the legacy database-orphan count. Database cascades keep this at zero;
+        /// storage drift is exposed by the Admin media-cleanup status endpoint.
         /// </summary>
         public int OrphanedFiles { get; set; }
 

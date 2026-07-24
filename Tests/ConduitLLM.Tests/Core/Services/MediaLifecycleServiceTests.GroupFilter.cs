@@ -69,9 +69,6 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(allMedia);
             _mockMediaRepository.Setup(x => x.GetStorageStatsByProviderAsync())
                 .ReturnsAsync(providerStats);
-            _mockMediaRepository.Setup(x => x.GetOrphanedMediaAsync())
-                .ReturnsAsync(new List<MediaRecord>());
-
             // Act
             var result = await service.GetOverallStorageStatsAsync();
 
@@ -210,9 +207,6 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync(allMedia);
             _mockMediaRepository.Setup(x => x.GetStorageStatsByProviderAsync())
                 .ReturnsAsync(new Dictionary<string, long>());
-            _mockMediaRepository.Setup(x => x.GetOrphanedMediaAsync())
-                .ReturnsAsync(new List<MediaRecord>());
-
             // Act
             var result = await service.GetOverallStorageStatsAsync();
 

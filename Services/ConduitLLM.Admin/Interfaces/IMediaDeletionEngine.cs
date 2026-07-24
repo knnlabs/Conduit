@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Admin.Interfaces;
 
@@ -55,7 +56,8 @@ public sealed record MediaDeletionRequest(
     MediaDeletionOperationContext Operation,
     int? GroupId = null,
     ISet<Guid>? ProcessedRecordIds = null,
-    string? StatusOverride = null);
+    string? StatusOverride = null,
+    IReadOnlyCollection<MediaStorageObject>? UntrackedStorageObjects = null);
 
 /// <summary>
 /// Result of a guarded deletion operation.

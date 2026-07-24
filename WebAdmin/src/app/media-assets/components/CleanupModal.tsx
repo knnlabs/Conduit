@@ -8,7 +8,7 @@ import { withAdminClient } from '@/lib/client/adminClient';
 import type { MediaCleanupPreview } from '@/lib/admin-api/models/media';
 
 async function runCleanup(
-  type: 'expired' | 'orphaned' | 'prune',
+  type: 'expired' | 'reconciliation' | 'prune',
   daysToKeep?: number,
   force = false
 ): Promise<void> {
@@ -81,11 +81,11 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
     successMessage: 'Expired media cleaned up successfully',
   });
 
-  const { loading: orphanedLoading, handleConfirm: handleOrphaned } = useConfirmModal({
+  const { loading: reconciliationLoading, handleConfirm: handleReconciliation } = useConfirmModal({
     onClose,
     onSuccess,
-    confirmAction: () => runCleanup('orphaned'),
-    successMessage: 'Orphaned media cleaned up successfully',
+    confirmAction: () => runCleanup('reconciliation'),
+    successMessage: 'Storage reconciliation completed successfully',
   });
 
   const { loading: pruneLoading, handleConfirm: handlePrune } = useConfirmModal({
@@ -98,8 +98,8 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
   });
 
   const loading = useMemo(
-    () => expiredLoading || orphanedLoading || pruneLoading || previewLoading,
-    [expiredLoading, orphanedLoading, previewLoading, pruneLoading]
+    () => expiredLoading || reconciliationLoading || pruneLoading || previewLoading,
+    [expiredLoading, reconciliationLoading, previewLoading, pruneLoading]
   );
   const destructivePrune = force || !dryRunMode;
   const confirmationMatches = !destructivePrune ||
@@ -149,20 +149,21 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
           </div>
 
           <div>
-            <Text fw={500} mb="xs">Cleanup Orphaned Media</Text>
+            <Text fw={500} mb="xs">Reconcile Storage</Text>
             <Text size="sm" c="dimmed" mb="sm">
-              Remove media files that belong to deleted virtual keys.
+              Find storage objects without tracking records. Objects newer than the configured
+              safety window are always protected.
             </Text>
             <Button
               variant="light"
               color="orange"
               leftSection={<IconTrash size={16} />}
-              onClick={() => void handleOrphaned()}
-              loading={orphanedLoading}
-              disabled={loading && !orphanedLoading}
+              onClick={() => void handleReconciliation()}
+              loading={reconciliationLoading}
+              disabled={loading && !reconciliationLoading}
               fullWidth
             >
-              Clean Orphaned Media
+              Reconcile Storage
             </Button>
           </div>
 

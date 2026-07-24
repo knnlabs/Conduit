@@ -138,7 +138,6 @@ namespace ConduitLLM.Core.Services
             {
                 List<MediaRecord> allMedia;
                 Dictionary<string, long> byProvider;
-                List<MediaRecord> orphanedMedia;
                 
                 if (virtualKeyGroupId.HasValue)
                 {
@@ -162,12 +161,10 @@ namespace ConduitLLM.Core.Services
                     
                     byProvider = allMedia.GroupBy(m => m.Provider ?? "unknown")
                         .ToDictionary(g => g.Key, g => g.Sum(m => m.SizeBytes ?? 0));
-                    orphanedMedia = new List<MediaRecord>(); // No orphaned media when filtering by group
                 }
                 else
                 {
                     byProvider = await _mediaRepository.GetStorageStatsByProviderAsync();
-                    orphanedMedia = await _mediaRepository.GetOrphanedMediaAsync();
                     
                     // Get all media records to calculate proper stats by type
                     allMedia = await _mediaRepository.GetMediaOlderThanAsync(DateTime.UtcNow.AddYears(10));
@@ -199,7 +196,9 @@ namespace ConduitLLM.Core.Services
                 {
                     TotalSizeBytes = allMedia.Sum(m => m.SizeBytes ?? 0),
                     TotalFiles = allMedia.Count,
-                    OrphanedFiles = orphanedMedia.Count,
+                    // FK cascade makes database-side orphan rows impossible. Storage-side
+                    // drift is reported by MediaCleanupStatusDto after reconciliation.
+                    OrphanedFiles = 0,
                     ByProvider = byProvider,
                     ByMediaType = byMediaType,
                     StorageByVirtualKey = storageByVirtualKey
