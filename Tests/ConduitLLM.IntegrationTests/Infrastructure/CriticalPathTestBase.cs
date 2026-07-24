@@ -51,7 +51,7 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
         };
 
         var groupResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyGroupResponse>(
-            "/api/VirtualKeyGroups",
+            "/v1/admin/virtual-key-groups",
             createGroupRequest);
 
         groupResponse.Success.Should().BeTrue($"Virtual key group creation should succeed: {groupResponse.Error}");
@@ -68,7 +68,7 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
         };
 
         var keyResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyResponse>(
-            "/api/VirtualKeys",
+            "/v1/admin/virtual-keys",
             createKeyRequest);
 
         keyResponse.Success.Should().BeTrue($"Virtual key creation should succeed: {keyResponse.Error}");
@@ -86,10 +86,9 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
     /// </summary>
     protected async Task<decimal> FlushAndGetBalanceAsync(int groupId)
     {
-        // Trigger batch spend flush
+        // Trigger batch spend flush (parameters are query-string based on the v1 endpoint)
         var flushResponse = await _apiClient.AdminPostAsync<object>(
-            "/api/batch-spending/flush",
-            new { reason = "Critical path test balance verification", priority = "Normal" });
+            $"/v1/admin/batch-spending-jobs/flush?reason={Uri.EscapeDataString("Critical path test balance verification")}&priority=Normal");
 
         if (!flushResponse.Success)
         {
@@ -104,7 +103,7 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
 
         // Get updated balance
         var balanceResponse = await _apiClient.AdminGetAsync<CreateVirtualKeyGroupResponse>(
-            $"/api/VirtualKeyGroups/{groupId}");
+            $"/v1/admin/virtual-key-groups/{groupId}");
 
         balanceResponse.Success.Should().BeTrue($"Failed to fetch updated balance: {balanceResponse.Error}");
         return balanceResponse.Data!.Balance;
@@ -170,25 +169,25 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
 
     /// <summary>
     /// Disables a virtual key by updating it via the Admin API.
+    /// Filters the key list by group — the unfiltered list is paginated and the
+    /// newly created key may not be on the first page.
     /// </summary>
-    protected async Task DisableVirtualKeyAsync(string virtualKey)
+    protected async Task DisableVirtualKeyAsync(int groupId)
     {
-        // Extract the key hash from the virtual key to find its ID
-        // Virtual keys are in format "cvk_xxxx" and the hash is stored in the database
-        var response = await _apiClient.AdminGetAsync<List<VirtualKeyListItem>>("/api/VirtualKeys");
+        var response = await _apiClient.AdminGetAsync<VirtualKeyListResponse>(
+            $"/v1/admin/virtual-keys?virtualKeyGroupId={groupId}");
         response.Success.Should().BeTrue($"Failed to list virtual keys: {response.Error}");
 
-        var keyInfo = response.Data?.FirstOrDefault(k => k.KeyName.Contains(_context.TestRunId));
-        if (keyInfo != null)
-        {
-            // Disable the key
-            var updateResponse = await _apiClient.AdminPutAsync<object>(
-                $"/api/VirtualKeys/{keyInfo.Id}",
-                new { isEnabled = false });
+        var keyInfo = response.Data?.Data.FirstOrDefault(k => k.KeyName.Contains(_context.TestRunId));
+        keyInfo.Should().NotBeNull($"Expected to find a key for test run {_context.TestRunId} in group {groupId}");
 
-            updateResponse.Success.Should().BeTrue($"Failed to disable virtual key: {updateResponse.Error}");
-            _logger.LogInformation("Disabled virtual key: {KeyId}", keyInfo.Id);
-        }
+        var updateResponse = await _apiClient.AdminPatchAsync<object>(
+            $"/v1/admin/virtual-keys/{keyInfo!.Id}",
+            new { isEnabled = false },
+            ifMatch: "*");
+
+        updateResponse.Success.Should().BeTrue($"Failed to disable virtual key: {updateResponse.Error}");
+        _logger.LogInformation("Disabled virtual key: {KeyId}", keyInfo.Id);
     }
 
     // =====================================================
@@ -229,19 +228,18 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
         string? overrideApiKey = null,
         string? nameSuffix = null)
     {
-        var providerTypeEnum = GetProviderTypeEnum(providerConfig.Provider.Type);
         var suffix = nameSuffix ?? "Test";
 
         var createProviderRequest = new CreateProviderRequest
         {
             ProviderName = $"{_config.Defaults.TestPrefix}{suffix}_{_context.TestRunId}",
-            ProviderType = providerTypeEnum,
+            ProviderType = providerConfig.Provider.Type,
             BaseUrl = providerConfig.Provider.BaseUrl,
             IsEnabled = true
         };
 
         var providerResponse = await _apiClient.AdminPostAsync<CreateProviderResponse>(
-            "/api/ProviderCredentials",
+            "/v1/admin/providers",
             createProviderRequest);
         providerResponse.Success.Should().BeTrue($"Provider creation failed: {providerResponse.Error}");
 
@@ -255,7 +253,7 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
         };
 
         var keyResponse = await _apiClient.AdminPostAsync<CreateProviderKeyResponse>(
-            $"/api/ProviderCredentials/{providerResponse.Data!.Id}/keys",
+            $"/v1/admin/providers/{providerResponse.Data!.Id}/keys",
             createKeyRequest);
         keyResponse.Success.Should().BeTrue($"Key creation failed: {keyResponse.Error}");
 
@@ -279,17 +277,24 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
         var modelConfig = providerConfig.Models[0];
         var modelAlias = $"{modelConfig.Alias}_{_context.TestRunId}";
 
+        // The mapping must reference a model catalog association; resolve it first
+        _context.ModelProviderTypeAssociationId ??= await ModelCatalogSetup.ResolveAssociationAsync(
+            _apiClient,
+            providerId,
+            modelAlias,
+            modelConfig.Actual,
+            _logger);
+
         var createMappingRequest = new CreateModelMappingRequest
         {
-            ModelId = modelAlias,
+            ModelAlias = modelAlias,
             ProviderId = providerId,
             ProviderModelId = modelConfig.Actual,
-            SupportsChat = modelConfig.Capabilities.Chat,
-            SupportsStreaming = modelConfig.Capabilities.Streaming
+            ModelProviderTypeAssociationId = _context.ModelProviderTypeAssociationId.Value
         };
 
         var mappingResponse = await _apiClient.AdminPostAsync<CreateModelMappingResponse>(
-            "/api/ModelProviderMapping",
+            "/v1/admin/model-provider-mappings",
             createMappingRequest);
         mappingResponse.Success.Should().BeTrue($"Model mapping failed: {mappingResponse.Error}");
 
@@ -319,13 +324,13 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
         var createCostRequest = new CreateModelCostRequest
         {
             CostName = $"{_context.ModelAlias}_cost",
-            ModelProviderMappingIds = new List<int> { _context.ModelMappingId.Value },
+            ModelProviderTypeAssociationIds = new List<int> { _context.ModelProviderTypeAssociationId!.Value },
             InputCostPerMillionTokens = modelConfig.Cost.InputPerMillion,
             OutputCostPerMillionTokens = modelConfig.Cost.OutputPerMillion
         };
 
         var costResponse = await _apiClient.AdminPostAsync<CreateModelCostResponse>(
-            "/api/ModelCosts",
+            "/v1/admin/model-costs",
             createCostRequest);
         costResponse.Success.Should().BeTrue($"Model cost creation failed: {costResponse.Error}");
 
@@ -337,8 +342,8 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
     /// </summary>
     protected async Task DisableProviderAsync(int providerId)
     {
-        var updateResponse = await _apiClient.AdminPutAsync<object>(
-            $"/api/ProviderCredentials/{providerId}",
+        var updateResponse = await _apiClient.AdminPatchAsync<object>(
+            $"/v1/admin/providers/{providerId}",
             new { isEnabled = false });
 
         updateResponse.Success.Should().BeTrue($"Failed to disable provider: {updateResponse.Error}");
@@ -350,8 +355,8 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
     /// </summary>
     protected async Task DisableModelMappingAsync(int mappingId)
     {
-        var updateResponse = await _apiClient.AdminPutAsync<object>(
-            $"/api/ModelProviderMapping/{mappingId}",
+        var updateResponse = await _apiClient.AdminPatchAsync<object>(
+            $"/v1/admin/model-provider-mappings/{mappingId}",
             new { isEnabled = false });
 
         updateResponse.Success.Should().BeTrue($"Failed to disable mapping: {updateResponse.Error}");
@@ -360,8 +365,13 @@ public abstract class CriticalPathTestBase : IClassFixture<TestFixture>, IClassF
 }
 
 /// <summary>
-/// DTO for listing virtual keys.
+/// DTO for listing virtual keys. The v1 endpoint wraps the list in a {data: [...]} envelope.
 /// </summary>
+public class VirtualKeyListResponse
+{
+    public List<VirtualKeyListItem> Data { get; set; } = new();
+}
+
 public class VirtualKeyListItem
 {
     public int Id { get; set; }

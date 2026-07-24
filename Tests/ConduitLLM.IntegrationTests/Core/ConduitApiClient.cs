@@ -47,6 +47,15 @@ public class ConduitApiClient : IDisposable
     {
         return await ExecuteAsync<T>(HttpMethod.Put, _config.Environment.AdminApiUrl, endpoint, payload, true);
     }
+
+    /// <summary>
+    /// Sends a PATCH to the Admin API. Virtual keys, virtual key groups, and IP filters
+    /// require an If-Match header; "*" matches any current version.
+    /// </summary>
+    public async Task<ApiResponse<T>> AdminPatchAsync<T>(string endpoint, object? payload = null, string? ifMatch = null)
+    {
+        return await ExecuteAsync<T>(HttpMethod.Patch, _config.Environment.AdminApiUrl, endpoint, payload, true, ifMatch: ifMatch);
+    }
     
     public async Task<ApiResponse<T>> AdminDeleteAsync<T>(string endpoint)
     {
@@ -67,15 +76,21 @@ public class ConduitApiClient : IDisposable
     
     // Generic execution method
     private async Task<ApiResponse<T>> ExecuteAsync<T>(
-        HttpMethod method, 
-        string baseUrl, 
-        string endpoint, 
+        HttpMethod method,
+        string baseUrl,
+        string endpoint,
         object? payload,
         bool isAdmin,
-        string? virtualKey = null)
+        string? virtualKey = null,
+        string? ifMatch = null)
     {
         var url = $"{baseUrl}{endpoint}";
         var request = new HttpRequestMessage(method, url);
+
+        if (ifMatch != null)
+        {
+            request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+        }
         
         // Add authentication
         if (isAdmin)

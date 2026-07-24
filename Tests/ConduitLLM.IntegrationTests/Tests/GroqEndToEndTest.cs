@@ -42,22 +42,16 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             // Step 1: Create Provider
             // ========================================
             _logger.LogInformation("Step 1: Creating Groq provider");
-            
-            var providerTypeEnum = _providerConfig.Provider.Type.ToLower() switch
-            {
-                "groq" => 2,
-                _ => throw new InvalidOperationException($"Unknown provider type: {_providerConfig.Provider.Type}")
-            };
-            
+
             var createProviderRequest = new CreateProviderRequest
             {
                 ProviderName = $"{_config.Defaults.TestPrefix}{_providerConfig.Provider.Name}_{context.TestRunId}",
-                ProviderType = providerTypeEnum,
+                ProviderType = _providerConfig.Provider.Type,
                 BaseUrl = _providerConfig.Provider.BaseUrl,
                 IsEnabled = true
             };
             
-            var providerResponse = await _apiClient.AdminPostAsync<CreateProviderResponse>("/api/ProviderCredentials", createProviderRequest);
+            var providerResponse = await _apiClient.AdminPostAsync<CreateProviderResponse>("/v1/admin/providers", createProviderRequest);
             providerResponse.Success.Should().BeTrue($"Provider creation should succeed: {providerResponse.Error}");
             providerResponse.Data.Should().NotBeNull();
             context.ProviderId = providerResponse.Data!.Id;
@@ -76,7 +70,7 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             };
             
             var keyResponse = await _apiClient.AdminPostAsync<CreateProviderKeyResponse>(
-                $"/api/ProviderCredentials/{context.ProviderId}/keys", 
+                $"/v1/admin/providers/{context.ProviderId}/keys",
                 createKeyRequest);
             
             keyResponse.Success.Should().BeTrue($"Key creation should succeed: {keyResponse.Error}");
@@ -86,22 +80,33 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             _logger.LogInformation("✓ Provider key created: {KeyId}", context.ProviderKeyId);
             
             // ========================================
+            // Step 2b: Resolve Model Catalog Association
+            // ========================================
+            _logger.LogInformation("Step 2b: Resolving model catalog association");
+
+            var modelConfig = _providerConfig.Models[0];
+            context.ModelProviderTypeAssociationId = await ModelCatalogSetup.ResolveAssociationAsync(
+                _apiClient,
+                context.ProviderId!.Value,
+                $"{modelConfig.Alias}_{context.TestRunId}",
+                modelConfig.Actual,
+                _logger);
+
+            // ========================================
             // Step 3: Create Model Mapping
             // ========================================
             _logger.LogInformation("Step 3: Creating model mapping");
-            
-            var modelConfig = _providerConfig.Models[0];
+
             var createMappingRequest = new CreateModelMappingRequest
             {
-                ModelId = $"{modelConfig.Alias}_{context.TestRunId}",
+                ModelAlias = $"{modelConfig.Alias}_{context.TestRunId}",
                 ProviderId = context.ProviderId!.Value,
                 ProviderModelId = modelConfig.Actual,
-                SupportsChat = modelConfig.Capabilities.Chat,
-                SupportsStreaming = modelConfig.Capabilities.Streaming
+                ModelProviderTypeAssociationId = context.ModelProviderTypeAssociationId!.Value
             };
-            
+
             var mappingResponse = await _apiClient.AdminPostAsync<CreateModelMappingResponse>(
-                "/api/ModelProviderMapping", 
+                "/v1/admin/model-provider-mappings",
                 createMappingRequest);
             
             mappingResponse.Success.Should().BeTrue($"Model mapping should succeed: {mappingResponse.Error}");
@@ -119,13 +124,13 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             var createCostRequest = new CreateModelCostRequest
             {
                 CostName = $"{context.ModelAlias}_cost",
-                ModelProviderMappingIds = new List<int> { context.ModelMappingId!.Value },
+                ModelProviderTypeAssociationIds = new List<int> { context.ModelProviderTypeAssociationId!.Value },
                 InputCostPerMillionTokens = modelConfig.Cost.InputPerMillion,
                 OutputCostPerMillionTokens = modelConfig.Cost.OutputPerMillion
             };
-            
+
             var costResponse = await _apiClient.AdminPostAsync<CreateModelCostResponse>(
-                "/api/ModelCosts", 
+                "/v1/admin/model-costs",
                 createCostRequest);
             
             costResponse.Success.Should().BeTrue($"Model cost creation should succeed: {costResponse.Error}");
@@ -147,7 +152,7 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             };
             
             var groupResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyGroupResponse>(
-                "/api/VirtualKeyGroups", 
+                "/v1/admin/virtual-key-groups",
                 createGroupRequest);
             
             groupResponse.Success.Should().BeTrue($"Virtual key group creation should succeed: {groupResponse.Error}");
@@ -174,7 +179,7 @@ public class GroqEndToEndTest : IClassFixture<TestFixture>
             };
             
             var vkeyResponse = await _apiClient.AdminPostAsync<CreateVirtualKeyResponse>(
-                "/api/VirtualKeys", 
+                "/v1/admin/virtual-keys",
                 createVKeyRequest);
             
             vkeyResponse.Success.Should().BeTrue($"Virtual key creation should succeed: {vkeyResponse.Error}");
