@@ -59,6 +59,8 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
         {
             Enabled = true,
             MonthlyDeleteBudget = 100,
+            EnableSoftDelete = true,
+            SoftDeleteGracePeriodDays = 9,
             EnableExpirationCleanup = true,
             EnableReconciliation = false,
             EnableRetentionCleanup = true
@@ -76,7 +78,11 @@ public sealed class MediaCleanupStatusServiceTests : IDisposable
 
         var status = await service.GetStatusAsync();
 
-        status.OperationStatuses.Should().HaveCount(3);
+        status.OperationStatuses.Should().HaveCount(4);
+        status.IsSoftDeleteEnabled.Should().BeTrue();
+        status.SoftDeleteGracePeriodDays.Should().Be(9);
+        status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Purge)
+            .IsEnabled.Should().BeTrue();
         status.OperationStatuses.Single(item => item.CleanupType == MediaCleanupTypes.Expiration)
             .Should().BeEquivalentTo(new
             {

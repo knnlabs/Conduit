@@ -154,6 +154,8 @@ namespace ConduitLLM.Admin.Services
             {
                 IsEnabled = isEnabled,
                 IsDryRunMode = _options.DryRunMode,
+                IsSoftDeleteEnabled = _options.EnableSoftDelete,
+                SoftDeleteGracePeriodDays = _options.SoftDeleteGracePeriodDays,
                 StorageBackend = MediaStorageConfigurationGuard.GetBackendName(storageService),
                 UntrackedObjectCount = reconciliationDrift.UntrackedObjectCount,
                 UntrackedBytes = reconciliationDrift.UntrackedBytes,
@@ -442,6 +444,7 @@ namespace ConduitLLM.Admin.Services
         private bool IsOperationEnabled(string cleanupType) => cleanupType switch
         {
             MediaCleanupTypes.Expiration => _options.EnableExpirationCleanup,
+            MediaCleanupTypes.Purge => true,
             MediaCleanupTypes.Reconciliation => _options.EnableReconciliation,
             MediaCleanupTypes.Retention => _options.EnableRetentionCleanup,
             _ => false

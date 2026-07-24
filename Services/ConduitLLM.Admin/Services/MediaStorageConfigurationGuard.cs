@@ -52,6 +52,7 @@ public sealed class MediaStorageConfigurationGuard : IHostedService, IMediaStora
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
             var hasPersistedMedia = await context.MediaRecords
+                .IgnoreQueryFilters()
                 .AsNoTracking()
                 .AnyAsync(cancellationToken);
 

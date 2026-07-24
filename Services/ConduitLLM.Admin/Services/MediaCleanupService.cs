@@ -182,6 +182,7 @@ namespace ConduitLLM.Admin.Services
                 scope.ServiceProvider.GetRequiredService<IMediaReconciliationService>();
             var statusService = scope.ServiceProvider.GetService<IMediaCleanupStatusService>();
             var totalDeleted = 0;
+            var totalTombstoned = 0;
             long totalBytesFreed = 0;
             var operationFailures = 0;
             var processedRecordIds = new HashSet<Guid>();
@@ -195,6 +196,17 @@ namespace ConduitLLM.Admin.Services
                         string.Join(", ", _options.TestVirtualKeyGroups));
                 }
 
+                var purgeOperation = new MediaDeletionOperationContext(
+                    MediaCleanupTypes.Purge, "scheduled", _instanceId);
+                var purgeResult = await deletionEngine.ExecuteOperationAsync(
+                    purgeOperation,
+                    () => ProcessPurgeAsync(
+                        context, deletionEngine, purgeOperation, stoppingToken),
+                    stoppingToken);
+                totalDeleted += purgeResult.FilesDeleted;
+                totalBytesFreed += purgeResult.BytesFreed;
+                operationFailures += purgeResult.Failures;
+
                 if (_options.EnableExpirationCleanup)
                 {
                     var operation = new MediaDeletionOperationContext(
@@ -206,6 +218,7 @@ namespace ConduitLLM.Admin.Services
                             processedRecordIds, stoppingToken),
                         stoppingToken);
                     totalDeleted += result.FilesDeleted;
+                    totalTombstoned += result.RecordsTombstoned;
                     totalBytesFreed += result.BytesFreed;
                     operationFailures += result.Failures;
                 }
@@ -220,6 +233,7 @@ namespace ConduitLLM.Admin.Services
                             operation, stoppingToken),
                         stoppingToken);
                     totalDeleted += result.FilesDeleted;
+                    totalTombstoned += result.RecordsTombstoned;
                     totalBytesFreed += result.BytesFreed;
                     operationFailures += result.Failures;
                 }
@@ -235,6 +249,7 @@ namespace ConduitLLM.Admin.Services
                             processedRecordIds, stoppingToken),
                         stoppingToken);
                     totalDeleted += result.FilesDeleted;
+                    totalTombstoned += result.RecordsTombstoned;
                     totalBytesFreed += result.BytesFreed;
                     operationFailures += result.Failures;
                 }
@@ -259,8 +274,12 @@ namespace ConduitLLM.Admin.Services
                 stopwatch.Stop();
 
                 _logger.LogInformation(
-                    "Media cleanup {Status}. Deleted {Count} files and freed {Bytes:N0} bytes in {Duration:F2}s",
-                    status, totalDeleted, totalBytesFreed, stopwatch.Elapsed.TotalSeconds);
+                    "Media cleanup {Status}. Permanently deleted {DeletedCount} files, tombstoned {TombstonedCount} records, and freed {Bytes:N0} bytes in {Duration:F2}s",
+                    status,
+                    totalDeleted,
+                    totalTombstoned,
+                    totalBytesFreed,
+                    stopwatch.Elapsed.TotalSeconds);
 
                 // Record run completion for status tracking
                 if (statusService != null)
@@ -276,6 +295,61 @@ namespace ConduitLLM.Admin.Services
                 }
 
             }
+        }
+
+        private async Task<MediaDeletionEngineResult> ProcessPurgeAsync(
+            IConfigurationDbContext context,
+            IMediaDeletionEngine deletionEngine,
+            MediaDeletionOperationContext operation,
+            CancellationToken stoppingToken)
+        {
+            var defaultPolicyGrace = await context.MediaRetentionPolicies
+                .Where(policy => policy.IsDefault && policy.IsActive)
+                .Select(policy => (int?)policy.SoftDeleteGracePeriodDays)
+                .FirstOrDefaultAsync(stoppingToken);
+            var fallbackGrace = defaultPolicyGrace ?? _options.SoftDeleteGracePeriodDays;
+            var tombstoneQuery = context.MediaRecords
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(media => media.DeletedAt != null);
+
+            if (_options.TestVirtualKeyGroups.Any())
+            {
+                tombstoneQuery = tombstoneQuery.Where(media => context.VirtualKeys.Any(key =>
+                    key.Id == media.VirtualKeyId &&
+                    _options.TestVirtualKeyGroups.Contains(key.VirtualKeyGroupId)));
+            }
+
+            var tombstones = await tombstoneQuery
+                .Select(media => new
+                {
+                    Media = media,
+                    AssignedPolicyGrace = context.VirtualKeys
+                        .Where(key =>
+                            key.Id == media.VirtualKeyId &&
+                            key.VirtualKeyGroup.MediaRetentionPolicyId != null)
+                        .Select(key => (int?)key.VirtualKeyGroup.MediaRetentionPolicy!
+                            .SoftDeleteGracePeriodDays)
+                        .FirstOrDefault()
+                })
+                .ToListAsync(stoppingToken);
+            var now = DateTime.UtcNow;
+            var purgeCandidates = tombstones
+                .Where(item => item.Media.DeletedAt <
+                    now.AddDays(-Math.Max(0, item.AssignedPolicyGrace ?? fallbackGrace)))
+                .Select(item => item.Media)
+                .ToList();
+
+            _logger.LogInformation(
+                "Found {Count} soft-deleted media files whose recovery window has elapsed",
+                purgeCandidates.Count);
+
+            return await deletionEngine.DeleteAsync(
+                new MediaDeletionRequest(
+                    purgeCandidates,
+                    operation,
+                    Purge: true),
+                stoppingToken);
         }
 
         private async Task<MediaDeletionEngineResult> ProcessExpiredMediaAsync(

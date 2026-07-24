@@ -9,6 +9,25 @@ namespace ConduitLLM.Admin.DTOs
         /// Human-readable confirmation message.
         /// </summary>
         public string Message { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Whether the record was tombstoned and remains recoverable.
+        /// </summary>
+        public bool IsSoftDeleted { get; set; }
+
+        /// <summary>
+        /// Tombstone timestamp when soft deletion is enabled.
+        /// </summary>
+        public DateTime? DeletedAt { get; set; }
+    }
+
+    /// <summary>
+    /// Response returned after restoring a tombstoned media record.
+    /// </summary>
+    public class MediaRestoreResponseDto
+    {
+        public string Message { get; set; } = string.Empty;
+        public Guid MediaId { get; set; }
     }
 
     /// <summary>
@@ -27,6 +46,11 @@ namespace ConduitLLM.Admin.DTOs
         public int DeletedCount { get; set; }
 
         /// <summary>
+        /// Number of records tombstoned without freeing storage.
+        /// </summary>
+        public int TombstonedCount { get; set; }
+
+        /// <summary>
         /// Number of media files that could not be deleted and remain tracked for retry.
         /// </summary>
         public int FailedCount { get; set; }
@@ -40,6 +64,11 @@ namespace ConduitLLM.Admin.DTOs
         /// Number of files that matched during a dry run.
         /// </summary>
         public int WouldDeleteCount { get; set; }
+
+        /// <summary>
+        /// Number of records that would be tombstoned during a dry run.
+        /// </summary>
+        public int WouldTombstoneCount { get; set; }
 
         /// <summary>
         /// Bytes that would be freed during a dry run.

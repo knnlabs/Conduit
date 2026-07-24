@@ -38,6 +38,14 @@ public static class MediaEndpoints
         media.MapDelete("/{mediaId}", DeleteMedia).WithName("Media_Delete")
             .Produces<MediaDeletionResponseDto>()
             .Produces(StatusCodes.Status404NotFound);
+        media.MapPost("/restore/{mediaId}", RestoreMedia).WithName("Media_Restore")
+            .WithSummary("Restore soft-deleted media within its recovery window")
+            .Produces<MediaRestoreResponseDto>()
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
         media.MapPost("/cleanup/expired", CleanupExpiredMedia).WithName("Media_CleanupExpired")
             .Produces<MediaCleanupResponseDto>()
             .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
@@ -95,8 +103,11 @@ public static class MediaEndpoints
 
     private static async Task<IResult> GetMediaByVirtualKey(
         int virtualKeyId,
-        [FromServices] IAdminMediaService mediaService) =>
-        Results.Ok((await mediaService.GetMediaByVirtualKeyAsync(virtualKeyId)).Select(ToResponse).ToList());
+        [FromServices] IAdminMediaService mediaService,
+        [FromQuery] bool includeDeleted = false) =>
+        Results.Ok((await mediaService.GetMediaByVirtualKeyAsync(
+            virtualKeyId,
+            includeDeleted)).Select(ToResponse).ToList());
 
     private static async Task<IResult> SearchMedia(
         [FromServices] IAdminMediaService mediaService,
@@ -113,10 +124,64 @@ public static class MediaEndpoints
         [FromServices] IAdminMediaService mediaService,
         [FromServices] ILogger<MediaEndpointLog> logger)
     {
-        if (!await mediaService.DeleteMediaAsync(mediaId))
+        var result = await mediaService.DeleteMediaAsync(mediaId);
+        if (result == null)
             throw new KeyNotFoundException();
-        AdminAudit.Log(context, logger, "Deleted", "Media", mediaId);
-        return Results.Ok(new MediaDeletionResponseDto { Message = "Media deleted successfully" });
+        AdminAudit.Log(
+            context,
+            logger,
+            result.IsSoftDeleted ? "SoftDeleted" : "Deleted",
+            "Media",
+            mediaId);
+        return Results.Ok(new MediaDeletionResponseDto
+        {
+            Message = result.IsSoftDeleted
+                ? "Media moved to deleted items and can be restored during its recovery window"
+                : "Media permanently deleted",
+            IsSoftDeleted = result.IsSoftDeleted,
+            DeletedAt = result.DeletedAt
+        });
+    }
+
+    private static async Task<IResult> RestoreMedia(
+        Guid mediaId,
+        HttpContext context,
+        [FromServices] IAdminMediaService mediaService,
+        [FromServices] ILogger<MediaEndpointLog> logger)
+    {
+        var outcome = await mediaService.RestoreMediaAsync(mediaId);
+        if (outcome == MediaRestoreOutcome.NotFound)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        if (outcome == MediaRestoreOutcome.NotDeleted)
+        {
+            return AdminResults.Conflict(
+                "Media is active and does not need to be restored.",
+                "media_not_deleted");
+        }
+
+        if (outcome == MediaRestoreOutcome.GracePeriodElapsed)
+        {
+            return AdminResults.Conflict(
+                "The media recovery window has elapsed and the record is awaiting purge.",
+                "media_restore_window_elapsed");
+        }
+
+        if (outcome == MediaRestoreOutcome.CleanupInProgress)
+        {
+            return AdminResults.Conflict(
+                "Media cleanup is running; retry the restore after it completes.",
+                "media_cleanup_in_progress");
+        }
+
+        AdminAudit.Log(context, logger, "Restored", "Media", mediaId);
+        return Results.Ok(new MediaRestoreResponseDto
+        {
+            MediaId = mediaId,
+            Message = "Media restored successfully"
+        });
     }
 
     private static async Task<IResult> CleanupExpiredMedia(
@@ -365,14 +430,16 @@ public static class MediaEndpoints
         MediaDeletionEngineResult result) => new()
     {
         Message = result.IsDryRun
-            ? $"Dry run matched {result.WouldDeleteCount} {description}"
+            ? $"Dry run matched {result.WouldDeleteCount} permanent deletions and {result.WouldTombstoneCount} tombstones for {description}"
             : result.Failures == 0
-                ? $"Deleted {result.FilesDeleted} {description}"
-                : $"Deleted {result.FilesDeleted} {description}; {result.Failures} failed and remain tracked for retry",
+                ? $"Permanently deleted {result.FilesDeleted} and tombstoned {result.RecordsTombstoned} {description}"
+                : $"Permanently deleted {result.FilesDeleted} and tombstoned {result.RecordsTombstoned} {description}; {result.Failures} failed and remain tracked for retry",
         DeletedCount = result.FilesDeleted,
+        TombstonedCount = result.RecordsTombstoned,
         FailedCount = result.Failures,
         IsDryRun = result.IsDryRun,
         WouldDeleteCount = result.WouldDeleteCount,
+        WouldTombstoneCount = result.WouldTombstoneCount,
         BytesWouldFree = result.BytesWouldFree,
         TriggeredBy = "manual"
     };
@@ -393,5 +460,6 @@ public static class MediaEndpoints
         media.ExpiresAt,
         media.CreatedAt,
         media.LastAccessedAt,
-        media.AccessCount);
+        media.AccessCount,
+        media.DeletedAt);
 }

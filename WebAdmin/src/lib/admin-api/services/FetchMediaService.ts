@@ -3,7 +3,7 @@ import type { RequestConfig } from '../client/types';
 import { HttpMethod } from '../client/HttpMethod';
 import type {
   MediaRecord, MediaStorageStats, OverallMediaStorageStats, MediaCleanupRequest,
-  MediaCleanupResponse, MediaDeleteResponse, MediaCleanupStatus, MediaCleanupEnabledResponse,
+  MediaCleanupResponse, MediaDeleteResponse, MediaRestoreResponse, MediaCleanupStatus, MediaCleanupEnabledResponse,
   SimpleRetentionResponse, MediaRetentionPolicy, CreateMediaRetentionPolicyRequest,
   UpdateMediaRetentionPolicyRequest, MediaCleanupPreview,
 } from '../models/media';
@@ -12,9 +12,13 @@ import type {
 export class FetchMediaService {
   constructor(private readonly client: FetchBaseApiClient) {}
 
-  async getMediaByVirtualKey(id: number, config?: RequestConfig): Promise<MediaRecord[]> {
-    const result = await this.client['executeContractRead'](`/v1/admin/media-assets/virtual-key/${id}`,
-      (c, o) => c.GET('/v1/admin/media-assets/virtual-key/{virtualKeyId}', { ...o, params: { path: { virtualKeyId: id } } }), config);
+  async getMediaByVirtualKey(id: number, includeDeleted = false, config?: RequestConfig): Promise<MediaRecord[]> {
+    const suffix = includeDeleted ? '?includeDeleted=true' : '';
+    const result = await this.client['executeContractRead'](`/v1/admin/media-assets/virtual-key/${id}${suffix}`,
+      (c, o) => c.GET('/v1/admin/media-assets/virtual-key/{virtualKeyId}', {
+        ...o,
+        params: { path: { virtualKeyId: id }, query: { includeDeleted } },
+      }), config);
     return result.data as MediaRecord[];
   }
 
@@ -55,6 +59,11 @@ export class FetchMediaService {
     const body = { daysToKeep: request.daysToKeep, force };
     return this.client['executeContractOperation']('/v1/admin/media-assets/cleanup/prune', HttpMethod.POST,
       (c, o) => c.POST('/v1/admin/media-assets/cleanup/prune', { ...o, body }), config, body) as Promise<MediaCleanupResponse>;
+  }
+
+  async restoreMedia(id: string, config?: RequestConfig): Promise<MediaRestoreResponse> {
+    return this.client['executeContractOperation'](`/v1/admin/media-assets/restore/${encodeURIComponent(id)}`, HttpMethod.POST,
+      (c, o) => c.POST('/v1/admin/media-assets/restore/{mediaId}', { ...o, params: { path: { mediaId: id } } }), config) as Promise<MediaRestoreResponse>;
   }
 
   async previewPruneMedia(daysToKeep: number, config?: RequestConfig): Promise<MediaCleanupPreview> {

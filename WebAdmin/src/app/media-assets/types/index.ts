@@ -15,6 +15,7 @@ export interface MediaRecord {
   publicUrl?: string;
   expiresAt?: string;
   createdAt: string;
+  deletedAt?: string | null;
   lastAccessedAt?: string;
   accessCount: number;
 }
@@ -42,6 +43,7 @@ export interface OverallMediaStorageStats {
 
 export interface MediaFilters {
   mediaType?: 'image' | 'video' | 'all';
+  deletionState?: 'active' | 'deleted' | 'all';
   provider?: string;
   virtualKeyId?: number;
   fromDate?: Date | string;

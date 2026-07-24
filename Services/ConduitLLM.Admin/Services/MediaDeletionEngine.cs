@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Net;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Configuration.Entities;
@@ -103,15 +104,6 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         MediaDeletionRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (!await _storageGuard.ValidateAsync(cancellationToken))
-        {
-            return new MediaDeletionEngineResult(
-                Failures:
-                    request.MediaRecords.Count +
-                    (request.UntrackedStorageObjects?.Count ?? 0),
-                StatusOverride: "Blocked: unsafe storage configuration");
-        }
-
         var processedRecordIds = request.ProcessedRecordIds;
         var trackedCandidates = request.MediaRecords
             .Where(record => processedRecordIds == null || processedRecordIds.Add(record.Id))
@@ -146,6 +138,14 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                 IsDryRun: isDryRun);
         }
 
+        if (candidates.Any(candidate => !ShouldTombstone(candidate, request)) &&
+            !await _storageGuard.ValidateAsync(cancellationToken))
+        {
+            return new MediaDeletionEngineResult(
+                Failures: candidates.Count,
+                StatusOverride: "Blocked: unsafe storage configuration");
+        }
+
         if (_options.RequireManualApprovalForLargeBatches &&
             candidates.Count > _options.LargeBatchThreshold &&
             !isDryRun &&
@@ -174,9 +174,12 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         {
             cancellationToken.ThrowIfCancellationRequested();
 
+            var permanentDeleteCount = batch.Count(candidate =>
+                !ShouldTombstone(candidate, request));
             if (!isDryRun &&
+                permanentDeleteCount > 0 &&
                 await _budgetService.WouldExceedBudgetAsync(
-                    batch.Length,
+                    permanentDeleteCount,
                     _options.MonthlyDeleteBudget,
                     cancellationToken))
             {
@@ -185,7 +188,7 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                     cancellationToken);
                 _logger.LogWarning(
                     "Monthly media-delete budget would be exceeded by batch {BatchSize}; {Remaining} deletes remain",
-                    batch.Length,
+                    permanentDeleteCount,
                     remaining);
                 result = result with { BudgetExhausted = true };
                 break;
@@ -230,6 +233,8 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         var failures = 0;
         var wouldDelete = 0;
         long bytesWouldFree = 0;
+        var recordsTombstoned = 0;
+        var wouldTombstone = 0;
 
         await RateLimiter.WaitAsync(cancellationToken);
         try
@@ -239,13 +244,37 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
+                    var shouldTombstone = ShouldTombstone(candidate, request);
                     if (isDryRun)
                     {
-                        wouldDelete++;
-                        bytesWouldFree += candidate.SizeBytes;
-                        _logger.LogDebug(
-                            "[DRY RUN] Would delete media {StorageKey}",
-                            candidate.StorageKey);
+                        if (shouldTombstone)
+                        {
+                            wouldTombstone++;
+                            _logger.LogDebug(
+                                "[DRY RUN] Would tombstone media {StorageKey}",
+                                candidate.StorageKey);
+                        }
+                        else
+                        {
+                            wouldDelete++;
+                            bytesWouldFree += candidate.SizeBytes;
+                            _logger.LogDebug(
+                                "[DRY RUN] Would permanently delete media {StorageKey}",
+                                candidate.StorageKey);
+                        }
+                    }
+                    else if (shouldTombstone)
+                    {
+                        if (!await _mediaRepository.TombstoneAsync(
+                                candidate.MediaRecordId!.Value,
+                                DateTime.UtcNow,
+                                cancellationToken))
+                        {
+                            failures++;
+                            continue;
+                        }
+
+                        recordsTombstoned++;
                     }
                     else
                     {
@@ -261,7 +290,9 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                         filesDeleted++;
                         bytesFreed += candidate.SizeBytes;
                         if (candidate.MediaRecordId.HasValue &&
-                            !await _mediaRepository.DeleteAsync(candidate.MediaRecordId.Value))
+                            !await _mediaRepository.HardDeleteAsync(
+                                candidate.MediaRecordId.Value,
+                                cancellationToken))
                         {
                             failures++;
                             _logger.LogWarning(
@@ -318,12 +349,14 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
             }
 
             return new MediaDeletionEngineResult(
-                filesDeleted,
-                bytesFreed,
-                failures,
+                FilesDeleted: filesDeleted,
+                BytesFreed: bytesFreed,
+                Failures: failures,
                 WouldDeleteCount: wouldDelete,
                 BytesWouldFree: bytesWouldFree,
-                IsDryRun: isDryRun);
+                IsDryRun: isDryRun,
+                RecordsTombstoned: recordsTombstoned,
+                WouldTombstoneCount: wouldTombstone);
         }
         finally
         {
@@ -353,6 +386,14 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
             return false;
         }
     }
+
+    private bool ShouldTombstone(
+        DeletionCandidate candidate,
+        MediaDeletionRequest request) =>
+        _options.EnableSoftDelete &&
+        !request.Purge &&
+        request.Operation.CleanupType != MediaCleanupTypes.VirtualKey &&
+        candidate.MediaRecordId.HasValue;
 
     private string GetOperationStatus(MediaDeletionEngineResult result)
     {
@@ -422,6 +463,12 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
             AdminMediaCleanupMetrics.BytesFreed
                 .WithLabels(operation.CleanupType)
                 .Inc(result.BytesFreed);
+        }
+        if (result.RecordsTombstoned > 0)
+        {
+            AdminMediaCleanupMetrics.RecordsTombstoned
+                .WithLabels(operation.CleanupType)
+                .Inc(result.RecordsTombstoned);
         }
     }
 

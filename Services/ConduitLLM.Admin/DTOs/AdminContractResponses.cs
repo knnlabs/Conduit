@@ -136,4 +136,5 @@ public sealed record MediaRecordResponse(
     DateTime? ExpiresAt,
     DateTime CreatedAt,
     DateTime? LastAccessedAt,
-    int AccessCount);
+    int AccessCount,
+    DateTime? DeletedAt);

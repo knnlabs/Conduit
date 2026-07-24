@@ -18,6 +18,7 @@ export interface MediaRecord {
   publicUrl?: string;
   expiresAt?: string;
   createdAt: string;
+  deletedAt?: string | null;
   lastAccessedAt?: string;
   accessCount: number;
 }
@@ -45,6 +46,7 @@ export interface OverallMediaStorageStats {
 
 export interface MediaFilters {
   mediaType?: 'image' | 'video' | 'all';
+  deletionState?: 'active' | 'deleted' | 'all';
   provider?: string;
   virtualKeyId?: number;
   fromDate?: Date | string;
@@ -64,9 +66,11 @@ export interface MediaCleanupRequest {
 export interface MediaCleanupResponse {
   message: string;
   deletedCount: number;
+  tombstonedCount: number;
   failedCount: number;
   isDryRun: boolean;
   wouldDeleteCount: number;
+  wouldTombstoneCount: number;
   bytesWouldFree: number;
   triggeredBy: string;
 }
@@ -89,12 +93,21 @@ export interface MediaDeleteRequest {
 
 export interface MediaDeleteResponse {
   message: string;
+  isSoftDeleted: boolean;
+  deletedAt?: string | null;
+}
+
+export interface MediaRestoreResponse {
+  message: string;
+  mediaId: string;
 }
 
 // Media Cleanup Service Status types
 export interface MediaCleanupStatus {
   isEnabled: boolean;
   isDryRunMode: boolean;
+  isSoftDeleteEnabled: boolean;
+  softDeleteGracePeriodDays: number;
   storageBackend: string;
   untrackedObjectCount: number;
   untrackedBytes: number;
@@ -123,7 +136,7 @@ export interface MediaCleanupStatus {
 }
 
 export interface MediaCleanupOperationStatus {
-  cleanupType: 'expiration' | 'reconciliation' | 'retention';
+  cleanupType: 'purge' | 'expiration' | 'reconciliation' | 'retention';
   isEnabled: boolean;
   lastRunTimeUtc: string | null;
   lastRunStatus: string | null;

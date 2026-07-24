@@ -63,9 +63,9 @@ of the areas, not a copy of that file:
 ### Scheduled media lifecycle cleanup
 
 The Admin service is the single owner of scheduled media cleanup. Each cycle acquires a PostgreSQL
-distributed lock before running explicit expiration, storage reconciliation, and retention-policy
-cleanup, so a multi-instance deployment does not run the same cycle concurrently. The Gateway only
-records media lifecycle metadata; it does not schedule cleanup.
+distributed lock before running soft-delete purge, explicit expiration, storage reconciliation,
+and retention-policy cleanup, so a multi-instance deployment does not run the same cycle
+concurrently. The Gateway only records media lifecycle metadata; it does not schedule cleanup.
 
 Set `MediaLifecycle__Enabled=true` to start the scheduler and configure its polling interval with
 `MediaLifecycle__ScheduleIntervalMinutes`. The three phases can be controlled independently with
@@ -73,6 +73,17 @@ Set `MediaLifecycle__Enabled=true` to start the scheduler and configure its poll
 `MediaLifecycle__EnableRetentionCleanup`. Cleanup defaults to `MediaLifecycle__DryRunMode=true`;
 set it to `false` only after reviewing the status endpoint and logs. All phases share
 `MediaLifecycle__MonthlyDeleteBudget`, batch-size, rate-limit, and dry-run safeguards.
+
+With `MediaLifecycle__EnableSoftDelete=true` (the default), expiration and retention cleanup mark
+tracked rows with a deletion timestamp. Tombstoned media is immediately hidden from Gateway
+serving, normal Admin lists, searches, and storage statistics, but its storage object remains
+billable until purge. Admins can include deleted items in the media list and restore them while the
+recovery window remains open. Purge permanently deletes the storage object and row after the
+assigned retention policy's `SoftDeleteGracePeriodDays`; an active default policy is used when no
+policy is assigned, then `MediaLifecycle__SoftDeleteGracePeriodDays` is the final fallback. A
+tombstone does not consume the monthly delete budget; the later permanent purge does. Deleting a
+virtual key is the deliberate exception: all of that key's active and tombstoned media is
+permanently removed before the database cascade, because no owner remains for later recovery.
 
 Storage reconciliation enumerates the configured S3-compatible bucket (or in-memory development
 store), compares object keys with `MediaRecord` rows, and reports the count and bytes that are
@@ -82,12 +93,14 @@ deleted. The `VirtualKey` → `MediaRecord` foreign key deliberately retains `ON
 That keeps key deletion transactional, while the independent storage sweep recovers objects left
 behind by a failed pre-cascade storage deletion or another partial write.
 
-The Admin media cleanup status endpoint reports both the aggregate cycle and the last outcome of
-each phase. Prometheus metrics use a `cleanup_type` label with `expiration`, `reconciliation`, or
-`retention`, and expose `conduit_admin_media_cleanup_untracked_objects` and
+The Admin media cleanup status endpoint reports whether soft delete is enabled, its fallback grace
+period, the aggregate cycle, and the last outcome of each phase. Prometheus metrics use a
+`cleanup_type` label with `purge`, `expiration`, `reconciliation`, or `retention`, expose
+`conduit_admin_media_cleanup_records_tombstoned_total`, and report untracked drift through
+`conduit_admin_media_cleanup_untracked_objects` and
 `conduit_admin_media_cleanup_untracked_bytes`. When `MediaLifecycle__TestVirtualKeyGroups` is set,
-expiration and retention are limited to those groups and reconciliation is skipped because an
-untracked object no longer has group ownership that can be scoped safely.
+purge, expiration, and retention are limited to those groups and reconciliation is skipped because
+an untracked object no longer has group ownership that can be scoped safely.
 
 ### Reliable SignalR queue delivery
 

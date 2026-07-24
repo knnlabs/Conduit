@@ -92,7 +92,15 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Default repository setup - successful deletes
             _mockMediaRepository
-                .Setup(x => x.DeleteAsync(It.IsAny<Guid>()))
+                .Setup(x => x.HardDeleteAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+            _mockMediaRepository
+                .Setup(x => x.TombstoneAsync(
+                    It.IsAny<Guid>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
             _mockStatusService
@@ -429,9 +437,64 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockLockService.Verify(x => x.AcquireLockAsync(
                 "media:cleanup:leader", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
             _mockStorageService.Verify(x => x.DeleteAsync("expired-media"), Times.Once);
-            _mockMediaRepository.Verify(x => x.DeleteAsync(expired.Id), Times.Once);
+            _mockMediaRepository.Verify(x => x.HardDeleteAsync(
+                expired.Id, It.IsAny<CancellationToken>()), Times.Once);
             _mockBudgetService.Verify(x => x.IncrementMonthlyDeleteCountAsync(1, It.IsAny<CancellationToken>()), Times.Once);
             VerifyOperationStatus(MediaCleanupTypes.Expiration, "Completed");
+        }
+
+        [Fact]
+        public async Task RunScheduledCleanupAsync_PurgesOnlyTombstonesPastGracePeriod()
+        {
+            var options = CreateExecutionOptions();
+            options.EnableSoftDelete = true;
+            options.SoftDeleteGracePeriodDays = 3;
+            options.EnableExpirationCleanup = false;
+            options.EnableReconciliation = false;
+            options.EnableRetentionCleanup = false;
+            ArrangeLockAcquired();
+
+            SeedTestGroup(1);
+            SeedVirtualKey(1, 1);
+            var expiredTombstone = new MediaRecord
+            {
+                Id = Guid.NewGuid(),
+                VirtualKeyId = 1,
+                StorageKey = "expired-tombstone",
+                MediaType = "image",
+                SizeBytes = 2048,
+                CreatedAt = DateTime.UtcNow.AddDays(-10),
+                DeletedAt = DateTime.UtcNow.AddDays(-4)
+            };
+            var recoverableTombstone = new MediaRecord
+            {
+                Id = Guid.NewGuid(),
+                VirtualKeyId = 1,
+                StorageKey = "recoverable-tombstone",
+                MediaType = "image",
+                SizeBytes = 1024,
+                CreatedAt = DateTime.UtcNow.AddDays(-10),
+                DeletedAt = DateTime.UtcNow.AddDays(-2)
+            };
+            _context.MediaRecords.AddRange(expiredTombstone, recoverableTombstone);
+            await _context.SaveChangesAsync();
+
+            var service = CreateService(options);
+            await service.RunScheduledCleanupAsync(CancellationToken.None);
+
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(expiredTombstone.StorageKey),
+                Times.Once);
+            _mockStorageService.Verify(
+                storage => storage.DeleteAsync(recoverableTombstone.StorageKey),
+                Times.Never);
+            _mockMediaRepository.Verify(repository => repository.HardDeleteAsync(
+                expiredTombstone.Id,
+                It.IsAny<CancellationToken>()), Times.Once);
+            _mockBudgetService.Verify(service => service.IncrementMonthlyDeleteCountAsync(
+                1,
+                It.IsAny<CancellationToken>()), Times.Once);
+            VerifyOperationStatus(MediaCleanupTypes.Purge, "Completed");
         }
 
         [Fact]
@@ -464,7 +527,8 @@ namespace ConduitLLM.Tests.Admin.Services
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
             _mockStorageService.Verify(x => x.DeleteAsync("untracked-media"), Times.Once);
-            _mockMediaRepository.Verify(x => x.DeleteAsync(It.IsAny<Guid>()), Times.Never);
+            _mockMediaRepository.Verify(x => x.HardDeleteAsync(
+                It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
             VerifyOperationStatus(MediaCleanupTypes.Reconciliation, "Completed");
         }
 
@@ -789,6 +853,7 @@ namespace ConduitLLM.Tests.Admin.Services
         private MediaLifecycleOptions CreateExecutionOptions() => new()
         {
             Enabled = true,
+            EnableSoftDelete = false,
             DryRunMode = false,
             DelayBetweenBatchesMs = 0,
             MaxBatchSize = 50

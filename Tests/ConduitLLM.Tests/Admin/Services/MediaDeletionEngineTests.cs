@@ -31,7 +31,15 @@ public sealed class MediaDeletionEngineTests
             .Setup(storage => storage.DeleteAsync(It.IsAny<string>()))
             .ReturnsAsync(true);
         _repository
-            .Setup(repository => repository.DeleteAsync(It.IsAny<Guid>()))
+            .Setup(repository => repository.HardDeleteAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+        _repository
+            .Setup(repository => repository.TombstoneAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _budget
             .Setup(budget => budget.WouldExceedBudgetAsync(
@@ -52,6 +60,7 @@ public sealed class MediaDeletionEngineTests
         var engine = CreateEngine(new MediaLifecycleOptions
         {
             DryRunMode = true,
+            EnableSoftDelete = false,
             MaxBatchSize = 10,
             RequireManualApprovalForLargeBatches = false
         });
@@ -72,7 +81,8 @@ public sealed class MediaDeletionEngineTests
             IsDryRun = true
         });
         _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
-        _repository.Verify(repository => repository.DeleteAsync(It.IsAny<Guid>()), Times.Never);
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _budget.Verify(budget => budget.WouldExceedBudgetAsync(
             It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -87,6 +97,7 @@ public sealed class MediaDeletionEngineTests
         var engine = CreateEngine(new MediaLifecycleOptions
         {
             DryRunMode = true,
+            EnableSoftDelete = false,
             MaxBatchSize = 10,
             RequireManualApprovalForLargeBatches = false
         });
@@ -99,8 +110,10 @@ public sealed class MediaDeletionEngineTests
         result.BytesFreed.Should().Be(100);
         result.Failures.Should().Be(1);
         result.IsDryRun.Should().BeFalse();
-        _repository.Verify(repository => repository.DeleteAsync(records[0].Id), Times.Once);
-        _repository.Verify(repository => repository.DeleteAsync(records[1].Id), Times.Never);
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            records[0].Id, It.IsAny<CancellationToken>()), Times.Once);
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            records[1].Id, It.IsAny<CancellationToken>()), Times.Never);
         _budget.Verify(budget => budget.IncrementMonthlyDeleteCountAsync(
             1, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -122,6 +135,7 @@ public sealed class MediaDeletionEngineTests
         var engine = CreateEngine(new MediaLifecycleOptions
         {
             DryRunMode = false,
+            EnableSoftDelete = false,
             MonthlyDeleteBudget = 50,
             MaxBatchSize = 10,
             RequireManualApprovalForLargeBatches = false
@@ -144,6 +158,7 @@ public sealed class MediaDeletionEngineTests
         var engine = CreateEngine(new MediaLifecycleOptions
         {
             DryRunMode = true,
+            EnableSoftDelete = false,
             MaxBatchSize = 10,
             RequireManualApprovalForLargeBatches = true,
             LargeBatchThreshold = 1
@@ -160,6 +175,109 @@ public sealed class MediaDeletionEngineTests
 
         preview.WouldDeleteCount.Should().Be(2);
         forced.FilesDeleted.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_SoftDelete_TombstonesWithoutStorageOrBudget()
+    {
+        var records = CreateRecords(2);
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            EnableSoftDelete = true,
+            DryRunMode = false,
+            MaxBatchSize = 10,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            records,
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Retention, "scheduled", "test")));
+
+        result.RecordsTombstoned.Should().Be(2);
+        result.FilesDeleted.Should().Be(0);
+        result.BytesFreed.Should().Be(0);
+        _repository.Verify(repository => repository.TombstoneAsync(
+            It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
+        _budget.Verify(budget => budget.WouldExceedBudgetAsync(
+            It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        _budget.Verify(budget => budget.IncrementMonthlyDeleteCountAsync(
+            It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_SoftDeleteDryRun_ReportsTombstonesWithoutFreedBytes()
+    {
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            EnableSoftDelete = true,
+            DryRunMode = true,
+            MaxBatchSize = 10,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            CreateRecords(2),
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Expiration, "manual", "test")));
+
+        result.WouldTombstoneCount.Should().Be(2);
+        result.WouldDeleteCount.Should().Be(0);
+        result.BytesWouldFree.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_Purge_PermanentlyDeletesAndConsumesBudget()
+    {
+        var records = CreateRecords(2);
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            EnableSoftDelete = true,
+            DryRunMode = false,
+            MaxBatchSize = 10,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            records,
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Purge, "scheduled", "test"),
+            Purge: true));
+
+        result.FilesDeleted.Should().Be(2);
+        result.BytesFreed.Should().Be(300);
+        result.RecordsTombstoned.Should().Be(0);
+        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()),
+            Times.Exactly(2));
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _budget.Verify(budget => budget.IncrementMonthlyDeleteCountAsync(
+            2, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_VirtualKeyRemoval_PermanentlyDeletesEvenWithSoftDeleteEnabled()
+    {
+        var record = CreateRecords(1);
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            EnableSoftDelete = true,
+            DryRunMode = false,
+            MaxBatchSize = 10,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            record,
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.VirtualKey, "system", "test")));
+
+        result.FilesDeleted.Should().Be(1);
+        result.RecordsTombstoned.Should().Be(0);
+        _repository.Verify(repository => repository.HardDeleteAsync(
+            record[0].Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

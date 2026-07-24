@@ -17,6 +17,16 @@ namespace ConduitLLM.Admin.DTOs
         public bool IsDryRunMode { get; set; }
 
         /// <summary>
+        /// Whether eligible tracked media is tombstoned before permanent purge.
+        /// </summary>
+        public bool IsSoftDeleteEnabled { get; set; }
+
+        /// <summary>
+        /// Fallback recovery window when no retention policy supplies one.
+        /// </summary>
+        public int SoftDeleteGracePeriodDays { get; set; }
+
+        /// <summary>
         /// The resolved media storage backend (for example, S3 or InMemory).
         /// </summary>
         public string StorageBackend { get; set; } = "Unavailable";
@@ -136,7 +146,7 @@ namespace ConduitLLM.Admin.DTOs
     public class MediaCleanupOperationStatusDto
     {
         /// <summary>
-        /// Stable cleanup phase name: expiration, reconciliation, or retention.
+        /// Stable cleanup phase name: purge, expiration, reconciliation, or retention.
         /// </summary>
         public string CleanupType { get; set; } = string.Empty;
 
@@ -182,12 +192,13 @@ namespace ConduitLLM.Admin.DTOs
     public static class MediaCleanupTypes
     {
         public const string Expiration = "expiration";
+        public const string Purge = "purge";
         public const string Reconciliation = "reconciliation";
         public const string Retention = "retention";
         public const string VirtualKey = "virtual-key";
 
         public static readonly IReadOnlyList<string> All =
-            new[] { Expiration, Reconciliation, Retention };
+            new[] { Purge, Expiration, Reconciliation, Retention };
     }
 
     /// <summary>

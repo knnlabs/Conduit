@@ -1,7 +1,10 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -13,6 +16,10 @@ namespace ConduitLLM.Admin.Services
         private readonly IMediaRecordRepository _mediaRepository;
         private readonly IMediaLifecycleService _mediaLifecycleService;
         private readonly IMediaStorageService _storageService;
+        private readonly IConfigurationDbContext _configurationContext;
+        private readonly IDistributedLockService _cleanupLockService;
+        private readonly MediaLifecycleOptions _options;
+        private readonly TimeProvider _timeProvider;
         private readonly ILogger<AdminMediaService> _logger;
 
         /// <summary>
@@ -21,16 +28,30 @@ namespace ConduitLLM.Admin.Services
         /// <param name="mediaRepository">The media record repository.</param>
         /// <param name="mediaLifecycleService">The media lifecycle service.</param>
         /// <param name="storageService">The media storage service for S3/R2 operations.</param>
+        /// <param name="configurationContext">Configuration data used to resolve retention policies.</param>
+        /// <param name="cleanupLockService">Shared lock that serializes restore with permanent purge.</param>
+        /// <param name="options">Media lifecycle options.</param>
         /// <param name="logger">The logger instance.</param>
+        /// <param name="timeProvider">Clock used to enforce the recovery window.</param>
         public AdminMediaService(
             IMediaRecordRepository mediaRepository,
             IMediaLifecycleService mediaLifecycleService,
             IMediaStorageService storageService,
-            ILogger<AdminMediaService> logger)
+            IConfigurationDbContext configurationContext,
+            IDistributedLockService cleanupLockService,
+            IOptions<MediaLifecycleOptions> options,
+            ILogger<AdminMediaService> logger,
+            TimeProvider? timeProvider = null)
         {
             _mediaRepository = mediaRepository ?? throw new ArgumentNullException(nameof(mediaRepository));
             _mediaLifecycleService = mediaLifecycleService ?? throw new ArgumentNullException(nameof(mediaLifecycleService));
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
+            _configurationContext = configurationContext ??
+                throw new ArgumentNullException(nameof(configurationContext));
+            _cleanupLockService = cleanupLockService ??
+                throw new ArgumentNullException(nameof(cleanupLockService));
+            _options = options.Value;
+            _timeProvider = timeProvider ?? TimeProvider.System;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -72,12 +93,18 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<List<MediaRecord>> GetMediaByVirtualKeyAsync(int virtualKeyId)
+        public async Task<List<MediaRecord>> GetMediaByVirtualKeyAsync(
+            int virtualKeyId,
+            bool includeDeleted = false)
         {
             try
             {
                 _logger.LogDebug("Getting media records for virtual key {VirtualKeyId}", virtualKeyId);
-                return await _mediaLifecycleService.GetMediaByVirtualKeyAsync(virtualKeyId);
+                return includeDeleted
+                    ? await _mediaRepository.GetByVirtualKeyIdAsync(
+                        virtualKeyId,
+                        includeDeleted: true)
+                    : await _mediaLifecycleService.GetMediaByVirtualKeyAsync(virtualKeyId);
             }
             catch (Exception ex)
             {
@@ -87,7 +114,7 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public async Task<bool> DeleteMediaAsync(Guid mediaId)
+        public async Task<AdminMediaDeleteResult?> DeleteMediaAsync(Guid mediaId)
         {
             try
             {
@@ -97,7 +124,22 @@ namespace ConduitLLM.Admin.Services
                 if (mediaRecord == null)
                 {
                     _logger.LogWarning("Media record {MediaId} not found", mediaId);
-                    return false;
+                    return null;
+                }
+
+                if (_options.EnableSoftDelete)
+                {
+                    var deletedAt = _timeProvider.GetUtcNow().UtcDateTime;
+                    if (!await _mediaRepository.TombstoneAsync(mediaId, deletedAt))
+                    {
+                        return null;
+                    }
+
+                    _logger.LogInformation(
+                        "Soft-deleted media record {MediaId}; storage {StorageKey} remains until purge",
+                        mediaId,
+                        mediaRecord.StorageKey);
+                    return new AdminMediaDeleteResult(true, deletedAt);
                 }
 
                 // Delete from storage first — abort if this fails to prevent orphaned files
@@ -114,7 +156,7 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Storage succeeded — now delete from database
-                var result = await _mediaRepository.DeleteAsync(mediaId);
+                var result = await _mediaRepository.HardDeleteAsync(mediaId);
 
                 if (result)
                 {
@@ -122,7 +164,9 @@ namespace ConduitLLM.Admin.Services
                         mediaId, mediaRecord.StorageKey);
                 }
 
-                return result;
+                return result
+                    ? new AdminMediaDeleteResult(false, null)
+                    : null;
             }
             catch (InvalidOperationException)
             {
@@ -133,6 +177,65 @@ namespace ConduitLLM.Admin.Services
                 _logger.LogError(ex, "Error deleting media record {MediaId}", mediaId);
                 throw;
             }
+        }
+
+        /// <inheritdoc/>
+        public async Task<MediaRestoreOutcome> RestoreMediaAsync(Guid mediaId)
+        {
+            await using var lockHandle = await _cleanupLockService.AcquireLockAsync(
+                MediaCleanupLock.Key,
+                MediaCleanupLock.Duration);
+            if (lockHandle == null)
+            {
+                return MediaRestoreOutcome.CleanupInProgress;
+            }
+
+            var mediaRecord = await _mediaRepository.GetByIdIncludingDeletedAsync(mediaId);
+            if (mediaRecord == null)
+            {
+                return MediaRestoreOutcome.NotFound;
+            }
+
+            if (!mediaRecord.DeletedAt.HasValue)
+            {
+                return MediaRestoreOutcome.NotDeleted;
+            }
+
+            var gracePeriodDays = await ResolveGracePeriodDaysAsync(
+                mediaRecord.VirtualKeyId);
+            var restoreDeadline = mediaRecord.DeletedAt.Value
+                .AddDays(gracePeriodDays);
+            if (_timeProvider.GetUtcNow().UtcDateTime >= restoreDeadline)
+            {
+                return MediaRestoreOutcome.GracePeriodElapsed;
+            }
+
+            return await _mediaRepository.RestoreAsync(mediaId)
+                ? MediaRestoreOutcome.Restored
+                : MediaRestoreOutcome.NotFound;
+        }
+
+        private async Task<int> ResolveGracePeriodDaysAsync(int virtualKeyId)
+        {
+            var assignedGrace = await _configurationContext.VirtualKeys
+                .Where(key =>
+                    key.Id == virtualKeyId &&
+                    key.VirtualKeyGroup.MediaRetentionPolicyId != null)
+                .Select(key => (int?)key.VirtualKeyGroup.MediaRetentionPolicy!
+                    .SoftDeleteGracePeriodDays)
+                .FirstOrDefaultAsync();
+            if (assignedGrace.HasValue)
+            {
+                return Math.Max(0, assignedGrace.Value);
+            }
+
+            var defaultGrace = await _configurationContext.MediaRetentionPolicies
+                .Where(policy => policy.IsDefault && policy.IsActive)
+                .Select(policy => (int?)policy.SoftDeleteGracePeriodDays)
+                .FirstOrDefaultAsync();
+            return Math.Max(
+                0,
+                defaultGrace ?? _options.SoftDeleteGracePeriodDays);
         }
 
         /// <inheritdoc/>

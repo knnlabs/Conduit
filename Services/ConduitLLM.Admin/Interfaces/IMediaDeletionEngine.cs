@@ -57,7 +57,8 @@ public sealed record MediaDeletionRequest(
     int? GroupId = null,
     ISet<Guid>? ProcessedRecordIds = null,
     string? StatusOverride = null,
-    IReadOnlyCollection<MediaStorageObject>? UntrackedStorageObjects = null);
+    IReadOnlyCollection<MediaStorageObject>? UntrackedStorageObjects = null,
+    bool Purge = false);
 
 /// <summary>
 /// Result of a guarded deletion operation.
@@ -72,21 +73,25 @@ public sealed record MediaDeletionEngineResult(
     long BytesWouldFree = 0,
     bool IsDryRun = false,
     string? OperationStatus = null,
-    double DurationSeconds = 0)
+    double DurationSeconds = 0,
+    int RecordsTombstoned = 0,
+    int WouldTombstoneCount = 0)
 {
     public static MediaDeletionEngineResult Empty { get; } = new();
 
     public MediaDeletionEngineResult Combine(MediaDeletionEngineResult other) => new(
-        FilesDeleted + other.FilesDeleted,
-        BytesFreed + other.BytesFreed,
-        Failures + other.Failures,
-        BudgetExhausted || other.BudgetExhausted,
-        StatusOverride ?? other.StatusOverride,
-        WouldDeleteCount + other.WouldDeleteCount,
-        BytesWouldFree + other.BytesWouldFree,
-        IsDryRun || other.IsDryRun,
-        OperationStatus ?? other.OperationStatus,
-        DurationSeconds + other.DurationSeconds);
+        FilesDeleted: FilesDeleted + other.FilesDeleted,
+        BytesFreed: BytesFreed + other.BytesFreed,
+        Failures: Failures + other.Failures,
+        BudgetExhausted: BudgetExhausted || other.BudgetExhausted,
+        StatusOverride: StatusOverride ?? other.StatusOverride,
+        WouldDeleteCount: WouldDeleteCount + other.WouldDeleteCount,
+        BytesWouldFree: BytesWouldFree + other.BytesWouldFree,
+        IsDryRun: IsDryRun || other.IsDryRun,
+        OperationStatus: OperationStatus ?? other.OperationStatus,
+        DurationSeconds: DurationSeconds + other.DurationSeconds,
+        RecordsTombstoned: RecordsTombstoned + other.RecordsTombstoned,
+        WouldTombstoneCount: WouldTombstoneCount + other.WouldTombstoneCount);
 }
 
 /// <summary>

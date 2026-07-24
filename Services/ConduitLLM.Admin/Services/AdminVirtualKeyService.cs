@@ -87,7 +87,13 @@ namespace ConduitLLM.Admin.Services
             {
                 try
                 {
-                    var mediaRecords = await _mediaLifecycleService.GetMediaByVirtualKeyAsync(keyId);
+                    await using var mediaContext =
+                        await _dbContextFactory.CreateDbContextAsync();
+                    var mediaRecords = await mediaContext.MediaRecords
+                        .IgnoreQueryFilters()
+                        .AsNoTracking()
+                        .Where(record => record.VirtualKeyId == keyId)
+                        .ToListAsync();
                     if (mediaRecords.Count == 0)
                     {
                         return;
@@ -115,7 +121,10 @@ namespace ConduitLLM.Admin.Services
                     var result = await _mediaDeletionEngine.ExecuteOperationAsync(
                         operation,
                         () => _mediaDeletionEngine.DeleteAsync(
-                            new MediaDeletionRequest(mediaRecords, operation)));
+                            new MediaDeletionRequest(
+                                mediaRecords,
+                                operation,
+                                Purge: true)));
 
                     if (result.IsDryRun || result.BudgetExhausted || result.Failures > 0)
                     {

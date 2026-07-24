@@ -67,15 +67,112 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
     }
 
     /// <inheritdoc/>
-    public async Task<List<MediaRecord>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    public async Task<MediaRecord?> GetByStorageKeyIncludingDeletedAsync(
+        string storageKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storageKey))
+        {
+            return null;
+        }
+
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.StorageKey == storageKey, cancellationToken),
+            cancellationToken, $"getting by storage key {storageKey}, including deleted");
+    }
+
+    /// <inheritdoc/>
+    public async Task<MediaRecord?> GetByIdIncludingDeletedAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>
             await GetDbSet(context)
+                .IgnoreQueryFilters()
                 .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id, cancellationToken),
+            cancellationToken, $"getting by ID {id}, including deleted");
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<MediaRecord>> GetByVirtualKeyIdAsync(
+        int virtualKeyId,
+        bool includeDeleted = false,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var query = GetDbSet(context).AsNoTracking();
+            if (includeDeleted)
+            {
+                query = query.IgnoreQueryFilters();
+            }
+
+            return await query
                 .Where(m => m.VirtualKeyId == virtualKeyId)
                 .OrderByDescending(m => m.CreatedAt)
-                .ToListAsync(cancellationToken),
-            cancellationToken, $"getting by virtual key ID {virtualKeyId}");
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, $"getting by virtual key ID {virtualKeyId}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TombstoneAsync(
+        Guid id,
+        DateTime deletedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaRecord = await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(record => record.Id == id, cancellationToken);
+            if (mediaRecord == null || mediaRecord.DeletedAt.HasValue)
+            {
+                return false;
+            }
+
+            mediaRecord.DeletedAt = deletedAtUtc;
+            return await context.SaveChangesAsync(cancellationToken) > 0;
+        }, cancellationToken, $"tombstoning media ID {id}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaRecord = await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(record => record.Id == id, cancellationToken);
+            if (mediaRecord?.DeletedAt == null)
+            {
+                return false;
+            }
+
+            mediaRecord.DeletedAt = null;
+            return await context.SaveChangesAsync(cancellationToken) > 0;
+        }, cancellationToken, $"restoring media ID {id}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HardDeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaRecord = await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(record => record.Id == id, cancellationToken);
+            if (mediaRecord == null)
+            {
+                return false;
+            }
+
+            GetDbSet(context).Remove(mediaRecord);
+            return await context.SaveChangesAsync(cancellationToken) > 0;
+        }, cancellationToken, $"permanently deleting media ID {id}");
     }
 
     /// <inheritdoc/>

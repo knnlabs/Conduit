@@ -26,15 +26,23 @@ namespace ConduitLLM.Admin.Interfaces
         /// Gets media records for a specific virtual key.
         /// </summary>
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
+        /// <param name="includeDeleted">Whether tombstoned records should be returned.</param>
         /// <returns>List of media records.</returns>
-        Task<List<MediaRecord>> GetMediaByVirtualKeyAsync(int virtualKeyId);
+        Task<List<MediaRecord>> GetMediaByVirtualKeyAsync(
+            int virtualKeyId,
+            bool includeDeleted = false);
 
         /// <summary>
         /// Deletes a specific media record.
         /// </summary>
         /// <param name="mediaId">The ID of the media record.</param>
-        /// <returns>True if deleted successfully, false otherwise.</returns>
-        Task<bool> DeleteMediaAsync(Guid mediaId);
+        /// <returns>The deletion result, or null when the active record was not found.</returns>
+        Task<AdminMediaDeleteResult?> DeleteMediaAsync(Guid mediaId);
+
+        /// <summary>
+        /// Restores a tombstoned media record while its recovery window remains open.
+        /// </summary>
+        Task<MediaRestoreOutcome> RestoreMediaAsync(Guid mediaId);
 
         /// <summary>
         /// Gets media records by storage key pattern.
@@ -54,5 +62,16 @@ namespace ConduitLLM.Admin.Interfaces
         /// </summary>
         /// <returns>Dictionary of media types to storage size.</returns>
         Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync();
+    }
+
+    public sealed record AdminMediaDeleteResult(bool IsSoftDeleted, DateTime? DeletedAt);
+
+    public enum MediaRestoreOutcome
+    {
+        Restored,
+        NotFound,
+        NotDeleted,
+        GracePeriodElapsed,
+        CleanupInProgress
     }
 }

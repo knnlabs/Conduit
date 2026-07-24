@@ -1109,6 +1109,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/admin/media-assets/restore/{mediaId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Restore soft-deleted media within its recovery window */
+    post: operations["Media_Restore"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/admin/media-assets/cleanup/expired": {
     parameters: {
       query?: never;
@@ -4908,7 +4925,7 @@ export interface components {
     };
     /** @description Last known status for one scheduled media cleanup phase. */
     MediaCleanupOperationStatusDto: {
-      /** @description Stable cleanup phase name: expiration, reconciliation, or retention. */
+      /** @description Stable cleanup phase name: purge, expiration, reconciliation, or retention. */
       cleanupType?: string;
       /** @description Whether this cleanup phase is enabled by deploy-time configuration. */
       isEnabled?: boolean;
@@ -4956,6 +4973,11 @@ export interface components {
       deletedCount?: number;
       /**
        * Format: int32
+       * @description Number of records tombstoned without freeing storage.
+       */
+      tombstonedCount?: number;
+      /**
+       * Format: int32
        * @description Number of media files that could not be deleted and remain tracked for retry.
        */
       failedCount?: number;
@@ -4966,6 +4988,11 @@ export interface components {
        * @description Number of files that matched during a dry run.
        */
       wouldDeleteCount?: number;
+      /**
+       * Format: int32
+       * @description Number of records that would be tombstoned during a dry run.
+       */
+      wouldTombstoneCount?: number;
       /**
        * Format: int64
        * @description Bytes that would be freed during a dry run.
@@ -4981,6 +5008,13 @@ export interface components {
       isEnabled?: boolean;
       /** @description Whether the service is running in dry run mode (logs but doesn't delete). */
       isDryRunMode?: boolean;
+      /** @description Whether eligible tracked media is tombstoned before permanent purge. */
+      isSoftDeleteEnabled?: boolean;
+      /**
+       * Format: int32
+       * @description Fallback recovery window when no retention policy supplies one.
+       */
+      softDeleteGracePeriodDays?: number;
       /** @description The resolved media storage backend (for example, S3 or InMemory). */
       storageBackend?: string;
       /**
@@ -5079,6 +5113,13 @@ export interface components {
     MediaDeletionResponseDto: {
       /** @description Human-readable confirmation message. */
       message?: string;
+      /** @description Whether the record was tombstoned and remains recoverable. */
+      isSoftDeleted?: boolean;
+      /**
+       * Format: date-time
+       * @description Tombstone timestamp when soft deletion is enabled.
+       */
+      deletedAt?: null | string;
     };
     MediaRecordResponse: {
       /** Format: uuid */
@@ -5104,6 +5145,14 @@ export interface components {
       lastAccessedAt: null | string;
       /** Format: int32 */
       accessCount: number;
+      /** Format: date-time */
+      deletedAt: null | string;
+    };
+    /** @description Response returned after restoring a tombstoned media record. */
+    MediaRestoreResponseDto: {
+      message?: string;
+      /** Format: uuid */
+      mediaId?: string;
     };
     /** @description Extended DTO for media retention policy with virtual key group details. */
     MediaRetentionPolicyDetailDto: {
@@ -11728,6 +11777,7 @@ export interface operations {
   Media_GetByVirtualKey: {
     parameters: {
       query?: {
+        includeDeleted?: boolean;
         /** @description 1-based page number. */
         page?: number;
         /** @description Items per page (maximum 100). */
@@ -11863,6 +11913,96 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  Media_Restore: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        mediaId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MediaRestoreResponseDto"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;

@@ -49,6 +49,20 @@ export default function MediaFilterBar({
       />
 
       <Select
+        aria-label="Deletion state"
+        value={filters.deletionState ?? 'active'}
+        onChange={(value) => onFiltersChange({
+          deletionState: (value ?? 'active') as 'active' | 'deleted' | 'all',
+        })}
+        data={[
+          { label: 'Active', value: 'active' },
+          { label: 'Deleted', value: 'deleted' },
+          { label: 'All states', value: 'all' },
+        ]}
+        w={140}
+      />
+
+      <Select
         placeholder="All providers"
         value={filters.provider ?? null}
         onChange={(value) => onFiltersChange({ provider: value ?? undefined })}

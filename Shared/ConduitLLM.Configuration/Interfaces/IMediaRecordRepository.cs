@@ -17,12 +17,48 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<MediaRecord?> GetByStorageKeyAsync(string storageKey, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Gets a media record by storage key, including a soft-deleted record.
+        /// </summary>
+        Task<MediaRecord?> GetByStorageKeyIncludingDeletedAsync(
+            string storageKey,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets a media record by ID, including a soft-deleted record.
+        /// </summary>
+        Task<MediaRecord?> GetByIdIncludingDeletedAsync(
+            Guid id,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Gets all media records for a virtual key.
         /// </summary>
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
+        /// <param name="includeDeleted">Whether tombstoned records should be returned.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of media records for the virtual key ordered by created date descending.</returns>
-        Task<List<MediaRecord>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default);
+        Task<List<MediaRecord>> GetByVirtualKeyIdAsync(
+            int virtualKeyId,
+            bool includeDeleted = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Marks an active media record as soft deleted.
+        /// </summary>
+        Task<bool> TombstoneAsync(
+            Guid id,
+            DateTime deletedAtUtc,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Restores a soft-deleted media record.
+        /// </summary>
+        Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Permanently removes a media record, bypassing the default tombstone filter.
+        /// </summary>
+        Task<bool> HardDeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets media records that have expired.

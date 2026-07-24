@@ -83,7 +83,9 @@ public sealed class MediaReconciliationService : IMediaReconciliationService
             if (objects.Count > 0)
             {
                 var pageKeys = objects.Select(item => item.StorageKey).ToList();
+                // Tombstones still own their storage until the purge phase.
                 var trackedKeys = await _configurationContext.MediaRecords
+                    .IgnoreQueryFilters()
                     .AsNoTracking()
                     .Where(record => pageKeys.Contains(record.StorageKey))
                     .Select(record => record.StorageKey)

@@ -7470,6 +7470,14 @@
             }
           },
           {
+            "name": "includeDeleted",
+            "in": "query",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "description": "1-based page number.",
@@ -7749,6 +7757,159 @@
           },
           "404": {
             "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
+    "/v1/admin/media-assets/restore/{mediaId}": {
+      "post": {
+        "tags": [
+          "Media"
+        ],
+        "summary": "Restore soft-deleted media within its recovery window",
+        "operationId": "Media_Restore",
+        "parameters": [
+          {
+            "name": "mediaId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaRestoreResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
             "headers": {
               "x-request-id": {
                 "description": "Request identifier for support and distributed tracing.",
@@ -27912,7 +28073,7 @@
         "properties": {
           "cleanupType": {
             "type": "string",
-            "description": "Stable cleanup phase name: expiration, reconciliation, or retention."
+            "description": "Stable cleanup phase name: purge, expiration, reconciliation, or retention."
           },
           "isEnabled": {
             "type": "boolean",
@@ -27990,6 +28151,11 @@
             "description": "Number of media files deleted by the operation.",
             "format": "int32"
           },
+          "tombstonedCount": {
+            "type": "integer",
+            "description": "Number of records tombstoned without freeing storage.",
+            "format": "int32"
+          },
           "failedCount": {
             "type": "integer",
             "description": "Number of media files that could not be deleted and remain tracked for retry.",
@@ -28002,6 +28168,11 @@
           "wouldDeleteCount": {
             "type": "integer",
             "description": "Number of files that matched during a dry run.",
+            "format": "int32"
+          },
+          "wouldTombstoneCount": {
+            "type": "integer",
+            "description": "Number of records that would be tombstoned during a dry run.",
             "format": "int32"
           },
           "bytesWouldFree": {
@@ -28026,6 +28197,15 @@
           "isDryRunMode": {
             "type": "boolean",
             "description": "Whether the service is running in dry run mode (logs but doesn't delete)."
+          },
+          "isSoftDeleteEnabled": {
+            "type": "boolean",
+            "description": "Whether eligible tracked media is tombstoned before permanent purge."
+          },
+          "softDeleteGracePeriodDays": {
+            "type": "integer",
+            "description": "Fallback recovery window when no retention policy supplies one.",
+            "format": "int32"
           },
           "storageBackend": {
             "type": "string",
@@ -28170,6 +28350,18 @@
           "message": {
             "type": "string",
             "description": "Human-readable confirmation message."
+          },
+          "isSoftDeleted": {
+            "type": "boolean",
+            "description": "Whether the record was tombstoned and remains recoverable."
+          },
+          "deletedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Tombstone timestamp when soft deletion is enabled.",
+            "format": "date-time"
           }
         },
         "description": "Response returned when a media record is deleted."
@@ -28191,7 +28383,8 @@
           "expiresAt",
           "createdAt",
           "lastAccessedAt",
-          "accessCount"
+          "accessCount",
+          "deletedAt"
         ],
         "type": "object",
         "properties": {
@@ -28279,8 +28472,28 @@
           "accessCount": {
             "type": "integer",
             "format": "int32"
+          },
+          "deletedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
           }
         }
+      },
+      "MediaRestoreResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "mediaId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "description": "Response returned after restoring a tombstoned media record."
       },
       "MediaRetentionPolicyDetailDto": {
         "type": "object",

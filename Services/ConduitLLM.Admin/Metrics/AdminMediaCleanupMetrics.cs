@@ -61,6 +61,15 @@ namespace ConduitLLM.Admin.Metrics
                 new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
 
         /// <summary>
+        /// Total media records tombstoned. Tombstoning does not free storage or consume delete budget.
+        /// </summary>
+        public static readonly Counter RecordsTombstoned = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_records_tombstoned_total",
+                "Total media records tombstoned during cleanup",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
         /// Cleanup cycle duration in seconds.
         /// </summary>
         public static readonly Histogram CleanupDuration = Prometheus.Metrics

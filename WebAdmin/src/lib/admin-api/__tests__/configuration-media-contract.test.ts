@@ -39,13 +39,15 @@ describe('Configuration and prompt-caching generated operations', () => {
 
 describe('Media and retention generated operations', () => {
   const cases: Array<[string, string, string, (api: ReturnType<typeof client>) => Promise<unknown>, unknown?, unknown?]> = [
-    ['list', 'GET', '/v1/admin/media-assets/virtual-key/7', a => a.media.getMediaByVirtualKey(7), undefined, []],
+    ['list', 'GET', '/v1/admin/media-assets/virtual-key/7?includeDeleted=false', a => a.media.getMediaByVirtualKey(7), undefined, []],
+    ['list deleted', 'GET', '/v1/admin/media-assets/virtual-key/7?includeDeleted=true', a => a.media.getMediaByVirtualKey(7, true), undefined, []],
     ['overall stats', 'GET', '/v1/admin/media-assets/stats?virtualKeyGroupId=3', a => a.media.getMediaStats('overall', undefined, 3)],
     ['key stats', 'GET', '/v1/admin/media-assets/stats/virtual-key/7', a => a.media.getMediaStats('virtual-key', 7)],
     ['provider stats', 'GET', '/v1/admin/media-assets/stats/by-provider', a => a.media.getMediaStats('by-provider')],
     ['type stats', 'GET', '/v1/admin/media-assets/stats/by-type', a => a.media.getMediaStats('by-type')],
     ['search encoding', 'GET', '/v1/admin/media-assets/search?pattern=a%2Fb%20c', a => a.media.searchMedia('a/b c'), undefined, []],
     ['delete encoding', 'DELETE', '/v1/admin/media-assets/m%2F1', a => a.media.deleteMedia('m/1')],
+    ['restore encoding', 'POST', '/v1/admin/media-assets/restore/m%2F1', a => a.media.restoreMedia('m/1')],
     ['expired', 'POST', '/v1/admin/media-assets/cleanup/expired?force=false', a => a.media.cleanupMedia({ type: 'expired' })],
     ['reconciliation', 'POST', '/v1/admin/media-assets/cleanup/orphaned?force=false', a => a.media.cleanupMedia({ type: 'reconciliation' })],
     ['prune', 'POST', '/v1/admin/media-assets/cleanup/prune', a => a.media.cleanupMedia({ type: 'prune', daysToKeep: 30 }), { daysToKeep: 30, force: false }],

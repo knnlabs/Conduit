@@ -359,7 +359,9 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.VirtualKeyId);
                 entity.HasIndex(e => e.ExpiresAt);
                 entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => e.DeletedAt);
                 entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
+                entity.HasQueryFilter(e => e.DeletedAt == null);
 
                 // Keep cascade semantics for key deletion: the storage reconciliation sweep
                 // independently discovers and removes objects left behind in external storage.
