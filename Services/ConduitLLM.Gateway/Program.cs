@@ -1,5 +1,6 @@
 using JasperFx;
 using ConduitLLM.Gateway.Endpoints;
+using ConduitLLM.Gateway.Extensions;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -65,6 +66,7 @@ Program.ConfigureMessagingServices(builder);
 Program.ConfigureSignalRServices(builder);
 Program.ConfigureMediaServices(builder);
 Program.ConfigureMonitoringServices(builder);
+builder.Services.AddConduitRateLimiting(builder.Configuration);
 
 var app = builder.Build();
 

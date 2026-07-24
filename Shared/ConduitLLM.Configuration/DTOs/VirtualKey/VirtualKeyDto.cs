@@ -76,6 +76,11 @@ public class VirtualKeyDto
     public int? RateLimitRpd { get; set; }
 
     /// <summary>
+    /// Optional rate limit in tokens per minute (prompt plus completion).
+    /// </summary>
+    public int? RateLimitTpm { get; set; }
+
+    /// <summary>
     /// Optional description of the key's purpose
     /// </summary>
     public string? Description { get; set; }

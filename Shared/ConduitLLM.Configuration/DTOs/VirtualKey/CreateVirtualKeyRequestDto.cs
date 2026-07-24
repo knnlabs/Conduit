@@ -28,4 +28,9 @@ public class CreateVirtualKeyRequestDto
 
     public int? RateLimitRpm { get; set; }
     public int? RateLimitRpd { get; set; }
+
+    /// <summary>
+    /// Optional tokens-per-minute ceiling. Null leaves the key without a token limit.
+    /// </summary>
+    public int? RateLimitTpm { get; set; }
 }

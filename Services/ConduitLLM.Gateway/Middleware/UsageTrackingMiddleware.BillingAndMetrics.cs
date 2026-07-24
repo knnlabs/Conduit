@@ -21,6 +21,10 @@ namespace ConduitLLM.Gateway.Middleware
             ICostCalculationService costCalculationService,
             IBillingAuditService billingAuditService)
         {
+            // The token window was charged an estimate before the provider was called; this is
+            // the first point where the real figure is known for every response shape.
+            await ReconcileTokenReservationAsync(context, usage);
+
             try
             {
                 var providerCalls = context.GetRequestAccountingSnapshot()?.ProviderCalls.ToList();

@@ -29,4 +29,9 @@ public class UpdateVirtualKeyRequestDto
 
     public int? RateLimitRpm { get; set; }
     public int? RateLimitRpd { get; set; }
+
+    /// <summary>
+    /// Optional tokens-per-minute ceiling. Null leaves the existing value untouched.
+    /// </summary>
+    public int? RateLimitTpm { get; set; }
 }

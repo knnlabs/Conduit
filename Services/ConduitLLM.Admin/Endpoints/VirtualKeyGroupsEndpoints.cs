@@ -363,6 +363,7 @@ namespace ConduitLLM.Admin.Endpoints
                 Metadata = VirtualKeyUtilities.MapToDto(k).Metadata,
                 RateLimitRpm = k.RateLimitRpm,
                 RateLimitRpd = k.RateLimitRpd,
+                RateLimitTpm = k.RateLimitTpm,
                 Description = k.Description
             }).ToList() ?? new List<VirtualKeyDto>();
 

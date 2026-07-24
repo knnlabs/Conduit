@@ -44,5 +44,10 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Rate limit in requests per day
         /// </summary>
         public int? RateLimitRpd { get; set; }
+
+        /// <summary>
+        /// Rate limit in tokens per minute
+        /// </summary>
+        public int? RateLimitTpm { get; set; }
     }
 }

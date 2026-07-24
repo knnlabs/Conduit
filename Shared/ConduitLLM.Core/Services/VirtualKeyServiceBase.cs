@@ -89,6 +89,7 @@ namespace ConduitLLM.Core.Services
                 Metadata = request.Metadata is null ? null : JsonSerializer.Serialize(request.Metadata),
                 RateLimitRpm = request.RateLimitRpm,
                 RateLimitRpd = request.RateLimitRpd,
+                RateLimitTpm = request.RateLimitTpm,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -224,6 +225,12 @@ namespace ConduitLLM.Core.Services
             {
                 key.RateLimitRpd = request.RateLimitRpd;
                 changedProperties.Add(nameof(key.RateLimitRpd));
+            }
+
+            if (request.RateLimitTpm.HasValue && key.RateLimitTpm != request.RateLimitTpm)
+            {
+                key.RateLimitTpm = request.RateLimitTpm;
+                changedProperties.Add(nameof(key.RateLimitTpm));
             }
 
             if (!changedProperties.Any())

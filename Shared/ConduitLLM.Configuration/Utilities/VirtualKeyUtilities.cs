@@ -101,6 +101,7 @@ namespace ConduitLLM.Configuration.Utilities
                 Metadata = ParseMetadata(virtualKey.Metadata),
                 RateLimitRpm = virtualKey.RateLimitRpm,
                 RateLimitRpd = virtualKey.RateLimitRpd,
+                RateLimitTpm = virtualKey.RateLimitTpm,
                 Description = virtualKey.Description,
             };
         }

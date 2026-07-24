@@ -86,6 +86,17 @@ public partial class VirtualKey : IEntity<int>, IAuditableEntity
     public int? RateLimitRpd { get; set; }
 
     /// <summary>
+    /// Tokens per minute rate limit for this key. Null means no token ceiling.
+    /// </summary>
+    /// <remarks>
+    /// Counts prompt plus completion tokens over a rolling minute. Request counting alone
+    /// cannot police cost when request sizes differ by two orders of magnitude, which is what
+    /// this limit is for. Enforcement reserves an estimate up front and reconciles it to the
+    /// actual usage once the response is billed.
+    /// </remarks>
+    public int? RateLimitTpm { get; set; }
+
+    /// <summary>
     /// Virtual collection of request logs
     /// </summary>
     public virtual ICollection<RequestLog>? RequestLogs { get; set; }

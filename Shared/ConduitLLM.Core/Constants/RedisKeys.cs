@@ -27,6 +27,10 @@ public static class RedisKeys
     {
         public static string VirtualKeyRpm(string hash) => $"rate:vk:{hash}:rpm";
         public static string VirtualKeyRpd(string hash) => $"rate:vk:{hash}:rpd";
+
+        /// <summary>Weighted token-per-minute window; entry weights are token counts.</summary>
+        public static string VirtualKeyTpm(string hash) => $"rate:vk:{hash}:tpm";
+
         public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
 
         /// <summary>

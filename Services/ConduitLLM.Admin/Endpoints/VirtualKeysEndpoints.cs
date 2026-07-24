@@ -151,6 +151,8 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             changes.Add(("RateLimitRpm", preState.RateLimitRpm?.ToString() ?? "null", request.RateLimitRpm?.ToString() ?? "null"));
         if (request.RateLimitRpd.HasValue && preState.RateLimitRpd != request.RateLimitRpd)
             changes.Add(("RateLimitRpd", preState.RateLimitRpd?.ToString() ?? "null", request.RateLimitRpd?.ToString() ?? "null"));
+        if (request.RateLimitTpm.HasValue && preState.RateLimitTpm != request.RateLimitTpm)
+            changes.Add(("RateLimitTpm", preState.RateLimitTpm?.ToString() ?? "null", request.RateLimitTpm?.ToString() ?? "null"));
         if (request.VirtualKeyGroupId.HasValue && preState.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
             changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId.Value.ToString()));
 
