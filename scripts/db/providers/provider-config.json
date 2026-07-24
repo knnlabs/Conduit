@@ -17,6 +17,12 @@
     "modelCardUrl": "https://docs.sambanova.ai/docs/en/models/sambacloud-models",
     "supportsAudio": true
   },
+  "cloudflare": {
+    "providerType": 12,
+    "websiteUrl": "https://developers.cloudflare.com/workers-ai/",
+    "modelCardUrl": "https://developers.cloudflare.com/workers-ai/models/",
+    "supportsAudio": true
+  },
   "openrouter": {
     "providerType": 13,
     "websiteUrl": "https://openrouter.ai",

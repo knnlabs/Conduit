@@ -25,10 +25,12 @@ This unified approach consolidates the previously separate provider-specific scr
 - **provider-config.json** - Provider metadata (ProviderType enum, URLs, capabilities)
 - **generate-provider-sql.cs** - Unified C# script that generates PostgreSQL SQL
 - **fetch-openrouter-models.cs** - Fetches OpenRouter models from API → generates openrouter-models.json
+- **fetch-cloudflare-models.cs** - Fetches Workers AI catalog → generates cloudflare-models.json
 - **cerebras-models.json** - Hand-maintained list of Cerebras models
 - **groq-models.json** - Hand-maintained list of Groq models
 - **sambanova-models.json** - Hand-maintained list of SambaNova models
 - **openrouter-models.json** - Auto-generated from OpenRouter API (do not hand-edit)
+- **cloudflare-models.json** - Auto-generated from the Workers AI catalog (do not hand-edit)
 - **UPDATING-MODELS.md** - Comprehensive guide for updating model JSON files
 - **README.md** - This file
 
@@ -75,6 +77,33 @@ The fetch script:
 - Derives model family/series from naming patterns
 - Retains free-tier variants so the bundled snapshot matches the public catalog
 - Outputs standard `openrouter-models.json` format
+
+### Cloudflare Workers AI (Catalog-Fetched)
+
+Cloudflare's authenticated `/accounts/{account_id}/ai/models/search` endpoint has no
+accountless equivalent, so the fetch script instead pulls the per-model JSON dumps
+the cloudflare-docs repository publishes (identical shape to the API's entries) —
+no credentials required:
+
+```bash
+# Step 1: Fetch the Workers AI catalog → generates cloudflare-models.json
+dotnet run fetch-cloudflare-models.cs
+
+# Step 2 (optional): Generate SQL from the fetched JSON
+dotnet run generate-provider-sql.cs -- cloudflare
+```
+
+The fetch script:
+- Lists `src/content/workers-ai-models/*.json` in `cloudflare/cloudflare-docs` via the GitHub API
+- Keys entries on the full `@cf/...` slug — the identifier the Gateway sends to Cloudflare
+- Maps `task.name` to capabilities (Text Generation → chat, Text Embeddings → embeddings,
+  Text-to-Image → image generation, ASR → speech-to-text, Text-to-Speech, Image-to-Text → vision)
+- Skips tasks Conduit cannot route (classification, translation, summarization, detection)
+  and prints what was skipped
+- Reads `context_window`, `function_calling`, `vision`, `beta`, `lora` from the properties array
+- Maps per-M-token pricing to the catalog fields; non-token pricing units
+  (per step, per tile, per audio minute) are recorded in `notes`
+- Cloudflare publishes no max output limit; chat models default to 25% of context
 
 ### Executing Generated SQL
 
