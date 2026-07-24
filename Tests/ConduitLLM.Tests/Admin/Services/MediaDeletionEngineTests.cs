@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -29,8 +30,11 @@ public sealed class MediaDeletionEngineTests
             .Setup(guard => guard.ValidateAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
         _storage
-            .Setup(storage => storage.DeleteAsync(It.IsAny<string>()))
-            .ReturnsAsync(true);
+            .Setup(storage => storage.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+                SuccessfulDelete(keys));
         _repository
             .Setup(repository => repository.HardDeleteAsync(
                 It.IsAny<Guid>(),
@@ -95,7 +99,8 @@ public sealed class MediaDeletionEngineTests
             BytesWouldFree = 300L,
             IsDryRun = true
         });
-        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
         _repository.Verify(repository => repository.HardDeleteAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
         _budget.Verify(budget => budget.ReserveAsync(
@@ -107,8 +112,19 @@ public sealed class MediaDeletionEngineTests
     {
         var records = CreateRecords(2);
         _storage
-            .Setup(storage => storage.DeleteAsync(records[1].StorageKey))
-            .ReturnsAsync(false);
+            .Setup(storage => storage.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+                new MediaBulkDeleteResult
+                {
+                    Items = keys.Select(key => new MediaDeleteItemResult
+                    {
+                        StorageKey = key,
+                        Deleted = key != records[1].StorageKey,
+                        ErrorCode = key == records[1].StorageKey ? "denied" : null
+                    }).ToList()
+                });
         var engine = CreateEngine(new MediaLifecycleOptions
         {
             DryRunMode = true,
@@ -159,7 +175,8 @@ public sealed class MediaDeletionEngineTests
 
         result.BudgetExhausted.Should().BeTrue();
         result.FilesDeleted.Should().Be(0);
-        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -214,7 +231,8 @@ public sealed class MediaDeletionEngineTests
             300,
             It.IsAny<DateTime>(),
             It.IsAny<CancellationToken>()), Times.Once);
-        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -251,6 +269,79 @@ public sealed class MediaDeletionEngineTests
     }
 
     [Fact]
+    public async Task DeleteAsync_WhenStorageThrottles_RetriesWithExponentialBackoff()
+    {
+        var calls = 0;
+        _storage
+            .Setup(storage => storage.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+            {
+                calls++;
+                return calls == 1
+                    ? new MediaBulkDeleteResult
+                    {
+                        Items = keys.Select(key => new MediaDeleteItemResult
+                        {
+                            StorageKey = key,
+                            IsRetryable = true,
+                            ErrorCode = "SlowDown"
+                        }).ToList()
+                    }
+                    : SuccessfulDelete(keys);
+            });
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            DryRunMode = false,
+            EnableSoftDelete = false,
+            MaxBatchSize = 1000,
+            BudgetReservationStride = 1000,
+            DeleteThrottleMaxRetries = 2,
+            DeleteThrottleInitialBackoffMs = 0,
+            RequireManualApprovalForLargeBatches = false
+        });
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            CreateRecords(3),
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Purge, "scheduled", "test"),
+            Purge: true));
+
+        result.FilesDeleted.Should().Be(3);
+        result.Failures.Should().Be(0);
+        calls.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_FiveThousandObjects_UsesFiveBulkStorageCalls()
+    {
+        var engine = CreateEngine(new MediaLifecycleOptions
+        {
+            DryRunMode = false,
+            EnableSoftDelete = false,
+            MaxBatchSize = 1000,
+            BudgetReservationStride = 1000,
+            DelayBetweenBatchesMs = 0,
+            RequireManualApprovalForLargeBatches = false
+        });
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = await engine.DeleteAsync(new MediaDeletionRequest(
+            CreateRecords(5000),
+            new MediaDeletionOperationContext(
+                MediaCleanupTypes.Purge, "scheduled", "test"),
+            Purge: true));
+        stopwatch.Stop();
+
+        result.FilesDeleted.Should().Be(5000);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.Is<IEnumerable<string>>(keys => keys.Count() == 1000),
+            It.IsAny<CancellationToken>()), Times.Exactly(5));
+        stopwatch.Elapsed.Should().BeLessThan(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
     public async Task DeleteAsync_ReservesBeforeStorageInConfiguredCrashBoundedStrides()
     {
         var reservations = new List<int>();
@@ -267,12 +358,15 @@ public sealed class MediaDeletionEngineTests
                 return new MediaDeletionBudgetReservation(requested, requested, requested);
             });
         _storage
-            .Setup(storage => storage.DeleteAsync(It.IsAny<string>()))
-            .ReturnsAsync(() =>
+            .Setup(storage => storage.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
             {
-                unconsumedReservations.Should().BeGreaterThan(0);
-                unconsumedReservations--;
-                return true;
+                var keyList = keys.ToList();
+                unconsumedReservations.Should().BeGreaterThanOrEqualTo(keyList.Count);
+                unconsumedReservations -= keyList.Count;
+                return SuccessfulDelete(keyList);
             });
         var engine = CreateEngine(new MediaLifecycleOptions
         {
@@ -364,7 +458,8 @@ public sealed class MediaDeletionEngineTests
         _repository.Verify(repository => repository.TombstoneAsync(
             It.IsAny<Guid>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()),
             Times.Exactly(2));
-        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()), Times.Never);
         _budget.Verify(budget => budget.ReserveAsync(
             It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -411,8 +506,9 @@ public sealed class MediaDeletionEngineTests
         result.FilesDeleted.Should().Be(2);
         result.BytesFreed.Should().Be(300);
         result.RecordsTombstoned.Should().Be(0);
-        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()),
-            Times.Exactly(2));
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.Is<IEnumerable<string>>(keys => keys.Count() == 2),
+            It.IsAny<CancellationToken>()), Times.Once);
         _repository.Verify(repository => repository.HardDeleteAsync(
             It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         _budget.Verify(budget => budget.ReserveAsync(
@@ -507,6 +603,15 @@ public sealed class MediaDeletionEngineTests
         _storageGuard.Object,
         Options.Create(options),
         Mock.Of<ILogger<MediaDeletionEngine>>());
+
+    private static MediaBulkDeleteResult SuccessfulDelete(IEnumerable<string> keys) => new()
+    {
+        Items = keys.Select(key => new MediaDeleteItemResult
+        {
+            StorageKey = key,
+            Deleted = true
+        }).ToList()
+    };
 
     private static List<MediaRecord> CreateRecords(int count) =>
         Enumerable.Range(1, count)

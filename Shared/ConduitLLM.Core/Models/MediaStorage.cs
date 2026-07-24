@@ -68,6 +68,29 @@ namespace ConduitLLM.Core.Models
     }
 
     /// <summary>
+    /// Per-object outcome from a bulk media delete request.
+    /// </summary>
+    public sealed class MediaDeleteItemResult
+    {
+        public string StorageKey { get; set; } = string.Empty;
+        public bool Deleted { get; set; }
+        public bool IsRetryable { get; set; }
+        public string? ErrorCode { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
+    /// <summary>
+    /// Per-key results returned by a storage bulk delete operation.
+    /// </summary>
+    public sealed class MediaBulkDeleteResult
+    {
+        public IReadOnlyList<MediaDeleteItemResult> Items { get; set; } =
+            Array.Empty<MediaDeleteItemResult>();
+
+        public bool WasThrottled => Items.Any(item => item.IsRetryable);
+    }
+
+    /// <summary>
     /// Metadata returned while enumerating objects in the configured media store.
     /// </summary>
     public sealed class MediaStorageObject

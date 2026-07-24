@@ -78,8 +78,11 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Default storage service setup - successful deletes
             _mockStorageService
-                .Setup(x => x.DeleteAsync(It.IsAny<string>()))
-                .ReturnsAsync(true);
+                .Setup(x => x.DeleteManyAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+                    SuccessfulDelete(keys));
             _mockStorageService
                 .Setup(x => x.ListObjectsAsync(
                     It.IsAny<string?>(),
@@ -345,7 +348,9 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Assert - no storage deletions when lock not acquired
             _mockStorageService.Verify(
-                x => x.DeleteAsync(It.IsAny<string>()),
+                x => x.DeleteManyAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()),
                 Times.Never);
         }
 
@@ -378,12 +383,14 @@ namespace ConduitLLM.Tests.Admin.Services
             _context.MediaRecords.Add(expired);
             await _context.SaveChangesAsync();
             _mockStorageService
-                .Setup(storage => storage.DeleteAsync(expired.StorageKey))
-                .Returns(async () =>
+                .Setup(storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(expired.StorageKey)),
+                    It.IsAny<CancellationToken>()))
+                .Returns(async (IEnumerable<string> keys, CancellationToken _) =>
                 {
                     deleteStarted.TrySetResult();
                     await allowDelete.Task;
-                    return true;
+                    return SuccessfulDelete(keys);
                 });
 
             var first = new MediaCleanupService(
@@ -404,7 +411,9 @@ namespace ConduitLLM.Tests.Admin.Services
             await firstRun;
 
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(expired.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(expired.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -436,7 +445,7 @@ namespace ConduitLLM.Tests.Admin.Services
 
             _mockLockService.Verify(x => x.AcquireLockAsync(
                 "media:cleanup:leader", It.IsAny<TimeSpan>(), It.IsAny<CancellationToken>()), Times.Once);
-            _mockStorageService.Verify(x => x.DeleteAsync("expired-media"), Times.Once);
+            VerifyBulkDelete("expired-media", Times.Once());
             _mockMediaRepository.Verify(x => x.HardDeleteAsync(
                 expired.Id, It.IsAny<CancellationToken>()), Times.Once);
             _mockBudgetService.Verify(x => x.ReserveAsync(
@@ -484,10 +493,14 @@ namespace ConduitLLM.Tests.Admin.Services
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(expiredTombstone.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(expiredTombstone.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(recoverableTombstone.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(recoverableTombstone.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Never);
             _mockMediaRepository.Verify(repository => repository.HardDeleteAsync(
                 expiredTombstone.Id,
@@ -528,7 +541,7 @@ namespace ConduitLLM.Tests.Admin.Services
             var service = CreateService(options);
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
-            _mockStorageService.Verify(x => x.DeleteAsync("untracked-media"), Times.Once);
+            VerifyBulkDelete("untracked-media", Times.Once());
             _mockMediaRepository.Verify(x => x.HardDeleteAsync(
                 It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
             VerifyOperationStatus(MediaCleanupTypes.Reconciliation, "Completed");
@@ -550,7 +563,7 @@ namespace ConduitLLM.Tests.Admin.Services
             var service = CreateService(options);
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
-            _mockStorageService.Verify(x => x.DeleteAsync("storage-key-1-0"), Times.Once);
+            VerifyBulkDelete("storage-key-1-0", Times.Once());
             VerifyOperationStatus(MediaCleanupTypes.Retention, "Completed");
         }
 
@@ -581,13 +594,19 @@ namespace ConduitLLM.Tests.Admin.Services
             await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
 
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(oldest.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(oldest.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(middle.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(middle.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Never);
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(newest.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(newest.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Never);
             VerifyOperationStatus(MediaCleanupTypes.Quota, "Completed");
         }
@@ -619,10 +638,14 @@ namespace ConduitLLM.Tests.Admin.Services
             await CreateService(options).RunScheduledCleanupAsync(CancellationToken.None);
 
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(protectedOldest.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(protectedOldest.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Never);
             _mockStorageService.Verify(
-                storage => storage.DeleteAsync(eligible.StorageKey),
+                storage => storage.DeleteManyAsync(
+                    It.Is<IEnumerable<string>>(keys => keys.Contains(eligible.StorageKey)),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -663,7 +686,9 @@ namespace ConduitLLM.Tests.Admin.Services
             var service = CreateService(options);
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
-            _mockStorageService.Verify(x => x.DeleteAsync(It.IsAny<string>()), Times.Never);
+            _mockStorageService.Verify(x => x.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()), Times.Never);
             VerifyOperationStatus(MediaCleanupTypes.Expiration, "budget");
         }
 
@@ -705,13 +730,26 @@ namespace ConduitLLM.Tests.Admin.Services
                     ]
                 });
             _mockStorageService
-                .Setup(x => x.DeleteAsync("failing-expired-media"))
-                .ThrowsAsync(new InvalidOperationException("storage unavailable"));
+                .Setup(x => x.DeleteManyAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+                    new MediaBulkDeleteResult
+                    {
+                        Items = keys.Select(key => new MediaDeleteItemResult
+                        {
+                            StorageKey = key,
+                            Deleted = key != "failing-expired-media",
+                            ErrorCode = key == "failing-expired-media"
+                                ? "storage_unavailable"
+                                : null
+                        }).ToList()
+                    });
 
             var service = CreateService(options);
             await service.RunScheduledCleanupAsync(CancellationToken.None);
 
-            _mockStorageService.Verify(x => x.DeleteAsync("healthy-untracked-media"), Times.Once);
+            VerifyBulkDelete("healthy-untracked-media", Times.Once());
             VerifyOperationStatus(MediaCleanupTypes.Expiration, "errors");
             VerifyOperationStatus(MediaCleanupTypes.Reconciliation, "Completed");
         }
@@ -771,13 +809,13 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
-        public void MaxBatchSize_DefaultsTo50()
+        public void MaxBatchSize_DefaultsToS3DeleteObjectsLimit()
         {
             // Arrange
             var options = new MediaLifecycleOptions();
 
             // Assert
-            options.MaxBatchSize.Should().Be(50);
+            options.MaxBatchSize.Should().Be(1000);
         }
 
         [Fact]
@@ -955,6 +993,22 @@ namespace ConduitLLM.Tests.Admin.Services
             SizeBytes = 1024,
             CreatedAt = DateTime.UtcNow
         };
+
+        private static MediaBulkDeleteResult SuccessfulDelete(IEnumerable<string> keys) => new()
+        {
+            Items = keys.Select(key => new MediaDeleteItemResult
+            {
+                StorageKey = key,
+                Deleted = true
+            }).ToList()
+        };
+
+        private void VerifyBulkDelete(string storageKey, Times times)
+        {
+            _mockStorageService.Verify(storage => storage.DeleteManyAsync(
+                It.Is<IEnumerable<string>>(keys => keys.Contains(storageKey)),
+                It.IsAny<CancellationToken>()), times);
+        }
 
         private void VerifyOperationStatus(string cleanupType, string expectedStatusFragment)
         {

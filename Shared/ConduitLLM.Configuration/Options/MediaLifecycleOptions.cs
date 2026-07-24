@@ -95,10 +95,10 @@ namespace ConduitLLM.Configuration.Options
         public int LargeBatchApprovalExpirationHours { get; set; } = 24;
 
         /// <summary>
-        /// Maximum batch size for R2 operations.
-        /// Conservative for free tier.
+        /// Maximum number of objects grouped into one cleanup batch.
+        /// S3-compatible bulk delete supports up to 1,000 keys.
         /// </summary>
-        public int MaxBatchSize { get; set; } = 50;
+        public int MaxBatchSize { get; set; } = 1000;
 
         /// <summary>
         /// Delay between batches in milliseconds.
@@ -106,9 +106,14 @@ namespace ConduitLLM.Configuration.Options
         public int DelayBetweenBatchesMs { get; set; } = 500;
 
         /// <summary>
-        /// Maximum concurrent R2 delete operations.
+        /// Maximum retries after a storage throttle or per-call timeout.
         /// </summary>
-        public int MaxConcurrentBatches { get; set; } = 2;
+        public int DeleteThrottleMaxRetries { get; set; } = 5;
+
+        /// <summary>
+        /// Initial exponential backoff delay after storage throttling.
+        /// </summary>
+        public int DeleteThrottleInitialBackoffMs { get; set; } = 1000;
 
         /// <summary>
         /// Monthly delete operation budget for R2 free tier.

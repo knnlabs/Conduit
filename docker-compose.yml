@@ -146,7 +146,11 @@ services:
       MediaLifecycle__EnableSoftDelete: "true"
       MediaLifecycle__SoftDeleteGracePeriodDays: "7"
       MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
-      MediaLifecycle__MaxBatchSize: "50"
+      MediaLifecycle__MaxBatchSize: "1000"
+      MediaLifecycle__DelayBetweenBatchesMs: "500"
+      MediaLifecycle__DeleteThrottleMaxRetries: "5"
+      MediaLifecycle__DeleteThrottleInitialBackoffMs: "1000"
+      MediaLifecycle__R2OperationTimeoutSeconds: "30"
       MediaLifecycle__MonthlyDeleteBudget: "500000"
       # Discovery Cache configuration
       Discovery__CacheDurationMinutes: "360"  # 6 hours

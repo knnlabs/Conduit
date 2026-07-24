@@ -82,6 +82,15 @@ cleanup is more important than enforcing the provider allowance. Failures increm
 `conduit_admin_media_cleanup_budget_store_failures_total`. The status page identifies Redis versus
 the development-only in-memory counter; the latter resets on restart and is not shared.
 
+Storage deletion uses S3 `DeleteObjects` requests and records a database deletion only for keys the
+provider confirms. `MediaLifecycle__MaxBatchSize` groups up to 1,000 candidates before applying
+`MediaLifecycle__DelayBetweenBatchesMs`; `BudgetReservationStride` remains the maximum size of each
+storage request so the crash exposure never exceeds the reserved budget stride. HTTP 429/503 and
+S3 `SlowDown` outcomes retry with exponential backoff controlled by
+`MediaLifecycle__DeleteThrottleMaxRetries` and
+`MediaLifecycle__DeleteThrottleInitialBackoffMs`. Each provider call is bounded by
+`MediaLifecycle__R2OperationTimeoutSeconds`.
+
 Retention policies may cap group storage with `MaxStorageSizeBytes`, `MaxFileCount`, or both.
 Before uploading generated media, Gateway resolves the owning group and runs an indexed SQL
 aggregate over that group's media records. A policy may reject a write that would exceed quota

@@ -161,6 +161,30 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public Task<MediaBulkDeleteResult> DeleteManyAsync(
+            IEnumerable<string> storageKeys,
+            CancellationToken cancellationToken = default)
+        {
+            var results = new List<MediaDeleteItemResult>();
+            foreach (var storageKey in storageKeys
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Distinct(StringComparer.Ordinal))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var removed = _storage.TryRemove(storageKey, out _);
+                results.Add(new MediaDeleteItemResult
+                {
+                    StorageKey = storageKey,
+                    Deleted = removed,
+                    ErrorCode = removed ? null : "not_found",
+                    ErrorMessage = removed ? null : "Object was not found"
+                });
+            }
+
+            return Task.FromResult(new MediaBulkDeleteResult { Items = results });
+        }
+
+        /// <inheritdoc/>
         public Task<string> GenerateUrlAsync(string storageKey, TimeSpan? expiration = null)
         {
             // For in-memory storage, we'll need the HTTP endpoint to serve these

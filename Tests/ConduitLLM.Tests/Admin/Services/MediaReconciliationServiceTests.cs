@@ -33,8 +33,18 @@ public sealed class MediaReconciliationServiceTests : IDisposable
     public MediaReconciliationServiceTests()
     {
         _context = _database.CreateContext();
-        _storage.Setup(service => service.DeleteAsync(It.IsAny<string>()))
-            .ReturnsAsync(true);
+        _storage.Setup(service => service.DeleteManyAsync(
+                It.IsAny<IEnumerable<string>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IEnumerable<string> keys, CancellationToken _) =>
+                new MediaBulkDeleteResult
+                {
+                    Items = keys.Select(key => new MediaDeleteItemResult
+                    {
+                        StorageKey = key,
+                        Deleted = true
+                    }).ToList()
+                });
         _repository.Setup(repository => repository.DeleteAsync(It.IsAny<Guid>()))
             .ReturnsAsync(true);
         _budget.Setup(service => service.ReserveAsync(
@@ -81,9 +91,15 @@ public sealed class MediaReconciliationServiceTests : IDisposable
 
         result.FilesDeleted.Should().Be(1);
         result.BytesFreed.Should().Be(100);
-        _storage.Verify(storage => storage.DeleteAsync("old-untracked"), Times.Once);
-        _storage.Verify(storage => storage.DeleteAsync("recent-untracked"), Times.Never);
-        _storage.Verify(storage => storage.DeleteAsync("tracked-object"), Times.Never);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.Is<IEnumerable<string>>(keys => keys.Contains("old-untracked")),
+            It.IsAny<CancellationToken>()), Times.Once);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.Is<IEnumerable<string>>(keys => keys.Contains("recent-untracked")),
+            It.IsAny<CancellationToken>()), Times.Never);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.Is<IEnumerable<string>>(keys => keys.Contains("tracked-object")),
+            It.IsAny<CancellationToken>()), Times.Never);
         _repository.Verify(repository => repository.DeleteAsync(It.IsAny<Guid>()), Times.Never);
         _status.Verify(status => status.RecordReconciliationDriftAsync(
             1, 200, It.IsAny<CancellationToken>()), Times.Once);
@@ -111,7 +127,9 @@ public sealed class MediaReconciliationServiceTests : IDisposable
         result.IsDryRun.Should().BeTrue();
         result.WouldDeleteCount.Should().Be(1);
         result.BytesWouldFree.Should().Be(123);
-        _storage.Verify(storage => storage.DeleteAsync(It.IsAny<string>()), Times.Never);
+        _storage.Verify(storage => storage.DeleteManyAsync(
+            It.IsAny<IEnumerable<string>>(),
+            It.IsAny<CancellationToken>()), Times.Never);
         _status.Verify(status => status.RecordReconciliationDriftAsync(
             1, 123, It.IsAny<CancellationToken>()), Times.Once);
     }

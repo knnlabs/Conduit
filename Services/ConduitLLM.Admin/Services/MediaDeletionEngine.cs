@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Metrics;
@@ -7,6 +6,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Admin.Services;
@@ -16,8 +16,6 @@ namespace ConduitLLM.Admin.Services;
 /// </summary>
 public sealed class MediaDeletionEngine : IMediaDeletionEngine
 {
-    private static readonly SemaphoreSlim RateLimiter = new(5, 5);
-
     private readonly IMediaStorageService _storageService;
     private readonly IMediaDeletionBudgetService _budgetService;
     private readonly IMediaRecordRepository _mediaRepository;
@@ -209,63 +207,67 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         }
 
         var result = MediaDeletionEngineResult.Empty with { IsDryRun = isDryRun };
+        var batchSize = Math.Clamp(_options.MaxBatchSize, 1, 1000);
         var reservationStride = Math.Max(
             1,
-            Math.Min(_options.MaxBatchSize, _options.BudgetReservationStride));
+            Math.Min(batchSize, _options.BudgetReservationStride));
         var permanentBudgetExhausted = false;
-        foreach (var batch in candidates.Chunk(reservationStride))
+        foreach (var batch in candidates.Chunk(batchSize))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var permanentDeleteCount = batch.Count(candidate =>
-                !ShouldTombstone(candidate, request));
-            var grantedPermanentDeletes = permanentDeleteCount;
-            if (!isDryRun && permanentDeleteCount > 0)
+            foreach (var reservationBatch in batch.Chunk(reservationStride))
             {
-                var reservation = permanentBudgetExhausted
-                    ? new MediaDeletionBudgetReservation(
-                        permanentDeleteCount,
-                        0,
-                        _options.MonthlyDeleteBudget)
-                    : await _budgetService.ReserveAsync(
-                        permanentDeleteCount,
-                        _options.MonthlyDeleteBudget,
-                        cancellationToken);
-                grantedPermanentDeletes = reservation.Granted;
-                if (reservation.StoreFailed)
+                var permanentDeleteCount = reservationBatch.Count(candidate =>
+                    !ShouldTombstone(candidate, request));
+                var grantedPermanentDeletes = permanentDeleteCount;
+                if (!isDryRun && permanentDeleteCount > 0)
                 {
-                    _logger.LogWarning(
-                        "Media delete budget store failed during {CleanupType}; applied {FailureMode}",
-                        request.Operation.CleanupType,
-                        reservation.FailureMode);
+                    var reservation = permanentBudgetExhausted
+                        ? new MediaDeletionBudgetReservation(
+                            permanentDeleteCount,
+                            0,
+                            _options.MonthlyDeleteBudget)
+                        : await _budgetService.ReserveAsync(
+                            permanentDeleteCount,
+                            _options.MonthlyDeleteBudget,
+                            cancellationToken);
+                    grantedPermanentDeletes = reservation.Granted;
+                    if (reservation.StoreFailed)
+                    {
+                        _logger.LogWarning(
+                            "Media delete budget store failed during {CleanupType}; applied {FailureMode}",
+                            request.Operation.CleanupType,
+                            reservation.FailureMode);
+                    }
+
+                    if (grantedPermanentDeletes < permanentDeleteCount)
+                    {
+                        permanentBudgetExhausted = true;
+                        result = result with { BudgetExhausted = true };
+                        _logger.LogWarning(
+                            "Monthly media-delete budget granted {Granted} of {Requested} deletes for this stride",
+                            grantedPermanentDeletes,
+                            permanentDeleteCount);
+                    }
                 }
 
-                if (grantedPermanentDeletes < permanentDeleteCount)
+                var permittedBatch = SelectPermittedCandidates(
+                    reservationBatch,
+                    request,
+                    grantedPermanentDeletes);
+                if (permittedBatch.Length == 0)
                 {
-                    permanentBudgetExhausted = true;
-                    result = result with { BudgetExhausted = true };
-                    _logger.LogWarning(
-                        "Monthly media-delete budget granted {Granted} of {Requested} deletes for this stride",
-                        grantedPermanentDeletes,
-                        permanentDeleteCount);
+                    continue;
                 }
-            }
 
-            var permittedBatch = SelectPermittedCandidates(
-                batch,
-                request,
-                grantedPermanentDeletes);
-            if (permittedBatch.Length == 0)
-            {
-                continue;
+                var batchResult = await ProcessBatchAsync(
+                    permittedBatch,
+                    request,
+                    isDryRun,
+                    cancellationToken);
+                result = result.Combine(batchResult);
             }
-
-            var batchResult = await ProcessBatchAsync(
-                permittedBatch,
-                request,
-                isDryRun,
-                cancellationToken);
-            result = result.Combine(batchResult);
 
             if (_options.DelayBetweenBatchesMs > 0)
             {
@@ -335,82 +337,39 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
         var recordsTombstoned = 0;
         var wouldTombstone = 0;
 
-        await RateLimiter.WaitAsync(cancellationToken);
-        try
+        if (isDryRun)
         {
             foreach (var candidate in batch)
+            {
+                if (ShouldTombstone(candidate, request))
+                {
+                    wouldTombstone++;
+                }
+                else
+                {
+                    wouldDelete++;
+                    bytesWouldFree += candidate.SizeBytes;
+                }
+            }
+        }
+        else
+        {
+            foreach (var candidate in batch.Where(candidate =>
+                ShouldTombstone(candidate, request)))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    var shouldTombstone = ShouldTombstone(candidate, request);
-                    if (isDryRun)
+                    if (!await _mediaRepository.TombstoneAsync(
+                            candidate.MediaRecordId!.Value,
+                            DateTime.UtcNow,
+                            cancellationToken))
                     {
-                        if (shouldTombstone)
-                        {
-                            wouldTombstone++;
-                            _logger.LogDebug(
-                                "[DRY RUN] Would tombstone media {StorageKey}",
-                                candidate.StorageKey);
-                        }
-                        else
-                        {
-                            wouldDelete++;
-                            bytesWouldFree += candidate.SizeBytes;
-                            _logger.LogDebug(
-                                "[DRY RUN] Would permanently delete media {StorageKey}",
-                                candidate.StorageKey);
-                        }
-                    }
-                    else if (shouldTombstone)
-                    {
-                        if (!await _mediaRepository.TombstoneAsync(
-                                candidate.MediaRecordId!.Value,
-                                DateTime.UtcNow,
-                                cancellationToken))
-                        {
-                            failures++;
-                            continue;
-                        }
-
-                        recordsTombstoned++;
-                    }
-                    else
-                    {
-                        var storageDeleted = await DeleteFromStorageAsync(
-                            candidate.StorageKey,
-                            cancellationToken);
-                        if (!storageDeleted)
-                        {
-                            failures++;
-                            continue;
-                        }
-
-                        filesDeleted++;
-                        bytesFreed += candidate.SizeBytes;
-                        if (candidate.MediaRecordId.HasValue &&
-                            !await _mediaRepository.HardDeleteAsync(
-                                candidate.MediaRecordId.Value,
-                                cancellationToken))
-                        {
-                            failures++;
-                            _logger.LogWarning(
-                                "Storage object {StorageKey} was deleted but media record {MediaId} could not be removed",
-                                candidate.StorageKey,
-                                candidate.MediaRecordId);
-                        }
+                        failures++;
+                        continue;
                     }
 
-                    await Task.Delay(100, cancellationToken);
-                }
-                catch (HttpRequestException ex) when (
-                    ex.StatusCode == HttpStatusCode.TooManyRequests)
-                {
-                    failures++;
-                    _logger.LogWarning(
-                        "Rate limit hit while deleting {StorageKey}; pausing for five minutes",
-                        candidate.StorageKey);
-                    await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
+                    recordsTombstoned++;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -426,60 +385,185 @@ public sealed class MediaDeletionEngine : IMediaDeletionEngine
                 }
             }
 
-            if (filesDeleted > 0)
+            var permanentCandidates = batch
+                .Where(candidate => !ShouldTombstone(candidate, request))
+                .ToArray();
+            if (permanentCandidates.Length > 0)
             {
-                _logger.LogInformation(
-                    "{CleanupType} cleanup triggered by {TriggeredBy} deleted {Count} files for group {GroupId}",
-                    request.Operation.CleanupType,
-                    request.Operation.TriggeredBy,
-                    filesDeleted,
-                    request.GroupId);
+                var permanentResult = await DeletePermanentBatchAsync(
+                    permanentCandidates,
+                    cancellationToken);
+                filesDeleted += permanentResult.FilesDeleted;
+                bytesFreed += permanentResult.BytesFreed;
+                failures += permanentResult.Failures;
             }
-
-            if (failures > 0)
-            {
-                AdminMediaCleanupMetrics.CleanupErrors
-                    .WithLabels(request.Operation.CleanupType, "storage")
-                    .Inc(failures);
-            }
-
-            return new MediaDeletionEngineResult(
-                FilesDeleted: filesDeleted,
-                BytesFreed: bytesFreed,
-                Failures: failures,
-                WouldDeleteCount: wouldDelete,
-                BytesWouldFree: bytesWouldFree,
-                IsDryRun: isDryRun,
-                RecordsTombstoned: recordsTombstoned,
-                WouldTombstoneCount: wouldTombstone);
         }
-        finally
+
+        if (filesDeleted > 0)
         {
-            RateLimiter.Release();
+            _logger.LogInformation(
+                "{CleanupType} cleanup triggered by {TriggeredBy} deleted {Count} files for group {GroupId}",
+                request.Operation.CleanupType,
+                request.Operation.TriggeredBy,
+                filesDeleted,
+                request.GroupId);
         }
+
+        if (failures > 0)
+        {
+            AdminMediaCleanupMetrics.CleanupErrors
+                .WithLabels(request.Operation.CleanupType, "storage")
+                .Inc(failures);
+        }
+
+        return new MediaDeletionEngineResult(
+            FilesDeleted: filesDeleted,
+            BytesFreed: bytesFreed,
+            Failures: failures,
+            WouldDeleteCount: wouldDelete,
+            BytesWouldFree: bytesWouldFree,
+            IsDryRun: isDryRun,
+            RecordsTombstoned: recordsTombstoned,
+            WouldTombstoneCount: wouldTombstone);
     }
 
-    private async Task<bool> DeleteFromStorageAsync(
-        string storageKey,
+    private async Task<(int FilesDeleted, long BytesFreed, int Failures)>
+        DeletePermanentBatchAsync(
+        DeletionCandidate[] candidates,
         CancellationToken cancellationToken)
     {
-        try
+        var pending = candidates.ToDictionary(
+            candidate => candidate.StorageKey,
+            StringComparer.Ordinal);
+        var confirmed = new List<DeletionCandidate>(candidates.Length);
+        var failures = 0;
+        var maxRetries = Math.Max(0, _options.DeleteThrottleMaxRetries);
+
+        for (var attempt = 0; pending.Count > 0; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            return await _storageService.DeleteAsync(storageKey);
+            MediaBulkDeleteResult storageResult;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken);
+            timeout.CancelAfter(TimeSpan.FromSeconds(
+                Math.Max(1, _options.R2OperationTimeoutSeconds)));
+            try
+            {
+                storageResult = await _storageService.DeleteManyAsync(
+                    pending.Keys.ToArray(),
+                    timeout.Token);
+            }
+            catch (OperationCanceledException) when (
+                !cancellationToken.IsCancellationRequested &&
+                timeout.IsCancellationRequested)
+            {
+                storageResult = new MediaBulkDeleteResult
+                {
+                    Items = pending.Keys.Select(key => new MediaDeleteItemResult
+                    {
+                        StorageKey = key,
+                        IsRetryable = true,
+                        ErrorCode = "timeout",
+                        ErrorMessage = "Storage bulk delete timed out"
+                    }).ToList()
+                };
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Bulk media deletion failed");
+                failures += pending.Count;
+                break;
+            }
+
+            var retryableKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var item in storageResult.Items)
+            {
+                if (!pending.TryGetValue(item.StorageKey, out var candidate))
+                    continue;
+
+                if (item.Deleted)
+                {
+                    confirmed.Add(candidate);
+                    pending.Remove(item.StorageKey);
+                }
+                else if (item.IsRetryable)
+                {
+                    retryableKeys.Add(item.StorageKey);
+                }
+                else
+                {
+                    failures++;
+                    pending.Remove(item.StorageKey);
+                    _logger.LogWarning(
+                        "Storage failed to delete {StorageKey}: {ErrorCode} {ErrorMessage}",
+                        item.StorageKey,
+                        item.ErrorCode,
+                        item.ErrorMessage);
+                }
+            }
+
+            foreach (var unreportedKey in pending.Keys
+                .Where(key => !retryableKeys.Contains(key))
+                .ToList())
+            {
+                failures++;
+                pending.Remove(unreportedKey);
+                _logger.LogWarning(
+                    "Storage returned no deletion outcome for {StorageKey}",
+                    unreportedKey);
+            }
+
+            if (pending.Count == 0)
+                break;
+
+            if (attempt >= maxRetries)
+            {
+                failures += pending.Count;
+                _logger.LogError(
+                    "Storage throttling persisted after {Attempts} bulk delete attempts; {Count} objects remain",
+                    attempt + 1,
+                    pending.Count);
+                break;
+            }
+
+            var delayMs = Math.Min(
+                300_000d,
+                Math.Max(0, _options.DeleteThrottleInitialBackoffMs) *
+                Math.Pow(2, attempt));
+            _logger.LogWarning(
+                "Storage throttled or timed out bulk deletion; retrying {Count} objects in {DelayMs} ms (attempt {Attempt}/{MaxAttempts})",
+                pending.Count,
+                delayMs,
+                attempt + 2,
+                maxRetries + 1);
+            if (delayMs > 0)
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(delayMs), cancellationToken);
+            }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+
+        var bytesFreed = 0L;
+        foreach (var candidate in confirmed)
         {
-            throw;
+            bytesFreed += candidate.SizeBytes;
+            if (candidate.MediaRecordId.HasValue &&
+                !await _mediaRepository.HardDeleteAsync(
+                    candidate.MediaRecordId.Value,
+                    cancellationToken))
+            {
+                failures++;
+                _logger.LogWarning(
+                    "Storage object {StorageKey} was deleted but media record {MediaId} could not be removed",
+                    candidate.StorageKey,
+                    candidate.MediaRecordId);
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Error deleting media {StorageKey} from storage",
-                storageKey);
-            return false;
-        }
+
+        return (confirmed.Count, bytesFreed, failures);
     }
 
     private bool ShouldTombstone(

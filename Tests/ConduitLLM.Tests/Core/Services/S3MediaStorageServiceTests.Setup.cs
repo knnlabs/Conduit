@@ -53,20 +53,11 @@ namespace ConduitLLM.Tests.Core.Services
 
         private S3MediaStorageService CreateServiceWithMockedS3Client()
         {
-            // We need to use reflection to inject the mocked S3 client
-            var service = new S3MediaStorageService(_mockOptions.Object, _mockLogger.Object, _timeProvider);
-            
-            // Use reflection to replace the S3 client
-            var s3ClientField = typeof(S3MediaStorageService).GetField("_s3Client", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            s3ClientField?.SetValue(service, _mockS3Client.Object);
-            
-            // Replace the TransferUtility with a null to prevent real AWS calls
-            var transferUtilityField = typeof(S3MediaStorageService).GetField("_transferUtility",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            transferUtilityField?.SetValue(service, null);
-            
-            return service;
+            return new S3MediaStorageService(
+                _mockOptions.Object,
+                _mockLogger.Object,
+                _timeProvider,
+                s3Client: _mockS3Client.Object);
         }
 
         public void Dispose()
