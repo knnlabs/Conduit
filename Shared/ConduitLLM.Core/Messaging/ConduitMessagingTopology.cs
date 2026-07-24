@@ -86,6 +86,7 @@ namespace ConduitLLM.Core.Messaging
             typeof(AsyncTaskDeleted),
             typeof(MediaGenerationCompleted),
             typeof(VideoGenerationStarted),
+            typeof(MediaCleanupAlertRaised),
             typeof(ModelMappingChanged),
             typeof(ModelCostChanged),
             typeof(IpFilterChanged),

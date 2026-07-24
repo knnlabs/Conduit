@@ -21,6 +21,7 @@ import {
   Switch,
   SimpleGrid,
   Tooltip,
+  Select,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -47,6 +48,9 @@ interface PolicyFormData {
   recentAccessWindowDays: number;
   isDefault: boolean;
   isActive: boolean;
+  maxStorageSizeMb: number | null;
+  maxFileCount: number | null;
+  quotaExceededBehavior: 'reject' | 'allowAndEvict';
 }
 
 const DEFAULT_FORM_DATA: PolicyFormData = {
@@ -60,12 +64,16 @@ const DEFAULT_FORM_DATA: PolicyFormData = {
   recentAccessWindowDays: 7,
   isDefault: false,
   isActive: true,
+  maxStorageSizeMb: null,
+  maxFileCount: null,
+  quotaExceededBehavior: 'reject',
 };
 
 export default function RetentionPoliciesContent() {
   const [policies, setPolicies] = useState<MediaRetentionPolicy[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [publicMediaBaseUrlConfigured, setPublicMediaBaseUrlConfigured] = useState(false);
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -86,6 +94,15 @@ export default function RetentionPoliciesContent() {
         client.media.getRetentionPolicies()
       );
       setPolicies(result);
+      try {
+        const status = await withAdminClient(client =>
+          client.media.getCleanupServiceStatus()
+        );
+        setPublicMediaBaseUrlConfigured(status.isPublicMediaBaseUrlConfigured);
+      } catch (statusError) {
+        console.warn('Failed to load media storage URL status:', statusError);
+        setPublicMediaBaseUrlConfigured(false);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch policies';
       setError(message);
@@ -120,6 +137,11 @@ export default function RetentionPoliciesContent() {
       recentAccessWindowDays: policy.recentAccessWindowDays,
       isDefault: policy.isDefault,
       isActive: policy.isActive,
+      maxStorageSizeMb: policy.maxStorageSizeBytes
+        ? policy.maxStorageSizeBytes / (1024 * 1024)
+        : null,
+      maxFileCount: policy.maxFileCount ?? null,
+      quotaExceededBehavior: policy.quotaExceededBehavior,
     });
     setModalOpen(true);
   };
@@ -143,6 +165,11 @@ export default function RetentionPoliciesContent() {
           respectRecentAccess: formData.respectRecentAccess,
           recentAccessWindowDays: formData.recentAccessWindowDays,
           isDefault: formData.isDefault,
+          maxStorageSizeBytes: formData.maxStorageSizeMb === null
+            ? null
+            : Math.round(formData.maxStorageSizeMb * 1024 * 1024),
+          maxFileCount: formData.maxFileCount,
+          quotaExceededBehavior: formData.quotaExceededBehavior,
           // isActive removed from CreateMediaRetentionPolicyRequest in #1038 (create defaults active)
         };
         await withAdminClient(client =>
@@ -159,6 +186,11 @@ export default function RetentionPoliciesContent() {
           softDeleteGracePeriodDays: formData.softDeleteGracePeriodDays,
           respectRecentAccess: formData.respectRecentAccess,
           recentAccessWindowDays: formData.recentAccessWindowDays,
+          maxStorageSizeBytes: formData.maxStorageSizeMb === null
+            ? null
+            : Math.round(formData.maxStorageSizeMb * 1024 * 1024),
+          maxFileCount: formData.maxFileCount,
+          quotaExceededBehavior: formData.quotaExceededBehavior,
           isActive: formData.isActive,
         };
         await withAdminClient(client =>
@@ -253,12 +285,25 @@ export default function RetentionPoliciesContent() {
       </Table.Td>
       <Table.Td>
         {policy.respectRecentAccess ? (
-          <Tooltip label={`Within ${policy.recentAccessWindowDays} days`}>
+          <Tooltip label={`API-proxied access within ${policy.recentAccessWindowDays} days`}>
             <Badge color="teal" variant="light">Yes</Badge>
           </Tooltip>
         ) : (
           <Badge color="gray" variant="light">No</Badge>
         )}
+      </Table.Td>
+      <Table.Td>
+        <Stack gap={2}>
+          <Text size="xs">
+            {policy.maxStorageSizeBytes
+              ? `${(policy.maxStorageSizeBytes / (1024 * 1024)).toLocaleString()} MB`
+              : 'Unlimited storage'}
+          </Text>
+          <Text size="xs" c="dimmed">
+            {policy.maxFileCount?.toLocaleString() ?? 'Unlimited'} files ·{' '}
+            {policy.quotaExceededBehavior === 'reject' ? 'Reject' : 'Evict'}
+          </Text>
+        </Stack>
       </Table.Td>
       <Table.Td>
         <Menu shadow="md" width={200}>
@@ -329,6 +374,16 @@ export default function RetentionPoliciesContent() {
         </Group>
       </Card>
 
+      <Alert
+        icon={<IconAlertCircle size={16} />}
+        color={publicMediaBaseUrlConfigured ? 'yellow' : 'blue'}
+        title="Recent-access tracking excludes CDN traffic"
+      >
+        Recent access is updated only when media is served through the Conduit media API.
+        Requests sent directly to a public base URL or CDN do not refresh the access timestamp
+        and cannot protect an asset from retention cleanup.
+      </Alert>
+
       {/* Policies table */}
       {policies.length === 0 ? (
         <Alert icon={<IconAlertCircle size={16} />} color="yellow">
@@ -345,6 +400,7 @@ export default function RetentionPoliciesContent() {
                 <Table.Th>Negative Balance</Table.Th>
                 <Table.Th>Grace Period</Table.Th>
                 <Table.Th>Recent Access</Table.Th>
+                <Table.Th>Quota</Table.Th>
                 <Table.Th w={50}></Table.Th>
               </Table.Tr>
             </Table.Thead>
@@ -424,9 +480,49 @@ export default function RetentionPoliciesContent() {
           </SimpleGrid>
 
           <SimpleGrid cols={2}>
+            <NumberInput
+              label="Storage Quota (MB)"
+              description="Leave blank for unlimited"
+              value={formData.maxStorageSizeMb ?? ''}
+              onChange={(val) => setFormData({
+                ...formData,
+                maxStorageSizeMb: typeof val === 'number' && val > 0 ? val : null,
+              })}
+              min={1}
+              allowDecimal={false}
+            />
+            <NumberInput
+              label="File Count Quota"
+              description="Leave blank for unlimited"
+              value={formData.maxFileCount ?? ''}
+              onChange={(val) => setFormData({
+                ...formData,
+                maxFileCount: typeof val === 'number' && val > 0 ? val : null,
+              })}
+              min={1}
+              allowDecimal={false}
+            />
+          </SimpleGrid>
+
+          <Select
+            label="When a generation would exceed quota"
+            description="Reject immediately or allow it and evict oldest media during cleanup"
+            data={[
+              { value: 'reject', label: 'Reject generation (HTTP 429)' },
+              { value: 'allowAndEvict', label: 'Allow and evict oldest media' },
+            ]}
+            value={formData.quotaExceededBehavior}
+            onChange={(value) => setFormData({
+              ...formData,
+              quotaExceededBehavior:
+                value === 'allowAndEvict' ? 'allowAndEvict' : 'reject',
+            })}
+          />
+
+          <SimpleGrid cols={2}>
             <Switch
               label="Respect Recent Access"
-              description="Don't delete recently accessed media"
+              description="Protect media recently served through the Conduit API"
               checked={formData.respectRecentAccess}
               onChange={(e) => setFormData({ ...formData, respectRecentAccess: e.currentTarget.checked })}
             />
@@ -437,6 +533,18 @@ export default function RetentionPoliciesContent() {
               onChange={(e) => setFormData({ ...formData, isActive: e.currentTarget.checked })}
             />
           </SimpleGrid>
+
+          {formData.respectRecentAccess && publicMediaBaseUrlConfigured && (
+            <Alert
+              icon={<IconAlertCircle size={16} />}
+              color="yellow"
+              title="Public URL/CDN traffic is not measured"
+            >
+              A public media base URL is configured. Direct CDN requests will not update
+              LastAccessedAt, so popular CDN-served assets can still appear idle and become
+              eligible for cleanup.
+            </Alert>
+          )}
 
           {modalMode === 'create' && (
             <Switch

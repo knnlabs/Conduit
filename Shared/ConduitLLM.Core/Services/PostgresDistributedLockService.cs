@@ -1,277 +1,408 @@
-using System;
-using System.Collections.Concurrent;
-using System.Threading;
-using System.Threading.Tasks;
+using System.Data;
+using System.Text;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
-namespace ConduitLLM.Core.Services
+namespace ConduitLLM.Core.Services;
+
+/// <summary>
+/// PostgreSQL distributed locks backed by session-scoped advisory locks.
+/// Each returned handle owns the dedicated PostgreSQL connection that holds its lock.
+/// </summary>
+public class PostgresDistributedLockService : IDistributedLockService
 {
-    /// <summary>
-    /// PostgreSQL-based distributed lock service using advisory locks
-    /// </summary>
-    public class PostgresDistributedLockService : IDistributedLockService
+    private const int DefaultKeepAliveSeconds = 30;
+
+    private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
+    private readonly ILogger<PostgresDistributedLockService> _logger;
+
+    public PostgresDistributedLockService(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<PostgresDistributedLockService> logger)
     {
-        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-        private readonly ILogger<PostgresDistributedLockService> _logger;
-        private readonly ConcurrentDictionary<string, PostgresDistributedLock> _activeLocks;
+        _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
 
-        public PostgresDistributedLockService(
-            IDbContextFactory<ConduitDbContext> dbContextFactory,
-            ILogger<PostgresDistributedLockService> logger)
+    /// <inheritdoc/>
+    public async Task<IDistributedLock?> AcquireLockAsync(
+        string key,
+        TimeSpan expiry,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _activeLocks = new ConcurrentDictionary<string, PostgresDistributedLock>();
+            throw new ArgumentException("Lock key cannot be null or whitespace.", nameof(key));
         }
 
-        /// <inheritdoc/>
-        public async Task<IDistributedLock?> AcquireLockAsync(
-            string key,
-            TimeSpan expiry,
-            CancellationToken cancellationToken = default)
+        if (expiry <= TimeSpan.Zero)
         {
-            if (string.IsNullOrWhiteSpace(key))
-                throw new ArgumentException("Lock key cannot be null or whitespace.", nameof(key));
+            throw new ArgumentOutOfRangeException(nameof(expiry), "Lock expiry must be positive.");
+        }
 
-            try
+        NpgsqlConnection? connection = null;
+        try
+        {
+            connection = await OpenDedicatedConnectionAsync(cancellationToken);
+            var lockId = GetLockId(key);
+            var acquired = await TryAcquireAsync(connection, lockId, cancellationToken);
+            if (!acquired)
             {
-                // Generate a hash code for the key to use as the advisory lock ID
-                var lockId = GetLockId(key);
-                
-                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                var connection = context.Database.GetDbConnection() as NpgsqlConnection;
-                
-                if (connection == null)
-                {
-                    _logger.LogError("Unable to get NpgsqlConnection from DbContext");
-                    return null;
-                }
-
-                // Ensure connection is open
-                if (connection.State != System.Data.ConnectionState.Open)
-                {
-                    await connection.OpenAsync(cancellationToken);
-                }
-
-                // Try to acquire advisory lock (non-blocking)
-                using var command = connection.CreateCommand();
-                command.CommandText = "SELECT pg_try_advisory_lock(@lockId)";
-                command.Parameters.AddWithValue("lockId", lockId);
-
-                var result = await command.ExecuteScalarAsync(cancellationToken);
-                var acquired = result != null && (bool)result;
-
-                if (acquired)
-                {
-                    var distributedLock = new PostgresDistributedLock(
-                        key,
-                        lockId.ToString(),
-                        DateTime.UtcNow.Add(expiry),
-                        connection,
-                        _logger);
-
-                    _activeLocks[key] = distributedLock;
-                    _logger.LogDebug("Successfully acquired PostgreSQL advisory lock for key '{Key}' with ID {LockId}", key, lockId);
-                    return distributedLock;
-                }
-
-                _logger.LogDebug("Failed to acquire PostgreSQL advisory lock for key '{Key}' - lock is already held", key);
+                await connection.DisposeAsync();
+                _logger.LogDebug(
+                    "Failed to acquire PostgreSQL advisory lock for key '{Key}' because it is already held",
+                    key);
                 return null;
             }
-            catch (Exception ex)
+
+            var distributedLock = new PostgresDistributedLock(
+                key,
+                lockId,
+                expiry,
+                connection,
+                _logger);
+            connection = null; // Ownership transferred to the handle.
+
+            _logger.LogDebug(
+                "Acquired PostgreSQL advisory lock for key '{Key}' with ID {LockId}",
+                key, lockId);
+            return distributedLock;
+        }
+        catch (OperationCanceledException)
+        {
+            if (connection != null)
             {
-                _logger.LogError(ex, "Error acquiring PostgreSQL advisory lock for key '{Key}'", key);
-                return null;
+                await connection.DisposeAsync();
+            }
+
+            throw;
+        }
+        catch (Exception ex)
+        {
+            if (connection != null)
+            {
+                await connection.DisposeAsync();
+            }
+
+            _logger.LogError(ex, "Error acquiring PostgreSQL advisory lock for key '{Key}'", key);
+            return null;
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task<IDistributedLock> AcquireLockWithRetryAsync(
+        string key,
+        TimeSpan expiry,
+        TimeSpan timeout,
+        TimeSpan retryDelay,
+        CancellationToken cancellationToken = default)
+    {
+        var endTime = DateTime.UtcNow.Add(timeout);
+
+        while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
+        {
+            var distributedLock = await AcquireLockAsync(key, expiry, cancellationToken);
+            if (distributedLock != null)
+            {
+                return distributedLock;
+            }
+
+            var remainingTime = endTime - DateTime.UtcNow;
+            var delay = remainingTime < retryDelay ? remainingTime : retryDelay;
+            if (delay > TimeSpan.Zero)
+            {
+                await Task.Delay(delay, cancellationToken);
             }
         }
 
-        /// <inheritdoc/>
-        public async Task<IDistributedLock> AcquireLockWithRetryAsync(
-            string key,
-            TimeSpan expiry,
-            TimeSpan timeout,
-            TimeSpan retryDelay,
-            CancellationToken cancellationToken = default)
+        cancellationToken.ThrowIfCancellationRequested();
+        throw new TimeoutException(
+            $"Failed to acquire lock for key '{key}' within timeout period of {timeout}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> IsLockedAsync(
+        string key,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(key))
         {
-            var endTime = DateTime.UtcNow.Add(timeout);
-
-            while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
-            {
-                var @lock = await AcquireLockAsync(key, expiry, cancellationToken);
-                if (@lock != null)
-                {
-                    return @lock;
-                }
-
-                var remainingTime = endTime - DateTime.UtcNow;
-                var delay = remainingTime < retryDelay ? remainingTime : retryDelay;
-                
-                if (delay > TimeSpan.Zero)
-                {
-                    await Task.Delay(delay, cancellationToken);
-                }
-            }
-
-            throw new TimeoutException($"Failed to acquire lock for key '{key}' within timeout period of {timeout}");
+            throw new ArgumentException("Lock key cannot be null or whitespace.", nameof(key));
         }
 
-        /// <inheritdoc/>
-        public async Task<bool> IsLockedAsync(string key, CancellationToken cancellationToken = default)
+        try
         {
-            if (_activeLocks.ContainsKey(key))
+            await using var connection = await OpenDedicatedConnectionAsync(cancellationToken);
+            var lockId = GetLockId(key);
+
+            // The most reliable status check is to attempt acquisition on another session.
+            // If it succeeds, release it immediately; otherwise another session holds it.
+            if (!await TryAcquireAsync(connection, lockId, cancellationToken))
             {
                 return true;
             }
 
-            try
-            {
-                var lockId = GetLockId(key);
-                
-                using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                using var command = context.Database.GetDbConnection().CreateCommand();
-                
-                command.CommandText = @"
-                    SELECT EXISTS (
-                        SELECT 1 FROM pg_locks 
-                        WHERE locktype = 'advisory' 
-                        AND objid = @lockId
-                    )";
-                command.Parameters.Add(new NpgsqlParameter("lockId", lockId));
-
-                await context.Database.OpenConnectionAsync(cancellationToken);
-                var result = await command.ExecuteScalarAsync(cancellationToken);
-                return result != null && (bool)result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking lock status for key '{Key}'", key);
-                return false;
-            }
+            await UnlockAsync(connection, lockId, cancellationToken);
+            return false;
         }
-
-        /// <inheritdoc/>
-        public Task<bool> ExtendLockAsync(IDistributedLock @lock, TimeSpan extension, CancellationToken cancellationToken = default)
+        catch (OperationCanceledException)
         {
-            if (@lock is PostgresDistributedLock pgLock)
-            {
-                pgLock.ExtendExpiry(extension);
-                return Task.FromResult(true);
-            }
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking lock status for key '{Key}'", key);
+            return false;
+        }
+    }
 
+    /// <inheritdoc/>
+    public Task<bool> ExtendLockAsync(
+        IDistributedLock distributedLock,
+        TimeSpan extension,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (distributedLock is not PostgresDistributedLock postgresLock ||
+            extension <= TimeSpan.Zero)
+        {
             return Task.FromResult(false);
         }
 
-        /// <summary>
-        /// Generates a stable lock ID from a string key
-        /// </summary>
-        private static long GetLockId(string key)
+        return Task.FromResult(postgresLock.TryExtend(extension));
+    }
+
+    /// <summary>
+    /// Generates a stable FNV-1a 64-bit advisory-lock ID from a UTF-8 key.
+    /// </summary>
+    internal static long GetLockId(string key)
+    {
+        const ulong offsetBasis = 14695981039346656037UL;
+        const ulong prime = 1099511628211UL;
+        var hash = offsetBasis;
+        foreach (var value in Encoding.UTF8.GetBytes(key))
         {
-            // Use a stable hash function to generate consistent lock IDs
-            // PostgreSQL advisory locks use bigint (64-bit)
-            unchecked
+            hash ^= value;
+            hash *= prime;
+        }
+
+        return unchecked((long)hash);
+    }
+
+    private async Task<NpgsqlConnection> OpenDedicatedConnectionAsync(
+        CancellationToken cancellationToken)
+    {
+        string connectionString;
+        await using (var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            var dbConnection = context.Database.GetDbConnection();
+            if (dbConnection is not NpgsqlConnection)
             {
-                long hash = 17;
-                foreach (char c in key)
+                throw new InvalidOperationException(
+                    $"PostgreSQL advisory locks require Npgsql; resolved {dbConnection.GetType().Name}.");
+            }
+
+            connectionString = dbConnection.ConnectionString;
+        }
+
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        if (builder.KeepAlive == 0)
+        {
+            builder.KeepAlive = DefaultKeepAliveSeconds;
+        }
+
+        var connection = new NpgsqlConnection(builder.ConnectionString);
+        try
+        {
+            await connection.OpenAsync(cancellationToken);
+            return connection;
+        }
+        catch
+        {
+            await connection.DisposeAsync();
+            throw;
+        }
+    }
+
+    private static async Task<bool> TryAcquireAsync(
+        NpgsqlConnection connection,
+        long lockId,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new NpgsqlCommand(
+            "SELECT pg_try_advisory_lock(@lockId)",
+            connection);
+        command.Parameters.AddWithValue("lockId", lockId);
+        return await command.ExecuteScalarAsync(cancellationToken) is true;
+    }
+
+    private static async Task<bool> UnlockAsync(
+        NpgsqlConnection connection,
+        long lockId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var command = new NpgsqlCommand(
+            "SELECT pg_advisory_unlock(@lockId)",
+            connection);
+        command.Parameters.AddWithValue("lockId", lockId);
+        return await command.ExecuteScalarAsync(cancellationToken) is true;
+    }
+
+    private sealed class PostgresDistributedLock : IDistributedLock
+    {
+        private readonly NpgsqlConnection _connection;
+        private readonly ILogger _logger;
+        private readonly long _lockId;
+        private readonly Timer _expiryTimer;
+        private readonly object _expiryGate = new();
+        private DateTime _expiryTime;
+        private int _releaseStarted;
+
+        public PostgresDistributedLock(
+            string key,
+            long lockId,
+            TimeSpan expiry,
+            NpgsqlConnection connection,
+            ILogger logger)
+        {
+            Key = key;
+            LockValue = lockId.ToString();
+            _lockId = lockId;
+            _expiryTime = DateTime.UtcNow.Add(expiry);
+            _connection = connection;
+            _logger = logger;
+            _expiryTimer = new Timer(
+                static state => _ = ((PostgresDistributedLock)state!).ReleaseExpiredAsync(),
+                this,
+                expiry,
+                Timeout.InfiniteTimeSpan);
+        }
+
+        public string Key { get; }
+        public string LockValue { get; }
+
+        public DateTime ExpiryTime
+        {
+            get
+            {
+                lock (_expiryGate)
                 {
-                    hash = hash * 31 + c;
+                    return _expiryTime;
                 }
-                // Ensure positive value for advisory lock
-                return Math.Abs(hash);
             }
         }
 
-        /// <summary>
-        /// Internal implementation of PostgreSQL distributed lock
-        /// </summary>
-        private class PostgresDistributedLock : IDistributedLock
+        public bool IsValid =>
+            Volatile.Read(ref _releaseStarted) == 0 &&
+            _connection.State == ConnectionState.Open &&
+            DateTime.UtcNow < ExpiryTime;
+
+        public bool TryExtend(TimeSpan extension)
         {
-            private readonly NpgsqlConnection _connection;
-            private readonly ILogger _logger;
-            private readonly long _lockId;
-            private DateTime _expiryTime;
-            private bool _disposed;
-
-            public PostgresDistributedLock(
-                string key,
-                string lockValue,
-                DateTime expiryTime,
-                NpgsqlConnection connection,
-                ILogger logger)
+            lock (_expiryGate)
             {
-                Key = key;
-                LockValue = lockValue;
-                _expiryTime = expiryTime;
-                _connection = connection;
-                _logger = logger;
-                _lockId = GetLockId(key);
-            }
+                if (Volatile.Read(ref _releaseStarted) != 0 ||
+                    _connection.State != ConnectionState.Open ||
+                    DateTime.UtcNow >= _expiryTime)
+                {
+                    return false;
+                }
 
-            public string Key { get; }
-            public string LockValue { get; }
-            public DateTime ExpiryTime => _expiryTime;
-            public bool IsValid => !_disposed && DateTime.UtcNow < _expiryTime;
-
-            public void ExtendExpiry(TimeSpan extension)
-            {
                 _expiryTime = _expiryTime.Add(extension);
+                var dueTime = _expiryTime - DateTime.UtcNow;
+                _expiryTimer.Change(
+                    dueTime > TimeSpan.Zero ? dueTime : TimeSpan.Zero,
+                    Timeout.InfiniteTimeSpan);
+                return true;
+            }
+        }
+
+        public async Task ReleaseAsync()
+        {
+            if (Interlocked.Exchange(ref _releaseStarted, 1) != 0)
+            {
+                return;
             }
 
-            public async Task ReleaseAsync()
+            _expiryTimer.Dispose();
+            try
             {
-                if (_disposed)
-                    return;
-
+                if (_connection.State == ConnectionState.Open)
+                {
+                    var released = await UnlockAsync(_connection, _lockId);
+                    if (released)
+                    {
+                        _logger.LogDebug(
+                            "Released PostgreSQL advisory lock for key '{Key}'",
+                            Key);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "PostgreSQL advisory lock for key '{Key}' was no longer held by its connection",
+                            Key);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Error explicitly releasing PostgreSQL advisory lock for key '{Key}'; closing its session",
+                    Key);
+            }
+            finally
+            {
                 try
                 {
-                    if (_connection.State == System.Data.ConnectionState.Open)
-                    {
-                        using var command = _connection.CreateCommand();
-                        command.CommandText = "SELECT pg_advisory_unlock(@lockId)";
-                        command.Parameters.AddWithValue("lockId", _lockId);
-                        
-                        var result = await command.ExecuteScalarAsync();
-                        var released = result != null && (bool)result;
-                        
-                        if (released)
-                        {
-                            _logger.LogDebug("Successfully released PostgreSQL advisory lock for key '{Key}'", Key);
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Failed to release PostgreSQL advisory lock for key '{Key}' - lock may have already been released", Key);
-                        }
-                    }
+                    await _connection.DisposeAsync();
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error releasing PostgreSQL advisory lock for key '{Key}'", Key);
-                }
-                finally
-                {
-                    _disposed = true;
-                    _connection?.Dispose();
+                    _logger.LogError(
+                        ex,
+                        "Error closing PostgreSQL advisory-lock session for key '{Key}'",
+                        Key);
                 }
             }
+        }
 
-            public async ValueTask DisposeAsync()
+        public async ValueTask DisposeAsync() =>
+            await ReleaseAsync().ConfigureAwait(false);
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref _releaseStarted, 1) != 0)
             {
-                await ReleaseAsync().ConfigureAwait(false);
+                return;
             }
 
-            public void Dispose()
+            _expiryTimer.Dispose();
+            try
             {
-                if (_disposed)
-                    return;
-
-                // Advisory locks are session-scoped, so closing the connection releases the
-                // lock without a pg_advisory_unlock round-trip we would have to block on.
-                _disposed = true;
-                _connection?.Dispose();
+                _connection.Dispose();
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Error closing PostgreSQL advisory-lock session for key '{Key}'",
+                    Key);
+            }
+            _logger.LogDebug(
+                "Closed PostgreSQL advisory-lock session for key '{Key}'",
+                Key);
+        }
+
+        private async Task ReleaseExpiredAsync()
+        {
+            _logger.LogWarning(
+                "PostgreSQL advisory lock for key '{Key}' reached its expiry and will be released",
+                Key);
+            await ReleaseAsync();
         }
     }
 }

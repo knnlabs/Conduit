@@ -77,6 +77,7 @@ namespace ConduitLLM.Admin.Endpoints
                     IsDefault = p.IsDefault,
                     MaxStorageSizeBytes = p.MaxStorageSizeBytes,
                     MaxFileCount = p.MaxFileCount,
+                    QuotaExceededBehavior = p.QuotaExceededBehavior,
                     IsActive = p.IsActive,
                     CreatedAt = p.CreatedAt,
                     UpdatedAt = p.UpdatedAt,
@@ -118,6 +119,7 @@ namespace ConduitLLM.Admin.Endpoints
                 IsDefault = policy.IsDefault,
                 MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
                 MaxFileCount = policy.MaxFileCount,
+                QuotaExceededBehavior = policy.QuotaExceededBehavior,
                 IsActive = policy.IsActive,
                 CreatedAt = policy.CreatedAt,
                 UpdatedAt = policy.UpdatedAt,
@@ -166,6 +168,7 @@ namespace ConduitLLM.Admin.Endpoints
                 IsDefault = request.IsDefault,
                 MaxStorageSizeBytes = request.MaxStorageSizeBytes,
                 MaxFileCount = request.MaxFileCount,
+                QuotaExceededBehavior = request.QuotaExceededBehavior,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -190,6 +193,7 @@ namespace ConduitLLM.Admin.Endpoints
                 IsDefault = policy.IsDefault,
                 MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
                 MaxFileCount = policy.MaxFileCount,
+                QuotaExceededBehavior = policy.QuotaExceededBehavior,
                 IsActive = policy.IsActive,
                 CreatedAt = policy.CreatedAt,
                 UpdatedAt = policy.UpdatedAt,
@@ -237,8 +241,12 @@ namespace ConduitLLM.Admin.Endpoints
             policy.RespectRecentAccess = request.RespectRecentAccess ?? policy.RespectRecentAccess;
             policy.RecentAccessWindowDays = request.RecentAccessWindowDays ?? policy.RecentAccessWindowDays;
             policy.IsDefault = request.IsDefault ?? policy.IsDefault;
-            policy.MaxStorageSizeBytes = request.MaxStorageSizeBytes ?? policy.MaxStorageSizeBytes;
-            policy.MaxFileCount = request.MaxFileCount ?? policy.MaxFileCount;
+            if (request.HasMaxStorageSizeBytes)
+                policy.MaxStorageSizeBytes = request.MaxStorageSizeBytes;
+            if (request.HasMaxFileCount)
+                policy.MaxFileCount = request.MaxFileCount;
+            policy.QuotaExceededBehavior =
+                request.QuotaExceededBehavior ?? policy.QuotaExceededBehavior;
             policy.IsActive = request.IsActive ?? policy.IsActive;
             policy.UpdatedAt = DateTime.UtcNow;
 
@@ -260,6 +268,7 @@ namespace ConduitLLM.Admin.Endpoints
                 IsDefault = policy.IsDefault,
                 MaxStorageSizeBytes = policy.MaxStorageSizeBytes,
                 MaxFileCount = policy.MaxFileCount,
+                QuotaExceededBehavior = policy.QuotaExceededBehavior,
                 IsActive = policy.IsActive,
                 CreatedAt = policy.CreatedAt,
                 UpdatedAt = policy.UpdatedAt,

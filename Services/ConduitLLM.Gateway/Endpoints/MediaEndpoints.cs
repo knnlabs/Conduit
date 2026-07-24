@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Interfaces;
 using Microsoft.Net.Http.Headers;
 using ConduitLLM.Gateway.DTOs;
 
@@ -11,14 +12,17 @@ namespace ConduitLLM.Gateway.Endpoints
     public class MediaEndpoints : GatewayEndpointHandlerBase
     {
         private readonly IMediaStorageService _storageService;
+        private readonly IMediaRecordRepository _mediaRepository;
 
         public MediaEndpoints(
             IMediaStorageService storageService,
+            IMediaRecordRepository mediaRepository,
             IHttpContextAccessor httpContextAccessor,
             ILogger<MediaEndpoints> logger)
             : base(null, httpContextAccessor, logger)
         {
             _storageService = storageService;
+            _mediaRepository = mediaRepository;
         }
 
         /// <summary>
@@ -89,7 +93,8 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 MediaType = determinedMediaType,
                 ContentType = file.ContentType ?? GetContentTypeFromExtension(extension),
-                FileName = file.FileName
+                FileName = file.FileName,
+                CreatedBy = CurrentVirtualKeyId?.ToString()
             };
 
             // Upload file using storage service
@@ -156,6 +161,11 @@ namespace ConduitLLM.Gateway.Endpoints
                 return OpenAIError(400, "Invalid storage key", "invalid_parameter");
             }
 
+            if (await IsTombstonedAsync(storageKey))
+            {
+                return NotFound();
+            }
+
             // Get media info
             var mediaInfo = await _storageService.GetInfoAsync(storageKey);
             if (mediaInfo == null)
@@ -200,6 +210,11 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>Media metadata.</returns>
         public async Task<IResult> GetMediaInfo(string storageKey)
         {
+            if (await IsTombstonedAsync(storageKey))
+            {
+                return NotFound();
+            }
+
             var mediaInfo = await _storageService.GetInfoAsync(storageKey);
             if (mediaInfo == null)
             {
@@ -216,6 +231,11 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>True if the media exists.</returns>
         public async Task<IResult> CheckMediaExists(string storageKey)
         {
+            if (await IsTombstonedAsync(storageKey))
+            {
+                return NotFound();
+            }
+
             var exists = await _storageService.ExistsAsync(storageKey);
             if (!exists)
             {
@@ -230,6 +250,13 @@ namespace ConduitLLM.Gateway.Endpoints
             }
 
             return Ok();
+        }
+
+        private async Task<bool> IsTombstonedAsync(string storageKey)
+        {
+            var mediaRecord = await _mediaRepository
+                .GetByStorageKeyIncludingDeletedAsync(storageKey);
+            return mediaRecord?.DeletedAt != null;
         }
 
         /// <summary>

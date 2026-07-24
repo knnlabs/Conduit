@@ -17,6 +17,7 @@ namespace ConduitLLM.Core.Services
         private readonly ConcurrentDictionary<string, MultipartUploadSession> _multipartSessions = new();
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<int, byte[]>> _multipartParts = new();
         private readonly ILogger<InMemoryMediaStorageService> _logger;
+        private readonly IMediaQuotaGuard? _quotaGuard;
         private readonly string _baseUrl;
 
         private class StoredMedia
@@ -28,10 +29,12 @@ namespace ConduitLLM.Core.Services
 
         public InMemoryMediaStorageService(
             ILogger<InMemoryMediaStorageService> logger,
-            string baseUrl = "http://localhost:5000")
+            string baseUrl = "http://localhost:5000",
+            IMediaQuotaGuard? quotaGuard = null)
         {
             _logger = logger;
             _baseUrl = baseUrl.TrimEnd('/');
+            _quotaGuard = quotaGuard;
         }
 
         /// <inheritdoc/>
@@ -53,6 +56,10 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 var data = memoryStream.ToArray();
+                if (_quotaGuard != null)
+                {
+                    await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
+                }
 
                 // Generate storage key
                 var contentHash = ComputeHash(data);
@@ -154,6 +161,30 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
+        public Task<MediaBulkDeleteResult> DeleteManyAsync(
+            IEnumerable<string> storageKeys,
+            CancellationToken cancellationToken = default)
+        {
+            var results = new List<MediaDeleteItemResult>();
+            foreach (var storageKey in storageKeys
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Distinct(StringComparer.Ordinal))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var removed = _storage.TryRemove(storageKey, out _);
+                results.Add(new MediaDeleteItemResult
+                {
+                    StorageKey = storageKey,
+                    Deleted = removed,
+                    ErrorCode = removed ? null : "not_found",
+                    ErrorMessage = removed ? null : "Object was not found"
+                });
+            }
+
+            return Task.FromResult(new MediaBulkDeleteResult { Items = results });
+        }
+
+        /// <inheritdoc/>
         public Task<string> GenerateUrlAsync(string storageKey, TimeSpan? expiration = null)
         {
             // For in-memory storage, we'll need the HTTP endpoint to serve these
@@ -165,6 +196,41 @@ namespace ConduitLLM.Core.Services
         public Task<bool> ExistsAsync(string storageKey)
         {
             return Task.FromResult(_storage.ContainsKey(storageKey));
+        }
+
+        /// <inheritdoc/>
+        public Task<MediaStorageObjectPage> ListObjectsAsync(
+            string? continuationToken = null,
+            int pageSize = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            pageSize = Math.Clamp(pageSize, 1, 1000);
+
+            var ordered = _storage
+                .Where(entry =>
+                    continuationToken == null ||
+                    string.CompareOrdinal(entry.Key, continuationToken) > 0)
+                .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+                .Take(pageSize + 1)
+                .ToList();
+            var hasMore = ordered.Count > pageSize;
+            var pageEntries = ordered.Take(pageSize).ToList();
+
+            return Task.FromResult(new MediaStorageObjectPage
+            {
+                Objects = pageEntries
+                    .Select(entry => new MediaStorageObject
+                    {
+                        StorageKey = entry.Key,
+                        SizeBytes = entry.Value.Data.LongLength,
+                        LastModifiedUtc = entry.Value.Info.CreatedAt
+                    })
+                    .ToList(),
+                NextContinuationToken = hasMore
+                    ? pageEntries[^1].Key
+                    : null
+            });
         }
 
         private static string ComputeHash(byte[] data)
@@ -239,6 +305,10 @@ namespace ConduitLLM.Core.Services
                 }
                 
                 var data = memoryStream.ToArray();
+                if (_quotaGuard != null)
+                {
+                    await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
+                }
 
                 // Generate storage key
                 var contentHash = ComputeHash(data);

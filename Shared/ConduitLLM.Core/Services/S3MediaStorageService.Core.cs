@@ -25,6 +25,7 @@ namespace ConduitLLM.Core.Services
         private readonly IAmazonS3 _s3Client;
         private readonly S3StorageOptions _options;
         private readonly ILogger<S3MediaStorageService> _logger;
+        private readonly IMediaQuotaGuard? _quotaGuard;
         private readonly string _bucketName;
         private readonly TransferUtility _transferUtility;
         private readonly ConcurrentDictionary<string, MultipartUploadState> _multipartUploads = new();
@@ -38,11 +39,14 @@ namespace ConduitLLM.Core.Services
         public S3MediaStorageService(
             IOptions<S3StorageOptions> options,
             ILogger<S3MediaStorageService> logger,
-            TimeProvider? timeProvider = null)
+            TimeProvider? timeProvider = null,
+            IMediaQuotaGuard? quotaGuard = null,
+            IAmazonS3? s3Client = null)
         {
             _options = options.Value;
             _logger = logger;
             _timeProvider = timeProvider ?? TimeProvider.System;
+            _quotaGuard = quotaGuard;
             
             // Validate required configuration
             if (string.IsNullOrEmpty(_options.AccessKey))
@@ -97,7 +101,8 @@ namespace ConduitLLM.Core.Services
             // For R2, we'll rely on using PutObject instead of TransferUtility
             // to avoid streaming signature issues
 
-            _s3Client = new AmazonS3Client(_options.AccessKey, _options.SecretKey, config);
+            _s3Client = s3Client ??
+                new AmazonS3Client(_options.AccessKey, _options.SecretKey, config);
             _transferUtility = new TransferUtility(_s3Client);
             _multipartCleanupTimer = new Timer(
                 _ => _ = CleanupExpiredMultipartUploadsAsync(),
@@ -185,6 +190,13 @@ namespace ConduitLLM.Core.Services
                     await content.CopyToAsync(memoryStream);
                     memoryStream.Position = 0;
                     uploadStream = memoryStream;
+                }
+
+                if (_quotaGuard != null)
+                {
+                    await _quotaGuard.EnsureCanStoreAsync(
+                        metadata.CreatedBy,
+                        Math.Max(0, uploadStream.Length - uploadStream.Position));
                 }
 
                 // Wrap stream with progress reporting if needed
@@ -500,24 +512,127 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<bool> DeleteAsync(string storageKey)
         {
-            try
-            {
-                var deleteRequest = new DeleteObjectRequest
-                {
-                    BucketName = _bucketName,
-                    Key = storageKey
-                };
-
-                await _s3Client.DeleteObjectAsync(deleteRequest);
-                _logger.LogInformation("Deleted media with key {StorageKey}", storageKey);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to delete media {StorageKey}", storageKey);
+            if (string.IsNullOrWhiteSpace(storageKey))
                 return false;
-            }
+
+            var result = await DeleteManyAsync([storageKey]);
+            return result.Items.SingleOrDefault()?.Deleted == true;
         }
+
+        /// <inheritdoc/>
+        public async Task<MediaBulkDeleteResult> DeleteManyAsync(
+            IEnumerable<string> storageKeys,
+            CancellationToken cancellationToken = default)
+        {
+            var keys = storageKeys
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var results = new List<MediaDeleteItemResult>(keys.Count);
+
+            foreach (var chunk in keys.Chunk(1000))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    var request = new DeleteObjectsRequest
+                    {
+                        BucketName = _bucketName,
+                        Objects = chunk
+                            .Select(key => new KeyVersion { Key = key })
+                            .ToList(),
+                        Quiet = false
+                    };
+                    var response = await _s3Client.DeleteObjectsAsync(
+                        request,
+                        cancellationToken);
+                    var errors = (response.DeleteErrors ?? [])
+                        .ToDictionary(error => error.Key, StringComparer.Ordinal);
+                    var confirmed = (response.DeletedObjects ?? [])
+                        .Select(item => item.Key)
+                        .ToHashSet(StringComparer.Ordinal);
+
+                    foreach (var key in chunk)
+                    {
+                        if (errors.TryGetValue(key, out var error))
+                        {
+                            results.Add(new MediaDeleteItemResult
+                            {
+                                StorageKey = key,
+                                IsRetryable = IsRetryableDeleteError(error.Code),
+                                ErrorCode = error.Code,
+                                ErrorMessage = error.Message
+                            });
+                        }
+                        else
+                        {
+                            results.Add(new MediaDeleteItemResult
+                            {
+                                StorageKey = key,
+                                Deleted = confirmed.Contains(key),
+                                ErrorCode = confirmed.Contains(key) ? null : "unconfirmed",
+                                ErrorMessage = confirmed.Contains(key)
+                                    ? null
+                                    : "Storage did not confirm deletion"
+                            });
+                        }
+                    }
+                }
+                catch (AmazonS3Exception ex) when (
+                    ex.StatusCode is System.Net.HttpStatusCode.TooManyRequests or
+                        System.Net.HttpStatusCode.ServiceUnavailable ||
+                    IsRetryableDeleteError(ex.ErrorCode))
+                {
+                    _logger.LogWarning(
+                        ex,
+                        "Storage throttled bulk deletion of {Count} media objects",
+                        chunk.Length);
+                    var pendingKeys = keys
+                        .Skip(results.Count)
+                        .ToList();
+                    results.AddRange(pendingKeys.Select(key => new MediaDeleteItemResult
+                    {
+                        StorageKey = key,
+                        IsRetryable = true,
+                        ErrorCode = ex.ErrorCode ?? $"http_{(int)ex.StatusCode}",
+                        ErrorMessage = ex.Message
+                    }));
+                    break;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(
+                        ex,
+                        "Failed to bulk delete {Count} media objects",
+                        chunk.Length);
+                    results.AddRange(chunk.Select(key => new MediaDeleteItemResult
+                    {
+                        StorageKey = key,
+                        ErrorCode = ex.GetType().Name,
+                        ErrorMessage = ex.Message
+                    }));
+                }
+            }
+
+            var deletedCount = results.Count(item => item.Deleted);
+            _logger.LogInformation(
+                "Bulk media delete confirmed {DeletedCount} of {RequestedCount} objects",
+                deletedCount,
+                keys.Count);
+            return new MediaBulkDeleteResult { Items = results };
+        }
+
+        private static bool IsRetryableDeleteError(string? errorCode) =>
+            errorCode is not null &&
+            (errorCode.Equals("SlowDown", StringComparison.OrdinalIgnoreCase) ||
+             errorCode.Equals("Throttling", StringComparison.OrdinalIgnoreCase) ||
+             errorCode.Equals("ThrottlingException", StringComparison.OrdinalIgnoreCase) ||
+             errorCode.Equals("ServiceUnavailable", StringComparison.OrdinalIgnoreCase) ||
+             errorCode.Equals("InternalError", StringComparison.OrdinalIgnoreCase));
 
         /// <inheritdoc/>
         public async Task<string> GenerateUrlAsync(string storageKey, TimeSpan? expiration = null)

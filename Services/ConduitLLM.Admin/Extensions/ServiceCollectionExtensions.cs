@@ -112,7 +112,11 @@ public static class ServiceCollectionExtensions
         {
             var mediaRepository = serviceProvider.GetRequiredService<IMediaRecordRepository>();
             var mediaLifecycleService = serviceProvider.GetService<IMediaLifecycleService>();
-            var storageService = serviceProvider.GetRequiredService<IMediaStorageService>();
+            var configurationContext = serviceProvider.GetRequiredService<IConfigurationDbContext>();
+            var cleanupLockService = serviceProvider.GetRequiredService<IDistributedLockService>();
+            var deletionEngine = serviceProvider.GetRequiredService<IMediaDeletionEngine>();
+            var options = serviceProvider.GetRequiredService<
+                Microsoft.Extensions.Options.IOptions<MediaLifecycleOptions>>();
             var logger = serviceProvider.GetRequiredService<ILogger<AdminMediaService>>();
 
             // Only register if media lifecycle service is available
@@ -121,7 +125,14 @@ public static class ServiceCollectionExtensions
                 throw new InvalidOperationException("IMediaLifecycleService must be registered to use AdminMediaService");
             }
 
-            return new AdminMediaService(mediaRepository, mediaLifecycleService, storageService, logger);
+            return new AdminMediaService(
+                mediaRepository,
+                mediaLifecycleService,
+                configurationContext,
+                cleanupLockService,
+                deletionEngine,
+                options,
+                logger);
         });
 
         // ILLMClientFactory is registered via AddProviderServices() in the shared Providers extension
@@ -129,10 +140,6 @@ public static class ServiceCollectionExtensions
 
         // Register shared HTTP clients (DiscoveryProviders, ImageDownload, Exa, Tavily)
         services.AddSharedHttpClients();
-
-        // Register Media Services using shared configuration from Core
-        services.AddMediaServices(configuration);
-
 
         // Register Function services
         services.AddScoped<ConduitLLM.Functions.Interfaces.IFunctionCostService, ConduitLLM.Functions.Services.FunctionCostService>();

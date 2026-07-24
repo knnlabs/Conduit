@@ -1,6 +1,6 @@
 'use client';
 
-import { Grid, Card, Text, Group, Stack, RingProgress, Skeleton } from '@mantine/core';
+import { Grid, Card, Text, Group, Stack, RingProgress, Skeleton, Table, Badge } from '@mantine/core';
 import { IconPhoto, IconVideo, IconDatabase, IconCloud } from '@tabler/icons-react';
 import { useMediaStats } from '../hooks/useMediaStats';
 import { formatters } from '@/lib/utils/formatters';
@@ -24,7 +24,26 @@ export default function MediaStatsCards() {
 
   if (!stats) return null;
 
-  const totalUsagePercent = Math.min((stats.totalSizeBytes / (10 * 1024 * 1024 * 1024)) * 100, 100); // 10GB example limit
+  const constrainedGroups = stats.groupQuotaUsage.filter(
+    group => group.maxStorageSizeBytes !== null && group.maxStorageSizeBytes !== undefined ||
+      group.maxFileCount !== null && group.maxFileCount !== undefined
+  );
+  const overQuotaGroups = constrainedGroups.filter(group => group.isOverQuota);
+  const totalStorageQuota = constrainedGroups.reduce(
+    (total, group) => total + (group.maxStorageSizeBytes ?? 0),
+    0
+  );
+  const quotaStorageUsage = constrainedGroups.reduce(
+    (total, group) => total + (
+      group.maxStorageSizeBytes === null || group.maxStorageSizeBytes === undefined
+        ? 0
+        : group.totalSizeBytes
+    ),
+    0
+  );
+  const totalUsagePercent = totalStorageQuota > 0
+    ? Math.min((quotaStorageUsage / totalStorageQuota) * 100, 100)
+    : 0;
 
   return (
     <Grid>
@@ -82,23 +101,83 @@ export default function MediaStatsCards() {
       <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
         <Card shadow="sm" p="lg" radius="md" withBorder>
           <Group justify="space-between" mb="xs">
-            <Text size="sm" c="dimmed">Health Status</Text>
+            <Text size="sm" c="dimmed">Quota Status</Text>
             <IconCloud size={20} opacity={0.5} />
           </Group>
           <Stack gap="xs">
-            {stats.orphanedFiles > 0 && (
-              <Text size="sm" c="orange">
-                {stats.orphanedFiles} orphaned files
+            {overQuotaGroups.length > 0 && (
+              <Text size="sm" c="red">
+                {overQuotaGroups.length} {overQuotaGroups.length === 1 ? 'group is' : 'groups are'} over quota
               </Text>
             )}
-            {stats.orphanedFiles === 0 && (
+            {overQuotaGroups.length === 0 && (
               <Text size="sm" c="green">
-                All files healthy
+                All configured quotas healthy
               </Text>
             )}
+            <Text size="xs" c="dimmed">
+              {constrainedGroups.length} groups with limits
+            </Text>
           </Stack>
         </Card>
       </Grid.Col>
+
+      {constrainedGroups.length > 0 && (
+        <Grid.Col span={12}>
+          <Card shadow="sm" p="lg" radius="md" withBorder>
+            <Text fw={600} mb="sm">Storage quota usage by virtual-key group</Text>
+            <Table striped highlightOnHover>
+              <Table.Thead>
+                <Table.Tr>
+                  <Table.Th>Group</Table.Th>
+                  <Table.Th>Storage</Table.Th>
+                  <Table.Th>Files</Table.Th>
+                  <Table.Th>Over-quota behavior</Table.Th>
+                  <Table.Th>Status</Table.Th>
+                </Table.Tr>
+              </Table.Thead>
+              <Table.Tbody>
+                {constrainedGroups.map(group => (
+                  <Table.Tr key={group.virtualKeyGroupId}>
+                    <Table.Td>
+                      <Text size="sm" fw={500}>{group.virtualKeyGroupName}</Text>
+                      <Text size="xs" c="dimmed">
+                        {group.mediaRetentionPolicyName ?? 'No active policy'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {formatters.fileSize(group.totalSizeBytes)} /{' '}
+                        {group.maxStorageSizeBytes === null || group.maxStorageSizeBytes === undefined
+                          ? 'Unlimited'
+                          : formatters.fileSize(group.maxStorageSizeBytes)}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {group.totalFiles.toLocaleString()} /{' '}
+                        {group.maxFileCount?.toLocaleString() ?? 'Unlimited'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Text size="sm">
+                        {group.quotaExceededBehavior === 'reject'
+                          ? 'Reject generation'
+                          : 'Allow and evict'}
+                      </Text>
+                    </Table.Td>
+                    <Table.Td>
+                      <Badge color={group.isOverQuota ? 'red' : 'green'} variant="light">
+                        {group.isOverQuota ? 'Over quota' : 'Within quota'}
+                      </Badge>
+                    </Table.Td>
+                  </Table.Tr>
+                ))}
+              </Table.Tbody>
+            </Table>
+          </Card>
+        </Grid.Col>
+      )}
     </Grid>
   );
 }

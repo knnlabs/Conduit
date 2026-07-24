@@ -13,6 +13,11 @@ namespace ConduitLLM.Core.Services
     {
         private readonly ConcurrentDictionary<string, long> _monthlyCounts = new();
         private readonly ILogger<InMemoryMediaDeletionBudgetService> _logger;
+        private readonly object _reservationLock = new();
+
+        public string BackendName => "InMemory";
+        public bool IsPersistent => false;
+        public DateTime? LastFailureAtUtc => null;
 
         public InMemoryMediaDeletionBudgetService(ILogger<InMemoryMediaDeletionBudgetService> logger)
         {
@@ -49,6 +54,34 @@ namespace ConduitLLM.Core.Services
             CleanupOldMonths();
 
             return Task.FromResult(newValue);
+        }
+
+        /// <inheritdoc/>
+        public Task<MediaDeletionBudgetReservation> ReserveAsync(
+            int requestedDeletions,
+            int budget,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var requested = Math.Max(0, requestedDeletions);
+            lock (_reservationLock)
+            {
+                var key = GetCurrentMonthKey();
+                var current = _monthlyCounts.GetValueOrDefault(key, 0);
+                var remaining = Math.Max(0, (long)budget - current);
+                var granted = (int)Math.Min(requested, remaining);
+                var newTotal = current + granted;
+                if (granted > 0)
+                {
+                    _monthlyCounts[key] = newTotal;
+                    CleanupOldMonths();
+                }
+
+                return Task.FromResult(new MediaDeletionBudgetReservation(
+                    requested,
+                    granted,
+                    newTotal));
+            }
         }
 
         /// <inheritdoc/>

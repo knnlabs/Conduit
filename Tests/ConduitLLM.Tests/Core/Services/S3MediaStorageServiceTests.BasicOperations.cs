@@ -6,6 +6,8 @@ using Amazon.S3.Model;
 
 using ConduitLLM.Core.Models;
 
+using FluentAssertions;
+
 using Moq;
 
 namespace ConduitLLM.Tests.Core.Services
@@ -253,22 +255,25 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             var storageKey = "image/2023/01/01/test-hash.jpg";
             
-            var deleteResponse = new DeleteObjectResponse
+            var deleteResponse = new DeleteObjectsResponse
             {
-                HttpStatusCode = HttpStatusCode.NoContent
+                HttpStatusCode = HttpStatusCode.OK,
+                DeletedObjects = [new DeletedObject { Key = storageKey }]
             };
 
-            _mockS3Client.Setup(x => x.DeleteObjectAsync(It.Is<DeleteObjectRequest>(req =>
+            _mockS3Client.Setup(x => x.DeleteObjectsAsync(It.Is<DeleteObjectsRequest>(req =>
                 req.BucketName == _options.BucketName &&
-                req.Key == storageKey
-            ), default)).ReturnsAsync(deleteResponse);
+                req.Objects.Single().Key == storageKey
+            ), It.IsAny<CancellationToken>())).ReturnsAsync(deleteResponse);
 
             // Act
             var result = await _service.DeleteAsync(storageKey);
 
             // Assert
             Assert.True(result);
-            _mockS3Client.Verify(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), default), 
+            _mockS3Client.Verify(x => x.DeleteObjectsAsync(
+                    It.IsAny<DeleteObjectsRequest>(),
+                    It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -278,7 +283,9 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             var storageKey = "test-key";
             
-            _mockS3Client.Setup(x => x.DeleteObjectAsync(It.IsAny<DeleteObjectRequest>(), default))
+            _mockS3Client.Setup(x => x.DeleteObjectsAsync(
+                    It.IsAny<DeleteObjectsRequest>(),
+                    It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new AmazonS3Exception("Access Denied"));
 
             // Act
@@ -286,6 +293,85 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.False(result);
+        }
+
+        [Fact]
+        public async Task DeleteManyAsync_ReportsPerKeySuccessAndFailure()
+        {
+            _mockS3Client.Setup(x => x.DeleteObjectsAsync(
+                    It.IsAny<DeleteObjectsRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new DeleteObjectsResponse
+                {
+                    DeletedObjects = [new DeletedObject { Key = "deleted" }],
+                    DeleteErrors =
+                    [
+                        new DeleteError
+                        {
+                            Key = "failed",
+                            Code = "AccessDenied",
+                            Message = "denied"
+                        }
+                    ]
+                });
+
+            var result = await _service.DeleteManyAsync(["deleted", "failed"]);
+
+            result.Items.Single(item => item.StorageKey == "deleted")
+                .Deleted.Should().BeTrue();
+            result.Items.Single(item => item.StorageKey == "failed")
+                .Should().Match<MediaDeleteItemResult>(item =>
+                    !item.Deleted && item.ErrorCode == "AccessDenied");
+        }
+
+        [Fact]
+        public async Task DeleteManyAsync_AmazonThrottle_ReturnsRetryablePerKeyResults()
+        {
+            _mockS3Client.Setup(x => x.DeleteObjectsAsync(
+                    It.IsAny<DeleteObjectsRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new AmazonS3Exception("slow down")
+                {
+                    StatusCode = HttpStatusCode.ServiceUnavailable,
+                    ErrorCode = "SlowDown"
+                });
+
+            var result = await _service.DeleteManyAsync(["first", "second"]);
+
+            result.WasThrottled.Should().BeTrue();
+            result.Items.Should().HaveCount(2)
+                .And.OnlyContain(item =>
+                    !item.Deleted &&
+                    item.IsRetryable &&
+                    item.ErrorCode == "SlowDown");
+        }
+
+        [Fact]
+        public async Task DeleteManyAsync_WithMoreThanS3Limit_ChunksRequests()
+        {
+            var keys = Enumerable.Range(0, 2501)
+                .Select(index => $"key-{index}")
+                .ToArray();
+            _mockS3Client.Setup(x => x.DeleteObjectsAsync(
+                    It.IsAny<DeleteObjectsRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((DeleteObjectsRequest request, CancellationToken _) =>
+                    new DeleteObjectsResponse
+                    {
+                        DeletedObjects = request.Objects
+                            .Select(item => new DeletedObject { Key = item.Key })
+                            .ToList()
+                    });
+
+            var result = await _service.DeleteManyAsync(keys);
+
+            result.Items.Should().HaveCount(keys.Length)
+                .And.OnlyContain(item => item.Deleted);
+            _mockS3Client.Verify(x => x.DeleteObjectsAsync(
+                    It.Is<DeleteObjectsRequest>(request =>
+                        request.Objects.Count <= 1000),
+                    It.IsAny<CancellationToken>()),
+                Times.Exactly(3));
         }
 
         #endregion

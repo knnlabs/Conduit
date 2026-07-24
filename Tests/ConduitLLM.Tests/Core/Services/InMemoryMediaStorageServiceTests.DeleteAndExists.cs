@@ -53,6 +53,39 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.False(deleted);
         }
 
+        [Fact]
+        public async Task DeleteManyAsync_ReportsOutcomeForEachKey()
+        {
+            var first = await _service.StoreAsync(
+                new MemoryStream(Encoding.UTF8.GetBytes("first")),
+                new MediaMetadata
+                {
+                    ContentType = "image/jpeg",
+                    FileName = "first.jpg",
+                    MediaType = MediaType.Image
+                });
+            var second = await _service.StoreAsync(
+                new MemoryStream(Encoding.UTF8.GetBytes("second")),
+                new MediaMetadata
+                {
+                    ContentType = "image/jpeg",
+                    FileName = "second.jpg",
+                    MediaType = MediaType.Image
+                });
+
+            var result = await _service.DeleteManyAsync(
+                [first.StorageKey, second.StorageKey, "missing"]);
+
+            Assert.Equal(3, result.Items.Count);
+            Assert.True(result.Items.Single(item =>
+                item.StorageKey == first.StorageKey).Deleted);
+            Assert.True(result.Items.Single(item =>
+                item.StorageKey == second.StorageKey).Deleted);
+            Assert.Equal(
+                "not_found",
+                result.Items.Single(item => item.StorageKey == "missing").ErrorCode);
+        }
+
         #endregion
 
         #region GenerateUrlAsync Tests

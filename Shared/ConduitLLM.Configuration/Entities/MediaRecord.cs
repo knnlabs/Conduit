@@ -108,5 +108,11 @@ namespace ConduitLLM.Configuration.Entities
         /// Gets or sets the number of times the media has been accessed.
         /// </summary>
         public int AccessCount { get; set; }
+
+        /// <summary>
+        /// Gets or sets when the media was soft deleted. Null means the media is active.
+        /// Storage remains allocated until the purge phase removes this record.
+        /// </summary>
+        public DateTime? DeletedAt { get; set; }
     }
 }

@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
@@ -28,6 +29,8 @@ namespace ConduitLLM.Admin.Services
         // Admin-specific dependencies
         private readonly IVirtualKeyCache? _cache;
         private readonly IMediaLifecycleService? _mediaLifecycleService;
+        private readonly IMediaDeletionEngine? _mediaDeletionEngine;
+        private readonly IDistributedLockService? _mediaCleanupLockService;
         private readonly IModelProviderMappingRepository _modelProviderMappingRepository;
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
@@ -46,6 +49,8 @@ namespace ConduitLLM.Admin.Services
         /// <param name="cache">Optional Redis cache for immediate invalidation (null if not configured)</param>
         /// <param name="eventBus">Optional event bus (null if not configured)</param>
         /// <param name="mediaLifecycleService">Optional media lifecycle service for cleaning up associated media files (null if not configured)</param>
+        /// <param name="mediaDeletionEngine">Guarded media deletion engine.</param>
+        /// <param name="mediaCleanupLockService">Distributed lock shared with scheduled cleanup.</param>
         public AdminVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
@@ -56,11 +61,15 @@ namespace ConduitLLM.Admin.Services
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             IVirtualKeyCache? cache = null,
             IEventBus? eventBus = null,
-            IMediaLifecycleService? mediaLifecycleService = null)
+            IMediaLifecycleService? mediaLifecycleService = null,
+            IMediaDeletionEngine? mediaDeletionEngine = null,
+            IDistributedLockService? mediaCleanupLockService = null)
             : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
             _cache = cache;
             _mediaLifecycleService = mediaLifecycleService;
+            _mediaDeletionEngine = mediaDeletionEngine;
+            _mediaCleanupLockService = mediaCleanupLockService;
             _modelProviderMappingRepository = modelProviderMappingRepository ?? throw new ArgumentNullException(nameof(modelProviderMappingRepository));
             _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
@@ -78,20 +87,70 @@ namespace ConduitLLM.Admin.Services
             {
                 try
                 {
-                    var deletedMediaCount = await _mediaLifecycleService.DeleteMediaForVirtualKeyAsync(keyId);
-                    if (deletedMediaCount > 0)
+                    await using var mediaContext =
+                        await _dbContextFactory.CreateDbContextAsync();
+                    var mediaRecords = await mediaContext.MediaRecords
+                        .IgnoreQueryFilters()
+                        .AsNoTracking()
+                        .Where(record => record.VirtualKeyId == keyId)
+                        .ToListAsync();
+                    if (mediaRecords.Count == 0)
                     {
-                        Logger.LogInformation("Deleted {Count} media files for virtual key {KeyId}", deletedMediaCount, keyId);
+                        return;
                     }
+
+                    if (_mediaDeletionEngine == null || _mediaCleanupLockService == null)
+                    {
+                        throw new InvalidOperationException(
+                            "Virtual key deletion is blocked because the guarded media deletion engine is unavailable.");
+                    }
+
+                    await using var lockHandle = await _mediaCleanupLockService.AcquireLockAsync(
+                        MediaCleanupLock.Key,
+                        MediaCleanupLock.Duration);
+                    if (lockHandle == null)
+                    {
+                        throw new InvalidOperationException(
+                            "Virtual key deletion is blocked while another media cleanup run is active.");
+                    }
+
+                    var operation = new MediaDeletionOperationContext(
+                        MediaCleanupTypes.VirtualKey,
+                        "virtual-key",
+                        $"virtual-key:{keyId}");
+                    var result = await _mediaDeletionEngine.ExecuteOperationAsync(
+                        operation,
+                        () => _mediaDeletionEngine.DeleteAsync(
+                            new MediaDeletionRequest(
+                                mediaRecords,
+                                operation,
+                                Purge: true)));
+
+                    if (result.IsDryRun || result.BudgetExhausted || result.Failures > 0)
+                    {
+                        throw new InvalidOperationException(
+                            $"Virtual key deletion aborted: media cleanup was not complete " +
+                            $"(dryRun={result.IsDryRun}, budgetExhausted={result.BudgetExhausted}, " +
+                            $"failed={result.Failures}, deleted={result.FilesDeleted}).");
+                    }
+
+                    Logger.LogInformation(
+                        "Deleted {DeletedCount} media files for virtual key {KeyId}",
+                        result.FilesDeleted, keyId);
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Failed to delete media files for virtual key {KeyId}, but continuing with key deletion", keyId);
+                    Logger.LogError(
+                        ex,
+                        "Failed to delete media files for virtual key {KeyId}; key deletion is blocked to preserve media tracking",
+                        keyId);
+                    throw;
                 }
             }
             else
             {
-                Logger.LogWarning("Media lifecycle service not available, media files for virtual key {KeyId} will become orphaned", keyId);
+                throw new InvalidOperationException(
+                    $"Virtual key deletion is blocked because media tracking is unavailable for key {keyId}.");
             }
         }
 

@@ -1,3 +1,6 @@
+using ConduitLLM.Configuration.Entities;
+using System.Text.Json.Serialization;
+
 namespace ConduitLLM.Admin.DTOs
 {
     /// <summary>
@@ -17,6 +20,7 @@ namespace ConduitLLM.Admin.DTOs
         public bool IsDefault { get; set; }
         public long? MaxStorageSizeBytes { get; set; }
         public int? MaxFileCount { get; set; }
+        public MediaQuotaExceededBehavior QuotaExceededBehavior { get; set; }
         public bool IsActive { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
@@ -57,6 +61,8 @@ namespace ConduitLLM.Admin.DTOs
         public bool IsDefault { get; set; }
         public long? MaxStorageSizeBytes { get; set; }
         public int? MaxFileCount { get; set; }
+        public MediaQuotaExceededBehavior QuotaExceededBehavior { get; set; } =
+            MediaQuotaExceededBehavior.Reject;
     }
 
     /// <summary>
@@ -64,6 +70,9 @@ namespace ConduitLLM.Admin.DTOs
     /// </summary>
     public class UpdateMediaRetentionPolicyRequest
     {
+        private long? _maxStorageSizeBytes;
+        private int? _maxFileCount;
+
         public string? Name { get; set; }
         public string? Description { get; set; }
         public int? PositiveBalanceRetentionDays { get; set; }
@@ -73,8 +82,33 @@ namespace ConduitLLM.Admin.DTOs
         public bool? RespectRecentAccess { get; set; }
         public int? RecentAccessWindowDays { get; set; }
         public bool? IsDefault { get; set; }
-        public long? MaxStorageSizeBytes { get; set; }
-        public int? MaxFileCount { get; set; }
+        public long? MaxStorageSizeBytes
+        {
+            get => _maxStorageSizeBytes;
+            set
+            {
+                _maxStorageSizeBytes = value;
+                HasMaxStorageSizeBytes = true;
+            }
+        }
+
+        public int? MaxFileCount
+        {
+            get => _maxFileCount;
+            set
+            {
+                _maxFileCount = value;
+                HasMaxFileCount = true;
+            }
+        }
+
+        [JsonIgnore]
+        public bool HasMaxStorageSizeBytes { get; private set; }
+
+        [JsonIgnore]
+        public bool HasMaxFileCount { get; private set; }
+
+        public MediaQuotaExceededBehavior? QuotaExceededBehavior { get; set; }
         public bool? IsActive { get; set; }
     }
 

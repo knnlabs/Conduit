@@ -28,6 +28,7 @@ import {
   IconX,
   IconCalendarTime,
   IconExternalLink,
+  IconShieldCheck,
 } from '@tabler/icons-react';
 import Link from 'next/link';
 import { notify } from '@/lib/notifications';
@@ -75,6 +76,7 @@ export default function MediaCleanupStatusContent() {
   const [loading, setLoading] = useState(true);
   const [toggleLoading, setToggleLoading] = useState(false);
   const [retentionLoading, setRetentionLoading] = useState(false);
+  const [approvalLoading, setApprovalLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Local state for simple retention override
   const [simpleRetentionDays, setSimpleRetentionDays] = useState<number | null>(null);
@@ -160,6 +162,21 @@ export default function MediaCleanupStatusContent() {
     setHasUnsavedChanges(status?.simpleRetentionOverrideDays !== null);
   };
 
+  const handleApproval = async (id: string, approve: boolean) => {
+    setApprovalLoading(id);
+    try {
+      const response = await withAdminClient(client =>
+        approve ? client.media.approveCleanup(id) : client.media.rejectCleanup(id)
+      );
+      notify.success(response.message);
+      await fetchStatus();
+    } catch (err) {
+      notify.error(err, `Failed to ${approve ? 'approve' : 'reject'} cleanup`);
+    } finally {
+      setApprovalLoading(null);
+    }
+  };
+
   if (loading) {
     return (
       <Stack align="center" py="xl">
@@ -187,6 +204,10 @@ export default function MediaCleanupStatusContent() {
 
   const budgetPercent = Math.min(status.monthlyBudgetUsedPercent, 100);
   const budgetColor = getBudgetColor(budgetPercent);
+  const failedOperations = status.operationStatuses.filter(operation => {
+    const operationStatus = operation.lastRunStatus?.toLowerCase() ?? '';
+    return operationStatus.startsWith('failed') || operationStatus.includes('errors');
+  });
 
   return (
     <Stack gap="lg">
@@ -200,6 +221,9 @@ export default function MediaCleanupStatusContent() {
             </Text>
           </div>
           <Group gap="md">
+            <Badge color="blue" variant="light" size="lg">
+              Storage: {status.storageBackend}
+            </Badge>
             <Badge
               color={status.isEnabled ? 'green' : 'gray'}
               variant="filled"
@@ -306,9 +330,117 @@ export default function MediaCleanupStatusContent() {
         </Text>
       </Card>
 
+      {/* Large cleanup approvals */}
+      <Card withBorder shadow="sm">
+        <Group justify="space-between" mb="md">
+          <div>
+            <Title order={4}>Pending Approvals</Title>
+            <Text size="sm" c="dimmed">
+              Large scheduled cleanup scopes require review before a fresh query can run.
+            </Text>
+          </div>
+          <Badge
+            color={status.pendingApprovalCount > 0 ? 'orange' : 'green'}
+            variant="filled"
+            size="lg"
+            leftSection={<IconShieldCheck size={14} />}
+          >
+            {status.pendingApprovalCount}
+          </Badge>
+        </Group>
+        {(status.pendingApprovals ?? []).length === 0 ? (
+          <Alert color="green" icon={<IconCheck size={16} />}>
+            No large cleanup scopes are waiting for approval.
+          </Alert>
+        ) : (
+          <Stack gap="sm">
+            {status.pendingApprovals.map((approval) => (
+              <Paper key={approval.id} p="md" withBorder>
+                <Group justify="space-between" align="flex-start">
+                  <Stack gap={4}>
+                    <Group gap="xs">
+                      <Badge color="orange" variant="light">{approval.cleanupType}</Badge>
+                      <Text size="sm" fw={600}>
+                        {approval.candidateCount.toLocaleString()} candidates
+                      </Text>
+                      <Text size="sm" c="dimmed">
+                        {formatBytes(approval.candidateBytes)}
+                      </Text>
+                    </Group>
+                    <Text size="xs" c="dimmed">
+                      Scope: {approval.virtualKeyGroupId === null
+                        ? 'all eligible groups'
+                        : `virtual key group ${approval.virtualKeyGroupId}`}
+                    </Text>
+                    <Text size="xs" c="dimmed">
+                      Snapshot {formatDate(approval.cutoffUtc)} · expires {formatDate(approval.expiresAtUtc)}
+                    </Text>
+                  </Stack>
+                  <Group gap="xs">
+                    <Button
+                      size="xs"
+                      variant="light"
+                      color="red"
+                      disabled={approvalLoading !== null}
+                      loading={approvalLoading === approval.id}
+                      onClick={() => void handleApproval(approval.id, false)}
+                    >
+                      Reject
+                    </Button>
+                    <Button
+                      size="xs"
+                      color="orange"
+                      disabled={approvalLoading !== null}
+                      loading={approvalLoading === approval.id}
+                      onClick={() => void handleApproval(approval.id, true)}
+                    >
+                      Approve fresh run
+                    </Button>
+                  </Group>
+                </Group>
+              </Paper>
+            ))}
+          </Stack>
+        )}
+      </Card>
+
+      {status.testScopeActive && (
+        <Alert
+          color="orange"
+          icon={<IconAlertCircle size={16} />}
+          title="Progressive rollout scope is active"
+        >
+          Scheduled purge, expiration, quota, and retention cleanup are restricted to virtual
+          key groups {status.testVirtualKeyGroups.join(', ')}. Storage reconciliation is skipped
+          because untracked objects no longer have group ownership.
+        </Alert>
+      )}
+
+      {failedOperations.length > 0 && (
+        <Alert
+          color="red"
+          icon={<IconAlertCircle size={16} />}
+          title="Media cleanup requires attention"
+        >
+          The latest {failedOperations.map(operation => operation.cleanupType).join(', ')} cleanup
+          phase{failedOperations.length === 1 ? '' : 's'} reported failures. A health-monitoring
+          alert is emitted for failed runs; review the phase outcomes and Admin logs.
+        </Alert>
+      )}
+
       {/* Budget Overview */}
       <Card withBorder shadow="sm">
-        <Title order={4} mb="md">Monthly Budget</Title>
+        <Group justify="space-between" mb="md">
+          <Title order={4}>Monthly Budget</Title>
+          <Group gap="xs">
+            <Badge color={status.isBudgetBackendPersistent ? 'blue' : 'yellow'} variant="light">
+              {status.budgetBackend}
+            </Badge>
+            <Badge color={status.budgetFailureMode === 'FailClosed' ? 'green' : 'orange'} variant="light">
+              {status.budgetFailureMode}
+            </Badge>
+          </Group>
+        </Group>
         <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="md">
           <Paper p="md" withBorder>
             <Group gap="xs" mb="xs">
@@ -347,6 +479,46 @@ export default function MediaCleanupStatusContent() {
           </Group>
           <Progress value={budgetPercent} color={budgetColor} size="lg" />
         </Stack>
+        {!status.isBudgetBackendPersistent && (
+          <Alert color="yellow" mt="md" icon={<IconAlertCircle size={16} />}>
+            Budget usage is process-local and resets when this Admin instance restarts.
+          </Alert>
+        )}
+        {status.budgetLastFailureAtUtc && (
+          <Alert color="red" mt="md" icon={<IconAlertCircle size={16} />}>
+            Last budget backend failure: {formatDate(status.budgetLastFailureAtUtc)}
+          </Alert>
+        )}
+        {status.monthlyBudgetUsedPercent >= status.budgetAlertThresholdPercent && (
+          <Alert color="red" mt="md" icon={<IconAlertCircle size={16} />}>
+            Monthly deletion budget has reached the {status.budgetAlertThresholdPercent.toFixed(0)}%
+            alert threshold. Cleanup runs emit a health-monitoring notification while usage
+            remains above this threshold.
+          </Alert>
+        )}
+      </Card>
+
+      {/* Reconciliation drift */}
+      <Card withBorder shadow="sm">
+        <Title order={4} mb="md">Storage Reconciliation</Title>
+        <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="md">
+          <Paper p="md" withBorder>
+            <Text size="sm" c="dimmed">Untracked Objects</Text>
+            <Text size="xl" fw={700}>
+              {status.untrackedObjectCount.toLocaleString()}
+            </Text>
+          </Paper>
+          <Paper p="md" withBorder>
+            <Text size="sm" c="dimmed">Untracked Bytes</Text>
+            <Text size="xl" fw={700}>
+              {formatBytes(status.untrackedBytes)}
+            </Text>
+          </Paper>
+        </SimpleGrid>
+        <Text size="xs" c="dimmed" mt="md">
+          Latest observed storage objects without matching media records. The minimum-age safety
+          window protects uploads that may still be registering.
+        </Text>
       </Card>
 
       {/* Last Run Info */}
@@ -449,6 +621,10 @@ export default function MediaCleanupStatusContent() {
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Max Batch Size</Text>
               <Text size="sm" fw={500}>{status.maxBatchSize} items</Text>
+            </Group>
+            <Group justify="space-between">
+              <Text size="sm" c="dimmed">Max Records per Run</Text>
+              <Text size="sm" fw={500}>{status.maxRecordsPerRun.toLocaleString()} records</Text>
             </Group>
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Next Scheduled Run</Text>

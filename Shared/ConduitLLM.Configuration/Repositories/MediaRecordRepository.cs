@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Models;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -67,15 +68,112 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
     }
 
     /// <inheritdoc/>
-    public async Task<List<MediaRecord>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
+    public async Task<MediaRecord?> GetByStorageKeyIncludingDeletedAsync(
+        string storageKey,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(storageKey))
+        {
+            return null;
+        }
+
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.StorageKey == storageKey, cancellationToken),
+            cancellationToken, $"getting by storage key {storageKey}, including deleted");
+    }
+
+    /// <inheritdoc/>
+    public async Task<MediaRecord?> GetByIdIncludingDeletedAsync(
+        Guid id,
+        CancellationToken cancellationToken = default)
     {
         return await ExecuteAsync(async context =>
             await GetDbSet(context)
+                .IgnoreQueryFilters()
                 .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Id == id, cancellationToken),
+            cancellationToken, $"getting by ID {id}, including deleted");
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<MediaRecord>> GetByVirtualKeyIdAsync(
+        int virtualKeyId,
+        bool includeDeleted = false,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var query = GetDbSet(context).AsNoTracking();
+            if (includeDeleted)
+            {
+                query = query.IgnoreQueryFilters();
+            }
+
+            return await query
                 .Where(m => m.VirtualKeyId == virtualKeyId)
                 .OrderByDescending(m => m.CreatedAt)
-                .ToListAsync(cancellationToken),
-            cancellationToken, $"getting by virtual key ID {virtualKeyId}");
+                .ToListAsync(cancellationToken);
+        }, cancellationToken, $"getting by virtual key ID {virtualKeyId}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> TombstoneAsync(
+        Guid id,
+        DateTime deletedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaRecord = await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(record => record.Id == id, cancellationToken);
+            if (mediaRecord == null || mediaRecord.DeletedAt.HasValue)
+            {
+                return false;
+            }
+
+            mediaRecord.DeletedAt = deletedAtUtc;
+            return await context.SaveChangesAsync(cancellationToken) > 0;
+        }, cancellationToken, $"tombstoning media ID {id}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaRecord = await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(record => record.Id == id, cancellationToken);
+            if (mediaRecord?.DeletedAt == null)
+            {
+                return false;
+            }
+
+            mediaRecord.DeletedAt = null;
+            return await context.SaveChangesAsync(cancellationToken) > 0;
+        }, cancellationToken, $"restoring media ID {id}");
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HardDeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaRecord = await GetDbSet(context)
+                .IgnoreQueryFilters()
+                .FirstOrDefaultAsync(record => record.Id == id, cancellationToken);
+            if (mediaRecord == null)
+            {
+                return false;
+            }
+
+            GetDbSet(context).Remove(mediaRecord);
+            return await context.SaveChangesAsync(cancellationToken) > 0;
+        }, cancellationToken, $"permanently deleting media ID {id}");
     }
 
     /// <inheritdoc/>
@@ -98,26 +196,6 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
                 .Where(m => m.CreatedAt < cutoffDate)
                 .ToListAsync(cancellationToken),
             cancellationToken, $"getting media older than {cutoffDate:d}");
-    }
-
-    /// <inheritdoc/>
-    public async Task<List<MediaRecord>> GetOrphanedMediaAsync(CancellationToken cancellationToken = default)
-    {
-        return await ExecuteAsync(async context =>
-        {
-            // Find media records where the virtual key no longer exists
-            var orphanedMedia = await GetDbSet(context)
-                .AsNoTracking()
-                .Where(m => !context.VirtualKeys.Any(vk => vk.Id == m.VirtualKeyId))
-                .ToListAsync(cancellationToken);
-
-            if (orphanedMedia.Count > 0)
-            {
-                Logger.LogWarning("Found {Count} orphaned media records", orphanedMedia.Count);
-            }
-
-            return orphanedMedia;
-        }, cancellationToken, "getting orphaned media");
     }
 
     /// <inheritdoc/>
@@ -193,6 +271,75 @@ public class MediaRecordRepository : RepositoryBase<MediaRecord, Guid>, IMediaRe
                 .Select(g => new { MediaType = g.Key, TotalSize = g.Sum(m => m.SizeBytes ?? 0) })
                 .ToDictionaryAsync(x => x.MediaType, x => x.TotalSize, cancellationToken),
             cancellationToken, "getting storage stats by media type");
+    }
+
+    /// <inheritdoc/>
+    public async Task<MediaStorageAggregateStats> GetAggregateStorageStatsAsync(
+        int? virtualKeyGroupId = null,
+        int virtualKeyLimit = 100,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
+        {
+            var mediaQuery = GetDbSet(context).AsNoTracking();
+            if (virtualKeyGroupId.HasValue)
+            {
+                mediaQuery = mediaQuery.Where(media => context.VirtualKeys.Any(key =>
+                    key.Id == media.VirtualKeyId &&
+                    key.VirtualKeyGroupId == virtualKeyGroupId.Value));
+            }
+
+            var totals = await mediaQuery
+                .GroupBy(_ => 1)
+                .Select(group => new
+                {
+                    TotalFiles = group.Count(),
+                    TotalSizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .SingleOrDefaultAsync(cancellationToken);
+            var providers = await mediaQuery
+                .GroupBy(media => media.Provider ?? "unknown")
+                .Select(group => new
+                {
+                    Provider = group.Key,
+                    SizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .ToDictionaryAsync(
+                    row => row.Provider,
+                    row => row.SizeBytes,
+                    cancellationToken);
+            var mediaTypes = await mediaQuery
+                .GroupBy(media => media.MediaType)
+                .Select(group => new MediaTypeStorageAggregate(
+                    group.Key,
+                    group.Count(),
+                    group.Sum(media => media.SizeBytes ?? 0)))
+                .ToListAsync(cancellationToken);
+            var topVirtualKeyRows = await mediaQuery
+                .GroupBy(media => media.VirtualKeyId)
+                .Select(group => new
+                {
+                    VirtualKeyId = group.Key,
+                    SizeBytes = group.Sum(media => media.SizeBytes ?? 0)
+                })
+                .OrderByDescending(row => row.SizeBytes)
+                .ThenBy(row => row.VirtualKeyId)
+                .Take(Math.Clamp(virtualKeyLimit, 1, 1000))
+                .ToListAsync(cancellationToken);
+
+            return new MediaStorageAggregateStats
+            {
+                TotalFiles = totals?.TotalFiles ?? 0,
+                TotalSizeBytes = totals?.TotalSizeBytes ?? 0,
+                ByProvider = providers,
+                ByMediaType = mediaTypes,
+                TopVirtualKeys = topVirtualKeyRows
+                    .Select(row => new VirtualKeyStorageAggregate(
+                        row.VirtualKeyId,
+                        row.SizeBytes))
+                    .ToList()
+            };
+        }, cancellationToken, "getting aggregate media storage stats");
     }
 
     /// <inheritdoc/>

@@ -153,8 +153,15 @@ namespace ConduitLLM.Core.Extensions
             var configProvider = configuration.GetValue<string>("ConduitLLM:Storage:Provider");
             var configEnvVar = configuration.GetValue<string>("CONDUIT_MEDIA_STORAGE_TYPE");
             var directEnvVar = Environment.GetEnvironmentVariable("CONDUIT_MEDIA_STORAGE_TYPE");
+            var legacyServiceUrl = configuration["CONDUIT_S3_SERVICE_URL"]
+                ?? Environment.GetEnvironmentVariable("CONDUIT_S3_SERVICE_URL");
             
-            var storageProvider = configProvider ?? configEnvVar ?? directEnvVar ?? "InMemory";
+            // CONDUIT_S3_SERVICE_URL selected S3 implicitly in older Admin deployments.
+            // Preserve that behavior while making CONDUIT_MEDIA_STORAGE_TYPE the canonical switch.
+            var storageProvider = configProvider
+                ?? configEnvVar
+                ?? directEnvVar
+                ?? (!string.IsNullOrWhiteSpace(legacyServiceUrl) ? "S3" : "InMemory");
 
             // Configure media storage based on provider
             if (storageProvider.Equals("S3", StringComparison.OrdinalIgnoreCase))
@@ -167,7 +174,7 @@ namespace ConduitLLM.Core.Extensions
 
                     // Then override with environment variables if they exist
                     ApplyConfigOrEnvVar(configuration, value => options.ServiceUrl = value,
-                        "CONDUIT_S3_ENDPOINT");
+                        "CONDUIT_S3_ENDPOINT", "CONDUIT_S3_SERVICE_URL");
                     ApplyConfigOrEnvVar(configuration, value => options.AccessKey = value,
                         "CONDUIT_S3_ACCESS_KEY_ID", "CONDUIT_S3_ACCESS_KEY");
                     ApplyConfigOrEnvVar(configuration, value => options.SecretKey = value,
@@ -193,12 +200,10 @@ namespace ConduitLLM.Core.Extensions
                 services.AddSingleton<IMediaStorageService, InMemoryMediaStorageService>();
             }
             
-            // Configure media management options
-            services.Configure<MediaManagementOptions>(
-                configuration.GetSection("ConduitLLM:MediaManagement"));
-            
             // Register media lifecycle service
             services.AddScoped<IMediaLifecycleService, MediaLifecycleService>();
+            services.AddScoped<IMediaQuotaService, MediaQuotaService>();
+            services.AddSingleton<IMediaQuotaGuard, MediaQuotaGuard>();
 
             // Register media lifecycle repository
             // MediaLifecycleRepository removed - consolidated into MediaRecordRepository

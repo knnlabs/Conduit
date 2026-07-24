@@ -1,11 +1,14 @@
 using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Admin.Endpoints;
 
@@ -36,12 +39,32 @@ public static class MediaEndpoints
         media.MapDelete("/{mediaId}", DeleteMedia).WithName("Media_Delete")
             .Produces<MediaDeletionResponseDto>()
             .Produces(StatusCodes.Status404NotFound);
+        media.MapPost("/restore/{mediaId}", RestoreMedia).WithName("Media_Restore")
+            .WithSummary("Restore soft-deleted media within its recovery window")
+            .Produces<MediaRestoreResponseDto>()
+            .Produces(StatusCodes.Status404NotFound)
+            .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
         media.MapPost("/cleanup/expired", CleanupExpiredMedia).WithName("Media_CleanupExpired")
-            .Produces<MediaCleanupResponseDto>();
-        media.MapPost("/cleanup/orphaned", CleanupOrphanedMedia).WithName("Media_CleanupOrphaned")
-            .Produces<MediaCleanupResponseDto>();
+            .Produces<MediaCleanupResponseDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
+        // Keep the legacy route for compatibility; it now performs storage-side reconciliation.
+        media.MapPost("/cleanup/orphaned", ReconcileStorage).WithName("Media_ReconcileStorage")
+            .WithSummary("Reconcile storage objects against MediaRecord tracking rows")
+            .Produces<MediaCleanupResponseDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
+        media.MapPost("/cleanup/prune/preview", PreviewPruneMedia).WithName("Media_PreviewPrune")
+            .WithSummary("Preview the files and bytes matched by a prune operation")
+            .Produces<MediaCleanupPreviewDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
         media.MapPost("/cleanup/prune", PruneOldMedia).WithName("Media_Prune")
             .Produces<MediaCleanupResponseDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
 
         var cleanup = app.MapGroup("/v1/admin/media-cleanup-jobs")
@@ -60,6 +83,29 @@ public static class MediaEndpoints
             .Produces<SimpleRetentionResponse>();
         cleanup.MapPost("/simple-retention", SetSimpleRetention).WithName("MediaCleanup_SetSimpleRetention")
             .Produces<SimpleRetentionResponse>();
+        cleanup.MapGet("/approvals", GetPendingApprovals)
+            .WithName("MediaCleanup_GetPendingApprovals")
+            .WithSummary("List large scheduled cleanup scopes awaiting approval")
+            .Produces<List<MediaCleanupApprovalDto>>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
+        cleanup.MapPost("/approvals/{approvalId:guid}/approve", ApproveCleanup)
+            .WithName("MediaCleanup_Approve")
+            .WithSummary("Approve a fresh execution of a large scheduled cleanup scope")
+            .Produces<MediaCleanupApprovalActionDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
+        cleanup.MapPost("/approvals/{approvalId:guid}/reject", RejectCleanup)
+            .WithName("MediaCleanup_Reject")
+            .WithSummary("Reject a large scheduled cleanup scope")
+            .Produces<MediaCleanupApprovalActionDto>()
+            .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status401Unauthorized, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status403Forbidden, "application/problem+json")
+            .Produces<AdminProblemDetails>(StatusCodes.Status429TooManyRequests, "application/problem+json");
         return app;
     }
 
@@ -81,8 +127,11 @@ public static class MediaEndpoints
 
     private static async Task<IResult> GetMediaByVirtualKey(
         int virtualKeyId,
-        [FromServices] IAdminMediaService mediaService) =>
-        Results.Ok((await mediaService.GetMediaByVirtualKeyAsync(virtualKeyId)).Select(ToResponse).ToList());
+        [FromServices] IAdminMediaService mediaService,
+        [FromQuery] bool includeDeleted = false) =>
+        Results.Ok((await mediaService.GetMediaByVirtualKeyAsync(
+            virtualKeyId,
+            includeDeleted)).Select(ToResponse).ToList());
 
     private static async Task<IResult> SearchMedia(
         [FromServices] IAdminMediaService mediaService,
@@ -99,47 +148,174 @@ public static class MediaEndpoints
         [FromServices] IAdminMediaService mediaService,
         [FromServices] ILogger<MediaEndpointLog> logger)
     {
-        if (!await mediaService.DeleteMediaAsync(mediaId))
+        var result = await mediaService.DeleteMediaAsync(mediaId);
+        if (result == null)
             throw new KeyNotFoundException();
-        AdminAudit.Log(context, logger, "Deleted", "Media", mediaId);
-        return Results.Ok(new MediaDeletionResponseDto { Message = "Media deleted successfully" });
+        AdminAudit.Log(
+            context,
+            logger,
+            result.IsSoftDeleted ? "SoftDeleted" : "Deleted",
+            "Media",
+            mediaId);
+        return Results.Ok(new MediaDeletionResponseDto
+        {
+            Message = result.IsSoftDeleted
+                ? "Media moved to deleted items and can be restored during its recovery window"
+                : "Media permanently deleted",
+            IsSoftDeleted = result.IsSoftDeleted,
+            DeletedAt = result.DeletedAt
+        });
+    }
+
+    private static async Task<IResult> RestoreMedia(
+        Guid mediaId,
+        HttpContext context,
+        [FromServices] IAdminMediaService mediaService,
+        [FromServices] ILogger<MediaEndpointLog> logger)
+    {
+        var outcome = await mediaService.RestoreMediaAsync(mediaId);
+        if (outcome == MediaRestoreOutcome.NotFound)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        if (outcome == MediaRestoreOutcome.NotDeleted)
+        {
+            return AdminResults.Conflict(
+                "Media is active and does not need to be restored.",
+                "media_not_deleted");
+        }
+
+        if (outcome == MediaRestoreOutcome.GracePeriodElapsed)
+        {
+            return AdminResults.Conflict(
+                "The media recovery window has elapsed and the record is awaiting purge.",
+                "media_restore_window_elapsed");
+        }
+
+        if (outcome == MediaRestoreOutcome.CleanupInProgress)
+        {
+            return AdminResults.Conflict(
+                "Media cleanup is running; retry the restore after it completes.",
+                "media_cleanup_in_progress");
+        }
+
+        AdminAudit.Log(context, logger, "Restored", "Media", mediaId);
+        return Results.Ok(new MediaRestoreResponseDto
+        {
+            MediaId = mediaId,
+            Message = "Media restored successfully"
+        });
     }
 
     private static async Task<IResult> CleanupExpiredMedia(
         HttpContext context,
-        [FromServices] IAdminMediaService mediaService,
-        [FromServices] ILogger<MediaEndpointLog> logger)
+        [FromServices] IConfigurationDbContext configurationContext,
+        [FromServices] IMediaDeletionEngine deletionEngine,
+        [FromServices] IDistributedLockService lockService,
+        [FromServices] IMediaCleanupStatusService statusService,
+        [FromServices] ILogger<MediaEndpointLog> logger,
+        [FromQuery] bool force = false,
+        CancellationToken cancellationToken = default)
     {
-        var count = await mediaService.CleanupExpiredMediaAsync();
-        AdminAudit.Log(context, logger, "CleanedUpExpired", "Media", detail: $"DeletedCount: {count}");
-        return Results.Ok(new MediaCleanupResponseDto { Message = $"Cleaned up {count} expired media files", DeletedCount = count });
+        return await ExecuteManualCleanupAsync(
+            MediaCleanupTypes.Expiration,
+            "expired media",
+            force,
+            context,
+            deletionEngine,
+            lockService,
+            statusService,
+            logger,
+            operation => DeleteManualCandidatesAsync(
+                deletionEngine,
+                operation,
+                () => configurationContext.MediaRecords
+                    .AsNoTracking()
+                    .Where(media => media.ExpiresAt != null && media.ExpiresAt <= DateTime.UtcNow)
+                    .ToListAsync(cancellationToken),
+                cancellationToken),
+            cancellationToken);
     }
 
-    private static async Task<IResult> CleanupOrphanedMedia(
+    private static async Task<IResult> ReconcileStorage(
         HttpContext context,
-        [FromServices] IAdminMediaService mediaService,
-        [FromServices] ILogger<MediaEndpointLog> logger)
+        [FromServices] IMediaReconciliationService reconciliationService,
+        [FromServices] IMediaDeletionEngine deletionEngine,
+        [FromServices] IDistributedLockService lockService,
+        [FromServices] IMediaCleanupStatusService statusService,
+        [FromServices] ILogger<MediaEndpointLog> logger,
+        [FromQuery] bool force = false,
+        CancellationToken cancellationToken = default)
     {
-        var count = await mediaService.CleanupOrphanedMediaAsync();
-        AdminAudit.Log(context, logger, "CleanedUpOrphaned", "Media", detail: $"DeletedCount: {count}");
-        return Results.Ok(new MediaCleanupResponseDto { Message = $"Cleaned up {count} orphaned media files", DeletedCount = count });
+        return await ExecuteManualCleanupAsync(
+            MediaCleanupTypes.Reconciliation,
+            "untracked storage objects",
+            force,
+            context,
+            deletionEngine,
+            lockService,
+            statusService,
+            logger,
+            operation => reconciliationService.ReconcileAsync(
+                operation,
+                cancellationToken),
+            cancellationToken);
+    }
+
+    private static async Task<IResult> PreviewPruneMedia(
+        PruneMediaRequest request,
+        [FromServices] IConfigurationDbContext configurationContext,
+        [FromServices] IMediaDeletionEngine deletionEngine,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.DaysToKeep is null or <= 0)
+            return AdminResults.BadRequest("DaysToKeep must be a positive number");
+
+        var candidates = await QueryPruneCandidatesAsync(
+            configurationContext,
+            request.DaysToKeep.Value,
+            cancellationToken);
+        var preview = deletionEngine.Preview(candidates);
+        return Results.Ok(new MediaCleanupPreviewDto
+        {
+            FileCount = preview.FileCount,
+            SizeBytes = preview.SizeBytes,
+            ConfirmationPhrase = $"DELETE {preview.FileCount}"
+        });
     }
 
     private static async Task<IResult> PruneOldMedia(
         PruneMediaRequest request,
         HttpContext context,
-        [FromServices] IAdminMediaService mediaService,
-        [FromServices] ILogger<MediaEndpointLog> logger)
+        [FromServices] IConfigurationDbContext configurationContext,
+        [FromServices] IMediaDeletionEngine deletionEngine,
+        [FromServices] IDistributedLockService lockService,
+        [FromServices] IMediaCleanupStatusService statusService,
+        [FromServices] ILogger<MediaEndpointLog> logger,
+        CancellationToken cancellationToken = default)
     {
         if (request.DaysToKeep is null or <= 0)
             return AdminResults.BadRequest("DaysToKeep must be a positive number");
-        var count = await mediaService.PruneOldMediaAsync(request.DaysToKeep.Value);
-        AdminAudit.Log(context, logger, "Pruned", "Media", detail: $"DaysToKeep: {request.DaysToKeep}, DeletedCount: {count}");
-        return Results.Ok(new MediaCleanupResponseDto
-        {
-            Message = $"Pruned {count} media files older than {request.DaysToKeep} days",
-            DeletedCount = count
-        });
+
+        return await ExecuteManualCleanupAsync(
+            MediaCleanupTypes.Retention,
+            $"media files older than {request.DaysToKeep} days",
+            request.Force,
+            context,
+            deletionEngine,
+            lockService,
+            statusService,
+            logger,
+            operation => DeleteManualCandidatesAsync(
+                deletionEngine,
+                operation,
+                () => QueryPruneCandidatesAsync(
+                    configurationContext,
+                    request.DaysToKeep.Value,
+                    cancellationToken),
+                cancellationToken),
+            cancellationToken);
     }
 
     private static async Task<IResult> GetCleanupStatus([FromServices] IMediaCleanupStatusService service) =>
@@ -189,7 +365,222 @@ public static class MediaEndpoints
         });
     }
 
+    private static async Task<IResult> GetPendingApprovals(
+        [FromServices] IMediaCleanupApprovalService approvalService,
+        CancellationToken cancellationToken) =>
+        Results.Ok(await approvalService.ListPendingAsync(cancellationToken));
+
+    private static async Task<IResult> ApproveCleanup(
+        Guid approvalId,
+        HttpContext context,
+        [FromServices] IMediaCleanupApprovalService approvalService,
+        [FromServices] MediaCleanupService cleanupService,
+        [FromServices] ILogger<MediaEndpointLog> logger,
+        CancellationToken cancellationToken)
+    {
+        var approval = await approvalService.ApproveAsync(
+            approvalId,
+            GetAdminActor(context),
+            cancellationToken);
+        if (approval == null)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        AdminAudit.Log(
+            context,
+            logger,
+            "Approved",
+            "MediaCleanupApproval",
+            approvalId,
+            $"Type: {approval.CleanupType}, GroupId: {approval.VirtualKeyGroupId?.ToString() ?? "all"}, " +
+            $"SnapshotCount: {approval.CandidateCount}, SnapshotBytes: {approval.CandidateBytes}");
+
+        await cleanupService.RunScheduledCleanupAsync(cancellationToken);
+        return Results.Ok(new MediaCleanupApprovalActionDto
+        {
+            Approval = MediaCleanupApprovalDto.FromEntity(approval),
+            Message = "Approval recorded and a fresh cleanup evaluation was triggered"
+        });
+    }
+
+    private static async Task<IResult> RejectCleanup(
+        Guid approvalId,
+        HttpContext context,
+        [FromServices] IMediaCleanupApprovalService approvalService,
+        [FromServices] ILogger<MediaEndpointLog> logger,
+        CancellationToken cancellationToken)
+    {
+        var approval = await approvalService.RejectAsync(
+            approvalId,
+            GetAdminActor(context),
+            cancellationToken);
+        if (approval == null)
+        {
+            throw new KeyNotFoundException();
+        }
+
+        AdminAudit.Log(
+            context,
+            logger,
+            "Rejected",
+            "MediaCleanupApproval",
+            approvalId,
+            $"Type: {approval.CleanupType}, GroupId: {approval.VirtualKeyGroupId?.ToString() ?? "all"}");
+        return Results.Ok(new MediaCleanupApprovalActionDto
+        {
+            Approval = MediaCleanupApprovalDto.FromEntity(approval),
+            Message = "Cleanup approval rejected; the next scheduler evaluation may raise a new request"
+        });
+    }
+
+    private static string GetAdminActor(HttpContext context) =>
+        context.User.Identity?.Name ?? $"master-key:{context.TraceIdentifier}";
+
     private sealed class MediaEndpointLog;
+
+    private static async Task<IResult> ExecuteManualCleanupAsync(
+        string cleanupType,
+        string description,
+        bool force,
+        HttpContext context,
+        IMediaDeletionEngine deletionEngine,
+        IDistributedLockService lockService,
+        IMediaCleanupStatusService statusService,
+        ILogger<MediaEndpointLog> logger,
+        Func<MediaDeletionOperationContext, Task<MediaDeletionEngineResult>> executeCleanup,
+        CancellationToken cancellationToken)
+    {
+        await using var lockHandle = await lockService.AcquireLockAsync(
+            MediaCleanupLock.Key,
+            MediaCleanupLock.Duration,
+            cancellationToken);
+        if (lockHandle == null)
+        {
+            return AdminResults.Conflict(
+                "Media cleanup is already running; retry after the current run completes.",
+                "media_cleanup_in_progress");
+        }
+
+        var instanceId = $"manual:{context.TraceIdentifier}";
+        var operation = new MediaDeletionOperationContext(
+            cleanupType,
+            "manual",
+            instanceId,
+            force);
+        var result = await deletionEngine.ExecuteOperationAsync(
+            operation,
+            () => executeCleanup(operation),
+            cancellationToken);
+
+        await statusService.RecordRunCompletionAsync(
+            result.FilesDeleted,
+            result.BytesFreed,
+            result.DurationSeconds,
+            result.OperationStatus ?? "Completed",
+            instanceId,
+            "manual",
+            cancellationToken);
+        AdminAudit.Log(
+            context,
+            logger,
+            force ? "ForceCleanup" : "Cleanup",
+            "Media",
+            detail:
+                $"Type: {cleanupType}, Force: {force}, DeletedCount: {result.FilesDeleted}, " +
+                $"FailedCount: {result.Failures}, WouldDeleteCount: {result.WouldDeleteCount}");
+
+        return Results.Ok(ToCleanupResponse(description, result));
+    }
+
+    private static async Task<MediaDeletionEngineResult> DeleteManualCandidatesAsync(
+        IMediaDeletionEngine deletionEngine,
+        MediaDeletionOperationContext operation,
+        Func<Task<List<MediaRecord>>> getCandidates,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await getCandidates();
+        return await deletionEngine.DeleteAsync(
+            new MediaDeletionRequest(candidates, operation),
+            cancellationToken);
+    }
+
+    internal static async Task<List<MediaRecord>> QueryPruneCandidatesAsync(
+        IConfigurationDbContext context,
+        int daysToKeep,
+        CancellationToken cancellationToken)
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-daysToKeep);
+        var now = DateTime.UtcNow;
+        var baseQuery = context.MediaRecords
+            .AsNoTracking()
+            .Where(media => media.CreatedAt < cutoff);
+        var policySettings = await context.MediaRetentionPolicies
+            .AsNoTracking()
+            .Select(policy => new
+            {
+                policy.Id,
+                policy.IsDefault,
+                policy.IsActive,
+                policy.RespectRecentAccess,
+                policy.RecentAccessWindowDays
+            })
+            .ToListAsync(cancellationToken);
+        var defaultPolicy = policySettings
+            .FirstOrDefault(policy => policy.IsDefault && policy.IsActive);
+
+        var unassignedQuery = baseQuery.Where(media => context.VirtualKeys.Any(key =>
+            key.Id == media.VirtualKeyId &&
+            key.VirtualKeyGroup.MediaRetentionPolicyId == null));
+        if (defaultPolicy?.RespectRecentAccess == true)
+        {
+            var recentAccessCutoff = now.AddDays(
+                -Math.Max(0, defaultPolicy.RecentAccessWindowDays));
+            unassignedQuery = unassignedQuery.Where(media =>
+                media.LastAccessedAt == null ||
+                media.LastAccessedAt < recentAccessCutoff);
+        }
+
+        IQueryable<MediaRecord> candidates = unassignedQuery;
+        foreach (var policy in policySettings)
+        {
+            var policyId = policy.Id;
+            var assignedQuery = baseQuery.Where(media => context.VirtualKeys.Any(key =>
+                key.Id == media.VirtualKeyId &&
+                key.VirtualKeyGroup.MediaRetentionPolicyId == policyId));
+            if (policy.RespectRecentAccess)
+            {
+                var recentAccessCutoff = now.AddDays(
+                    -Math.Max(0, policy.RecentAccessWindowDays));
+                assignedQuery = assignedQuery.Where(media =>
+                    media.LastAccessedAt == null ||
+                    media.LastAccessedAt < recentAccessCutoff);
+            }
+
+            candidates = candidates.Concat(assignedQuery);
+        }
+
+        return await candidates.ToListAsync(cancellationToken);
+    }
+
+    private static MediaCleanupResponseDto ToCleanupResponse(
+        string description,
+        MediaDeletionEngineResult result) => new()
+    {
+        Message = result.IsDryRun
+            ? $"Dry run matched {result.WouldDeleteCount} permanent deletions and {result.WouldTombstoneCount} tombstones for {description}"
+            : result.Failures == 0
+                ? $"Permanently deleted {result.FilesDeleted} and tombstoned {result.RecordsTombstoned} {description}"
+                : $"Permanently deleted {result.FilesDeleted} and tombstoned {result.RecordsTombstoned} {description}; {result.Failures} failed and remain tracked for retry",
+        DeletedCount = result.FilesDeleted,
+        TombstonedCount = result.RecordsTombstoned,
+        FailedCount = result.Failures,
+        IsDryRun = result.IsDryRun,
+        WouldDeleteCount = result.WouldDeleteCount,
+        WouldTombstoneCount = result.WouldTombstoneCount,
+        BytesWouldFree = result.BytesWouldFree,
+        TriggeredBy = "manual"
+    };
 
     private static MediaRecordResponse ToResponse(MediaRecord media) => new(
         media.Id,
@@ -207,5 +598,6 @@ public static class MediaEndpoints
         media.ExpiresAt,
         media.CreatedAt,
         media.LastAccessedAt,
-        media.AccessCount);
+        media.AccessCount,
+        media.DeletedAt);
 }

@@ -18,6 +18,7 @@ export interface MediaRecord {
   publicUrl?: string;
   expiresAt?: string;
   createdAt: string;
+  deletedAt?: string | null;
   lastAccessedAt?: string;
   accessCount: number;
 }
@@ -41,10 +42,31 @@ export interface OverallMediaStorageStats {
   byProvider: Record<string, number>;
   byMediaType: Record<string, MediaTypeStats>;
   storageByVirtualKey: Record<string, number>;
+  groupQuotaUsage: MediaGroupQuotaUsage[];
+}
+
+export type MediaQuotaExceededBehavior = 'reject' | 'allowAndEvict';
+
+export interface MediaGroupQuotaUsage {
+  virtualKeyGroupId: number;
+  virtualKeyGroupName: string;
+  mediaRetentionPolicyId?: number | null;
+  mediaRetentionPolicyName?: string | null;
+  totalSizeBytes: number;
+  totalFiles: number;
+  maxStorageSizeBytes?: number | null;
+  maxFileCount?: number | null;
+  quotaExceededBehavior: MediaQuotaExceededBehavior;
+  respectRecentAccess: boolean;
+  recentAccessWindowDays: number;
+  isOverQuota: boolean;
+  storageUsagePercent?: number | null;
+  fileUsagePercent?: number | null;
 }
 
 export interface MediaFilters {
   mediaType?: 'image' | 'video' | 'all';
+  deletionState?: 'active' | 'deleted' | 'all';
   provider?: string;
   virtualKeyId?: number;
   fromDate?: Date | string;
@@ -56,13 +78,27 @@ export interface MediaFilters {
 
 // Cleanup types
 export interface MediaCleanupRequest {
-  type: 'expired' | 'orphaned' | 'prune';
+  type: 'expired' | 'reconciliation' | 'prune';
   daysToKeep?: number;
+  force?: boolean;
 }
 
 export interface MediaCleanupResponse {
   message: string;
   deletedCount: number;
+  tombstonedCount: number;
+  failedCount: number;
+  isDryRun: boolean;
+  wouldDeleteCount: number;
+  wouldTombstoneCount: number;
+  bytesWouldFree: number;
+  triggeredBy: string;
+}
+
+export interface MediaCleanupPreview {
+  fileCount: number;
+  sizeBytes: number;
+  confirmationPhrase: string;
 }
 
 // Search types
@@ -77,14 +113,30 @@ export interface MediaDeleteRequest {
 
 export interface MediaDeleteResponse {
   message: string;
+  isSoftDeleted: boolean;
+  deletedAt?: string | null;
+}
+
+export interface MediaRestoreResponse {
+  message: string;
+  mediaId: string;
 }
 
 // Media Cleanup Service Status types
 export interface MediaCleanupStatus {
   isEnabled: boolean;
   isDryRunMode: boolean;
+  isSoftDeleteEnabled: boolean;
+  softDeleteGracePeriodDays: number;
+  storageBackend: string;
+  isPublicMediaBaseUrlConfigured: boolean;
+  testScopeActive: boolean;
+  testVirtualKeyGroups: number[];
+  untrackedObjectCount: number;
+  untrackedBytes: number;
   lastRunTimeUtc: string | null;
   lastRunStatus: string | null;
+  lastRunTriggeredBy: string | null;
   lastRunFilesDeleted: number;
   lastRunBytesFreed: number;
   lastRunDurationSeconds: number | null;
@@ -92,8 +144,14 @@ export interface MediaCleanupStatus {
   monthlyDeleteBudget: number;
   monthlyDeleteBudgetRemaining: number;
   monthlyBudgetUsedPercent: number;
+  budgetAlertThresholdPercent: number;
+  budgetBackend: string;
+  isBudgetBackendPersistent: boolean;
+  budgetFailureMode: string;
+  budgetLastFailureAtUtc: string | null;
   scheduleIntervalMinutes: number;
   maxBatchSize: number;
+  maxRecordsPerRun: number;
   defaultRetentionPolicy: RetentionPolicySummary | null;
   activeRetentionPoliciesCount: number;
   /** Simple retention override in days. When set, all media is deleted after this many days regardless of account balance. */
@@ -104,13 +162,36 @@ export interface MediaCleanupStatus {
   currentLeaderInstanceId: string | null;
   /** Last known result for each scheduler-owned cleanup phase. */
   operationStatuses: MediaCleanupOperationStatus[];
+  /** Large scheduler cleanup scopes awaiting administrator approval. */
+  pendingApprovals: MediaCleanupApproval[];
+  pendingApprovalCount: number;
+}
+
+export interface MediaCleanupApproval {
+  id: string;
+  cleanupType: string;
+  virtualKeyGroupId: number | null;
+  candidateCount: number;
+  candidateBytes: number;
+  cutoffUtc: string;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+  expiresAtUtc: string;
+  executionStatus: string | null;
+}
+
+export interface MediaCleanupApprovalAction {
+  approval: MediaCleanupApproval;
+  message: string;
 }
 
 export interface MediaCleanupOperationStatus {
-  cleanupType: 'expiration' | 'orphan' | 'retention';
+  cleanupType: 'purge' | 'expiration' | 'reconciliation' | 'retention';
   isEnabled: boolean;
   lastRunTimeUtc: string | null;
   lastRunStatus: string | null;
+  triggeredBy: string | null;
   lastRunFilesDeleted: number;
   lastRunBytesFreed: number;
   lastRunDurationSeconds: number | null;
@@ -167,6 +248,7 @@ export interface MediaRetentionPolicy {
   maxStorageSizeBytes?: number | null;
   /** Maximum number of media files (null means no limit) */
   maxFileCount?: number | null;
+  quotaExceededBehavior: MediaQuotaExceededBehavior;
   /** Whether this policy is active and can be assigned */
   isActive: boolean;
   createdAt: string;
@@ -188,6 +270,7 @@ export interface CreateMediaRetentionPolicyRequest {
   isDefault?: boolean;
   maxStorageSizeBytes?: number | null;
   maxFileCount?: number | null;
+  quotaExceededBehavior?: MediaQuotaExceededBehavior;
 }
 
 export interface UpdateMediaRetentionPolicyRequest {
@@ -202,5 +285,6 @@ export interface UpdateMediaRetentionPolicyRequest {
   isDefault?: boolean;
   maxStorageSizeBytes?: number | null;
   maxFileCount?: number | null;
+  quotaExceededBehavior?: MediaQuotaExceededBehavior;
   isActive?: boolean;
 }

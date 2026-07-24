@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, Image, Text, Group, Badge, Checkbox, ActionIcon, Stack } from '@mantine/core';
-import { IconDownload, IconEye, IconTrash } from '@tabler/icons-react';
+import { IconDownload, IconEye, IconRestore, IconTrash } from '@tabler/icons-react';
 import { MediaRecord } from '../types';
 import { getProviderColor } from '../utils/formatters';
 import { formatters } from '@/lib/utils/formatters';
@@ -12,6 +12,7 @@ interface MediaCardProps {
   onSelect: (id: string) => void;
   onView: (media: MediaRecord) => void;
   onDelete: (id: string) => void;
+  onRestore: (id: string) => void;
 }
 
 export default function MediaCard({ 
@@ -19,11 +20,13 @@ export default function MediaCard({
   selected, 
   onSelect, 
   onView, 
-  onDelete 
+  onDelete,
+  onRestore,
 }: MediaCardProps) {
   const mediaUrl = media.publicUrl ?? media.storageUrl;
   const isVideo = media.mediaType.toLowerCase() === 'video';
   const isImage = media.mediaType.toLowerCase() === 'image';
+  const isDeleted = !!media.deletedAt;
 
   const handleDownload = () => {
     if (mediaUrl) {
@@ -37,6 +40,21 @@ export default function MediaCard({
   };
 
   const renderPreview = () => {
+    if (isDeleted) {
+      return (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: '#f1f3f5',
+        }}>
+          <Text c="dimmed" fw={500}>Soft deleted</Text>
+        </div>
+      );
+    }
+
     if (isImage) {
       return (
         <Image
@@ -95,13 +113,18 @@ export default function MediaCard({
         <Checkbox
           checked={selected}
           onChange={() => onSelect(media.id)}
+          disabled={isDeleted}
           styles={{ input: { backgroundColor: 'white' } }}
         />
       </div>
 
       <Card.Section
-        style={{ cursor: 'pointer', position: 'relative', paddingTop: '75%' }}
-        onClick={() => onView(media)}
+        style={{
+          cursor: isDeleted ? 'default' : 'pointer',
+          position: 'relative',
+          paddingTop: '75%',
+        }}
+        onClick={isDeleted ? undefined : () => onView(media)}
       >
         {renderPreview()}
         {isVideo && (
@@ -111,6 +134,15 @@ export default function MediaCard({
             style={{ position: 'absolute', top: 8, right: 8 }}
           >
             VIDEO
+          </Badge>
+        )}
+        {isDeleted && (
+          <Badge
+            variant="filled"
+            color="red"
+            style={{ position: 'absolute', top: 8, right: 8 }}
+          >
+            DELETED
           </Badge>
         )}
       </Card.Section>
@@ -136,7 +168,7 @@ export default function MediaCard({
             {formatters.date(media.createdAt)}
           </Text>
           <Group gap="xs">
-            <ActionIcon
+            {!isDeleted && <ActionIcon
               size="sm"
               variant="light"
               onClick={(e) => {
@@ -145,8 +177,8 @@ export default function MediaCard({
               }}
             >
               <IconDownload size={16} />
-            </ActionIcon>
-            <ActionIcon
+            </ActionIcon>}
+            {!isDeleted && <ActionIcon
               size="sm"
               variant="light"
               onClick={(e) => {
@@ -155,8 +187,21 @@ export default function MediaCard({
               }}
             >
               <IconEye size={16} />
-            </ActionIcon>
-            <ActionIcon
+            </ActionIcon>}
+            {isDeleted ? (
+              <ActionIcon
+                aria-label="Restore media"
+                size="sm"
+                variant="light"
+                color="green"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRestore(media.id);
+                }}
+              >
+                <IconRestore size={16} />
+              </ActionIcon>
+            ) : <ActionIcon
               size="sm"
               variant="light"
               color="red"
@@ -166,13 +211,18 @@ export default function MediaCard({
               }}
             >
               <IconTrash size={16} />
-            </ActionIcon>
+            </ActionIcon>}
           </Group>
         </Group>
 
         {media.accessCount > 0 && (
           <Text size="xs" c="dimmed">
             Accessed {media.accessCount} times
+          </Text>
+        )}
+        {media.deletedAt && (
+          <Text size="xs" c="red">
+            Deleted {formatters.date(media.deletedAt)}
           </Text>
         )}
       </Stack>

@@ -59,6 +59,41 @@ namespace ConduitLLM.Tests.Core.Services
 
         #endregion
 
+        #region Reservation Tests
+
+        [Fact]
+        public async Task ReserveAsync_TrimsGrantToRemainingBudget()
+        {
+            await _service.IncrementMonthlyDeleteCountAsync(8);
+
+            var reservation = await _service.ReserveAsync(5, 10);
+
+            reservation.Granted.Should().Be(2);
+            reservation.NewMonthlyTotal.Should().Be(10);
+            (await _service.GetMonthlyDeleteCountAsync()).Should().Be(10);
+        }
+
+        [Fact]
+        public async Task ReserveAsync_ConcurrentRequests_NeverExceedBudget()
+        {
+            var reservations = await Task.WhenAll(
+                Enumerable.Range(0, 20)
+                    .Select(_ => _service.ReserveAsync(10, 75)));
+
+            reservations.Sum(item => item.Granted).Should().Be(75);
+            (await _service.GetMonthlyDeleteCountAsync()).Should().Be(75);
+        }
+
+        [Fact]
+        public void BackendStatus_ReportsProcessLocalStorage()
+        {
+            _service.BackendName.Should().Be("InMemory");
+            _service.IsPersistent.Should().BeFalse();
+            _service.LastFailureAtUtc.Should().BeNull();
+        }
+
+        #endregion
+
         #region GetMonthlyDeleteCountAsync Tests
 
         [Fact]

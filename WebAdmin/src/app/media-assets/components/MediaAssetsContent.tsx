@@ -32,6 +32,7 @@ export default function MediaAssetsContent() {
     filters,
     applyFilters,
     deleteMedia,
+    restoreMedia,
     refetch,
   } = useMediaAssets(selectedVirtualKey);
 
@@ -113,7 +114,8 @@ export default function MediaAssetsContent() {
       title: 'Delete Media',
       children: (
         <Text size="sm">
-          Are you sure you want to delete this media? This action cannot be undone.
+          Delete this media? When soft delete is enabled, it can be restored during
+          the configured recovery window; otherwise deletion is permanent.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
@@ -130,7 +132,8 @@ export default function MediaAssetsContent() {
       title: 'Delete Multiple Items',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {count} media items? This action cannot be undone.
+          Delete {count} media items? Items can be restored during the configured
+          recovery window when soft delete is enabled.
         </Text>
       ),
       labels: { confirm: 'Delete All', cancel: 'Cancel' },
@@ -270,6 +273,7 @@ export default function MediaAssetsContent() {
           onSelectMedia={toggleSelection}
           onViewMedia={setSelectedMedia}
           onDeleteMedia={(id) => void handleDeleteMedia(id)}
+          onRestoreMedia={(id) => void restoreMedia(id)}
         />
       </div>
 

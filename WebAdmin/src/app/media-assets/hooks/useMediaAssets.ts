@@ -9,6 +9,7 @@ export function useMediaAssets(virtualKeyId?: number) {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<MediaFilters>({
     mediaType: 'all',
+    deletionState: 'active',
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
@@ -21,7 +22,7 @@ export function useMediaAssets(virtualKeyId?: number) {
 
     try {
       const data = await withAdminClient(client => 
-        client.media.getMediaByVirtualKey(virtualKeyId)
+        client.media.getMediaByVirtualKey(virtualKeyId, true)
       );
       setMedia(data);
     } catch (err) {
@@ -35,11 +36,15 @@ export function useMediaAssets(virtualKeyId?: number) {
 
   const deleteMedia = async (mediaId: string, showNotification = true): Promise<boolean> => {
     try {
-      await withAdminClient(client =>
+      const result = await withAdminClient(client =>
         client.media.deleteMedia(mediaId)
       );
 
-      setMedia(prev => prev.filter(m => m.id !== mediaId));
+      setMedia(prev => result.isSoftDeleted
+        ? prev.map(m => m.id === mediaId
+          ? { ...m, deletedAt: result.deletedAt ?? new Date().toISOString() }
+          : m)
+        : prev.filter(m => m.id !== mediaId));
       if (showNotification) {
         notify.success('Media deleted successfully');
       }
@@ -48,6 +53,20 @@ export function useMediaAssets(virtualKeyId?: number) {
       if (showNotification) {
         notify.error(err, 'Failed to delete media');
       }
+      return false;
+    }
+  };
+
+  const restoreMedia = async (mediaId: string): Promise<boolean> => {
+    try {
+      await withAdminClient(client => client.media.restoreMedia(mediaId));
+      setMedia(prev => prev.map(m => m.id === mediaId
+        ? { ...m, deletedAt: undefined }
+        : m));
+      notify.success('Media restored successfully');
+      return true;
+    } catch (err) {
+      notify.error(err, 'Failed to restore media');
       return false;
     }
   };
@@ -81,6 +100,12 @@ export function useMediaAssets(virtualKeyId?: number) {
     // Filter by media type
     if (filters.mediaType && filters.mediaType !== 'all') {
       filtered = filtered.filter(m => m.mediaType === filters.mediaType);
+    }
+
+    if (filters.deletionState === 'active') {
+      filtered = filtered.filter(m => !m.deletedAt);
+    } else if (filters.deletionState === 'deleted') {
+      filtered = filtered.filter(m => !!m.deletedAt);
     }
 
     // Filter by provider
@@ -135,6 +160,7 @@ export function useMediaAssets(virtualKeyId?: number) {
     filters,
     applyFilters,
     deleteMedia,
+    restoreMedia,
     searchMedia,
     refetch: fetchMedia,
   };

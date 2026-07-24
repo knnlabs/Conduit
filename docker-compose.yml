@@ -139,13 +139,22 @@ services:
       MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
       MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
       MediaLifecycle__EnableExpirationCleanup: "true"
-      MediaLifecycle__EnableOrphanCleanup: "true"
+      MediaLifecycle__EnableReconciliation: "true"
+      MediaLifecycle__ReconciliationMinimumAgeHours: "48"
       MediaLifecycle__EnableRetentionCleanup: "true"
+      MediaLifecycle__EnableQuotaCleanup: "true"
       MediaLifecycle__EnableSoftDelete: "true"
       MediaLifecycle__SoftDeleteGracePeriodDays: "7"
-      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
-      MediaLifecycle__MaxBatchSize: "50"
+      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Progressive rollout; shown prominently in cleanup status
+      MediaLifecycle__MaxBatchSize: "1000"
+      MediaLifecycle__CleanupPageSize: "1000"
+      MediaLifecycle__MaxRecordsPerRun: "10000"
+      MediaLifecycle__DelayBetweenBatchesMs: "500"
+      MediaLifecycle__DeleteThrottleMaxRetries: "5"
+      MediaLifecycle__DeleteThrottleInitialBackoffMs: "1000"
+      MediaLifecycle__R2OperationTimeoutSeconds: "30"
       MediaLifecycle__MonthlyDeleteBudget: "500000"
+      MediaLifecycle__BudgetAlertThresholdPercent: "90"
       # Discovery Cache configuration
       Discovery__CacheDurationMinutes: "360"  # 6 hours
       Discovery__EnableCaching: "true"

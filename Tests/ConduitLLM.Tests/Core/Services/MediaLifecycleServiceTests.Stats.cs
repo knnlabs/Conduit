@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 
 using Moq;
 
@@ -214,19 +215,21 @@ namespace ConduitLLM.Tests.Core.Services
                 new MediaRecord { Id = Guid.NewGuid(), MediaType = "video", SizeBytes = 2500000 }
             };
 
-            var orphanedMedia = new List<MediaRecord>
-            {
-                new MediaRecord { Id = Guid.NewGuid() }
-            };
-
-            _mockMediaRepository.Setup(x => x.GetStorageStatsByProviderAsync())
-                .ReturnsAsync(byProvider);
-
-            _mockMediaRepository.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
-                .ReturnsAsync(allMedia);
-
-            _mockMediaRepository.Setup(x => x.GetOrphanedMediaAsync())
-                .ReturnsAsync(orphanedMedia);
+            _mockMediaRepository.Setup(x => x.GetAggregateStorageStatsAsync(
+                    null,
+                    100,
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaStorageAggregateStats
+                {
+                    TotalFiles = allMedia.Count,
+                    TotalSizeBytes = allMedia.Sum(media => media.SizeBytes ?? 0),
+                    ByProvider = byProvider,
+                    ByMediaType =
+                    [
+                        new MediaTypeStorageAggregate("image", 2, 500000),
+                        new MediaTypeStorageAggregate("video", 1, 2500000)
+                    ]
+                });
 
             // Act
             var result = await _service.GetOverallStorageStatsAsync();
@@ -235,7 +238,7 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.NotNull(result);
             Assert.Equal(3000000, result.TotalSizeBytes); // Sum of all media sizes
             Assert.Equal(3, result.TotalFiles);
-            Assert.Equal(1, result.OrphanedFiles);
+            Assert.Equal(0, result.OrphanedFiles);
             Assert.Equal(byProvider, result.ByProvider);
             
             // Check byMediaType structure
@@ -244,6 +247,11 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(500000, result.ByMediaType["image"].SizeBytes);
             Assert.Equal(1, result.ByMediaType["video"].FileCount);
             Assert.Equal(2500000, result.ByMediaType["video"].SizeBytes);
+            _mockMediaRepository.Verify(
+                repository => repository.GetMediaOlderThanAsync(
+                    It.IsAny<DateTime>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
         }
 
         #endregion

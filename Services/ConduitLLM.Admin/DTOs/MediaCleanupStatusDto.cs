@@ -17,6 +17,46 @@ namespace ConduitLLM.Admin.DTOs
         public bool IsDryRunMode { get; set; }
 
         /// <summary>
+        /// Whether eligible tracked media is tombstoned before permanent purge.
+        /// </summary>
+        public bool IsSoftDeleteEnabled { get; set; }
+
+        /// <summary>
+        /// Fallback recovery window when no retention policy supplies one.
+        /// </summary>
+        public int SoftDeleteGracePeriodDays { get; set; }
+
+        /// <summary>
+        /// The resolved media storage backend (for example, S3 or InMemory).
+        /// </summary>
+        public string StorageBackend { get; set; } = "Unavailable";
+
+        /// <summary>
+        /// Whether generated media URLs use a configured public base URL or CDN.
+        /// </summary>
+        public bool IsPublicMediaBaseUrlConfigured { get; set; }
+
+        /// <summary>
+        /// Whether cleanup is restricted to explicitly configured test groups.
+        /// </summary>
+        public bool TestScopeActive { get; set; }
+
+        /// <summary>
+        /// Virtual key group IDs included in the progressive-rollout test scope.
+        /// </summary>
+        public List<int> TestVirtualKeyGroups { get; set; } = new();
+
+        /// <summary>
+        /// Storage objects with no matching MediaRecord after the latest reconciliation.
+        /// </summary>
+        public int UntrackedObjectCount { get; set; }
+
+        /// <summary>
+        /// Bytes held by storage objects with no matching MediaRecord.
+        /// </summary>
+        public long UntrackedBytes { get; set; }
+
+        /// <summary>
         /// The timestamp of the last cleanup run (UTC).
         /// Null if no cleanup has run yet.
         /// </summary>
@@ -26,6 +66,11 @@ namespace ConduitLLM.Admin.DTOs
         /// The result of the last cleanup run.
         /// </summary>
         public string? LastRunStatus { get; set; }
+
+        /// <summary>
+        /// Source of the last run, such as scheduled or manual.
+        /// </summary>
+        public string? LastRunTriggeredBy { get; set; }
 
         /// <summary>
         /// Number of files deleted in the last run.
@@ -63,6 +108,31 @@ namespace ConduitLLM.Admin.DTOs
         public double MonthlyBudgetUsedPercent { get; set; }
 
         /// <summary>
+        /// Budget utilization percentage that emits an operational alert.
+        /// </summary>
+        public double BudgetAlertThresholdPercent { get; set; }
+
+        /// <summary>
+        /// Active delete-budget counter backend (Redis or InMemory).
+        /// </summary>
+        public string BudgetBackend { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Whether the budget counter survives restarts and is shared across instances.
+        /// </summary>
+        public bool IsBudgetBackendPersistent { get; set; }
+
+        /// <summary>
+        /// Configured behavior when the budget backend is unavailable.
+        /// </summary>
+        public string BudgetFailureMode { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Most recent budget backend failure observed by this process.
+        /// </summary>
+        public DateTime? BudgetLastFailureAtUtc { get; set; }
+
+        /// <summary>
         /// Interval between cleanup runs in minutes.
         /// </summary>
         public int ScheduleIntervalMinutes { get; set; }
@@ -71,6 +141,11 @@ namespace ConduitLLM.Admin.DTOs
         /// Maximum batch size for deletions.
         /// </summary>
         public int MaxBatchSize { get; set; }
+
+        /// <summary>
+        /// Maximum media records considered during one scheduled cleanup run.
+        /// </summary>
+        public int MaxRecordsPerRun { get; set; }
 
         /// <summary>
         /// Summary of the default retention policy.
@@ -98,6 +173,16 @@ namespace ConduitLLM.Admin.DTOs
         public List<MediaCleanupOperationStatusDto> OperationStatuses { get; set; } = new();
 
         /// <summary>
+        /// Large scheduler cleanup scopes currently awaiting administrator approval.
+        /// </summary>
+        public List<MediaCleanupApprovalDto> PendingApprovals { get; set; } = new();
+
+        /// <summary>
+        /// Number of cleanup scopes awaiting administrator approval.
+        /// </summary>
+        public int PendingApprovalCount => PendingApprovals.Count;
+
+        /// <summary>
         /// Simple retention override in days.
         /// When set, all media is deleted after this many days regardless of account balance.
         /// Null means using policy-based retention.
@@ -116,7 +201,7 @@ namespace ConduitLLM.Admin.DTOs
     public class MediaCleanupOperationStatusDto
     {
         /// <summary>
-        /// Stable cleanup phase name: expiration, orphan, or retention.
+        /// Stable cleanup phase name: purge, expiration, reconciliation, or retention.
         /// </summary>
         public string CleanupType { get; set; } = string.Empty;
 
@@ -134,6 +219,11 @@ namespace ConduitLLM.Admin.DTOs
         /// Outcome of the last run for this phase.
         /// </summary>
         public string? LastRunStatus { get; set; }
+
+        /// <summary>
+        /// Source that triggered the last run of this phase.
+        /// </summary>
+        public string? TriggeredBy { get; set; }
 
         /// <summary>
         /// Number of files deleted by the last run of this phase.
@@ -157,11 +247,15 @@ namespace ConduitLLM.Admin.DTOs
     public static class MediaCleanupTypes
     {
         public const string Expiration = "expiration";
-        public const string Orphan = "orphan";
+        public const string Purge = "purge";
+        public const string Reconciliation = "reconciliation";
+        public const string Quota = "quota";
         public const string Retention = "retention";
+        public const string VirtualKey = "virtual-key";
+        public const string Manual = "manual";
 
         public static readonly IReadOnlyList<string> All =
-            new[] { Expiration, Orphan, Retention };
+            new[] { Purge, Expiration, Reconciliation, Quota, Retention };
     }
 
     /// <summary>

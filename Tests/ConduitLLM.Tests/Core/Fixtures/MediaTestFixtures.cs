@@ -58,6 +58,20 @@ namespace ConduitLLM.Tests.Core.Fixtures
             mock.Setup(x => x.DeleteAsync(It.IsAny<string>()))
                 .ReturnsAsync(true);
 
+            mock.Setup(x => x.DeleteManyAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((
+                    IEnumerable<string> keys,
+                    CancellationToken _) => new MediaBulkDeleteResult
+                    {
+                        Items = keys.Select(key => new MediaDeleteItemResult
+                        {
+                            StorageKey = key,
+                            Deleted = true
+                        }).ToList()
+                    });
+
             mock.Setup(x => x.ExistsAsync(It.IsAny<string>()))
                 .ReturnsAsync(true);
 
@@ -126,9 +140,6 @@ namespace ConduitLLM.Tests.Core.Fixtures
                 .ReturnsAsync(true);
 
             mock.Setup(x => x.GetExpiredMediaAsync(It.IsAny<DateTime>()))
-                .ReturnsAsync(new List<MediaRecord>());
-
-            mock.Setup(x => x.GetOrphanedMediaAsync())
                 .ReturnsAsync(new List<MediaRecord>());
 
             mock.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))

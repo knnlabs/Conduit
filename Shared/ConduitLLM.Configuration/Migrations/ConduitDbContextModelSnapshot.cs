@@ -420,6 +420,77 @@ namespace ConduitLLM.Configuration.Migrations
                     b.ToTable("IpFilters");
                 });
 
+            modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaCleanupApproval", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CandidateBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("CandidateCount")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("CleanupType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CutoffUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecidedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime?>("DecisionAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("ExecutedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExecutionStatus")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Failures")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("FilesDeleted")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RecordsTombstoned")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("VirtualKeyGroupId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("CleanupType", "VirtualKeyGroupId", "Status");
+
+                    b.ToTable("MediaCleanupApprovals");
+                });
+
             modelBuilder.Entity("ConduitLLM.Configuration.Entities.MediaRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -438,6 +509,9 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("ExpiresAt")
@@ -482,6 +556,8 @@ namespace ConduitLLM.Configuration.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("DeletedAt");
 
                     b.HasIndex("ExpiresAt");
 
@@ -531,6 +607,9 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("PositiveBalanceRetentionDays")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuotaExceededBehavior")
                         .HasColumnType("integer");
 
                     b.Property<int>("RecentAccessWindowDays")

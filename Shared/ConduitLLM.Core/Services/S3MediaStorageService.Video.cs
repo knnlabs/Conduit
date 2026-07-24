@@ -20,6 +20,12 @@ namespace ConduitLLM.Core.Services
                 // For large videos, we might want to use multipart upload
                 if (content.CanSeek && content.Length > 100 * 1024 * 1024) // 100MB
                 {
+                    if (_quotaGuard != null)
+                    {
+                        await _quotaGuard.EnsureCanStoreAsync(
+                            metadata.CreatedBy,
+                            Math.Max(0, content.Length - content.Position));
+                    }
                     return await StoreVideoMultipartAsync(content, metadata, progressCallback);
                 }
 

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Gateway.Endpoints;
 using Microsoft.AspNetCore.Authentication;
@@ -37,6 +38,7 @@ internal sealed class GatewayEndpointTestHost : IAsyncDisposable
                     services.AddRouting();
                     services.AddGatewayEndpointHandlers();
                     services.AddSingleton(Mock.Of<IMediaStorageService>());
+                    services.AddSingleton(Mock.Of<IMediaRecordRepository>());
                     services.AddAuthentication("VirtualKey")
                         .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("VirtualKey", null);
                     services.AddAuthorization(options =>

@@ -1109,6 +1109,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/admin/media-assets/restore/{mediaId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Restore soft-deleted media within its recovery window */
+    post: operations["Media_Restore"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/admin/media-assets/cleanup/expired": {
     parameters: {
       query?: never;
@@ -1134,7 +1151,25 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations["Media_CleanupOrphaned"];
+    /** Reconcile storage objects against MediaRecord tracking rows */
+    post: operations["Media_ReconcileStorage"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/media-assets/cleanup/prune/preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Preview the files and bytes matched by a prune operation */
+    post: operations["Media_PreviewPrune"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1199,6 +1234,57 @@ export interface paths {
     get: operations["MediaCleanup_GetSimpleRetention"];
     put?: never;
     post: operations["MediaCleanup_SetSimpleRetention"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/media-cleanup-jobs/approvals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List large scheduled cleanup scopes awaiting approval */
+    get: operations["MediaCleanup_GetPendingApprovals"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/media-cleanup-jobs/approvals/{approvalId}/approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Approve a fresh execution of a large scheduled cleanup scope */
+    post: operations["MediaCleanup_Approve"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/v1/admin/media-cleanup-jobs/approvals/{approvalId}/reject": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Reject a large scheduled cleanup scope */
+    post: operations["MediaCleanup_Reject"];
     delete?: never;
     options?: never;
     head?: never;
@@ -3797,6 +3883,7 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
     };
     /** @description Data transfer object for creating a new model author/organization. */
     CreateModelAuthorDto: {
@@ -4876,6 +4963,33 @@ export interface components {
       /** @description Summary of conditions */
       conditionsSummary?: null | string[];
     };
+    /** @description Result of approving or rejecting a cleanup request. */
+    MediaCleanupApprovalActionDto: {
+      approval?: components["schemas"]["MediaCleanupApprovalDto"];
+      message?: string;
+    };
+    /** @description Admin-facing snapshot of a large cleanup approval. */
+    MediaCleanupApprovalDto: {
+      /** Format: uuid */
+      id?: string;
+      cleanupType?: string;
+      /** Format: int32 */
+      virtualKeyGroupId?: null | number;
+      /** Format: int32 */
+      candidateCount?: number;
+      /** Format: int64 */
+      candidateBytes?: number;
+      /** Format: date-time */
+      cutoffUtc?: string;
+      status?: string;
+      /** Format: date-time */
+      createdAtUtc?: string;
+      /** Format: date-time */
+      updatedAtUtc?: string;
+      /** Format: date-time */
+      expiresAtUtc?: string;
+      executionStatus?: null | string;
+    };
     /** @description Response returned after enabling or disabling the media cleanup service. */
     MediaCleanupEnabledChangedDto: {
       /** @description The new enabled state of the media cleanup service. */
@@ -4890,7 +5004,7 @@ export interface components {
     };
     /** @description Last known status for one scheduled media cleanup phase. */
     MediaCleanupOperationStatusDto: {
-      /** @description Stable cleanup phase name: expiration, orphan, or retention. */
+      /** @description Stable cleanup phase name: purge, expiration, reconciliation, or retention. */
       cleanupType?: string;
       /** @description Whether this cleanup phase is enabled by deploy-time configuration. */
       isEnabled?: boolean;
@@ -4901,6 +5015,8 @@ export interface components {
       lastRunTimeUtc?: null | string;
       /** @description Outcome of the last run for this phase. */
       lastRunStatus?: null | string;
+      /** @description Source that triggered the last run of this phase. */
+      triggeredBy?: null | string;
       /**
        * Format: int32
        * @description Number of files deleted by the last run of this phase.
@@ -4917,6 +5033,14 @@ export interface components {
        */
       lastRunDurationSeconds?: null | number;
     };
+    /** @description Non-destructive preview of a manual cleanup scope. */
+    MediaCleanupPreviewDto: {
+      /** Format: int32 */
+      fileCount?: number;
+      /** Format: int64 */
+      sizeBytes?: number;
+      confirmationPhrase?: string;
+    };
     /** @description Response returned by media cleanup and pruning operations. */
     MediaCleanupResponseDto: {
       /** @description Human-readable summary of the cleanup operation. */
@@ -4926,6 +5050,35 @@ export interface components {
        * @description Number of media files deleted by the operation.
        */
       deletedCount?: number;
+      /**
+       * Format: int32
+       * @description Number of records tombstoned without freeing storage.
+       */
+      tombstonedCount?: number;
+      /**
+       * Format: int32
+       * @description Number of media files that could not be deleted and remain tracked for retry.
+       */
+      failedCount?: number;
+      /** @description Whether the operation only simulated deletion. */
+      isDryRun?: boolean;
+      /**
+       * Format: int32
+       * @description Number of files that matched during a dry run.
+       */
+      wouldDeleteCount?: number;
+      /**
+       * Format: int32
+       * @description Number of records that would be tombstoned during a dry run.
+       */
+      wouldTombstoneCount?: number;
+      /**
+       * Format: int64
+       * @description Bytes that would be freed during a dry run.
+       */
+      bytesWouldFree?: number;
+      /** @description Source that triggered the cleanup. */
+      triggeredBy?: string;
     };
     /** @description Status information for the media cleanup service.
      *     Provides operational visibility into cleanup runs, budget usage, and configuration. */
@@ -4934,6 +5087,31 @@ export interface components {
       isEnabled?: boolean;
       /** @description Whether the service is running in dry run mode (logs but doesn't delete). */
       isDryRunMode?: boolean;
+      /** @description Whether eligible tracked media is tombstoned before permanent purge. */
+      isSoftDeleteEnabled?: boolean;
+      /**
+       * Format: int32
+       * @description Fallback recovery window when no retention policy supplies one.
+       */
+      softDeleteGracePeriodDays?: number;
+      /** @description The resolved media storage backend (for example, S3 or InMemory). */
+      storageBackend?: string;
+      /** @description Whether generated media URLs use a configured public base URL or CDN. */
+      isPublicMediaBaseUrlConfigured?: boolean;
+      /** @description Whether cleanup is restricted to explicitly configured test groups. */
+      testScopeActive?: boolean;
+      /** @description Virtual key group IDs included in the progressive-rollout test scope. */
+      testVirtualKeyGroups?: number[];
+      /**
+       * Format: int32
+       * @description Storage objects with no matching MediaRecord after the latest reconciliation.
+       */
+      untrackedObjectCount?: number;
+      /**
+       * Format: int64
+       * @description Bytes held by storage objects with no matching MediaRecord.
+       */
+      untrackedBytes?: number;
       /**
        * Format: date-time
        * @description The timestamp of the last cleanup run (UTC).
@@ -4942,6 +5120,8 @@ export interface components {
       lastRunTimeUtc?: null | string;
       /** @description The result of the last cleanup run. */
       lastRunStatus?: null | string;
+      /** @description Source of the last run, such as scheduled or manual. */
+      lastRunTriggeredBy?: null | string;
       /**
        * Format: int32
        * @description Number of files deleted in the last run.
@@ -4978,6 +5158,22 @@ export interface components {
        */
       monthlyBudgetUsedPercent?: number;
       /**
+       * Format: double
+       * @description Budget utilization percentage that emits an operational alert.
+       */
+      budgetAlertThresholdPercent?: number;
+      /** @description Active delete-budget counter backend (Redis or InMemory). */
+      budgetBackend?: string;
+      /** @description Whether the budget counter survives restarts and is shared across instances. */
+      isBudgetBackendPersistent?: boolean;
+      /** @description Configured behavior when the budget backend is unavailable. */
+      budgetFailureMode?: string;
+      /**
+       * Format: date-time
+       * @description Most recent budget backend failure observed by this process.
+       */
+      budgetLastFailureAtUtc?: null | string;
+      /**
        * Format: int32
        * @description Interval between cleanup runs in minutes.
        */
@@ -4987,6 +5183,11 @@ export interface components {
        * @description Maximum batch size for deletions.
        */
       maxBatchSize?: number;
+      /**
+       * Format: int32
+       * @description Maximum media records considered during one scheduled cleanup run.
+       */
+      maxRecordsPerRun?: number;
       defaultRetentionPolicy?:
         | null
         | components["schemas"]["RetentionPolicySummaryDto"];
@@ -5004,6 +5205,13 @@ export interface components {
       currentLeaderInstanceId?: null | string;
       /** @description Last known outcome for each cleanup phase owned by the scheduler. */
       operationStatuses?: components["schemas"]["MediaCleanupOperationStatusDto"][];
+      /** @description Large scheduler cleanup scopes currently awaiting administrator approval. */
+      pendingApprovals?: components["schemas"]["MediaCleanupApprovalDto"][];
+      /**
+       * Format: int32
+       * @description Number of cleanup scopes awaiting administrator approval.
+       */
+      pendingApprovalCount?: number;
       /**
        * Format: int32
        * @description Simple retention override in days.
@@ -5018,7 +5226,41 @@ export interface components {
     MediaDeletionResponseDto: {
       /** @description Human-readable confirmation message. */
       message?: string;
+      /** @description Whether the record was tombstoned and remains recoverable. */
+      isSoftDeleted?: boolean;
+      /**
+       * Format: date-time
+       * @description Tombstone timestamp when soft deletion is enabled.
+       */
+      deletedAt?: null | string;
     };
+    MediaGroupQuotaUsage: {
+      /** Format: int32 */
+      virtualKeyGroupId?: number;
+      virtualKeyGroupName?: string;
+      /** Format: int32 */
+      mediaRetentionPolicyId?: null | number;
+      mediaRetentionPolicyName?: null | string;
+      /** Format: int64 */
+      totalSizeBytes?: number;
+      /** Format: int32 */
+      totalFiles?: number;
+      /** Format: int64 */
+      maxStorageSizeBytes?: null | number;
+      /** Format: int32 */
+      maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
+      respectRecentAccess?: boolean;
+      /** Format: int32 */
+      recentAccessWindowDays?: number;
+      isOverQuota?: boolean;
+      /** Format: double */
+      storageUsagePercent?: null | number;
+      /** Format: double */
+      fileUsagePercent?: null | number;
+    };
+    /** @enum {unknown} */
+    MediaQuotaExceededBehavior: "reject" | "allowAndEvict";
     MediaRecordResponse: {
       /** Format: uuid */
       id: string;
@@ -5043,6 +5285,14 @@ export interface components {
       lastAccessedAt: null | string;
       /** Format: int32 */
       accessCount: number;
+      /** Format: date-time */
+      deletedAt: null | string;
+    };
+    /** @description Response returned after restoring a tombstoned media record. */
+    MediaRestoreResponseDto: {
+      message?: string;
+      /** Format: uuid */
+      mediaId?: string;
     };
     /** @description Extended DTO for media retention policy with virtual key group details. */
     MediaRetentionPolicyDetailDto: {
@@ -5067,6 +5317,7 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
       isActive?: boolean;
       /** Format: date-time */
       createdAt?: string;
@@ -5097,6 +5348,7 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?: components["schemas"]["MediaQuotaExceededBehavior"];
       isActive?: boolean;
       /** Format: date-time */
       createdAt?: string;
@@ -5716,6 +5968,7 @@ export interface components {
       byMediaType?: {
         [key: string]: components["schemas"]["MediaTypeStats"];
       };
+      groupQuotaUsage?: components["schemas"]["MediaGroupQuotaUsage"][];
     };
     PagedResultOfBillingAuditEventDto: {
       data?: components["schemas"]["BillingAuditEventDto"][];
@@ -6319,6 +6572,8 @@ export interface components {
        * @description Gets or sets the number of days to keep media files.
        */
       daysToKeep?: null | number;
+      /** @description Explicitly overrides configured dry-run mode for this audited manual operation. */
+      force?: boolean;
     };
     RecordCountsDto: {
       /** Format: int32 */
@@ -7031,6 +7286,9 @@ export interface components {
       maxStorageSizeBytes?: null | number;
       /** Format: int32 */
       maxFileCount?: null | number;
+      quotaExceededBehavior?:
+        | null
+        | components["schemas"]["MediaQuotaExceededBehavior"];
       isActive?: null | boolean;
     };
     /** @description Data transfer object for updating an existing model author/organization. */
@@ -11665,6 +11923,7 @@ export interface operations {
   Media_GetByVirtualKey: {
     parameters: {
       query?: {
+        includeDeleted?: boolean;
         /** @description 1-based page number. */
         page?: number;
         /** @description Items per page (maximum 100). */
@@ -11822,11 +12081,13 @@ export interface operations {
       };
     };
   };
-  Media_CleanupExpired: {
+  Media_Restore: {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        mediaId: string;
+      };
       cookie?: never;
     };
     requestBody?: never;
@@ -11839,7 +12100,62 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["MediaCleanupResponseDto"];
+          "application/json": components["schemas"]["MediaRestoreResponseDto"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Internal Server Error */
@@ -11855,9 +12171,11 @@ export interface operations {
       };
     };
   };
-  Media_CleanupOrphaned: {
+  Media_CleanupExpired: {
     parameters: {
-      query?: never;
+      query?: {
+        force?: boolean;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -11873,6 +12191,144 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["MediaCleanupResponseDto"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  Media_ReconcileStorage: {
+    parameters: {
+      query?: {
+        force?: boolean;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MediaCleanupResponseDto"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  Media_PreviewPrune: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PruneMediaRequest"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MediaCleanupPreviewDto"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Internal Server Error */
@@ -11914,6 +12370,17 @@ export interface operations {
       };
       /** @description Bad Request */
       400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -12094,6 +12561,247 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["SimpleRetentionResponse"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  MediaCleanup_GetPendingApprovals: {
+    parameters: {
+      query?: {
+        /** @description 1-based page number. */
+        page?: number;
+        /** @description Items per page (maximum 100). */
+        pageSize?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: components["schemas"]["MediaCleanupApprovalDto"][];
+            pagination: {
+              /** Format: int32 */
+              page: number;
+              /** Format: int32 */
+              pageSize: number;
+              /** Format: int32 */
+              totalItems: number;
+              /** Format: int32 */
+              totalPages: number;
+            };
+          };
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  MediaCleanup_Approve: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        approvalId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MediaCleanupApprovalActionDto"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  MediaCleanup_Reject: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        approvalId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["MediaCleanupApprovalActionDto"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
       /** @description Internal Server Error */

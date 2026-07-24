@@ -19,6 +19,42 @@ namespace ConduitLLM.Admin.Metrics
                 });
 
         /// <summary>
+        /// Total cleanup runs split by operation trigger and outcome.
+        /// </summary>
+        public static readonly Counter CleanupRuns = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_runs_total",
+                "Total media cleanup runs by trigger",
+                new CounterConfiguration
+                {
+                    LabelNames = new[] { "cleanup_type", "triggered_by", "status" }
+                });
+
+        /// <summary>
+        /// Storage objects with no matching MediaRecord after the latest reconciliation.
+        /// </summary>
+        public static readonly Gauge UntrackedObjects = Prometheus.Metrics
+            .CreateGauge(
+                "conduit_admin_media_cleanup_untracked_objects",
+                "Storage objects with no matching MediaRecord");
+
+        /// <summary>
+        /// Bytes held by storage objects with no matching MediaRecord.
+        /// </summary>
+        public static readonly Gauge UntrackedBytes = Prometheus.Metrics
+            .CreateGauge(
+                "conduit_admin_media_cleanup_untracked_bytes",
+                "Bytes held by storage objects with no matching MediaRecord");
+
+        /// <summary>
+        /// Large cleanup scopes currently awaiting administrator approval.
+        /// </summary>
+        public static readonly Gauge PendingApprovals = Prometheus.Metrics
+            .CreateGauge(
+                "conduit_admin_media_cleanup_pending_approvals",
+                "Large media cleanup scopes awaiting administrator approval");
+
+        /// <summary>
         /// Total files deleted during cleanup.
         /// </summary>
         public static readonly Counter FilesDeleted = Prometheus.Metrics
@@ -30,6 +66,42 @@ namespace ConduitLLM.Admin.Metrics
         /// </summary>
         public static readonly Counter BytesFreed = Prometheus.Metrics
             .CreateCounter("conduit_admin_media_cleanup_bytes_freed_total", "Total bytes freed during cleanup",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
+        /// Files that a dry run determined would be permanently deleted.
+        /// </summary>
+        public static readonly Counter DryRunFilesMatched = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_dry_run_files_total",
+                "Files that media cleanup would delete while in dry-run mode",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
+        /// Bytes that a dry run determined would be freed.
+        /// </summary>
+        public static readonly Counter DryRunBytesMatched = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_dry_run_bytes_total",
+                "Bytes that media cleanup would free while in dry-run mode",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
+        /// Records that a dry run determined would be tombstoned.
+        /// </summary>
+        public static readonly Counter DryRunRecordsMatched = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_dry_run_records_total",
+                "Records that media cleanup would tombstone while in dry-run mode",
+                new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
+
+        /// <summary>
+        /// Total media records tombstoned. Tombstoning does not free storage or consume delete budget.
+        /// </summary>
+        public static readonly Counter RecordsTombstoned = Prometheus.Metrics
+            .CreateCounter(
+                "conduit_admin_media_cleanup_records_tombstoned_total",
+                "Total media records tombstoned during cleanup",
                 new CounterConfiguration { LabelNames = new[] { "cleanup_type" } });
 
         /// <summary>
