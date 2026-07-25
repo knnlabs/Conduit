@@ -33,26 +33,35 @@ namespace ConduitLLM.BillingInvariantTests;
 /// migration should not need to touch it.
 /// </para>
 /// <para>
-/// <b>Provenance.</b> Captured from TiktokenSharp 1.2.1 on 2026-07-25 via the skipped
+/// <b>Provenance.</b> Originally captured from TiktokenSharp 1.2.1 on 2026-07-25 via the skipped
 /// <see cref="EmitBaseline"/> emitter below, then independently confirmed against Python
 /// <c>tiktoken</c>:
 /// </para>
 /// <code>
-/// enc = tiktoken.get_encoding("cl100k_base")          # and p50k_base, o200k_base
-/// len(enc.encode(text, disallowed_special=()))
+/// enc = tiktoken.get_encoding("cl100k_base")          # and the other encodings
+/// len(enc.encode(text, allowed_special="all"))
 /// </code>
 /// <para>
-/// All 54 comparable entries matched exactly (18 corpus entries x 3 encodings). The four not
-/// cross-checked are <c>empty</c> (short-circuited before tokenizing), <c>prose-paragraph</c> and
-/// <c>long-mixed-100k</c> (too long to transcribe reliably into the oracle script), and
-/// <c>lone-surrogate</c> (Python cannot UTF-8 encode an unpaired surrogate at all, which is itself
-/// the interesting difference).
+/// Re-captured from Microsoft.ML.Tokenizers 2.0.0 during the TiktokenSharp replacement (#1227).
+/// Of the 66 original pins, 60 reproduced exactly; the six that moved are the two entries the
+/// paragraphs below always flagged as library policy decisions, and they moved in the documented
+/// direction. The <c>p50k_edit</c> and <c>r50k_base</c> groups were added at the same time (those
+/// encodings were previously unavailable): <c>p50k_edit</c> shares every pin with
+/// <c>p50k_base</c> because they differ only in special tokens this corpus does not contain,
+/// while <c>r50k_base</c> diverges on <c>code-csharp</c> and <c>whitespace-run</c>, the entries
+/// exercising the whitespace-run merges p50k added on top of the GPT-2 vocabulary.
 /// </para>
 /// <para>
-/// <c>disallowed_special=()</c> is required to reproduce these numbers: it makes Python treat
-/// <c>&lt;|endoftext|&gt;</c> as ordinary text, which is what TiktokenSharp does by default. A
-/// tokenizer that recognises the marker instead counts the <c>special-token-text</c> entry as 4
-/// rather than 8 - a real and expected difference, not a broken pin.
+/// <c>special-token-text</c>: Microsoft.ML.Tokenizers recognises each encoding's registered
+/// special tokens in input, so <c>&lt;|endoftext|&gt;</c> counts as one token (the entry pins 4).
+/// TiktokenSharp treated the marker as ordinary text (8-9). Python reproduces the current pins
+/// with <c>allowed_special="all"</c> and the old ones with <c>disallowed_special=()</c>.
+/// </para>
+/// <para>
+/// <c>lone-surrogate</c>: Microsoft.ML.Tokenizers substitutes U+FFFD for the unpaired surrogate
+/// and never throws (TiktokenSharp pinned 3; the replacement char tokenizes to 4-5). Python
+/// cannot UTF-8 encode an unpaired surrogate at all, so this entry has no Python oracle - the
+/// pin records observed, deterministic library behaviour.
 /// </para>
 /// <para>
 /// So these numbers are anchored to the tiktoken specification, not merely to whatever the current
@@ -67,7 +76,8 @@ public sealed class TokenVocabularyGoldenTests
     public TokenVocabularyGoldenTests(ITestOutputHelper output) => _output = output;
 
     /// <summary>Encodings addressed verbatim, bypassing the TokenizerType table.</summary>
-    private static readonly string[] Encodings = { "cl100k_base", "p50k_base", "o200k_base" };
+    private static readonly string[] Encodings =
+        { "cl100k_base", "p50k_base", "o200k_base", "p50k_edit", "r50k_base" };
 
     /// <summary>
     /// Every non-ASCII character is written as a backslash-u escape and every newline as \n, never
@@ -161,14 +171,14 @@ public sealed class TokenVocabularyGoldenTests
             ["cl100k_base|emoji-bmp"] = 2,
             ["cl100k_base|emoji-zwj"] = 7,
             ["cl100k_base|empty"] = 0,
-            ["cl100k_base|lone-surrogate"] = 3,
+            ["cl100k_base|lone-surrogate"] = 4,
             ["cl100k_base|long-mixed-100k"] = 36114,
             ["cl100k_base|prose-paragraph"] = 99,
             ["cl100k_base|prose-short"] = 10,
             ["cl100k_base|punctuation-run"] = 7,
             ["cl100k_base|repeat-10k"] = 1250,
             ["cl100k_base|single-space"] = 1,
-            ["cl100k_base|special-token-text"] = 8,
+            ["cl100k_base|special-token-text"] = 4,
             ["cl100k_base|whitespace-run"] = 2,
             ["p50k_base|cjk-chinese"] = 20,
             ["p50k_base|cjk-japanese-mixed"] = 10,
@@ -183,14 +193,14 @@ public sealed class TokenVocabularyGoldenTests
             ["p50k_base|emoji-bmp"] = 2,
             ["p50k_base|emoji-zwj"] = 7,
             ["p50k_base|empty"] = 0,
-            ["p50k_base|lone-surrogate"] = 3,
+            ["p50k_base|lone-surrogate"] = 5,
             ["p50k_base|long-mixed-100k"] = 40281,
             ["p50k_base|prose-paragraph"] = 100,
             ["p50k_base|prose-short"] = 10,
             ["p50k_base|punctuation-run"] = 7,
             ["p50k_base|repeat-10k"] = 2500,
             ["p50k_base|single-space"] = 1,
-            ["p50k_base|special-token-text"] = 9,
+            ["p50k_base|special-token-text"] = 4,
             ["p50k_base|whitespace-run"] = 5,
             ["o200k_base|cjk-chinese"] = 7,
             ["o200k_base|cjk-japanese-mixed"] = 4,
@@ -205,15 +215,59 @@ public sealed class TokenVocabularyGoldenTests
             ["o200k_base|emoji-bmp"] = 1,
             ["o200k_base|emoji-zwj"] = 5,
             ["o200k_base|empty"] = 0,
-            ["o200k_base|lone-surrogate"] = 3,
+            ["o200k_base|lone-surrogate"] = 4,
             ["o200k_base|long-mixed-100k"] = 31947,
             ["o200k_base|prose-paragraph"] = 99,
             ["o200k_base|prose-short"] = 10,
             ["o200k_base|punctuation-run"] = 7,
             ["o200k_base|repeat-10k"] = 1250,
             ["o200k_base|single-space"] = 1,
-            ["o200k_base|special-token-text"] = 9,
+            ["o200k_base|special-token-text"] = 4,
             ["o200k_base|whitespace-run"] = 2,
+            ["p50k_edit|cjk-chinese"] = 20,
+            ["p50k_edit|cjk-japanese-mixed"] = 10,
+            ["p50k_edit|code-csharp"] = 18,
+            ["p50k_edit|code-json"] = 17,
+            ["p50k_edit|combining-marks"] = 5,
+            ["p50k_edit|contractions-lower"] = 12,
+            ["p50k_edit|contractions-upper"] = 19,
+            ["p50k_edit|control-chars"] = 3,
+            ["p50k_edit|cyrillic"] = 7,
+            ["p50k_edit|emoji-astral"] = 2,
+            ["p50k_edit|emoji-bmp"] = 2,
+            ["p50k_edit|emoji-zwj"] = 7,
+            ["p50k_edit|empty"] = 0,
+            ["p50k_edit|lone-surrogate"] = 5,
+            ["p50k_edit|long-mixed-100k"] = 40281,
+            ["p50k_edit|prose-paragraph"] = 100,
+            ["p50k_edit|prose-short"] = 10,
+            ["p50k_edit|punctuation-run"] = 7,
+            ["p50k_edit|repeat-10k"] = 2500,
+            ["p50k_edit|single-space"] = 1,
+            ["p50k_edit|special-token-text"] = 4,
+            ["p50k_edit|whitespace-run"] = 5,
+            ["r50k_base|cjk-chinese"] = 20,
+            ["r50k_base|cjk-japanese-mixed"] = 10,
+            ["r50k_base|code-csharp"] = 20,
+            ["r50k_base|code-json"] = 17,
+            ["r50k_base|combining-marks"] = 5,
+            ["r50k_base|contractions-lower"] = 12,
+            ["r50k_base|contractions-upper"] = 19,
+            ["r50k_base|control-chars"] = 3,
+            ["r50k_base|cyrillic"] = 7,
+            ["r50k_base|emoji-astral"] = 2,
+            ["r50k_base|emoji-bmp"] = 2,
+            ["r50k_base|emoji-zwj"] = 7,
+            ["r50k_base|empty"] = 0,
+            ["r50k_base|lone-surrogate"] = 5,
+            ["r50k_base|long-mixed-100k"] = 40281,
+            ["r50k_base|prose-paragraph"] = 100,
+            ["r50k_base|prose-short"] = 10,
+            ["r50k_base|punctuation-run"] = 7,
+            ["r50k_base|repeat-10k"] = 2500,
+            ["r50k_base|single-space"] = 1,
+            ["r50k_base|special-token-text"] = 4,
+            ["r50k_base|whitespace-run"] = 10,
         };
 
     public static TheoryData<string, string> Cases()
