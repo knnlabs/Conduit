@@ -148,4 +148,56 @@ public class ProviderDefaultsRegistryTests
             .Should()
             .Be("https://api.cloudflare.com/client/v4/accounts/deadbeefdeadbeefdeadbeefdeadbeef/ai/v1");
     }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Let_Settings_Supersede_A_BaseUrl_That_Is_Only_The_Default_Shape()
+    {
+        // The pre-settings way to configure Cloudflare was to bake the account into the default URL,
+        // so that URL holds nothing the settings do not. Editing the Account ID must take effect.
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Cloudflare,
+            ProviderName = "cf",
+            BaseUrl = "https://api.cloudflare.com/client/v4/accounts/deadbeefdeadbeefdeadbeefdeadbeef/ai/v1",
+            Settings = new Dictionary<string, string> { ["account_id"] = "0123456789abcdef0123456789abcdef" }
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai/v1");
+    }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Keep_A_Genuinely_Custom_BaseUrl_Over_Settings()
+    {
+        // A URL pointing somewhere other than the registered default is a deliberate override
+        // (a proxy or private gateway) and carries routing the settings cannot reconstruct.
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Cloudflare,
+            ProviderName = "cf",
+            BaseUrl = "https://gateway.example.test/cf-proxy/ai/v1",
+            Settings = new Dictionary<string, string> { ["account_id"] = "0123456789abcdef0123456789abcdef" }
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://gateway.example.test/cf-proxy/ai/v1");
+    }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Keep_A_Database_Override_For_Providers_Without_UrlTokenSettings()
+    {
+        // Providers that declare no URL-path-token settings are unaffected by the dual-read rule.
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Groq,
+            ProviderName = "groq",
+            BaseUrl = "https://api.groq.com/openai/v2"
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://api.groq.com/openai/v2");
+    }
 }

@@ -281,18 +281,95 @@ namespace ConduitLLM.Providers.Configuration
         }
 
         /// <summary>
-        /// Resolves the effective base URL, preferring the operator's database override.
+        /// Resolves the effective base URL from the provider's structured settings, falling back to
+        /// the operator's raw database override.
         /// </summary>
+        /// <remarks>
+        /// Dual-read (issue #1183). Before structured settings existed, provider-scoped identifiers
+        /// could only be supplied by hand-crafting the whole URL, so an existing base URL is often
+        /// nothing more than the registered default with those identifiers baked in. When it takes
+        /// that shape and the settings supply every identifier, the settings win — otherwise editing
+        /// the Account ID field would appear to save but never reach the wire. A base URL pointing
+        /// anywhere else is a deliberate override (a proxy, a private gateway) and still takes
+        /// precedence.
+        /// </remarks>
         public static string ResolveBaseUrl(Provider provider)
         {
             ArgumentNullException.ThrowIfNull(provider);
 
-            var rawBaseUrl = !string.IsNullOrWhiteSpace(provider.BaseUrl)
-                ? provider.BaseUrl.TrimEnd('/')
-                : GetDefaultBaseUrl(provider.ProviderType)
+            var defaultBaseUrl = GetDefaultBaseUrl(provider.ProviderType);
+            if (string.IsNullOrWhiteSpace(provider.BaseUrl))
+            {
+                var fallback = defaultBaseUrl
                     ?? throw new InvalidOperationException($"No default base URL is registered for {provider.ProviderType}.");
+                return ApplyUrlPathTokens(fallback, provider.ProviderType, provider.Settings);
+            }
+
+            var rawBaseUrl = provider.BaseUrl.TrimEnd('/');
+            if (defaultBaseUrl != null
+                && SuppliesEveryUrlPathToken(provider.ProviderType, provider.Settings)
+                && MatchesDefaultUrlShape(rawBaseUrl, defaultBaseUrl))
+            {
+                rawBaseUrl = defaultBaseUrl;
+            }
 
             return ApplyUrlPathTokens(rawBaseUrl, provider.ProviderType, provider.Settings);
+        }
+
+        /// <summary>
+        /// Whether the provider type declares at least one URL-path-token setting and the supplied
+        /// settings give every one of them a value.
+        /// </summary>
+        private static bool SuppliesEveryUrlPathToken(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? settings)
+        {
+            var tokens = GetConfiguration(providerType)?.Settings
+                .Where(definition => definition.Binding == ProviderSettingBinding.UrlPathToken)
+                .ToList();
+
+            return tokens is { Count: > 0 }
+                && tokens.TrueForAll(definition =>
+                    settings != null
+                    && settings.TryGetValue(definition.Key, out var value)
+                    && !string.IsNullOrWhiteSpace(value));
+        }
+
+        /// <summary>
+        /// Whether a stored base URL is the registered default with its <c>{token}</c> segments
+        /// filled in — that is, a URL that carries no information the settings do not already hold.
+        /// Compared segment by segment so a different host, scheme or path depth is never mistaken
+        /// for the default.
+        /// </summary>
+        private static bool MatchesDefaultUrlShape(string baseUrl, string defaultBaseUrl)
+        {
+            var actual = baseUrl.Split('/');
+            var template = defaultBaseUrl.TrimEnd('/').Split('/');
+            if (actual.Length != template.Length)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < template.Length; index++)
+            {
+                var segment = template[index];
+                if (segment.Length > 2 && segment[0] == '{' && segment[^1] == '}')
+                {
+                    if (string.IsNullOrEmpty(actual[index]))
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                if (!string.Equals(segment, actual[index], StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static readonly Regex UnresolvedTokenPattern =
