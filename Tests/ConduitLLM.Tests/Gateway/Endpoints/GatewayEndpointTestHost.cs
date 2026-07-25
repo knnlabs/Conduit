@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Middleware;
 using ConduitLLM.Gateway.Endpoints;
+using ConduitLLM.Gateway.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -44,6 +46,7 @@ internal sealed class GatewayEndpointTestHost : IAsyncDisposable
                     services.AddGatewayEndpointHandlers();
                     services.AddSingleton(Mock.Of<IMediaStorageService>());
                     services.AddSingleton(Mock.Of<IMediaRecordRepository>());
+                    AddRateLimitingFilterDependencies(services);
                     services.AddAuthentication("VirtualKey")
                         .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("VirtualKey", null);
                     services.AddAuthorization(options =>
@@ -75,6 +78,23 @@ internal sealed class GatewayEndpointTestHost : IAsyncDisposable
             .StartAsync();
 
         return new GatewayEndpointTestHost(host);
+    }
+
+    /// <summary>
+    /// Mirrors the no-Redis branch of <c>AddConduitRateLimiting</c>. The chat, embeddings and
+    /// responses routes carry <see cref="TokenRateLimitFilter"/>; without its dependencies every
+    /// request to them fails DI inside the filter chain and answers 500 dependency_resolution_error
+    /// before the handler ever runs. <see cref="UnlimitedTokenRateLimitService"/> admits everything,
+    /// so the filter stays a pass-through and tests observe the handler's own behaviour.
+    /// </summary>
+    private static void AddRateLimitingFilterDependencies(IServiceCollection services)
+    {
+        services.AddSingleton(new RateLimitOptions());
+        services.AddSingleton<IRateLimitFailurePolicy, RateLimitFailurePolicy>();
+        services.AddSingleton<ITokenRateLimitService, UnlimitedTokenRateLimitService>();
+        services.AddSingleton(Mock.Of<ITokenCounter>());
+        services.AddSingleton<RequestTokenEstimator>();
+        services.AddSingleton<TokenRateLimitFilter>();
     }
 
     public async ValueTask DisposeAsync()
