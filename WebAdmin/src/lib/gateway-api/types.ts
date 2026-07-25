@@ -61,6 +61,8 @@ export enum ProviderType {
   Cloudflare,
   OpenRouter,
   Meta,
+  Azure,
+  Bedrock,
 }
 
 export interface TextContent {

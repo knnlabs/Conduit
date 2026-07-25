@@ -130,6 +130,17 @@ export const PROVIDER_REGISTRY: Partial<Record<ProviderType, ProviderMetadata>> 
     defaultMaxOutputTokens: 16384,
     description: 'Azure OpenAI Service (deployment-scoped OpenAI models)'
   },
+  [ProviderType.Bedrock]: {
+    value: ProviderType.Bedrock,
+    name: 'Bedrock',
+    label: 'Amazon Bedrock',
+    supportsSpeedScore: true,
+    supportsQualityScore: true,
+    supportsVariation: false,
+    defaultMaxInputTokens: 200000,
+    defaultMaxOutputTokens: 65536,
+    description: 'Amazon Bedrock (AWS-hosted foundation models via the Converse API)'
+  },
   [ProviderType.Ultravox]: {
     value: ProviderType.Ultravox,
     name: 'Ultravox',

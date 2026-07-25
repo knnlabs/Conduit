@@ -29,7 +29,8 @@ public static class ProviderAdapterDefaultsRegistry
             [ProviderType.Cloudflare] = new("https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"),
             [ProviderType.OpenRouter] = new("https://openrouter.ai/api/v1"),
             [ProviderType.Meta] = new("https://api.meta.ai/v1"),
-            [ProviderType.Azure] = new("https://{resource_name}.openai.azure.com")
+            [ProviderType.Azure] = new("https://{resource_name}.openai.azure.com"),
+            [ProviderType.Bedrock] = new("https://bedrock-runtime.{region}.amazonaws.com")
         };
 
     public static ProviderAdapterDefaults GetRequired(ProviderType providerType) =>

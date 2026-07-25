@@ -6661,7 +6661,8 @@ export interface components {
       | "cloudflare"
       | "openRouter"
       | "meta"
-      | "azure";
+      | "azure"
+      | "bedrock";
     /** @description Request model for pruning old media. */
     PruneMediaRequest: {
       /**

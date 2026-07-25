@@ -242,6 +242,33 @@ namespace ConduitLLM.Core.Providers.Metadata
     }
 
     /// <summary>
+    /// Provider metadata for Amazon Bedrock.
+    /// </summary>
+    public class BedrockProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.Bedrock;
+        public override string DisplayName => "Amazon Bedrock";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
+
+        public BedrockProviderMetadata()
+        {
+            ConfigurationHints.DocumentationUrl = "https://docs.aws.amazon.com/bedrock/";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Two Ways To Authenticate",
+                Description = "Enter an IAM access key ID as the API key and the secret access key (plus a session token for temporary credentials) on the key credential, or enter a Bedrock API key alone.",
+                Severity = TipSeverity.Info
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Region Determines Endpoint And Models",
+                Description = "The AWS Region setting builds the endpoint and scopes request signing. Models must be enabled for that region in the Bedrock console; many models require a cross-region inference profile ID (e.g. us.anthropic...).",
+                Severity = TipSeverity.Warning
+            });
+        }
+    }
+
+    /// <summary>
     /// Provider metadata for Meta AI (Meta Model API).
     /// </summary>
     public class MetaProviderMetadata : BaseProviderMetadata

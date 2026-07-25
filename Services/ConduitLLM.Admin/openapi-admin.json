@@ -32559,7 +32559,8 @@
           "cloudflare",
           "openRouter",
           "meta",
-          "azure"
+          "azure",
+          "bedrock"
         ]
       },
       "PruneMediaRequest": {

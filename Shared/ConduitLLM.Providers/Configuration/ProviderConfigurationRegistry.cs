@@ -304,6 +304,57 @@ namespace ConduitLLM.Providers.Configuration
                 }
             },
 
+            // Amazon Bedrock is region-scoped: the runtime endpoint host embeds the region, and the
+            // region also forms the SigV4 credential scope. Authentication is either SigV4 (the key
+            // credential's ApiKey is the access key ID and the secret access key / session token are
+            // secret settings) or a Bedrock API key sent as a Bearer token when no secret access key
+            // is configured. BedrockClient signs per request, so the registered strategy only covers
+            // the Bearer mode.
+            [ProviderType.Bedrock] = new ProviderConfiguration
+            {
+                DefaultBaseUrl = DefaultUrl(ProviderType.Bedrock),
+                AuthenticationStrategy = BearerTokenStrategy.Instance,
+                ErrorMessages = new ProviderErrorMessages
+                {
+                    InvalidApiKey = "Invalid AWS credentials for Bedrock. Verify the access key ID and secret access key (or Bedrock API key) and that the key has bedrock permissions.",
+                    RateLimitExceeded = "Amazon Bedrock throttled the request. Please try again later or request a quota increase.",
+                    ModelNotFound = "Model not found. Bedrock model IDs look like 'anthropic.claude-sonnet-4-20250514-v1:0'; cross-region inference profiles are prefixed (e.g. 'us.anthropic...'). Verify the model is enabled in this region.",
+                    MissingApiKey = "An AWS access key ID or Bedrock API key is required for Amazon Bedrock"
+                },
+                Settings = new[]
+                {
+                    new ProviderSettingDefinition
+                    {
+                        Key = "region",
+                        Label = "AWS Region",
+                        HelpText = "The AWS region hosting the Bedrock models (for example us-east-1). Builds the endpoint https://bedrock-runtime.<region>.amazonaws.com and scopes request signing.",
+                        Placeholder = "e.g. us-east-1",
+                        Required = true,
+                        Binding = ProviderSettingBinding.UrlPathToken,
+                        BindingTarget = "region",
+                        ValidationRegex = "^[a-z]{2}(-[a-z]+)+-[0-9]+$"
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "secret_access_key",
+                        Label = "Secret Access Key",
+                        HelpText = "The AWS secret access key paired with the access key ID entered as the API key. Leave blank when the API key field holds a Bedrock API key instead of an IAM access key.",
+                        Required = false,
+                        Secret = true,
+                        Binding = ProviderSettingBinding.AuthScope
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "session_token",
+                        Label = "Session Token",
+                        HelpText = "The STS session token when using temporary credentials (access key IDs starting with ASIA). Leave blank for long-term credentials.",
+                        Required = false,
+                        Secret = true,
+                        Binding = ProviderSettingBinding.AuthScope
+                    }
+                }
+            },
+
             [ProviderType.Meta] = new ProviderConfiguration
             {
                 DefaultBaseUrl = DefaultUrl(ProviderType.Meta),
