@@ -17,7 +17,9 @@ namespace ConduitLLM.Core.Models
         /// <summary>
         /// Counted with a documented stand-in vocabulary (for example a Claude or Llama model
         /// counted with <c>cl100k_base</c>). Typically within 10-30% of the true count; worse on
-        /// CJK text and source code.
+        /// CJK text and source code. Also carried by counts that include an image whose geometry
+        /// could not be determined locally, priced at a conservative default rather than the
+        /// exact tile formula (#1231).
         /// </summary>
         ApproximateVocabulary = 1,
 

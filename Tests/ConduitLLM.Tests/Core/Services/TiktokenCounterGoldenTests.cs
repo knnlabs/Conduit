@@ -174,6 +174,25 @@ namespace ConduitLLM.Tests.Core.Services
                         }
                     }
                 },
+                // Typed content parts (the SDK-side shape) must count the same as their
+                // deserialized JSON equivalents: text tokenized, image priced by the vision
+                // formula (85 for low detail here), not dropped as the pre-#1231 text-only
+                // extraction did.
+                ["msgs-typed-content-parts"] = new()
+                {
+                    new Message
+                    {
+                        Role = "user",
+                        Content = new List<object>
+                        {
+                            new TextContentPart { Text = "hello there" },
+                            new ImageUrlContentPart
+                            {
+                                ImageUrl = new ImageUrl { Url = "https://example.test/a.png", Detail = "low" }
+                            }
+                        }
+                    }
+                },
             };
 
         private static readonly IReadOnlyDictionary<string, int> ExpectedByMessageShape =
@@ -187,6 +206,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ["msgs-parallel-tool-calls"] = 28,
                 ["msgs-single-user"] = 11,
                 ["msgs-tool-call-round-trip"] = 41,
+                ["msgs-typed-content-parts"] = 95,
             };
 
         /// <summary>
@@ -276,11 +296,19 @@ namespace ConduitLLM.Tests.Core.Services
         /// a request body is deserialized. This path is otherwise untested.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Two of these rows pin known defects rather than desired behaviour, so that fixing them is
         /// a visible decision: <c>json-unknown-part</c> shows that an audio content part contributes
         /// zero tokens, and <c>json-text-missing-text</c> shows the same for a malformed text part.
-        /// <c>json-one-image</c> and <c>json-three-images</c> pin the hard-coded 65-tokens-per-image
-        /// constant, which does not match the real vision formula used elsewhere in the codebase.
+        /// </para>
+        /// <para>
+        /// Image parts are priced by the vision formula (#1231): low detail is the fixed 85, a
+        /// base64 data URL has its dimensions read from the embedded header and is tiled
+        /// (512x512 → 170 + 1x170 = 340), and a remote URL — whose geometry cannot be known
+        /// without fetching it — is charged the conservative high-detail default of 850. The
+        /// remote-URL rows moved from the previous 65-per-image constant, which under-counted
+        /// high-detail images roughly 10-17x.
+        /// </para>
         /// </remarks>
         private static readonly IReadOnlyDictionary<string, string> JsonContentShapes =
             new Dictionary<string, string>(StringComparer.Ordinal)
@@ -297,6 +325,10 @@ namespace ConduitLLM.Tests.Core.Services
                     + "{\"type\":\"image_url\",\"image_url\":{\"url\":\"https://example.test/c.png\"}}]",
                 ["json-image-only"] =
                     "[{\"type\":\"image_url\",\"image_url\":{\"url\":\"https://example.test/a.png\"}}]",
+                ["json-image-low-detail"] =
+                    "[{\"type\":\"image_url\",\"image_url\":{\"url\":\"https://example.test/a.png\",\"detail\":\"low\"}}]",
+                ["json-image-base64-512"] =
+                    "[{\"type\":\"image_url\",\"image_url\":{\"url\":\"" + PngDataUrl(512, 512) + "\"}}]",
                 ["json-unknown-part"] =
                     "[{\"type\":\"input_audio\",\"input_audio\":{\"data\":\"AAAA\",\"format\":\"wav\"}}]",
                 ["json-text-missing-text"] = "[{\"type\":\"text\"}]",
@@ -306,11 +338,13 @@ namespace ConduitLLM.Tests.Core.Services
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
                 ["json-bare-string"] = 10,
-                ["json-image-only"] = 73,
-                ["json-one-image"] = 75,
+                ["json-image-base64-512"] = 348,
+                ["json-image-low-detail"] = 93,
+                ["json-image-only"] = 858,
+                ["json-one-image"] = 860,
                 ["json-text-missing-text"] = 8,
                 ["json-text-part"] = 10,
-                ["json-three-images"] = 203,
+                ["json-three-images"] = 2558,
                 ["json-unknown-part"] = 8,
             };
 
@@ -471,6 +505,38 @@ namespace ConduitLLM.Tests.Core.Services
             }
         }
 
+        /// <summary>
+        /// A remote-URL image can only be priced at the conservative high-detail default —
+        /// measuring it would take a network fetch the counting path must not make — so the
+        /// count degrades to <see cref="TokenCountFidelity.ApproximateVocabulary"/> and billing
+        /// consumers buffer it (#1231, #1233).
+        /// </summary>
+        [Fact]
+        public async Task Image_WithUnknownGeometry_DegradesFidelityToApproximateVocabulary()
+        {
+            var counter = CounterFor("cl100k_base");
+
+            var actual = await counter.EstimateTokenCountAsync("probe-json", JsonMessage("json-image-only"));
+
+            Assert.Equal(TokenCountFidelity.ApproximateVocabulary, actual.Fidelity);
+        }
+
+        /// <summary>
+        /// Low-detail images (fixed cost) and base64 images (dimensions readable locally) are
+        /// priced by the exact formula, so they must not degrade an otherwise exact count.
+        /// </summary>
+        [Theory]
+        [InlineData("json-image-low-detail")]
+        [InlineData("json-image-base64-512")]
+        public async Task Image_WithLocallyKnownGeometry_KeepsExactFidelity(string shapeId)
+        {
+            var counter = CounterFor("cl100k_base");
+
+            var actual = await counter.EstimateTokenCountAsync("probe-json", JsonMessage(shapeId));
+
+            Assert.Equal(TokenCountFidelity.Exact, actual.Fidelity);
+        }
+
         /// <summary>Wraps a JSON content payload in the single user message the counter will see.</summary>
         private static List<Message> JsonMessage(string shapeId) => new()
         {
@@ -481,6 +547,23 @@ namespace ConduitLLM.Tests.Core.Services
                 Content = JsonSerializer.Deserialize<JsonElement>(JsonContentShapes[shapeId])
             }
         };
+
+        /// <summary>
+        /// Builds a data URL holding just a PNG header with the given dimensions — enough for
+        /// the counter to read the geometry, with no image body.
+        /// </summary>
+        private static string PngDataUrl(int width, int height)
+        {
+            var bytes = new byte[]
+            {
+                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+                0x00, 0x00, 0x00, 0x0D,                         // IHDR chunk length
+                0x49, 0x48, 0x44, 0x52,                         // "IHDR"
+                (byte)(width >> 24), (byte)(width >> 16), (byte)(width >> 8), (byte)width,
+                (byte)(height >> 24), (byte)(height >> 16), (byte)(height >> 8), (byte)height,
+            };
+            return "data:image/png;base64," + Convert.ToBase64String(bytes);
+        }
 
         /// <summary>
         /// Builds a counter pinned to one tokenizer. The capability service is the only input that

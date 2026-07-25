@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Core.Interfaces;
@@ -117,13 +116,14 @@ namespace ConduitLLM.Core.Services
                             else if (message.Content is JsonElement jsonElement)
                             {
                                 // Handle JsonElement (common when deserialized from JSON)
-                                tokenCount += EstimateJsonElementTokens(jsonElement, encoding);
+                                tokenCount += EstimateJsonElementTokens(jsonElement, encoding, ref fidelity);
                             }
                             else
                             {
-                                // Try to handle content parts or other objects
-                                string textContent = ExtractTextFromContentObject(message.Content);
-                                tokenCount += encoding.CountTokens(textContent);
+                                // Typed content parts (TextContentPart / ImageUrlContentPart) and
+                                // other structured content: serialize and reuse the JSON path so
+                                // text and images are counted identically however content arrived.
+                                tokenCount += EstimateContentObjectTokens(message.Content, encoding, ref fidelity);
                             }
                         }
                         catch (Exception ex)
@@ -412,23 +412,16 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         /// <param name="element">The JsonElement to estimate token count for.</param>
         /// <param name="encoding">The tokenizer encoding to use.</param>
+        /// <param name="fidelity">Degraded in place when a part's cost is itself an estimate.</param>
         /// <returns>The estimated token count.</returns>
         /// <remarks>
-        /// <para>
-        /// This method handles different types of JsonElement content:
-        /// </para>
         /// <list type="bullet">
         ///   <item><description>String elements: Directly tokenized</description></item>
-        ///   <item><description>Arrays: Processes each element, especially for content parts</description></item>
-        ///   <item><description>Text content parts: Extracts and tokenizes text with type="text"</description></item>
-        ///   <item><description>Image content parts: Uses fixed token estimates based on type="image_url"</description></item>
+        ///   <item><description>Arrays: Each element treated as a content part</description></item>
+        ///   <item><description>Objects: Treated as a single content part</description></item>
         /// </list>
-        /// <para>
-        /// For image tokens, the implementation uses a fixed estimate since actual image token
-        /// usage depends on resolution which isn't always available at counting time.
-        /// </para>
         /// </remarks>
-        private int EstimateJsonElementTokens(JsonElement element, Tokenizer encoding)
+        private static int EstimateJsonElementTokens(JsonElement element, Tokenizer encoding, ref TokenCountFidelity fidelity)
         {
             int tokenCount = 0;
 
@@ -442,103 +435,99 @@ namespace ConduitLLM.Core.Services
             }
             else if (element.ValueKind == JsonValueKind.Array)
             {
-                // For arrays (like content parts), process each element
                 foreach (var item in element.EnumerateArray())
                 {
-                    // Check if it's a text content part
-                    if (item.TryGetProperty("type", out var typeElement) &&
-                        typeElement.ValueKind == JsonValueKind.String &&
-                        typeElement.GetString() == "text" &&
-                        item.TryGetProperty("text", out var textElement) &&
-                        textElement.ValueKind == JsonValueKind.String)
-                    {
-                        // It's a text content part
-                        string? text = textElement.GetString();
-                        if (text != null)
-                        {
-                            tokenCount += encoding.CountTokens(text);
-                        }
-                    }
-                    else if (item.TryGetProperty("type", out var imgTypeElement) &&
-                             imgTypeElement.ValueKind == JsonValueKind.String &&
-                             imgTypeElement.GetString() == "image_url")
-                    {
-                        // For image tokens, OpenAI uses a formula based on resolution
-                        // As a base, we'll add a fixed count that's average for a medium-res image
-                        // High-res images actually use more tokens than text in the same message
-                        tokenCount += 65; // An average low-res image cost
-                    }
+                    tokenCount += EstimateContentPartTokens(item, encoding, ref fidelity);
                 }
+            }
+            else if (element.ValueKind == JsonValueKind.Object)
+            {
+                tokenCount += EstimateContentPartTokens(element, encoding, ref fidelity);
             }
 
             return tokenCount;
         }
 
         /// <summary>
-        /// Extracts text content from a complex content object.
+        /// Estimates tokens for structured (non-string, non-JsonElement) content by serializing
+        /// it and reusing the JSON content-part logic, so typed content parts count the same as
+        /// their deserialized equivalents.
         /// </summary>
-        /// <param name="content">The content object to extract text from.</param>
-        /// <returns>A string representation of the textual content.</returns>
-        /// <remarks>
-        /// <para>
-        /// This method handles various content object formats:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>Serializes the object to JSON then parses it as a JsonDocument</description></item>
-        ///   <item><description>For arrays (likely content parts): extracts text from each part with type="text"</description></item>
-        ///   <item><description>For string values: returns them directly</description></item>
-        ///   <item><description>For other types: falls back to ToString()</description></item>
-        /// </list>
-        /// <para>
-        /// This extraction is particularly useful for multimodal content where we need to
-        /// extract only the textual parts for token counting.
-        /// </para>
-        /// </remarks>
-        private string ExtractTextFromContentObject(object content)
+        private static int EstimateContentObjectTokens(object content, Tokenizer encoding, ref TokenCountFidelity fidelity)
         {
-            try
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(content));
+            return EstimateJsonElementTokens(document.RootElement, encoding, ref fidelity);
+        }
+
+        /// <summary>
+        /// Estimates tokens for one content part. Text parts are tokenized; image parts are
+        /// priced through <see cref="ImageTokenCalculator.EstimateImageTokens"/> — the real
+        /// detail/resolution vision formula, replacing the flat 65 that under-counted
+        /// high-detail images roughly 10-17x (#1231). Unknown part types contribute zero.
+        /// </summary>
+        /// <remarks>
+        /// An image whose geometry cannot be determined locally is charged the conservative
+        /// high-detail default and degrades <paramref name="fidelity"/>, so billing consumers
+        /// buffer the count instead of trusting it as exact. The formula is OpenAI's;
+        /// provider-specific image accounting is out of scope here, but the conservative
+        /// default is far closer to every provider's real cost than 65 was.
+        /// </remarks>
+        private static int EstimateContentPartTokens(JsonElement part, Tokenizer encoding, ref TokenCountFidelity fidelity)
+        {
+            if (part.ValueKind != JsonValueKind.Object ||
+                !part.TryGetProperty("type", out var typeElement) ||
+                typeElement.ValueKind != JsonValueKind.String)
             {
-                // First try to serialize the content to JSON
-                string json = JsonSerializer.Serialize(content);
+                return 0;
+            }
 
-                // Then parse it as a JsonElement to use our existing logic
-                using var document = JsonDocument.Parse(json);
-                var root = document.RootElement;
-
-                StringBuilder sb = new StringBuilder();
-
-                // If it's an array, likely it's content parts
-                if (root.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in root.EnumerateArray())
+            switch (typeElement.GetString())
+            {
+                case "text":
+                    if (part.TryGetProperty("text", out var textElement) &&
+                        textElement.ValueKind == JsonValueKind.String &&
+                        textElement.GetString() is { } text)
                     {
-                        if (item.TryGetProperty("type", out var typeElement) &&
-                            typeElement.ValueKind == JsonValueKind.String &&
-                            typeElement.GetString() == "text" &&
-                            item.TryGetProperty("text", out var textElement) &&
-                            textElement.ValueKind == JsonValueKind.String)
+                        return encoding.CountTokens(text);
+                    }
+                    return 0;
+
+                case "image_url":
+                    string? url = null;
+                    string? detail = null;
+                    if (part.TryGetProperty("image_url", out var imageUrlElement) &&
+                        imageUrlElement.ValueKind == JsonValueKind.Object)
+                    {
+                        if (imageUrlElement.TryGetProperty("url", out var urlElement) &&
+                            urlElement.ValueKind == JsonValueKind.String)
                         {
-                            // It's a text content part
-                            string? text = textElement.GetString();
-                            if (text != null)
-                            {
-                                sb.AppendLine(text);
-                            }
+                            url = urlElement.GetString();
+                        }
+                        if (imageUrlElement.TryGetProperty("detail", out var detailElement) &&
+                            detailElement.ValueKind == JsonValueKind.String)
+                        {
+                            detail = detailElement.GetString();
                         }
                     }
-                    return sb.ToString();
-                }
-                else if (root.ValueKind == JsonValueKind.String)
-                {
-                    return root.GetString() ?? "";
-                }
-            }
-            catch
-            {
-                // If we can't process it properly, just return the string representation
-            }
 
-            return content.ToString() ?? "";
+                    if (url is null)
+                    {
+                        // Malformed image part: charge the conservative default rather than zero.
+                        fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                        return ImageTokenCalculator.ConservativeHighDetailTokens;
+                    }
+
+                    var (imageTokens, isConservativeDefault) = ImageTokenCalculator.EstimateImageTokens(
+                        new ImageUrl { Url = url, Detail = detail });
+                    if (isConservativeDefault)
+                    {
+                        fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    }
+                    return imageTokens;
+
+                default:
+                    return 0;
+            }
         }
 
         /// <summary>

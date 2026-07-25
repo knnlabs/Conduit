@@ -45,6 +45,11 @@ stand-in, normal for non-OpenAI models), or `character_heuristic` (vocabulary un
 alarm condition above). The exact-to-approximate ratio is expected to reflect your provider mix;
 `character_heuristic` is expected to be permanently zero.
 
+A count also lands in `approximate_vocabulary` when the request contains an image whose geometry
+cannot be determined without fetching it (a remote `image_url` rather than a base64 data URL):
+the image is charged a conservative high-detail default instead of the exact tile formula, so
+vision-heavy traffic raises this tier's share. That is expected behaviour, not an alarm.
+
 ## Response
 
 1. Query `BillingAuditEvents` for `ModelCostCanaryFailed` and note the mapping ID, model-cost ID,

@@ -45,6 +45,19 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public const int TileSize = 512;
 
+        /// <summary>
+        /// Token count charged when an image's geometry cannot be determined: a 1024x1024
+        /// high-detail image (4 tiles), i.e. 170 + 4 * 170.
+        /// </summary>
+        public const int ConservativeHighDetailTokens = 850;
+
+        /// <summary>
+        /// Maximum base64 characters decoded when reading dimensions from a data URL —
+        /// roughly 8KB of image, which covers the headers of every supported format and
+        /// matches the read window the remote-URL path uses. Must be a multiple of 4.
+        /// </summary>
+        private const int MaxBase64HeaderChars = 10920;
+
         public ImageTokenCalculator(ILogger<ImageTokenCalculator> logger, HttpClient httpClient)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -92,13 +105,48 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
+        /// Estimates an image's token cost without any network access, for use on hot request
+        /// paths (spend admission, rate limiting, context sizing) where fetching the image to
+        /// measure it is not acceptable.
+        /// </summary>
+        /// <param name="imageUrl">The ImageUrl object containing the image URL and detail level</param>
+        /// <returns>
+        /// The estimated token count, and whether it is the conservative default. Low-detail
+        /// images cost the fixed <see cref="LowDetailTokens"/>; base64 data URLs have their
+        /// dimensions read from the embedded header and priced by the high-detail tile formula.
+        /// When geometry cannot be determined locally (remote URLs, undecodable data), the
+        /// estimate is <see cref="ConservativeHighDetailTokens"/> and
+        /// <c>IsConservativeDefault</c> is true so callers can degrade their fidelity signal.
+        /// </returns>
+        public static (int Tokens, bool IsConservativeDefault) EstimateImageTokens(ImageUrl imageUrl)
+        {
+            ArgumentNullException.ThrowIfNull(imageUrl);
+
+            if (string.Equals(imageUrl.Detail, "low", StringComparison.OrdinalIgnoreCase))
+            {
+                return (LowDetailTokens, false);
+            }
+
+            if (imageUrl.Base64Data is { } base64Data)
+            {
+                var (width, height) = GetBase64HeaderDimensions(base64Data);
+                if (width > 0 && height > 0)
+                {
+                    return (CalculateHighDetailTokens(width, height), false);
+                }
+            }
+
+            return (ConservativeHighDetailTokens, true);
+        }
+
+        /// <summary>
         /// Gets the dimensions of an image from its URL (either base64 or HTTP URL)
         /// </summary>
         private async Task<(int width, int height)> GetImageDimensionsAsync(ImageUrl imageUrl)
         {
             if (imageUrl.IsBase64DataUrl)
             {
-                return GetBase64ImageDimensions(imageUrl.Base64Data!);
+                return GetBase64HeaderDimensions(imageUrl.Base64Data ?? string.Empty);
             }
             else
             {
@@ -107,18 +155,21 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Gets dimensions from a base64 encoded image
+        /// Gets dimensions from a base64 encoded image by decoding only the header portion.
         /// </summary>
-        private (int width, int height) GetBase64ImageDimensions(string base64Data)
+        private static (int width, int height) GetBase64HeaderDimensions(string base64Data)
         {
             try
             {
-                var imageBytes = Convert.FromBase64String(base64Data);
-                return GetImageDimensionsFromBytes(imageBytes);
+                // A prefix whose length is a multiple of 4 is itself valid base64, so the
+                // dimension headers can be read without decoding a whole multi-megabyte image.
+                var slice = base64Data.Length > MaxBase64HeaderChars
+                    ? base64Data[..MaxBase64HeaderChars]
+                    : base64Data;
+                return GetImageDimensionsFromBytes(Convert.FromBase64String(slice));
             }
-            catch (Exception ex)
+            catch (FormatException)
             {
-                _logger.LogWarning(ex, "Failed to decode base64 image for dimension extraction");
                 return (0, 0);
             }
         }
@@ -172,7 +223,7 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Extracts image dimensions from byte array by reading image headers
         /// </summary>
-        private (int width, int height) GetImageDimensionsFromBytes(byte[] imageBytes)
+        private static (int width, int height) GetImageDimensionsFromBytes(byte[] imageBytes)
         {
             if (imageBytes == null || imageBytes.Length < 8)
                 return (0, 0);
@@ -209,7 +260,7 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Gets dimensions from JPEG bytes
         /// </summary>
-        private (int width, int height) GetJpegDimensions(byte[] bytes)
+        private static (int width, int height) GetJpegDimensions(byte[] bytes)
         {
             try
             {
@@ -217,10 +268,10 @@ namespace ConduitLLM.Core.Services
                 while (offset < bytes.Length - 9)
                 {
                     if (bytes[offset] != 0xFF) break;
-                    
+
                     byte marker = bytes[offset + 1];
                     offset += 2;
-                    
+
                     // SOF markers (Start of Frame) contain dimensions
                     if ((marker >= 0xC0 && marker <= 0xCF) && marker != 0xC4 && marker != 0xC8 && marker != 0xCC)
                     {
@@ -231,15 +282,15 @@ namespace ConduitLLM.Core.Services
                             return (width, height);
                         }
                     }
-                    
+
                     if (offset + 2 > bytes.Length) break;
                     int segmentLength = (bytes[offset] << 8) | bytes[offset + 1];
                     offset += segmentLength;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                _logger.LogDebug(ex, "Failed to parse JPEG dimensions from image bytes");
+                // Malformed header; fall through to unknown dimensions.
             }
 
             return (0, 0);
@@ -248,79 +299,51 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Gets dimensions from PNG bytes
         /// </summary>
-        private (int width, int height) GetPngDimensions(byte[] bytes)
+        private static (int width, int height) GetPngDimensions(byte[] bytes)
         {
             if (bytes.Length < 24) return (0, 0);
-            
-            try
-            {
-                // PNG dimensions are in the IHDR chunk which starts at byte 16
-                int width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
-                int height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
-                return (width, height);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to parse PNG dimensions from image bytes");
-            }
 
-            return (0, 0);
+            // PNG dimensions are in the IHDR chunk which starts at byte 16
+            int width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19];
+            int height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23];
+            return (width, height);
         }
 
         /// <summary>
         /// Gets dimensions from GIF bytes
         /// </summary>
-        private (int width, int height) GetGifDimensions(byte[] bytes)
+        private static (int width, int height) GetGifDimensions(byte[] bytes)
         {
             if (bytes.Length < 10) return (0, 0);
-            
-            try
-            {
-                int width = bytes[6] | (bytes[7] << 8);
-                int height = bytes[8] | (bytes[9] << 8);
-                return (width, height);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to parse GIF dimensions from image bytes");
-            }
 
-            return (0, 0);
+            int width = bytes[6] | (bytes[7] << 8);
+            int height = bytes[8] | (bytes[9] << 8);
+            return (width, height);
         }
 
         /// <summary>
         /// Gets dimensions from WebP bytes
         /// </summary>
-        private (int width, int height) GetWebPDimensions(byte[] bytes)
+        private static (int width, int height) GetWebPDimensions(byte[] bytes)
         {
             if (bytes.Length < 30) return (0, 0);
-            
-            try
+
+            // Check for VP8 format
+            if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38)
             {
-                // Check for VP8 format
-                if (bytes[12] == 0x56 && bytes[13] == 0x50 && bytes[14] == 0x38)
+                if (bytes[15] == 0x20) // VP8 (lossy)
                 {
-                    if (bytes[15] == 0x20) // VP8 (lossy)
-                    {
-                        int width = ((bytes[26] | (bytes[27] << 8)) & 0x3FFF) + 1;
-                        int height = ((bytes[28] | (bytes[29] << 8)) & 0x3FFF) + 1;
-                        return (width, height);
-                    }
-                    else if (bytes[15] == 0x4C) // VP8L (lossless)
-                    {
-                        if (bytes.Length >= 25)
-                        {
-                            int bits = bytes[21] | (bytes[22] << 8) | (bytes[23] << 16) | (bytes[24] << 24);
-                            int width = ((bits & 0x3FFF) + 1);
-                            int height = (((bits >> 14) & 0x3FFF) + 1);
-                            return (width, height);
-                        }
-                    }
+                    int width = ((bytes[26] | (bytes[27] << 8)) & 0x3FFF) + 1;
+                    int height = ((bytes[28] | (bytes[29] << 8)) & 0x3FFF) + 1;
+                    return (width, height);
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to parse WebP dimensions from image bytes");
+                else if (bytes[15] == 0x4C) // VP8L (lossless)
+                {
+                    int bits = bytes[21] | (bytes[22] << 8) | (bytes[23] << 16) | (bytes[24] << 24);
+                    int width = ((bits & 0x3FFF) + 1);
+                    int height = (((bits >> 14) & 0x3FFF) + 1);
+                    return (width, height);
+                }
             }
 
             return (0, 0);
@@ -329,32 +352,24 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Calculates tokens for high detail images using OpenAI's formula
         /// </summary>
-        private int CalculateHighDetailTokens(int width, int height)
+        private static int CalculateHighDetailTokens(int width, int height)
         {
             // First, scale the image to fit within the maximum dimensions
             var (scaledWidth, scaledHeight) = ScaleImageDimensions(width, height);
-            
+
             // Calculate the number of 512x512 tiles
             int tilesWide = (int)Math.Ceiling((double)scaledWidth / TileSize);
             int tilesHigh = (int)Math.Ceiling((double)scaledHeight / TileSize);
             int totalTiles = tilesWide * tilesHigh;
-            
+
             // Calculate total tokens: base + (tiles * tokens_per_tile)
-            int totalTokens = HighDetailBaseTokens + (totalTiles * TokensPerTile);
-            
-            _logger.LogDebug(
-                "Image {Width}x{Height} scaled to {ScaledWidth}x{ScaledHeight}, " +
-                "tiles: {TilesWide}x{TilesHigh}={TotalTiles}, tokens: {Tokens}",
-                width, height, scaledWidth, scaledHeight, 
-                tilesWide, tilesHigh, totalTiles, totalTokens);
-            
-            return totalTokens;
+            return HighDetailBaseTokens + (totalTiles * TokensPerTile);
         }
 
         /// <summary>
         /// Scales image dimensions according to OpenAI's vision model scaling rules
         /// </summary>
-        private (int width, int height) ScaleImageDimensions(int originalWidth, int originalHeight)
+        private static (int width, int height) ScaleImageDimensions(int originalWidth, int originalHeight)
         {
             // First, scale down if any dimension exceeds the maximum
             if (originalWidth > MaxDimension || originalHeight > MaxDimension)
@@ -384,11 +399,8 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         private int EstimateConservativeTokens()
         {
-            // Assume a 1024x1024 image (common size) for conservative estimation
-            // This gives us 4 tiles (2x2) = 170 + (4 * 170) = 850 tokens
-            const int conservativeTokens = 850;
-            _logger.LogInformation("Using conservative image token estimate: {Tokens} tokens", conservativeTokens);
-            return conservativeTokens;
+            _logger.LogInformation("Using conservative image token estimate: {Tokens} tokens", ConservativeHighDetailTokens);
+            return ConservativeHighDetailTokens;
         }
     }
 }
