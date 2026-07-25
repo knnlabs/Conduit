@@ -1,5 +1,3 @@
-using ConduitLLM.Configuration.DTOs.HealthMonitoring;
-
 namespace ConduitLLM.Gateway.Interfaces
 {
     /// <summary>
@@ -26,14 +24,6 @@ namespace ConduitLLM.Gateway.Interfaces
         /// Updates the heartbeat for this service instance
         /// </summary>
         Task UpdateHeartbeatAsync();
-    }
-
-    /// <summary>
-    /// Interface for distributed alert management with deduplication
-    /// </summary>
-    public interface IDistributedAlertManagementService : IDistributedMonitoringService, IAlertManagementService
-    {
-        Task<List<string>> GetActiveInstancesAsync();
     }
 
     /// <summary>

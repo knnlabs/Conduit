@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Configuration.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;

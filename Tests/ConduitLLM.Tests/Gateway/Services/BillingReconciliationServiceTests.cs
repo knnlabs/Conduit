@@ -1,5 +1,4 @@
 using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Options;
@@ -17,7 +16,7 @@ public sealed class BillingReconciliationServiceTests : IDisposable
 {
     private readonly DbContextOptions<ConduitDbContext> _dbOptions;
     private readonly ConduitDbContext _context;
-    private readonly Mock<IAlertManagementService> _alerts = new();
+    private readonly Mock<IOperationalAlertPublisher> _alerts = new();
     private readonly BillingReconciliationService _service;
     private readonly DateTime _window = new(2026, 7, 19, 10, 0, 0, DateTimeKind.Utc);
     private readonly SqliteTestDatabase _database;
@@ -45,7 +44,12 @@ public sealed class BillingReconciliationServiceTests : IDisposable
         await _service.ReconcileWindowAsync(_context, _window, _window.AddHours(1), CancellationToken.None);
 
         Assert.Empty(await _context.BillingAuditEvents.ToListAsync());
-        _alerts.Verify(x => x.TriggerAlertAsync(It.IsAny<HealthAlert>()), Times.Never);
+        _alerts.Verify(x => x.Raise(
+            It.IsAny<OperationalAlertSeverity>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<IReadOnlyDictionary<string, object>>()), Times.Never);
     }
 
     [Fact]
@@ -60,8 +64,12 @@ public sealed class BillingReconciliationServiceTests : IDisposable
         Assert.Equal(10, anomaly.VirtualKeyGroupId);
         Assert.Equal(1.25m, anomaly.CalculatedCost);
         Assert.Contains("ledgerDifference", anomaly.MetadataJson);
-        _alerts.Verify(x => x.TriggerAlertAsync(It.Is<HealthAlert>(a =>
-            a.Type == AlertType.DataIntegrity && a.Component == "BillingReconciliation")), Times.Once);
+        _alerts.Verify(x => x.Raise(
+            OperationalAlertSeverity.Critical,
+            "BillingReconciliation",
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<IReadOnlyDictionary<string, object>>()), Times.Once);
     }
 
     [Fact]
