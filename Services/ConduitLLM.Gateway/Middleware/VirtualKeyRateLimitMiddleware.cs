@@ -72,23 +72,37 @@ namespace ConduitLLM.Gateway.Middleware
                 return;
             }
 
-            var rpmLimit = context.Items[RateLimitContextKeys.Rpm] as int?;
-            var rpdLimit = context.Items[RateLimitContextKeys.Rpd] as int?;
+            var keyLimits = new RequestRateLimits(
+                context.Items[RateLimitContextKeys.Rpm] as int?,
+                context.Items[RateLimitContextKeys.Rpd] as int?);
             var maxParallel = context.Items[RateLimitContextKeys.MaxParallelRequests] as int?;
 
-            // Nothing configured = unlimited; skip the Redis round-trip entirely.
-            if (!HasConfiguredLimit(rpmLimit) && !HasConfiguredLimit(rpdLimit) && !HasConfiguredLimit(maxParallel))
+            // Group ceilings apply on top of the key's own; the tighter of the two governs.
+            var groupId = context.Items[RateLimitContextKeys.GroupId] as int?;
+            var groupLimits = groupId is null
+                ? default
+                : new RequestRateLimits(
+                    context.Items[RateLimitContextKeys.GroupRpm] as int?,
+                    context.Items[RateLimitContextKeys.GroupRpd] as int?);
+            var groupMaxParallel = groupId is null
+                ? null
+                : context.Items[RateLimitContextKeys.GroupMaxParallelRequests] as int?;
+
+            // Nothing configured at either tier = unlimited; skip the Redis round-trip entirely.
+            if (keyLimits.IsUnlimited && groupLimits.IsUnlimited &&
+                !HasConfiguredLimit(maxParallel) && !HasConfiguredLimit(groupMaxParallel))
             {
                 await _next(context);
                 return;
             }
 
-            if (HasConfiguredLimit(rpmLimit) || HasConfiguredLimit(rpdLimit))
+            if (!keyLimits.IsUnlimited || !groupLimits.IsUnlimited)
             {
                 RateLimitCheckResult result;
                 try
                 {
-                    result = await _rateLimitService.CheckRateLimitAsync(keyHash, rpmLimit, rpdLimit);
+                    result = await _rateLimitService.CheckRateLimitAsync(
+                        keyHash, keyLimits, groupId, groupLimits);
                 }
                 catch (Exception ex)
                 {
@@ -147,11 +161,10 @@ namespace ConduitLLM.Gateway.Middleware
                 // Capacity returns when some other request finishes, which cannot be predicted,
                 // so the advertised wait is a short documented constant rather than an instant.
                 var retryAt = DateTime.UtcNow.AddSeconds(_options.ConcurrencyRetryAfterSeconds);
-                RateLimitResponse.SetHeaders(
-                    context, decision.Limit, 0, retryAt, ConcurrencyRateLimitService.ScopeName);
+                RateLimitResponse.SetHeaders(context, decision.Limit, 0, retryAt, decision.Scope);
                 await RateLimitResponse.WriteAsync(
                     context,
-                    ConcurrencyRateLimitService.ScopeName,
+                    decision.Scope,
                     decision.Limit,
                     retryAt,
                     $"Too many concurrent requests ({decision.Limit} in flight). Retry once an in-flight request completes.");

@@ -7535,6 +7535,14 @@ export interface components {
     UpdateVirtualKeyGroupRequestDto: {
       groupName?: null | string;
       externalGroupId?: null | string;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+      /** Format: int32 */
+      rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
     };
     UpdateVirtualKeyRequestDto: {
       keyName?: null | string;
@@ -7711,6 +7719,14 @@ export interface components {
       updatedAt: string;
       /** Format: int32 */
       virtualKeyCount: number;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+      /** Format: int32 */
+      rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
     };
     /** @description Summary information for a virtual key group. */
     VirtualKeyGroupSummaryDto: {

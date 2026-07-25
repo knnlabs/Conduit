@@ -11,6 +11,8 @@ using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Filters;
+using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -23,6 +25,7 @@ namespace ConduitLLM.Admin.Endpoints
         private readonly IVirtualKeyRepository _keyRepository;
         private readonly IConfigurationDbContext _context;
         private readonly IRefundService _refundService;
+        private readonly IEventBus? _eventBus;
 
         /// <summary>
         /// Initializes the Virtual Key Groups endpoint handler.
@@ -33,13 +36,15 @@ namespace ConduitLLM.Admin.Endpoints
             IConfigurationDbContext context,
             IRefundService refundService,
             IHttpContextAccessor httpContextAccessor,
-            ILogger<VirtualKeyGroupsEndpoints> logger)
+            ILogger<VirtualKeyGroupsEndpoints> logger,
+            IEventBus? eventBus = null)
             : base(null, httpContextAccessor, logger)
         {
             _groupRepository = groupRepository;
             _keyRepository = keyRepository;
             _context = context;
             _refundService = refundService;
+            _eventBus = eventBus;
         }
 
         public static IEndpointRouteBuilder MapVirtualKeyGroupsEndpoints(IEndpointRouteBuilder app)
@@ -200,7 +205,42 @@ namespace ConduitLLM.Admin.Endpoints
                 group.ExternalGroupId = request.ExternalGroupId;
             }
 
+            var rateLimitsChanged = false;
+
+            if (request.RateLimitRpm.HasValue && group.RateLimitRpm != request.RateLimitRpm)
+            {
+                changes.Add(("RateLimitRpm", group.RateLimitRpm?.ToString(), request.RateLimitRpm.ToString()));
+                group.RateLimitRpm = request.RateLimitRpm;
+                rateLimitsChanged = true;
+            }
+
+            if (request.RateLimitRpd.HasValue && group.RateLimitRpd != request.RateLimitRpd)
+            {
+                changes.Add(("RateLimitRpd", group.RateLimitRpd?.ToString(), request.RateLimitRpd.ToString()));
+                group.RateLimitRpd = request.RateLimitRpd;
+                rateLimitsChanged = true;
+            }
+
+            if (request.RateLimitTpm.HasValue && group.RateLimitTpm != request.RateLimitTpm)
+            {
+                changes.Add(("RateLimitTpm", group.RateLimitTpm?.ToString(), request.RateLimitTpm.ToString()));
+                group.RateLimitTpm = request.RateLimitTpm;
+                rateLimitsChanged = true;
+            }
+
+            if (request.MaxParallelRequests.HasValue && group.MaxParallelRequests != request.MaxParallelRequests)
+            {
+                changes.Add(("MaxParallelRequests", group.MaxParallelRequests?.ToString(), request.MaxParallelRequests.ToString()));
+                group.MaxParallelRequests = request.MaxParallelRequests;
+                rateLimitsChanged = true;
+            }
+
             await _groupRepository.UpdateAsync(group);
+
+            if (rateLimitsChanged)
+            {
+                await InvalidateGroupKeyCachesAsync(id);
+            }
 
             LogAdminAuditWithChanges("VirtualKeyGroup", id, changes);
             AdminOperationsMetricsService.RecordConfigurationChange("virtualkeygroup", "update");
@@ -215,8 +255,49 @@ namespace ConduitLLM.Admin.Endpoints
                 LifetimeSpent = group.LifetimeSpent,
                 CreatedAt = group.CreatedAt,
                 UpdatedAt = group.UpdatedAt,
-                VirtualKeyCount = group.VirtualKeys?.Count ?? 0
+                VirtualKeyCount = group.VirtualKeys?.Count ?? 0,
+                RateLimitRpm = group.RateLimitRpm,
+                RateLimitRpd = group.RateLimitRpd,
+                RateLimitTpm = group.RateLimitTpm,
+                MaxParallelRequests = group.MaxParallelRequests
             });
+        }
+
+        /// <summary>
+        /// Publishes a cache-invalidation event for every key in the group.
+        /// </summary>
+        /// <remarks>
+        /// Group ceilings travel with the authenticated request, and the Gateway caches the key
+        /// entity that carries them. Without this, a group limit change would not take effect
+        /// until each key's cache entry expired — operators would see an edit that appears to
+        /// do nothing.
+        /// </remarks>
+        private async Task InvalidateGroupKeyCachesAsync(int groupId)
+        {
+            if (_eventBus is null)
+            {
+                Logger.LogWarning(
+                    "No event bus is available, so group {GroupId} rate-limit changes will not reach the Gateway " +
+                    "until its cached key entries expire", groupId);
+                return;
+            }
+
+            var keys = await _context.VirtualKeys
+                .AsNoTracking()
+                .Where(k => k.VirtualKeyGroupId == groupId)
+                .Select(k => new { k.Id, k.KeyHash })
+                .ToListAsync();
+
+            foreach (var key in keys)
+            {
+                await _eventBus.PublishAsync(new VirtualKeyUpdated
+                {
+                    KeyId = key.Id,
+                    KeyHash = key.KeyHash,
+                    ChangedProperties = new[] { "GroupRateLimits" },
+                    CorrelationId = Guid.NewGuid().ToString()
+                });
+            }
         }
 
         /// <summary>

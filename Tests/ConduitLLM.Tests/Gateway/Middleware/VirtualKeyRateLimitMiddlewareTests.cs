@@ -61,7 +61,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             await CreateMiddleware().InvokeAsync(ctx);
 
             _nextCalled.Should().BeTrue();
-            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>()),
+            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>()),
                 Times.Never);
         }
 
@@ -74,7 +74,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             await CreateMiddleware().InvokeAsync(ctx);
 
             _nextCalled.Should().BeTrue();
-            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>()),
+            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>()),
                 Times.Never);
         }
 
@@ -90,7 +90,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             await CreateMiddleware().InvokeAsync(ctx);
 
             _nextCalled.Should().BeTrue();
-            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>()),
+            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>()),
                 Times.Never);
         }
 
@@ -105,7 +105,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             await CreateMiddleware().InvokeAsync(ctx);
 
             _nextCalled.Should().BeTrue();
-            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>()),
+            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>()),
                 Times.Never);
         }
 
@@ -117,7 +117,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             ctx.Items["VirtualKey.RateLimitRpm"] = 60;
             ctx.Items["VirtualKey.RateLimitRpd"] = null;
 
-            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", 60, null))
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", new RequestRateLimits(60, null)))
                 .ReturnsAsync(new RateLimitCheckResult
                 {
                     IsAllowed = true,
@@ -145,7 +145,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             ctx.Items["VirtualKey.RateLimitRpm"] = 10;
             ctx.Items["VirtualKey.RateLimitRpd"] = null;
 
-            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", 10, null))
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", new RequestRateLimits(10, null)))
                 .ReturnsAsync(new RateLimitCheckResult
                 {
                     IsAllowed = false,
@@ -176,7 +176,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             ctx.Items["VirtualKey.RateLimitRpm"] = 10;
 
             var resetsAt = DateTime.UtcNow.AddMilliseconds(4200);
-            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", 10, null))
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", new RequestRateLimits(10, null)))
                 .ReturnsAsync(new RateLimitCheckResult
                 {
                     IsAllowed = false,
@@ -206,7 +206,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             ctx.Items["VirtualKey.RateLimitRpd"] = 1000;
 
             var resetsAt = DateTime.UtcNow.AddHours(23);
-            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", null, 1000))
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", new RequestRateLimits(null, 1000)))
                 .ReturnsAsync(new RateLimitCheckResult
                 {
                     IsAllowed = false,
@@ -231,7 +231,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
             ctx.Items["VirtualKey.RateLimitRpm"] = 60;
 
-            _mockService.Setup(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>()))
+            _mockService.Setup(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>()))
                 .ThrowsAsync(new InvalidOperationException("Redis is required for secure distributed rate limiting"));
 
             await CreateMiddleware().InvokeAsync(ctx);
@@ -255,7 +255,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             _nextCalled.Should().BeTrue();
             _mockConcurrency.Verify(s => s.ReleaseAsync(slot), Times.Once);
-            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>()),
+            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>()),
                 Times.Never, "a key with only a concurrency cap needs no window check");
         }
 
@@ -346,7 +346,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             ctx.Items["VirtualKey.RateLimitRpm"] = 10;
             ctx.Items["VirtualKey.MaxParallelRequests"] = 4;
 
-            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", 10, null))
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", new RequestRateLimits(10, null)))
                 .ReturnsAsync(new RateLimitCheckResult
                 {
                     IsAllowed = false,
@@ -369,12 +369,12 @@ namespace ConduitLLM.Tests.Http.Middleware
             ctx.Items["VirtualKey.RateLimitRpm"] = 60;
             ctx.Items["VirtualKey.RateLimitRpd"] = 10000;
 
-            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", 60, 10000))
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", new RequestRateLimits(60, 10000)))
                 .ReturnsAsync(new RateLimitCheckResult { IsAllowed = true, Limit = 60, RequestsRemaining = 50, LimitType = "RPM" });
 
             await CreateMiddleware().InvokeAsync(ctx);
 
-            _mockService.Verify(s => s.CheckRateLimitAsync("hash-abc", 60, 10000), Times.Once);
+            _mockService.Verify(s => s.CheckRateLimitAsync("hash-abc", new RequestRateLimits(60, 10000)), Times.Once);
             _nextCalled.Should().BeTrue();
         }
     }

@@ -34482,6 +34482,42 @@
               "null",
               "string"
             ]
+          },
+          "rateLimitRpm": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rateLimitRpd": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rateLimitTpm": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxParallelRequests": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -35017,6 +35053,34 @@
           },
           "virtualKeyCount": {
             "type": "integer",
+            "format": "int32"
+          },
+          "rateLimitRpm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rateLimitRpd": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rateLimitTpm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           }
         }

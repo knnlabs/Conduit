@@ -7,13 +7,31 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Interface for distributed virtual key rate limiting
     /// </summary>
+    /// <summary>
+    /// Request-count ceilings for one tier of the key → group hierarchy.
+    /// </summary>
+    public readonly record struct RequestRateLimits(int? Rpm, int? Rpd)
+    {
+        /// <summary>True when this tier imposes no request-count ceiling at all.</summary>
+        public bool IsUnlimited => Rpm is not > 0 && Rpd is not > 0;
+    }
+
     public interface IVirtualKeyRateLimitService
     {
         /// <summary>
-        /// Checks if a request is allowed under the rate limit using sliding window algorithm
+        /// Checks a request against the key's own windows and, when the key belongs to a group
+        /// with its own ceilings, the group's windows too — all in one atomic operation.
         /// </summary>
-        Task<RateLimitCheckResult> CheckRateLimitAsync(string virtualKeyHash, int? rpmLimit, int? rpdLimit);
-        
+        /// <param name="virtualKeyHash">Partition for the key-scope windows.</param>
+        /// <param name="keyLimits">The key's own ceilings.</param>
+        /// <param name="groupId">Group the key belongs to, or null when it has no group limits.</param>
+        /// <param name="groupLimits">Ceilings shared across the group.</param>
+        Task<RateLimitCheckResult> CheckRateLimitAsync(
+            string virtualKeyHash,
+            RequestRateLimits keyLimits,
+            int? groupId = null,
+            RequestRateLimits groupLimits = default);
+
         /// <summary>
         /// Gets current usage statistics for a virtual key
         /// </summary>
@@ -100,31 +118,53 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Checks the per-minute and per-day windows in a single atomic operation.
+        /// Checks every configured request window — key minute, key day, and the group's
+        /// equivalents — in a single atomic operation.
         /// </summary>
         /// <remarks>
-        /// Both windows are evaluated before either is written, so a request rejected by the
-        /// daily ceiling does not consume a minute slot. The reported reset instant is when the
-        /// window genuinely frees room — the oldest entry ageing out — because enforcement is a
-        /// rolling window, not a calendar-aligned one.
+        /// All windows are evaluated before any is written, so a request rejected by the daily
+        /// ceiling does not consume a minute slot and one rejected by a group ceiling does not
+        /// consume the key's quota. Group and key limits both apply: the effective ceiling is
+        /// whichever is tighter. The reported reset instant is when the window genuinely frees
+        /// room — the oldest entry ageing out — because enforcement is a rolling window, not a
+        /// calendar-aligned one.
         /// </remarks>
-        public async Task<RateLimitCheckResult> CheckRateLimitAsync(string virtualKeyHash, int? rpmLimit, int? rpdLimit)
+        public async Task<RateLimitCheckResult> CheckRateLimitAsync(
+            string virtualKeyHash,
+            RequestRateLimits keyLimits,
+            int? groupId = null,
+            RequestRateLimits groupLimits = default)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
                 throw new ArgumentException("Virtual key hash cannot be null or empty", nameof(virtualKeyHash));
 
-            var windows = new List<RateLimitWindow>(2);
+            var windows = new List<RateLimitWindow>(4);
 
-            if (HasLimit(rpmLimit))
+            if (HasLimit(keyLimits.Rpm))
             {
                 windows.Add(new RateLimitWindow(
-                    RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash), "RPM", MinuteWindowMs, rpmLimit!.Value));
+                    RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash), "RPM", MinuteWindowMs, keyLimits.Rpm!.Value));
             }
 
-            if (HasLimit(rpdLimit))
+            if (HasLimit(keyLimits.Rpd))
             {
                 windows.Add(new RateLimitWindow(
-                    RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash), "RPD", DayWindowMs, rpdLimit!.Value));
+                    RedisKeys.RateLimit.VirtualKeyRpd(virtualKeyHash), "RPD", DayWindowMs, keyLimits.Rpd!.Value));
+            }
+
+            if (groupId is int group)
+            {
+                if (HasLimit(groupLimits.Rpm))
+                {
+                    windows.Add(new RateLimitWindow(
+                        RedisKeys.RateLimit.GroupRpm(group), "group:RPM", MinuteWindowMs, groupLimits.Rpm!.Value));
+                }
+
+                if (HasLimit(groupLimits.Rpd))
+                {
+                    windows.Add(new RateLimitWindow(
+                        RedisKeys.RateLimit.GroupRpd(group), "group:RPD", DayWindowMs, groupLimits.Rpd!.Value));
+                }
             }
 
             if (windows.Count == 0)

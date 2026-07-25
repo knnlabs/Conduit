@@ -9,12 +9,24 @@ namespace ConduitLLM.Gateway.RateLimiting;
 /// A held concurrency slot. Releasing it returns capacity to the key immediately rather than
 /// waiting for the slot's expiry.
 /// </summary>
-public sealed record ConcurrencySlot(string Key, string EntryId);
+public sealed record ConcurrencySlot(string Key, string EntryId)
+{
+    /// <summary>
+    /// Group slot window the same entry occupies, when the key belongs to a group with its own
+    /// concurrency ceiling. Both have to be returned or the group total drifts upward.
+    /// </summary>
+    public string? GroupKey { get; init; }
+}
 
 /// <summary>
 /// Outcome of asking for a concurrency slot. <see cref="Slot"/> is set only when one was taken.
 /// </summary>
-public sealed record ConcurrencyDecision(bool IsAllowed, long Limit, long InFlight, ConcurrencySlot? Slot);
+public sealed record ConcurrencyDecision(
+    bool IsAllowed,
+    long Limit,
+    long InFlight,
+    ConcurrencySlot? Slot,
+    string Scope = "concurrency");
 
 public interface IConcurrencyRateLimitService
 {
@@ -50,6 +62,7 @@ public interface IConcurrencyRateLimitService
 public sealed class ConcurrencyRateLimitService : IConcurrencyRateLimitService
 {
     internal const string ScopeName = "concurrency";
+    internal const string GroupScopeName = "group:concurrency";
 
     private readonly ISlidingWindowRateLimiter _limiter;
     private readonly RateLimitOptions _options;
@@ -72,40 +85,78 @@ public sealed class ConcurrencyRateLimitService : IConcurrencyRateLimitService
             return null;
         }
 
-        if (context.Items[RateLimitContextKeys.MaxParallelRequests] is not int maxParallel || maxParallel <= 0)
+        var keyMax = context.Items[RateLimitContextKeys.MaxParallelRequests] as int?;
+        var groupId = context.Items[RateLimitContextKeys.GroupId] as int?;
+        var groupMax = context.Items[RateLimitContextKeys.GroupMaxParallelRequests] as int?;
+
+        var hasKeyLimit = keyMax is > 0;
+        var hasGroupLimit = groupId is not null && groupMax is > 0;
+        if (!hasKeyLimit && !hasGroupLimit)
         {
             return null;
         }
 
+        var slotTtlMs = _options.ConcurrencySlotTtlSeconds * 1000;
         var key = RedisKeys.RateLimit.VirtualKeyConcurrency(keyHash);
-        var window = new RateLimitWindow(key, ScopeName, _options.ConcurrencySlotTtlSeconds * 1000, maxParallel);
+        var windows = new List<RateLimitWindow>(2);
 
-        var result = await _limiter.CheckAsync(new[] { window }, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-        var state = result.Windows.Count > 0 ? result.Windows[0] : null;
+        if (hasKeyLimit)
+        {
+            windows.Add(new RateLimitWindow(key, ScopeName, slotTtlMs, keyMax.Value));
+        }
+
+        string? groupKey = null;
+        if (hasGroupLimit)
+        {
+            groupKey = RedisKeys.RateLimit.GroupConcurrency(groupId.Value);
+            windows.Add(new RateLimitWindow(groupKey, GroupScopeName, slotTtlMs, groupMax.Value));
+        }
+
+        var result = await _limiter.CheckAsync(windows, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
         if (!result.IsAllowed)
         {
+            var denied = result.DeniedWindow;
             _logger.LogWarning(
-                "Virtual key {KeyHashPrefix} is at its concurrency ceiling: {InFlight}/{Limit} requests in flight",
-                SafePrefix(keyHash), state?.Current ?? 0, maxParallel);
-            GatewayRateLimitMetrics.RecordRejected(ScopeName);
+                "Virtual key {KeyHashPrefix} is at its {Scope} ceiling: {InFlight}/{Limit} requests in flight",
+                SafePrefix(keyHash), denied?.Scope ?? ScopeName, denied?.Current ?? 0, denied?.Limit ?? 0);
+            GatewayRateLimitMetrics.RecordRejected(denied?.Scope ?? ScopeName);
 
-            return new ConcurrencyDecision(false, maxParallel, state?.Current ?? maxParallel, null);
+            return new ConcurrencyDecision(
+                false,
+                denied?.Limit ?? 0,
+                denied?.Current ?? 0,
+                null,
+                denied?.Scope ?? ScopeName);
         }
 
-        GatewayRateLimitMetrics.RecordAllowed(ScopeName);
+        var tightest = result.TightestWindow;
+        GatewayRateLimitMetrics.RecordAllowed(tightest?.Scope ?? ScopeName);
 
         return new ConcurrencyDecision(
             true,
-            maxParallel,
-            state?.Current ?? 0,
-            result.EntryId is null ? null : new ConcurrencySlot(key, result.EntryId));
+            tightest?.Limit ?? 0,
+            tightest?.Current ?? 0,
+            result.EntryId is null
+                ? null
+                : new ConcurrencySlot(hasKeyLimit ? key : groupKey!, result.EntryId)
+                {
+                    GroupKey = hasKeyLimit ? groupKey : null
+                },
+            tightest?.Scope ?? ScopeName);
     }
 
     public async Task ReleaseAsync(ConcurrencySlot slot)
     {
         // Weight is 1 for every slot, so a release always returns exactly one unit.
         await _limiter.ReleaseAsync(slot.Key, slot.EntryId, 1);
+
+        // The same entry occupies the group window; leaving it there would permanently shrink
+        // the group's capacity.
+        if (slot.GroupKey is not null)
+        {
+            await _limiter.ReleaseAsync(slot.GroupKey, slot.EntryId, 1);
+        }
     }
 
     private static string SafePrefix(string keyHash) => keyHash.Length <= 8 ? keyHash : keyHash[..8];

@@ -119,9 +119,13 @@ namespace ConduitLLM.Configuration.Repositories
                 throw new ArgumentException("Key hash cannot be null or empty", nameof(keyHash));
             }
 
+            // The group comes along because authentication stashes group-scope rate limits for
+            // the request, and a second query on the hot auth path is not worth saving a join.
+            // Group edits are propagated by invalidating the member keys' cache entries.
             return await ExecuteAsync(async context =>
                 await context.VirtualKeys
                     .AsNoTracking()
+                    .Include(vk => vk.VirtualKeyGroup)
                     .FirstOrDefaultAsync(vk => vk.KeyHash == keyHash, cancellationToken),
                 cancellationToken, "getting by key hash");
         }

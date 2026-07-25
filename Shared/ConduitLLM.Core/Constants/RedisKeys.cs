@@ -39,6 +39,13 @@ public static class RedisKeys
 
         public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
 
+        // Group-scope windows. Every key in a group shares these, so the partition is the
+        // group id rather than a key hash.
+        public static string GroupRpm(int groupId) => $"rate:vkg:{groupId}:rpm";
+        public static string GroupRpd(int groupId) => $"rate:vkg:{groupId}:rpd";
+        public static string GroupTpm(int groupId) => $"rate:vkg:{groupId}:tpm";
+        public static string GroupConcurrency(int groupId) => $"rate:vkg:{groupId}:concurrency";
+
         /// <summary>
         /// Companion key holding the total weight currently inside a sliding window, so reading
         /// the window's usage is O(1). Written by the limiter's Lua script — this builder exists

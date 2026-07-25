@@ -12,6 +12,12 @@ namespace ConduitLLM.Gateway.RateLimiting;
 /// <param name="ReservedTokens">Weight currently charged to the window.</param>
 public sealed record TokenReservation(string Key, string EntryId, long ReservedTokens)
 {
+    /// <summary>
+    /// Group token window the same entry was written to, when the key belongs to a group with
+    /// its own token ceiling. Reconciliation has to correct both or the group total drifts.
+    /// </summary>
+    public string? GroupKey { get; init; }
+
     /// <summary>Weight the reservation has been corrected to, once usage is known.</summary>
     public long? SettledTokens { get; init; }
 }
@@ -62,6 +68,7 @@ public sealed class TokenRateLimitService : ITokenRateLimitService
 {
     internal const int MinuteWindowMs = 60_000;
     internal const string ScopeName = "TPM";
+    internal const string GroupScopeName = "group:TPM";
 
     private readonly ISlidingWindowRateLimiter _limiter;
     private readonly ILogger<TokenRateLimitService> _logger;
@@ -79,50 +86,80 @@ public sealed class TokenRateLimitService : ITokenRateLimitService
             return null;
         }
 
-        if (context.Items[RateLimitContextKeys.Tpm] is not int tpmLimit || tpmLimit <= 0)
+        var keyTpm = context.Items[RateLimitContextKeys.Tpm] as int?;
+        var groupId = context.Items[RateLimitContextKeys.GroupId] as int?;
+        var groupTpm = context.Items[RateLimitContextKeys.GroupTpm] as int?;
+
+        var hasKeyLimit = keyTpm is > 0;
+        var hasGroupLimit = groupId is not null && groupTpm is > 0;
+        if (!hasKeyLimit && !hasGroupLimit)
         {
             return null;
         }
 
         // A single request must never be structurally impossible to admit: clamp the
-        // reservation to the ceiling so an oversized estimate produces one 429 rather than a
-        // permanent rejection that no amount of waiting resolves.
-        var weight = Math.Max(1, Math.Min(estimatedTokens, tpmLimit));
+        // reservation to the tightest ceiling so an oversized estimate produces one 429 rather
+        // than a permanent rejection that no amount of waiting resolves.
+        var tightestLimit = Math.Min(
+            hasKeyLimit ? keyTpm.Value : int.MaxValue,
+            hasGroupLimit ? groupTpm.Value : int.MaxValue);
+        var weight = Math.Max(1, Math.Min(estimatedTokens, tightestLimit));
 
         var key = RedisKeys.RateLimit.VirtualKeyTpm(keyHash);
-        var window = new RateLimitWindow(key, ScopeName, MinuteWindowMs, tpmLimit, weight, UnitWeight: false);
+        var windows = new List<RateLimitWindow>(2);
 
-        var result = await _limiter.CheckAsync(new[] { window }, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-        var state = result.Windows.Count > 0 ? result.Windows[0] : null;
+        if (hasKeyLimit)
+        {
+            windows.Add(new RateLimitWindow(key, ScopeName, MinuteWindowMs, keyTpm.Value, weight, UnitWeight: false));
+        }
+
+        string? groupKey = null;
+        if (hasGroupLimit)
+        {
+            groupKey = RedisKeys.RateLimit.GroupTpm(groupId.Value);
+            windows.Add(new RateLimitWindow(
+                groupKey, GroupScopeName, MinuteWindowMs, groupTpm.Value, weight, UnitWeight: false));
+        }
+
+        var result = await _limiter.CheckAsync(windows, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
         if (!result.IsAllowed)
         {
+            var denied = result.DeniedWindow;
             _logger.LogWarning(
-                "Virtual key {KeyHashPrefix} exceeded its token limit: {Current}/{Limit} tokens in the last minute",
-                SafePrefix(keyHash), state?.Current ?? 0, tpmLimit);
-            GatewayRateLimitMetrics.RecordRejected(ScopeName);
+                "Virtual key {KeyHashPrefix} exceeded its {Scope} limit: {Current}/{Limit} tokens in the last minute",
+                SafePrefix(keyHash), denied?.Scope ?? ScopeName, denied?.Current ?? 0, denied?.Limit ?? 0);
+            GatewayRateLimitMetrics.RecordRejected(denied?.Scope ?? ScopeName);
 
             return new TokenRateLimitDecision(
                 IsAllowed: false,
-                Scope: ScopeName,
-                Limit: tpmLimit,
-                ResetsAt: state?.ResetsAt ?? DateTime.UtcNow.AddMinutes(1),
-                Remaining: state?.Remaining ?? 0);
+                Scope: denied?.Scope ?? ScopeName,
+                Limit: denied?.Limit ?? tightestLimit,
+                ResetsAt: denied?.ResetsAt ?? DateTime.UtcNow.AddMinutes(1),
+                Remaining: denied?.Remaining ?? 0);
         }
 
+        // One entry id covers every window it was written to, so a single reconcile corrects
+        // the key and the group together.
         if (result.EntryId is not null)
         {
-            context.Items[RateLimitContextKeys.TokenReservation] = new TokenReservation(key, result.EntryId, weight);
+            var reservationKey = hasKeyLimit ? key : groupKey;
+            context.Items[RateLimitContextKeys.TokenReservation] =
+                new TokenReservation(reservationKey, result.EntryId, weight)
+                {
+                    GroupKey = hasKeyLimit ? groupKey : null
+                };
         }
 
-        GatewayRateLimitMetrics.RecordAllowed(ScopeName);
+        var tightest = result.TightestWindow;
+        GatewayRateLimitMetrics.RecordAllowed(tightest?.Scope ?? ScopeName);
 
         return new TokenRateLimitDecision(
             IsAllowed: true,
-            Scope: ScopeName,
-            Limit: tpmLimit,
-            ResetsAt: state?.ResetsAt ?? DateTime.UtcNow.AddMinutes(1),
-            Remaining: state?.Remaining ?? 0);
+            Scope: tightest?.Scope ?? ScopeName,
+            Limit: tightest?.Limit ?? tightestLimit,
+            ResetsAt: tightest?.ResetsAt ?? DateTime.UtcNow.AddMinutes(1),
+            Remaining: tightest?.Remaining ?? 0);
     }
 
     public async Task ReconcileAsync(HttpContext context, long actualTokens)
@@ -145,11 +182,23 @@ public sealed class TokenRateLimitService : ITokenRateLimitService
             return;
         }
 
+        var settled = Math.Max(0, actualTokens);
         var adjusted = await _limiter.ReconcileAsync(
             reservation.Key,
             reservation.EntryId,
             reservation.ReservedTokens,
-            Math.Max(0, actualTokens));
+            settled);
+
+        // The same entry sits in the group window too; correcting only one would let the
+        // group total drift away from reality.
+        if (reservation.GroupKey is not null)
+        {
+            await _limiter.ReconcileAsync(
+                reservation.GroupKey,
+                reservation.EntryId,
+                reservation.ReservedTokens,
+                settled);
+        }
 
         if (!adjusted)
         {

@@ -40,7 +40,7 @@ public class RedisVirtualKeyRateLimitServiceTests
     {
         SetupWindows(Allow(("RPM", 3, 600), ("RPD", 40, 1000)));
 
-        var result = await _service.CheckRateLimitAsync(KeyHash, 600, 1000);
+        var result = await _service.CheckRateLimitAsync(KeyHash, new RequestRateLimits(600, 1000));
 
         Assert.True(result.IsAllowed);
         _window.Verify(
@@ -65,7 +65,7 @@ public class RedisVirtualKeyRateLimitServiceTests
             DeniedWindow = State("RPD", 1000, 1000, freesAt)
         });
 
-        var result = await _service.CheckRateLimitAsync(KeyHash, null, 1000);
+        var result = await _service.CheckRateLimitAsync(KeyHash, new RequestRateLimits(null, 1000));
 
         Assert.False(result.IsAllowed);
         Assert.Equal("RPD", result.LimitType);
@@ -84,7 +84,7 @@ public class RedisVirtualKeyRateLimitServiceTests
             DeniedWindow = State("RPM", 600, 600, freesAt)
         });
 
-        var result = await _service.CheckRateLimitAsync(KeyHash, 600, null);
+        var result = await _service.CheckRateLimitAsync(KeyHash, new RequestRateLimits(600, null));
 
         Assert.Equal(freesAt, result.ResetsAt);
         Assert.True((result.ResetsAt - DateTime.UtcNow).TotalSeconds < 30);
@@ -95,7 +95,7 @@ public class RedisVirtualKeyRateLimitServiceTests
     {
         SetupWindows(Allow(("RPM", 2, 600), ("RPD", 998, 1000)));
 
-        var result = await _service.CheckRateLimitAsync(KeyHash, 600, 1000);
+        var result = await _service.CheckRateLimitAsync(KeyHash, new RequestRateLimits(600, 1000));
 
         Assert.True(result.IsAllowed);
         Assert.Equal("RPD", result.LimitType);
@@ -113,7 +113,7 @@ public class RedisVirtualKeyRateLimitServiceTests
             Windows = windows.Select(w => State(w.Scope, 0, w.Limit)).ToArray()
         });
 
-        var result = await _service.CheckRateLimitAsync(KeyHash, 600, null);
+        var result = await _service.CheckRateLimitAsync(KeyHash, new RequestRateLimits(600, null));
 
         Assert.True(result.IsAllowed);
         Assert.True(result.Degraded);
@@ -122,7 +122,7 @@ public class RedisVirtualKeyRateLimitServiceTests
     [Fact]
     public async Task CheckRateLimitAsync_NoLimitsConfigured_AllowsWithoutTouchingRedis()
     {
-        var result = await _service.CheckRateLimitAsync(KeyHash, null, null);
+        var result = await _service.CheckRateLimitAsync(KeyHash, new RequestRateLimits(null, null));
 
         Assert.True(result.IsAllowed);
         Assert.Equal(int.MaxValue, result.RequestsRemaining);
@@ -136,7 +136,7 @@ public class RedisVirtualKeyRateLimitServiceTests
     [InlineData(null)]
     public async Task CheckRateLimitAsync_MissingKeyHash_Throws(string? keyHash)
     {
-        await Assert.ThrowsAsync<ArgumentException>(() => _service.CheckRateLimitAsync(keyHash!, 10, null));
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CheckRateLimitAsync(keyHash!, new RequestRateLimits(10, null)));
     }
 
     private void SetupWindows(Func<IReadOnlyList<RateLimitWindow>, MultiWindowRateLimitResult> factory)

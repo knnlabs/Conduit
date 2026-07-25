@@ -60,7 +60,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Act - Make 10 requests, only 5 should succeed
             for (int i = 0; i < 10; i++)
             {
-                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
                 
                 if (result.IsAllowed)
                     allowedRequests++;
@@ -87,7 +87,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Act - Make 15 requests, only 10 should succeed
             for (int i = 0; i < 15; i++)
             {
-                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, null, rpdLimit);
+                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(null, rpdLimit));
                 
                 if (result.IsAllowed)
                     allowedRequests++;
@@ -125,7 +125,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 for (int i = 0; i < 5; i++)
                 {
-                    var result = await service1.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                    var result = await service1.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
                     if (result.IsAllowed)
                         Interlocked.Increment(ref totalAllowed);
                     else
@@ -138,7 +138,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 for (int i = 0; i < 5; i++)
                 {
-                    var result = await service2.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                    var result = await service2.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
                     if (result.IsAllowed)
                         Interlocked.Increment(ref totalAllowed);
                     else
@@ -151,7 +151,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 for (int i = 0; i < 5; i++)
                 {
-                    var result = await service3.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+                    var result = await service3.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
                     if (result.IsAllowed)
                         Interlocked.Increment(ref totalAllowed);
                     else
@@ -235,18 +235,18 @@ namespace ConduitLLM.Tests.Core.Services
             
             // Act
             // Make 2 requests (should succeed)
-            var result1 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
-            var result2 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+            var result1 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
+            var result2 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
             
             // Third request should be denied
-            var result3 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+            var result3 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
             
             // Wait for window to expire (simplified test - in production this is 60 seconds)
             // For testing, we can manually clear the key to simulate expiration
             await _db.KeyDeleteAsync(RedisKeys.RateLimit.VirtualKeyRpm(virtualKeyHash));
             
             // Request after window expiration should succeed
-            var result4 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, null);
+            var result4 = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, null));
 
             // Assert
             Assert.True(result1.IsAllowed);
@@ -269,7 +269,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Make some requests and verify they succeed
             for (int i = 0; i < 3; i++)
             {
-                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, rpmLimit, rpdLimit);
+                var result = await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(rpmLimit, rpdLimit));
                 Assert.True(result.IsAllowed, $"Request {i+1} should be allowed");
                 // Verify the request was counted
                 Assert.True(result.RequestsRemaining >= 0, $"Request {i+1} should have remaining count");
@@ -303,7 +303,7 @@ namespace ConduitLLM.Tests.Core.Services
             var virtualKeyHash = _testKeyPrefix + "remove-test";
             
             // Make some requests to populate data
-            await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, 10, 100);
+            await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(10, 100));
             await _rateLimitService.UpdateRateLimitsAsync(virtualKeyHash, 10, 100);
             
             // Act
