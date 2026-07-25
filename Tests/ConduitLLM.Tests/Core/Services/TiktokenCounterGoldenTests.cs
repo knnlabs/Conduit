@@ -37,7 +37,10 @@ namespace ConduitLLM.Tests.Core.Services
     /// the before/after in the commit message.
     /// </para>
     /// <para>
-    /// Captured from TiktokenSharp 1.2.1 on 2026-07-25 via the skipped emitters below.
+    /// Captured from Microsoft.ML.Tokenizers 2.0.0 on 2026-07-25 via the skipped emitters below.
+    /// (Originally captured from TiktokenSharp 1.2.1; the resolution pins moved when the
+    /// TiktokenSharp replacement promoted <c>P50KEdit</c> and <c>R50KBase</c> to exact encodings
+    /// and the probe was extended to distinguish all five - see the <see cref="Probe"/> remarks.)
     /// </para>
     /// </remarks>
     public class TiktokenCounterGoldenTests
@@ -47,20 +50,23 @@ namespace ConduitLLM.Tests.Core.Services
         public TiktokenCounterGoldenTests(ITestOutputHelper output) => _output = output;
 
         /// <summary>
-        /// Single ASCII probe shared by every resolution pin, chosen so that cl100k_base,
-        /// p50k_base and o200k_base each produce a <i>different</i> count.
+        /// Single ASCII probe shared by every resolution pin, chosen so that each of the five
+        /// supported encodings produces a <i>different</i> count.
         /// </summary>
         /// <remarks>
-        /// This matters more than it looks. Ordinary English prose tokenizes identically across all
-        /// three encodings - "The quick brown fox jumps over the lazy dog." is 10 tokens in every
+        /// This matters more than it looks. Ordinary English prose tokenizes identically across
+        /// the encodings - "The quick brown fox jumps over the lazy dog." is 10 tokens in every
         /// one of them - so a prose probe would pin 10 for all 23 TokenizerTypes and silently fail
         /// to notice a resolution change, which is the only thing these pins exist to catch.
-        /// Contractions separate o200k from the others, and a long run of a repeated character
-        /// separates p50k (which merges 4 at a time) from cl100k and o200k (8 at a time).
+        /// Each ingredient separates a specific pair: contractions separate o200k from cl100k; the
+        /// long run of a repeated character separates the p50k/r50k family (which merges 4 at a
+        /// time) from cl100k and o200k (8 at a time); the whitespace run separates r50k from p50k
+        /// (whose vocabulary added whitespace-run merges); and the fim marker separates p50k_edit
+        /// from p50k_base, because edit-specific special tokens are their only difference.
         /// <see cref="Probe_ProducesADifferentCountForEveryEncoding"/> enforces the property.
         /// </remarks>
         private static readonly string Probe =
-            "don't won't it's they're I'll we've " + new string('a', 64);
+            "don't won't it's they're I'll we've " + new string('a', 64) + "\n\n\t\t   <|fim_middle|>";
 
         /// <summary>
         /// Token count of <see cref="Probe"/> for each TokenizerType, through the full counter.
@@ -68,30 +74,30 @@ namespace ConduitLLM.Tests.Core.Services
         private static readonly IReadOnlyDictionary<string, int> ExpectedByTokenizer =
             new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                ["None"] = 22,
-                ["Cl100KBase"] = 22,
-                ["P50KBase"] = 29,
-                ["P50KEdit"] = 29,
-                ["R50KBase"] = 29,
-                ["O200KBase"] = 16,
-                ["Claude"] = 22,
-                ["Claude3"] = 22,
-                ["Gemini"] = 22,
-                ["PaLM"] = 22,
-                ["LLaMA"] = 22,
-                ["LLaMA2"] = 22,
-                ["LLaMA3"] = 22,
-                ["Mistral"] = 22,
-                ["Cohere"] = 22,
-                ["O200KHarmony"] = 16,
-                ["Kimi"] = 22,
-                ["Groq"] = 22,
-                ["Cerebras"] = 22,
-                ["MiniMax"] = 22,
-                ["SentencePiece"] = 22,
-                ["BPE"] = 22,
-                ["WordPiece"] = 22,
-                ["Tiktoken"] = 22,
+                ["None"] = 25,
+                ["Cl100KBase"] = 25,
+                ["P50KBase"] = 41,
+                ["P50KEdit"] = 34,
+                ["R50KBase"] = 42,
+                ["O200KBase"] = 24,
+                ["Claude"] = 25,
+                ["Claude3"] = 25,
+                ["Gemini"] = 25,
+                ["PaLM"] = 25,
+                ["LLaMA"] = 25,
+                ["LLaMA2"] = 25,
+                ["LLaMA3"] = 25,
+                ["Mistral"] = 25,
+                ["Cohere"] = 25,
+                ["O200KHarmony"] = 24,
+                ["Kimi"] = 25,
+                ["Groq"] = 25,
+                ["Cerebras"] = 25,
+                ["MiniMax"] = 25,
+                ["SentencePiece"] = 25,
+                ["BPE"] = 25,
+                ["WordPiece"] = 25,
+                ["Tiktoken"] = 25,
             };
 
         /// <summary>
@@ -253,7 +259,7 @@ namespace ConduitLLM.Tests.Core.Services
         public async Task Probe_ProducesADifferentCountForEveryEncoding()
         {
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-            foreach (var encoding in new[] { "cl100k_base", "p50k_base", "o200k_base" })
+            foreach (var encoding in new[] { "cl100k_base", "p50k_base", "p50k_edit", "r50k_base", "o200k_base" })
             {
                 counts[encoding] = await CounterFor(encoding)
                     .EstimateTokenCountAsync($"probe-{encoding}", Probe);

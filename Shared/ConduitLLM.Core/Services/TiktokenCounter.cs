@@ -5,18 +5,19 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
-
-using TiktokenSharp;
+using Microsoft.ML.Tokenizers;
 
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
-    /// Token counter implementation using TiktokenSharp for OpenAI-compatible tokenization.
+    /// Token counter implementation using Microsoft.ML.Tokenizers for OpenAI-compatible (tiktoken)
+    /// tokenization.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The TiktokenCounter provides token counting functionality using the TiktokenSharp library,
-    /// which implements OpenAI's tokenization algorithm. This service is essential for:
+    /// The TiktokenCounter provides token counting functionality using Microsoft.ML.Tokenizers,
+    /// which implements OpenAI's tiktoken algorithm with vocabulary data bundled as NuGet
+    /// packages — no runtime download (#1227). This service is essential for:
     /// </para>
     /// <list type="bullet">
     ///   <item><description>Accurately estimating token usage for cost calculation</description></item>
@@ -40,7 +41,7 @@ namespace ConduitLLM.Core.Services
     {
         // Cache encodings for performance, keyed by the requested tokenizer identifier.
         // A null value is a cached failure and means "use character-based estimation".
-        private static readonly Dictionary<string, TikToken?> _encodings = new();
+        private static readonly Dictionary<string, Tokenizer?> _encodings = new();
         private static readonly object _lock = new();
         private readonly ILogger<TiktokenCounter> _logger;
         private readonly IModelCapabilityService? _capabilityService;
@@ -92,7 +93,7 @@ namespace ConduitLLM.Core.Services
                     {
                         try
                         {
-                            tokenCount += encoding.Encode(message.Role).Count;
+                            tokenCount += encoding.CountTokens(message.Role);
                         }
                         catch (Exception ex)
                         {
@@ -108,7 +109,7 @@ namespace ConduitLLM.Core.Services
                             if (message.Content is string contentStr)
                             {
                                 // Simple string content
-                                tokenCount += encoding.Encode(contentStr).Count;
+                                tokenCount += encoding.CountTokens(contentStr);
                             }
                             else if (message.Content is JsonElement jsonElement)
                             {
@@ -119,7 +120,7 @@ namespace ConduitLLM.Core.Services
                             {
                                 // Try to handle content parts or other objects
                                 string textContent = ExtractTextFromContentObject(message.Content);
-                                tokenCount += encoding.Encode(textContent).Count;
+                                tokenCount += encoding.CountTokens(textContent);
                             }
                         }
                         catch (Exception ex)
@@ -136,7 +137,7 @@ namespace ConduitLLM.Core.Services
                     {
                         try
                         {
-                            tokenCount += encoding.Encode(message.Name).Count;
+                            tokenCount += encoding.CountTokens(message.Name);
                         }
                         catch (Exception ex)
                         {
@@ -178,7 +179,7 @@ namespace ConduitLLM.Core.Services
 
                 try
                 {
-                    return encoding.Encode(text).Count;
+                    return encoding.CountTokens(text);
                 }
                 catch (Exception ex)
                 {
@@ -194,11 +195,11 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Gets the appropriate TikToken encoding for a given model asynchronously.
+        /// Gets the appropriate tiktoken tokenizer for a given model asynchronously.
         /// </summary>
         /// <param name="modelName">The name of the model to get encoding for.</param>
-        /// <returns>The appropriate TikToken encoding, or null if it cannot be determined.</returns>
-        private async Task<TikToken?> GetEncodingForModelAsync(string modelName)
+        /// <returns>The appropriate tokenizer, or null if it cannot be determined.</returns>
+        private async Task<Tokenizer?> GetEncodingForModelAsync(string modelName)
         {
             try
             {
@@ -231,21 +232,21 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Gets or creates a TikToken encoding with thread-safe caching.
+        /// Gets or creates a tiktoken tokenizer with thread-safe caching.
         /// </summary>
         /// <param name="tokenizerType">
         /// The tokenizer identifier from model metadata (a <c>TokenizerType</c> name such as
         /// <c>Cl100KBase</c> or <c>LLaMA3</c>), or null to use the default encoding.
         /// </param>
         /// <param name="modelName">The model name (for logging purposes).</param>
-        /// <returns>The TikToken encoding, or null if it cannot be created.</returns>
+        /// <returns>The tokenizer, or null if it cannot be created.</returns>
         /// <remarks>
         /// The cache is keyed on <paramref name="tokenizerType"/> rather than on the resolved
         /// encoding name. Keying it on the resolved name meant an unresolvable tokenizer never
         /// populated an entry under the key that was looked up, so every single token count
         /// re-entered the failure path and re-logged (#1051).
         /// </remarks>
-        private TikToken? GetOrCreateEncoding(string? tokenizerType, string modelName)
+        private Tokenizer? GetOrCreateEncoding(string? tokenizerType, string modelName)
         {
             var cacheKey = tokenizerType?.Trim() ?? string.Empty;
 
@@ -271,15 +272,16 @@ namespace ConduitLLM.Core.Services
                         tokenizerType, modelName, resolved.EncodingName);
                 }
 
-                TikToken? encoding;
+                Tokenizer? encoding;
                 try
                 {
-                    encoding = TikToken.GetEncoding(resolved.EncodingName);
+                    encoding = TiktokenTokenizer.CreateForEncoding(resolved.EncodingName);
                 }
                 catch (Exception ex)
                 {
-                    // The map only ever yields encodings TiktokenSharp implements, so this is a
-                    // library or data-file problem rather than bad configuration.
+                    // The map only ever yields encodings whose vocabulary ships in a referenced
+                    // Microsoft.ML.Tokenizers.Data.* package, so this indicates a missing package
+                    // reference rather than bad configuration or a network failure.
                     _logger.LogError(ex,
                         "Failed to load encoding {EncodingName} for model {ModelName}; falling back to character-based estimation",
                         resolved.EncodingName, modelName);
@@ -313,7 +315,7 @@ namespace ConduitLLM.Core.Services
         /// usage depends on resolution which isn't always available at counting time.
         /// </para>
         /// </remarks>
-        private int EstimateJsonElementTokens(JsonElement element, TikToken encoding)
+        private int EstimateJsonElementTokens(JsonElement element, Tokenizer encoding)
         {
             int tokenCount = 0;
 
@@ -322,7 +324,7 @@ namespace ConduitLLM.Core.Services
                 string? stringValue = element.GetString();
                 if (stringValue != null)
                 {
-                    tokenCount += encoding.Encode(stringValue).Count;
+                    tokenCount += encoding.CountTokens(stringValue);
                 }
             }
             else if (element.ValueKind == JsonValueKind.Array)
@@ -341,7 +343,7 @@ namespace ConduitLLM.Core.Services
                         string? text = textElement.GetString();
                         if (text != null)
                         {
-                            tokenCount += encoding.Encode(text).Count;
+                            tokenCount += encoding.CountTokens(text);
                         }
                     }
                     else if (item.TryGetProperty("type", out var imgTypeElement) &&

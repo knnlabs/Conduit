@@ -5,9 +5,9 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// The outcome of resolving a <see cref="TokenizerType"/> to a Tiktoken encoding name.
     /// </summary>
-    /// <param name="EncodingName">The Tiktoken encoding identifier to hand to TiktokenSharp.</param>
+    /// <param name="EncodingName">The tiktoken encoding identifier to hand to Microsoft.ML.Tokenizers.</param>
     /// <param name="IsApproximation">
-    /// True when the requested tokenizer has no exact TiktokenSharp equivalent and
+    /// True when the requested tokenizer has no exact tiktoken equivalent and
     /// <paramref name="EncodingName"/> is a documented stand-in. Token counts are estimates in
     /// that case, which matters for context management and fallback billing estimates.
     /// </param>
@@ -17,22 +17,24 @@ namespace ConduitLLM.Core.Services
     public readonly record struct TokenizerEncoding(string EncodingName, bool IsApproximation, bool IsRecognized);
 
     /// <summary>
-    /// Maps <see cref="TokenizerType"/> values onto the encoding identifiers TiktokenSharp accepts.
+    /// Maps <see cref="TokenizerType"/> values onto the encoding identifiers
+    /// Microsoft.ML.Tokenizers accepts.
     /// </summary>
     /// <remarks>
     /// <para>
     /// Model metadata stores a <see cref="TokenizerType"/> and surfaces it as its enum name
-    /// (<c>Cl100KBase</c>, <c>LLaMA3</c>, ...), while TiktokenSharp expects lowercase encoding
-    /// identifiers (<c>cl100k_base</c>). Passing the enum name straight through made every
-    /// resolution — including the default — take an exception-driven fallback path.
+    /// (<c>Cl100KBase</c>, <c>LLaMA3</c>, ...), while the tokenizer library expects lowercase
+    /// encoding identifiers (<c>cl100k_base</c>). Passing the enum name straight through made
+    /// every resolution — including the default — take an exception-driven fallback path.
     /// </para>
     /// <para>
-    /// TiktokenSharp 1.2.1 implements exactly three encodings: <c>cl100k_base</c>,
-    /// <c>p50k_base</c> and <c>o200k_base</c>. <c>p50k_edit</c> and <c>r50k_base</c> throw
-    /// <see cref="NotImplementedException"/>, so they are mapped to the nearest implemented
-    /// vocabulary rather than requested directly. Every non-OpenAI tokenizer is an approximation:
-    /// Conduit uses these counts for context-window checks and for estimating usage when a
-    /// provider omits it, not as an authoritative count.
+    /// Microsoft.ML.Tokenizers implements five tiktoken encodings — <c>cl100k_base</c>,
+    /// <c>p50k_base</c>, <c>p50k_edit</c>, <c>r50k_base</c> and <c>o200k_base</c> — with the
+    /// vocabulary for each shipped in a <c>Microsoft.ML.Tokenizers.Data.*</c> package referenced
+    /// by ConduitLLM.Core. An encoding may only be added here alongside its data package, or
+    /// resolution fails at runtime. Every non-OpenAI tokenizer is an approximation: Conduit uses
+    /// these counts for context-window checks and for estimating usage when a provider omits it,
+    /// not as an authoritative count.
     /// </para>
     /// </remarks>
     public static class TokenizerEncodingMap
@@ -41,24 +43,22 @@ namespace ConduitLLM.Core.Services
         public const string DefaultEncoding = "cl100k_base";
 
         private const string P50KBase = "p50k_base";
+        private const string P50KEdit = "p50k_edit";
+        private const string R50KBase = "r50k_base";
         private const string O200KBase = "o200k_base";
 
-        // Exact: the tokenizer is an OpenAI encoding TiktokenSharp implements.
-        // Approximate: the tokenizer is a different vocabulary (or an OpenAI encoding
-        // TiktokenSharp does not implement) and the value is the closest available stand-in.
+        // Exact: the tokenizer is an OpenAI encoding with a bundled vocabulary.
+        // Approximate: the tokenizer is a different vocabulary and the value is the closest
+        // available stand-in.
         private static readonly IReadOnlyDictionary<TokenizerType, TokenizerEncoding> Map =
             new Dictionary<TokenizerType, TokenizerEncoding>
             {
                 // OpenAI — exact
                 [TokenizerType.Cl100KBase] = Exact(DefaultEncoding),
                 [TokenizerType.P50KBase] = Exact(P50KBase),
+                [TokenizerType.P50KEdit] = Exact(P50KEdit),
+                [TokenizerType.R50KBase] = Exact(R50KBase),
                 [TokenizerType.O200KBase] = Exact(O200KBase),
-
-                // OpenAI — not implemented by TiktokenSharp; nearest implemented vocabulary.
-                // p50k_edit is p50k_base plus edit-specific special tokens; r50k_base is the
-                // GPT-2/Codex vocabulary that p50k_base extends.
-                [TokenizerType.P50KEdit] = Approximate(P50KBase),
-                [TokenizerType.R50KBase] = Approximate(P50KBase),
 
                 // GPT-OSS harmony is the o200k vocabulary plus harmony-format special tokens.
                 [TokenizerType.O200KHarmony] = Approximate(O200KBase),
@@ -90,7 +90,7 @@ namespace ConduitLLM.Core.Services
             };
 
         /// <summary>
-        /// Resolves a tokenizer identifier to the encoding TiktokenSharp should be asked for.
+        /// Resolves a tokenizer identifier to the encoding the tokenizer library should be asked for.
         /// </summary>
         /// <param name="tokenizerType">
         /// A <see cref="TokenizerType"/> name (<c>Cl100KBase</c>, <c>LLaMA3</c>, ...) or an
@@ -119,9 +119,9 @@ namespace ConduitLLM.Core.Services
             {
                 DefaultEncoding => Exact(DefaultEncoding),
                 P50KBase => Exact(P50KBase),
+                P50KEdit => Exact(P50KEdit),
+                R50KBase => Exact(R50KBase),
                 O200KBase => Exact(O200KBase),
-                "p50k_edit" => Approximate(P50KBase),
-                "r50k_base" => Approximate(P50KBase),
                 "o200k_harmony" => Approximate(O200KBase),
                 _ => new TokenizerEncoding(DefaultEncoding, IsApproximation: true, IsRecognized: false)
             };

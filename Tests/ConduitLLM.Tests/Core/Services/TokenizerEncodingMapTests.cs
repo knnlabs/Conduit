@@ -13,13 +13,17 @@ namespace ConduitLLM.Tests.Core.Services
     /// </remarks>
     public class TokenizerEncodingMapTests
     {
-        // The three encodings TiktokenSharp 1.2.1 actually implements. Any other value would
-        // send the counter back down the exception path this issue removed.
-        private static readonly string[] SupportedEncodings = { "cl100k_base", "p50k_base", "o200k_base" };
+        // The five encodings whose vocabulary ships in a referenced
+        // Microsoft.ML.Tokenizers.Data.* package. Any other value would send the counter back
+        // down the exception path this issue removed.
+        private static readonly string[] SupportedEncodings =
+            { "cl100k_base", "p50k_base", "p50k_edit", "r50k_base", "o200k_base" };
 
         [Theory]
         [InlineData("Cl100KBase", "cl100k_base")]
         [InlineData("P50KBase", "p50k_base")]
+        [InlineData("P50KEdit", "p50k_edit")]
+        [InlineData("R50KBase", "r50k_base")]
         [InlineData("O200KBase", "o200k_base")]
         public void Resolve_OpenAiEncoding_ReturnsExactEncoding(string tokenizerType, string expected)
         {
@@ -38,8 +42,6 @@ namespace ConduitLLM.Tests.Core.Services
         [InlineData("Mistral", "cl100k_base")]
         [InlineData("Kimi", "cl100k_base")]
         [InlineData("O200KHarmony", "o200k_base")]
-        [InlineData("P50KEdit", "p50k_base")]
-        [InlineData("R50KBase", "p50k_base")]
         public void Resolve_NonTiktokenTokenizer_ReturnsDocumentedApproximation(string tokenizerType, string expected)
         {
             var result = TokenizerEncodingMap.Resolve(tokenizerType);
@@ -75,8 +77,6 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Theory]
-        [InlineData("p50k_edit", "p50k_base")]
-        [InlineData("r50k_base", "p50k_base")]
         [InlineData("o200k_harmony", "o200k_base")]
         public void Resolve_UnimplementedEncodingIdentifier_ReturnsNearestSupported(string encoding, string expected)
         {

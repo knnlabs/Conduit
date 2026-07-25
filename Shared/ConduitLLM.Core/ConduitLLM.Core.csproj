@@ -12,11 +12,19 @@
     <PackageReference Include="Microsoft.Extensions.Options" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="MessagePack" />
+    <!-- Direct reference lifts the vulnerable 9.0.4 that Microsoft.ML.Tokenizers pulls transitively
+         (GHSA-73j8-2gch-69rq); transitive pinning is not enabled centrally. -->
+    <PackageReference Include="Microsoft.Bcl.Memory" />
+    <PackageReference Include="Microsoft.ML.Tokenizers" />
+    <!-- Offline tiktoken vocabularies for every encoding TokenizerEncodingMap can resolve to. -->
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.Cl100kBase" />
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" />
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.P50kBase" />
+    <PackageReference Include="Microsoft.ML.Tokenizers.Data.R50kBase" />
     <PackageReference Include="Polly" />
     <PackageReference Include="prometheus-net" />
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="StackExchange.Redis" />
-    <PackageReference Include="TiktokenSharp" />
   </ItemGroup>
   
   <ItemGroup>
