@@ -26,6 +26,8 @@ Deeper operational runbooks stand on their own and are linked from Monitoring:
   credential/account errors and restoring keys safely.
 - **[Rate limiting](./operations/rate-limiting.md)** — what can be limited and at which scope, what
   a throttled client sees, and what happens when the limit store is unreachable.
+- **[Messaging throughput](./operations/messaging-throughput.md)** — what caps the event bus, which
+  queue binds first, why latency is the wrong alarm, and what to tune before anything drastic.
 
 **[Versioning](./Versioning.md)** documents the release and version scheme.
 
