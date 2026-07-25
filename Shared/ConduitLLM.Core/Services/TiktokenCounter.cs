@@ -66,7 +66,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<TokenCount> EstimateTokenCountAsync(string modelName, List<Message> messages)
+        public async Task<TokenCount> EstimateTokenCountAsync(string modelName, List<Message> messages, IReadOnlyList<Tool>? tools = null)
         {
             if (messages == null || !messages.Any())
             {
@@ -80,7 +80,7 @@ namespace ConduitLLM.Core.Services
                 {
                     // Fallback strategy if we can't get the right encoding
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return Finish(new TokenCount(FallbackEstimateTokens(messages), TokenCountFidelity.CharacterHeuristic));
+                    return Finish(new TokenCount(FallbackEstimateTokens(messages, tools), TokenCountFidelity.CharacterHeuristic));
                 }
 
                 int tokenCount = 0;
@@ -151,6 +151,36 @@ namespace ConduitLLM.Core.Services
                         }
                         tokenCount += 1; // Additional overhead for name field
                     }
+
+                    // Assistant tool calls travel back to the provider as prompt content on the
+                    // next turn, so agentic histories are structurally under-counted without them.
+                    if (message.ToolCalls is { Count: > 0 })
+                    {
+                        try
+                        {
+                            tokenCount += CountToolCallTokens(message.ToolCalls, encoding);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Error encoding tool calls. Using fallback estimate.");
+                            tokenCount += ToolCallFallbackChars(message.ToolCalls) / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
+                        }
+                    }
+                }
+
+                if (tools is { Count: > 0 })
+                {
+                    try
+                    {
+                        tokenCount += CountToolDefinitionTokens(tools, encoding);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error encoding tool definitions. Using fallback estimate.");
+                        tokenCount += ToolDefinitionFallbackChars(tools) / 4;
+                        fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
+                    }
                 }
 
                 tokenCount += 3; // Every reply is primed with <|start|>assistant<|message|>
@@ -160,9 +190,70 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return Finish(new TokenCount(FallbackEstimateTokens(messages), TokenCountFidelity.CharacterHeuristic));
+                return Finish(new TokenCount(FallbackEstimateTokens(messages, tools), TokenCountFidelity.CharacterHeuristic));
             }
         }
+
+        /// <summary>
+        /// Counts the tokens an assistant message's tool calls contribute when replayed as prompt
+        /// context: the function name and raw JSON arguments, plus a small per-call framing cost.
+        /// </summary>
+        /// <remarks>
+        /// Providers do not publish their exact serialization of historical tool calls, so the
+        /// per-call overhead of 3 mirrors the reply-priming constant used elsewhere in this
+        /// counter. The name and arguments dominate in practice.
+        /// </remarks>
+        private static int CountToolCallTokens(IReadOnlyList<ToolCall> toolCalls, Tokenizer encoding)
+        {
+            int tokenCount = 0;
+            foreach (var toolCall in toolCalls)
+            {
+                tokenCount += 3;
+                tokenCount += encoding.CountTokens(toolCall.Function.Name);
+                tokenCount += encoding.CountTokens(toolCall.Function.Arguments);
+            }
+
+            return tokenCount;
+        }
+
+        /// <summary>
+        /// Counts the tokens a request's tool definitions contribute: providers inject each
+        /// function's name, description and JSON-schema parameters into the prompt.
+        /// </summary>
+        /// <remarks>
+        /// OpenAI compacts schemas into a TypeScript-like namespace listing before tokenizing;
+        /// counting the raw JSON schema instead over-counts slightly (schema punctuation the
+        /// compaction strips), which errs on the safe side for reservations and fallback billing.
+        /// The constants — 10 for the scaffolding around the tools block, 6 per function — follow
+        /// the same published community measurements the compaction format comes from.
+        /// </remarks>
+        private static int CountToolDefinitionTokens(IReadOnlyList<Tool> tools, Tokenizer encoding)
+        {
+            int tokenCount = 10;
+            foreach (var tool in tools)
+            {
+                tokenCount += 6;
+                tokenCount += encoding.CountTokens(tool.Function.Name);
+                if (!string.IsNullOrEmpty(tool.Function.Description))
+                {
+                    tokenCount += encoding.CountTokens(tool.Function.Description);
+                }
+                if (tool.Function.Parameters is not null)
+                {
+                    tokenCount += encoding.CountTokens(tool.Function.Parameters.ToJsonString());
+                }
+            }
+
+            return tokenCount;
+        }
+
+        private static int ToolCallFallbackChars(IReadOnlyList<ToolCall> toolCalls) =>
+            toolCalls.Sum(c => c.Function.Name.Length + c.Function.Arguments.Length);
+
+        private static int ToolDefinitionFallbackChars(IReadOnlyList<Tool> tools) =>
+            tools.Sum(t => t.Function.Name.Length
+                + (t.Function.Description?.Length ?? 0)
+                + (t.Function.Parameters?.ToJsonString().Length ?? 0));
 
         /// <inheritdoc />
         public async Task<TokenCount> EstimateTokenCountAsync(string modelName, string text)
@@ -469,13 +560,19 @@ namespace ConduitLLM.Core.Services
         /// estimate when the correct encoder is unavailable or fails.
         /// </para>
         /// </remarks>
-        private int FallbackEstimateTokens(List<Message> messages)
+        private int FallbackEstimateTokens(List<Message> messages, IReadOnlyList<Tool>? tools = null)
         {
             // Very rough estimation based on characters
             int totalCharacters = messages.Sum(m =>
                 (m.Content != null ? m.Content.ToString()?.Length ?? 0 : 0) +
                 (m.Role?.Length ?? 0) +
-                (m.Name?.Length ?? 0));
+                (m.Name?.Length ?? 0) +
+                (m.ToolCalls is { Count: > 0 } ? ToolCallFallbackChars(m.ToolCalls) : 0));
+
+            if (tools is { Count: > 0 })
+            {
+                totalCharacters += ToolDefinitionFallbackChars(tools);
+            }
 
             // Rough estimate: 1 token ≈ 4 characters in English
             return totalCharacters / 4;

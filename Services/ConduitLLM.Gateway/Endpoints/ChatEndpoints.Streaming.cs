@@ -511,6 +511,7 @@ namespace ConduitLLM.Gateway.Endpoints
                     state.StreamingModel ?? request.Model,
                     request.Messages,
                     completionOutput,
+                    request.Tools,
                     cancellationToken);
 
                 HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(

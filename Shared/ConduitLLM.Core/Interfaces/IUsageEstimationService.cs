@@ -15,12 +15,17 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="modelId">The model identifier used for the request</param>
         /// <param name="inputMessages">The input messages sent to the model</param>
         /// <param name="streamedContent">The accumulated content from the streaming response</param>
+        /// <param name="tools">
+        /// The request's tool definitions, or null. Providers inject these schemas into the
+        /// prompt, so passing them keeps agentic requests from being under-billed (#1229).
+        /// </param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Estimated usage with prompt and completion tokens</returns>
         Task<Usage> EstimateUsageFromStreamingResponseAsync(
             string modelId,
             List<Message> inputMessages,
             string streamedContent,
+            IReadOnlyList<Tool>? tools = null,
             CancellationToken cancellationToken = default);
 
         /// <summary>

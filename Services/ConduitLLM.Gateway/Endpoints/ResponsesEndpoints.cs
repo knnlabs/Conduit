@@ -590,6 +590,7 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
             providerModel ?? request.Model,
             request.Messages,
             output,
+            request.Tools,
             cancellationToken);
         accounting.RecordProviderUsage(estimated, providerModel ?? request.Model, UsageEvidenceSource.Estimated);
         return estimated;
@@ -621,6 +622,7 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
                 response.Model ?? request.Model,
                 request.Messages,
                 output,
+                request.Tools,
                 cancellationToken);
             accounting.RecordProviderUsage(
                 estimated,

@@ -110,6 +110,24 @@ public class RequestTokenEstimatorTests
     }
 
     [Fact]
+    public async Task EstimateAsync_Chat_ForwardsToolDefinitionsToTheCounter()
+    {
+        // Tool schemas are injected into the prompt by the provider, so leaving them out of the
+        // estimate under-counts agentic traffic against the token window (#1229).
+        var tools = new List<Tool> { new() { Function = new FunctionDefinition { Name = "get_weather" } } };
+        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>(), tools))
+            .ReturnsAsync(new TokenCount(500, TokenCountFidelity.Exact));
+
+        var request = Chat(maxTokens: 100);
+        request.Tools = tools;
+
+        var estimate = await Estimator().EstimateAsync(request);
+
+        estimate!.Value.PromptTokens.Should().Be(500);
+        _counter.Verify(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>(), tools), Times.Once);
+    }
+
+    [Fact]
     public async Task EstimateAsync_RequestWithoutTokenSemantics_ReturnsNull()
     {
         // Image and audio requests are not measured in tokens, so they carry no token window.

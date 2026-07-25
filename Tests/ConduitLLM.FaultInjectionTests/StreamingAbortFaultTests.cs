@@ -57,6 +57,7 @@ public sealed class StreamingAbortFaultTests(BillingFaultFixture fixture)
         var estimator = new Mock<IUsageEstimationService>();
         estimator.Setup(service => service.EstimateUsageFromStreamingResponseAsync(
                 "fault-model", It.IsAny<List<Message>>(), "partial completion",
+                It.IsAny<IReadOnlyList<Tool>?>(),
                 It.Is<CancellationToken>(ct => ct.CanBeCanceled)))
             .ReturnsAsync(new Usage { PromptTokens = 20, CompletionTokens = 30, TotalTokens = 50 });
         var endpoints = new ChatEndpoints(
