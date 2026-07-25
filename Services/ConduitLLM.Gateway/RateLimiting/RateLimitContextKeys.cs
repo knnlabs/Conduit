@@ -24,6 +24,9 @@ public static class RateLimitContextKeys
     public const string GroupTpm = "VirtualKeyGroup.RateLimitTpm";
     public const string GroupMaxParallelRequests = "VirtualKeyGroup.MaxParallelRequests";
 
+    /// <summary>Raw per-model override document from the key, parsed only when a route needs it.</summary>
+    public const string ModelRateLimits = "VirtualKey.ModelRateLimits";
+
     /// <summary>The in-flight token reservation, if this request made one.</summary>
     public const string TokenReservation = "RateLimit.TokenReservation";
 }

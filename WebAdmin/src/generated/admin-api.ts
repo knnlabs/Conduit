@@ -4129,6 +4129,9 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      modelRateLimits?: null | {
+        [key: string]: components["schemas"]["ModelRateLimitDto"];
+      };
     };
     CreateVirtualKeyResponseDto: {
       virtualKey: string;
@@ -5748,6 +5751,12 @@ export interface components {
         [key: string]: unknown;
       };
       capabilities?: null | components["schemas"]["ModelCapabilitiesDto"];
+    };
+    ModelRateLimitDto: {
+      /** Format: int32 */
+      rpm?: null | number;
+      /** Format: int32 */
+      tpm?: null | number;
     };
     /** @description Data transfer object representing a series or family of related AI models. */
     ModelSeriesDto: {
@@ -7563,6 +7572,9 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      modelRateLimits?: null | {
+        [key: string]: components["schemas"]["ModelRateLimitDto"];
+      };
     };
     UsageDto: {
       /** Format: int32 */
@@ -7700,6 +7712,9 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      modelRateLimits?: null | {
+        [key: string]: components["schemas"]["ModelRateLimitDto"];
+      };
       description?: null | string;
     };
     VirtualKeyGroupDto: {

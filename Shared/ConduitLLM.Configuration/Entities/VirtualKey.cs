@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 using ConduitLLM.Configuration.Entities.Interfaces;
 
@@ -105,6 +106,20 @@ public partial class VirtualKey : IEntity<int>, IAuditableEntity
     /// request only — for asynchronous jobs that means the submit call, not the job.
     /// </remarks>
     public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
+    /// Per-model rate limit overrides, keyed by the model alias the caller sends.
+    /// JSON of the form <c>{"gpt-5": {"rpm": 1000, "tpm": 200000}, "sora*": {"rpm": 10}}</c>.
+    /// </summary>
+    /// <remarks>
+    /// A key's overall ceiling says nothing about which models it burns it on. An override lets
+    /// the same key call a cheap chat model freely while being held to a handful of requests a
+    /// minute against an expensive video model. Overrides apply on top of the key and group
+    /// ceilings; they narrow, never widen. A trailing <c>*</c> matches by prefix, and an exact
+    /// alias always wins over a prefix rule.
+    /// </remarks>
+    [Column(TypeName = "jsonb")]
+    public string? ModelRateLimits { get; set; }
 
     /// <summary>
     /// Virtual collection of request logs

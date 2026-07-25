@@ -43,6 +43,24 @@ public sealed class RequestTokenEstimator
     }
 
     /// <summary>
+    /// Whether this request shape is measured in tokens at all. Image, video and audio requests
+    /// are not, so they carry no token window.
+    /// </summary>
+    public static bool IsTokenBearing(object request) =>
+        request is ChatCompletionRequest or EmbeddingRequest;
+
+    /// <summary>
+    /// The model alias the caller asked for, used to resolve per-model overrides without
+    /// paying for a token estimate.
+    /// </summary>
+    public static string? TryGetModel(object? request) => request switch
+    {
+        ChatCompletionRequest chat => chat.Model,
+        EmbeddingRequest embedding => embedding.Model,
+        _ => null
+    };
+
+    /// <summary>
     /// Returns the estimated cost of <paramref name="request"/>, or null when the request has
     /// no token semantics or its size cannot be determined.
     /// </summary>

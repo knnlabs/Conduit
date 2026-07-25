@@ -155,6 +155,13 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             changes.Add(("RateLimitTpm", preState.RateLimitTpm?.ToString() ?? "null", request.RateLimitTpm?.ToString() ?? "null"));
         if (request.MaxParallelRequests.HasValue && preState.MaxParallelRequests != request.MaxParallelRequests)
             changes.Add(("MaxParallelRequests", preState.MaxParallelRequests?.ToString() ?? "null", request.MaxParallelRequests?.ToString() ?? "null"));
+        if (request.ModelRateLimits is not null &&
+            DescribeModelLimits(preState.ModelRateLimits) != DescribeModelLimits(request.ModelRateLimits))
+        {
+            changes.Add(("ModelRateLimits",
+                DescribeModelLimits(preState.ModelRateLimits),
+                DescribeModelLimits(request.ModelRateLimits)));
+        }
         if (request.VirtualKeyGroupId.HasValue && preState.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
             changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId.Value.ToString()));
 
@@ -294,5 +301,20 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             return AdminResults.NotFoundEntity("Virtual key", null);
         }
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Renders per-model overrides as a stable one-line summary for the audit trail.
+    /// </summary>
+    private static string DescribeModelLimits(Dictionary<string, ModelRateLimitDto>? limits)
+    {
+        if (limits is null || limits.Count == 0)
+        {
+            return "none";
+        }
+
+        return string.Join(", ", limits
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+            .Select(entry => $"{entry.Key}:rpm={entry.Value.Rpm?.ToString() ?? "-"},tpm={entry.Value.Tpm?.ToString() ?? "-"}"));
     }
 }

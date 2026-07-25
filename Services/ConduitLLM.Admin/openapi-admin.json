@@ -26629,6 +26629,15 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "modelRateLimits": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelRateLimitDto"
+            }
           }
         }
       },
@@ -30294,6 +30303,29 @@
                 "$ref": "#/components/schemas/ModelCapabilitiesDto"
               }
             ]
+          }
+        }
+      },
+      "ModelRateLimitDto": {
+        "type": "object",
+        "properties": {
+          "rpm": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "tpm": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -34591,6 +34623,15 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "modelRateLimits": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelRateLimitDto"
+            }
           }
         }
       },
@@ -34996,6 +35037,15 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "modelRateLimits": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelRateLimitDto"
+            }
           },
           "description": {
             "type": [

@@ -103,9 +103,38 @@ namespace ConduitLLM.Configuration.Utilities
                 RateLimitRpd = virtualKey.RateLimitRpd,
                 RateLimitTpm = virtualKey.RateLimitTpm,
                 MaxParallelRequests = virtualKey.MaxParallelRequests,
+                ModelRateLimits = ParseModelRateLimits(virtualKey.ModelRateLimits),
                 Description = virtualKey.Description,
             };
         }
+
+        /// <summary>
+        /// Reads the stored per-model override document. Malformed JSON is surfaced as no
+        /// overrides rather than an error: it must not make the key unreadable.
+        /// </summary>
+        public static Dictionary<string, ModelRateLimitDto>? ParseModelRateLimits(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            try
+            {
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, ModelRateLimitDto>>(
+                    json,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                return parsed is { Count: > 0 } ? parsed : null;
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>Serialises per-model overrides for storage, collapsing an empty map to null.</summary>
+        public static string? SerializeModelRateLimits(Dictionary<string, ModelRateLimitDto>? limits) =>
+            limits is { Count: > 0 } ? System.Text.Json.JsonSerializer.Serialize(limits) : null;
 
         public static List<string>? ParseAllowedModels(string? allowedModels) =>
             string.IsNullOrWhiteSpace(allowedModels)

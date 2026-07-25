@@ -39,4 +39,10 @@ public class UpdateVirtualKeyRequestDto
     /// Optional cap on requests in flight at once. Null leaves the existing value untouched.
     /// </summary>
     public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
+    /// Per-model rate limit overrides keyed by model alias. Supplying this replaces the whole
+    /// map; null leaves the existing overrides untouched.
+    /// </summary>
+    public Dictionary<string, ModelRateLimitDto>? ModelRateLimits { get; set; }
 }

@@ -37,6 +37,14 @@ public static class RedisKeys
         /// </summary>
         public static string VirtualKeyConcurrency(string hash) => $"rate:vk:{hash}:concurrency";
 
+        // Per-model overrides are partitioned by the alias the caller sends, which is what the
+        // operator configured a ceiling against.
+        public static string VirtualKeyModelRpm(string hash, string modelAlias) =>
+            $"rate:vk:{hash}:model:{modelAlias}:rpm";
+
+        public static string VirtualKeyModelTpm(string hash, string modelAlias) =>
+            $"rate:vk:{hash}:model:{modelAlias}:tpm";
+
         public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
 
         // Group-scope windows. Every key in a group shares these, so the partition is the

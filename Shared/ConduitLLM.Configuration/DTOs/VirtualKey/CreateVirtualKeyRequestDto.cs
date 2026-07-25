@@ -38,4 +38,10 @@ public class CreateVirtualKeyRequestDto
     /// Optional cap on requests in flight at once. Null leaves the key without a cap.
     /// </summary>
     public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
+    /// Per-model rate limit overrides keyed by model alias. A trailing <c>*</c> matches by
+    /// prefix; an exact alias always wins over a prefix rule.
+    /// </summary>
+    public Dictionary<string, ModelRateLimitDto>? ModelRateLimits { get; set; }
 }

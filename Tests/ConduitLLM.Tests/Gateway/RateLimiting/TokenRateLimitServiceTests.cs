@@ -34,7 +34,7 @@ public class TokenRateLimitServiceTests
         SetupWindow(allowed: true, current: 4_200, limit: 100_000);
         var context = NewContext(tpm: 100_000);
 
-        var decision = await _service.ReserveAsync(context, 4_200);
+        var decision = await _service.ReserveAsync(context, "gpt-5", 4_200);
 
         decision!.IsAllowed.Should().BeTrue();
         decision.Scope.Should().Be("TPM");
@@ -52,7 +52,7 @@ public class TokenRateLimitServiceTests
         SetupWindow(allowed: true, current: 500, limit: 10_000, entryId: "entry-42");
         var context = NewContext(tpm: 10_000);
 
-        await _service.ReserveAsync(context, 500);
+        await _service.ReserveAsync(context, "gpt-5", 500);
 
         var reservation = context.Items[RateLimitContextKeys.TokenReservation].Should().BeOfType<TokenReservation>().Subject;
         reservation.EntryId.Should().Be("entry-42");
@@ -66,7 +66,7 @@ public class TokenRateLimitServiceTests
         SetupWindow(allowed: false, current: 99_000, limit: 100_000);
         var context = NewContext(tpm: 100_000);
 
-        var decision = await _service.ReserveAsync(context, 8_000);
+        var decision = await _service.ReserveAsync(context, "gpt-5", 8_000);
 
         decision!.IsAllowed.Should().BeFalse();
         decision.Limit.Should().Be(100_000);
@@ -82,7 +82,7 @@ public class TokenRateLimitServiceTests
         SetupWindow(allowed: true, current: 0, limit: 1_000);
         var context = NewContext(tpm: 1_000);
 
-        await _service.ReserveAsync(context, 50_000);
+        await _service.ReserveAsync(context, "gpt-5", 50_000);
 
         _submitted!.Single().Weight.Should().Be(1_000);
     }
@@ -94,7 +94,7 @@ public class TokenRateLimitServiceTests
     {
         var context = NewContext(tpm);
 
-        var decision = await _service.ReserveAsync(context, 5_000);
+        var decision = await _service.ReserveAsync(context, "gpt-5", 5_000);
 
         decision.Should().BeNull();
         _limiter.Verify(
@@ -108,7 +108,7 @@ public class TokenRateLimitServiceTests
         var context = new DefaultHttpContext();
         context.Items[RateLimitContextKeys.Tpm] = 10_000;
 
-        (await _service.ReserveAsync(context, 100)).Should().BeNull();
+        (await _service.ReserveAsync(context, "gpt-5", 100)).Should().BeNull();
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public class TokenRateLimitServiceTests
     {
         SetupWindow(allowed: true, current: 9_000, limit: 100_000, entryId: "entry-1");
         var context = NewContext(tpm: 100_000);
-        await _service.ReserveAsync(context, 9_000);
+        await _service.ReserveAsync(context, "gpt-5", 9_000);
 
         // Reserved 8k prompt + 1k completion budget; the model answered in 120 tokens.
         await _service.ReconcileAsync(context, 8_120);
@@ -131,7 +131,7 @@ public class TokenRateLimitServiceTests
         // would silently corrupt the window total.
         SetupWindow(allowed: true, current: 5_000, limit: 100_000, entryId: "entry-1");
         var context = NewContext(tpm: 100_000);
-        await _service.ReserveAsync(context, 5_000);
+        await _service.ReserveAsync(context, "gpt-5", 5_000);
 
         await _service.ReconcileAsync(context, 1_000);
         await _service.ReconcileAsync(context, 1_000);
@@ -146,7 +146,7 @@ public class TokenRateLimitServiceTests
     {
         SetupWindow(allowed: true, current: 2_000, limit: 100_000, entryId: "entry-1");
         var context = NewContext(tpm: 100_000);
-        await _service.ReserveAsync(context, 2_000);
+        await _service.ReserveAsync(context, "gpt-5", 2_000);
 
         await _service.ReconcileAsync(context, 2_000);
 
@@ -170,7 +170,7 @@ public class TokenRateLimitServiceTests
     {
         SetupWindow(allowed: true, current: 3_000, limit: 100_000, entryId: "entry-1");
         var context = NewContext(tpm: 100_000);
-        await _service.ReserveAsync(context, 3_000);
+        await _service.ReserveAsync(context, "gpt-5", 3_000);
 
         await _service.ReconcileAsync(context, -5);
 

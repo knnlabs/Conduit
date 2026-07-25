@@ -86,6 +86,11 @@ public class VirtualKeyDto
     public int? MaxParallelRequests { get; set; }
 
     /// <summary>
+    /// Per-model rate limit overrides keyed by model alias.
+    /// </summary>
+    public Dictionary<string, ModelRateLimitDto>? ModelRateLimits { get; set; }
+
+    /// <summary>
     /// Optional description of the key's purpose
     /// </summary>
     public string? Description { get; set; }

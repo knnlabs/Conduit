@@ -1,14 +1,16 @@
+using ConduitLLM.Core.Services;
+
 namespace ConduitLLM.Gateway.RateLimiting;
 
 /// <summary>
-/// Enforces per-key token-per-minute ceilings on the endpoints that consume tokens.
+/// Enforces the rate limits that need the request body: token ceilings and per-model overrides.
 /// </summary>
 /// <remarks>
 /// <para>
-/// This runs as an endpoint filter rather than middleware because a token estimate needs the
-/// prompt, and the prompt only exists once the request has been bound. Doing it here costs no
-/// body buffering and no second parse. Request-counting windows stay in
-/// <c>VirtualKeyRateLimitMiddleware</c>, which can decide without reading the body at all.
+/// This runs as an endpoint filter rather than middleware because both need something only the
+/// bound request has — a token estimate needs the prompt, and a per-model limit needs the model
+/// alias. Doing it here costs no body buffering and no second parse. Request-counting windows
+/// stay in <c>VirtualKeyRateLimitMiddleware</c>, which can decide without reading the body.
 /// </para>
 /// <para>
 /// The 429 it produces is byte-identical to the middleware's, so a client cannot tell which
@@ -32,20 +34,24 @@ public sealed class TokenRateLimitFilter : IEndpointFilter
     {
         var http = context.HttpContext;
 
-        // No token ceiling on this key: skip estimation entirely rather than tokenising a
-        // prompt whose result nobody will use.
-        if (http.Items[RateLimitContextKeys.Tpm] is not int tpmLimit || tpmLimit <= 0)
+        var request = FindTokenBearingRequest(context);
+        if (request is null)
         {
             return await next(context);
         }
 
-        var estimate = await EstimateAsync(context);
-        if (estimate is null)
+        var modelAlias = RequestTokenEstimator.TryGetModel(request);
+
+        // Only tokenise when some token window actually applies. A key limited purely by
+        // requests per minute should not pay for an estimate nobody reads.
+        var estimatedTokens = 0L;
+        if (NeedsTokenEstimate(http, modelAlias))
         {
-            return await next(context);
+            var estimate = await _estimator.EstimateAsync(request);
+            estimatedTokens = estimate?.Total ?? 0;
         }
 
-        var decision = await _tokenRateLimitService.ReserveAsync(http, estimate.Value.Total);
+        var decision = await _tokenRateLimitService.ReserveAsync(http, modelAlias, estimatedTokens);
         if (decision is null)
         {
             return await next(context);
@@ -55,27 +61,50 @@ public sealed class TokenRateLimitFilter : IEndpointFilter
 
         if (!decision.IsAllowed)
         {
+            var retryAfter = RateLimitResponse.RetryAfterSeconds(decision.ResetsAt);
             return RateLimitResponse.AsResult(
                 http,
                 decision.Scope,
                 decision.Limit,
                 decision.ResetsAt,
-                $"Token rate limit exceeded ({decision.Limit} tokens per minute). " +
-                $"Retry after {RateLimitResponse.RetryAfterSeconds(decision.ResetsAt)} seconds.");
+                $"Rate limit exceeded for {decision.Scope} ({decision.Limit} per minute). " +
+                $"Retry after {retryAfter} seconds.");
         }
 
         return await next(context);
     }
 
-    private async Task<TokenEstimate?> EstimateAsync(EndpointFilterInvocationContext context)
+    /// <summary>
+    /// Whether any configured window charges this request in tokens rather than requests.
+    /// </summary>
+    private static bool NeedsTokenEstimate(HttpContext http, string? modelAlias)
     {
-        // The bound request DTO is one of the route's arguments; which position varies by route.
+        if (http.Items[RateLimitContextKeys.Tpm] is int keyTpm && keyTpm > 0)
+        {
+            return true;
+        }
+
+        if (http.Items[RateLimitContextKeys.GroupId] is int &&
+            http.Items[RateLimitContextKeys.GroupTpm] is int groupTpm && groupTpm > 0)
+        {
+            return true;
+        }
+
+        var rules = ModelRateLimitPolicy.Parse(http.Items[RateLimitContextKeys.ModelRateLimits] as string);
+        return ModelRateLimitPolicy.Resolve(rules, modelAlias)?.Tpm is > 0;
+    }
+
+    /// <summary>
+    /// Picks the bound request DTO out of the route's arguments; which position it occupies
+    /// varies by route.
+    /// </summary>
+    private static object? FindTokenBearingRequest(EndpointFilterInvocationContext context)
+    {
         foreach (var argument in context.Arguments)
         {
-            var estimate = await _estimator.EstimateAsync(argument);
-            if (estimate is not null)
+            if (argument is not null && RequestTokenEstimator.IsTokenBearing(argument))
             {
-                return estimate;
+                return argument;
             }
         }
 
