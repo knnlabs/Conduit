@@ -8,10 +8,6 @@ public sealed class OperationIdValidationDocumentTransformer : IOpenApiDocumentT
 {
     public Task TransformAsync(OpenApiDocument document, OpenApiDocumentTransformerContext context, CancellationToken cancellationToken)
     {
-        // Stream responses are normalized to inline binary schemas by
-        // ResponseContractOperationTransformer. The framework also emits an unused
-        // Stream component for the endpoint metadata, so remove that duplicate.
-        document.Components?.Schemas?.Remove("Stream");
         Validate(document);
         return Task.CompletedTask;
     }

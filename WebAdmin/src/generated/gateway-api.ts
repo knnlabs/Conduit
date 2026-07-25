@@ -1139,12 +1139,6 @@ export interface components {
       embedding_cost_per_million_tokens: null | number | string;
       currency: string;
     };
-    OpenAIError: {
-      message: string;
-      type: string;
-      param?: null | string;
-      code?: null | string;
-    };
     OpenAIErrorResponse: {
       error: {
         message: string;

@@ -5823,33 +5823,6 @@
         },
         "description": "Operator-configured pricing for a discovered model, in USD per million tokens.\r\nOnly the standard token rates and the pricing-model discriminator are projected;\r\nclients should treat any `pricing_model` other than `standard` as too\r\ncomplex to preview rather than rendering a number from these fields."
       },
-      "OpenAIError": {
-        "required": [
-          "message",
-          "type"
-        ],
-        "type": "object",
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "type": {
-            "type": "string"
-          },
-          "param": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "code": {
-            "type": [
-              "null",
-              "string"
-            ]
-          }
-        }
-      },
       "OpenAIErrorResponse": {
         "required": [
           "error"

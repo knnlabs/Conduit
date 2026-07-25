@@ -134,7 +134,7 @@ public static class GatewayApiEndpoints
         media.MapGet("/info/{**storageKey}", ([FromServices] MediaEndpoints endpoints, string storageKey) => endpoints.GetMediaInfo(storageKey))
             .RequireAuthorization("VirtualKeyAuthentication").WithName("Media_GetInfo").Produces<MediaInfo>();
         media.MapGet("/{**storageKey}", ([FromServices] MediaEndpoints endpoints, string storageKey) => endpoints.GetMedia(storageKey))
-            .AllowAnonymous().WithName("Media_Get").Produces<Stream>(200, "application/octet-stream");
+            .AllowAnonymous().WithName("Media_Get").Produces<byte[]>(200, "application/octet-stream");
         media.MapMethods("/{**storageKey}", [HttpMethods.Head], ([FromServices] MediaEndpoints endpoints, string storageKey) => endpoints.CheckMediaExists(storageKey))
             .AllowAnonymous().WithName("Media_Head").Produces(200);
 
@@ -147,7 +147,7 @@ public static class GatewayApiEndpoints
         downloads.MapPost("/generate-url", ([FromServices] DownloadsEndpoints endpoints, GenerateUrlRequest request) => endpoints.GenerateDownloadUrl(request))
             .WithName("Downloads_GenerateUrl").Produces<DownloadUrlResponse>();
         downloads.MapGet("/{**fileId}", ([FromServices] DownloadsEndpoints endpoints, string fileId, bool inline = false) => endpoints.DownloadFile(fileId, inline))
-            .WithName("Downloads_Get").Produces<Stream>(200, "application/octet-stream");
+            .WithName("Downloads_Get").Produces<byte[]>(200, "application/octet-stream");
         downloads.MapMethods("/{**fileId}", [HttpMethods.Head], ([FromServices] DownloadsEndpoints endpoints, string fileId) => endpoints.CheckFileExists(fileId))
             .WithName("Downloads_Head").Produces(200);
 
