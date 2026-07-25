@@ -47,6 +47,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
     isLoadingProviders,
     providerDisplayName,
     isLoading,
+    settingFields,
   } = logic;
 
   const {
@@ -201,9 +202,11 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     />
                   )}
 
-                  {/* Structured settings render in both modes: these identify the provider account
-                      (for example a Cloudflare Account ID) and must stay editable after creation. */}
-                  {config?.settings?.map((field) => (
+                  {/* Structured settings are declared by the backend provider registry and served by
+                      the Admin API, so this form never mirrors the field list. They render in both
+                      modes: these identify the provider account (for example a Cloudflare Account
+                      ID) and must stay editable after creation. */}
+                  {settingFields.map((field) => (
                     field.secret ? (
                       <PasswordInput
                         key={field.key}

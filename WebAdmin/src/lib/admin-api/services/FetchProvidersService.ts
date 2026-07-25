@@ -11,10 +11,30 @@ import {
   ApiKeyTestResult
 } from '../models/provider';
 import { ProviderType } from '../models/providerType';
+import type { ProviderSettingField, ProviderSettingsSchema } from '../models/providerConfiguration';
 import { classifyApiKeyTestError } from '../utils/error-classification';
 import { FetchProvidersServiceKeys } from './FetchProvidersServiceKeys';
 
 type ProviderListResponseDto = components['schemas']['PagedResultOfProviderDto'];
+type ProviderSettingsSchemaDto = components['schemas']['ProviderSettingsSchemaDto'];
+type ProviderSettingFieldDto = components['schemas']['ProviderSettingFieldDto'];
+
+/**
+ * Narrows a wire setting field, whose properties are all optional in the generated contract, into
+ * the shape the form consumes. A field without a key cannot be rendered or stored, so it is dropped
+ * by the caller rather than represented as a blank input.
+ */
+function toProviderSettingField(field: ProviderSettingFieldDto): ProviderSettingField {
+  return {
+    key: field.key ?? '',
+    label: field.label ?? field.key ?? '',
+    helpText: field.helpText ?? undefined,
+    placeholder: field.placeholder ?? undefined,
+    required: field.required ?? false,
+    secret: field.secret ?? false,
+    validationRegexSource: field.validationRegex ?? undefined,
+  };
+}
 
 interface ProviderConfig {
   providerType: ProviderType;
@@ -121,6 +141,29 @@ export class FetchProvidersService {
     const query = { page, pageSize };
     return this.client['executeContractRead'](`/v1/admin/providers?page=${page}&pageSize=${pageSize}`,
       (contractClient, options) => contractClient.GET('/v1/admin/providers', { ...options, params: { query } }), config);
+  }
+
+  /**
+   * Get the structured settings each provider type declares, keyed by provider type.
+   *
+   * The backend registry is the single source of truth for these fields, so the form renders,
+   * labels and validates exactly what the backend enforces instead of a hand-maintained copy.
+   */
+  async getSettingsSchema(config?: RequestConfig): Promise<ProviderSettingsSchema> {
+    const response = await this.client['executeContractRead']<ProviderSettingsSchemaDto[]>(
+      '/v1/admin/providers/settings-schema',
+      (contractClient, options) => contractClient.GET('/v1/admin/providers/settings-schema', options), config);
+
+    const schema: ProviderSettingsSchema = {};
+    for (const entry of response ?? []) {
+      if (!entry.providerType) {
+        continue;
+      }
+      schema[entry.providerType] = (entry.settings ?? [])
+        .map(toProviderSettingField)
+        .filter(field => field.key !== '');
+    }
+    return schema;
   }
 
   /**

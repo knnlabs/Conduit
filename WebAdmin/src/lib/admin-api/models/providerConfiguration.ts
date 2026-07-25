@@ -54,8 +54,11 @@ export const PROVIDER_CATEGORIES: Partial<Record<ProviderType, ProviderCategory[
 
 /**
  * A structured, provider-scoped setting an operator supplies in addition to the API key
- * (for example a Cloudflare account ID). Mirrors the backend setting definitions declared in
- * `ProviderConfigurationRegistry`; the backend remains authoritative for validation.
+ * (for example a Cloudflare account ID).
+ *
+ * These are **not** declared here: the backend `ProviderConfigurationRegistry` owns them and serves
+ * them from `GET /v1/admin/providers/settings-schema`. This type only describes the shape the form
+ * consumes after narrowing the wire DTO.
  */
 export interface ProviderSettingField {
   /** Stable machine key; also the storage key in the provider's `settings` map. */
@@ -74,6 +77,9 @@ export interface ProviderSettingField {
   placeholder?: string;
 }
 
+/** Declared settings per provider type, as served by the Admin API. */
+export type ProviderSettingsSchema = Partial<Record<ProviderType, ProviderSettingField[]>>;
+
 /** Provider-specific configuration requirements */
 export interface ProviderConfigRequirements {
   requiresApiKey: boolean;
@@ -83,8 +89,6 @@ export interface ProviderConfigRequirements {
   helpUrl?: string;
   helpText?: string;
   supportedModelTypes: ModelType[];
-  /** Structured settings supplied in addition to the API key. */
-  settings?: ProviderSettingField[];
 }
 
 export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, ProviderConfigRequirements>> = {
@@ -194,16 +198,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
     helpUrl: 'https://developers.cloudflare.com/workers-ai/',
     helpText: 'Create an API token at dash.cloudflare.com/profile/api-tokens. Enter your account ID below — it is used to build the API base URL.',
     supportedModelTypes: [ModelType.Chat, ModelType.Embedding, ModelType.Image],
-    settings: [
-      {
-        key: 'account_id',
-        label: 'Account ID',
-        helpText: 'Your Cloudflare account ID (shown in the dashboard URL and on the Workers AI page).',
-        required: true,
-        validationRegexSource: '^[0-9a-fA-F]{32}$',
-        placeholder: 'e.g. 0123456789abcdef0123456789abcdef',
-      },
-    ],
   },
   [ProviderType.OpenRouter]: {
     requiresApiKey: true,

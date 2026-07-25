@@ -55,6 +55,14 @@ namespace ConduitLLM.Admin.Endpoints
                     endpoints.GetAllProviders(page, pageSize, cancellationToken))
                 .WithName("ProviderCredentials_GetAll")
                 .Produces<Configuration.DTOs.PagedResult<ProviderDto>>();
+            group.MapGet("/settings-schema", () => GetProviderSettingsSchema())
+                .WithName("ProviderCredentials_GetSettingsSchema")
+                .WithSummary("List the structured settings declared per provider type")
+                .WithDescription("Returns the structured settings declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.")
+                .Produces<IReadOnlyList<ProviderSettingsSchemaDto>>()
+                .Produces(StatusCodes.Status401Unauthorized)
+                .Produces(StatusCodes.Status403Forbidden)
+                .Produces(StatusCodes.Status429TooManyRequests);
             group.MapGet("/{id:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int id) => endpoints.GetProviderById(id))
                 .WithName("ProviderCredentials_GetById").Produces<ProviderDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/", ([FromServices] ProviderCredentialsEndpoints endpoints, CreateProviderRequest request) => endpoints.CreateProvider(request))
@@ -119,6 +127,47 @@ namespace ConduitLLM.Admin.Endpoints
             };
 
             return Ok(result);
+        }
+
+        /// <summary>
+        /// Gets the structured settings every configurable provider type declares.
+        /// </summary>
+        /// <remarks>
+        /// Projected straight from <see cref="ProviderConfigurationRegistry"/> so the C# registry is the
+        /// single source of truth for the fields administrative UIs render, label and validate — the
+        /// hand-mirrored client-side copy this replaces drifted from the backend.
+        /// Provider types without declared settings are omitted.
+        /// </remarks>
+        /// <returns>The declared settings per provider type.</returns>
+        public static IResult GetProviderSettingsSchema()
+        {
+            var schema = ProviderTypeCatalog.ConfigurableTypes
+                .Select(providerType => new
+                {
+                    ProviderType = providerType,
+                    Definitions = ProviderConfigurationRegistry.GetConfiguration(providerType)?.Settings
+                        ?? (IReadOnlyList<ProviderSettingDefinition>)Array.Empty<ProviderSettingDefinition>()
+                })
+                .Where(entry => entry.Definitions.Count > 0)
+                .Select(entry => new ProviderSettingsSchemaDto
+                {
+                    ProviderType = entry.ProviderType,
+                    Settings = entry.Definitions
+                        .Select(definition => new ProviderSettingFieldDto
+                        {
+                            Key = definition.Key,
+                            Label = definition.Label,
+                            HelpText = definition.HelpText,
+                            Placeholder = definition.Placeholder,
+                            Required = definition.Required,
+                            Secret = definition.Secret,
+                            ValidationRegex = definition.ValidationRegex
+                        })
+                        .ToArray()
+                })
+                .ToArray();
+
+            return Results.Ok(schema);
         }
 
         /// <summary>

@@ -135,6 +135,7 @@ namespace ConduitLLM.Providers.Configuration
                         Key = "account_id",
                         Label = "Account ID",
                         HelpText = "Your Cloudflare account ID (shown in the dashboard URL and on the Workers AI page). Used to build the API base URL.",
+                        Placeholder = "e.g. 0123456789abcdef0123456789abcdef",
                         Required = true,
                         Binding = ProviderSettingBinding.UrlPathToken,
                         BindingTarget = "account_id",

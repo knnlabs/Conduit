@@ -9198,6 +9198,116 @@
         ]
       }
     },
+    "/v1/admin/providers/settings-schema": {
+      "get": {
+        "tags": [
+          "Provider Credentials"
+        ],
+        "summary": "List the structured settings declared per provider type",
+        "description": "Returns the structured settings declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.",
+        "operationId": "ProviderCredentials_GetSettingsSchema",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderSettingsSchemaDto"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
     "/v1/admin/providers/{id}": {
       "get": {
         "tags": [
@@ -32197,6 +32307,66 @@
             "type": "boolean"
           }
         }
+      },
+      "ProviderSettingFieldDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Stable machine key; also the storage key in the provider's settings map."
+          },
+          "label": {
+            "type": "string",
+            "description": "Human-readable field label."
+          },
+          "helpText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional help text describing where to find the value."
+          },
+          "placeholder": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional example value shown as the input placeholder."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Whether the operator must supply this setting."
+          },
+          "secret": {
+            "type": "boolean",
+            "description": "Whether the value is sensitive and should be entered masked."
+          },
+          "validationRegex": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional regular-expression source the value must match. The backend remains authoritative;\r\nclients use this only to fail fast before submitting."
+          }
+        },
+        "description": "A single structured, provider-scoped setting an operator supplies in addition to the API key\r\n(for example a Cloudflare account ID)."
+      },
+      "ProviderSettingsSchemaDto": {
+        "type": "object",
+        "properties": {
+          "providerType": {
+            "description": "The provider type these settings belong to.",
+            "$ref": "#/components/schemas/ProviderType"
+          },
+          "settings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProviderSettingFieldDto"
+            },
+            "description": "The declared settings, in the order they should be presented."
+          }
+        },
+        "description": "The structured settings a provider type declares, projected from the backend provider registry\r\nso administrative UIs render and validate the same fields the backend enforces."
       },
       "ProviderSyncRunDto": {
         "required": [

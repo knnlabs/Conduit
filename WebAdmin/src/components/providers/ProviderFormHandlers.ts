@@ -1,7 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { ApiKeyTestResult, PROVIDER_CONFIG_REQUIREMENTS, type ProviderType } from '@/lib/admin-api';
+import { ApiKeyTestResult, type ProviderSettingField, type ProviderType } from '@/lib/admin-api';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
 
 interface UseProviderFormHandlersParams {
@@ -10,25 +10,20 @@ interface UseProviderFormHandlersParams {
   logic: ProviderFormLogicResult;
 }
 
-/** The declared structured-setting fields for the selected provider type. */
-function getSettingFields(providerType: string) {
-  return PROVIDER_CONFIG_REQUIREMENTS[providerType as unknown as ProviderType]?.settings ?? [];
-}
-
 /**
  * Collects the structured settings map sent to the backend, or undefined to leave the stored value
  * untouched (the update endpoint treats null as "no change" and any supplied map as a wholesale
  * replace).
  *
  * Edit mode seeds the map from the values loaded off the provider rather than building it from
- * scratch, so keys this TypeScript mirror does not yet declare survive that wholesale replace.
+ * scratch, so keys the running backend does not declare survive that wholesale replace.
  * Clearing a declared field removes its key, which is how a value gets unset.
  */
 function collectSettings(
   values: ProviderFormData,
+  fields: ProviderSettingField[],
   mode: 'add' | 'edit'
 ): Record<string, string> | undefined {
-  const fields = getSettingFields(values.providerType);
   const result: Record<string, string> = mode === 'edit' ? { ...(values.settings ?? {}) } : {};
 
   for (const field of fields) {
@@ -57,10 +52,11 @@ function collectSettings(
  */
 function validateSettings(
   values: ProviderFormData,
+  fields: ProviderSettingField[],
   mode: 'add' | 'edit'
 ): Record<string, string> {
   const errors: Record<string, string> = {};
-  for (const field of getSettingFields(values.providerType)) {
+  for (const field of fields) {
     const raw = values.settings?.[field.key]?.trim() ?? '';
     if (!raw) {
       if (field.required && mode === 'add') {
@@ -89,13 +85,14 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
     setIsTesting,
     setTestResult,
     availableProviders,
+    settingFields,
   } = logic;
 
   const handleSubmit = async (values: ProviderFormData) => {
     setIsSubmitting(true);
     try {
       // Validate declared structured settings (for example a required Cloudflare account ID).
-      const settingsErrors = validateSettings(values, mode);
+      const settingsErrors = validateSettings(values, settingFields, mode);
       if (Object.keys(settingsErrors).length > 0) {
         Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
         return;
@@ -113,7 +110,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           providerType: values.providerType as ProviderType,
           providerName: providerName,
           baseUrl: values.apiEndpoint ?? undefined,
-          settings: collectSettings(values, 'add'),
+          settings: collectSettings(values, settingFields, 'add'),
           isEnabled: values.isEnabled,
           trustProviderReportedCosts: values.trustProviderReportedCosts,
           providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
@@ -151,7 +148,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           providerName: values.providerName ?? undefined,
           baseUrl: values.apiEndpoint ?? undefined,
           organization: values.organizationId ?? undefined,
-          settings: collectSettings(values, 'edit'),
+          settings: collectSettings(values, settingFields, 'edit'),
           isEnabled: values.isEnabled,
           trustProviderReportedCosts: values.trustProviderReportedCosts,
           providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
@@ -185,7 +182,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
     }
 
     // Validate declared structured settings before hitting the provider.
-    const settingsErrors = validateSettings(form.values, mode);
+    const settingsErrors = validateSettings(form.values, settingFields, mode);
     if (Object.keys(settingsErrors).length > 0) {
       Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
       return;
@@ -204,7 +201,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
             apiKey: form.values.apiKey,
             baseUrl: form.values.apiEndpoint ?? undefined,
             organizationId: form.values.organizationId ?? undefined,
-            settings: collectSettings(form.values, 'add'),
+            settings: collectSettings(form.values, settingFields, 'add'),
           })
         );
       } else {

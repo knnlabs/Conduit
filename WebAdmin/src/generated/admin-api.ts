@@ -1307,6 +1307,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/admin/providers/settings-schema": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List the structured settings declared per provider type
+     * @description Returns the structured settings declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.
+     */
+    get: operations["ProviderCredentials_GetSettingsSchema"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/admin/providers/{id}": {
     parameters: {
       query?: never;
@@ -6530,6 +6550,33 @@ export interface components {
       providerType: components["schemas"]["ProviderType"];
       displayName: string;
       isEnabled: boolean;
+    };
+    /** @description A single structured, provider-scoped setting an operator supplies in addition to the API key
+     *     (for example a Cloudflare account ID). */
+    ProviderSettingFieldDto: {
+      /** @description Stable machine key; also the storage key in the provider's settings map. */
+      key?: string;
+      /** @description Human-readable field label. */
+      label?: string;
+      /** @description Optional help text describing where to find the value. */
+      helpText?: null | string;
+      /** @description Optional example value shown as the input placeholder. */
+      placeholder?: null | string;
+      /** @description Whether the operator must supply this setting. */
+      required?: boolean;
+      /** @description Whether the value is sensitive and should be entered masked. */
+      secret?: boolean;
+      /** @description Optional regular-expression source the value must match. The backend remains authoritative;
+       *     clients use this only to fail fast before submitting. */
+      validationRegex?: null | string;
+    };
+    /** @description The structured settings a provider type declares, projected from the backend provider registry
+     *     so administrative UIs render and validate the same fields the backend enforces. */
+    ProviderSettingsSchemaDto: {
+      /** @description The provider type these settings belong to. */
+      providerType?: components["schemas"]["ProviderType"];
+      /** @description The declared settings, in the order they should be presented. */
+      settings?: components["schemas"]["ProviderSettingFieldDto"][];
     };
     /** @description A summary of a sync run for the run-history panel. */
     ProviderSyncRunDto: {
@@ -13007,6 +13054,72 @@ export interface operations {
       };
       /** @description Bad Request */
       400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  ProviderCredentials_GetSettingsSchema: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProviderSettingsSchemaDto"][];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
