@@ -182,13 +182,25 @@ export class InsufficientBalanceError extends ConduitError {
 export class RateLimitError extends ConduitError {
   public retryAfter?: number;
 
+  /**
+   * Which limit denied the request, from the X-RateLimit-Scope header.
+   *
+   * A caller needs this to react sensibly: "RPM" means slow down, "group:RPM" means a
+   * neighbouring key in the same tenant is the problem, "concurrency" means finish something
+   * before starting more, and "model:sora-2:rpm" means only that model is constrained.
+   * Without it every 429 looks the same and the only available response is to back off.
+   */
+  public scope?: string;
+
   constructor(
     message = "Rate limit exceeded",
     retryAfter?: number,
     context?: Record<string, unknown>,
+    scope?: string,
   ) {
-    super(message, 429, "RATE_LIMIT_ERROR", { ...context, retryAfter });
+    super(message, 429, "RATE_LIMIT_ERROR", { ...context, retryAfter, scope });
     this.retryAfter = retryAfter;
+    this.scope = scope;
   }
 }
 
@@ -483,7 +495,9 @@ export function handleApiError(
           typeof retryAfterHeader === "string"
             ? parseInt(retryAfterHeader, 10)
             : undefined;
-        throw new RateLimitError(enhancedMessage, retryAfter, context);
+        const scopeHeader = error.response.headers["x-ratelimit-scope"];
+        const scope = typeof scopeHeader === "string" ? scopeHeader : undefined;
+        throw new RateLimitError(enhancedMessage, retryAfter, context, scope);
       }
       case 500:
       case 502:
