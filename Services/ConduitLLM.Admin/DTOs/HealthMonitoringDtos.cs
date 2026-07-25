@@ -221,7 +221,8 @@ namespace ConduitLLM.Admin.DTOs
     public class IncidentDto
     {
         /// <summary>
-        /// Unique identifier for the incident.
+        /// Identifier for the incident. Derived from the incident's subject and window rather than
+        /// randomly generated, so the same incident keeps the same id across dashboard polls.
         /// </summary>
         public string Id { get; set; } = string.Empty;
 
@@ -231,7 +232,7 @@ namespace ConduitLLM.Admin.DTOs
         public string Title { get; set; } = string.Empty;
 
         /// <summary>
-        /// Incident type identifier (e.g. service_degradation).
+        /// Incident type identifier (e.g. model_error_spike).
         /// </summary>
         public string Type { get; set; } = string.Empty;
 
@@ -256,9 +257,15 @@ namespace ConduitLLM.Admin.DTOs
         public DateTime? EndTime { get; set; }
 
         /// <summary>
-        /// Name of the affected service.
+        /// Identifier of the affected service, matching an entry in the service health response
+        /// (e.g. core-api).
         /// </summary>
         public string AffectedService { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Model the incident was attributed to, or null when the incident is not model-specific.
+        /// </summary>
+        public string? AffectedModel { get; set; }
 
         /// <summary>
         /// Human-readable impact description.

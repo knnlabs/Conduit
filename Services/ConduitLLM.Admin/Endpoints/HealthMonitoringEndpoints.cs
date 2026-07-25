@@ -4,6 +4,7 @@ using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Constants;
@@ -22,6 +23,26 @@ namespace ConduitLLM.Admin.Endpoints
     /// </summary>
     public static class HealthMonitoringEndpoints
     {
+        /// <summary>
+        /// Number of failed requests in a one-hour window before it is reported as an incident.
+        /// </summary>
+        internal const int IncidentErrorThreshold = 10;
+
+        /// <summary>Smallest history window the endpoint will report on.</summary>
+        internal const int MinHistoryHours = 1;
+
+        /// <summary>Largest history window the endpoint will report on (30 days).</summary>
+        internal const int MaxHistoryHours = 720;
+
+        /// <summary>
+        /// Truncates a UTC timestamp to the start of its hour, preserving <see cref="DateTimeKind.Utc"/>.
+        /// Incident timestamps built with <c>new DateTime(...)</c> defaulted to
+        /// <see cref="DateTimeKind.Unspecified"/> and serialized without a <c>Z</c> suffix, so clients
+        /// read them as local time while every sibling timestamp in the response was UTC.
+        /// </summary>
+        internal static DateTime FloorToHourUtc(DateTime value) =>
+            new(value.Year, value.Month, value.Day, value.Hour, 0, 0, DateTimeKind.Utc);
+
         public static IEndpointRouteBuilder MapHealthMonitoringEndpoints(this IEndpointRouteBuilder app)
         {
             var group = app.MapGroup("/v1/admin/health-status")
@@ -150,56 +171,27 @@ namespace ConduitLLM.Admin.Endpoints
         {
             using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var startDate = DateTime.UtcNow.AddDays(-days);
+            var now = DateTime.UtcNow;
+            var startDate = now.AddDays(-days);
 
-            // Analyze request logs for incidents
-            var errorSpikes = await dbContext.RequestLogs
-                .Where(r => r.Timestamp >= startDate && r.StatusCode >= 400)
-                .GroupBy(r => new
-                {
-                    Date = r.Timestamp.Date,
-                    Hour = r.Timestamp.Hour,
-                    Model = r.ModelName
-                })
-                .Select(g => new
-                {
-                    Date = g.Key.Date,
-                    Hour = g.Key.Hour,
-                    Service = g.Key.Model, // Using ModelName as service identifier
-                    ErrorCount = g.Count(),
-                    ErrorTypes = g.Select(r => r.StatusCode).Distinct().Count()
-                })
-                .Where(g => g.ErrorCount >= 10) // Threshold for incident
+            // Bucket on exact UTC hour boundaries. Grouping by `Timestamp.Date`/`.Hour` translated to
+            // date_trunc over a timestamptz column, which resolves in the PostgreSQL server's
+            // `timezone` GUC rather than UTC; offsetting from a UTC anchor keeps the windows correct
+            // regardless of how the server is configured.
+            var windowStart = FloorToHourUtc(startDate);
+            var currentHour = FloorToHourUtc(now);
+
+            var errorSpikes = await QueryErrorSpikes(dbContext.RequestLogs, windowStart)
                 .ToListAsync(cancellationToken);
 
-            // Convert to incidents
-            var incidents = errorSpikes.Select(spike => new IncidentDto
-            {
-                Id = Guid.NewGuid().ToString(),
-                Title = $"{spike.Service} Service Degradation",
-                Type = "service_degradation",
-                Severity = spike.ErrorCount >= 50 ? "critical" : (spike.ErrorCount >= 25 ? "major" : "minor"),
-                Status = spike.Date.Date == DateTime.UtcNow.Date ? "active" : "resolved",
-                StartTime = new DateTime(spike.Date.Year, spike.Date.Month, spike.Date.Day, spike.Hour, 0, 0),
-                EndTime = spike.Date.Date == DateTime.UtcNow.Date ? (DateTime?)null :
-                         new DateTime(spike.Date.Year, spike.Date.Month, spike.Date.Day, spike.Hour, 59, 59),
-                AffectedService = spike.Service,
-                Impact = $"{spike.ErrorCount} errors in 1 hour period",
-                Details = new IncidentDetailsDto
-                {
-                    ErrorCount = spike.ErrorCount,
-                    UniqueErrorTypes = spike.ErrorTypes
-                }
-            }).ToList();
-
-            var allIncidents = incidents
+            var allIncidents = BuildIncidents(errorSpikes, windowStart, currentHour)
                 .OrderByDescending(i => i.StartTime)
                 .ToList();
 
             return Results.Ok(new IncidentsResponse
             {
-                Timestamp = DateTime.UtcNow,
-                TimeRange = new TimeRangeDto { Start = startDate, End = DateTime.UtcNow },
+                Timestamp = now,
+                TimeRange = new TimeRangeDto { Start = windowStart, End = now },
                 TotalIncidents = allIncidents.Count,
                 ActiveIncidents = allIncidents.Count(i => i.Status == "active"),
                 IncidentsByType = allIncidents.GroupBy(i => i.Type).Select(g => new IncidentTypeCountDto
@@ -230,51 +222,188 @@ namespace ConduitLLM.Admin.Endpoints
         {
             using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var startTime = DateTime.UtcNow.AddHours(-hours);
-            var intervalMinutes = hours <= 24 ? 15 : 60; // 15 min intervals for 24h, 1h for longer
+            // Bound the window so a caller cannot ask for an unbounded number of buckets.
+            var requestedHours = Math.Clamp(hours, MinHistoryHours, MaxHistoryHours);
+            var now = DateTime.UtcNow;
+            var startTime = now.AddHours(-requestedHours);
+            var intervalMinutes = requestedHours <= 24 ? 15 : 60; // 15 min intervals for 24h, 1h for longer
 
-            var healthHistory = new List<HealthHistoryPointDto>();
-            var currentTime = startTime;
+            // One grouped query for the whole window. This previously issued a separate round trip
+            // per interval — 96 sequential queries for the default 24 hours, on an endpoint the
+            // dashboard polls.
+            var buckets = await QueryHealthIntervals(dbContext.RequestLogs, startTime, now, intervalMinutes)
+                .ToListAsync(cancellationToken);
 
-            while (currentTime < DateTime.UtcNow)
-            {
-                var intervalEnd = currentTime.AddMinutes(intervalMinutes);
-
-                // Get error rates for this interval
-                var errorStats = await dbContext.RequestLogs
-                    .Where(r => r.Timestamp >= currentTime && r.Timestamp < intervalEnd)
-                    .GroupBy(r => 1)
-                    .Select(g => new
-                    {
-                        TotalRequests = g.Count(),
-                        ErrorCount = g.Count(r => r.StatusCode >= 400),
-                        AvgLatency = g.Average(r => (double?)r.ResponseTimeMs) ?? 0
-                    })
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                healthHistory.Add(new HealthHistoryPointDto
-                {
-                    Timestamp = currentTime,
-                    SystemHealth = errorStats?.TotalRequests > 0
-                        ? 100 - (errorStats.ErrorCount * 100.0 / errorStats.TotalRequests)
-                        : 100,
-                    ResponseTime = errorStats?.AvgLatency ?? 0,
-                    RequestVolume = errorStats?.TotalRequests ?? 0,
-                    ErrorRate = errorStats?.TotalRequests > 0
-                        ? errorStats.ErrorCount * 100.0 / errorStats.TotalRequests
-                        : 0
-                });
-
-                currentTime = intervalEnd;
-            }
+            var healthHistory = BuildHealthHistory(buckets, startTime, now, intervalMinutes);
 
             return Results.Ok(new HealthHistoryResponse
             {
-                Timestamp = DateTime.UtcNow,
-                TimeRange = new TimeRangeDto { Start = startTime, End = DateTime.UtcNow },
+                Timestamp = now,
+                TimeRange = new TimeRangeDto { Start = startTime, End = now },
                 IntervalMinutes = intervalMinutes,
                 History = healthHistory
             });
+        }
+
+        /// <summary>
+        /// One hour of failed requests for a single model. Written as a mutable class projected via
+        /// an object initializer because EF cannot translate a grouping aggregate into a positional
+        /// record constructor.
+        /// </summary>
+        internal sealed class ErrorSpikeRow
+        {
+            /// <summary>Whole hours between the window start and this bucket's start.</summary>
+            public int HourOffset { get; set; }
+
+            /// <summary>Model the failed requests were routed to.</summary>
+            public string Model { get; set; } = string.Empty;
+
+            /// <summary>Number of failed requests in the bucket.</summary>
+            public int ErrorCount { get; set; }
+
+            /// <summary>Number of distinct HTTP status codes in the bucket.</summary>
+            public int ErrorTypes { get; set; }
+        }
+
+        /// <summary>
+        /// Groups failed requests into hourly buckets per model, keeping the whole aggregation in
+        /// PostgreSQL. Buckets are measured as an epoch offset from <paramref name="windowStart"/>
+        /// rather than via <c>Timestamp.Date</c>/<c>.Hour</c>, which would translate to
+        /// <c>date_trunc</c> over a <c>timestamptz</c> column and resolve in the server's
+        /// <c>timezone</c> setting instead of UTC.
+        /// </summary>
+        internal static IQueryable<ErrorSpikeRow> QueryErrorSpikes(
+            IQueryable<RequestLog> requestLogs,
+            DateTime windowStart) =>
+            requestLogs
+                .Where(r => r.Timestamp >= windowStart && r.StatusCode >= 400)
+                .GroupBy(r => new
+                {
+                    HourOffset = (int)Math.Floor((r.Timestamp - windowStart).TotalHours),
+                    Model = r.ModelName
+                })
+                .Select(g => new ErrorSpikeRow
+                {
+                    HourOffset = g.Key.HourOffset,
+                    Model = g.Key.Model,
+                    ErrorCount = g.Count(),
+                    ErrorTypes = g.Select(r => r.StatusCode).Distinct().Count()
+                })
+                .Where(row => row.ErrorCount >= IncidentErrorThreshold);
+
+        /// <summary>
+        /// Maps hourly error buckets to incidents with stable ids and UTC timestamps.
+        /// </summary>
+        /// <param name="spikes">Hourly error buckets from <see cref="QueryErrorSpikes"/>.</param>
+        /// <param name="windowStart">UTC hour the query window began at.</param>
+        /// <param name="currentHourUtc">Start of the current UTC hour.</param>
+        internal static List<IncidentDto> BuildIncidents(
+            IEnumerable<ErrorSpikeRow> spikes,
+            DateTime windowStart,
+            DateTime currentHourUtc) =>
+            spikes.Select(spike =>
+            {
+                var spikeStart = windowStart.AddHours(spike.HourOffset);
+                // Only the hour still accruing traffic can be ongoing. The previous check compared
+                // calendar dates, so a spike that ended at 00:30 stayed "active" for the rest of the
+                // day while one at 23:30 yesterday was reported "resolved" thirty minutes later.
+                var isActive = spikeStart == currentHourUtc;
+                return new IncidentDto
+                {
+                    // Deterministic so the dashboard can correlate the same incident across polls;
+                    // this was previously a fresh Guid on every request.
+                    Id = $"model-error-spike:{spike.Model}:{spikeStart:yyyyMMddTHHmmssZ}",
+                    Title = $"Elevated error rate for model {spike.Model}",
+                    Type = "model_error_spike",
+                    Severity = spike.ErrorCount >= 50 ? "critical" : (spike.ErrorCount >= 25 ? "major" : "minor"),
+                    Status = isActive ? "active" : "resolved",
+                    StartTime = spikeStart,
+                    EndTime = isActive ? null : spikeStart.AddHours(1),
+                    // Request logs only record traffic served by the Gateway, so that is the affected
+                    // service. The model is reported separately instead of being passed off as one —
+                    // a model error spike is not an outage of a service named after the model.
+                    AffectedService = "core-api",
+                    AffectedModel = spike.Model,
+                    Impact = $"{spike.ErrorCount} failed requests in a 1 hour period",
+                    Details = new IncidentDetailsDto
+                    {
+                        ErrorCount = spike.ErrorCount,
+                        UniqueErrorTypes = spike.ErrorTypes
+                    }
+                };
+            }).ToList();
+
+        /// <summary>
+        /// Request totals for one interval of the health history. Mutable for the same reason as
+        /// <see cref="ErrorSpikeRow"/> — EF projects grouping aggregates via object initializers.
+        /// </summary>
+        internal sealed class HealthIntervalRow
+        {
+            /// <summary>Zero-based interval index measured from the window start.</summary>
+            public int Bucket { get; set; }
+
+            /// <summary>Requests recorded in the interval.</summary>
+            public int TotalRequests { get; set; }
+
+            /// <summary>Requests in the interval that returned a 4xx or 5xx status.</summary>
+            public int ErrorCount { get; set; }
+
+            /// <summary>Mean response time in milliseconds, or null when the interval is empty.</summary>
+            public double? AvgLatency { get; set; }
+        }
+
+        /// <summary>
+        /// Aggregates request logs into fixed-width intervals in a single grouped query. Intervals
+        /// are an epoch offset from <paramref name="startTime"/> for the same timezone-safety reason
+        /// as <see cref="QueryErrorSpikes"/>. Intervals with no traffic produce no row.
+        /// </summary>
+        internal static IQueryable<HealthIntervalRow> QueryHealthIntervals(
+            IQueryable<RequestLog> requestLogs,
+            DateTime startTime,
+            DateTime endTime,
+            int intervalMinutes) =>
+            requestLogs
+                .Where(r => r.Timestamp >= startTime && r.Timestamp < endTime)
+                .GroupBy(r => (int)Math.Floor((r.Timestamp - startTime).TotalMinutes / intervalMinutes))
+                .Select(g => new HealthIntervalRow
+                {
+                    Bucket = g.Key,
+                    TotalRequests = g.Count(),
+                    ErrorCount = g.Count(r => r.StatusCode >= 400),
+                    AvgLatency = g.Average(r => (double?)r.ResponseTimeMs)
+                });
+
+        /// <summary>
+        /// Expands sparse interval aggregates into a contiguous time series, filling intervals with
+        /// no traffic the same way the previous per-interval queries did (100% health, zero volume).
+        /// </summary>
+        internal static List<HealthHistoryPointDto> BuildHealthHistory(
+            IEnumerable<HealthIntervalRow> buckets,
+            DateTime startTime,
+            DateTime endTime,
+            int intervalMinutes)
+        {
+            var byBucket = buckets.ToDictionary(bucket => bucket.Bucket);
+            var history = new List<HealthHistoryPointDto>();
+
+            for (var index = 0; startTime.AddMinutes((double)index * intervalMinutes) < endTime; index++)
+            {
+                var hasTraffic = byBucket.TryGetValue(index, out var row) && row.TotalRequests > 0;
+                var errorRate = hasTraffic
+                    ? row!.ErrorCount * 100.0 / row.TotalRequests
+                    : 0;
+
+                history.Add(new HealthHistoryPointDto
+                {
+                    Timestamp = startTime.AddMinutes((double)index * intervalMinutes),
+                    SystemHealth = 100 - errorRate,
+                    ResponseTime = hasTraffic ? row!.AvgLatency ?? 0 : 0,
+                    RequestVolume = hasTraffic ? row!.TotalRequests : 0,
+                    ErrorRate = errorRate
+                });
+            }
+
+            return history;
         }
 
         internal static ServiceStatusDto BuildClusterServiceStatus(

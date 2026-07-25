@@ -1,8 +1,10 @@
 import type { FetchBaseApiClient } from '../client/FetchBaseApiClient';
+import type { components } from '../generated/admin-api';
 import type { RequestConfig } from '../client/types';
 import type {
   SystemHealthDto,
   ServiceStatusMapDto,
+  ComponentHealthStatus,
   HealthEventDto,
   HealthEventsResponseDto,
   HealthEventSubscriptionOptions,
@@ -13,6 +15,38 @@ import { ENDPOINTS } from '../constants';
 import { FetchSystemService } from './FetchSystemService';
 import { FetchSystemMetricsService } from './FetchSystemMetricsService';
 import { FetchSystemHelpers } from './FetchSystemHelpers';
+
+type ServiceStatusEntry = NonNullable<
+  components['schemas']['ServiceHealthResponse']['services']
+>[number];
+type IncidentsResponse = components['schemas']['IncidentsResponse'];
+
+/**
+ * Service ids as reported by `/v1/admin/health-status/services`. Keeping them in one place makes
+ * the mapping auditable — a renamed id shows up here rather than silently degrading a card to
+ * `unknown`.
+ */
+const SERVICE_IDS = {
+  gateway: 'core-api',
+  admin: 'admin-api',
+  database: 'database',
+  cache: 'redis',
+  queue: 'messaging',
+} as const;
+
+/** Human-readable status line for a component, honest about `unknown`. */
+function describeComponent(name: string, status: ComponentHealthStatus): string {
+  switch (status) {
+    case 'healthy':
+      return `${name} responding normally`;
+    case 'degraded':
+      return `${name} degraded`;
+    case 'unhealthy':
+      return `${name} unavailable`;
+    default:
+      return `${name} status unknown`;
+  }
+}
 
 /**
  * Type-safe System health service using native fetch
@@ -41,39 +75,43 @@ export class FetchSystemHealthService implements ISystemHealthService {
   async getSystemHealth(config?: RequestConfig): Promise<SystemHealthDto> {
     // Get service status for detailed component health
     const serviceStatus = await this.getServiceStatus(config);
+    const lastChecked = new Date().toISOString();
 
     // Transform the data to match the expected SystemHealthDto structure
     const components = {
       api: {
         status: serviceStatus.coreApi.status,
-        message: serviceStatus.coreApi.status === 'healthy' ? 'API responding normally' : 'API experiencing issues',
-        lastChecked: new Date().toISOString(),
+        message: describeComponent('Gateway API', serviceStatus.coreApi.status),
+        lastChecked,
       },
       database: {
         status: serviceStatus.database.status,
-        message: serviceStatus.database.status === 'healthy' ? 'Database connections stable' : 'Database connectivity issues',
-        lastChecked: new Date().toISOString(),
+        message: describeComponent('Database', serviceStatus.database.status),
+        lastChecked,
       },
       cache: {
         status: serviceStatus.cache.status,
-        message: serviceStatus.cache.status === 'healthy' ? 'Cache performing normally' : 'Cache performance issues',
-        lastChecked: new Date().toISOString(),
+        message: describeComponent('Cache', serviceStatus.cache.status),
+        lastChecked,
       },
+      // Real messaging health. This was pinned to `healthy` with the message "Message queue
+      // processing normally" regardless of the transport's actual state (issue #1067).
       queue: {
-        status: 'healthy' as const, // Default to healthy - will be enhanced when queue monitoring is available
-        message: 'Message queue processing normally',
-        lastChecked: new Date().toISOString(),
+        status: serviceStatus.queue.status,
+        message: describeComponent('Message queue', serviceStatus.queue.status),
+        lastChecked,
       },
     };
 
-    // Calculate overall status based on components
+    // Calculate overall status based on components. `unknown` is not healthy — it degrades the
+    // rollup, matching how the Admin API rolls up its own service list.
     const componentStatuses = Object.values(components).map(c => c.status);
     const hasUnhealthy = componentStatuses.some(s => s === 'unhealthy');
-    const hasDegraded = componentStatuses.some(s => s === 'degraded');
+    const hasDegradedOrUnknown = componentStatuses.some(s => s === 'degraded' || s === 'unknown');
 
-    let overall: 'healthy' | 'degraded' | 'unhealthy' = 'healthy';
+    let overall: ComponentHealthStatus = 'healthy';
     if (hasUnhealthy) overall = 'unhealthy';
-    else if (hasDegraded) overall = 'degraded';
+    else if (hasDegradedOrUnknown) overall = 'degraded';
 
     // Get active connections count (fallback to estimated value based on system load)
     const metricsService = new FetchSystemMetricsService(this.client);
@@ -117,79 +155,92 @@ export class FetchSystemHealthService implements ISystemHealthService {
    */
   async getServiceStatus(config?: RequestConfig): Promise<ServiceStatusMapDto> {
     try {
-      // Try to get from dedicated services endpoint
-      const response = await this.client['get']<Record<string, unknown>>(
-        ENDPOINTS.SYSTEM.SERVICES,
-        {
-          signal: config?.signal,
-          timeout: config?.timeout,
-          headers: config?.headers,
-        }
-      );
-
-      // Transform response to match ServiceStatusMapDto structure
-      // The /v1/admin/health-status/services endpoint returns a different format, so we'll map it
-      const typedResponse = response as {
-        coreApi?: { status?: string; responseTime?: number; endpoint?: string };
-        adminApi?: { status?: string; responseTime?: number; endpoint?: string };
-        database?: { status?: string; responseTime?: number; connectionCount?: number };
-        cache?: { status?: string; responseTime?: number; hitRate?: number };
-      };
+      const byId = await this.getServiceEntriesById(config);
 
       return {
         coreApi: {
-          status: this.helpers.normalizeStatus(typedResponse.coreApi?.status),
-          latency: typedResponse.coreApi?.responseTime ?? 0,
-          endpoint: typedResponse.coreApi?.endpoint ?? '/api',
+          status: this.statusOf(byId, SERVICE_IDS.gateway),
+          latency: this.latencyOf(byId, SERVICE_IDS.gateway),
+          endpoint: '/api',
         },
         adminApi: {
-          status: this.helpers.normalizeStatus(typedResponse.adminApi?.status),
-          latency: typedResponse.adminApi?.responseTime ?? 0,
-          endpoint: typedResponse.adminApi?.endpoint ?? '/api',
+          status: this.statusOf(byId, SERVICE_IDS.admin),
+          latency: this.latencyOf(byId, SERVICE_IDS.admin),
+          endpoint: '/api',
         },
         database: {
-          status: this.helpers.normalizeStatus(typedResponse.database?.status),
-          latency: typedResponse.database?.responseTime ?? 0,
-          connections: typedResponse.database?.connectionCount ?? 0,
+          status: this.statusOf(byId, SERVICE_IDS.database),
+          latency: this.latencyOf(byId, SERVICE_IDS.database),
+          connections: null,
         },
         cache: {
-          status: this.helpers.normalizeStatus(typedResponse.cache?.status),
-          latency: typedResponse.cache?.responseTime ?? 0,
-          hitRate: typedResponse.cache?.hitRate ?? 0,
+          status: this.statusOf(byId, SERVICE_IDS.cache),
+          latency: this.latencyOf(byId, SERVICE_IDS.cache),
+          hitRate: null,
+        },
+        queue: {
+          status: this.statusOf(byId, SERVICE_IDS.queue),
+          latency: this.latencyOf(byId, SERVICE_IDS.queue),
         },
       };
     } catch {
-      // Fallback: construct from health and system info
+      // Fallback when the service health endpoint is unreachable. Only the Admin's own readiness
+      // is knowable from here, so everything else is reported `unknown` rather than being given
+      // the Admin's status — the Gateway previously inherited it and looked healthy while down.
       const systemService = new FetchSystemService(this.client);
       const health = await systemService.getHealth(config);
-
-      // Map health checks to service status
-      const dbStatus = health.checks.database?.status ?? 'healthy';
-      const apiStatus = health.status; // Overall status as proxy for API health
+      const adminStatus = this.helpers.normalizeStatus(health.status);
 
       return {
-        coreApi: {
-          status: apiStatus,
-          latency: health.totalDuration ?? 0,
-          endpoint: '/api',
-        },
+        coreApi: { status: 'unknown', latency: null, endpoint: '/api' },
         adminApi: {
-          status: apiStatus,
-          latency: health.totalDuration ?? 0,
+          status: adminStatus,
+          latency: health.totalDuration ?? null,
           endpoint: '/api',
         },
         database: {
-          status: dbStatus,
-          latency: health.checks.database?.duration ?? 0,
-          connections: 1, // Fallback value
+          status: this.helpers.normalizeStatus(health.checks.database?.status),
+          latency: health.checks.database?.duration ?? null,
+          connections: null,
         },
-        cache: {
-          status: 'healthy', // Default when no cache info available
-          latency: 0,
-          hitRate: 0,
-        },
+        cache: { status: 'unknown', latency: null, hitRate: null },
+        queue: { status: 'unknown', latency: null },
       };
     }
+  }
+
+  /**
+   * Fetches the service health response and indexes its entries by service id.
+   *
+   * The previous implementation cast the response to `{ coreApi, adminApi, database, cache }`.
+   * The endpoint has never returned that shape — it returns `{ timestamp, overallStatus,
+   * summary, services[] }` — so every lookup was `undefined` and every service was reported
+   * `healthy` with zero latency, regardless of what the backend actually said (issue #1067).
+   */
+  private async getServiceEntriesById(
+    config?: RequestConfig
+  ): Promise<Map<string, ServiceStatusEntry>> {
+    const systemService = new FetchSystemService(this.client);
+    const response = await systemService.getServiceHealth(config);
+    return new Map(
+      (response.services ?? [])
+        .filter((service): service is ServiceStatusEntry & { id: string } =>
+          typeof service.id === 'string'
+        )
+        .map(service => [service.id, service])
+    );
+  }
+
+  private statusOf(byId: Map<string, ServiceStatusEntry>, id: string): ComponentHealthStatus {
+    return this.helpers.normalizeStatus(byId.get(id)?.status);
+  }
+
+  /**
+   * Probe round-trip for a service, or null when it does not have one. Heartbeat-derived
+   * services report `responseTime: null`; rendering that as `0 ms` implies a probe that never ran.
+   */
+  private latencyOf(byId: Map<string, ServiceStatusEntry>, id: string): number | null {
+    return byId.get(id)?.responseTime ?? null;
   }
 
   /**
@@ -229,55 +280,60 @@ export class FetchSystemHealthService implements ISystemHealthService {
    * @since Issue #428 - Health Events SDK Methods
    */
   async getHealthEvents(limit?: number, config?: RequestConfig): Promise<HealthEventsResponseDto> {
-    const searchParams = new URLSearchParams();
-    if (limit) {
-      searchParams.set('limit', limit.toString());
-    }
-
     try {
-      // Health events endpoint no longer exists - construct from available health data
-      const systemService = new FetchSystemService(this.client);
-      const healthStatus = await systemService.getHealth(config);
-      const systemInfo = await systemService.getSystemInfo(config);
-
-      // Generate mock events based on current health status
-      const now = new Date();
-      const events: HealthEventDto[] = [];
-
-      // Add system startup event (runtime.startTime is the process start timestamp)
-      const startupTime = systemInfo.runtime?.startTime
-        ? new Date(systemInfo.runtime.startTime)
-        : now;
-      events.push({
-        id: `system-startup-${startupTime.getTime()}`,
-        timestamp: startupTime.toISOString(),
-        type: 'system_recovered',
-        message: 'System started successfully',
-        severity: 'info',
-        source: 'system',
-        metadata: {
-          componentName: 'core',
-          duration: 0,
-        },
-      });
-
-      // Add events based on current health checks
-      Object.entries(healthStatus.checks).forEach(([componentName, check]) => {
-        if (check.status !== 'healthy') {
-          events.push({
-            id: `${componentName}-issue-${Date.now()}`,
-            timestamp: new Date(now.getTime() - Math.random() * 3600000).toISOString(), // Random time in last hour
-            type: 'system_issue',
-            message: check.description ?? `${componentName} experiencing issues`,
-            severity: check.status === 'degraded' ? 'warning' : 'error',
-            source: componentName,
-            metadata: {
-              componentName,
-              errorDetails: check.error,
-              duration: check.duration,
-            },
-          });
+      // Derived from the Admin incident history rather than synthesized. The previous
+      // implementation invented events from the current health snapshot and stamped them with
+      // `Date.now()` ids and `Math.random()` timestamps, so every poll produced a different
+      // "history" of things that never happened at those times (issue #1067).
+      const incidents = await this.client['get']<IncidentsResponse>(
+        ENDPOINTS.SYSTEM.HEALTH_INCIDENTS,
+        {
+          signal: config?.signal,
+          timeout: config?.timeout,
+          headers: config?.headers,
         }
+      );
+
+      const events: HealthEventDto[] = (incidents.incidents ?? []).flatMap(incident => {
+        if (!incident.startTime) {
+          return [];
+        }
+
+        const source = incident.affectedService ?? 'system';
+        const detail = incident.affectedModel
+          ? `${incident.impact ?? 'Elevated error rate'} (model ${incident.affectedModel})`
+          : incident.impact ?? 'Elevated error rate';
+
+        const onset: HealthEventDto = {
+          // The Admin API now returns stable incident ids, so these stay stable across polls.
+          id: `${incident.id ?? source}-onset`,
+          timestamp: incident.startTime,
+          type: 'system_issue',
+          message: incident.title ?? 'Service degradation',
+          severity: incident.severity === 'critical' ? 'error' : 'warning',
+          source,
+          metadata: {
+            componentName: source,
+            errorDetails: detail,
+          },
+        };
+
+        if (!incident.endTime) {
+          return [onset];
+        }
+
+        return [
+          onset,
+          {
+            id: `${incident.id ?? source}-recovered`,
+            timestamp: incident.endTime,
+            type: 'system_recovered',
+            message: `${incident.title ?? 'Service degradation'} resolved`,
+            severity: 'info',
+            source,
+            metadata: { componentName: source },
+          },
+        ];
       });
 
       // Sort events by timestamp (newest first)

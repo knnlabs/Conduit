@@ -4757,11 +4757,12 @@ export interface components {
     };
     /** @description A single incident derived from request log analysis. */
     IncidentDto: {
-      /** @description Unique identifier for the incident. */
+      /** @description Identifier for the incident. Derived from the incident's subject and window rather than
+       *     randomly generated, so the same incident keeps the same id across dashboard polls. */
       id?: string;
       /** @description Human-readable incident title. */
       title?: string;
-      /** @description Incident type identifier (e.g. service_degradation). */
+      /** @description Incident type identifier (e.g. model_error_spike). */
       type?: string;
       /** @description Incident severity (critical, major, or minor). */
       severity?: string;
@@ -4777,8 +4778,11 @@ export interface components {
        * @description When the incident ended (UTC), or null if still active.
        */
       endTime?: null | string;
-      /** @description Name of the affected service. */
+      /** @description Identifier of the affected service, matching an entry in the service health response
+       *     (e.g. core-api). */
       affectedService?: string;
+      /** @description Model the incident was attributed to, or null when the incident is not model-specific. */
+      affectedModel?: null | string;
       /** @description Human-readable impact description. */
       impact?: string;
       /** @description Additional incident detail metrics. */

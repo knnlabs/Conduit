@@ -258,27 +258,35 @@ export interface FeatureAvailability {
   timestamp: string;
 }
 
+/**
+ * Health status of a single component. `unknown` means the backend could not determine the
+ * status — most often a service that has not reported a heartbeat yet. It is deliberately
+ * distinct from `healthy`: treating "not known" as "fine" is what made the health dashboard
+ * report green during an outage (issue #1067).
+ */
+export type ComponentHealthStatus = 'healthy' | 'degraded' | 'unhealthy' | 'unknown';
+
 // Issue #427 - System Health SDK Methods
 export interface SystemHealthDto {
-  overall: 'healthy' | 'degraded' | 'unhealthy';
+  overall: ComponentHealthStatus;
   components: {
     api: {
-      status: 'healthy' | 'degraded' | 'unhealthy';
+      status: ComponentHealthStatus;
       message?: string;
       lastChecked: string;
     };
     database: {
-      status: 'healthy' | 'degraded' | 'unhealthy';
+      status: ComponentHealthStatus;
       message?: string;
       lastChecked: string;
     };
     cache: {
-      status: 'healthy' | 'degraded' | 'unhealthy';
+      status: ComponentHealthStatus;
       message?: string;
       lastChecked: string;
     };
     queue: {
-      status: 'healthy' | 'degraded' | 'unhealthy';
+      status: ComponentHealthStatus;
       message?: string;
       lastChecked: string;
     };
@@ -307,24 +315,33 @@ export interface SystemResourceMetricsDto {
 // intentionally named differently to avoid a false type-drift pairing. See issue #1038.
 export interface ServiceStatusMapDto {
   coreApi: {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    latency: number;
+    status: ComponentHealthStatus;
+    /** Probe round-trip in ms, or null when the status comes from a heartbeat rather than a probe. */
+    latency: number | null;
     endpoint: string;
   };
   adminApi: {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    latency: number;
+    status: ComponentHealthStatus;
+    /** Probe round-trip in ms, or null when the status comes from a heartbeat rather than a probe. */
+    latency: number | null;
     endpoint: string;
   };
   database: {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    latency: number;
-    connections: number;
+    status: ComponentHealthStatus;
+    latency: number | null;
+    /** Null — the Admin API no longer reports a connection count (it was a hardcoded 5). */
+    connections: number | null;
   };
   cache: {
-    status: 'healthy' | 'degraded' | 'unhealthy';
-    latency: number;
-    hitRate: number;
+    status: ComponentHealthStatus;
+    latency: number | null;
+    /** Null — the service health endpoint does not report a cache hit rate. */
+    hitRate: number | null;
+  };
+  /** Messaging (Wolverine) transport health. */
+  queue: {
+    status: ComponentHealthStatus;
+    latency: number | null;
   };
 }
 
