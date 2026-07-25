@@ -49,10 +49,14 @@ namespace ConduitLLM.Configuration.Entities
         /// <remarks>
         /// JsonIgnore is applied to prevent circular reference during serialization.
         /// The cycle is: Model → Series → Models → Model
+        /// Must not be initialized to a fresh instance: graph-traversing operations
+        /// (DbSet.Add/Update) would treat the phantom Series (Id = 0) as a new entity and
+        /// insert blank ModelSeries/ModelAuthor rows, overriding ModelSeriesId (issue #1192).
+        /// Null until loaded via Include.
         /// </remarks>
         [ForeignKey("ModelSeriesId")]
         [JsonIgnore]
-        public ModelSeries Series { get; set; } = new ModelSeries();
+        public ModelSeries Series { get; set; } = null!;
         
         /// <summary>
         /// Indicates whether this model supports vision/image inputs.

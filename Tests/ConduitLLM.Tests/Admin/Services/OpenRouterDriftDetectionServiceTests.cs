@@ -47,7 +47,9 @@ namespace ConduitLLM.Tests.Admin.Services
         {
             using var db = new ConduitDbContext(_dbOptions);
             db.Providers.Add(new Provider { Id = 1, ProviderType = ProviderType.OpenRouter, ProviderName = "OpenRouter", IsEnabled = true });
-            db.Models.Add(new Model { Id = 1, Name = "Claude 3.5 Sonnet", SupportsVision = false, SupportsFunctionCalling = false, SupportsImageGeneration = false });
+            db.ModelAuthors.Add(new ModelAuthor { Id = 1, Name = "Anthropic" });
+            db.ModelSeries.Add(new ModelSeries { Id = 1, AuthorId = 1, Name = "Claude", Parameters = "{}" });
+            db.Models.Add(new Model { Id = 1, Name = "Claude 3.5 Sonnet", ModelSeriesId = 1, SupportsVision = false, SupportsFunctionCalling = false, SupportsImageGeneration = false });
             if (withCost)
             {
                 db.ModelCosts.Add(new ModelCost { Id = 1, CostName = "claude", InputCostPerMillionTokens = 3.0m, OutputCostPerMillionTokens = 15.0m, IsActive = true });

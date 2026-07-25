@@ -28,6 +28,7 @@ namespace ConduitLLM.Admin.Endpoints
     public partial class ModelEndpoints : AdminEndpointHandlerBase
     {
         private readonly IModelRepository _modelRepository;
+        private readonly IModelSeriesRepository _modelSeriesRepository;
         private readonly IAdminModelProviderMappingService _mappingService;
         private readonly IProviderRepository _providerRepository;
         private readonly IEventBus _eventBus;
@@ -37,6 +38,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// </summary>
         public ModelEndpoints(
             IModelRepository modelRepository,
+            IModelSeriesRepository modelSeriesRepository,
             IAdminModelProviderMappingService mappingService,
             IProviderRepository providerRepository,
             IEventBus eventBus,
@@ -45,6 +47,7 @@ namespace ConduitLLM.Admin.Endpoints
             : base(eventBus, httpContextAccessor, logger)
         {
             _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
+            _modelSeriesRepository = modelSeriesRepository ?? throw new ArgumentNullException(nameof(modelSeriesRepository));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
@@ -289,6 +292,11 @@ namespace ConduitLLM.Admin.Endpoints
                 return Conflict($"A model with name '{dto.Name}' already exists");
             }
 
+            if (!await _modelSeriesRepository.ExistsAsync(dto.ModelSeriesId))
+            {
+                return BadRequest($"Model series with ID {dto.ModelSeriesId} does not exist");
+            }
+
             var model = new Model
             {
                 Name = dto.Name,
@@ -375,13 +383,18 @@ namespace ConduitLLM.Admin.Endpoints
                 model.Name = dto.Name;
             }
 
-            if (dto.ModelSeriesId.HasValue && model.ModelSeriesId != dto.ModelSeriesId.Value)
+            if (dto.ModelSeriesId.HasValue)
             {
-                changes.Add(("ModelSeriesId", model.ModelSeriesId.ToString(), dto.ModelSeriesId.Value.ToString()));
-                model.ModelSeriesId = dto.ModelSeriesId.Value;
-            }
-            else if (dto.ModelSeriesId.HasValue)
-            {
+                if (!await _modelSeriesRepository.ExistsAsync(dto.ModelSeriesId.Value))
+                {
+                    return BadRequest($"Model series with ID {dto.ModelSeriesId.Value} does not exist");
+                }
+                if (model.ModelSeriesId != dto.ModelSeriesId.Value)
+                {
+                    changes.Add(("ModelSeriesId", model.ModelSeriesId.ToString(), dto.ModelSeriesId.Value.ToString()));
+                    // Clear the loaded navigation so EF repoints by FK instead of the old graph.
+                    model.Series = null!;
+                }
                 model.ModelSeriesId = dto.ModelSeriesId.Value;
             }
 
