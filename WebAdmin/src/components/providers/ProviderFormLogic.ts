@@ -153,8 +153,11 @@ export function useProviderFormLogic(
             providerCostMarkupMultiplier: provider.providerCostMarkupMultiplier ?? 1,
           };
           
-          // Update initial values - form will reinitialize via key prop
+          // Hydrate the form with the loaded provider. useForm captures initialValues on its first
+          // render, so updating the state alone would never reach the inputs; initialize() sets both
+          // the values and the dirty baseline, and is a no-op if it somehow runs twice.
           setInitialFormValues(newFormValues);
+          form.initialize(newFormValues);
         } catch (error) {
           console.error('Error fetching provider:', error);
           notify.error('Failed to load provider');
@@ -166,6 +169,9 @@ export function useProviderFormLogic(
       
       void loadProvider();
     }
+    // 'form' is intentionally omitted: useForm returns a new object every render, so including it
+    // would refetch the provider on each render. The initialize() call inside is self-guarding.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, providerId, router]);
 
   let providerDisplayName = 'Unknown Provider';

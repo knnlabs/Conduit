@@ -187,65 +187,63 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     />
                   )}
 
-                  {config && mode === 'add' && (
-                    <>
-                      {config.requiresOrganizationId && (
-                        <TextInput
-                          label="Organization ID"
-                          placeholder={providerTypeNum === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Enter organization ID"}
-                          required={config.requiresOrganizationId}
-                          autoComplete="off"
-                          aria-autocomplete="none"
-                          list="autocompleteOff"
-                          data-form-type="other"
-                          {...form.getInputProps('organizationId')}
-                          size="md"
-                        />
-                      )}
+                  {config && mode === 'add' && config.requiresOrganizationId && (
+                    <TextInput
+                      label="Organization ID"
+                      placeholder={providerTypeNum === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Enter organization ID"}
+                      required={config.requiresOrganizationId}
+                      autoComplete="off"
+                      aria-autocomplete="none"
+                      list="autocompleteOff"
+                      data-form-type="other"
+                      {...form.getInputProps('organizationId')}
+                      size="md"
+                    />
+                  )}
 
-                      {config.settings?.map((field) => (
-                        field.secret ? (
-                          <PasswordInput
-                            key={field.key}
-                            label={field.label}
-                            placeholder={field.placeholder ?? ''}
-                            description={field.helpText}
-                            required={field.required}
-                            autoComplete="off"
-                            {...form.getInputProps(`settings.${field.key}`)}
-                            size="md"
-                          />
-                        ) : (
-                          <TextInput
-                            key={field.key}
-                            label={field.label}
-                            placeholder={field.placeholder ?? ''}
-                            description={field.helpText}
-                            required={field.required}
-                            autoComplete="off"
-                            aria-autocomplete="none"
-                            list="autocompleteOff"
-                            data-form-type="other"
-                            {...form.getInputProps(`settings.${field.key}`)}
-                            size="md"
-                          />
-                        )
-                      ))}
+                  {/* Structured settings render in both modes: these identify the provider account
+                      (for example a Cloudflare Account ID) and must stay editable after creation. */}
+                  {config?.settings?.map((field) => (
+                    field.secret ? (
+                      <PasswordInput
+                        key={field.key}
+                        label={field.label}
+                        placeholder={field.placeholder ?? ''}
+                        description={field.helpText}
+                        required={field.required}
+                        autoComplete="off"
+                        {...form.getInputProps(`settings.${field.key}`)}
+                        size="md"
+                      />
+                    ) : (
+                      <TextInput
+                        key={field.key}
+                        label={field.label}
+                        placeholder={field.placeholder ?? ''}
+                        description={field.helpText}
+                        required={field.required}
+                        autoComplete="off"
+                        aria-autocomplete="none"
+                        list="autocompleteOff"
+                        data-form-type="other"
+                        {...form.getInputProps(`settings.${field.key}`)}
+                        size="md"
+                      />
+                    )
+                  ))}
 
-                      {(config.requiresEndpoint || config.supportsCustomEndpoint) && (
-                        <TextInput
-                          label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
-                          placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
-                          required={config.requiresEndpoint}
-                          autoComplete="off"
-                          aria-autocomplete="none"
-                          list="autocompleteOff"
-                          data-form-type="other"
-                          {...form.getInputProps('apiEndpoint')}
-                          size="md"
-                        />
-                      )}
-                    </>
+                  {config && mode === 'add' && (config.requiresEndpoint || config.supportsCustomEndpoint) && (
+                    <TextInput
+                      label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
+                      placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
+                      required={config.requiresEndpoint}
+                      autoComplete="off"
+                      aria-autocomplete="none"
+                      list="autocompleteOff"
+                      data-form-type="other"
+                      {...form.getInputProps('apiEndpoint')}
+                      size="md"
+                    />
                   )}
 
                   <Switch

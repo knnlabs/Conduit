@@ -15,28 +15,60 @@ function getSettingFields(providerType: string) {
   return PROVIDER_CONFIG_REQUIREMENTS[providerType as unknown as ProviderType]?.settings ?? [];
 }
 
-/** Collects non-empty declared settings into the map sent to the backend, or undefined when none. */
-function collectSettings(values: ProviderFormData): Record<string, string> | undefined {
-  const result: Record<string, string> = {};
-  for (const field of getSettingFields(values.providerType)) {
+/**
+ * Collects the structured settings map sent to the backend, or undefined to leave the stored value
+ * untouched (the update endpoint treats null as "no change" and any supplied map as a wholesale
+ * replace).
+ *
+ * Edit mode seeds the map from the values loaded off the provider rather than building it from
+ * scratch, so keys this TypeScript mirror does not yet declare survive that wholesale replace.
+ * Clearing a declared field removes its key, which is how a value gets unset.
+ */
+function collectSettings(
+  values: ProviderFormData,
+  mode: 'add' | 'edit'
+): Record<string, string> | undefined {
+  const fields = getSettingFields(values.providerType);
+  const result: Record<string, string> = mode === 'edit' ? { ...(values.settings ?? {}) } : {};
+
+  for (const field of fields) {
     const raw = values.settings?.[field.key]?.trim() ?? '';
     if (raw) {
       result[field.key] = raw;
+    } else {
+      delete result[field.key];
     }
+  }
+
+  if (mode === 'edit') {
+    // Only manage settings for provider types that declare them; otherwise send nothing so an
+    // unrecognized type's stored settings are left alone.
+    return fields.length > 0 ? result : undefined;
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
 
-/** Validates required/format for declared settings; returns a map of form-path -> error message. */
-function validateSettings(values: ProviderFormData): Record<string, string> {
+/**
+ * Validates declared settings; returns a map of form-path -> error message.
+ *
+ * Required-ness is only enforced on create. An existing provider may legitimately carry no settings
+ * because its identifier is embedded in a raw base URL (the dual-read path), so blocking an edit on
+ * a missing value would be stricter than the backend, which decides by re-resolving the base URL.
+ */
+function validateSettings(
+  values: ProviderFormData,
+  mode: 'add' | 'edit'
+): Record<string, string> {
   const errors: Record<string, string> = {};
   for (const field of getSettingFields(values.providerType)) {
     const raw = values.settings?.[field.key]?.trim() ?? '';
-    if (field.required && !raw) {
-      errors[`settings.${field.key}`] = `${field.label} is required`;
+    if (!raw) {
+      if (field.required && mode === 'add') {
+        errors[`settings.${field.key}`] = `${field.label} is required`;
+      }
       continue;
     }
-    if (raw && field.validationRegexSource) {
+    if (field.validationRegexSource) {
       try {
         if (!new RegExp(field.validationRegexSource).test(raw)) {
           errors[`settings.${field.key}`] = `${field.label} is not in the expected format`;
@@ -62,14 +94,14 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
   const handleSubmit = async (values: ProviderFormData) => {
     setIsSubmitting(true);
     try {
-      if (mode === 'add') {
-        // Validate declared structured settings (for example a required Cloudflare account ID).
-        const settingsErrors = validateSettings(values);
-        if (Object.keys(settingsErrors).length > 0) {
-          Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
-          return;
-        }
+      // Validate declared structured settings (for example a required Cloudflare account ID).
+      const settingsErrors = validateSettings(values, mode);
+      if (Object.keys(settingsErrors).length > 0) {
+        Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
+        return;
+      }
 
+      if (mode === 'add') {
         let providerName = values.providerName.trim();
         if (!providerName) {
           const selectedProvider = availableProviders.find(p => p.value === values.providerType);
@@ -81,7 +113,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           providerType: values.providerType as ProviderType,
           providerName: providerName,
           baseUrl: values.apiEndpoint ?? undefined,
-          settings: collectSettings(values),
+          settings: collectSettings(values, 'add'),
           isEnabled: values.isEnabled,
           trustProviderReportedCosts: values.trustProviderReportedCosts,
           providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
@@ -119,6 +151,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           providerName: values.providerName ?? undefined,
           baseUrl: values.apiEndpoint ?? undefined,
           organization: values.organizationId ?? undefined,
+          settings: collectSettings(values, 'edit'),
           isEnabled: values.isEnabled,
           trustProviderReportedCosts: values.trustProviderReportedCosts,
           providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
@@ -152,7 +185,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
     }
 
     // Validate declared structured settings before hitting the provider.
-    const settingsErrors = validateSettings(form.values);
+    const settingsErrors = validateSettings(form.values, mode);
     if (Object.keys(settingsErrors).length > 0) {
       Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
       return;
@@ -171,7 +204,7 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
             apiKey: form.values.apiKey,
             baseUrl: form.values.apiEndpoint ?? undefined,
             organizationId: form.values.organizationId ?? undefined,
-            settings: collectSettings(form.values),
+            settings: collectSettings(form.values, 'add'),
           })
         );
       } else {
