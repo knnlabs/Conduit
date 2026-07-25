@@ -140,4 +140,45 @@ public class ChatSpendEstimatorTests
         // The cost mock only matches the buffered prompt count, so a wrong buffer fails here too.
         Assert.Equal(0.10m, result.Amount);
     }
+
+    [Fact]
+    public async Task EstimateForwardsToolDefinitionsToTheCounter()
+    {
+        // Tool schemas become prompt tokens at the provider; a reservation that ignores them
+        // under-bounds every agentic request (#1229).
+        var mappingService = new Mock<IModelProviderMappingService>();
+        mappingService.Setup(x => x.GetMappingByModelAliasAsync("model"))
+            .ReturnsAsync(new ModelProviderMapping
+            {
+                ModelAlias = "model",
+                ProviderModelId = "provider-model",
+                ModelProviderTypeAssociation = new ModelProviderTypeAssociation { ModelCostId = 9 }
+            });
+        var tools = new List<Tool> { new() { Function = new FunctionDefinition { Name = "get_weather" } } };
+        var tokenCounter = new Mock<ITokenCounter>();
+        tokenCounter.Setup(x => x.EstimateTokenCountAsync("model", It.IsAny<List<Message>>(), tools))
+            .ReturnsAsync(new TokenCount(700, TokenCountFidelity.Exact));
+        var costService = new Mock<ICostCalculationService>();
+        costService.Setup(x => x.CalculateCostByIdAsync(
+                9,
+                It.Is<Usage>(usage => usage.PromptTokens == 700),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0.20m);
+        var estimator = new ChatSpendEstimator(
+            mappingService.Object,
+            tokenCounter.Object,
+            costService.Object,
+            Options.Create(new BillingAdmissionOptions()));
+
+        var result = await estimator.EstimateMaximumCostAsync(new ChatCompletionRequest
+        {
+            Model = "model",
+            Messages = [new Message { Role = "user", Content = "hello" }],
+            Tools = tools,
+            MaxCompletionTokens = 64
+        });
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(700, result.PromptTokens);
+    }
 }

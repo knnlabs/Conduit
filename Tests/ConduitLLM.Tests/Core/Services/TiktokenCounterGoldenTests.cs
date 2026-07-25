@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -132,6 +133,47 @@ namespace ConduitLLM.Tests.Core.Services
                 {
                     new Message { Role = "user", Content = "" }
                 },
+                // Agentic history: the assistant's tool call and the tool result both travel back
+                // to the provider as prompt context, so both must contribute tokens (#1229).
+                ["msgs-tool-call-round-trip"] = new()
+                {
+                    new Message { Role = "user", Content = "What is the weather in Paris?" },
+                    new Message
+                    {
+                        Role = "assistant",
+                        Content = null,
+                        ToolCalls = new List<ToolCall>
+                        {
+                            new ToolCall
+                            {
+                                Id = "call_1",
+                                Function = new FunctionCall { Name = "get_weather", Arguments = "{\"city\":\"Paris\"}" }
+                            }
+                        }
+                    },
+                    new Message { Role = "tool", Content = "{\"temp_c\":21}", ToolCallId = "call_1" }
+                },
+                ["msgs-parallel-tool-calls"] = new()
+                {
+                    new Message
+                    {
+                        Role = "assistant",
+                        Content = null,
+                        ToolCalls = new List<ToolCall>
+                        {
+                            new ToolCall
+                            {
+                                Id = "call_1",
+                                Function = new FunctionCall { Name = "get_weather", Arguments = "{\"city\":\"Paris\"}" }
+                            },
+                            new ToolCall
+                            {
+                                Id = "call_2",
+                                Function = new FunctionCall { Name = "get_weather", Arguments = "{\"city\":\"Berlin\"}" }
+                            }
+                        }
+                    }
+                },
             };
 
         private static readonly IReadOnlyDictionary<string, int> ExpectedByMessageShape =
@@ -142,7 +184,91 @@ namespace ConduitLLM.Tests.Core.Services
                 ["msgs-empty-list"] = 0,
                 ["msgs-named"] = 11,
                 ["msgs-null-content"] = 8,
+                ["msgs-parallel-tool-calls"] = 28,
                 ["msgs-single-user"] = 11,
+                ["msgs-tool-call-round-trip"] = 41,
+            };
+
+        /// <summary>
+        /// Tool-definition shapes counted alongside a fixed single-user message
+        /// (<c>msgs-single-user</c>, pinned at 11), so each pin isolates what the tools add (#1229).
+        /// </summary>
+        /// <remarks>
+        /// The heuristic being pinned: 10 tokens of scaffolding when any tools are present, 6 per
+        /// function, plus the tokenized name, description, and compact-serialized parameter schema.
+        /// Counting the raw JSON schema over-counts slightly against OpenAI's TypeScript-style
+        /// compaction — deliberate, since these counts feed reservations and fallback billing.
+        /// </remarks>
+        private static readonly IReadOnlyDictionary<string, IReadOnlyList<Tool>> ToolShapes =
+            new Dictionary<string, IReadOnlyList<Tool>>(StringComparer.Ordinal)
+            {
+                ["tools-name-only"] = new List<Tool>
+                {
+                    new Tool { Function = new FunctionDefinition { Name = "get_weather" } }
+                },
+                ["tools-with-description"] = new List<Tool>
+                {
+                    new Tool
+                    {
+                        Function = new FunctionDefinition
+                        {
+                            Name = "get_weather",
+                            Description = "Get the current weather for a city."
+                        }
+                    }
+                },
+                ["tools-with-parameters"] = new List<Tool>
+                {
+                    new Tool
+                    {
+                        Function = new FunctionDefinition
+                        {
+                            Name = "get_weather",
+                            Description = "Get the current weather for a city.",
+                            Parameters = new JsonObject
+                            {
+                                ["type"] = "object",
+                                ["properties"] = new JsonObject
+                                {
+                                    ["city"] = new JsonObject
+                                    {
+                                        ["type"] = "string",
+                                        ["description"] = "City name"
+                                    }
+                                },
+                                ["required"] = new JsonArray("city")
+                            }
+                        }
+                    }
+                },
+                ["tools-two-functions"] = new List<Tool>
+                {
+                    new Tool
+                    {
+                        Function = new FunctionDefinition
+                        {
+                            Name = "get_weather",
+                            Description = "Get the current weather for a city."
+                        }
+                    },
+                    new Tool
+                    {
+                        Function = new FunctionDefinition
+                        {
+                            Name = "get_forecast",
+                            Description = "Get a five day forecast for a city."
+                        }
+                    }
+                },
+            };
+
+        private static readonly IReadOnlyDictionary<string, int> ExpectedByToolShape =
+            new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["tools-name-only"] = 29,
+                ["tools-two-functions"] = 55,
+                ["tools-with-description"] = 37,
+                ["tools-with-parameters"] = 60,
             };
 
         /// <summary>
@@ -202,6 +328,8 @@ namespace ConduitLLM.Tests.Core.Services
 
         public static TheoryData<string> JsonShapeIds() => Keys(JsonContentShapes.Keys);
 
+        public static TheoryData<string> ToolShapeIds() => Keys(ToolShapes.Keys);
+
         private static TheoryData<string> Keys(IEnumerable<string> keys)
         {
             var data = new TheoryData<string>();
@@ -243,6 +371,18 @@ namespace ConduitLLM.Tests.Core.Services
             var actual = await counter.EstimateTokenCountAsync("probe-json", JsonMessage(shapeId));
 
             Assert.Equal(ExpectedByJsonShape[shapeId], actual.Tokens);
+        }
+
+        [Theory]
+        [MemberData(nameof(ToolShapeIds))]
+        public async Task ToolShape_ProducesPinnedTokenCount(string shapeId)
+        {
+            var counter = CounterFor("cl100k_base");
+
+            var actual = await counter.EstimateTokenCountAsync(
+                "probe-tools", MessageShapes["msgs-single-user"], ToolShapes[shapeId]);
+
+            Assert.Equal(ExpectedByToolShape[shapeId], actual.Tokens);
         }
 
         /// <summary>
@@ -288,6 +428,8 @@ namespace ConduitLLM.Tests.Core.Services
                 .Where(k => !ExpectedByMessageShape.ContainsKey(k)).Select(k => $"messages:{k}"));
             missing.AddRange(JsonContentShapes.Keys
                 .Where(k => !ExpectedByJsonShape.ContainsKey(k)).Select(k => $"json:{k}"));
+            missing.AddRange(ToolShapes.Keys
+                .Where(k => !ExpectedByToolShape.ContainsKey(k)).Select(k => $"tools:{k}"));
 
             Assert.True(missing.Count == 0, "Unpinned shapes: " + string.Join(", ", missing));
         }
@@ -317,6 +459,14 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 var count = await CounterFor("cl100k_base")
                     .EstimateTokenCountAsync("probe-json", JsonMessage(id));
+                _output.WriteLine($"                [\"{id}\"] = {count.Tokens},");
+            }
+
+            _output.WriteLine("--- TOOLS ---");
+            foreach (var id in ToolShapes.Keys.OrderBy(k => k, StringComparer.Ordinal))
+            {
+                var count = await CounterFor("cl100k_base")
+                    .EstimateTokenCountAsync("probe-tools", MessageShapes["msgs-single-user"], ToolShapes[id]);
                 _output.WriteLine($"                [\"{id}\"] = {count.Tokens},");
             }
         }

@@ -88,7 +88,7 @@ public sealed class RequestTokenEstimator
     {
         // Rate-limit windows are estimate-then-reconcile, so the raw count is used without a
         // fidelity buffer: padding here would only throttle callers earlier than their limit.
-        var prompt = (await _tokenCounter.EstimateTokenCountAsync(chat.Model, chat.Messages)).Tokens;
+        var prompt = (await _tokenCounter.EstimateTokenCountAsync(chat.Model, chat.Messages, chat.Tools)).Tokens;
 
         // max_completion_tokens supersedes the legacy max_tokens where both are present.
         var declared = chat.MaxCompletionTokens ?? chat.MaxTokens;
