@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Security;
 using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
@@ -285,6 +286,47 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
+        /// Returns a copy of the credential whose secret settings hold plaintext, decrypting the
+        /// stored values so provider clients consume them exactly as they consume the API key.
+        /// </summary>
+        /// <remarks>
+        /// A copy, not an in-place mutation: the credential can come from a cached or tracked entity,
+        /// and writing plaintext back into it would leak decrypted secrets into that shared instance
+        /// and risk persisting them. A credential with no secret settings is returned untouched.
+        /// </remarks>
+        private ProviderKeyCredential RevealSecretSettings(ProviderKeyCredential keyCredential)
+        {
+            if (keyCredential.SecretSettings is not { Count: > 0 })
+            {
+                return keyCredential;
+            }
+
+            var protector = _serviceProvider.GetService<IProviderSecretProtector>();
+            if (protector == null)
+            {
+                _logger.LogWarning(
+                    "No provider secret protector is registered; secret settings for provider {ProviderId} cannot be decrypted.",
+                    keyCredential.ProviderId);
+                return keyCredential;
+            }
+
+            return new ProviderKeyCredential
+            {
+                Id = keyCredential.Id,
+                ProviderId = keyCredential.ProviderId,
+                ApiKey = keyCredential.ApiKey,
+                KeyName = keyCredential.KeyName,
+                BaseUrl = keyCredential.BaseUrl,
+                SecretSettings = protector.RevealAll(keyCredential.SecretSettings),
+                IsPrimary = keyCredential.IsPrimary,
+                IsEnabled = keyCredential.IsEnabled,
+                ProviderAccountGroup = keyCredential.ProviderAccountGroup,
+                CreatedAt = keyCredential.CreatedAt,
+                UpdatedAt = keyCredential.UpdatedAt
+            };
+        }
+
+        /// <summary>
         /// Validates that a provider is enabled, then retrieves its primary key credential.
         /// </summary>
         private async Task<IReadOnlyList<ProviderKeyCredential>> ValidateProviderAndGetCredentialsAsync(Provider provider)
@@ -361,6 +403,8 @@ namespace ConduitLLM.Providers
 
             _logger.LogDebug("Creating client for provider type: {ProviderType}, model: {ModelId}",
                 provider.ProviderType, modelId);
+
+            keyCredential = RevealSecretSettings(keyCredential);
 
             // Create the client creation context with all dependencies
             var context = new ClientCreationContext

@@ -62,6 +62,20 @@ namespace ConduitLLM.Configuration.Entities
 
         
         /// <summary>
+        /// Gets or sets the secret-valued structured settings this credential carries in addition to
+        /// <see cref="ApiKey"/>, keyed by the setting key declared in the provider registry (for
+        /// example an AWS secret access key, or a Google service-account JSON document).
+        /// </summary>
+        /// <remarks>
+        /// Values are stored encrypted (see <c>IProviderSecretProtector</c>) and are never returned
+        /// to API clients. Non-secret identifiers belong in <c>Provider.Settings</c> instead: that
+        /// bag is plaintext by contract. Secrets live on the credential rather than the provider so
+        /// they take part in the existing key rotation, failover and account-group behaviour - one
+        /// provider can hold credentials for several accounts.
+        /// </remarks>
+        public Dictionary<string, string>? SecretSettings { get; set; }
+
+        /// <summary>
         /// Retired. The organization is a header-bound provider setting
         /// (<c>Provider.Settings["organization"]</c>) that is actually sent on requests; this column
         /// was stored but read by nothing.

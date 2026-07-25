@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Security;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 
@@ -39,6 +40,7 @@ public class ProviderConnectionTestEndpointTests
             _providerRepository.Object,
             _keyRepository.Object,
             _clientFactory.Object,
+            Mock.Of<IProviderSecretProtector>(),
             Mock.Of<IEventBus>(),
             accessor.Object,
             NullLogger<ProviderCredentialsEndpoints>.Instance);

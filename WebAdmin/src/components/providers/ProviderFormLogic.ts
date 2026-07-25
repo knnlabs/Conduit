@@ -208,7 +208,10 @@ export function useProviderFormLogic(
   }
 
   const isLoading = isLoadingProviders || isLoadingProvider || isLoadingSettingsSchema;
-  const settingFields = settingsSchema[form.values.providerType as ProviderType] ?? [];
+  // Secret-valued settings are deliberately excluded: they belong to a key credential, where they
+  // are stored encrypted, not to the provider's plaintext settings bag. The key editor renders them.
+  const settingFields = (settingsSchema[form.values.providerType as ProviderType] ?? [])
+    .filter(field => !field.secret);
 
   return {
     form,

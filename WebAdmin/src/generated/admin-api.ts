@@ -3894,6 +3894,11 @@ export interface components {
       apiKey?: string;
       keyName?: string;
       baseUrl?: null | string;
+      /** @description Secret-valued structured settings declared by the provider type (for example an AWS secret
+       *     access key), keyed by setting key. Stored encrypted and never returned by any read. */
+      secretSettings?: null | {
+        [key: string]: string;
+      };
       isPrimary?: boolean;
       isEnabled?: boolean;
       /** Format: int32 */
@@ -6522,6 +6527,7 @@ export interface components {
       providerAccountGroup: number;
       apiKey: string;
       baseUrl?: null | string;
+      configuredSecretSettings?: string[];
       isPrimary: boolean;
       isEnabled: boolean;
       keyName?: null | string;
@@ -7341,6 +7347,11 @@ export interface components {
       keyName?: null | string;
       apiKey?: null | string;
       baseUrl?: null | string;
+      /** @description Secret-valued structured settings to replace wholesale. Null leaves the stored values
+       *     untouched (PATCH semantics); a supplied map replaces them. */
+      secretSettings?: null | {
+        [key: string]: string;
+      };
       isPrimary?: null | boolean;
       isEnabled?: null | boolean;
       /** Format: int32 */

@@ -191,34 +191,22 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                   {/* Structured settings are declared by the backend provider registry and served by
                       the Admin API, so this form never mirrors the field list. They render in both
                       modes: these identify the provider account (for example a Cloudflare Account
-                      ID) and must stay editable after creation. */}
+                      ID) and must stay editable after creation. Secret-valued settings are excluded
+                      upstream - they live on a key credential, and the key editor renders them. */}
                   {settingFields.map((field) => (
-                    field.secret ? (
-                      <PasswordInput
-                        key={field.key}
-                        label={field.label}
-                        placeholder={field.placeholder ?? ''}
-                        description={field.helpText}
-                        required={field.required}
-                        autoComplete="off"
-                        {...form.getInputProps(`settings.${field.key}`)}
-                        size="md"
-                      />
-                    ) : (
-                      <TextInput
-                        key={field.key}
-                        label={field.label}
-                        placeholder={field.placeholder ?? ''}
-                        description={field.helpText}
-                        required={field.required}
-                        autoComplete="off"
-                        aria-autocomplete="none"
-                        list="autocompleteOff"
-                        data-form-type="other"
-                        {...form.getInputProps(`settings.${field.key}`)}
-                        size="md"
-                      />
-                    )
+                    <TextInput
+                      key={field.key}
+                      label={field.label}
+                      placeholder={field.placeholder ?? ''}
+                      description={field.helpText}
+                      required={field.required}
+                      autoComplete="off"
+                      aria-autocomplete="none"
+                      list="autocompleteOff"
+                      data-form-type="other"
+                      {...form.getInputProps(`settings.${field.key}`)}
+                      size="md"
+                    />
                   ))}
 
                   {config && mode === 'add' && (config.requiresEndpoint || config.supportsCustomEndpoint) && (

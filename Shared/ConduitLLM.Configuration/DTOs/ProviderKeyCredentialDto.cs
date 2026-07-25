@@ -31,6 +31,12 @@ namespace ConduitLLM.Configuration.DTOs
         public string? BaseUrl { get; set; }
 
         /// <summary>
+        /// The keys of the secret settings this credential has configured, so a UI can show which
+        /// are set without ever receiving their values. Secret values are write-only.
+        /// </summary>
+        public IReadOnlyList<string> ConfiguredSecretSettings { get; set; } = Array.Empty<string>();
+
+        /// <summary>
         /// Whether this key is the primary key for the provider
         /// </summary>
         public required bool IsPrimary { get; set; }

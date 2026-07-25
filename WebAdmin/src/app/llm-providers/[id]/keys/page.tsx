@@ -12,6 +12,7 @@ import {
   Badge,
   ActionIcon,
   TextInput,
+  PasswordInput,
   NumberInput,
   Switch,
   Card,
@@ -39,7 +40,12 @@ import {
 } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
-import type { ProviderDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@/lib/admin-api';
+import type {
+  ProviderDto,
+  ProviderKeyCredentialDto,
+  CreateProviderKeyCredentialDto,
+  ProviderSettingField,
+} from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatters } from '@/lib/utils/formatters';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
@@ -64,6 +70,10 @@ export default function ProviderKeysPage() {
     providerAccountGroup: 0,
     baseUrl: '',
   });
+  // Secret-valued settings the provider type declares (for example an AWS secret access key).
+  // They are held on the key credential, encrypted at rest, and never read back from the server.
+  const [secretFields, setSecretFields] = useState<ProviderSettingField[]>([]);
+  const [newKeySecrets, setNewKeySecrets] = useState<Record<string, string>>({});
   const [editingGroupKey, setEditingGroupKey] = useState<ProviderKeyCredentialDto | null>(null);
   const [editGroupValue, setEditGroupValue] = useState<number>(0);
   const [isSavingGroup, setIsSavingGroup] = useState(false);
@@ -100,13 +110,41 @@ export default function ProviderKeysPage() {
     void fetchKeys();
   }, [fetchProvider, fetchKeys]);
 
+  useEffect(() => {
+    const providerType = provider?.providerType;
+    if (!providerType) return;
+
+    const loadSecretFields = async () => {
+      try {
+        const schema = await withAdminClient(client => client.providers.getSettingsSchema());
+        setSecretFields((schema[providerType] ?? []).filter(field => field.secret));
+      } catch (error) {
+        console.error('Error fetching provider settings schema:', error);
+        notify.error(new Error('Failed to load provider credential fields'));
+      }
+    };
+
+    void loadSecretFields();
+  }, [provider?.providerType]);
+
   const handleAddKey = async () => {
     if (!newKeyForm.apiKey) return;
 
     try {
       setIsAddingKey(true);
-      await withAdminClient(client => 
-        client.providers.createKey(providerId, newKeyForm)
+      const secretSettings: Record<string, string> = {};
+      for (const field of secretFields) {
+        const value = newKeySecrets[field.key]?.trim() ?? '';
+        if (value) {
+          secretSettings[field.key] = value;
+        }
+      }
+
+      await withAdminClient(client =>
+        client.providers.createKey(providerId, {
+          ...newKeyForm,
+          secretSettings: Object.keys(secretSettings).length > 0 ? secretSettings : undefined,
+        })
       );
       
       notify.success('Provider key added successfully');
@@ -120,6 +158,7 @@ export default function ProviderKeysPage() {
         providerAccountGroup: 0,
         baseUrl: '',
       });
+      setNewKeySecrets({});
       setShowAddForm(false);
       
       // Refresh keys
@@ -304,6 +343,19 @@ export default function ProviderKeysPage() {
               onChange={(e) => setNewKeyForm({ ...newKeyForm, keyName: e.target.value })}
             />
 
+            {secretFields.map((field) => (
+              <PasswordInput
+                key={field.key}
+                label={field.label}
+                placeholder={field.placeholder ?? ''}
+                description={field.helpText}
+                required={field.required}
+                autoComplete="off"
+                value={newKeySecrets[field.key] ?? ''}
+                onChange={(e) => setNewKeySecrets({ ...newKeySecrets, [field.key]: e.target.value })}
+              />
+            ))}
+
             <NumberInput
               label="Account Group"
               description="Group 0 means ungrouped (the key is treated independently). Keys in the same group (1-32) share one provider account balance, so balance exhaustion disables and re-enables all keys in the group together."
@@ -399,6 +451,12 @@ export default function ProviderKeysPage() {
                       <Text size="xs" c="dimmed">
                         Account Group: {key.providerAccountGroup > 0 ? key.providerAccountGroup : 'Ungrouped'}
                       </Text>
+                      {key.configuredSecretSettings && key.configuredSecretSettings.length > 0 && (
+                        <Text size="xs" c="dimmed">
+                          {/* Names only - the server never returns secret values. */}
+                          Secrets: {key.configuredSecretSettings.join(', ')}
+                        </Text>
+                      )}
                       <Text size="xs" c="dimmed">
                         Added: {formatters.date(key.createdAt)}
                       </Text>

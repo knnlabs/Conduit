@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Security;
 
 using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Configuration.DTOs;
@@ -25,6 +26,7 @@ namespace ConduitLLM.Admin.Endpoints
         private readonly IProviderRepository _providerRepository;
         private readonly IProviderKeyCredentialRepository _keyRepository;
         private readonly ILLMClientFactory _clientFactory;
+        private readonly IProviderSecretProtector _secretProtector;
 
         /// <summary>
         /// Initializes the Provider Credentials endpoint handler.
@@ -33,6 +35,7 @@ namespace ConduitLLM.Admin.Endpoints
             IProviderRepository providerRepository,
             IProviderKeyCredentialRepository keyRepository,
             ILLMClientFactory clientFactory,
+            IProviderSecretProtector secretProtector,
             IEventBus eventBus,
             IHttpContextAccessor httpContextAccessor,
             ILogger<ProviderCredentialsEndpoints> logger)
@@ -41,6 +44,7 @@ namespace ConduitLLM.Admin.Endpoints
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
             _keyRepository = keyRepository ?? throw new ArgumentNullException(nameof(keyRepository));
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
+            _secretProtector = secretProtector ?? throw new ArgumentNullException(nameof(secretProtector));
         }
 
         public static IEndpointRouteBuilder MapProviderCredentialsEndpoints(IEndpointRouteBuilder app)

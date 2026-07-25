@@ -506,6 +506,57 @@ namespace ConduitLLM.Providers.Configuration
         }
 
         /// <summary>
+        /// Gets the settings a provider type declares as secret. Their values are held on the key
+        /// credential and encrypted at rest, never in the plaintext <c>Provider.Settings</c> bag.
+        /// </summary>
+        /// <param name="providerType">The provider type.</param>
+        /// <returns>The secret setting declarations; empty when the provider declares none.</returns>
+        public static IReadOnlyList<ProviderSettingDefinition> GetSecretSettings(ProviderType providerType) =>
+            GetConfiguration(providerType)?.Settings.Where(setting => setting.Secret).ToArray()
+            ?? Array.Empty<ProviderSettingDefinition>();
+
+        /// <summary>
+        /// Gets the settings a provider type declares as non-secret. Their values live in the
+        /// provider's plaintext <c>Settings</c> bag.
+        /// </summary>
+        /// <param name="providerType">The provider type.</param>
+        /// <returns>The non-secret setting declarations; empty when the provider declares none.</returns>
+        public static IReadOnlyList<ProviderSettingDefinition> GetNonSecretSettings(ProviderType providerType) =>
+            GetConfiguration(providerType)?.Settings.Where(setting => !setting.Secret).ToArray()
+            ?? Array.Empty<ProviderSettingDefinition>();
+
+        /// <summary>
+        /// Names the secret settings a provider type requires that the supplied credential does not
+        /// carry, using their operator-facing labels.
+        /// </summary>
+        /// <param name="providerType">The provider type whose declarations are checked.</param>
+        /// <param name="secretSettings">The credential's secret setting values, keyed by setting key.</param>
+        /// <returns>The labels of the missing required secrets, in declaration order.</returns>
+        public static IReadOnlyList<string> GetMissingRequiredSecrets(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? secretSettings) =>
+            GetMissingRequiredSecrets(GetSecretSettings(providerType), secretSettings);
+
+        /// <summary>
+        /// Names the required secrets among the given declarations that the supplied values do not
+        /// cover, using their operator-facing labels.
+        /// </summary>
+        /// <param name="declarations">The setting declarations to check; non-secret ones are ignored.</param>
+        /// <param name="secretSettings">The credential's secret setting values, keyed by setting key.</param>
+        /// <returns>The labels of the missing required secrets, in declaration order.</returns>
+        public static IReadOnlyList<string> GetMissingRequiredSecrets(
+            IEnumerable<ProviderSettingDefinition> declarations,
+            IReadOnlyDictionary<string, string>? secretSettings) =>
+            declarations
+                .Where(definition => definition.Secret
+                    && definition.Required
+                    && (secretSettings == null
+                        || !secretSettings.TryGetValue(definition.Key, out var value)
+                        || string.IsNullOrWhiteSpace(value)))
+                .Select(definition => definition.Label)
+                .ToArray();
+
+        /// <summary>
         /// Resolves the value of a single structured setting, falling back to the value declared in
         /// the registry when the operator supplied none.
         /// </summary>

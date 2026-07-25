@@ -26162,6 +26162,16 @@
               "string"
             ]
           },
+          "secretSettings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Secret-valued structured settings declared by the provider type (for example an AWS secret\r\naccess key), keyed by setting key. Stored encrypted and never returned by any read."
+          },
           "isPrimary": {
             "type": "boolean"
           },
@@ -32185,6 +32195,12 @@
               "string"
             ]
           },
+          "configuredSecretSettings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "isPrimary": {
             "type": "boolean"
           },
@@ -34012,6 +34028,16 @@
               "null",
               "string"
             ]
+          },
+          "secretSettings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Secret-valued structured settings to replace wholesale. Null leaves the stored values\r\nuntouched (PATCH semantics); a supplied map replaces them."
           },
           "isPrimary": {
             "type": [
