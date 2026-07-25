@@ -2,8 +2,11 @@ import { useForm } from '@mantine/form';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
-import { 
-  type ProviderDto
+import {
+  type ProviderDto,
+  type ProviderSettingField,
+  type ProviderSettingsSchema,
+  type ProviderType
 } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
@@ -14,7 +17,6 @@ export interface ProviderFormData {
   providerName: string;
   apiKey: string;
   apiEndpoint?: string;
-  organizationId?: string;
   /** Structured, provider-scoped settings (for example a Cloudflare account ID), keyed by setting key. */
   settings: Record<string, string>;
   isEnabled: boolean;
@@ -47,6 +49,8 @@ export interface ProviderFormLogicResult {
   setInitialFormValues: (value: ProviderFormData) => void;
   providerDisplayName: string;
   isLoading: boolean;
+  /** Backend-declared settings fields for the currently selected provider type. */
+  settingFields: ProviderSettingField[];
 }
 
 export function useProviderFormLogic(
@@ -61,12 +65,13 @@ export function useProviderFormLogic(
   const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
   const [existingProvider, setExistingProvider] = useState<ProviderDto | null>(null);
   const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');
+  const [settingsSchema, setSettingsSchema] = useState<ProviderSettingsSchema>({});
+  const [isLoadingSettingsSchema, setIsLoadingSettingsSchema] = useState(true);
   const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>(() => ({
     providerType: '',
     providerName: '',
     apiKey: '',
     apiEndpoint: '',
-    organizationId: '',
     settings: {},
     isEnabled: true,
     trustProviderReportedCosts: false,
@@ -92,6 +97,24 @@ export function useProviderFormLogic(
       },
     },
   });
+
+  // Load the backend-declared settings schema. It drives which structured fields are rendered and
+  // validated, so it is fetched in both modes rather than mirrored in the client.
+  useEffect(() => {
+    const loadSettingsSchema = async () => {
+      try {
+        const schema = await withAdminClient(client => client.providers.getSettingsSchema());
+        setSettingsSchema(schema);
+      } catch (error) {
+        console.error('Error fetching provider settings schema:', error);
+        notify.error('Failed to load provider settings fields');
+      } finally {
+        setIsLoadingSettingsSchema(false);
+      }
+    };
+
+    void loadSettingsSchema();
+  }, []);
 
   // Fetch available providers for add mode
   useEffect(() => {
@@ -145,8 +168,6 @@ export function useProviderFormLogic(
             providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
             apiKey: '', // Don't show existing key for security
             apiEndpoint: apiProvider.baseUrl ?? '',
-            organizationId: (provider as { organization?: string; organizationId?: string }).organization ??
-                          (provider as { organization?: string; organizationId?: string }).organizationId ?? '',
             settings: { ...(provider.settings ?? {}) },
             isEnabled: provider.isEnabled === true,
             trustProviderReportedCosts: provider.trustProviderReportedCosts === true,
@@ -186,7 +207,11 @@ export function useProviderFormLogic(
     }
   }
 
-  const isLoading = isLoadingProviders || isLoadingProvider;
+  const isLoading = isLoadingProviders || isLoadingProvider || isLoadingSettingsSchema;
+  // Secret-valued settings are deliberately excluded: they belong to a key credential, where they
+  // are stored encrypted, not to the provider's plaintext settings bag. The key editor renders them.
+  const settingFields = (settingsSchema[form.values.providerType as ProviderType] ?? [])
+    .filter(field => !field.secret);
 
   return {
     form,
@@ -208,5 +233,6 @@ export function useProviderFormLogic(
     setInitialFormValues,
     providerDisplayName,
     isLoading,
+    settingFields,
   };
 }

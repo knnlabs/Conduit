@@ -119,6 +119,17 @@ export const PROVIDER_REGISTRY: Partial<Record<ProviderType, ProviderMetadata>> 
     defaultMaxOutputTokens: 131072,
     description: 'Meta Model API (Muse Spark models)'
   },
+  [ProviderType.Azure]: {
+    value: ProviderType.Azure,
+    name: 'Azure',
+    label: 'Azure OpenAI',
+    supportsSpeedScore: true,
+    supportsQualityScore: true,
+    supportsVariation: false,
+    defaultMaxInputTokens: 128000,
+    defaultMaxOutputTokens: 16384,
+    description: 'Azure OpenAI Service (deployment-scoped OpenAI models)'
+  },
   [ProviderType.Ultravox]: {
     value: ProviderType.Ultravox,
     name: 'Ultravox',

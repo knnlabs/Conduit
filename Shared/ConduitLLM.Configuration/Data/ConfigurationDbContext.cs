@@ -509,6 +509,9 @@ namespace ConduitLLM.Configuration
             // Apply Provider configuration (structured Settings as jsonb)
             modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderEntityConfiguration());
 
+            // Apply ProviderKeyCredential configuration (encrypted SecretSettings as jsonb)
+            modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderKeyCredentialEntityConfiguration());
+
             // Note: ModelProviderMapping and Provider are now included in test environments
             // as they are required by the application code during tests
         }

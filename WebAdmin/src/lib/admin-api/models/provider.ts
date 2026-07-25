@@ -67,14 +67,21 @@ export interface ProviderKeyRotationDto {
   keyName?: string;
 }
 
-// API Key Test Response Types
+// API Key Test Response Types.
+// Mirrors ConduitLLM.Configuration.DTOs.ApiKeyTestResult; every member the backend can return must
+// appear here, or a classified result degrades into UNKNOWN_ERROR on the way through the client.
 export enum ApiKeyTestResult {
   SUCCESS = 'success',
   INVALID_KEY = 'invalid_key',
   IGNORED = 'ignored',
   PROVIDER_DOWN = 'provider_down',
   RATE_LIMITED = 'rate_limited',
-  UNKNOWN_ERROR = 'unknown_error'
+  UNKNOWN_ERROR = 'unknown_error',
+  /**
+   * The provider is misconfigured - a required structured setting is missing, or the endpoint
+   * rejected the request outright - so the key itself was never actually exercised.
+   */
+  CONFIGURATION = 'configuration'
 }
 
 export interface StandardApiKeyTestResponse {

@@ -20,7 +20,7 @@ namespace ConduitLLM.Providers.OpenAI
             if (_isAzure)
             {
                 var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments", ProviderModelId, "chat/completions");
-                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
+                return UrlBuilder.AppendQueryString(url, ("api-version", AzureApiVersion));
             }
             return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.ChatCompletions);
         }
@@ -38,7 +38,7 @@ namespace ConduitLLM.Providers.OpenAI
             if (_isAzure)
             {
                 var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments", ProviderModelId, "embeddings");
-                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
+                return UrlBuilder.AppendQueryString(url, ("api-version", AzureApiVersion));
             }
             return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.Embeddings);
         }
@@ -56,7 +56,7 @@ namespace ConduitLLM.Providers.OpenAI
             if (_isAzure)
             {
                 var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments", ProviderModelId, "images/generations");
-                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
+                return UrlBuilder.AppendQueryString(url, ("api-version", AzureApiVersion));
             }
             return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.ImageGenerations);
         }
@@ -76,7 +76,7 @@ namespace ConduitLLM.Providers.OpenAI
             {
                 // Azure uses a different endpoint structure for listing deployments
                 var url = UrlBuilder.Combine(BaseUrl, "openai", "deployments");
-                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
+                return UrlBuilder.AppendQueryString(url, ("api-version", AzureApiVersion));
             }
             return UrlBuilder.Combine(BaseUrl, Constants.Endpoints.Models);
         }

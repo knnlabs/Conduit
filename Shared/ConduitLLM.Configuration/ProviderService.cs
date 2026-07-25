@@ -363,7 +363,6 @@ namespace ConduitLLM.Configuration
                 var changedProperties = new List<string>();
                 if (keyCredential.ApiKey != existing.ApiKey) changedProperties.Add(nameof(ProviderKeyCredential.ApiKey));
                 if (keyCredential.BaseUrl != existing.BaseUrl) changedProperties.Add(nameof(ProviderKeyCredential.BaseUrl));
-                if (keyCredential.Organization != existing.Organization) changedProperties.Add(nameof(ProviderKeyCredential.Organization));
                 if (keyCredential.IsEnabled != existing.IsEnabled) changedProperties.Add(nameof(ProviderKeyCredential.IsEnabled));
                 if (keyCredential.IsPrimary != existing.IsPrimary) changedProperties.Add(nameof(ProviderKeyCredential.IsPrimary));
                 if (keyCredential.KeyName != existing.KeyName) changedProperties.Add(nameof(ProviderKeyCredential.KeyName));

@@ -440,6 +440,14 @@ secrets.json
 !Shared/ConduitLLM.Functions/Services/CredentialSelector.cs
 !Tests/ConduitLLM.Tests/Functions/Services/CredentialSelectorTests.cs
 *secret*
+# Provider secret-settings *source* — the credential-protection mechanism and its tests, not secret
+# material. The broad *secret* rule above would silently drop them from a commit, leaving a build
+# that references types nobody can check out.
+!Shared/ConduitLLM.Configuration/Security/IProviderSecretProtector.cs
+!Shared/ConduitLLM.Configuration/Security/ProviderSecretProtector.cs
+!Shared/ConduitLLM.Configuration/Migrations/*SecretSettings*.cs
+!Tests/ConduitLLM.Tests/Providers/ProviderSecretSettingsTests.cs
+!Tests/ConduitLLM.Tests/Admin/Endpoints/ProviderKeySecretSettingsEndpointTests.cs
 *token*.txt
 *token*.json
 *token*.env

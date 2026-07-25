@@ -22,6 +22,7 @@ export const PROVIDER_DISPLAY_NAMES: Partial<Record<ProviderType, string>> = {
   [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
   [ProviderType.OpenRouter]: 'OpenRouter',
   [ProviderType.Meta]: 'Meta AI',
+  [ProviderType.Azure]: 'Azure OpenAI',
 };
 
 /** Provider categories for grouping in UI */
@@ -50,12 +51,16 @@ export const PROVIDER_CATEGORIES: Partial<Record<ProviderType, ProviderCategory[
   [ProviderType.Cloudflare]: [ProviderCategory.Chat, ProviderCategory.Embedding, ProviderCategory.Image],
   [ProviderType.OpenRouter]: [ProviderCategory.Chat],
   [ProviderType.Meta]: [ProviderCategory.Chat],
+  [ProviderType.Azure]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
 };
 
 /**
  * A structured, provider-scoped setting an operator supplies in addition to the API key
- * (for example a Cloudflare account ID). Mirrors the backend setting definitions declared in
- * `ProviderConfigurationRegistry`; the backend remains authoritative for validation.
+ * (for example a Cloudflare account ID).
+ *
+ * These are **not** declared here: the backend `ProviderConfigurationRegistry` owns them and serves
+ * them from `GET /v1/admin/providers/settings-schema`. This type only describes the shape the form
+ * consumes after narrowing the wire DTO.
  */
 export interface ProviderSettingField {
   /** Stable machine key; also the storage key in the provider's `settings` map. */
@@ -74,24 +79,23 @@ export interface ProviderSettingField {
   placeholder?: string;
 }
 
+/** Declared settings per provider type, as served by the Admin API. */
+export type ProviderSettingsSchema = Partial<Record<ProviderType, ProviderSettingField[]>>;
+
 /** Provider-specific configuration requirements */
 export interface ProviderConfigRequirements {
   requiresApiKey: boolean;
   requiresEndpoint: boolean;
-  requiresOrganizationId: boolean;
   supportsCustomEndpoint: boolean;
   helpUrl?: string;
   helpText?: string;
   supportedModelTypes: ModelType[];
-  /** Structured settings supplied in addition to the API key. */
-  settings?: ProviderSettingField[];
 }
 
 export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, ProviderConfigRequirements>> = {
   [ProviderType.OpenAI]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpUrl: 'https://platform.openai.com/api-keys',
     helpText: 'Get your API key from platform.openai.com/api-keys',
@@ -100,7 +104,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.Groq]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: false,
     helpUrl: 'https://console.groq.com/keys',
     helpText: 'Get your API key from console.groq.com/keys',
@@ -109,7 +112,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.Replicate]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: false,
     helpUrl: 'https://replicate.com/account/api-tokens',
     helpText: 'Get your API token from replicate.com/account/api-tokens',
@@ -118,7 +120,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.Fireworks]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: false,
     helpUrl: 'https://app.fireworks.ai/account/api-keys',
     helpText: 'Get your API key from app.fireworks.ai/account/api-keys',
@@ -127,7 +128,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.OpenAICompatible]: {
     requiresApiKey: true,
     requiresEndpoint: true,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpText: 'Configure OpenAI-compatible endpoint and API key',
     supportedModelTypes: [ModelType.Chat, ModelType.Embedding]
@@ -135,7 +135,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.MiniMax]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpText: 'Contact MiniMax support for API access',
     supportedModelTypes: [ModelType.Chat, ModelType.Audio]
@@ -143,7 +142,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.Ultravox]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: false,
     helpText: 'Get your API key from Ultravox platform',
     supportedModelTypes: [ModelType.Audio]
@@ -151,7 +149,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.ElevenLabs]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: false,
     helpUrl: 'https://elevenlabs.io/api',
     helpText: 'Get your API key from elevenlabs.io/api',
@@ -160,7 +157,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.Cerebras]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpUrl: 'https://cloud.cerebras.ai',
     helpText: 'Get your API key from cloud.cerebras.ai - offers high-performance inference',
@@ -169,7 +165,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.SambaNova]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpUrl: 'https://cloud.sambanova.ai/plans/pricing',
     helpText: 'Get your API key from cloud.sambanova.ai - ultra-fast inference with 250+ tokens/second',
@@ -178,7 +173,6 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.DeepInfra]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpUrl: 'https://deepinfra.com/docs/openai_api',
     helpText: 'Get your API key from deepinfra.com - OpenAI-compatible API with advanced reasoning models',
@@ -189,26 +183,14 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
     // The account ID is entered as a structured setting below; the base URL is derived from it,
     // so an explicit endpoint is optional (advanced override only).
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpUrl: 'https://developers.cloudflare.com/workers-ai/',
     helpText: 'Create an API token at dash.cloudflare.com/profile/api-tokens. Enter your account ID below — it is used to build the API base URL.',
     supportedModelTypes: [ModelType.Chat, ModelType.Embedding, ModelType.Image],
-    settings: [
-      {
-        key: 'account_id',
-        label: 'Account ID',
-        helpText: 'Your Cloudflare account ID (shown in the dashboard URL and on the Workers AI page).',
-        required: true,
-        validationRegexSource: '^[0-9a-fA-F]{32}$',
-        placeholder: 'e.g. 0123456789abcdef0123456789abcdef',
-      },
-    ],
   },
   [ProviderType.OpenRouter]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: false,
     helpUrl: 'https://openrouter.ai/keys',
     helpText: 'Get your API key from openrouter.ai/keys - Routes to 100+ models from multiple providers',
@@ -217,11 +199,20 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
   [ProviderType.Meta]: {
     requiresApiKey: true,
     requiresEndpoint: false,
-    requiresOrganizationId: false,
     supportsCustomEndpoint: true,
     helpUrl: 'https://ai.developer.meta.com',
     helpText: 'Get your API key from ai.developer.meta.com - Meta Model API with Muse Spark multimodal reasoning models',
     supportedModelTypes: [ModelType.Chat]
+  },
+  [ProviderType.Azure]: {
+    requiresApiKey: true,
+    // The endpoint is derived from the Resource Name setting; an explicit endpoint is an advanced
+    // override for private or custom domains only.
+    requiresEndpoint: false,
+    supportsCustomEndpoint: true,
+    helpUrl: 'https://learn.microsoft.com/azure/ai-services/openai/',
+    helpText: 'Use a key from your Azure OpenAI resource. Azure routes to a deployment rather than a model name, so set each model mapping’s provider model ID to the deployment name.',
+    supportedModelTypes: [ModelType.Chat, ModelType.Image, ModelType.Embedding]
   },
 };
 

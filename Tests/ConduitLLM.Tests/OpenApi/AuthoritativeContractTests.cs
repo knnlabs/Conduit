@@ -712,7 +712,12 @@ public sealed class AuthoritativeContractTests : IDisposable
                 onlyArrayException.Add(path);
         }
 
-        onlyArrayException.Should().Equal("/v1/admin/provider-errors/recent");
+        // Both exceptions return a bounded set that pagination cannot meaningfully divide: a tail
+        // window of recent errors, and the provider settings catalog, which is fixed at the size of
+        // the compiled registry. Every other collection read must publish the pagination envelope.
+        onlyArrayException.Should().BeEquivalentTo(
+            "/v1/admin/provider-errors/recent",
+            "/v1/admin/providers/settings-schema");
 
         var models = ResolveSchema(_admin, ResponseSchema(_admin, "/v1/admin/models"));
         models.GetProperty("required").EnumerateArray().Select(item => item.GetString())

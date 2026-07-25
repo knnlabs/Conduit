@@ -5,6 +5,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Providers.Configuration;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ConduitLLM.Admin.Endpoints
@@ -59,13 +60,23 @@ namespace ConduitLLM.Admin.Endpoints
                 return AdminResults.NotFoundEntity("Provider", providerId);
             }
 
+            // Every declared secret must be supplied up front: a key that is missing one cannot
+            // authenticate, and the failure would otherwise surface as an opaque provider rejection.
+            var missingSecrets = ProviderConfigurationRegistry.GetMissingRequiredSecrets(
+                provider.ProviderType, request.SecretSettings);
+            if (missingSecrets.Count > 0)
+            {
+                return BadRequest(
+                    $"{provider.ProviderType} requires: {string.Join(", ", missingSecrets)}.");
+            }
+
             var keyCredential = new ProviderKeyCredential
             {
                 ProviderId = providerId,
                 ApiKey = request.ApiKey,
                 KeyName = request.KeyName,
-                Organization = request.Organization,
                 BaseUrl = request.BaseUrl,
+                SecretSettings = _secretProtector.ProtectAll(request.SecretSettings),
                 IsPrimary = request.IsPrimary,
                 IsEnabled = request.IsEnabled,
                 ProviderAccountGroup = (short)(request.ProviderAccountGroup ?? 0),
@@ -121,15 +132,16 @@ namespace ConduitLLM.Admin.Endpoints
                 changes.Add(("ApiKey", "***", "***")); // Never log API key values
                 key.ApiKey = request.ApiKey;
             }
-            if (request.Organization != null && key.Organization != request.Organization)
-            {
-                changes.Add(("Organization", key.Organization, request.Organization));
-                key.Organization = request.Organization;
-            }
             if (request.BaseUrl != null && key.BaseUrl != request.BaseUrl)
             {
                 changes.Add(("BaseUrl", key.BaseUrl, request.BaseUrl));
                 key.BaseUrl = request.BaseUrl;
+            }
+            if (request.SecretSettings != null)
+            {
+                // Replace wholesale, and never record the values: only which keys were set.
+                changes.Add(("SecretSettings", "***", "***"));
+                key.SecretSettings = _secretProtector.ProtectAll(request.SecretSettings);
             }
             if (request.IsPrimary.HasValue && key.IsPrimary != request.IsPrimary.Value)
             {
@@ -186,8 +198,10 @@ namespace ConduitLLM.Admin.Endpoints
             IsEnabled = key.IsEnabled,
             ProviderAccountGroup = key.ProviderAccountGroup,
             ApiKey = key.ApiKey is null ? "***" : "***" + key.ApiKey[^Math.Min(4, key.ApiKey.Length)..],
-            Organization = key.Organization,
             BaseUrl = key.BaseUrl,
+            // Names only. Secret values are write-only by contract and never leave the server.
+            ConfiguredSecretSettings = key.SecretSettings?.Keys.OrderBy(name => name, StringComparer.Ordinal).ToArray()
+                ?? Array.Empty<string>(),
             CreatedAt = key.CreatedAt,
             UpdatedAt = key.UpdatedAt
         };

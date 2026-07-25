@@ -15,6 +15,13 @@ namespace ConduitLLM.Providers.Configuration
     public static class ProviderConfigurationRegistry
     {
         /// <summary>
+        /// The Azure OpenAI REST API version used when an operator supplies none. Declared as the
+        /// <c>api_version</c> setting's default so it is visible and overridable per provider rather
+        /// than pinned in client code.
+        /// </summary>
+        public const string AzureDefaultApiVersion = "2024-02-01";
+
+        /// <summary>
         /// Registry of provider configurations keyed by ProviderType.
         /// </summary>
         private static readonly Dictionary<ProviderType, ProviderConfiguration> Configurations = new()
@@ -35,6 +42,31 @@ namespace ConduitLLM.Providers.Configuration
                     RateLimitExceeded = "OpenAI API rate limit exceeded. Please try again later.",
                     InsufficientBalance = "Insufficient balance in your OpenAI account.",
                     ModelNotFound = "Model not found. Please verify the model ID is correct."
+                },
+                Settings = new[]
+                {
+                    new ProviderSettingDefinition
+                    {
+                        Key = "organization",
+                        Label = "Organization ID",
+                        HelpText = "Scopes requests and usage attribution to a specific OpenAI organization. Leave blank to use the API key's default organization.",
+                        Placeholder = "org-...",
+                        Required = false,
+                        Binding = ProviderSettingBinding.Header,
+                        BindingTarget = "OpenAI-Organization",
+                        ValidationRegex = "^org-[A-Za-z0-9]+$"
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "project",
+                        Label = "Project ID",
+                        HelpText = "Scopes requests and usage attribution to a specific project within the organization. Leave blank to use the API key's default project.",
+                        Placeholder = "proj_...",
+                        Required = false,
+                        Binding = ProviderSettingBinding.Header,
+                        BindingTarget = "OpenAI-Project",
+                        ValidationRegex = "^proj_[A-Za-z0-9]+$"
+                    }
                 }
             },
 
@@ -135,6 +167,7 @@ namespace ConduitLLM.Providers.Configuration
                         Key = "account_id",
                         Label = "Account ID",
                         HelpText = "Your Cloudflare account ID (shown in the dashboard URL and on the Workers AI page). Used to build the API base URL.",
+                        Placeholder = "e.g. 0123456789abcdef0123456789abcdef",
                         Required = true,
                         Binding = ProviderSettingBinding.UrlPathToken,
                         BindingTarget = "account_id",
@@ -224,6 +257,53 @@ namespace ConduitLLM.Providers.Configuration
                 }
             },
 
+            // Azure OpenAI is deployment-scoped: every operation lives under
+            // /openai/deployments/{deployment}/... on a per-resource host, and every request carries
+            // an api-version. The deployment is per-model and comes from the model mapping's
+            // provider model ID; the resource and api-version are provider-scoped and declared here.
+            [ProviderType.Azure] = new ProviderConfiguration
+            {
+                DefaultBaseUrl = DefaultUrl(ProviderType.Azure),
+                ModelsEndpoint = "/openai/deployments",
+                ChatCompletionsEndpoint = "/chat/completions",
+                EmbeddingsEndpoint = "/embeddings",
+                ImageGenerationsEndpoint = "/images/generations",
+                AuthenticationStrategy = ApiKeyHeaderStrategy.AzureInstance,
+                ErrorMessages = new ProviderErrorMessages
+                {
+                    InvalidApiKey = "Invalid API key for Azure OpenAI. Please verify the key from your Azure OpenAI resource.",
+                    RateLimitExceeded = "Azure OpenAI rate limit exceeded. Please try again later or raise the deployment's quota.",
+                    ModelNotFound = "Deployment not found. Azure addresses models by deployment name, not model name - verify the deployment exists on this resource.",
+                    MissingApiKey = "API key is required for Azure OpenAI"
+                },
+                Settings = new[]
+                {
+                    new ProviderSettingDefinition
+                    {
+                        Key = "resource_name",
+                        Label = "Resource Name",
+                        HelpText = "The name of your Azure OpenAI resource, as it appears in the portal. Used to build the endpoint https://<resource>.openai.azure.com. Set a custom API endpoint instead if your resource uses a private or custom domain.",
+                        Placeholder = "e.g. my-openai-resource",
+                        Required = true,
+                        Binding = ProviderSettingBinding.UrlPathToken,
+                        BindingTarget = "resource_name",
+                        ValidationRegex = "^[A-Za-z0-9][A-Za-z0-9-]{1,62}$"
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "api_version",
+                        Label = "API Version",
+                        HelpText = "The Azure OpenAI REST API version sent with every request. Leave blank to use the version Conduit was tested against.",
+                        Placeholder = AzureDefaultApiVersion,
+                        Required = false,
+                        Binding = ProviderSettingBinding.QueryParam,
+                        BindingTarget = "api-version",
+                        DefaultValue = AzureDefaultApiVersion,
+                        ValidationRegex = "^[0-9]{4}-[0-9]{2}-[0-9]{2}(-preview)?$"
+                    }
+                }
+            },
+
             [ProviderType.Meta] = new ProviderConfiguration
             {
                 DefaultBaseUrl = DefaultUrl(ProviderType.Meta),
@@ -280,18 +360,95 @@ namespace ConduitLLM.Providers.Configuration
         }
 
         /// <summary>
-        /// Resolves the effective base URL, preferring the operator's database override.
+        /// Resolves the effective base URL from the provider's structured settings, falling back to
+        /// the operator's raw database override.
         /// </summary>
+        /// <remarks>
+        /// Dual-read (issue #1183). Before structured settings existed, provider-scoped identifiers
+        /// could only be supplied by hand-crafting the whole URL, so an existing base URL is often
+        /// nothing more than the registered default with those identifiers baked in. When it takes
+        /// that shape and the settings supply every identifier, the settings win — otherwise editing
+        /// the Account ID field would appear to save but never reach the wire. A base URL pointing
+        /// anywhere else is a deliberate override (a proxy, a private gateway) and still takes
+        /// precedence.
+        /// </remarks>
         public static string ResolveBaseUrl(Provider provider)
         {
             ArgumentNullException.ThrowIfNull(provider);
 
-            var rawBaseUrl = !string.IsNullOrWhiteSpace(provider.BaseUrl)
-                ? provider.BaseUrl.TrimEnd('/')
-                : GetDefaultBaseUrl(provider.ProviderType)
+            var defaultBaseUrl = GetDefaultBaseUrl(provider.ProviderType);
+            if (string.IsNullOrWhiteSpace(provider.BaseUrl))
+            {
+                var fallback = defaultBaseUrl
                     ?? throw new InvalidOperationException($"No default base URL is registered for {provider.ProviderType}.");
+                return ApplyUrlPathTokens(fallback, provider.ProviderType, provider.Settings);
+            }
+
+            var rawBaseUrl = provider.BaseUrl.TrimEnd('/');
+            if (defaultBaseUrl != null
+                && SuppliesEveryUrlPathToken(provider.ProviderType, provider.Settings)
+                && MatchesDefaultUrlShape(rawBaseUrl, defaultBaseUrl))
+            {
+                rawBaseUrl = defaultBaseUrl;
+            }
 
             return ApplyUrlPathTokens(rawBaseUrl, provider.ProviderType, provider.Settings);
+        }
+
+        /// <summary>
+        /// Whether the provider type declares at least one URL-path-token setting and the supplied
+        /// settings give every one of them a value.
+        /// </summary>
+        private static bool SuppliesEveryUrlPathToken(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? settings)
+        {
+            var tokens = GetConfiguration(providerType)?.Settings
+                .Where(definition => definition.Binding == ProviderSettingBinding.UrlPathToken)
+                .ToList();
+
+            return tokens is { Count: > 0 }
+                && tokens.TrueForAll(definition =>
+                    settings != null
+                    && settings.TryGetValue(definition.Key, out var value)
+                    && !string.IsNullOrWhiteSpace(value));
+        }
+
+        /// <summary>
+        /// Whether a stored base URL is the registered default with its <c>{token}</c> segments
+        /// filled in — that is, a URL that carries no information the settings do not already hold.
+        /// Compared segment by segment so a different host, scheme or path depth is never mistaken
+        /// for the default.
+        /// </summary>
+        private static bool MatchesDefaultUrlShape(string baseUrl, string defaultBaseUrl)
+        {
+            var actual = baseUrl.Split('/');
+            var template = defaultBaseUrl.TrimEnd('/').Split('/');
+            if (actual.Length != template.Length)
+            {
+                return false;
+            }
+
+            for (var index = 0; index < template.Length; index++)
+            {
+                var segment = template[index];
+                if (segment.Length > 2 && segment[0] == '{' && segment[^1] == '}')
+                {
+                    if (string.IsNullOrEmpty(actual[index]))
+                    {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                if (!string.Equals(segment, actual[index], StringComparison.OrdinalIgnoreCase))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private static readonly Regex UnresolvedTokenPattern =
@@ -346,6 +503,120 @@ namespace ConduitLLM.Providers.Configuration
             }
 
             return result.TrimEnd('/');
+        }
+
+        /// <summary>
+        /// Gets the settings a provider type declares as secret. Their values are held on the key
+        /// credential and encrypted at rest, never in the plaintext <c>Provider.Settings</c> bag.
+        /// </summary>
+        /// <param name="providerType">The provider type.</param>
+        /// <returns>The secret setting declarations; empty when the provider declares none.</returns>
+        public static IReadOnlyList<ProviderSettingDefinition> GetSecretSettings(ProviderType providerType) =>
+            GetConfiguration(providerType)?.Settings.Where(setting => setting.Secret).ToArray()
+            ?? Array.Empty<ProviderSettingDefinition>();
+
+        /// <summary>
+        /// Gets the settings a provider type declares as non-secret. Their values live in the
+        /// provider's plaintext <c>Settings</c> bag.
+        /// </summary>
+        /// <param name="providerType">The provider type.</param>
+        /// <returns>The non-secret setting declarations; empty when the provider declares none.</returns>
+        public static IReadOnlyList<ProviderSettingDefinition> GetNonSecretSettings(ProviderType providerType) =>
+            GetConfiguration(providerType)?.Settings.Where(setting => !setting.Secret).ToArray()
+            ?? Array.Empty<ProviderSettingDefinition>();
+
+        /// <summary>
+        /// Names the secret settings a provider type requires that the supplied credential does not
+        /// carry, using their operator-facing labels.
+        /// </summary>
+        /// <param name="providerType">The provider type whose declarations are checked.</param>
+        /// <param name="secretSettings">The credential's secret setting values, keyed by setting key.</param>
+        /// <returns>The labels of the missing required secrets, in declaration order.</returns>
+        public static IReadOnlyList<string> GetMissingRequiredSecrets(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? secretSettings) =>
+            GetMissingRequiredSecrets(GetSecretSettings(providerType), secretSettings);
+
+        /// <summary>
+        /// Names the required secrets among the given declarations that the supplied values do not
+        /// cover, using their operator-facing labels.
+        /// </summary>
+        /// <param name="declarations">The setting declarations to check; non-secret ones are ignored.</param>
+        /// <param name="secretSettings">The credential's secret setting values, keyed by setting key.</param>
+        /// <returns>The labels of the missing required secrets, in declaration order.</returns>
+        public static IReadOnlyList<string> GetMissingRequiredSecrets(
+            IEnumerable<ProviderSettingDefinition> declarations,
+            IReadOnlyDictionary<string, string>? secretSettings) =>
+            declarations
+                .Where(definition => definition.Secret
+                    && definition.Required
+                    && (secretSettings == null
+                        || !secretSettings.TryGetValue(definition.Key, out var value)
+                        || string.IsNullOrWhiteSpace(value)))
+                .Select(definition => definition.Label)
+                .ToArray();
+
+        /// <summary>
+        /// Resolves the value of a single structured setting, falling back to the value declared in
+        /// the registry when the operator supplied none.
+        /// </summary>
+        /// <param name="providerType">The provider type whose setting definitions are consulted.</param>
+        /// <param name="settings">The operator-supplied setting values, keyed by setting key.</param>
+        /// <param name="key">The setting key to resolve.</param>
+        /// <returns>The effective value, or null when neither a value nor a default exists.</returns>
+        public static string? GetSettingValue(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? settings,
+            string key)
+        {
+            if (settings != null && settings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+
+            var definition = GetConfiguration(providerType)?.Settings
+                .FirstOrDefault(setting => string.Equals(setting.Key, key, StringComparison.Ordinal));
+
+            return string.IsNullOrWhiteSpace(definition?.DefaultValue) ? null : definition!.DefaultValue;
+        }
+
+        /// <summary>
+        /// Resolves the HTTP headers a provider's structured settings contribute to every outbound
+        /// request (for example OpenAI's <c>OpenAI-Organization</c>).
+        /// </summary>
+        /// <param name="providerType">The provider type whose setting definitions drive the mapping.</param>
+        /// <param name="settings">The operator-supplied setting values, keyed by setting key.</param>
+        /// <returns>Header name/value pairs; empty when the provider declares or supplies none.</returns>
+        public static IReadOnlyList<KeyValuePair<string, string>> GetHeaderSettings(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? settings)
+        {
+            if (settings == null || settings.Count == 0)
+            {
+                return Array.Empty<KeyValuePair<string, string>>();
+            }
+
+            var definitions = GetConfiguration(providerType)?.Settings;
+            if (definitions == null || definitions.Count == 0)
+            {
+                return Array.Empty<KeyValuePair<string, string>>();
+            }
+
+            var headers = new List<KeyValuePair<string, string>>();
+            foreach (var definition in definitions)
+            {
+                if (definition.Binding != ProviderSettingBinding.Header)
+                {
+                    continue;
+                }
+
+                if (settings.TryGetValue(definition.Key, out var value) && !string.IsNullOrWhiteSpace(value))
+                {
+                    headers.Add(new KeyValuePair<string, string>(definition.EffectiveBindingTarget, value.Trim()));
+                }
+            }
+
+            return headers;
         }
 
         /// <summary>

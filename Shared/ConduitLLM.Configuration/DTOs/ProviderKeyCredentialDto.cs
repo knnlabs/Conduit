@@ -31,9 +31,10 @@ namespace ConduitLLM.Configuration.DTOs
         public string? BaseUrl { get; set; }
 
         /// <summary>
-        /// Organization or project ID (optional, overrides provider default)
+        /// The keys of the secret settings this credential has configured, so a UI can show which
+        /// are set without ever receiving their values. Secret values are write-only.
         /// </summary>
-        public string? Organization { get; set; }
+        public IReadOnlyList<string> ConfiguredSecretSettings { get; set; } = Array.Empty<string>();
 
         /// <summary>
         /// Whether this key is the primary key for the provider
@@ -82,11 +83,6 @@ namespace ConduitLLM.Configuration.DTOs
         public string? BaseUrl { get; set; }
 
         /// <summary>
-        /// Organization or project ID (optional)
-        /// </summary>
-        public string? Organization { get; set; }
-
-        /// <summary>
         /// Whether to set this key as the primary key
         /// </summary>
         public bool IsPrimary { get; set; }
@@ -121,11 +117,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Base URL for the provider API (optional)
         /// </summary>
         public string? BaseUrl { get; set; }
-
-        /// <summary>
-        /// Organization or project ID (optional)
-        /// </summary>
-        public string? Organization { get; set; }
 
         /// <summary>
         /// Whether this key is enabled

@@ -1,6 +1,12 @@
 import { ApiKeyTestResult, StandardApiKeyTestResponse } from '../models/provider';
 import { ProviderType } from '../models/providerType';
 
+/**
+ * Classifies a failed API-key test into the same buckets, in the same order, as the backend's
+ * ApiKeyTestResultService. This path runs when the Admin API call itself throws rather than
+ * returning a classified response, and the two must agree: a divergence here is what turned a
+ * missing Cloudflare account ID into "An unexpected error occurred during testing".
+ */
 export function classifyApiKeyTestError(
   error: unknown,
   providerType?: ProviderType
@@ -63,6 +69,21 @@ export function classifyApiKeyTestError(
       result: ApiKeyTestResult.PROVIDER_DOWN,
       message: 'We were unable to verify the request. Perhaps the LLM provider is down?',
       details: {
+        providerMessage: message,
+        errorCode: code
+      }
+    };
+  }
+
+  // Other 4xx client errors (400/404/405) usually mean the endpoint or base URL is wrong rather
+  // than the key. Cloudflare's OpenAI-compatible path in particular answers a bad account-scoped
+  // URL with 405, so bucketing these to "unknown" hid the one thing the operator could act on.
+  if (statusCode === 400 || statusCode === 404 || statusCode === 405) {
+    return {
+      result: ApiKeyTestResult.CONFIGURATION,
+      message: `The provider rejected the test request (HTTP ${statusCode}). Verify the base URL and endpoint configuration for this provider.`,
+      details: {
+        statusCode,
         providerMessage: message,
         errorCode: code
       }

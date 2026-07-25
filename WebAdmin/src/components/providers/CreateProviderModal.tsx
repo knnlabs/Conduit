@@ -34,7 +34,6 @@ interface CreateProviderForm {
   providerName: string;
   apiKey: string;
   apiEndpoint?: string;
-  organizationId?: string;
   isEnabled: boolean;
 }
 
@@ -56,7 +55,6 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
       providerName: '',
       apiKey: '',
       apiEndpoint: '',
-      organizationId: '',
       isEnabled: true,
     },
     validate: {
@@ -127,7 +125,6 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
         providerName: providerName,
         apiKey: values.apiKey,
         baseUrl: values.apiEndpoint ?? undefined,
-        organization: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
@@ -170,7 +167,6 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
           providerType: form.values.providerType as ProviderType,
           apiKey: form.values.apiKey,
           baseUrl: form.values.apiEndpoint ?? undefined,
-          organizationId: form.values.organizationId ?? undefined,
         })
       );
       
@@ -259,19 +255,6 @@ export function CreateProviderModal({ opened, onClose, onSuccess }: CreateProvid
 
             return (
               <>
-                {config.requiresOrganizationId && (
-                  <TextInput
-                    label="Organization ID"
-                    placeholder="Enter organization ID"
-                    required={config.requiresOrganizationId}
-                    autoComplete="off"
-                    aria-autocomplete="none"
-                    list="autocompleteOff"
-                    data-form-type="other"
-                    {...form.getInputProps('organizationId')}
-                  />
-                )}
-
                 {(config.requiresEndpoint || config.supportsCustomEndpoint) && (
                   <TextInput
                     label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}

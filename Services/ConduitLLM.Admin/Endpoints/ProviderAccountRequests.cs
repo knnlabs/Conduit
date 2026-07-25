@@ -31,15 +31,19 @@ public sealed class TestProviderRequest
     public string? ApiKey { get; set; }
     public string? BaseUrl { get; set; }
     public Dictionary<string, string>? Settings { get; set; }
-    public string? Organization { get; set; }
 }
 
 public sealed class CreateKeyRequest
 {
     public string ApiKey { get; set; } = string.Empty;
     public string KeyName { get; set; } = string.Empty;
-    public string? Organization { get; set; }
     public string? BaseUrl { get; set; }
+
+    /// <summary>
+    /// Secret-valued structured settings declared by the provider type (for example an AWS secret
+    /// access key), keyed by setting key. Stored encrypted and never returned by any read.
+    /// </summary>
+    public Dictionary<string, string>? SecretSettings { get; set; }
     public bool IsPrimary { get; set; }
     public bool IsEnabled { get; set; } = true;
     public int? ProviderAccountGroup { get; set; }
@@ -49,8 +53,13 @@ public sealed class UpdateKeyRequest
 {
     public string? KeyName { get; set; }
     public string? ApiKey { get; set; }
-    public string? Organization { get; set; }
     public string? BaseUrl { get; set; }
+
+    /// <summary>
+    /// Secret-valued structured settings to replace wholesale. Null leaves the stored values
+    /// untouched (PATCH semantics); a supplied map replaces them.
+    /// </summary>
+    public Dictionary<string, string>? SecretSettings { get; set; }
     public bool? IsPrimary { get; set; }
     public bool? IsEnabled { get; set; }
     public int? ProviderAccountGroup { get; set; }

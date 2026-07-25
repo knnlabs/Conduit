@@ -148,4 +148,106 @@ public class ProviderDefaultsRegistryTests
             .Should()
             .Be("https://api.cloudflare.com/client/v4/accounts/deadbeefdeadbeefdeadbeefdeadbeef/ai/v1");
     }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Let_Settings_Supersede_A_BaseUrl_That_Is_Only_The_Default_Shape()
+    {
+        // The pre-settings way to configure Cloudflare was to bake the account into the default URL,
+        // so that URL holds nothing the settings do not. Editing the Account ID must take effect.
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Cloudflare,
+            ProviderName = "cf",
+            BaseUrl = "https://api.cloudflare.com/client/v4/accounts/deadbeefdeadbeefdeadbeefdeadbeef/ai/v1",
+            Settings = new Dictionary<string, string> { ["account_id"] = "0123456789abcdef0123456789abcdef" }
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai/v1");
+    }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Keep_A_Genuinely_Custom_BaseUrl_Over_Settings()
+    {
+        // A URL pointing somewhere other than the registered default is a deliberate override
+        // (a proxy or private gateway) and carries routing the settings cannot reconstruct.
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Cloudflare,
+            ProviderName = "cf",
+            BaseUrl = "https://gateway.example.test/cf-proxy/ai/v1",
+            Settings = new Dictionary<string, string> { ["account_id"] = "0123456789abcdef0123456789abcdef" }
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://gateway.example.test/cf-proxy/ai/v1");
+    }
+
+    [Fact]
+    public void OpenAI_Should_Declare_Organization_And_Project_As_Header_Settings()
+    {
+        ProviderConfigurationRegistry.TryGetConfiguration(ProviderType.OpenAI, out var config)
+            .Should().BeTrue();
+
+        var organization = config!.Settings.Should().ContainSingle(s => s.Key == "organization").Subject;
+        organization.Binding.Should().Be(ProviderSettingBinding.Header);
+        organization.EffectiveBindingTarget.Should().Be("OpenAI-Organization");
+        organization.Required.Should().BeFalse();
+
+        var project = config.Settings.Should().ContainSingle(s => s.Key == "project").Subject;
+        project.Binding.Should().Be(ProviderSettingBinding.Header);
+        project.EffectiveBindingTarget.Should().Be("OpenAI-Project");
+        project.Required.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetHeaderSettings_Should_Map_Supplied_Values_Onto_Their_Header_Names()
+    {
+        var headers = ProviderConfigurationRegistry.GetHeaderSettings(
+            ProviderType.OpenAI,
+            new Dictionary<string, string>
+            {
+                ["organization"] = " org-acme ",
+                ["project"] = "proj_widgets"
+            });
+
+        headers.Should().BeEquivalentTo(new[]
+        {
+            new KeyValuePair<string, string>("OpenAI-Organization", "org-acme"),
+            new KeyValuePair<string, string>("OpenAI-Project", "proj_widgets")
+        });
+    }
+
+    [Fact]
+    public void GetHeaderSettings_Should_Skip_Blank_Values_And_NonHeader_Bindings()
+    {
+        ProviderConfigurationRegistry.GetHeaderSettings(
+                ProviderType.OpenAI,
+                new Dictionary<string, string> { ["organization"] = "   " })
+            .Should().BeEmpty();
+
+        // Cloudflare's account_id is a URL token, not a header, and must never leak into one.
+        ProviderConfigurationRegistry.GetHeaderSettings(
+                ProviderType.Cloudflare,
+                new Dictionary<string, string> { ["account_id"] = "0123456789abcdef0123456789abcdef" })
+            .Should().BeEmpty();
+    }
+
+    [Fact]
+    public void ResolveBaseUrl_Should_Keep_A_Database_Override_For_Providers_Without_UrlTokenSettings()
+    {
+        // Providers that declare no URL-path-token settings are unaffected by the dual-read rule.
+        var provider = new Provider
+        {
+            ProviderType = ProviderType.Groq,
+            ProviderName = "groq",
+            BaseUrl = "https://api.groq.com/openai/v2"
+        };
+
+        ProviderConfigurationRegistry.ResolveBaseUrl(provider)
+            .Should()
+            .Be("https://api.groq.com/openai/v2");
+    }
 }

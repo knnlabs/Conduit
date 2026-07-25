@@ -7,98 +7,47 @@ import {
   type ProviderDto,
   type CreateProviderDto,
   type UpdateProviderDto,
-  type StandardApiKeyTestResponse,
-  ApiKeyTestResult
+  type StandardApiKeyTestResponse
 } from '../models/provider';
 import { ProviderType } from '../models/providerType';
+import type { ProviderSettingField, ProviderSettingsSchema } from '../models/providerConfiguration';
+import {
+  normalizeApiKeyTestResponse,
+  type RawApiKeyTestResponse
+} from '../utils/api-key-test-response';
 import { classifyApiKeyTestError } from '../utils/error-classification';
 import { FetchProvidersServiceKeys } from './FetchProvidersServiceKeys';
 
 type ProviderListResponseDto = components['schemas']['PagedResultOfProviderDto'];
+type ProviderSettingsSchemaDto = components['schemas']['ProviderSettingsSchemaDto'];
+type ProviderSettingFieldDto = components['schemas']['ProviderSettingFieldDto'];
+
+/**
+ * Narrows a wire setting field, whose properties are all optional in the generated contract, into
+ * the shape the form consumes. A field without a key cannot be rendered or stored, so it is dropped
+ * by the caller rather than represented as a blank input.
+ */
+function toProviderSettingField(field: ProviderSettingFieldDto): ProviderSettingField {
+  return {
+    key: field.key ?? '',
+    label: field.label ?? field.key ?? '',
+    helpText: field.helpText ?? undefined,
+    placeholder: field.placeholder ?? undefined,
+    required: field.required ?? false,
+    secret: field.secret ?? false,
+    validationRegexSource: field.validationRegex ?? undefined,
+  };
+}
 
 interface ProviderConfig {
   providerType: ProviderType;
   apiKey: string;
   baseUrl?: string;
-  organizationId?: string;
   /** Structured, provider-scoped settings (for example a Cloudflare account ID). */
   settings?: Record<string, string>;
   additionalConfig?: ProviderSettings;
 }
 
-// Type for raw API response (handles both PascalCase and camelCase)
-interface RawApiKeyTestResponse {
-  result?: string;
-  Result?: string;
-  message?: string;
-  Message?: string;
-  details?: RawApiKeyTestDetails | null;
-  Details?: RawApiKeyTestDetails | null;
-}
-
-interface RawApiKeyTestDetails {
-  responseTimeMs?: number | null;
-  ResponseTimeMs?: number;
-  modelsAvailable?: string[] | null;
-  ModelsAvailable?: string[];
-  providerMessage?: string | null;
-  ProviderMessage?: string;
-  errorCode?: string | null;
-  ErrorCode?: string;
-  statusCode?: number | null;
-  StatusCode?: number;
-}
-
-/**
- * Normalizes the API response to handle case mismatches between C# PascalCase and TypeScript camelCase
- */
-function normalizeApiKeyTestResponse(response: RawApiKeyTestResponse): StandardApiKeyTestResponse {
-  // Handle both PascalCase wire data and the camelCase local model.
-  const result = response.result ?? response.Result ?? '';
-  const message = response.message ?? response.Message ?? '';
-  const details = response.details ?? response.Details;
-
-  // Normalize the result enum value to lowercase with underscores
-  const normalizedResult = normalizeEnumValue(result);
-
-  return {
-    result: normalizedResult,
-    message: message,
-    details: details ? {
-      responseTimeMs: details.responseTimeMs ?? details.ResponseTimeMs ?? undefined,
-      modelsAvailable: details.modelsAvailable ?? details.ModelsAvailable ?? undefined,
-      providerMessage: details.providerMessage ?? details.ProviderMessage ?? undefined,
-      errorCode: details.errorCode ?? details.ErrorCode ?? undefined,
-      statusCode: details.statusCode ?? details.StatusCode ?? undefined,
-    } : undefined,
-  };
-}
-
-/**
- * Normalizes enum values from PascalCase to snake_case
- * Examples: "InvalidKey" -> "invalid_key", "Success" -> "success"
- */
-function normalizeEnumValue(value: string): ApiKeyTestResult {
-  if (!value) return ApiKeyTestResult.UNKNOWN_ERROR;
-
-  // Convert PascalCase to snake_case
-  const snakeCase = value
-    .replace(/([A-Z])/g, '_$1')
-    .toLowerCase()
-    .replace(/^_/, '');
-
-  // Map to the enum
-  const enumMap: Record<string, ApiKeyTestResult> = {
-    'success': ApiKeyTestResult.SUCCESS,
-    'invalid_key': ApiKeyTestResult.INVALID_KEY,
-    'ignored': ApiKeyTestResult.IGNORED,
-    'provider_down': ApiKeyTestResult.PROVIDER_DOWN,
-    'rate_limited': ApiKeyTestResult.RATE_LIMITED,
-    'unknown_error': ApiKeyTestResult.UNKNOWN_ERROR,
-  };
-
-  return enumMap[snakeCase] ?? ApiKeyTestResult.UNKNOWN_ERROR;
-}
 
 /**
  * Type-safe Providers service using native fetch
@@ -121,6 +70,29 @@ export class FetchProvidersService {
     const query = { page, pageSize };
     return this.client['executeContractRead'](`/v1/admin/providers?page=${page}&pageSize=${pageSize}`,
       (contractClient, options) => contractClient.GET('/v1/admin/providers', { ...options, params: { query } }), config);
+  }
+
+  /**
+   * Get the structured settings each provider type declares, keyed by provider type.
+   *
+   * The backend registry is the single source of truth for these fields, so the form renders,
+   * labels and validates exactly what the backend enforces instead of a hand-maintained copy.
+   */
+  async getSettingsSchema(config?: RequestConfig): Promise<ProviderSettingsSchema> {
+    const response = await this.client['executeContractRead']<ProviderSettingsSchemaDto[]>(
+      '/v1/admin/providers/settings-schema',
+      (contractClient, options) => contractClient.GET('/v1/admin/providers/settings-schema', options), config);
+
+    const schema: ProviderSettingsSchema = {};
+    for (const entry of response ?? []) {
+      if (!entry.providerType) {
+        continue;
+      }
+      schema[entry.providerType] = (entry.settings ?? [])
+        .map(toProviderSettingField)
+        .filter(field => field.key !== '');
+    }
+    return schema;
   }
 
   /**

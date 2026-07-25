@@ -6,84 +6,14 @@ import {
   type CreateProviderKeyCredentialDto,
   type UpdateProviderKeyCredentialDto,
   type StandardApiKeyTestResponse,
-  type ProviderDto,
-  ApiKeyTestResult
+  type ProviderDto
 } from '../models/provider';
+import {
+  normalizeApiKeyTestResponse,
+  type RawApiKeyTestResponse
+} from '../utils/api-key-test-response';
 import { classifyApiKeyTestError } from '../utils/error-classification';
 
-// Type for raw API response (handles both PascalCase and camelCase)
-interface RawApiKeyTestResponse {
-  result?: string;
-  Result?: string;
-  message?: string;
-  Message?: string;
-  details?: RawApiKeyTestDetails | null;
-  Details?: RawApiKeyTestDetails | null;
-}
-
-interface RawApiKeyTestDetails {
-  responseTimeMs?: number | null;
-  ResponseTimeMs?: number;
-  modelsAvailable?: string[] | null;
-  ModelsAvailable?: string[];
-  providerMessage?: string | null;
-  ProviderMessage?: string;
-  errorCode?: string | null;
-  ErrorCode?: string;
-  statusCode?: number | null;
-  StatusCode?: number;
-}
-
-/**
- * Normalizes the API response to handle case mismatches between C# PascalCase and TypeScript camelCase
- */
-function normalizeApiKeyTestResponse(response: RawApiKeyTestResponse): StandardApiKeyTestResponse {
-  // Handle both PascalCase wire data and the camelCase local model.
-  const result = response.result ?? response.Result ?? '';
-  const message = response.message ?? response.Message ?? '';
-  const details = response.details ?? response.Details;
-
-  // Normalize the result enum value to lowercase with underscores
-  const normalizedResult = normalizeEnumValue(result);
-
-  return {
-    result: normalizedResult,
-    message: message,
-    details: details ? {
-      responseTimeMs: details.responseTimeMs ?? details.ResponseTimeMs ?? undefined,
-      modelsAvailable: details.modelsAvailable ?? details.ModelsAvailable ?? undefined,
-      providerMessage: details.providerMessage ?? details.ProviderMessage ?? undefined,
-      errorCode: details.errorCode ?? details.ErrorCode ?? undefined,
-      statusCode: details.statusCode ?? details.StatusCode ?? undefined,
-    } : undefined,
-  };
-}
-
-/**
- * Normalizes enum values from PascalCase to snake_case
- * Examples: "InvalidKey" -> "invalid_key", "Success" -> "success"
- */
-function normalizeEnumValue(value: string): ApiKeyTestResult {
-  if (!value) return ApiKeyTestResult.UNKNOWN_ERROR;
-
-  // Convert PascalCase to snake_case
-  const snakeCase = value
-    .replace(/([A-Z])/g, '_$1')
-    .toLowerCase()
-    .replace(/^_/, '');
-
-  // Map to the enum
-  const enumMap: Record<string, ApiKeyTestResult> = {
-    'success': ApiKeyTestResult.SUCCESS,
-    'invalid_key': ApiKeyTestResult.INVALID_KEY,
-    'ignored': ApiKeyTestResult.IGNORED,
-    'provider_down': ApiKeyTestResult.PROVIDER_DOWN,
-    'rate_limited': ApiKeyTestResult.RATE_LIMITED,
-    'unknown_error': ApiKeyTestResult.UNKNOWN_ERROR,
-  };
-
-  return enumMap[snakeCase] ?? ApiKeyTestResult.UNKNOWN_ERROR;
-}
 
 /**
  * Provider key credential management methods

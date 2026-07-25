@@ -15,6 +15,7 @@ export const ProviderType = {
   Cloudflare: 'cloudflare',
   OpenRouter: 'openRouter',
   Meta: 'meta',
+  Azure: 'azure',
 } as const;
 
 export type ProviderType = (typeof ProviderType)[keyof typeof ProviderType];

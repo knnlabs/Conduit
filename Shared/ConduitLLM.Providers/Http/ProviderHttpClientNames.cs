@@ -43,6 +43,7 @@ public static class ProviderHttpClientNames
             [ProviderType.Cloudflare] = "Cloudflare",
             [ProviderType.OpenRouter] = "OpenRouter",
             [ProviderType.Meta] = "meta",
+            [ProviderType.Azure] = "Azure",
         };
 
     /// <summary>

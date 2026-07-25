@@ -82,7 +82,12 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Meta AI (Meta Model API, Muse Spark models)
         /// </summary>
-        Meta = 14
+        Meta = 14,
+
+        /// <summary>
+        /// Azure OpenAI Service (deployment-scoped OpenAI models on an Azure resource)
+        /// </summary>
+        Azure = 15
     }
 
     /// <summary>

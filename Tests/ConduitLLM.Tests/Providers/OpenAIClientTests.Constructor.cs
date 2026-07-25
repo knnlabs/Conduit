@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Tests.Providers
@@ -48,17 +49,18 @@ namespace ConduitLLM.Tests.Providers
             var provider = new Provider
             {
                 Id = 1,
-                ProviderType = ProviderType.OpenAI
+                ProviderType = ProviderType.Azure,
+                ProviderName = "azure",
+                Settings = new Dictionary<string, string> { ["resource_name"] = "myinstance" }
             };
-            
+
             var keyCredential = new ProviderKeyCredential
             {
                 Id = 1,
                 ProviderId = 1,
-                ApiKey = "test-api-key",
-                BaseUrl = "https://myinstance.openai.azure.com"
+                ApiKey = "test-api-key"
             };
-            
+
             var modelId = "my-deployment";
             var logger = CreateLogger<OpenAIClient>();
 
@@ -75,9 +77,38 @@ namespace ConduitLLM.Tests.Providers
             Assert.NotNull(client);
         }
 
-        // Test removed: Azure OpenAI provider type no longer supported
-        // Original test: Constructor_WithAzureButNoApiBase_ThrowsConfigurationException
-        // This test verified Azure OpenAI requires BaseUrl, but Azure OpenAI has been removed from supported providers
+        [Fact]
+        public void Constructor_ForAzureWithoutResourceName_ThrowsActionableConfigurationException()
+        {
+            // Azure cannot be addressed without a resource: the registry raises a named configuration
+            // error rather than letting a request go to an unsubstituted {resource_name} host.
+            var provider = new Provider
+            {
+                Id = 1,
+                ProviderType = ProviderType.Azure,
+                ProviderName = "azure"
+            };
+
+            var keyCredential = new ProviderKeyCredential
+            {
+                Id = 1,
+                ProviderId = 1,
+                ApiKey = "test-api-key"
+            };
+
+            var logger = CreateLogger<OpenAIClient>();
+
+            var act = () => new OpenAIClient(
+                provider,
+                keyCredential,
+                "my-deployment",
+                logger.Object,
+                _httpClientFactoryMock.Object,
+                _capabilityServiceMock.Object);
+
+            var ex = Assert.Throws<ConfigurationException>(act);
+            Assert.Contains("Resource Name", ex.Message);
+        }
 
         [Fact]
         public void Constructor_WithNullCredentials_ThrowsException()

@@ -80,7 +80,8 @@ namespace ConduitLLM.Providers.Configuration
             [ProviderType.DeepInfra] = CreateDeepInfraClient,
             [ProviderType.Cloudflare] = CreateCloudflareClient,
             [ProviderType.OpenRouter] = CreateOpenRouterClient,
-            [ProviderType.Meta] = CreateMetaClient
+            [ProviderType.Meta] = CreateMetaClient,
+            [ProviderType.Azure] = CreateOpenAIClient
         };
 
         /// <summary>
