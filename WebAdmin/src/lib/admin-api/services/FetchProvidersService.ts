@@ -43,7 +43,6 @@ interface ProviderConfig {
   providerType: ProviderType;
   apiKey: string;
   baseUrl?: string;
-  organizationId?: string;
   /** Structured, provider-scoped settings (for example a Cloudflare account ID). */
   settings?: Record<string, string>;
   additionalConfig?: ProviderSettings;

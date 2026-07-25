@@ -186,6 +186,56 @@ public class ProviderDefaultsRegistryTests
     }
 
     [Fact]
+    public void OpenAI_Should_Declare_Organization_And_Project_As_Header_Settings()
+    {
+        ProviderConfigurationRegistry.TryGetConfiguration(ProviderType.OpenAI, out var config)
+            .Should().BeTrue();
+
+        var organization = config!.Settings.Should().ContainSingle(s => s.Key == "organization").Subject;
+        organization.Binding.Should().Be(ProviderSettingBinding.Header);
+        organization.EffectiveBindingTarget.Should().Be("OpenAI-Organization");
+        organization.Required.Should().BeFalse();
+
+        var project = config.Settings.Should().ContainSingle(s => s.Key == "project").Subject;
+        project.Binding.Should().Be(ProviderSettingBinding.Header);
+        project.EffectiveBindingTarget.Should().Be("OpenAI-Project");
+        project.Required.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetHeaderSettings_Should_Map_Supplied_Values_Onto_Their_Header_Names()
+    {
+        var headers = ProviderConfigurationRegistry.GetHeaderSettings(
+            ProviderType.OpenAI,
+            new Dictionary<string, string>
+            {
+                ["organization"] = " org-acme ",
+                ["project"] = "proj_widgets"
+            });
+
+        headers.Should().BeEquivalentTo(new[]
+        {
+            new KeyValuePair<string, string>("OpenAI-Organization", "org-acme"),
+            new KeyValuePair<string, string>("OpenAI-Project", "proj_widgets")
+        });
+    }
+
+    [Fact]
+    public void GetHeaderSettings_Should_Skip_Blank_Values_And_NonHeader_Bindings()
+    {
+        ProviderConfigurationRegistry.GetHeaderSettings(
+                ProviderType.OpenAI,
+                new Dictionary<string, string> { ["organization"] = "   " })
+            .Should().BeEmpty();
+
+        // Cloudflare's account_id is a URL token, not a header, and must never leak into one.
+        ProviderConfigurationRegistry.GetHeaderSettings(
+                ProviderType.Cloudflare,
+                new Dictionary<string, string> { ["account_id"] = "0123456789abcdef0123456789abcdef" })
+            .Should().BeEmpty();
+    }
+
+    [Fact]
     public void ResolveBaseUrl_Should_Keep_A_Database_Override_For_Providers_Without_UrlTokenSettings()
     {
         // Providers that declare no URL-path-token settings are unaffected by the dual-read rule.

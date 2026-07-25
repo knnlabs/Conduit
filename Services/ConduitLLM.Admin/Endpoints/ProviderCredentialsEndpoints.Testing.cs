@@ -105,7 +105,6 @@ namespace ConduitLLM.Admin.Endpoints
                     new ProviderKeyCredential
                     {
                         ApiKey = testRequest.ApiKey,
-                        Organization = testRequest.Organization,
                         IsPrimary = true,
                         IsEnabled = true
                     }
@@ -128,7 +127,6 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 ApiKey = testRequest.ApiKey,
                 BaseUrl = testRequest.BaseUrl,
-                Organization = testRequest.Organization,
                 IsPrimary = true,
                 IsEnabled = true
             };

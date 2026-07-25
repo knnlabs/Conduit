@@ -31,11 +31,6 @@ namespace ConduitLLM.Configuration.DTOs
         public string? BaseUrl { get; set; }
 
         /// <summary>
-        /// Organization or project ID (optional, overrides provider default)
-        /// </summary>
-        public string? Organization { get; set; }
-
-        /// <summary>
         /// Whether this key is the primary key for the provider
         /// </summary>
         public required bool IsPrimary { get; set; }
@@ -82,11 +77,6 @@ namespace ConduitLLM.Configuration.DTOs
         public string? BaseUrl { get; set; }
 
         /// <summary>
-        /// Organization or project ID (optional)
-        /// </summary>
-        public string? Organization { get; set; }
-
-        /// <summary>
         /// Whether to set this key as the primary key
         /// </summary>
         public bool IsPrimary { get; set; }
@@ -121,11 +111,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Base URL for the provider API (optional)
         /// </summary>
         public string? BaseUrl { get; set; }
-
-        /// <summary>
-        /// Organization or project ID (optional)
-        /// </summary>
-        public string? Organization { get; set; }
 
         /// <summary>
         /// Whether this key is enabled

@@ -64,7 +64,6 @@ namespace ConduitLLM.Admin.Endpoints
                 ProviderId = providerId,
                 ApiKey = request.ApiKey,
                 KeyName = request.KeyName,
-                Organization = request.Organization,
                 BaseUrl = request.BaseUrl,
                 IsPrimary = request.IsPrimary,
                 IsEnabled = request.IsEnabled,
@@ -120,11 +119,6 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 changes.Add(("ApiKey", "***", "***")); // Never log API key values
                 key.ApiKey = request.ApiKey;
-            }
-            if (request.Organization != null && key.Organization != request.Organization)
-            {
-                changes.Add(("Organization", key.Organization, request.Organization));
-                key.Organization = request.Organization;
             }
             if (request.BaseUrl != null && key.BaseUrl != request.BaseUrl)
             {
@@ -186,7 +180,6 @@ namespace ConduitLLM.Admin.Endpoints
             IsEnabled = key.IsEnabled,
             ProviderAccountGroup = key.ProviderAccountGroup,
             ApiKey = key.ApiKey is null ? "***" : "***" + key.ApiKey[^Math.Min(4, key.ApiKey.Length)..],
-            Organization = key.Organization,
             BaseUrl = key.BaseUrl,
             CreatedAt = key.CreatedAt,
             UpdatedAt = key.UpdatedAt

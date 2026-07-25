@@ -3893,7 +3893,6 @@ export interface components {
     CreateKeyRequest: {
       apiKey?: string;
       keyName?: string;
-      organization?: null | string;
       baseUrl?: null | string;
       isPrimary?: boolean;
       isEnabled?: boolean;
@@ -6523,7 +6522,6 @@ export interface components {
       providerAccountGroup: number;
       apiKey: string;
       baseUrl?: null | string;
-      organization?: null | string;
       isPrimary: boolean;
       isEnabled: boolean;
       keyName?: null | string;
@@ -7128,7 +7126,6 @@ export interface components {
       settings?: null | {
         [key: string]: string;
       };
-      organization?: null | string;
     };
     /** @description Aggregate security metrics for threat analytics. */
     ThreatAnalyticsMetricsDto: {
@@ -7342,7 +7339,6 @@ export interface components {
     UpdateKeyRequest: {
       keyName?: null | string;
       apiKey?: null | string;
-      organization?: null | string;
       baseUrl?: null | string;
       isPrimary?: null | boolean;
       isEnabled?: null | boolean;

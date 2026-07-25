@@ -19,8 +19,7 @@ import { notify } from '@/lib/notifications';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { validators } from '@/lib/utils/form-validators';
-import { 
-  ProviderType, 
+import {
   PROVIDER_CONFIG_REQUIREMENTS,
   type ProviderDto
 } from '@/lib/admin-api';
@@ -39,7 +38,6 @@ interface EditProviderForm {
   providerName?: string;
   apiKey?: string;
   apiEndpoint?: string;
-  organizationId?: string;
   isEnabled: boolean;
 }
 
@@ -51,7 +49,6 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
     providerName: '',
     apiKey: '',
     apiEndpoint: '',
-    organizationId: '',
     isEnabled: true,
   }));
 
@@ -89,7 +86,6 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
         providerName: typeof apiProvider.providerName === 'string' ? apiProvider.providerName : '',
         apiKey: '', // Don't show existing key for security
         apiEndpoint: apiProvider.baseUrl ?? '',
-        organizationId: '', // Organization is now managed at the key level
         isEnabled: provider.isEnabled === true,
       };
       
@@ -105,7 +101,6 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
       const payload = {
         providerName: values.providerName ?? undefined,
         baseUrl: values.apiEndpoint ?? undefined,
-        organization: values.organizationId ?? undefined,
         isEnabled: values.isEnabled,
       };
 
@@ -206,18 +201,6 @@ export function EditProviderModal({ opened, onClose, provider, onSuccess }: Edit
                     list="autocompleteOff"
                     data-form-type="other"
                     {...form.getInputProps('apiEndpoint')}
-                  />
-                )}
-
-                {config.requiresOrganizationId && (
-                  <TextInput
-                    label="Organization ID"
-                    placeholder={getProviderTypeFromDto(provider) === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Organization ID"}
-                    autoComplete="off"
-                    aria-autocomplete="none"
-                    list="autocompleteOff"
-                    data-form-type="other"
-                    {...form.getInputProps('organizationId')}
                   />
                 )}
               </>

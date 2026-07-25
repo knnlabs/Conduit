@@ -163,13 +163,40 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
 
+            ApplyHeaderSettings(client);
+
             // Configure authentication
             ConfigureAuthentication(client, apiKey);
 
             // Configure default timeout (can be overridden per-request)
             client.Timeout = DefaultRequestTimeout;
         }
-        
+
+        /// <summary>
+        /// Applies the provider's header-bound structured settings (for example OpenAI's
+        /// <c>OpenAI-Organization</c>) to an HttpClient.
+        /// </summary>
+        /// <remarks>
+        /// The bindings are declared as data in <see cref="ProviderConfigurationRegistry"/>, so a
+        /// provider gains a header-carried identifier by declaring it rather than by adding
+        /// client-specific plumbing. Values already present on the client are left alone: an
+        /// explicit header set by a derived client wins over the configured setting.
+        /// </remarks>
+        /// <param name="client">The HttpClient to configure.</param>
+        protected void ApplyHeaderSettings(HttpClient client)
+        {
+            foreach (var header in ProviderConfigurationRegistry.GetHeaderSettings(
+                Provider.ProviderType, Provider.Settings))
+            {
+                if (client.DefaultRequestHeaders.Contains(header.Key))
+                {
+                    continue;
+                }
+
+                client.DefaultRequestHeaders.Add(header.Key, header.Value);
+            }
+        }
+
         /// <summary>
         /// Configures authentication for the HttpClient.
         /// Uses the <see cref="AuthenticationStrategy"/> property to determine the authentication method.
@@ -205,6 +232,9 @@ namespace ConduitLLM.Providers
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
             client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
+
+            // Verification hits the same provider API, so it must carry the same scoping headers.
+            ApplyHeaderSettings(client);
 
             // Configure authentication
             ConfigureAuthentication(client, apiKey);

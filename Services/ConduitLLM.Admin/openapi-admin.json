@@ -26156,12 +26156,6 @@
           "keyName": {
             "type": "string"
           },
-          "organization": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "baseUrl": {
             "type": [
               "null",
@@ -32191,12 +32185,6 @@
               "string"
             ]
           },
-          "organization": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "isPrimary": {
             "type": "boolean"
           },
@@ -33502,12 +33490,6 @@
             "additionalProperties": {
               "type": "string"
             }
-          },
-          "organization": {
-            "type": [
-              "null",
-              "string"
-            ]
           }
         }
       },
@@ -34019,12 +34001,6 @@
             ]
           },
           "apiKey": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "organization": {
             "type": [
               "null",
               "string"

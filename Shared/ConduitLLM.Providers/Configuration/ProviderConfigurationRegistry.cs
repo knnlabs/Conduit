@@ -35,6 +35,31 @@ namespace ConduitLLM.Providers.Configuration
                     RateLimitExceeded = "OpenAI API rate limit exceeded. Please try again later.",
                     InsufficientBalance = "Insufficient balance in your OpenAI account.",
                     ModelNotFound = "Model not found. Please verify the model ID is correct."
+                },
+                Settings = new[]
+                {
+                    new ProviderSettingDefinition
+                    {
+                        Key = "organization",
+                        Label = "Organization ID",
+                        HelpText = "Scopes requests and usage attribution to a specific OpenAI organization. Leave blank to use the API key's default organization.",
+                        Placeholder = "org-...",
+                        Required = false,
+                        Binding = ProviderSettingBinding.Header,
+                        BindingTarget = "OpenAI-Organization",
+                        ValidationRegex = "^org-[A-Za-z0-9]+$"
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "project",
+                        Label = "Project ID",
+                        HelpText = "Scopes requests and usage attribution to a specific project within the organization. Leave blank to use the API key's default project.",
+                        Placeholder = "proj_...",
+                        Required = false,
+                        Binding = ProviderSettingBinding.Header,
+                        BindingTarget = "OpenAI-Project",
+                        ValidationRegex = "^proj_[A-Za-z0-9]+$"
+                    }
                 }
             },
 
@@ -424,6 +449,45 @@ namespace ConduitLLM.Providers.Configuration
             }
 
             return result.TrimEnd('/');
+        }
+
+        /// <summary>
+        /// Resolves the HTTP headers a provider's structured settings contribute to every outbound
+        /// request (for example OpenAI's <c>OpenAI-Organization</c>).
+        /// </summary>
+        /// <param name="providerType">The provider type whose setting definitions drive the mapping.</param>
+        /// <param name="settings">The operator-supplied setting values, keyed by setting key.</param>
+        /// <returns>Header name/value pairs; empty when the provider declares or supplies none.</returns>
+        public static IReadOnlyList<KeyValuePair<string, string>> GetHeaderSettings(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? settings)
+        {
+            if (settings == null || settings.Count == 0)
+            {
+                return Array.Empty<KeyValuePair<string, string>>();
+            }
+
+            var definitions = GetConfiguration(providerType)?.Settings;
+            if (definitions == null || definitions.Count == 0)
+            {
+                return Array.Empty<KeyValuePair<string, string>>();
+            }
+
+            var headers = new List<KeyValuePair<string, string>>();
+            foreach (var definition in definitions)
+            {
+                if (definition.Binding != ProviderSettingBinding.Header)
+                {
+                    continue;
+                }
+
+                if (settings.TryGetValue(definition.Key, out var value) && !string.IsNullOrWhiteSpace(value))
+                {
+                    headers.Add(new KeyValuePair<string, string>(definition.EffectiveBindingTarget, value.Trim()));
+                }
+            }
+
+            return headers;
         }
 
         /// <summary>

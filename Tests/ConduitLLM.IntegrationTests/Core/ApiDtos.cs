@@ -31,7 +31,6 @@ public class CreateProviderKeyRequest
 {
     public string ApiKey { get; set; } = "";
     public string KeyName { get; set; } = "";
-    public string? Organization { get; set; }
     public string? BaseUrl { get; set; }
     public bool IsPrimary { get; set; } = true;
     public bool IsEnabled { get; set; } = true;

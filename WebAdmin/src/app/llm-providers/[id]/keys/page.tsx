@@ -59,7 +59,6 @@ export default function ProviderKeysPage() {
   const [newKeyForm, setNewKeyForm] = useState<CreateProviderKeyCredentialDto>({
     apiKey: '',
     keyName: '',
-    organization: '',
     isPrimary: false,
     isEnabled: true,
     providerAccountGroup: 0,
@@ -116,7 +115,6 @@ export default function ProviderKeysPage() {
       setNewKeyForm({
         apiKey: '',
         keyName: '',
-        organization: '',
         isPrimary: false,
         isEnabled: true,
         providerAccountGroup: 0,
@@ -299,21 +297,12 @@ export default function ProviderKeysPage() {
               required
             />
             
-            <Group grow>
-              <TextInput
-                label="Key Name (optional)"
-                placeholder="e.g., Production Key"
-                value={newKeyForm.keyName}
-                onChange={(e) => setNewKeyForm({ ...newKeyForm, keyName: e.target.value })}
-              />
-              
-              <TextInput
-                label="Organization (optional)"
-                placeholder="e.g., OpenAI Org ID"
-                value={newKeyForm.organization ?? ''}
-                onChange={(e) => setNewKeyForm({ ...newKeyForm, organization: e.target.value })}
-              />
-            </Group>
+            <TextInput
+              label="Key Name (optional)"
+              placeholder="e.g., Production Key"
+              value={newKeyForm.keyName}
+              onChange={(e) => setNewKeyForm({ ...newKeyForm, keyName: e.target.value })}
+            />
 
             <NumberInput
               label="Account Group"
@@ -355,7 +344,6 @@ export default function ProviderKeysPage() {
                   setNewKeyForm({
                     apiKey: '',
                     keyName: '',
-                    organization: '',
                     isPrimary: false,
                     isEnabled: true,
                     providerAccountGroup: 0,
@@ -408,11 +396,6 @@ export default function ProviderKeysPage() {
                       <Text size="xs" c="dimmed">
                         API Key: {key.apiKey}
                       </Text>
-                      {key.organization && (
-                        <Text size="xs" c="dimmed">
-                          Org: {key.organization}
-                        </Text>
-                      )}
                       <Text size="xs" c="dimmed">
                         Account Group: {key.providerAccountGroup > 0 ? key.providerAccountGroup : 'Ungrouped'}
                       </Text>

@@ -188,20 +188,6 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     />
                   )}
 
-                  {config && mode === 'add' && config.requiresOrganizationId && (
-                    <TextInput
-                      label="Organization ID"
-                      placeholder={providerTypeNum === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Enter organization ID"}
-                      required={config.requiresOrganizationId}
-                      autoComplete="off"
-                      aria-autocomplete="none"
-                      list="autocompleteOff"
-                      data-form-type="other"
-                      {...form.getInputProps('organizationId')}
-                      size="md"
-                    />
-                  )}
-
                   {/* Structured settings are declared by the backend provider registry and served by
                       the Admin API, so this form never mirrors the field list. They render in both
                       modes: these identify the provider account (for example a Cloudflare Account

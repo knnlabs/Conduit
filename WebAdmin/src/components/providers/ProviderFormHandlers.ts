@@ -127,7 +127,6 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
               client.providers.createKey(createdProvider.id, {
                 apiKey: values.apiKey,
                 keyName: 'Primary Key',
-                organization: values.organizationId ?? undefined,
                 isPrimary: true,
                 isEnabled: true,
               })
@@ -147,7 +146,6 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
         const payload = {
           providerName: values.providerName ?? undefined,
           baseUrl: values.apiEndpoint ?? undefined,
-          organization: values.organizationId ?? undefined,
           settings: collectSettings(values, settingFields, 'edit'),
           isEnabled: values.isEnabled,
           trustProviderReportedCosts: values.trustProviderReportedCosts,
@@ -200,7 +198,6 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
             providerType: form.values.providerType as ProviderType,
             apiKey: form.values.apiKey,
             baseUrl: form.values.apiEndpoint ?? undefined,
-            organizationId: form.values.organizationId ?? undefined,
             settings: collectSettings(form.values, settingFields, 'add'),
           })
         );
