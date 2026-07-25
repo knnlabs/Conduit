@@ -1794,6 +1794,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
+    /** Get a virtual key's current rate limit usage */
     get: operations["VirtualKeys_GetRateLimitUsage"];
     put?: never;
     post?: never;
@@ -15849,8 +15850,41 @@ export interface operations {
           "application/json": components["schemas"]["VirtualKeyRateLimitUsageDto"];
         };
       };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
       /** @description Not Found */
       404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;

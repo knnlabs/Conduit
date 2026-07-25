@@ -74,8 +74,12 @@ public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
                 [FromServices] ConduitLLM.Configuration.Interfaces.IVirtualKeyGroupRepository groupRepository,
                 [FromServices] ConduitLLM.Core.Services.IVirtualKeyRateLimitService? rateLimitService) =>
                 endpoints.GetRateLimitUsage(id, keyRepository, groupRepository, rateLimitService))
-            .WithName("VirtualKeys_GetRateLimitUsage").Produces<VirtualKeyRateLimitUsageDto>()
-            .Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
+            .WithName("VirtualKeys_GetRateLimitUsage")
+            .WithSummary("Get a virtual key's current rate limit usage")
+            .Produces<VirtualKeyRateLimitUsageDto>()
+            .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status429TooManyRequests)
+            .RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/usage/by-key/{key}", ([FromServices] VirtualKeysEndpoints endpoints, string key) => endpoints.GetUsageByKey(key))
             .WithName("VirtualKeys_GetUsageByKey").Produces<VirtualKeyUsageDto>().Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden)
