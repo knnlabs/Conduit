@@ -28092,7 +28092,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "Unique identifier for the incident."
+            "description": "Identifier for the incident. Derived from the incident's subject and window rather than\r\nrandomly generated, so the same incident keeps the same id across dashboard polls."
           },
           "title": {
             "type": "string",
@@ -28100,7 +28100,7 @@
           },
           "type": {
             "type": "string",
-            "description": "Incident type identifier (e.g. service_degradation)."
+            "description": "Incident type identifier (e.g. model_error_spike)."
           },
           "severity": {
             "type": "string",
@@ -28125,7 +28125,14 @@
           },
           "affectedService": {
             "type": "string",
-            "description": "Name of the affected service."
+            "description": "Identifier of the affected service, matching an entry in the service health response\r\n(e.g. core-api)."
+          },
+          "affectedModel": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Model the incident was attributed to, or null when the incident is not model-specific."
           },
           "impact": {
             "type": "string",
