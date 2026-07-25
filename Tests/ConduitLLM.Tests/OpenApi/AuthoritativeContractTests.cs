@@ -320,6 +320,31 @@ public sealed class AuthoritativeContractTests : IDisposable
         paths.Should().Contain("/v1/conduit/discovery/models");
         paths.Should().Contain("/v1/conduit/functions/execute");
         paths.Should().Contain("/v1/conduit/videos/generations/async");
+        paths.Should().NotContain("/v1/completions",
+            "the legacy stub only ever answers 501, so no generated client should type a call to it");
+    }
+
+    [Fact]
+    public void Gateway_PublishesNoSchemaComponentThatOperationsCannotReach()
+    {
+        var schemas = _gateway.RootElement.GetProperty("components").GetProperty("schemas");
+        var reachable = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Queue<string>(
+            SchemaReferences(_gateway.RootElement.GetProperty("paths")));
+
+        while (pending.Count > 0)
+        {
+            var name = pending.Dequeue();
+            if (!reachable.Add(name) || !schemas.TryGetProperty(name, out var schema))
+                continue;
+
+            foreach (var reference in SchemaReferences(schema))
+                pending.Enqueue(reference);
+        }
+
+        schemas.EnumerateObject().Select(schema => schema.Name)
+            .Should().OnlyContain(name => reachable.Contains(name),
+                "orphaned components make generated clients carry contract no route can return");
     }
 
     [Fact]
@@ -829,6 +854,18 @@ public sealed class AuthoritativeContractTests : IDisposable
                 }
             }
         }
+    }
+
+    private static IEnumerable<string> SchemaReferences(JsonElement element)
+    {
+        const string prefix = "#/components/schemas/";
+
+        // Covers both $ref values and the schema names a discriminator maps to.
+        return Descendants(element)
+            .Where(item => item.ValueKind == JsonValueKind.String)
+            .Select(item => item.GetString()!)
+            .Where(value => value.StartsWith(prefix, StringComparison.Ordinal))
+            .Select(value => value[prefix.Length..]);
     }
 
     private static JsonElement ResolveSchema(JsonDocument document, JsonElement schema)
