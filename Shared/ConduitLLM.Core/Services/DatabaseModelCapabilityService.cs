@@ -226,16 +226,23 @@ namespace ConduitLLM.Core.Services
                 var mapping = await GetMappingByModelNameAsync(model);
                 var tokenizerType = mapping?.ModelProviderTypeAssociation?.Model?.TokenizerType;
 
-                // Default to cl100k_base if not specified
-                string result = tokenizerType?.ToString() ?? "Cl100KBase";
+                // Unknown model: report null rather than fabricating Cl100KBase here.
+                // TokenizerEncodingMap.Resolve(null) applies the one documented default
+                // (approximate cl100k_base), so the count is correctly flagged as an
+                // approximation instead of claiming an exact vocabulary (#1232).
+                if (tokenizerType is null)
+                {
+                    return null;
+                }
 
+                string result = tokenizerType.ToString()!;
                 await SetInHybridCacheAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting tokenizer type for model {Model}", model);
-                return "Cl100KBase"; // Default fallback
+                return null; // Resolve(null) falls back to the approximate default encoding.
             }
         }
 

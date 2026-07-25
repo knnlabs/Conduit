@@ -64,6 +64,7 @@ Console.WriteLine();
 var outputModels = new JsonObject();
 int skipped = 0;
 int included = 0;
+var unknownTokenizers = new SortedSet<string>();
 
 foreach (var model in dataArray.EnumerateArray())
 {
@@ -139,11 +140,21 @@ foreach (var model in dataArray.EnumerateArray())
     var supportsImageGeneration = outputModalities.Contains("image");
     var supportsVideoGeneration = outputModalities.Contains("video");
 
-    // Map tokenizer
+    // Map tokenizer: OpenRouter's architecture.tokenizer first; when it reports an unknown
+    // family (or "Other"), infer from the model id before falling back to None (#1232).
     var tokenizerRaw = model.TryGetProperty("architecture", out var tokenizerArchitecture)
         && tokenizerArchitecture.TryGetProperty("tokenizer", out var tok)
         ? tok.GetString() ?? "Other" : "Other";
     var tokenizerType = MapTokenizer(tokenizerRaw);
+    if (tokenizerType is null)
+    {
+        unknownTokenizers.Add(tokenizerRaw);
+    }
+    tokenizerType ??= "None";
+    if (tokenizerType == "None")
+    {
+        tokenizerType = InferTokenizerFromId(id) ?? "None";
+    }
 
     // Use the slug (part after provider/) as the model name for consistency
     // with other providers and to enable deduplication across provider types.
@@ -210,6 +221,11 @@ await File.WriteAllTextAsync(outputPath, jsonOutput);
 
 Console.WriteLine($"✅ Written {included} models to {outputPath}");
 Console.WriteLine($"   Skipped {skipped} models without a provider prefix");
+if (unknownTokenizers.Count > 0)
+{
+    Console.WriteLine($"⚠️  Unrecognized architecture.tokenizer values mapped to None: {string.Join(", ", unknownTokenizers)}");
+    Console.WriteLine("   Add mappings in MapTokenizer if these are real vocabularies.");
+}
 Console.WriteLine();
 
 // Summary by owner
@@ -231,7 +247,9 @@ Console.WriteLine($"  dotnet script generate-provider-sql.cs openrouter");
 
 // --- Helper functions ---
 
-static string MapTokenizer(string openRouterTokenizer)
+// Returns null for values this script has never seen so they get reported instead of
+// silently degrading to "no tokenizer" (#1232).
+static string? MapTokenizer(string openRouterTokenizer)
 {
     return openRouterTokenizer switch
     {
@@ -241,14 +259,37 @@ static string MapTokenizer(string openRouterTokenizer)
         "Llama3" => "LLaMA3",
         "Llama4" => "LLaMA3",      // Same BPE family
         "Gemini" => "Gemini",
+        "Gemma" => "Gemini",       // Gemma shares the Gemini SentencePiece family
         "Mistral" => "Mistral",
         "Cohere" => "Cohere",
         "Qwen" or "Qwen3" => "Tiktoken",
         "DeepSeek" => "LLaMA3",     // DeepSeek uses LLaMA3-based tokenizer
         "Grok" => "BPE",
-        "Other" or "Router" or "Nova" => "None",
-        _ => "None"
+        // Documented unknowns: meta-routers, unpublished vocabularies, non-text models.
+        "Other" or "Router" or "Nova" or "None" => "None",
+        _ => null
     };
+}
+
+// Secondary inference for models whose tokenizer OpenRouter reports as "Other": when the
+// model id names a family Conduit has a TokenizerType for, use it. Keep in sync with the
+// backfill applied to the committed catalogs (#1232).
+static string? InferTokenizerFromId(string id)
+{
+    var slug = (id.Contains('/') ? id[(id.LastIndexOf('/') + 1)..] : id).ToLowerInvariant();
+    if (slug.Contains("kimi")) return "Kimi";
+    if (slug.Contains("minimax")) return "MiniMax";
+    if (slug.StartsWith("claude")) return "Claude3";
+    if (slug.StartsWith("gemini")) return "Gemini";
+    if (slug.Contains("gemma")) return "Gemini";
+    if (slug.StartsWith("gpt-") || slug.StartsWith("o1-") || slug.StartsWith("o3-") || slug.StartsWith("o4-")) return "O200KBase";
+    if (slug.Contains("grok")) return "BPE";
+    if (slug.Contains("llama")) return "LLaMA3";
+    if (slug.Contains("mistral")) return "Mistral";
+    if (slug.Contains("qwen")) return "Tiktoken";
+    if (slug.Contains("deepseek")) return "LLaMA3";
+    if (slug.StartsWith("command")) return "Cohere";
+    return null;
 }
 
 static (string family, string series) DeriveSeriesInfo(string id, string displayName, string owner)

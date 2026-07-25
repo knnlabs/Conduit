@@ -404,5 +404,20 @@ static string MapTokenizer(string family, string modelName) => family switch
     "DeepSeek" => "LLaMA3",
     "BGE" => "WordPiece",
     "Phi" => "BPE",
-    _ => "None"
+    _ => InferTokenizerFromName(modelName)
 };
+
+// Secondary inference before giving up on "None": when the model name itself names a
+// family Conduit has a TokenizerType for, use it. Keeps refreshes from reverting the
+// #1232 catalog backfill.
+static string InferTokenizerFromName(string modelName)
+{
+    var lower = modelName.ToLowerInvariant();
+    if (lower.Contains("kimi")) return "Kimi";
+    if (lower.Contains("llama")) return "LLaMA3";
+    if (lower.Contains("mistral")) return "Mistral";
+    if (lower.Contains("qwen")) return "Tiktoken";
+    if (lower.Contains("deepseek")) return "LLaMA3";
+    if (lower.Contains("minimax")) return "MiniMax";
+    return "None";
+}

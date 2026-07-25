@@ -1,6 +1,8 @@
 public enum TokenizerType
 {
-    // No tokenizer (for non-text models like image/video generation)
+    // No known tokenizer: non-text models (image/video/audio generation), meta-routers,
+    // and text models whose vocabulary is unpublished. Token counts for these resolve to
+    // TokenizerEncodingMap.DefaultEncoding and are flagged as approximations.
     None = 0,
 
     // OpenAI tokenizers

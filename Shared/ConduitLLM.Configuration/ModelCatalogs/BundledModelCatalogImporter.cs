@@ -107,6 +107,9 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
                 .ToListAsync(cancellationToken))
             .ToDictionary(x => IdentifierKey((int?)x.Provider, x.Identifier), StringComparer.Ordinal);
 
+        // Warn once per distinct unrecognized tokenizer string per import (#1232).
+        var unrecognizedTokenizers = new HashSet<string>(StringComparer.Ordinal);
+
         foreach (var providerCatalog in catalogs)
         {
             var providerResult = new ProviderCatalogImportResult
@@ -119,6 +122,8 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
             foreach (var (identifier, catalogModel) in providerCatalog.Models)
             {
                 var identifierKey = IdentifierKey(providerCatalog.Configuration.ProviderType, identifier);
+                var tokenizerType = ResolveTokenizer(
+                    providerCatalog.Name, identifier, catalogModel.TokenizerType, unrecognizedTokenizers);
                 if (identifiers.TryGetValue(identifierKey, out var existingAssociation))
                 {
                     if (existingAssociation.CapabilitySource != ModelCapabilitySource.Manual)
@@ -127,7 +132,7 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
                     }
                     if (CanRefreshCanonical(existingAssociation.Model))
                     {
-                        ApplyCatalogCapabilities(existingAssociation.Model, catalogModel);
+                        ApplyCatalogCapabilities(existingAssociation.Model, catalogModel, tokenizerType);
                     }
                     providerResult.SkippedExistingIdentifiers++;
                     result.SkippedExistingIdentifiers++;
@@ -176,7 +181,7 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
                     {
                         Name = seriesName,
                         Author = author,
-                        TokenizerType = MapTokenizer(catalogModel.TokenizerType),
+                        TokenizerType = tokenizerType,
                         Parameters = "{}"
                     };
                     context.ModelSeries.Add(modelSeries);
@@ -207,7 +212,7 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
                         SupportsChat = catalogModel.SupportsChat,
                         SupportsFunctionCalling = catalogModel.SupportsFunctionCalling,
                         SupportsStreaming = catalogModel.SupportsStreaming,
-                        TokenizerType = MapTokenizer(catalogModel.TokenizerType),
+                        TokenizerType = tokenizerType,
                         MaxInputTokens = catalogModel.MaxInputTokens,
                         MaxOutputTokens = catalogModel.MaxOutputTokens,
                         InputModalitiesJson = SerializeInputModalities(catalogModel),
@@ -281,8 +286,12 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
             or ModelCapabilitySource.LegacyInferred
             or ModelCapabilitySource.ProviderApi;
 
-    private static void ApplyCatalogCapabilities(Model model, ProviderCatalogModel catalog)
+    private static void ApplyCatalogCapabilities(
+        Model model,
+        ProviderCatalogModel catalog,
+        TokenizerType tokenizerType)
     {
+        model.TokenizerType = tokenizerType;
         model.SupportsChat = catalog.SupportsChat;
         model.SupportsStreaming = catalog.SupportsStreaming;
         model.SupportsVision = catalog.SupportsVision;
@@ -371,8 +380,40 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
     private static string SeriesKey(string author, string series) => $"{author}\u001f{series}";
     private static string ModelKey(string author, string series, string model) => $"{author}\u001f{series}\u001f{model}";
 
-    private static TokenizerType MapTokenizer(string value) => value switch
+    /// <summary>
+    /// Maps the catalog's tokenizer string, warning once per distinct unrecognized value.
+    /// A typo or a new vocabulary name must not silently degrade to "no tokenizer" (#1232):
+    /// the model still imports as <see cref="TokenizerType.None"/> (counts fall back to the
+    /// approximate default encoding), but the import log says so.
+    /// </summary>
+    private TokenizerType ResolveTokenizer(
+        string provider,
+        string identifier,
+        string value,
+        HashSet<string> reportedUnrecognized)
     {
+        if (MapTokenizer(value) is { } mapped)
+        {
+            return mapped;
+        }
+
+        if (reportedUnrecognized.Add(value))
+        {
+            _logger.LogWarning(
+                "Bundled model catalog {Provider}/{Identifier}: unrecognized tokenizer '{Tokenizer}' " +
+                "imported as None; token counts will use the approximate default encoding. " +
+                "Add a mapping in BundledModelCatalogImporter.MapTokenizer if this is a real vocabulary.",
+                provider, identifier, value);
+        }
+
+        return TokenizerType.None;
+    }
+
+    // Internal for tests: the bundled-catalog hygiene test asserts every shipped catalog
+    // value is recognized here, so catalog and importer cannot drift apart silently.
+    internal static TokenizerType? MapTokenizer(string? value) => value switch
+    {
+        null or "" or "None" => TokenizerType.None,
         "Cl100KBase" or "cl100k_base" => TokenizerType.Cl100KBase,
         "P50KBase" or "p50k_base" => TokenizerType.P50KBase,
         "P50KEdit" => TokenizerType.P50KEdit,
@@ -396,6 +437,6 @@ public sealed class BundledModelCatalogImporter : IBundledModelCatalogImporter
         "BPE" or "ByteLevelBPE" or "GPTNeoX" => TokenizerType.BPE,
         "WordPiece" => TokenizerType.WordPiece,
         "Tiktoken" or "tiktoken" => TokenizerType.Tiktoken,
-        _ => TokenizerType.None
+        _ => null
     };
 }
