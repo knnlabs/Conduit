@@ -168,6 +168,8 @@ public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
             changes.Add(("RateLimitTpm", preState.RateLimitTpm?.ToString() ?? "null", request.RateLimitTpm?.ToString() ?? "null"));
         if (request.MaxParallelRequests.HasValue && preState.MaxParallelRequests != request.MaxParallelRequests)
             changes.Add(("MaxParallelRequests", preState.MaxParallelRequests?.ToString() ?? "null", request.MaxParallelRequests?.ToString() ?? "null"));
+        if (request.RateLimitPriority.HasValue && preState.RateLimitPriority != request.RateLimitPriority)
+            changes.Add(("RateLimitPriority", preState.RateLimitPriority?.ToString() ?? "null", request.RateLimitPriority?.ToString() ?? "null"));
         if (request.ModelRateLimits is not null &&
             DescribeModelLimits(preState.ModelRateLimits) != DescribeModelLimits(request.ModelRateLimits))
         {

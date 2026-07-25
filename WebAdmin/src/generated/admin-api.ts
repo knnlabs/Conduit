@@ -4146,6 +4146,8 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      /** Format: int32 */
+      rateLimitPriority?: null | number;
       modelRateLimits?: null | {
         [key: string]: components["schemas"]["ModelRateLimitDto"];
       };
@@ -7589,6 +7591,8 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      /** Format: int32 */
+      rateLimitPriority?: null | number;
       modelRateLimits?: null | {
         [key: string]: components["schemas"]["ModelRateLimitDto"];
       };
@@ -7729,6 +7733,8 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      /** Format: int32 */
+      rateLimitPriority?: null | number;
       modelRateLimits?: null | {
         [key: string]: components["schemas"]["ModelRateLimitDto"];
       };
@@ -7807,6 +7813,8 @@ export interface components {
       /** Format: int32 */
       maxParallelRequests?: null | number;
       /** Format: int32 */
+      rateLimitPriority?: null | number;
+      /** Format: int32 */
       virtualKeyGroupId?: null | number;
       /** Format: int32 */
       groupRequestsThisMinute?: null | number;
@@ -7858,6 +7866,8 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      /** Format: int32 */
+      rateLimitPriority?: null | number;
       allowedModels?: null | string[];
     };
     /** @description Virtual key usage summary */
@@ -7905,6 +7915,8 @@ export interface components {
       rateLimitTpm?: null | number;
       /** Format: int32 */
       maxParallelRequests?: null | number;
+      /** Format: int32 */
+      rateLimitPriority?: null | number;
     };
     VirtualKeyValidationResult: {
       isValid?: boolean;

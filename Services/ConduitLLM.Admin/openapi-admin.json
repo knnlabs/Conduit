@@ -26772,6 +26772,15 @@
             ],
             "format": "int32"
           },
+          "rateLimitPriority": {
+            "maximum": 2,
+            "minimum": 0,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "modelRateLimits": {
             "type": [
               "null",
@@ -34766,6 +34775,15 @@
             ],
             "format": "int32"
           },
+          "rateLimitPriority": {
+            "maximum": 2,
+            "minimum": 0,
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "modelRateLimits": {
             "type": [
               "null",
@@ -35180,6 +35198,13 @@
             ],
             "format": "int32"
           },
+          "rateLimitPriority": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "modelRateLimits": {
             "type": [
               "null",
@@ -35408,6 +35433,13 @@
             ],
             "format": "int32"
           },
+          "rateLimitPriority": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "virtualKeyGroupId": {
             "type": [
               "null",
@@ -35562,6 +35594,13 @@
             ],
             "format": "int32"
           },
+          "rateLimitPriority": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "allowedModels": {
             "type": [
               "null",
@@ -35668,6 +35707,13 @@
             "format": "int32"
           },
           "maxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rateLimitPriority": {
             "type": [
               "null",
               "integer"

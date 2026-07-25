@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.RateLimiting;
@@ -28,7 +29,8 @@ public class ModelRateLimitTests
 
     public ModelRateLimitTests()
     {
-        _service = new TokenRateLimitService(_limiter.Object, NullLogger<TokenRateLimitService>.Instance);
+        _service = new TokenRateLimitService(
+            _limiter.Object, new RateLimitOptions(), NullLogger<TokenRateLimitService>.Instance);
     }
 
     // ---- rule resolution ------------------------------------------------

@@ -78,6 +78,39 @@ public class ConcurrencyRateLimitServiceTests
     }
 
     [Fact]
+    public async Task TryAcquireAsync_LowPriorityKey_CapsTheGroupCeilingUnderTheSaturationScope()
+    {
+        SetupAcquire(allowed: true, current: 0);
+        var context = NewContext(maxParallel: null);
+        context.Items[RateLimitContextKeys.GroupId] = 9;
+        context.Items[RateLimitContextKeys.GroupMaxParallelRequests] = 10;
+        context.Items[RateLimitContextKeys.Priority] = RateLimitSaturationPolicy.LowPriority;
+
+        await _service.TryAcquireAsync(context);
+
+        var window = _submitted.Should().ContainSingle().Subject;
+        window.Limit.Should().Be(8, "the default saturation threshold admits low priority to 80% of the group ceiling");
+        window.Scope.Should().Be("group:concurrency:saturation");
+        window.Key.Should().Be(RedisKeys.RateLimit.GroupConcurrency(9),
+            "the capped window must count the group's shared in-flight slots");
+    }
+
+    [Fact]
+    public async Task TryAcquireAsync_NormalPriorityKey_SeesTheFullGroupCeiling()
+    {
+        SetupAcquire(allowed: true, current: 0);
+        var context = NewContext(maxParallel: null);
+        context.Items[RateLimitContextKeys.GroupId] = 9;
+        context.Items[RateLimitContextKeys.GroupMaxParallelRequests] = 10;
+
+        await _service.TryAcquireAsync(context);
+
+        var window = _submitted.Should().ContainSingle().Subject;
+        window.Limit.Should().Be(10);
+        window.Scope.Should().Be("group:concurrency");
+    }
+
+    [Fact]
     public async Task TryAcquireAsync_WithoutAnAuthenticatedKey_DoesNothing()
     {
         var context = new DefaultHttpContext();

@@ -151,6 +151,7 @@ namespace ConduitLLM.Gateway.Authentication
                 Context.Items["VirtualKey.RateLimitRpd"] = keyEntity.RateLimitRpd;
                 Context.Items["VirtualKey.RateLimitTpm"] = keyEntity.RateLimitTpm;
                 Context.Items["VirtualKey.MaxParallelRequests"] = keyEntity.MaxParallelRequests;
+                Context.Items["VirtualKey.RateLimitPriority"] = keyEntity.RateLimitPriority;
                 Context.Items["VirtualKey.ModelRateLimits"] = keyEntity.ModelRateLimits;
 
                 // Group ceilings apply in addition to the key's own, so they travel with the

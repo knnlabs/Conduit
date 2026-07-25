@@ -84,6 +84,22 @@ namespace ConduitLLM.Configuration.Options
         public RateLimitFailureMode FailureMode { get; set; } = RateLimitFailureMode.Open;
 
         /// <summary>
+        /// Fraction of each group ceiling that low-priority keys are admitted against.
+        /// </summary>
+        /// <remarks>
+        /// Set by <c>CONDUIT_RATE_LIMIT_SATURATION_THRESHOLD</c>. A key whose
+        /// <c>RateLimitPriority</c> is below normal is checked against
+        /// <c>floor(groupLimit × threshold)</c> instead of the full group ceiling, so once the
+        /// group's shared window passes the threshold, low-priority keys are shed while
+        /// normal- and high-priority keys still have the remaining headroom. Because the reduced
+        /// ceiling is evaluated inside the same atomic window check as everything else, the
+        /// decision cannot race the fill it is based on and there is no shedding state to flap.
+        /// 1.0 disables shedding (the reduced ceiling equals the full one).
+        /// </remarks>
+        [Range(0.01, 1.0)]
+        public double PrioritySaturationThreshold { get; set; } = 0.8;
+
+        /// <summary>
         /// How long a single observed failure is treated as an ongoing degradation.
         /// </summary>
         /// <remarks>

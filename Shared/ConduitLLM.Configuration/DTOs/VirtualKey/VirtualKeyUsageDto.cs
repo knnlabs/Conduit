@@ -91,6 +91,12 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public int? MaxParallelRequests { get; set; }
 
         /// <summary>
+        /// Priority tier for saturation-aware group rate limiting: 0 = low, 1 = normal,
+        /// 2 = high. Null means normal.
+        /// </summary>
+        public int? RateLimitPriority { get; set; }
+
+        /// <summary>
         /// Comma-separated list of allowed model IDs, if restricted
         /// </summary>
         public List<string>? AllowedModels { get; set; }

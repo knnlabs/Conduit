@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.RateLimiting;
@@ -25,7 +26,8 @@ public class TokenRateLimitServiceTests
 
     public TokenRateLimitServiceTests()
     {
-        _service = new TokenRateLimitService(_limiter.Object, NullLogger<TokenRateLimitService>.Instance);
+        _service = new TokenRateLimitService(
+            _limiter.Object, new RateLimitOptions(), NullLogger<TokenRateLimitService>.Instance);
     }
 
     [Fact]
@@ -100,6 +102,60 @@ public class TokenRateLimitServiceTests
         _limiter.Verify(
             x => x.CheckAsync(It.IsAny<IReadOnlyList<RateLimitWindow>>(), It.IsAny<long>(), It.IsAny<string?>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task ReserveAsync_LowPriorityKey_CapsTheGroupCeilingUnderTheSaturationScope()
+    {
+        SetupWindow(allowed: true, current: 0, limit: 8_000);
+        var context = NewContext(tpm: null);
+        context.Items[RateLimitContextKeys.GroupId] = 5;
+        context.Items[RateLimitContextKeys.GroupTpm] = 10_000;
+        context.Items[RateLimitContextKeys.Priority] = RateLimitSaturationPolicy.LowPriority;
+
+        await _service.ReserveAsync(context, "gpt-5", 100);
+
+        var window = _submitted.Should().ContainSingle().Subject;
+        window.Limit.Should().Be(8_000, "the default saturation threshold admits low priority to 80% of the group ceiling");
+        window.Scope.Should().Be("group:TPM:saturation");
+        window.Key.Should().Be(RedisKeys.RateLimit.GroupTpm(5), "the capped window must read the group's shared fill");
+    }
+
+    [Fact]
+    public async Task ReserveAsync_LowPriorityKey_ClampsOversizedEstimatesToTheCappedCeiling()
+    {
+        SetupWindow(allowed: true, current: 0, limit: 8_000);
+        var context = NewContext(tpm: null);
+        context.Items[RateLimitContextKeys.GroupId] = 5;
+        context.Items[RateLimitContextKeys.GroupTpm] = 10_000;
+        context.Items[RateLimitContextKeys.Priority] = RateLimitSaturationPolicy.LowPriority;
+
+        await _service.ReserveAsync(context, "gpt-5", 50_000);
+
+        _submitted!.Single().Weight.Should().Be(8_000,
+            "an estimate above the capped ceiling must clamp to it, or the request could never be admitted");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(RateLimitSaturationPolicy.NormalPriority)]
+    [InlineData(RateLimitSaturationPolicy.HighPriority)]
+    public async Task ReserveAsync_NormalOrHighPriorityKey_SeesTheFullGroupCeiling(int? priority)
+    {
+        SetupWindow(allowed: true, current: 0, limit: 10_000);
+        var context = NewContext(tpm: null);
+        context.Items[RateLimitContextKeys.GroupId] = 5;
+        context.Items[RateLimitContextKeys.GroupTpm] = 10_000;
+        if (priority.HasValue)
+        {
+            context.Items[RateLimitContextKeys.Priority] = priority.Value;
+        }
+
+        await _service.ReserveAsync(context, "gpt-5", 100);
+
+        var window = _submitted.Should().ContainSingle().Subject;
+        window.Limit.Should().Be(10_000);
+        window.Scope.Should().Be("group:TPM");
     }
 
     [Fact]

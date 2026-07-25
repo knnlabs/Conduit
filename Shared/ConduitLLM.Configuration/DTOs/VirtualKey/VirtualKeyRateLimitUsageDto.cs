@@ -26,6 +26,12 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public int? RateLimitTpm { get; set; }
         public int? MaxParallelRequests { get; set; }
 
+        /// <summary>
+        /// Priority tier for saturation-aware group rate limiting: 0 = low (admitted against
+        /// a reduced fraction of each group ceiling), 1 = normal, 2 = high. Null means normal.
+        /// </summary>
+        public int? RateLimitPriority { get; set; }
+
         // --- group scope, when one applies ---------------------------------
         public int? VirtualKeyGroupId { get; set; }
         public int? GroupRequestsThisMinute { get; set; }

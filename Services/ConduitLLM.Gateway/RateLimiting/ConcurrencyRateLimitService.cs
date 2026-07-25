@@ -112,8 +112,18 @@ public sealed class ConcurrencyRateLimitService : IConcurrencyRateLimitService
         string? groupKey = null;
         if (hasGroupLimit)
         {
+            // A low-priority key sees a capped group ceiling, so it sheds first once the
+            // group's shared slots pass the saturation threshold.
+            var saturationFraction = RateLimitSaturationPolicy.SaturationFractionFor(
+                context.Items[RateLimitContextKeys.Priority] as int?,
+                _options.PrioritySaturationThreshold);
+            var (groupLimit, groupScope) = saturationFraction is double fraction
+                ? (RateLimitSaturationPolicy.Cap(groupMax!.Value, fraction),
+                    GroupScopeName + RateLimitSaturationPolicy.ScopeSuffix)
+                : (groupMax!.Value, GroupScopeName);
+
             groupKey = RedisKeys.RateLimit.GroupConcurrency(groupId.Value);
-            windows.Add(new RateLimitWindow(groupKey, GroupScopeName, slotTtlMs, groupMax.Value));
+            windows.Add(new RateLimitWindow(groupKey, groupScope, slotTtlMs, groupLimit));
         }
 
         var result = await _limiter.CheckAsync(windows, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());

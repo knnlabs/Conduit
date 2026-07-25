@@ -365,6 +365,77 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
+        public async Task Forwards_the_saturation_fraction_for_a_low_priority_key_in_a_group()
+        {
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.GroupId"] = 7;
+            ctx.Items["VirtualKeyGroup.RateLimitRpm"] = 1000;
+            ctx.Items["VirtualKey.RateLimitPriority"] = RateLimitSaturationPolicy.LowPriority;
+
+            _mockService.Setup(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>(), It.IsAny<double?>()))
+                .ReturnsAsync(new RateLimitCheckResult { IsAllowed = true, Limit = 800, RequestsRemaining = 100, LimitType = "group:RPM:saturation" });
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            _mockService.Verify(s => s.CheckRateLimitAsync(
+                "hash-abc", new RequestRateLimits(null, null), 7, new RequestRateLimits(1000, null),
+                _options.PrioritySaturationThreshold), Times.Once);
+            _nextCalled.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task Forwards_no_saturation_fraction_for_a_normal_priority_key()
+        {
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.GroupId"] = 7;
+            ctx.Items["VirtualKeyGroup.RateLimitRpm"] = 1000;
+
+            _mockService.Setup(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>(), It.IsAny<double?>()))
+                .ReturnsAsync(new RateLimitCheckResult { IsAllowed = true, Limit = 1000, RequestsRemaining = 900, LimitType = "group:RPM" });
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            _mockService.Verify(s => s.CheckRateLimitAsync(
+                "hash-abc", new RequestRateLimits(null, null), 7, new RequestRateLimits(1000, null),
+                null), Times.Once);
+        }
+
+        [Fact]
+        public async Task Returns_429_with_the_saturation_scope_when_the_group_sheds_the_key()
+        {
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.GroupId"] = 7;
+            ctx.Items["VirtualKeyGroup.RateLimitRpm"] = 1000;
+            ctx.Items["VirtualKey.RateLimitPriority"] = RateLimitSaturationPolicy.LowPriority;
+
+            _mockService.Setup(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<RequestRateLimits>(), It.IsAny<int?>(), It.IsAny<RequestRateLimits>(), It.IsAny<double?>()))
+                .ReturnsAsync(new RateLimitCheckResult
+                {
+                    IsAllowed = false,
+                    Limit = 800,
+                    RequestsRemaining = 0,
+                    ResetsAt = DateTime.UtcNow.AddSeconds(10),
+                    LimitType = "group:RPM:saturation"
+                });
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            _nextCalled.Should().BeFalse();
+            ctx.Response.StatusCode.Should().Be(StatusCodes.Status429TooManyRequests);
+
+            // The distinct scope is the contract: a caller must be able to tell "your tenant is
+            // busy" from "you are over your own limit".
+            ctx.Response.Headers["X-RateLimit-Scope"].ToString().Should().Be("group:RPM:saturation");
+
+            ctx.Response.Body.Seek(0, SeekOrigin.Begin);
+            var body = await new StreamReader(ctx.Response.Body).ReadToEndAsync();
+            body.Should().Contain("saturated");
+        }
+
+        [Fact]
         public async Task Forwards_both_RPM_and_RPD_when_both_configured()
         {
             var ctx = NewContext();

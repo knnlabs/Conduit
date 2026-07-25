@@ -91,6 +91,14 @@ namespace ConduitLLM.Gateway.Middleware
                 ? null
                 : context.Items[RateLimitContextKeys.GroupMaxParallelRequests] as int?;
 
+            // A low-priority key is admitted against a reduced fraction of each group ceiling,
+            // so it sheds first once the group's shared windows pass the saturation threshold.
+            var saturationFraction = groupId is null
+                ? null
+                : RateLimitSaturationPolicy.SaturationFractionFor(
+                    context.Items[RateLimitContextKeys.Priority] as int?,
+                    _options.PrioritySaturationThreshold);
+
             // Nothing configured at either tier = unlimited; skip the Redis round-trip entirely.
             if (keyLimits.IsUnlimited && groupLimits.IsUnlimited &&
                 !HasConfiguredLimit(maxParallel) && !HasConfiguredLimit(groupMaxParallel))
@@ -105,7 +113,7 @@ namespace ConduitLLM.Gateway.Middleware
                 try
                 {
                     result = await _rateLimitService.CheckRateLimitAsync(
-                        keyHash, keyLimits, groupId, groupLimits);
+                        keyHash, keyLimits, groupId, groupLimits, saturationFraction);
                 }
                 catch (Exception ex)
                 {
@@ -273,12 +281,17 @@ namespace ConduitLLM.Gateway.Middleware
         private static Task WriteRateLimitedResponseAsync(HttpContext context, RateLimitCheckResult result)
         {
             var retryAfterSeconds = RateLimitResponse.RetryAfterSeconds(result.ResetsAt);
+            // A saturation shed is not the caller exceeding their own limit: the group is busy
+            // and this key's tier only reaches part of the group ceiling. Say so.
+            var message = RateLimitSaturationPolicy.IsSaturationScope(result.LimitType)
+                ? $"The key's group is saturated and this key's priority tier is admitted to only {result.Limit} of the group's requests. Retry after {retryAfterSeconds} seconds."
+                : $"{result.LimitType} rate limit exceeded ({result.Limit} requests). Retry after {retryAfterSeconds} seconds.";
             return RateLimitResponse.WriteAsync(
                 context,
                 result.LimitType,
                 result.Limit,
                 result.ResetsAt,
-                $"{result.LimitType} rate limit exceeded ({result.Limit} requests). Retry after {retryAfterSeconds} seconds.");
+                message);
         }
 
         private static string SafeKeyPrefix(string keyHash)

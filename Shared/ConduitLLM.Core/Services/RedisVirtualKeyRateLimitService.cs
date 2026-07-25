@@ -26,11 +26,18 @@ namespace ConduitLLM.Core.Services
         /// <param name="keyLimits">The key's own ceilings.</param>
         /// <param name="groupId">Group the key belongs to, or null when it has no group limits.</param>
         /// <param name="groupLimits">Ceilings shared across the group.</param>
+        /// <param name="groupSaturationFraction">
+        /// When set, each group ceiling is capped to this fraction of itself and its scope is
+        /// suffixed with <see cref="RateLimitSaturationPolicy.ScopeSuffix"/> — the low-priority
+        /// shed described by <see cref="RateLimitSaturationPolicy"/>. Null applies the full
+        /// ceilings.
+        /// </param>
         Task<RateLimitCheckResult> CheckRateLimitAsync(
             string virtualKeyHash,
             RequestRateLimits keyLimits,
             int? groupId = null,
-            RequestRateLimits groupLimits = default);
+            RequestRateLimits groupLimits = default,
+            double? groupSaturationFraction = null);
 
         /// <summary>
         /// Reports what each of a key's windows currently holds, for operator display. Reads
@@ -147,7 +154,8 @@ namespace ConduitLLM.Core.Services
             string virtualKeyHash,
             RequestRateLimits keyLimits,
             int? groupId = null,
-            RequestRateLimits groupLimits = default)
+            RequestRateLimits groupLimits = default,
+            double? groupSaturationFraction = null)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
                 throw new ArgumentException("Virtual key hash cannot be null or empty", nameof(virtualKeyHash));
@@ -168,16 +176,21 @@ namespace ConduitLLM.Core.Services
 
             if (groupId is int group)
             {
+                // The capped window keeps the group's shared Redis key — only its ceiling and
+                // scope differ — so the shed decision reads the same fill as everyone else's,
+                // inside the same atomic check.
                 if (HasLimit(groupLimits.Rpm))
                 {
+                    var (limit, scope) = ApplySaturation(groupLimits.Rpm!.Value, "group:RPM", groupSaturationFraction);
                     windows.Add(new RateLimitWindow(
-                        RedisKeys.RateLimit.GroupRpm(group), "group:RPM", MinuteWindowMs, groupLimits.Rpm!.Value));
+                        RedisKeys.RateLimit.GroupRpm(group), scope, MinuteWindowMs, limit));
                 }
 
                 if (HasLimit(groupLimits.Rpd))
                 {
+                    var (limit, scope) = ApplySaturation(groupLimits.Rpd!.Value, "group:RPD", groupSaturationFraction);
                     windows.Add(new RateLimitWindow(
-                        RedisKeys.RateLimit.GroupRpd(group), "group:RPD", DayWindowMs, groupLimits.Rpd!.Value));
+                        RedisKeys.RateLimit.GroupRpd(group), scope, DayWindowMs, limit));
                 }
             }
 
@@ -224,6 +237,13 @@ namespace ConduitLLM.Core.Services
         }
 
         private static bool HasLimit(int? limit) => limit.HasValue && limit.Value > 0;
+
+        private static (long Limit, string Scope) ApplySaturation(long limit, string scope, double? fraction)
+        {
+            return fraction is double f
+                ? (RateLimitSaturationPolicy.Cap(limit, f), scope + RateLimitSaturationPolicy.ScopeSuffix)
+                : (limit, scope);
+        }
         
         /// <remarks>
         /// The windows are rolling, so these figures cover the last minute and the last 24 hours

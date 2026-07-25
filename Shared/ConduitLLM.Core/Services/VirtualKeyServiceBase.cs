@@ -91,6 +91,7 @@ namespace ConduitLLM.Core.Services
                 RateLimitRpd = request.RateLimitRpd,
                 RateLimitTpm = request.RateLimitTpm,
                 MaxParallelRequests = request.MaxParallelRequests,
+                RateLimitPriority = request.RateLimitPriority,
                 ModelRateLimits = VirtualKeyUtilities.SerializeModelRateLimits(request.ModelRateLimits),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
@@ -239,6 +240,12 @@ namespace ConduitLLM.Core.Services
             {
                 key.MaxParallelRequests = request.MaxParallelRequests;
                 changedProperties.Add(nameof(key.MaxParallelRequests));
+            }
+
+            if (request.RateLimitPriority.HasValue && key.RateLimitPriority != request.RateLimitPriority)
+            {
+                key.RateLimitPriority = request.RateLimitPriority;
+                changedProperties.Add(nameof(key.RateLimitPriority));
             }
 
             if (request.ModelRateLimits is not null)

@@ -105,7 +105,8 @@ namespace ConduitLLM.Admin.Services
                     RateLimitRpm = key.RateLimitRpm,
                     RateLimitRpd = key.RateLimitRpd,
                     RateLimitTpm = key.RateLimitTpm,
-                    MaxParallelRequests = key.MaxParallelRequests
+                    MaxParallelRequests = key.MaxParallelRequests,
+                    RateLimitPriority = key.RateLimitPriority
                 };
             }
             catch (Exception ex)

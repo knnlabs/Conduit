@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
@@ -79,11 +80,16 @@ public sealed class TokenRateLimitService : ITokenRateLimitService
     internal const string GroupScopeName = "group:TPM";
 
     private readonly ISlidingWindowRateLimiter _limiter;
+    private readonly RateLimitOptions _options;
     private readonly ILogger<TokenRateLimitService> _logger;
 
-    public TokenRateLimitService(ISlidingWindowRateLimiter limiter, ILogger<TokenRateLimitService> logger)
+    public TokenRateLimitService(
+        ISlidingWindowRateLimiter limiter,
+        RateLimitOptions options,
+        ILogger<TokenRateLimitService> logger)
     {
         _limiter = limiter;
+        _options = options;
         _logger = logger;
     }
 
@@ -109,12 +115,28 @@ public sealed class TokenRateLimitService : ITokenRateLimitService
             return null;
         }
 
+        // A low-priority key sees a capped group ceiling, so it sheds first once the group's
+        // shared token window passes the saturation threshold.
+        var saturationFraction = hasGroupTpm
+            ? RateLimitSaturationPolicy.SaturationFractionFor(
+                context.Items[RateLimitContextKeys.Priority] as int?,
+                _options.PrioritySaturationThreshold)
+            : null;
+        var effectiveGroupTpm = !hasGroupTpm
+            ? (int?)null
+            : saturationFraction is double fraction
+                ? (int)RateLimitSaturationPolicy.Cap(groupTpm!.Value, fraction)
+                : groupTpm!.Value;
+        var groupScope = saturationFraction is null
+            ? GroupScopeName
+            : GroupScopeName + RateLimitSaturationPolicy.ScopeSuffix;
+
         // A single request must never be structurally impossible to admit: clamp the
         // reservation to the tightest token ceiling so an oversized estimate produces one 429
         // rather than a permanent rejection that no amount of waiting resolves.
         var tightestTokenLimit = Min(
             hasKeyTpm ? keyTpm!.Value : (int?)null,
-            hasGroupTpm ? groupTpm!.Value : null,
+            effectiveGroupTpm,
             hasModelTpm ? modelRule!.Tpm!.Value : null);
         var weight = tightestTokenLimit is null
             ? 1
@@ -133,7 +155,7 @@ public sealed class TokenRateLimitService : ITokenRateLimitService
         if (hasGroupTpm)
         {
             var key = RedisKeys.RateLimit.GroupTpm(groupId!.Value);
-            windows.Add(new RateLimitWindow(key, GroupScopeName, MinuteWindowMs, groupTpm!.Value, weight, UnitWeight: false));
+            windows.Add(new RateLimitWindow(key, groupScope, MinuteWindowMs, effectiveGroupTpm!.Value, weight, UnitWeight: false));
             weightedKeys.Add(key);
         }
 

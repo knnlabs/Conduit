@@ -54,5 +54,11 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Cap on concurrent in-flight requests
         /// </summary>
         public int? MaxParallelRequests { get; set; }
+
+        /// <summary>
+        /// Priority tier for saturation-aware group rate limiting: 0 = low, 1 = normal,
+        /// 2 = high. Null means normal.
+        /// </summary>
+        public int? RateLimitPriority { get; set; }
     }
 }

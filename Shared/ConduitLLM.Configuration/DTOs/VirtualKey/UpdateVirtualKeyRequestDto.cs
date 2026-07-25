@@ -41,6 +41,14 @@ public class UpdateVirtualKeyRequestDto
     public int? MaxParallelRequests { get; set; }
 
     /// <summary>
+    /// Optional priority tier for saturation-aware group rate limiting: 0 = low (shed first
+    /// when the key's group is saturated), 1 = normal, 2 = high. Null leaves the existing
+    /// value untouched.
+    /// </summary>
+    [Range(0, 2, ErrorMessage = "RateLimitPriority must be 0 (low), 1 (normal) or 2 (high).")]
+    public int? RateLimitPriority { get; set; }
+
+    /// <summary>
     /// Per-model rate limit overrides keyed by model alias. Supplying this replaces the whole
     /// map; null leaves the existing overrides untouched.
     /// </summary>

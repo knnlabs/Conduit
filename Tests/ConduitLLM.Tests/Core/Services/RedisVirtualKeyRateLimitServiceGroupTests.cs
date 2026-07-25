@@ -120,6 +120,67 @@ public class RedisVirtualKeyRateLimitServiceGroupTests
     }
 
     [Fact]
+    public async Task CheckRateLimitAsync_SaturationFraction_CapsGroupWindowsAndSuffixesScope()
+    {
+        SetupWindows(allowed: true);
+
+        await _service.CheckRateLimitAsync(
+            KeyHash,
+            new RequestRateLimits(600, null),
+            GroupId,
+            new RequestRateLimits(1_000, 10_000),
+            groupSaturationFraction: 0.8);
+
+        // Group windows are checked at the shed tier's share of the ceiling, under a scope a
+        // caller can tell apart from an ordinary group denial. The Redis keys are unchanged —
+        // the capped windows read the same shared fill as everyone else's.
+        var groupRpm = _submitted!.Single(w => w.Key == RedisKeys.RateLimit.GroupRpm(GroupId));
+        Assert.Equal(800, groupRpm.Limit);
+        Assert.Equal("group:RPM:saturation", groupRpm.Scope);
+
+        var groupRpd = _submitted!.Single(w => w.Key == RedisKeys.RateLimit.GroupRpd(GroupId));
+        Assert.Equal(8_000, groupRpd.Limit);
+        Assert.Equal("group:RPD:saturation", groupRpd.Scope);
+
+        var keyRpm = _submitted!.Single(w => w.Key == RedisKeys.RateLimit.VirtualKeyRpm(KeyHash));
+        Assert.Equal(600, keyRpm.Limit);
+        Assert.Equal("RPM", keyRpm.Scope);
+    }
+
+    [Fact]
+    public async Task CheckRateLimitAsync_SaturationDenies_ReportsTheSaturationScope()
+    {
+        SetupWindows(allowed: false, deniedScope: "group:RPM:saturation");
+
+        var result = await _service.CheckRateLimitAsync(
+            KeyHash,
+            new RequestRateLimits(null, null),
+            GroupId,
+            new RequestRateLimits(1_000, null),
+            groupSaturationFraction: 0.8);
+
+        Assert.False(result.IsAllowed);
+        Assert.Equal("group:RPM:saturation", result.LimitType);
+        Assert.Equal(800, result.Limit);
+    }
+
+    [Fact]
+    public async Task CheckRateLimitAsync_NoSaturationFraction_LeavesGroupCeilingsUntouched()
+    {
+        SetupWindows(allowed: true);
+
+        await _service.CheckRateLimitAsync(
+            KeyHash,
+            new RequestRateLimits(null, null),
+            GroupId,
+            new RequestRateLimits(1_000, null));
+
+        var groupRpm = Assert.Single(_submitted!);
+        Assert.Equal(1_000, groupRpm.Limit);
+        Assert.Equal("group:RPM", groupRpm.Scope);
+    }
+
+    [Fact]
     public async Task CheckRateLimitAsync_KeyInNoGroup_NeverBuildsGroupWindows()
     {
         SetupWindows(allowed: true);

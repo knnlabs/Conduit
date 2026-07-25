@@ -40,6 +40,7 @@ public partial class VirtualKeysEndpoints
             RateLimitRpd = key.RateLimitRpd,
             RateLimitTpm = key.RateLimitTpm,
             MaxParallelRequests = key.MaxParallelRequests,
+            RateLimitPriority = key.RateLimitPriority,
             VirtualKeyGroupId = groupHasLimits ? key.VirtualKeyGroupId : null,
             GroupRateLimitRpm = group?.RateLimitRpm,
             GroupRateLimitRpd = group?.RateLimitRpd,

@@ -86,6 +86,12 @@ public class VirtualKeyDto
     public int? MaxParallelRequests { get; set; }
 
     /// <summary>
+    /// Priority tier for saturation-aware group rate limiting: 0 = low (shed first when the
+    /// key's group is saturated), 1 = normal, 2 = high. Null means normal.
+    /// </summary>
+    public int? RateLimitPriority { get; set; }
+
+    /// <summary>
     /// Per-model rate limit overrides keyed by model alias.
     /// </summary>
     public Dictionary<string, ModelRateLimitDto>? ModelRateLimits { get; set; }

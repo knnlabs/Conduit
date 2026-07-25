@@ -45,6 +45,34 @@ Every applicable window is evaluated in **one atomic operation**, all-or-nothing
 group rejects has not consumed the key's quota, and one the daily window rejects has not burned a
 minute slot.
 
+### Priority tiers within a group
+
+A group's windows are shared by every key in it, so a noisy batch key can spend the whole
+allowance and crowd out a critical key in the same group. `rateLimitPriority` on a virtual key
+addresses that: **0 = low, 1 = normal (the default, and what null means), 2 = high**.
+
+A low-priority key is admitted against `floor(groupLimit × threshold)` instead of the full group
+ceiling — by default 80% of it. Once the group's shared window passes the threshold, low-priority
+keys are shed with a 429 while normal- and high-priority keys still have the remaining headroom.
+This applies to every group dimension: `group:RPM`, `group:RPD`, `group:TPM` and
+`group:concurrency`. High currently behaves the same as normal; it is reserved for future
+refinement.
+
+Mechanically the reduced ceiling is checked **inside the same atomic operation** as every other
+window, against the group's shared fill — there is no separate read of "how full is the group",
+so the decision cannot race the fill it is based on, and there is no shedding mode that could
+flap. A shed request is reported under a distinct scope (`group:RPM:saturation` etc.), so a
+caller can tell "your tenant is busy" from "you are over your own limit".
+
+Edge cases worth knowing:
+
+- A group with no ceiling has nothing to shed against; priority is inert there.
+- A very small group ceiling can floor to zero for low-priority keys (e.g. a group RPM of 1 at
+  the default threshold), which excludes them from that window entirely — the whole allowance is
+  inside the reserved headroom.
+- The key's own ceilings are never reduced; priority only narrows what a key may take of its
+  group's shared allowance.
+
 ## Enforcement semantics
 
 ### Rolling windows, not calendar ones
@@ -122,6 +150,7 @@ which for a token window means enough weight has aged out, not merely the oldest
 | `RPM`, `RPD`, `TPM` | The key's own request or token ceiling |
 | `concurrency` | The key's in-flight ceiling |
 | `group:RPM`, `group:RPD`, `group:TPM`, `group:concurrency` | The group's, shared with sibling keys |
+| `group:RPM:saturation` (and the other group scopes) | The group is saturated and this low-priority key was shed before the ceiling itself |
 | `model:{alias}:rpm`, `model:{alias}:tpm` | A per-model override on the key |
 | `discovery`, `model-capability` | Security-layer per-IP limits |
 
@@ -181,7 +210,7 @@ discover in the invoice.
 Set through the Admin API or the WebAdmin key and group modals. All fields are optional.
 
 - Virtual key: `rateLimitRpm`, `rateLimitRpd`, `rateLimitTpm`, `maxParallelRequests`,
-  `modelRateLimits`
+  `rateLimitPriority`, `modelRateLimits`
 - Virtual key group: `rateLimitRpm`, `rateLimitRpd`, `rateLimitTpm`, `maxParallelRequests`
 
 Per-model overrides are a map of alias to ceilings; unknown aliases are rejected on write, because
@@ -205,6 +234,7 @@ the group.
 | Setting | Default | What it does |
 |---|---|---|
 | `CONDUIT_RATE_LIMIT_FAILURE_MODE` | `open` | Behaviour when the store is unreachable |
+| `CONDUIT_RATE_LIMIT_SATURATION_THRESHOLD` | `0.8` | Fraction of each group ceiling low-priority keys are admitted against; `1` disables shedding |
 | `RateLimiting__FailureDebounceSeconds` | 10 | How long one failure reads as an ongoing degradation |
 | `RateLimiting__DefaultCompletionTokenBudget` | 1024 | Reserved for a request that declares no `max_tokens` |
 | `RateLimiting__MaxCompletionTokenReservation` | 32768 | Ceiling on what one request may reserve |

@@ -15,6 +15,13 @@ public static class RateLimitContextKeys
     public const string Tpm = "VirtualKey.RateLimitTpm";
     public const string MaxParallelRequests = "VirtualKey.MaxParallelRequests";
 
+    /// <summary>
+    /// The key's priority tier (0 low, 1 normal, 2 high; null normal). Low-priority keys are
+    /// admitted against a reduced fraction of each group ceiling, so they shed first when the
+    /// group is saturated.
+    /// </summary>
+    public const string Priority = "VirtualKey.RateLimitPriority";
+
     /// <summary>Group the key belongs to — the partition for every group-scope window.</summary>
     public const string GroupId = "VirtualKey.GroupId";
 

@@ -108,6 +108,20 @@ public partial class VirtualKey : IEntity<int>, IAuditableEntity
     public int? MaxParallelRequests { get; set; }
 
     /// <summary>
+    /// Priority tier for saturation-aware group rate limiting. 0 = low, 1 = normal,
+    /// 2 = high. Null means normal.
+    /// </summary>
+    /// <remarks>
+    /// Only matters for keys whose group has rate-limit ceilings. A low-priority key is
+    /// admitted against a reduced fraction of each group ceiling (the deployment-wide
+    /// saturation threshold), so once the group is busy, low-priority keys are shed before
+    /// the group's ceiling is reached — a noisy batch key cannot crowd out a critical one
+    /// in the same group. Normal and high tiers behave identically today; high is reserved
+    /// for future refinement.
+    /// </remarks>
+    public int? RateLimitPriority { get; set; }
+
+    /// <summary>
     /// Per-model rate limit overrides, keyed by the model alias the caller sends.
     /// JSON of the form <c>{"gpt-5": {"rpm": 1000, "tpm": 200000}, "sora*": {"rpm": 10}}</c>.
     /// </summary>

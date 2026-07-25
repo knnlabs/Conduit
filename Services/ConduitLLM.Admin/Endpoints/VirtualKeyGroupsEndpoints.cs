@@ -446,6 +446,7 @@ namespace ConduitLLM.Admin.Endpoints
                 RateLimitRpd = k.RateLimitRpd,
                 RateLimitTpm = k.RateLimitTpm,
                 MaxParallelRequests = k.MaxParallelRequests,
+                RateLimitPriority = k.RateLimitPriority,
                 Description = k.Description
             }).ToList() ?? new List<VirtualKeyDto>();
 
