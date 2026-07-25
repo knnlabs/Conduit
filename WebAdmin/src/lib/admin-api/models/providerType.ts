@@ -16,6 +16,7 @@ export const ProviderType = {
   OpenRouter: 'openRouter',
   Meta: 'meta',
   Azure: 'azure',
+  Bedrock: 'bedrock',
 } as const;
 
 export type ProviderType = (typeof ProviderType)[keyof typeof ProviderType];

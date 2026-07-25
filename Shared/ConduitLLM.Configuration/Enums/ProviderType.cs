@@ -87,7 +87,12 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Azure OpenAI Service (deployment-scoped OpenAI models on an Azure resource)
         /// </summary>
-        Azure = 15
+        Azure = 15,
+
+        /// <summary>
+        /// Amazon Bedrock (AWS-hosted foundation models via the Converse API, SigV4 or API-key auth)
+        /// </summary>
+        Bedrock = 16
     }
 
     /// <summary>

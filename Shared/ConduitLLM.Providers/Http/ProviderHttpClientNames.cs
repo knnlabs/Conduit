@@ -44,6 +44,7 @@ public static class ProviderHttpClientNames
             [ProviderType.OpenRouter] = "OpenRouter",
             [ProviderType.Meta] = "meta",
             [ProviderType.Azure] = "Azure",
+            [ProviderType.Bedrock] = "bedrock",
         };
 
     /// <summary>

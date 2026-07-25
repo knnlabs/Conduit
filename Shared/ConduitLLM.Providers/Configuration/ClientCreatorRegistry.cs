@@ -8,6 +8,7 @@ using ConduitLLM.Providers.Groq;
 using ConduitLLM.Providers.MiniMax;
 using ConduitLLM.Providers.OpenAI;
 using ConduitLLM.Providers.Replicate;
+using ConduitLLM.Providers.Bedrock;
 using ConduitLLM.Providers.Cloudflare;
 using ConduitLLM.Providers.Meta;
 using ConduitLLM.Providers.OpenRouter;
@@ -81,7 +82,8 @@ namespace ConduitLLM.Providers.Configuration
             [ProviderType.Cloudflare] = CreateCloudflareClient,
             [ProviderType.OpenRouter] = CreateOpenRouterClient,
             [ProviderType.Meta] = CreateMetaClient,
-            [ProviderType.Azure] = CreateOpenAIClient
+            [ProviderType.Azure] = CreateOpenAIClient,
+            [ProviderType.Bedrock] = CreateBedrockClient
         };
 
         /// <summary>
@@ -314,6 +316,21 @@ namespace ConduitLLM.Providers.Configuration
                 logger,
                 context.HttpClientFactory,
                 context.ProviderOptionsJson);
+        }
+
+        private static ILLMClient CreateBedrockClient(
+            Provider provider,
+            ProviderKeyCredential keyCredential,
+            string modelId,
+            ClientCreationContext context)
+        {
+            var logger = context.LoggerFactory.CreateLogger<BedrockClient>();
+            return new BedrockClient(
+                provider,
+                keyCredential,
+                modelId,
+                logger,
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateMetaClient(
