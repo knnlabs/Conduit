@@ -291,7 +291,7 @@ public sealed class TokenVocabularyGoldenTests
 
         var actual = await counter.EstimateTokenCountAsync($"probe-{encoding}", Corpus[corpusId]);
 
-        Assert.Equal(Expected[$"{encoding}|{corpusId}"], actual);
+        Assert.Equal(Expected[$"{encoding}|{corpusId}"], actual.Tokens);
     }
 
     /// <summary>
@@ -338,7 +338,7 @@ public sealed class TokenVocabularyGoldenTests
             foreach (var id in Corpus.Keys.OrderBy(k => k, StringComparer.Ordinal))
             {
                 var count = await counter.EstimateTokenCountAsync($"probe-{encoding}", Corpus[id]);
-                _output.WriteLine($"            [\"{encoding}|{id}\"] = {count},");
+                _output.WriteLine($"            [\"{encoding}|{id}\"] = {count.Tokens},");
             }
         }
     }

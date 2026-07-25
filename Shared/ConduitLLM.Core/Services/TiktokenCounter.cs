@@ -2,6 +2,7 @@ using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
@@ -40,8 +41,9 @@ namespace ConduitLLM.Core.Services
     public class TiktokenCounter : ITokenCounter
     {
         // Cache encodings for performance, keyed by the requested tokenizer identifier.
-        // A null value is a cached failure and means "use character-based estimation".
-        private static readonly Dictionary<string, Tokenizer?> _encodings = new();
+        // A null tokenizer is a cached failure and means "use character-based estimation";
+        // the fidelity is cached alongside so it is computed once per tokenizer, not per count.
+        private static readonly Dictionary<string, (Tokenizer? Encoding, TokenCountFidelity Fidelity)> _encodings = new();
         private static readonly object _lock = new();
         private readonly ILogger<TiktokenCounter> _logger;
         private readonly IModelCapabilityService? _capabilityService;
@@ -64,21 +66,21 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages)
+        public async Task<TokenCount> EstimateTokenCountAsync(string modelName, List<Message> messages)
         {
             if (messages == null || !messages.Any())
             {
-                return 0;
+                return Finish(new TokenCount(0, TokenCountFidelity.Exact));
             }
 
             try
             {
-                var encoding = await GetEncodingForModelAsync(modelName);
+                var (encoding, fidelity) = await GetEncodingForModelAsync(modelName);
                 if (encoding == null)
                 {
                     // Fallback strategy if we can't get the right encoding
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return FallbackEstimateTokens(messages);
+                    return Finish(new TokenCount(FallbackEstimateTokens(messages), TokenCountFidelity.CharacterHeuristic));
                 }
 
                 int tokenCount = 0;
@@ -99,6 +101,7 @@ namespace ConduitLLM.Core.Services
                         {
                             _logger.LogWarning(ex, "Error encoding role. Using fallback estimate.");
                             tokenCount += message.Role.Length / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
                         }
                     }
 
@@ -129,6 +132,7 @@ namespace ConduitLLM.Core.Services
                             // Fallback calculation
                             string contentStr = message.Content.ToString() ?? "";
                             tokenCount += contentStr.Length / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
                         }
                     }
 
@@ -143,6 +147,7 @@ namespace ConduitLLM.Core.Services
                         {
                             _logger.LogWarning(ex, "Error encoding name. Using fallback estimate.");
                             tokenCount += message.Name.Length / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
                         }
                         tokenCount += 1; // Additional overhead for name field
                     }
@@ -150,56 +155,67 @@ namespace ConduitLLM.Core.Services
 
                 tokenCount += 3; // Every reply is primed with <|start|>assistant<|message|>
 
-                return tokenCount;
+                return Finish(new TokenCount(tokenCount, fidelity));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return FallbackEstimateTokens(messages);
+                return Finish(new TokenCount(FallbackEstimateTokens(messages), TokenCountFidelity.CharacterHeuristic));
             }
         }
 
         /// <inheritdoc />
-        public async Task<int> EstimateTokenCountAsync(string modelName, string text)
+        public async Task<TokenCount> EstimateTokenCountAsync(string modelName, string text)
         {
             if (string.IsNullOrEmpty(text))
             {
-                return 0;
+                return Finish(new TokenCount(0, TokenCountFidelity.Exact));
             }
 
             try
             {
-                var encoding = await GetEncodingForModelAsync(modelName);
+                var (encoding, fidelity) = await GetEncodingForModelAsync(modelName);
                 if (encoding == null)
                 {
                     // Fallback strategy
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return FallbackEstimateTokens(text);
+                    return Finish(new TokenCount(FallbackEstimateTokens(text), TokenCountFidelity.CharacterHeuristic));
                 }
 
                 try
                 {
-                    return encoding.CountTokens(text);
+                    return Finish(new TokenCount(encoding.CountTokens(text), fidelity));
                 }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error encoding text. Using fallback estimate.");
-                    return FallbackEstimateTokens(text);
+                    return Finish(new TokenCount(FallbackEstimateTokens(text), TokenCountFidelity.CharacterHeuristic));
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return FallbackEstimateTokens(text);
+                return Finish(new TokenCount(FallbackEstimateTokens(text), TokenCountFidelity.CharacterHeuristic));
             }
         }
 
         /// <summary>
-        /// Gets the appropriate tiktoken tokenizer for a given model asynchronously.
+        /// Records the estimate's fidelity to metrics before handing it back. The
+        /// character_heuristic series is the operational alarm for broken vocabulary data (#1227).
+        /// </summary>
+        private static TokenCount Finish(TokenCount count)
+        {
+            TokenCountingMetrics.Record(count.Fidelity);
+            return count;
+        }
+
+        /// <summary>
+        /// Gets the appropriate tiktoken tokenizer, and the fidelity its counts will have, for a
+        /// given model asynchronously.
         /// </summary>
         /// <param name="modelName">The name of the model to get encoding for.</param>
-        /// <returns>The appropriate tokenizer, or null if it cannot be determined.</returns>
-        private async Task<Tokenizer?> GetEncodingForModelAsync(string modelName)
+        /// <returns>The tokenizer (null if it cannot be determined) and the resulting fidelity.</returns>
+        private async Task<(Tokenizer? Encoding, TokenCountFidelity Fidelity)> GetEncodingForModelAsync(string modelName)
         {
             try
             {
@@ -227,7 +243,7 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in GetEncodingForModelAsync");
-                return null;
+                return (null, TokenCountFidelity.CharacterHeuristic);
             }
         }
 
@@ -239,14 +255,14 @@ namespace ConduitLLM.Core.Services
         /// <c>Cl100KBase</c> or <c>LLaMA3</c>), or null to use the default encoding.
         /// </param>
         /// <param name="modelName">The model name (for logging purposes).</param>
-        /// <returns>The tokenizer, or null if it cannot be created.</returns>
+        /// <returns>The tokenizer (null if it cannot be created) and the resulting fidelity.</returns>
         /// <remarks>
         /// The cache is keyed on <paramref name="tokenizerType"/> rather than on the resolved
         /// encoding name. Keying it on the resolved name meant an unresolvable tokenizer never
         /// populated an entry under the key that was looked up, so every single token count
         /// re-entered the failure path and re-logged (#1051).
         /// </remarks>
-        private Tokenizer? GetOrCreateEncoding(string? tokenizerType, string modelName)
+        private (Tokenizer? Encoding, TokenCountFidelity Fidelity) GetOrCreateEncoding(string? tokenizerType, string modelName)
         {
             var cacheKey = tokenizerType?.Trim() ?? string.Empty;
 
@@ -288,9 +304,15 @@ namespace ConduitLLM.Core.Services
                     encoding = null;
                 }
 
+                var fidelity = encoding is null
+                    ? TokenCountFidelity.CharacterHeuristic
+                    : resolved.IsApproximation || !resolved.IsRecognized
+                        ? TokenCountFidelity.ApproximateVocabulary
+                        : TokenCountFidelity.Exact;
+
                 // Cache the failure too, so a broken encoding does not re-throw on every request.
-                _encodings[cacheKey] = encoding;
-                return encoding;
+                _encodings[cacheKey] = (encoding, fidelity);
+                return (encoding, fidelity);
             }
         }
 

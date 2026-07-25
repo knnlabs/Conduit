@@ -220,7 +220,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             var actual = await counter.EstimateTokenCountAsync($"probe-{tokenizerType}", Probe);
 
-            Assert.Equal(ExpectedByTokenizer[tokenizerType], actual);
+            Assert.Equal(ExpectedByTokenizer[tokenizerType], actual.Tokens);
         }
 
         [Theory]
@@ -231,7 +231,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             var actual = await counter.EstimateTokenCountAsync("probe-messages", MessageShapes[shapeId]);
 
-            Assert.Equal(ExpectedByMessageShape[shapeId], actual);
+            Assert.Equal(ExpectedByMessageShape[shapeId], actual.Tokens);
         }
 
         [Theory]
@@ -242,7 +242,7 @@ namespace ConduitLLM.Tests.Core.Services
 
             var actual = await counter.EstimateTokenCountAsync("probe-json", JsonMessage(shapeId));
 
-            Assert.Equal(ExpectedByJsonShape[shapeId], actual);
+            Assert.Equal(ExpectedByJsonShape[shapeId], actual.Tokens);
         }
 
         /// <summary>
@@ -261,8 +261,8 @@ namespace ConduitLLM.Tests.Core.Services
             var counts = new Dictionary<string, int>(StringComparer.Ordinal);
             foreach (var encoding in new[] { "cl100k_base", "p50k_base", "p50k_edit", "r50k_base", "o200k_base" })
             {
-                counts[encoding] = await CounterFor(encoding)
-                    .EstimateTokenCountAsync($"probe-{encoding}", Probe);
+                counts[encoding] = (await CounterFor(encoding)
+                    .EstimateTokenCountAsync($"probe-{encoding}", Probe)).Tokens;
             }
 
             Assert.Equal(counts.Count, counts.Values.Distinct().Count());
@@ -301,7 +301,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 var name = tokenizerType.ToString();
                 var count = await CounterFor(name).EstimateTokenCountAsync($"probe-{name}", Probe);
-                _output.WriteLine($"                [\"{name}\"] = {count},");
+                _output.WriteLine($"                [\"{name}\"] = {count.Tokens},");
             }
 
             _output.WriteLine("--- MESSAGES ---");
@@ -309,7 +309,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 var count = await CounterFor("cl100k_base")
                     .EstimateTokenCountAsync("probe-messages", MessageShapes[id]);
-                _output.WriteLine($"                [\"{id}\"] = {count},");
+                _output.WriteLine($"                [\"{id}\"] = {count.Tokens},");
             }
 
             _output.WriteLine("--- JSON ---");
@@ -317,7 +317,7 @@ namespace ConduitLLM.Tests.Core.Services
             {
                 var count = await CounterFor("cl100k_base")
                     .EstimateTokenCountAsync("probe-json", JsonMessage(id));
-                _output.WriteLine($"                [\"{id}\"] = {count},");
+                _output.WriteLine($"                [\"{id}\"] = {count.Tokens},");
             }
         }
 

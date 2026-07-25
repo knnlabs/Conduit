@@ -28,7 +28,8 @@ public class RequestTokenEstimatorTests
     [Fact]
     public async Task EstimateAsync_Chat_AddsThePromptToTheDeclaredCompletionCeiling()
     {
-        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>())).ReturnsAsync(3_400);
+        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>()))
+            .ReturnsAsync(new TokenCount(3_400, TokenCountFidelity.Exact));
 
         var estimate = await Estimator().EstimateAsync(Chat(maxTokens: 600));
 
@@ -41,7 +42,8 @@ public class RequestTokenEstimatorTests
     public async Task EstimateAsync_Chat_WithoutADeclaredCeiling_UsesTheConfiguredDefault()
     {
         // An uncapped request could otherwise reserve — and block — the entire window.
-        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>())).ReturnsAsync(100);
+        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>()))
+            .ReturnsAsync(new TokenCount(100, TokenCountFidelity.Exact));
 
         var estimate = await Estimator().EstimateAsync(Chat(maxTokens: null));
 
@@ -51,7 +53,8 @@ public class RequestTokenEstimatorTests
     [Fact]
     public async Task EstimateAsync_Chat_PrefersMaxCompletionTokensOverLegacyMaxTokens()
     {
-        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>())).ReturnsAsync(50);
+        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>()))
+            .ReturnsAsync(new TokenCount(50, TokenCountFidelity.Exact));
 
         var request = Chat(maxTokens: 100);
         request.MaxCompletionTokens = 900;
@@ -64,7 +67,8 @@ public class RequestTokenEstimatorTests
     [Fact]
     public async Task EstimateAsync_Chat_ClampsAnOutsizedDeclaredCeiling()
     {
-        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>())).ReturnsAsync(10);
+        _counter.Setup(x => x.EstimateTokenCountAsync("gpt-5", It.IsAny<List<Message>>()))
+            .ReturnsAsync(new TokenCount(10, TokenCountFidelity.Exact));
 
         var estimate = await Estimator().EstimateAsync(Chat(maxTokens: 5_000_000));
 
@@ -75,7 +79,8 @@ public class RequestTokenEstimatorTests
     [Fact]
     public async Task EstimateAsync_Embedding_CountsInputOnly()
     {
-        _counter.Setup(x => x.EstimateTokenCountAsync("text-embedding-3", It.IsAny<string>())).ReturnsAsync(250);
+        _counter.Setup(x => x.EstimateTokenCountAsync("text-embedding-3", It.IsAny<string>()))
+            .ReturnsAsync(new TokenCount(250, TokenCountFidelity.Exact));
 
         var estimate = await Estimator().EstimateAsync(new EmbeddingRequest
         {
@@ -93,7 +98,7 @@ public class RequestTokenEstimatorTests
         string? counted = null;
         _counter.Setup(x => x.EstimateTokenCountAsync(It.IsAny<string>(), It.IsAny<string>()))
             .Callback((string _, string text) => counted = text)
-            .ReturnsAsync(12);
+            .ReturnsAsync(new TokenCount(12, TokenCountFidelity.Exact));
 
         await Estimator().EstimateAsync(new EmbeddingRequest
         {
