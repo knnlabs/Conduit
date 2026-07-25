@@ -12,9 +12,12 @@ import {
   Badge,
   ActionIcon,
   TextInput,
+  NumberInput,
   Switch,
   Card,
   Menu,
+  Modal,
+  Tooltip,
   rem,
   Alert,
   LoadingOverlay,
@@ -32,6 +35,7 @@ import {
   IconAlertCircle,
   IconTestPipe,
   IconArrowLeft,
+  IconUsersGroup,
 } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
@@ -61,6 +65,9 @@ export default function ProviderKeysPage() {
     providerAccountGroup: 0,
     baseUrl: '',
   });
+  const [editingGroupKey, setEditingGroupKey] = useState<ProviderKeyCredentialDto | null>(null);
+  const [editGroupValue, setEditGroupValue] = useState<number>(0);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
 
   const fetchProvider = useCallback(async () => {
     try {
@@ -154,6 +161,27 @@ export default function ProviderKeysPage() {
     } catch (error) {
       console.error('Error updating key:', error);
       notify.error(new Error('Failed to update key'));
+    }
+  };
+
+  const handleSaveAccountGroup = async () => {
+    if (!editingGroupKey) return;
+
+    try {
+      setIsSavingGroup(true);
+      await withAdminClient(client =>
+        client.providers.updateKey(providerId, editingGroupKey.id, { providerAccountGroup: editGroupValue })
+      );
+
+      notify.success('Account group updated');
+      setEditingGroupKey(null);
+
+      void fetchKeys();
+    } catch (error) {
+      console.error('Error updating account group:', error);
+      notify.error(new Error('Failed to update account group'));
+    } finally {
+      setIsSavingGroup(false);
     }
   };
 
@@ -286,7 +314,18 @@ export default function ProviderKeysPage() {
                 onChange={(e) => setNewKeyForm({ ...newKeyForm, organization: e.target.value })}
               />
             </Group>
-            
+
+            <NumberInput
+              label="Account Group"
+              description="Group 0 means ungrouped (the key is treated independently). Keys in the same group (1-32) share one provider account balance, so balance exhaustion disables and re-enables all keys in the group together."
+              min={0}
+              max={32}
+              allowDecimal={false}
+              clampBehavior="strict"
+              value={newKeyForm.providerAccountGroup ?? 0}
+              onChange={(value) => setNewKeyForm({ ...newKeyForm, providerAccountGroup: typeof value === 'number' ? value : 0 })}
+            />
+
             <Group>
               <Switch
                 label="Set as Primary"
@@ -356,6 +395,13 @@ export default function ProviderKeysPage() {
                       <Badge size="sm" variant={key.isEnabled ? 'light' : 'filled'} color={key.isEnabled ? 'green' : 'gray'}>
                         {key.isEnabled ? 'ENABLED' : 'DISABLED'}
                       </Badge>
+                      {key.providerAccountGroup > 0 && (
+                        <Tooltip label={`Shares an account balance with other group ${key.providerAccountGroup} keys — balance exhaustion disables and re-enables the whole group together`}>
+                          <Badge size="sm" variant="light" color="indigo" leftSection={<IconUsersGroup size={12} />}>
+                            GROUP {key.providerAccountGroup}
+                          </Badge>
+                        </Tooltip>
+                      )}
                     </Group>
                     
                     <Group gap="xl">
@@ -367,6 +413,9 @@ export default function ProviderKeysPage() {
                           Org: {key.organization}
                         </Text>
                       )}
+                      <Text size="xs" c="dimmed">
+                        Account Group: {key.providerAccountGroup > 0 ? key.providerAccountGroup : 'Ungrouped'}
+                      </Text>
                       <Text size="xs" c="dimmed">
                         Added: {formatters.date(key.createdAt)}
                       </Text>
@@ -395,6 +444,15 @@ export default function ProviderKeysPage() {
                       >
                         {testingKeys.has(key.id) ? 'Testing...' : 'Test Key'}
                       </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconUsersGroup style={{ width: rem(14), height: rem(14) }} />}
+                        onClick={() => {
+                          setEditGroupValue(key.providerAccountGroup);
+                          setEditingGroupKey(key);
+                        }}
+                      >
+                        Change Account Group
+                      </Menu.Item>
                       {!key.isPrimary && (
                         <Menu.Item
                           leftSection={<IconStar style={{ width: rem(14), height: rem(14) }} />}
@@ -421,6 +479,33 @@ export default function ProviderKeysPage() {
           ))}
         </Stack>
       )}
+
+      <Modal
+        opened={editingGroupKey !== null}
+        onClose={() => setEditingGroupKey(null)}
+        title={`Change Account Group${editingGroupKey?.keyName ? ` — ${editingGroupKey.keyName}` : ''}`}
+      >
+        <Stack>
+          <NumberInput
+            label="Account Group"
+            description="Group 0 means ungrouped (the key is treated independently). Keys in the same group (1-32) share one provider account balance, so balance exhaustion disables and re-enables all keys in the group together."
+            min={0}
+            max={32}
+            allowDecimal={false}
+            clampBehavior="strict"
+            value={editGroupValue}
+            onChange={(value) => setEditGroupValue(typeof value === 'number' ? value : 0)}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setEditingGroupKey(null)} disabled={isSavingGroup}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleSaveAccountGroup()} loading={isSavingGroup}>
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Container>
   );
 }
