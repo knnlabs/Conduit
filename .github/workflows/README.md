@@ -41,6 +41,30 @@ The Git tag drives the GitHub release and Docker image versions.
 - Results appear in Security tab
 - Non-blocking, informational only
 
+### 4. Close dev issues (`close-dev-issues.yml`)
+**Triggers:** Push to `dev`, Manual dispatch
+
+GitHub only honours `Closes #N` for PRs merged into the **default** branch (`master`).
+Every PR here targets `dev`, so those references never fire and completed issues sit
+open until someone closes them by hand. This workflow closes them.
+
+**What it does:**
+- Finds every merged PR in the pushed commit range
+- Reads closing keywords (`close[sd]`, `fix(e[sd])`, `resolve[sd]`) from each PR's title
+  and body, including the comma/`and`-separated list form used here
+  (`Closes #1205, #1206, #1207.`) that GitHub only ever honours for the first number
+- Closes each referenced open issue with a comment pointing at the PR and merge commit
+
+**What it deliberately does not close:**
+- References without a closing keyword — `Advances #1182`, `Completes epic #1204`,
+  `part of #800`. Partial progress stays open; write a closing keyword only when the
+  issue is actually done.
+- Issues already closed, PR numbers, and numbers inside words (`prefixes #99`)
+
+**Backfilling:** run it manually with a PR number to process an older merged PR.
+`dry_run` defaults to **true** on manual runs — it lists what it would close without
+closing anything. Set it to false to act.
+
 ## Release Process
 
 Releases are cut from `master` by pushing a version tag.
