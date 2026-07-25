@@ -8,6 +8,8 @@ using ConduitLLM.Security.Models;
 using ConduitLLM.Security.Options;
 using ConduitLLM.Security.Services;
 
+using StackExchange.Redis;
+
 namespace ConduitLLM.Gateway.Services
 {
     /// <summary>
@@ -46,12 +48,47 @@ namespace ConduitLLM.Gateway.Services
             ILogger<SecurityService> logger,
             IMemoryCache memoryCache,
             IServiceProvider serviceProvider)
-            : base(logger, memoryCache, serviceProvider.GetService<IDistributedCache>())
+            : base(
+                logger,
+                memoryCache,
+                serviceProvider.GetService<IDistributedCache>(),
+                BuildRateLimitCounter(options.Value, serviceProvider, logger))
         {
             _options = options.Value;
             _configuration = configuration;
             _serviceProvider = serviceProvider;
             _securityEventMonitoring = serviceProvider.GetService<ISecurityEventMonitoringService>();
+        }
+
+        /// <summary>
+        /// Picks the counter the fixed-window limiters run on.
+        /// </summary>
+        /// <remarks>
+        /// The distributed path is gated on Redis actually being present rather than assumed:
+        /// <c>IDistributedCache</c> is not necessarily Redis, and only Redis can do the atomic
+        /// increment. Where it is absent the in-process counter takes over, which is correct for
+        /// a single instance and is all a Redis-less deployment could ever have had.
+        /// </remarks>
+        private static IFixedWindowCounter? BuildRateLimitCounter(
+            GatewaySecurityOptions options,
+            IServiceProvider serviceProvider,
+            ILogger logger)
+        {
+            if (!options.UseDistributedTracking)
+            {
+                return null;
+            }
+
+            var redis = serviceProvider.GetService<IConnectionMultiplexer>();
+            if (redis is null)
+            {
+                logger.LogWarning(
+                    "Distributed rate-limit tracking is enabled but no Redis connection is registered; " +
+                    "IP and discovery limits will be counted per instance only");
+                return null;
+            }
+
+            return new RedisFixedWindowCounter(redis, logger);
         }
 
         /// <inheritdoc/>

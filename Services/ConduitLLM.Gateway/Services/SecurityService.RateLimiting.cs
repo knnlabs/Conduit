@@ -1,6 +1,3 @@
-using System.Text.Json;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Security.Models;
 
 namespace ConduitLLM.Gateway.Services
@@ -12,56 +9,6 @@ namespace ConduitLLM.Gateway.Services
     /// </summary>
     public partial class SecurityService
     {
-        private async Task<int> GetRateLimitCountAsync(string key, int windowSeconds)
-        {
-            if (_options.UseDistributedTracking && DistributedCache != null)
-            {
-                var cachedValue = await DistributedCache.GetStringAsync(key);
-                if (!string.IsNullOrEmpty(cachedValue))
-                {
-                    if (int.TryParse(cachedValue, out var count))
-                        return count;
-
-                    try
-                    {
-                        var data = JsonSerializer.Deserialize<RateLimitData>(cachedValue);
-                        return data?.Count ?? 0;
-                    }
-                    catch
-                    {
-                        return 0;
-                    }
-                }
-            }
-            else
-            {
-                return MemoryCache.Get<int>(key);
-            }
-
-            return 0;
-        }
-
-        private async Task IncrementRateLimitCountAsync(string key, int windowSeconds)
-        {
-            var currentCount = await GetRateLimitCountAsync(key, windowSeconds);
-            currentCount++;
-
-            if (_options.UseDistributedTracking && DistributedCache != null)
-            {
-                await DistributedCache.SetStringAsync(
-                    key,
-                    currentCount.ToString(),
-                    new DistributedCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(windowSeconds)
-                    });
-            }
-            else
-            {
-                MemoryCache.Set(key, currentCount, TimeSpan.FromSeconds(windowSeconds));
-            }
-        }
-
         /// <summary>
         /// Checks IP rate limiting with discovery-specific overrides
         /// </summary>
@@ -87,12 +34,17 @@ namespace ConduitLLM.Gateway.Services
                 .Any(discoveryPath => path.Contains(discoveryPath, StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <remarks>
+        /// The counter advances atomically for every request, admitted or not. Counting rejected
+        /// attempts is deliberate for an abuse limiter, and it cannot extend a client's own block:
+        /// the window's expiry is fixed when it opens, not renewed per request.
+        /// </remarks>
         private async Task<SecurityCheckResult> CheckDiscoveryRateLimitAsync(string ipAddress, string path)
         {
             var discoveryKey = $"{RateLimitPrefix}discovery:{ipAddress}";
 
-            var discoveryCount = await GetRateLimitCountAsync(discoveryKey, _options.RateLimiting.Discovery.WindowSeconds);
-            discoveryCount++;
+            var discoveryCount = await RateLimitCounter.IncrementAsync(
+                discoveryKey, _options.RateLimiting.Discovery.WindowSeconds);
 
             if (discoveryCount > _options.RateLimiting.Discovery.MaxRequests)
             {
@@ -128,7 +80,6 @@ namespace ConduitLLM.Gateway.Services
                 }
             }
 
-            await IncrementRateLimitCountAsync(discoveryKey, _options.RateLimiting.Discovery.WindowSeconds);
             return SecurityCheckResult.Allowed();
         }
 
@@ -136,8 +87,8 @@ namespace ConduitLLM.Gateway.Services
         {
             var capabilityKey = $"{RateLimitPrefix}capability:{ipAddress}:{modelName}";
 
-            var capabilityCount = await GetRateLimitCountAsync(capabilityKey, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
-            capabilityCount++;
+            var capabilityCount = await RateLimitCounter.IncrementAsync(
+                capabilityKey, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
 
             if (capabilityCount > _options.RateLimiting.Discovery.MaxCapabilityChecksPerModel)
             {
@@ -159,7 +110,6 @@ namespace ConduitLLM.Gateway.Services
                 };
             }
 
-            await IncrementRateLimitCountAsync(capabilityKey, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
             return SecurityCheckResult.Allowed();
         }
 

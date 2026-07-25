@@ -19,6 +19,12 @@ namespace ConduitLLM.Security.Services
         protected readonly IMemoryCache MemoryCache;
         protected readonly IDistributedCache? DistributedCache;
 
+        /// <summary>
+        /// Atomic counter behind every fixed-window limiter in this service. Read-then-write
+        /// counting undercounts under exactly the concurrency a rate limiter exists to handle.
+        /// </summary>
+        protected readonly IFixedWindowCounter RateLimitCounter;
+
         // Cache key prefixes — shared across Admin and Gateway for consistent tracking
         protected const string RateLimitPrefix = "rate_limit:";
         protected const string FailedLoginPrefix = "failed_login:";
@@ -37,11 +43,16 @@ namespace ConduitLLM.Security.Services
         protected SecurityServiceBase(
             ILogger logger,
             IMemoryCache memoryCache,
-            IDistributedCache? distributedCache)
+            IDistributedCache? distributedCache,
+            IFixedWindowCounter? rateLimitCounter = null)
         {
             Logger = logger ?? throw new ArgumentNullException(nameof(logger));
             MemoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             DistributedCache = distributedCache;
+
+            // Without a shared store there is no cross-instance limit to make atomic, so the
+            // in-process counter is the honest fallback rather than a degraded distributed one.
+            RateLimitCounter = rateLimitCounter ?? new MemoryFixedWindowCounter(memoryCache);
         }
 
         /// <inheritdoc/>
@@ -149,11 +160,16 @@ namespace ConduitLLM.Security.Services
         /// <summary>
         /// Checks IP-based rate limiting
         /// </summary>
+        /// <remarks>
+        /// Check and increment happen in one atomic operation. Splitting them let concurrent
+        /// requests — across instances or within one — all read the same pre-increment count and
+        /// be admitted together, so the effective ceiling was the limit times the request
+        /// concurrency rather than the limit.
+        /// </remarks>
         protected async Task<SecurityCheckResult> CheckIpRateLimitAsync(string ipAddress)
         {
             var key = $"{RateLimitPrefix}{ServiceName}:{ipAddress}";
-            var requestCount = (await GetCacheObjectAsync<RateLimitData>(key))?.Count ?? 0;
-            requestCount++;
+            var requestCount = await RateLimitCounter.IncrementAsync(key, Options.RateLimiting.WindowSeconds);
 
             if (requestCount > Options.RateLimiting.MaxRequests)
             {
@@ -164,15 +180,6 @@ namespace ConduitLLM.Security.Services
                     "Rate limit exceeded",
                     Options.RateLimiting.MaxRequests);
             }
-
-            var rateLimitData = new RateLimitData
-            {
-                Count = requestCount,
-                Source = ServiceName,
-                WindowStart = DateTime.UtcNow
-            };
-
-            await SetCacheValueAsync(key, rateLimitData, TimeSpan.FromSeconds(Options.RateLimiting.WindowSeconds));
 
             return SecurityCheckResult.Allowed();
         }

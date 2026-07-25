@@ -35,9 +35,11 @@ namespace ConduitLLM.Core.Services
         Task CleanupStaleConnectionsAsync(string virtualKeyHash);
 
         /// <summary>
-        /// Checks if a connection would exceed the limit (without incrementing)
+        /// Atomically admits a connection when the key is under its ceiling, or reports that it
+        /// is not. Check and increment are one operation: doing them separately let a burst of
+        /// simultaneous connections all observe the same pre-increment count and be admitted.
         /// </summary>
-        Task<ConnectionLimitResult> CheckConnectionLimitAsync(string virtualKeyHash, int maxConnections);
+        Task<ConnectionLimitResult> TryAcquireConnectionAsync(string virtualKeyHash, int maxConnections);
     }
     
     /// <summary>
@@ -73,6 +75,40 @@ namespace ConduitLLM.Core.Services
     {
         private const int MinuteWindowMs = 60_000;
         private const int DayWindowMs = 86_400_000;
+        private const int ConnectionTtlSeconds = 86_400;
+
+        // Admit-if-under-ceiling, in one round trip.
+        //   KEYS[1] = the key's connection hash
+        //   ARGV[1] = max connections, ARGV[2] = now (unix seconds), ARGV[3] = hash TTL
+        // Returns {admitted (0/1), count}
+        private const string AcquireConnectionScript = @"
+            local current = tonumber(redis.call('HGET', KEYS[1], 'count') or '0')
+            if current < 0 then
+                current = 0
+            end
+
+            if current >= tonumber(ARGV[1]) then
+                return {0, current}
+            end
+
+            current = redis.call('HINCRBY', KEYS[1], 'count', 1)
+            redis.call('HSET', KEYS[1], 'last_connected', ARGV[2])
+            redis.call('EXPIRE', KEYS[1], ARGV[3])
+            return {1, current}
+        ";
+
+        // Decrement clamped at zero, so a disconnect with no matching connect — a node that died
+        // holding connections, a replayed lifetime event — cannot drive the count negative and
+        // silently hand the key extra capacity.
+        private const string ReleaseConnectionScript = @"
+            local current = tonumber(redis.call('HGET', KEYS[1], 'count') or '0')
+            if current <= 0 then
+                redis.call('HSET', KEYS[1], 'count', 0)
+                return 0
+            end
+
+            return redis.call('HINCRBY', KEYS[1], 'count', -1)
+        ";
 
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisSignalRRateLimitService> _logger;
@@ -209,6 +245,58 @@ namespace ConduitLLM.Core.Services
             }
         }
         
+        /// <inheritdoc />
+        public async Task<ConnectionLimitResult> TryAcquireConnectionAsync(string virtualKeyHash, int maxConnections)
+        {
+            if (string.IsNullOrEmpty(virtualKeyHash))
+            {
+                return new ConnectionLimitResult { IsAllowed = true, MaxConnections = maxConnections };
+            }
+
+            try
+            {
+                var db = _redis.GetDatabase();
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
+
+                var raw = await db.ScriptEvaluateAsync(
+                    AcquireConnectionScript,
+                    new RedisKey[] { key },
+                    new RedisValue[] { maxConnections, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), ConnectionTtlSeconds });
+
+                var result = (RedisValue[])raw!;
+                var admitted = (int)result[0] == 1;
+                var current = (int)result[1];
+
+                if (!admitted)
+                {
+                    return new ConnectionLimitResult
+                    {
+                        IsAllowed = false,
+                        CurrentConnections = current,
+                        MaxConnections = maxConnections,
+                        DenialReason = $"Connection limit exceeded ({current}/{maxConnections}). Please close existing connections before opening new ones."
+                    };
+                }
+
+                _logger.LogDebug("Virtual key {KeyHash} connected. Active connections: {Count}",
+                    virtualKeyHash, current);
+
+                return new ConnectionLimitResult
+                {
+                    IsAllowed = true,
+                    CurrentConnections = current,
+                    MaxConnections = maxConnections
+                };
+            }
+            catch (Exception ex)
+            {
+                // Fail open, consistent with the other limiters: a Redis outage must not stop
+                // clients connecting.
+                _logger.LogError(ex, "Error acquiring a connection slot for {KeyHash}; allowing the connection", virtualKeyHash);
+                return new ConnectionLimitResult { IsAllowed = true, MaxConnections = maxConnections };
+            }
+        }
+
         public async Task<int> DecrementConnectionCountAsync(string virtualKeyHash)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
@@ -219,14 +307,11 @@ namespace ConduitLLM.Core.Services
                 var db = _redis.GetDatabase();
                 var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
-                var count = await db.HashDecrementAsync(key, "count");
-                
-                // Ensure count doesn't go negative
-                if (count < 0)
-                {
-                    await db.HashSetAsync(key, "count", 0);
-                    count = 0;
-                }
+                // Clamping inside the script keeps the read and the correction atomic. Doing it
+                // in two steps let a concurrent connect observe the transient negative value and
+                // admit past the ceiling.
+                var raw = await db.ScriptEvaluateAsync(ReleaseConnectionScript, new RedisKey[] { key });
+                var count = (long)raw!;
                 
                 await db.HashSetAsync(key, "last_disconnected", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 
@@ -294,34 +379,6 @@ namespace ConduitLLM.Core.Services
             {
                 _logger.LogError(ex, "Error cleaning up stale connections for {KeyHash}", virtualKeyHash);
             }
-        }
-
-        public async Task<ConnectionLimitResult> CheckConnectionLimitAsync(string virtualKeyHash, int maxConnections)
-        {
-            if (string.IsNullOrEmpty(virtualKeyHash))
-            {
-                return new ConnectionLimitResult { IsAllowed = true, MaxConnections = maxConnections };
-            }
-
-            var currentCount = await GetConnectionCountAsync(virtualKeyHash);
-
-            if (currentCount >= maxConnections)
-            {
-                return new ConnectionLimitResult
-                {
-                    IsAllowed = false,
-                    CurrentConnections = currentCount,
-                    MaxConnections = maxConnections,
-                    DenialReason = $"Connection limit exceeded ({currentCount}/{maxConnections}). Please close existing connections before opening new ones."
-                };
-            }
-
-            return new ConnectionLimitResult
-            {
-                IsAllowed = true,
-                CurrentConnections = currentCount,
-                MaxConnections = maxConnections
-            };
         }
 
     }
