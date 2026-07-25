@@ -1,4 +1,4 @@
-import type { SystemInfoDto, HealthStatusDto } from '../models/system';
+import type { SystemInfoDto, HealthStatusDto, ComponentHealthStatus } from '../models/system';
 import type { BackendSystemInfoResponse, ISystemHelpers } from './types/system-service.types';
 
 /**
@@ -59,12 +59,21 @@ export class FetchSystemHelpers implements ISystemHelpers {
   }
 
   /**
-   * Helper function to ensure valid status values
+   * Coerce a wire status string into a known component status.
+   *
+   * An unrecognized or missing status maps to `unknown`, never `healthy`. The previous
+   * `healthy` fallback meant any gap in the response — including a shape mismatch that made
+   * every lookup `undefined` — was rendered as a green service (issue #1067).
    */
-  normalizeStatus(status?: string): 'healthy' | 'degraded' | 'unhealthy' {
-    if (status === 'healthy' || status === 'degraded' || status === 'unhealthy') {
+  normalizeStatus(status?: string): ComponentHealthStatus {
+    if (
+      status === 'healthy' ||
+      status === 'degraded' ||
+      status === 'unhealthy' ||
+      status === 'unknown'
+    ) {
       return status;
     }
-    return 'healthy'; // Default fallback
+    return 'unknown';
   }
 }
