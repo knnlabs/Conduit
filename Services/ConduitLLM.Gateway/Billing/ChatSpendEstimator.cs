@@ -62,7 +62,7 @@ public sealed class ChatSpendEstimator : IChatSpendEstimator
             return Failed("A positive maximum output-token bound is required");
         }
 
-        var promptEstimate = await _tokenCounter.EstimateTokenCountAsync(request.Model, request.Messages);
+        var promptEstimate = await _tokenCounter.EstimateTokenCountAsync(request.Model, request.Messages, request.Tools);
 
         // The reservation must bound the real cost, so a count produced with a stand-in
         // vocabulary or the chars/4 heuristic is padded by a fidelity-sized buffer (#1233).

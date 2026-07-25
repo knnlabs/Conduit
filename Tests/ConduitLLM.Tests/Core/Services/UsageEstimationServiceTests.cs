@@ -221,6 +221,29 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task EstimateUsageFromStreamingResponseAsync_ToolDefinitions_ReachTheCounter()
+        {
+            // Tool schemas are part of the billed prompt; the fallback estimate must include them
+            // or agentic streams without provider usage are under-billed (#1229).
+            var modelId = "gpt-4";
+            var inputMessages = new List<Message> { new Message { Role = "user", Content = "hello" } };
+            var streamedContent = "response";
+            var tools = new List<Tool> { new() { Function = new FunctionDefinition { Name = "get_weather" } } };
+
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages, tools))
+                .ReturnsAsync(new TokenCount(300, TokenCountFidelity.Exact));
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent))
+                .ReturnsAsync(new TokenCount(10, TokenCountFidelity.Exact));
+
+            var result = await _service.EstimateUsageFromStreamingResponseAsync(
+                modelId, inputMessages, streamedContent, tools);
+
+            // 300 * 1.1 = 330: the tools-inclusive count is what gets buffered and billed.
+            Assert.Equal(330, result.PromptTokens);
+            _mockTokenCounter.Verify(x => x.EstimateTokenCountAsync(modelId, inputMessages, tools), Times.Once);
+        }
+
+        [Fact]
         public async Task EstimateUsageFromStreamingResponseAsync_ApproximateVocabulary_AppliesLargerBuffer()
         {
             // Arrange: a Claude-style model whose counts come from a stand-in vocabulary.

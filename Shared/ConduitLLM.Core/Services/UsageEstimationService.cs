@@ -49,6 +49,7 @@ namespace ConduitLLM.Core.Services
             string modelId,
             List<Message> inputMessages,
             string streamedContent,
+            IReadOnlyList<Tool>? tools = null,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(modelId))
@@ -63,8 +64,8 @@ namespace ConduitLLM.Core.Services
                 _logger.LogInformation("Estimating usage for model {Model} with {MessageCount} input messages and {OutputLength} characters of output",
                     modelId, inputMessages.Count, streamedContent.Length);
 
-                // Estimate prompt tokens from input messages
-                var promptTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, inputMessages);
+                // Estimate prompt tokens from input messages, including tool definitions
+                var promptTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, inputMessages, tools);
 
                 // Estimate completion tokens from streamed content
                 var completionTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, streamedContent);

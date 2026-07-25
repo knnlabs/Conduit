@@ -284,6 +284,7 @@ public sealed class ResponsesEndpointsTests
                 It.IsAny<string>(),
                 It.IsAny<List<Message>>(),
                 It.IsAny<string>(),
+                It.IsAny<IReadOnlyList<Tool>?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Usage { PromptTokens = 1, CompletionTokens = 1, TotalTokens = 2 });
 
