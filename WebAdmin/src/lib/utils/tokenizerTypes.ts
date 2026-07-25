@@ -1,11 +1,27 @@
 /**
- * TokenizerType enum mapping and utilities for WebAdmin display
- * Matches the backend TokenizerType enum values
+ * TokenizerType wire values and display helpers for WebAdmin.
+ *
+ * The value union is taken from the generated OpenAPI contract rather than
+ * hand-copied from the backend enum, so a backend change that regenerates
+ * `src/generated/admin-api.ts` breaks this module at compile time (missing or
+ * surplus entries in the `Record<TokenizerType, ...>` maps below) instead of
+ * silently mislabeling models in the UI.
  */
 
+import type { components } from '@/generated/admin-api';
+
 /**
- * TokenizerType enum values matching backend
- * These numeric values must match the backend enum exactly
+ * Wire representation of the backend `TokenizerType` enum, straight from the
+ * generated Admin API contract.
+ */
+export type TokenizerType = components['schemas']['TokenizerType'];
+
+/**
+ * Named constants for each tokenizer wire value.
+ *
+ * `satisfies` rejects any value that is not part of the generated contract;
+ * the exhaustive `Record<TokenizerType, string>` maps below reject any
+ * contract value that is missing an entry here.
  */
 export const TokenizerType = {
   None: 'none',
@@ -32,8 +48,13 @@ export const TokenizerType = {
   BPE: 'bpe',
   WordPiece: 'wordPiece',
   Tiktoken: 'tiktoken',
-} as const;
-export type TokenizerType = (typeof TokenizerType)[keyof typeof TokenizerType];
+} as const satisfies Record<string, TokenizerType>;
+
+/**
+ * Every tokenizer wire value, in contract order.
+ */
+export const TOKENIZER_TYPE_VALUES: readonly TokenizerType[] =
+  Object.values(TokenizerType);
 
 /**
  * Human-readable display names for tokenizer types
@@ -96,11 +117,54 @@ export const TOKENIZER_SHORT_NAMES: Record<TokenizerType, string> = {
 };
 
 /**
+ * Ordinals of the backend C# `TokenizerType` enum
+ * (`Shared/ConduitLLM.Configuration/Entities/TokenizerType.cs`).
+ *
+ * The Admin API serializes this enum as camelCase strings
+ * (`JsonStringEnumConverter(..., allowIntegerValues: false)`), so these
+ * ordinals exist only to decode legacy/persisted numeric values. They are
+ * written out explicitly rather than derived from key order, so reordering
+ * anything in this file cannot silently remap tokenizers.
+ */
+const TOKENIZER_NUMERIC_ORDINALS: Record<TokenizerType, number> = {
+  [TokenizerType.None]: 0,
+  [TokenizerType.Cl100KBase]: 1,
+  [TokenizerType.P50KBase]: 2,
+  [TokenizerType.P50KEdit]: 3,
+  [TokenizerType.R50KBase]: 4,
+  [TokenizerType.O200KBase]: 5,
+  [TokenizerType.Claude]: 6,
+  [TokenizerType.Claude3]: 7,
+  [TokenizerType.Gemini]: 8,
+  [TokenizerType.PaLM]: 9,
+  [TokenizerType.LLaMA]: 10,
+  [TokenizerType.LLaMA2]: 11,
+  [TokenizerType.LLaMA3]: 12,
+  [TokenizerType.Mistral]: 13,
+  [TokenizerType.Cohere]: 14,
+  [TokenizerType.O200KHarmony]: 15,
+  [TokenizerType.Kimi]: 16,
+  [TokenizerType.Groq]: 17,
+  [TokenizerType.Cerebras]: 18,
+  [TokenizerType.MiniMax]: 19,
+  [TokenizerType.SentencePiece]: 20,
+  [TokenizerType.BPE]: 21,
+  [TokenizerType.WordPiece]: 22,
+  [TokenizerType.Tiktoken]: 23
+};
+
+const TOKENIZER_BY_ORDINAL: ReadonlyMap<number, TokenizerType> = new Map(
+  Object.entries(TOKENIZER_NUMERIC_ORDINALS).map(
+    ([value, ordinal]) => [ordinal, value as TokenizerType] as const
+  )
+);
+
+/**
  * Options for Select components
  */
-export const TOKENIZER_SELECT_OPTIONS = Object.entries(TOKENIZER_DISPLAY_NAMES).map(([value, label]) => ({
-  value: value.toString(),
-  label
+export const TOKENIZER_SELECT_OPTIONS = TOKENIZER_TYPE_VALUES.map((value) => ({
+  value,
+  label: TOKENIZER_DISPLAY_NAMES[value]
 }));
 
 /**
@@ -116,17 +180,22 @@ export function getTokenizerDisplayName(tokenizer: string | number, short = fals
  * Check if a value is a valid TokenizerType
  */
 export function isValidTokenizerType(value: unknown): value is TokenizerType {
-  return typeof value === 'string' && Object.values(TokenizerType).includes(value as TokenizerType);
+  return typeof value === 'string' && TOKENIZER_TYPE_VALUES.includes(value as TokenizerType);
 }
 
 /**
- * Parse tokenizer type from string or number
+ * Parse tokenizer type from a wire string, or from a legacy numeric enum value.
+ *
+ * Returns `null` for anything unrecognized so callers can surface the raw value
+ * rather than display a confidently wrong tokenizer name.
  */
 export function parseTokenizerType(value: string | number | null | undefined): TokenizerType | null {
   if (value === null || value === undefined) return null;
-  
+
   if (isValidTokenizerType(value)) return value;
+  if (typeof value === 'string' && value.trim() === '') return null;
+
   const numeric = typeof value === 'number' ? value : Number(value);
   if (!Number.isInteger(numeric)) return null;
-  return Object.values(TokenizerType)[numeric] ?? null;
+  return TOKENIZER_BY_ORDINAL.get(numeric) ?? null;
 }

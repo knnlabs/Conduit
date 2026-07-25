@@ -241,9 +241,7 @@ export function ChatInterface() {
                 <TokenCounter
                   messages={messages}
                   maxTokens={maxContextTokens}
-                  modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
                   compact={true}
-                  showCost={false}
                   currentInputText={currentInputText}
                   currentInputImages={currentInputImages}
                 />
@@ -371,9 +369,7 @@ export function ChatInterface() {
               <TokenCounter
                 messages={messages}
                 maxTokens={maxContextTokens}
-                modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
                 compact={false}
-                showCost={false}
                 currentInputText={currentInputText}
                 currentInputImages={currentInputImages}
               />

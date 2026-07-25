@@ -1,6 +1,18 @@
 /**
- * Token estimation utilities for various LLM models
- * Provides token counting, cost estimation, and model family detection
+ * Rough client-side token estimation for the chat UI.
+ *
+ * This is a display-only heuristic, NOT a tokenizer. It exists so the chat UI
+ * can show approximate context-window pressure before a response (and its real
+ * `usage` numbers) comes back. The moment actual counts are available they
+ * should be used instead - see `TokenCounter`.
+ *
+ * Deliberately NOT provided here:
+ * - Per-model tokenization. Real counts come from the server-side
+ *   `ITokenCounter`; anything computed in the browser would be a second,
+ *   diverging implementation.
+ * - Cost estimation. Pricing lives in ModelCost records served by the Admin
+ *   API and is not exposed to the chat page (the Gateway discovery contract
+ *   carries no pricing), so the UI omits cost rather than inventing it.
  */
 
 // Type definitions
@@ -8,19 +20,6 @@ export interface TokenStats {
   prompt: number;
   completion: number;
   total: number;
-}
-
-export interface CostEstimate {
-  promptCost: number;
-  completionCost: number;
-  totalCost: number;
-}
-
-export interface ModelPricing {
-  promptTokenPrice: number;
-  completionTokenPrice: number;
-  modelName: string;
-  provider: string;
 }
 
 export interface EstimatorMessage {
@@ -35,137 +34,44 @@ export interface ImageDetail {
   detail: "low" | "high" | "auto";
 }
 
-// Model family enum
-export enum ModelFamily {
-  OpenAI = "openai",
-  Claude = "claude",
-  Gemini = "gemini",
-  Llama = "llama",
-  Generic = "generic",
-}
+/**
+ * Average characters per token across English prose for the tokenizers Conduit
+ * routes to. Real counts vary substantially by model, language and content
+ * (code and CJK tokenize far denser), which is why every consumer of this
+ * module must label its output as an estimate.
+ */
+export const CHARS_PER_TOKEN_ESTIMATE = 4;
 
-// Default model pricing configuration
-export const DEFAULT_MODEL_PRICING: Record<string, ModelPricing> = {
-  // OpenAI GPT models
-  "gpt-4o": {
-    promptTokenPrice: 0.0000025,
-    completionTokenPrice: 0.00001,
-    modelName: "gpt-4o",
-    provider: "openai",
-  },
-  "gpt-4o-mini": {
-    promptTokenPrice: 0.00000015,
-    completionTokenPrice: 0.0000006,
-    modelName: "gpt-4o-mini",
-    provider: "openai",
-  },
-  "gpt-4-turbo": {
-    promptTokenPrice: 0.00001,
-    completionTokenPrice: 0.00003,
-    modelName: "gpt-4-turbo",
-    provider: "openai",
-  },
-  "gpt-3.5-turbo": {
-    promptTokenPrice: 0.0000005,
-    completionTokenPrice: 0.0000015,
-    modelName: "gpt-3.5-turbo",
-    provider: "openai",
-  },
-  // Claude models
-  "claude-3-5-sonnet-20241022": {
-    promptTokenPrice: 0.000003,
-    completionTokenPrice: 0.000015,
-    modelName: "claude-3-5-sonnet-20241022",
-    provider: "anthropic",
-  },
-  "claude-3-5-haiku-20241022": {
-    promptTokenPrice: 0.0000008,
-    completionTokenPrice: 0.000004,
-    modelName: "claude-3-5-haiku-20241022",
-    provider: "anthropic",
-  },
-  // Generic fallback
-  generic: {
-    promptTokenPrice: 0.000001,
-    completionTokenPrice: 0.000002,
-    modelName: "generic",
-    provider: "generic",
-  },
-};
+/** Per-message role/formatting scaffolding, in tokens. */
+export const TOKENS_PER_MESSAGE_ESTIMATE = 4;
+
+/**
+ * Per-image estimate, in tokens. Roughly an OpenAI high-detail 1024x1024 image.
+ * Actual cost depends on provider, resolution and detail level.
+ */
+export const TOKENS_PER_IMAGE_ESTIMATE = 765;
 
 /**
  * Token estimation utility class
  */
 export class TokenEstimator {
   /**
-   * Get the model family for a given model name
+   * Roughly estimate the prompt tokens for a conversation.
+   *
+   * Approximate: character-count heuristic only, no tokenizer involved.
    */
-  static getModelFamily(modelName: string): ModelFamily {
-    const normalizedModel = modelName.toLowerCase();
-
-    if (normalizedModel.includes("gpt") || normalizedModel.includes("openai")) {
-      return ModelFamily.OpenAI;
-    }
-    if (normalizedModel.includes("claude")) {
-      return ModelFamily.Claude;
-    }
-    if (normalizedModel.includes("gemini")) {
-      return ModelFamily.Gemini;
-    }
-    if (normalizedModel.includes("llama")) {
-      return ModelFamily.Llama;
-    }
-
-    return ModelFamily.Generic;
-  }
-
-  /**
-   * Get pricing information for a model
-   */
-  static getModelPricing(modelName: string): ModelPricing | undefined {
-    // Try exact match first
-    if (DEFAULT_MODEL_PRICING[modelName]) {
-      return DEFAULT_MODEL_PRICING[modelName];
-    }
-
-    // Try partial matches
-    for (const [key, pricing] of Object.entries(DEFAULT_MODEL_PRICING)) {
-      if (
-        modelName.toLowerCase().includes(key.toLowerCase()) ||
-        key.toLowerCase().includes(modelName.toLowerCase())
-      ) {
-        return pricing;
-      }
-    }
-
-    // Return generic pricing as fallback
-    return DEFAULT_MODEL_PRICING.generic;
-  }
-
-  /**
-   * Estimate tokens for a conversation
-   */
-  static estimateConversationTokens(
-    messages: EstimatorMessage[],
-    _modelFamily: ModelFamily = ModelFamily.Generic,
-  ): TokenStats {
+  static estimateConversationTokens(messages: EstimatorMessage[]): TokenStats {
     let totalPromptTokens = 0;
 
     for (const message of messages) {
-      // Basic token estimation - roughly 4 characters per token
-      const contentTokens = Math.ceil(message.content.length / 4);
+      const contentTokens = TokenEstimator.estimateMessageTokens(
+        message.content,
+      );
+      const imageTokens =
+        (message.images?.length ?? 0) * TOKENS_PER_IMAGE_ESTIMATE;
 
-      // Add tokens for role and formatting
-      const roleTokens = 4;
-
-      // Add tokens for images if present
-      let imageTokens = 0;
-      if (message.images?.length) {
-        // Approximate 765 tokens per image for vision models
-        imageTokens = message.images.length * 765;
-      }
-
-      totalPromptTokens += contentTokens + roleTokens + imageTokens;
+      totalPromptTokens +=
+        contentTokens + TOKENS_PER_MESSAGE_ESTIMATE + imageTokens;
     }
 
     return {
@@ -176,33 +82,12 @@ export class TokenEstimator {
   }
 
   /**
-   * Estimate cost for token usage
+   * Roughly estimate the tokens in a single piece of text.
+   *
+   * Approximate: character-count heuristic only, no tokenizer involved.
    */
-  static estimateCost(
-    tokenStats: TokenStats,
-    pricing: ModelPricing,
-    _modelName: string,
-  ): CostEstimate {
-    const promptCost = tokenStats.prompt * pricing.promptTokenPrice;
-    const completionCost = tokenStats.completion * pricing.completionTokenPrice;
-    const totalCost = promptCost + completionCost;
-
-    return {
-      promptCost,
-      completionCost,
-      totalCost,
-    };
-  }
-
-  /**
-   * Estimate tokens for a single message
-   */
-  static estimateMessageTokens(
-    content: string,
-    _modelFamily: ModelFamily = ModelFamily.Generic,
-  ): number {
-    // Basic estimation - 4 characters per token on average
-    return Math.ceil(content.length / 4);
+  static estimateMessageTokens(content: string): number {
+    return Math.ceil(content.length / CHARS_PER_TOKEN_ESTIMATE);
   }
 
   /**
@@ -286,16 +171,6 @@ export class TokenUtils {
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = Math.ceil(minutes % 60);
     return `${hours}h ${remainingMinutes}m`;
-  }
-
-  /**
-   * Format cost with currency symbol
-   */
-  static formatCost(cost: number): string {
-    if (cost < 0.01) {
-      return `$${cost.toFixed(6)}`;
-    }
-    return `$${cost.toFixed(4)}`;
   }
 
   /**

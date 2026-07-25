@@ -3,27 +3,28 @@
 import { useEffect, useState } from 'react';
 import { Group, Text, Progress, Tooltip, Paper, Stack, Badge } from '@mantine/core';
 import { IconCoin, IconAlertTriangle } from '@tabler/icons-react';
-import { 
-  TokenEstimator, 
-  TokenUtils, 
-  ModelFamily,
+import {
+  TokenEstimator,
+  TokenUtils,
+  CHARS_PER_TOKEN_ESTIMATE,
   type TokenStats,
-  type EstimatorMessage 
+  type EstimatorMessage
 } from '@/lib/gateway-api';
 import type { ChatMessage } from '../types';
+
+const ESTIMATE_DISCLAIMER =
+  `Rough estimate (~${CHARS_PER_TOKEN_ESTIMATE} characters per token), not a real tokenizer. `
+  + 'Actual counts come from the provider and may differ substantially.';
 
 interface TokenCounterProps {
   messages: ChatMessage[];
   maxTokens?: number;
-  modelName?: string;
   compact?: boolean;
-  showCost?: boolean;
   currentInputText?: string;
   currentInputImages?: number;
 }
 
 interface TokenCounterStats extends TokenStats {
-  estimatedCost?: number;
   isEstimated?: boolean;
   currentInput?: number;
 }
@@ -41,12 +42,10 @@ function convertToEstimatorMessage(message: ChatMessage): EstimatorMessage {
   };
 }
 
-export function TokenCounter({ 
-  messages, 
-  maxTokens = 128000, 
-  modelName, 
+export function TokenCounter({
+  messages,
+  maxTokens = 128000,
   compact = false,
-  showCost = false,
   currentInputText,
   currentInputImages = 0
 }: TokenCounterProps) {
@@ -95,14 +94,12 @@ export function TokenCounter({
     } else {
       // Fall back to estimation only when no actual data is available
       const estimatorMessages: EstimatorMessage[] = messages.map(convertToEstimatorMessage);
-      const modelFamily = modelName ? TokenEstimator.getModelFamily(modelName) : ModelFamily.Generic;
-      tokenStats = TokenEstimator.estimateConversationTokens(estimatorMessages, modelFamily);
+      tokenStats = TokenEstimator.estimateConversationTokens(estimatorMessages);
     }
 
     // Calculate current input token estimation
     let currentInputTokens = 0;
     if (currentInputText && currentInputText.trim().length > 0) {
-      const modelFamily = modelName ? TokenEstimator.getModelFamily(modelName) : ModelFamily.Generic;
       const inputMessage: EstimatorMessage = {
         role: 'user',
         content: currentInputText,
@@ -112,27 +109,16 @@ export function TokenCounter({
           detail: 'auto' as const
         }) : undefined
       };
-      const inputStats = TokenEstimator.estimateConversationTokens([inputMessage], modelFamily);
+      const inputStats = TokenEstimator.estimateConversationTokens([inputMessage]);
       currentInputTokens = inputStats.prompt;
-    }
-
-    // Calculate estimated cost
-    let estimatedCost;
-    if (showCost && modelName) {
-      const pricing = TokenEstimator.getModelPricing(modelName);
-      if (pricing) {
-        const cost = TokenEstimator.estimateCost(tokenStats, pricing, modelName);
-        estimatedCost = cost.totalCost;
-      }
     }
 
     setStats({
       ...tokenStats,
-      estimatedCost,
       isEstimated: !hasActualTokenCounts,
       currentInput: currentInputTokens,
     });
-  }, [messages, modelName, showCost, currentInputText, currentInputImages]);
+  }, [messages, currentInputText, currentInputImages]);
 
   // Calculate total including current input for analysis
   const totalWithInput = stats.total + (stats.currentInput ?? 0);
@@ -141,6 +127,8 @@ export function TokenCounter({
   const isWarning = analysis.isWarning;
   const isNearLimit = analysis.isNearLimit;
   const isCritical = analysis.isCritical;
+  // Pending input is always heuristic, even when past turns carry real usage data.
+  const showsEstimate = (stats.isEstimated ?? false) || (stats.currentInput ?? 0) > 0;
 
   if (compact) {
     return (
@@ -158,8 +146,8 @@ export function TokenCounter({
               <Text size="xs" c="blue" fw={500}>Current input: ~{TokenUtils.formatTokenCount(stats.currentInput ?? 0)} tokens</Text>
             )}
             <Text size="xs">Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens</Text>
-            {stats.estimatedCost !== undefined && (
-              <Text size="xs">Est. cost: {TokenUtils.formatCost(stats.estimatedCost)}</Text>
+            {showsEstimate && (
+              <Text size="xs" c="dimmed">{ESTIMATE_DISCLAIMER}</Text>
             )}
             {isCritical && (
               <Text size="xs" c="red" fw={500}>
@@ -234,12 +222,13 @@ export function TokenCounter({
               Remaining: {TokenUtils.formatTokenCount(analysis.remaining)} tokens
             </Text>
           </Stack>
-          {stats.estimatedCost !== undefined && (
-            <Text size="xs" c="dimmed">
-              Est. cost: {TokenUtils.formatCost(stats.estimatedCost)}
-            </Text>
-          )}
         </Group>
+
+        {showsEstimate && (
+          <Text size="xs" c="dimmed">
+            {ESTIMATE_DISCLAIMER}
+          </Text>
+        )}
 
         {isCritical && (
           <Text size="xs" c="red" fw={500}>

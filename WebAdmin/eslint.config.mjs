@@ -182,7 +182,6 @@ export default tseslint.config(
   {
     files: [
       'src/lib/gateway-api/structured-content.ts',
-      'src/lib/gateway-api/token-estimator.ts',
     ],
     rules: {
       '@typescript-eslint/naming-convention': 'off',
