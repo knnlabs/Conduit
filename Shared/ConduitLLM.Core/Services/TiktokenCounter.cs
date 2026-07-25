@@ -38,8 +38,9 @@ namespace ConduitLLM.Core.Services
     /// </remarks>
     public class TiktokenCounter : ITokenCounter
     {
-        // Cache encodings for performance
-        private static readonly Dictionary<string, TikToken> _encodings = new();
+        // Cache encodings for performance, keyed by the requested tokenizer identifier.
+        // A null value is a cached failure and means "use character-based estimation".
+        private static readonly Dictionary<string, TikToken?> _encodings = new();
         private static readonly object _lock = new();
         private readonly ILogger<TiktokenCounter> _logger;
         private readonly IModelCapabilityService? _capabilityService;
@@ -201,17 +202,16 @@ namespace ConduitLLM.Core.Services
         {
             try
             {
-                string encodingName = "cl100k_base"; // Default for newer models
+                string? tokenizerType = null;
 
                 // Try to get tokenizer type from capability service first
                 if (_capabilityService != null)
                 {
                     try
                     {
-                        var tokenizerType = await _capabilityService.GetTokenizerTypeAsync(modelName);
+                        tokenizerType = await _capabilityService.GetTokenizerTypeAsync(modelName);
                         if (!string.IsNullOrEmpty(tokenizerType))
                         {
-                            encodingName = tokenizerType;
                             _logger.LogDebug("Using tokenizer {TokenizerType} from capability service for model {Model}", tokenizerType, modelName);
                         }
                     }
@@ -221,7 +221,7 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
-                return GetOrCreateEncoding(encodingName, modelName);
+                return GetOrCreateEncoding(tokenizerType, modelName);
             }
             catch (Exception ex)
             {
@@ -233,61 +233,61 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Gets or creates a TikToken encoding with thread-safe caching.
         /// </summary>
-        /// <param name="encodingName">The name of the encoding to get or create.</param>
+        /// <param name="tokenizerType">
+        /// The tokenizer identifier from model metadata (a <c>TokenizerType</c> name such as
+        /// <c>Cl100KBase</c> or <c>LLaMA3</c>), or null to use the default encoding.
+        /// </param>
         /// <param name="modelName">The model name (for logging purposes).</param>
         /// <returns>The TikToken encoding, or null if it cannot be created.</returns>
-        private TikToken? GetOrCreateEncoding(string encodingName, string modelName)
+        /// <remarks>
+        /// The cache is keyed on <paramref name="tokenizerType"/> rather than on the resolved
+        /// encoding name. Keying it on the resolved name meant an unresolvable tokenizer never
+        /// populated an entry under the key that was looked up, so every single token count
+        /// re-entered the failure path and re-logged (#1051).
+        /// </remarks>
+        private TikToken? GetOrCreateEncoding(string? tokenizerType, string modelName)
         {
-            // Map non-OpenAI tokenizer types to their closest OpenAI equivalent
-            // since TiktokenSharp only supports OpenAI encodings
-            if (encodingName == "claude" || encodingName == "gemini")
-            {
-                // Use cl100k_base as approximation for non-OpenAI models
-                _logger.LogDebug("Using cl100k_base approximation for {TokenizerType} tokenizer on model {Model}", encodingName, modelName);
-                encodingName = "cl100k_base";
-            }
-            else if (encodingName == "o200k_base")
-            {
-                // o200k_base is newer than cl100k_base, but if not supported, fall back
-                // Try to use it, but we'll handle the error below if it's not supported
-                _logger.LogDebug("Attempting to use o200k_base tokenizer for model {Model}", modelName);
-            }
+            var cacheKey = tokenizerType?.Trim() ?? string.Empty;
 
             lock (_lock)
             {
-                if (!_encodings.TryGetValue(encodingName, out var encoding))
+                if (_encodings.TryGetValue(cacheKey, out var cached))
                 {
-                    try
-                    {
-                        encoding = TikToken.EncodingForModel(encodingName);
-                        _encodings[encodingName] = encoding;
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Failed to get encoding {EncodingName} for model {ModelName}, trying cl100k_base fallback", encodingName, modelName);
-
-                        // Try fallback to cl100k_base if the specific encoding isn't supported
-                        if (encodingName != "cl100k_base")
-                        {
-                            try
-                            {
-                                encodingName = "cl100k_base";
-                                encoding = TikToken.EncodingForModel(encodingName);
-                                _encodings[encodingName] = encoding;
-                                _logger.LogInformation("Successfully used cl100k_base fallback for model {ModelName}", modelName);
-                            }
-                            catch (Exception fallbackEx)
-                            {
-                                _logger.LogError(fallbackEx, "Failed to get fallback encoding cl100k_base");
-                                return null;
-                            }
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                    }
+                    return cached;
                 }
+
+                var resolved = TokenizerEncodingMap.Resolve(tokenizerType);
+
+                if (!resolved.IsRecognized)
+                {
+                    _logger.LogWarning(
+                        "Unknown tokenizer {TokenizerType} for model {ModelName}; using {EncodingName} for estimation",
+                        tokenizerType, modelName, resolved.EncodingName);
+                }
+                else if (resolved.IsApproximation)
+                {
+                    _logger.LogDebug(
+                        "Tokenizer {TokenizerType} has no Tiktoken equivalent; approximating model {ModelName} with {EncodingName}",
+                        tokenizerType, modelName, resolved.EncodingName);
+                }
+
+                TikToken? encoding;
+                try
+                {
+                    encoding = TikToken.GetEncoding(resolved.EncodingName);
+                }
+                catch (Exception ex)
+                {
+                    // The map only ever yields encodings TiktokenSharp implements, so this is a
+                    // library or data-file problem rather than bad configuration.
+                    _logger.LogError(ex,
+                        "Failed to load encoding {EncodingName} for model {ModelName}; falling back to character-based estimation",
+                        resolved.EncodingName, modelName);
+                    encoding = null;
+                }
+
+                // Cache the failure too, so a broken encoding does not re-throw on every request.
+                _encodings[cacheKey] = encoding;
                 return encoding;
             }
         }
