@@ -43,30 +43,19 @@ public sealed class RequireBalanceEndpointFilter : IEndpointFilter
                 "authentication_error");
         }
 
+        VirtualKeyValidationOutcome validation;
         try
         {
             var model = httpContext.Request.RouteValues.TryGetValue("model", out var modelValue)
                 ? modelValue?.ToString()
                 : null;
-            var validation = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, model);
-            if (!validation.IsValid || validation.Key is null)
-            {
-                _logger.LogWarning(
-                    "Virtual key validation failed with {FailureCode} during balance check for key prefix {KeyPrefix}",
-                    validation.FailureCode ?? "unknown",
-                    LoggingSanitizer.S(virtualKey[..Math.Min(10, virtualKey.Length)]));
-                return GatewayResults.OpenAIError(
-                    validation.HttpStatusCode,
-                    validation.Reason ?? "Virtual key validation failed.",
-                    validation.FailureCode ?? VirtualKeyValidationFailureCodes.ValidationError,
-                    GetErrorType(validation.HttpStatusCode));
-            }
-
-            httpContext.Items["ValidatedVirtualKey"] = validation.Key;
-            return await next(context);
+            validation = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey, model);
         }
         catch (Exception ex)
         {
+            // Scoped deliberately to the balance check only. Downstream exceptions must NOT be caught
+            // here — OpenAIErrorMiddleware maps them to their real status via ExceptionToResponseMapper,
+            // and swallowing them turned every client error on 9 route groups into a 500 (#1191).
             _logger.LogError(ex, "Error during balance authorization check");
             return GatewayResults.OpenAIError(
                 StatusCodes.Status500InternalServerError,
@@ -74,6 +63,22 @@ public sealed class RequireBalanceEndpointFilter : IEndpointFilter
                 "balance_check_error",
                 "server_error");
         }
+
+        if (!validation.IsValid || validation.Key is null)
+        {
+            _logger.LogWarning(
+                "Virtual key validation failed with {FailureCode} during balance check for key prefix {KeyPrefix}",
+                validation.FailureCode ?? "unknown",
+                LoggingSanitizer.S(virtualKey[..Math.Min(10, virtualKey.Length)]));
+            return GatewayResults.OpenAIError(
+                validation.HttpStatusCode,
+                validation.Reason ?? "Virtual key validation failed.",
+                validation.FailureCode ?? VirtualKeyValidationFailureCodes.ValidationError,
+                GetErrorType(validation.HttpStatusCode));
+        }
+
+        httpContext.Items["ValidatedVirtualKey"] = validation.Key;
+        return await next(context);
     }
 
     private static string GetErrorType(int statusCode) => statusCode switch

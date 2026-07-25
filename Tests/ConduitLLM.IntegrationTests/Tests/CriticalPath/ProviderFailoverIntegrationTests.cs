@@ -81,8 +81,11 @@ public class ProviderFailoverIntegrationTests : CriticalPathTestBase
 
         // Assert
         response.Success.Should().BeFalse("Request to provider with invalid key should fail");
-        response.StatusCode.Should().BeOneOf(new[] { 401, 403, 500, 502 },
-            "Should return auth error or server error from provider");
+        // 500 is deliberately not accepted: tolerating it is what let #1191 hide, since the Gateway
+        // returned 500 for every routing failure. A rejected provider credential is a provider
+        // communication error, which maps to 502 (see ChatEndpoints.MapProviderCommunicationError).
+        response.StatusCode.Should().BeOneOf(new[] { 401, 403, 502 },
+            "Should surface the provider's auth failure, not a generic server error");
 
         _output.WriteLine($"Invalid key correctly handled: {response.StatusCode}");
 

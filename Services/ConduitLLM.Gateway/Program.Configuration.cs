@@ -12,6 +12,11 @@ public partial class Program
 
         builder.Services.ConfigureHttpJsonOptions(options =>
             GatewayJsonOptions.Configure(options.SerializerOptions));
+
+        // Surface request-binding failures as BadHttpRequestException so OpenAIErrorMiddleware can
+        // answer with the OpenAI error envelope. Without this, a malformed or incomplete body returns
+        // a bare 400 with an empty body, which is not a valid OpenAI-compatible error response (#1191).
+        builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
         builder.Services.AddSingleton(services =>
             services
                 .GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>()

@@ -4,6 +4,7 @@ using ConduitLLM.Core.Exceptions;
 
 using FluentAssertions;
 
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Tests.Core.Exceptions;
@@ -435,6 +436,82 @@ public class ExceptionToResponseMapperTests
         result.LogPrefix.Should().Be("Configuration error");
         result.IncludeExceptionMessageInLog.Should().BeFalse();
         result.OpenAIErrorType.Should().Be("server_error");
+    }
+
+    [Fact]
+    public void Map_ValidationException_Returns400WithValidationError()
+    {
+        // Arrange
+        var exception = new ValidationException("messages collection cannot be null or empty");
+
+        // Act
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        // Assert
+        result.StatusCode.Should().Be(400);
+        result.ErrorCode.Should().Be("validation_error");
+        result.ResponseMessage.Should().Be("messages collection cannot be null or empty");
+        result.LogLevel.Should().Be(LogLevel.Warning);
+        result.LogPrefix.Should().Be("Validation error");
+        result.IncludeExceptionMessageInLog.Should().BeTrue();
+        result.OpenAIErrorType.Should().Be("invalid_request_error");
+    }
+
+    [Fact]
+    public void Map_ModelUnavailableException_Returns404WithModelNotFound()
+    {
+        // Arrange
+        var exception = new ModelUnavailableException("Model 'llama-4' not found for provider Groq");
+
+        // Act
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        // Assert
+        result.StatusCode.Should().Be(404);
+        result.ErrorCode.Should().Be("model_not_found");
+        result.ResponseMessage.Should().Contain("llama-4");
+        result.LogLevel.Should().Be(LogLevel.Warning);
+        result.LogPrefix.Should().Be("Model unavailable");
+        result.IncludeExceptionMessageInLog.Should().BeTrue();
+        result.OpenAIErrorType.Should().Be("invalid_request_error");
+        result.Param.Should().Be("model");
+    }
+
+    #endregion
+
+    #region Framework Binding Exception Tests
+
+    [Fact]
+    public void Map_BadHttpRequestException_Returns400WithRedactedMessage()
+    {
+        // Minimal-API model binding raises this when the body is malformed or missing a
+        // required member. The framework message names internal types, so it is not echoed.
+        var exception = new BadHttpRequestException(
+            "JSON deserialization for type 'ConduitLLM.Core.Models.ChatCompletionRequest' was missing required properties, including: messages.");
+
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        result.StatusCode.Should().Be(400);
+        result.ErrorCode.Should().Be("invalid_request_body");
+        result.ResponseMessage.Should().Be("The request body could not be read");
+        result.ResponseMessage.Should().NotContain("ConduitLLM.Core.Models");
+        result.LogLevel.Should().Be(LogLevel.Warning);
+        result.LogPrefix.Should().Be("Malformed request");
+        result.IncludeExceptionMessageInLog.Should().BeFalse();
+        result.OpenAIErrorType.Should().Be("invalid_request_error");
+    }
+
+    [Fact]
+    public void Map_BadHttpRequestException_PreservesNon400StatusCode()
+    {
+        // A request body over the configured size limit surfaces as 413, not 400.
+        var exception = new BadHttpRequestException("Request body too large.", StatusCodes.Status413PayloadTooLarge);
+
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        result.StatusCode.Should().Be(413);
+        result.ErrorCode.Should().Be("invalid_request_body");
+        result.OpenAIErrorType.Should().Be("invalid_request_error");
     }
 
     #endregion

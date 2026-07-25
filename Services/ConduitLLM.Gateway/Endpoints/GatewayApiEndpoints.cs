@@ -101,7 +101,7 @@ public static class GatewayApiEndpoints
         app.MapPost("/v1/embeddings", ([FromServices] EmbeddingsEndpoints endpoints, EmbeddingRequest request, CancellationToken cancellationToken) => endpoints.CreateEmbedding(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<RequireBalanceEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Embeddings").WithName("Embeddings_Create")
-            .Produces<EmbeddingResponse>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(500);
+            .Produces<EmbeddingResponse>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(404).Produces<OpenAIErrorResponse>(500);
 
         var audio = app.MapGroup("/v1/audio")
             .RequireAuthorization("VirtualKeyAuthentication")
@@ -189,6 +189,7 @@ public static class GatewayApiEndpoints
             .WithTags("Chat").WithName("Chat_CreateCompletion")
             .Produces<ChatCompletionResponse>(200, "application/json")
             .Produces<OpenAIErrorResponse>(400)
+            .Produces<OpenAIErrorResponse>(404)
             .Produces<OpenAIErrorResponse>(500);
 
         app.MapPost("/v1/responses", ([FromServices] ResponsesEndpoints endpoints, CreateResponseRequest request, CancellationToken cancellationToken) => endpoints.CreateResponse(request, cancellationToken))
@@ -202,6 +203,7 @@ public static class GatewayApiEndpoints
             .Produces<OpenAIErrorResponse>(401)
             .Produces<OpenAIErrorResponse>(402)
             .Produces<OpenAIErrorResponse>(403)
+            .Produces<OpenAIErrorResponse>(404)
             .Produces<OpenAIErrorResponse>(429)
             .Produces<OpenAIErrorResponse>(500);
 

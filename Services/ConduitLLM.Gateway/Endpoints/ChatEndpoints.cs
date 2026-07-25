@@ -160,11 +160,13 @@ namespace ConduitLLM.Gateway.Endpoints
             }
             catch (Exception ex)
             {
+                // Observe, then rethrow — OpenAIErrorMiddleware maps exceptions to proper HTTP responses
+                // via ExceptionToResponseMapper. Returning a 500 here instead turned model-routing client
+                // errors (unknown alias, disabled mapping/provider) into 500s and leaked ex.Message (#1191).
                 activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
                 activity?.SetTag("error.type", ex.GetType().Name);
-                _logger.LogError(ex, "Error processing request");
                 GatewayOpsMetrics.RecordLlmOperation("chat_completion", request.Model, "error", operationStopwatch.Elapsed.TotalSeconds);
-                return OpenAIError(500, ex.Message, "internal_error", "server_error");
+                throw;
             }
         }
 

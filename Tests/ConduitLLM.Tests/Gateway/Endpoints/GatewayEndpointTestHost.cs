@@ -2,10 +2,12 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Middleware;
 using ConduitLLM.Gateway.Endpoints;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -36,6 +38,9 @@ internal sealed class GatewayEndpointTestHost : IAsyncDisposable
                 {
                     services.AddLogging();
                     services.AddRouting();
+                    // Mirrors Program.Configuration.cs so binding failures surface as
+                    // BadHttpRequestException and get the OpenAI error envelope.
+                    services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
                     services.AddGatewayEndpointHandlers();
                     services.AddSingleton(Mock.Of<IMediaStorageService>());
                     services.AddSingleton(Mock.Of<IMediaRecordRepository>());
@@ -61,6 +66,9 @@ internal sealed class GatewayEndpointTestHost : IAsyncDisposable
                     app.UseRouting();
                     app.UseAuthentication();
                     app.UseAuthorization();
+                    // Mirrors Program.Middleware.cs: the error middleware sits below auth and above
+                    // the endpoints, so endpoint exceptions map to OpenAI-shaped error responses.
+                    app.UseOpenAIErrorHandling();
                     app.UseEndpoints(endpoints => endpoints.MapGatewayApiEndpoints());
                 });
             })

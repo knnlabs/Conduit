@@ -1849,6 +1849,17 @@ export interface operations {
           "application/json": components["schemas"]["OpenAIErrorResponse"];
         };
       };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
       /** @description The request timed out. */
       408: {
         headers: {
@@ -1959,6 +1970,17 @@ export interface operations {
       };
       /** @description The authenticated key is not authorized for this operation. */
       403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -2089,6 +2111,17 @@ export interface operations {
       };
       /** @description Forbidden */
       403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["OpenAIErrorResponse"];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
