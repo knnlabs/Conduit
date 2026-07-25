@@ -26,7 +26,11 @@ public sealed record ConcurrencyDecision(
     long Limit,
     long InFlight,
     ConcurrencySlot? Slot,
-    string Scope = "concurrency");
+    string Scope = "concurrency")
+{
+    /// <summary>True when the verdict is a guess because the store could not be reached.</summary>
+    public bool Degraded { get; init; }
+}
 
 public interface IConcurrencyRateLimitService
 {
@@ -143,7 +147,10 @@ public sealed class ConcurrencyRateLimitService : IConcurrencyRateLimitService
                 {
                     GroupKey = hasKeyLimit ? groupKey : null
                 },
-            tightest?.Scope ?? ScopeName);
+            tightest?.Scope ?? ScopeName)
+        {
+            Degraded = result.Degraded
+        };
     }
 
     public async Task ReleaseAsync(ConcurrencySlot slot)

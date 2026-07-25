@@ -18,6 +18,7 @@ namespace ConduitLLM.Tests.Http.Middleware
     {
         private readonly Mock<IVirtualKeyRateLimitService> _mockService = new();
         private readonly Mock<IConcurrencyRateLimitService> _mockConcurrency = new();
+        private readonly Mock<IRateLimitFailurePolicy> _mockFailurePolicy = new();
         private readonly RateLimitOptions _options = new();
         private bool _nextCalled;
 
@@ -27,6 +28,7 @@ namespace ConduitLLM.Tests.Http.Middleware
                 next: _ => { _nextCalled = true; return Task.CompletedTask; },
                 rateLimitService: _mockService.Object,
                 concurrencyService: _mockConcurrency.Object,
+                failurePolicy: _mockFailurePolicy.Object,
                 options: _options,
                 logger: NullLogger<VirtualKeyRateLimitMiddleware>.Instance);
         }
@@ -37,6 +39,7 @@ namespace ConduitLLM.Tests.Http.Middleware
                 next: next,
                 rateLimitService: _mockService.Object,
                 concurrencyService: _mockConcurrency.Object,
+                failurePolicy: _mockFailurePolicy.Object,
                 options: _options,
                 logger: NullLogger<VirtualKeyRateLimitMiddleware>.Instance);
         }

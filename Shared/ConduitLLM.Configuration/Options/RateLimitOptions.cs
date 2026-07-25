@@ -3,6 +3,21 @@ using System.ComponentModel.DataAnnotations;
 namespace ConduitLLM.Configuration.Options
 {
     /// <summary>
+    /// What to do with a request whose rate limit could not be evaluated.
+    /// </summary>
+    public enum RateLimitFailureMode
+    {
+        /// <summary>Admit it. Rate limiting is defence-in-depth; a cache outage should not take the data plane with it.</summary>
+        Open = 0,
+
+        /// <summary>
+        /// Reject it. For deployments where a limit is a hard commercial or safety boundary,
+        /// unverifiable is not the same as permitted.
+        /// </summary>
+        Closed = 1
+    }
+
+    /// <summary>
     /// Deployment-wide knobs for rate-limit enforcement. Per-key ceilings live on the
     /// VirtualKey entity; these govern how those ceilings are applied.
     /// </summary>
@@ -56,5 +71,26 @@ namespace ConduitLLM.Configuration.Options
         /// </remarks>
         [Range(1, 300)]
         public int ConcurrencyRetryAfterSeconds { get; set; } = 1;
+
+        /// <summary>
+        /// What happens to a request whose limits cannot be evaluated. Defaults to admitting it.
+        /// </summary>
+        /// <remarks>
+        /// Set by <c>CONDUIT_RATE_LIMIT_FAILURE_MODE=open|closed</c>. Fail-closed is an explicit
+        /// opt-in because it converts a cache outage into a data-plane outage for every key that
+        /// has a limit configured — keys with none never take a Redis round-trip and are
+        /// therefore unaffected either way.
+        /// </remarks>
+        public RateLimitFailureMode FailureMode { get; set; } = RateLimitFailureMode.Open;
+
+        /// <summary>
+        /// How long a single observed failure is treated as an ongoing degradation.
+        /// </summary>
+        /// <remarks>
+        /// Debouncing keeps a flapping store from producing a warning per request, and keeps the
+        /// reported degraded state stable enough to alert on.
+        /// </remarks>
+        [Range(1, 3600)]
+        public int FailureDebounceSeconds { get; set; } = 10;
     }
 }

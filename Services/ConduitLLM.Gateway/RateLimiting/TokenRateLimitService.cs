@@ -30,7 +30,11 @@ public sealed record TokenRateLimitDecision(
     string Scope,
     long Limit,
     DateTime ResetsAt,
-    long Remaining);
+    long Remaining)
+{
+    /// <summary>True when the verdict is a guess because the store could not be reached.</summary>
+    public bool Degraded { get; init; }
+}
 
 public interface ITokenRateLimitService
 {
@@ -185,7 +189,10 @@ public sealed class TokenRateLimitService : ITokenRateLimitService
             Scope: tightest?.Scope ?? ScopeName,
             Limit: tightest?.Limit ?? 0,
             ResetsAt: tightest?.ResetsAt ?? DateTime.UtcNow.AddMinutes(1),
-            Remaining: tightest?.Remaining ?? 0);
+            Remaining: tightest?.Remaining ?? 0)
+        {
+            Degraded = result.Degraded
+        };
     }
 
     public async Task ReconcileAsync(HttpContext context, long actualTokens)

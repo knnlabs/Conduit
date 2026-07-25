@@ -16,7 +16,9 @@ public static class RateLimitingServicesExtensions
     public static IServiceCollection AddConduitRateLimiting(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<RateLimitOptions>(configuration.GetSection(RateLimitOptions.SectionName));
+        services.PostConfigure<RateLimitOptions>(ApplyFailureModeEnvironmentOverride);
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<RateLimitOptions>>().Value);
+        services.AddSingleton<IRateLimitFailurePolicy, RateLimitFailurePolicy>();
 
         services.AddSingleton<RequestTokenEstimator>();
         services.AddSingleton<TokenRateLimitFilter>();
@@ -42,5 +44,27 @@ public static class RateLimitingServicesExtensions
         services.AddSingleton<IConcurrencyRateLimitService, ConcurrencyRateLimitService>();
 
         return services;
+    }
+
+    /// <summary>
+    /// Honours CONDUIT_RATE_LIMIT_FAILURE_MODE, the documented name for this switch.
+    /// </summary>
+    /// <remarks>
+    /// An unrecognised value keeps the default rather than failing boot: a typo in an
+    /// operational switch should not stop the gateway starting, but it must not silently be
+    /// read as the stricter setting either.
+    /// </remarks>
+    private static void ApplyFailureModeEnvironmentOverride(RateLimitOptions options)
+    {
+        var configured = Environment.GetEnvironmentVariable("CONDUIT_RATE_LIMIT_FAILURE_MODE");
+        if (string.IsNullOrWhiteSpace(configured))
+        {
+            return;
+        }
+
+        if (Enum.TryParse<RateLimitFailureMode>(configured.Trim(), ignoreCase: true, out var mode))
+        {
+            options.FailureMode = mode;
+        }
     }
 }

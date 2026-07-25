@@ -39,6 +39,7 @@ namespace ConduitLLM.Gateway.Middleware
         private readonly RequestDelegate _next;
         private readonly IVirtualKeyRateLimitService _rateLimitService;
         private readonly IConcurrencyRateLimitService _concurrencyService;
+        private readonly IRateLimitFailurePolicy _failurePolicy;
         private readonly RateLimitOptions _options;
         private readonly ILogger<VirtualKeyRateLimitMiddleware> _logger;
 
@@ -46,12 +47,14 @@ namespace ConduitLLM.Gateway.Middleware
             RequestDelegate next,
             IVirtualKeyRateLimitService rateLimitService,
             IConcurrencyRateLimitService concurrencyService,
+            IRateLimitFailurePolicy failurePolicy,
             RateLimitOptions options,
             ILogger<VirtualKeyRateLimitMiddleware> logger)
         {
             _next = next;
             _rateLimitService = rateLimitService;
             _concurrencyService = concurrencyService;
+            _failurePolicy = failurePolicy;
             _options = options;
             _logger = logger;
         }
@@ -106,11 +109,25 @@ namespace ConduitLLM.Gateway.Middleware
                 }
                 catch (Exception ex)
                 {
-                    // Fail open: rate limiting is defense-in-depth; never tank the request path.
-                    _logger.LogWarning(ex, "Rate limit check failed for virtual key {KeyHashPrefix}; allowing request",
+                    _logger.LogDebug(ex, "Rate limit check threw for virtual key {KeyHashPrefix}",
                         SafeKeyPrefix(keyHash));
-                    GatewayRateLimitMetrics.RecordError();
+
+                    if (_failurePolicy.ShouldReject("request-limits", ex.Message))
+                    {
+                        await WriteDegradedResponseAsync(context, "request-limits");
+                        return;
+                    }
+
                     await _next(context);
+                    return;
+                }
+
+                // The store answered but could not be trusted; the configured policy decides.
+                if (result.Degraded && _failurePolicy.ShouldReject(
+                        string.IsNullOrEmpty(result.LimitType) ? "request-limits" : result.LimitType,
+                        "the rate limit store was unreachable"))
+                {
+                    await WriteDegradedResponseAsync(context, "request-limits");
                     return;
                 }
 
@@ -142,10 +159,23 @@ namespace ConduitLLM.Gateway.Middleware
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Concurrency check failed for virtual key {KeyHashPrefix}; allowing request",
+                _logger.LogDebug(ex, "Concurrency check threw for virtual key {KeyHashPrefix}",
                     SafeKeyPrefix(keyHash));
-                GatewayRateLimitMetrics.RecordError();
+
+                if (_failurePolicy.ShouldReject(ConcurrencyRateLimitService.ScopeName, ex.Message))
+                {
+                    await WriteDegradedResponseAsync(context, ConcurrencyRateLimitService.ScopeName);
+                    return;
+                }
+
                 await _next(context);
+                return;
+            }
+
+            if (decision is { Degraded: true } &&
+                _failurePolicy.ShouldReject(decision.Scope, "the rate limit store was unreachable"))
+            {
+                await WriteDegradedResponseAsync(context, decision.Scope);
                 return;
             }
 
@@ -210,6 +240,34 @@ namespace ConduitLLM.Gateway.Middleware
             // Headers are informational — set on both allow and deny so clients can pace themselves.
             RateLimitResponse.SetHeaders(
                 context, result.Limit, result.RequestsRemaining, result.ResetsAt, result.LimitType);
+        }
+
+        /// <summary>
+        /// Refuses a request whose limits could not be evaluated, under a fail-closed policy.
+        /// </summary>
+        /// <remarks>
+        /// 503 rather than 429: the caller has not exceeded anything, the gateway simply cannot
+        /// tell. Conflating the two would have clients back off against a quota they may be
+        /// nowhere near.
+        /// </remarks>
+        private static Task WriteDegradedResponseAsync(HttpContext context, string scope)
+        {
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            context.Response.Headers["Retry-After"] = "5";
+            context.Response.Headers["X-RateLimit-Scope"] = scope;
+            context.Response.ContentType = "application/json";
+
+            return System.Text.Json.JsonSerializer.SerializeAsync(
+                context.Response.Body,
+                new ConduitLLM.Core.Models.OpenAIErrorResponse
+                {
+                    Error = new ConduitLLM.Core.Models.OpenAIError
+                    {
+                        Message = "Rate limits cannot be verified right now and this deployment is configured to fail closed. Retry shortly.",
+                        Type = "service_unavailable",
+                        Code = "rate_limit_unavailable"
+                    }
+                });
         }
 
         private static Task WriteRateLimitedResponseAsync(HttpContext context, RateLimitCheckResult result)
