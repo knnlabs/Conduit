@@ -81,6 +81,11 @@ public class VirtualKeyDto
     public int? RateLimitTpm { get; set; }
 
     /// <summary>
+    /// Optional cap on the number of requests this key may have in flight at once.
+    /// </summary>
+    public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
     /// Optional description of the key's purpose
     /// </summary>
     public string? Description { get; set; }

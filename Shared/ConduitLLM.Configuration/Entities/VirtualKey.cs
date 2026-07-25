@@ -97,6 +97,16 @@ public partial class VirtualKey : IEntity<int>, IAuditableEntity
     public int? RateLimitTpm { get; set; }
 
     /// <summary>
+    /// Maximum number of requests this key may have in flight at once. Null means no cap.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from RPM: a key well inside its per-minute allowance can still hold hundreds of
+    /// simultaneous streaming connections open. The slot is held for the duration of the HTTP
+    /// request only — for asynchronous jobs that means the submit call, not the job.
+    /// </remarks>
+    public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
     /// Virtual collection of request logs
     /// </summary>
     public virtual ICollection<RequestLog>? RequestLogs { get; set; }

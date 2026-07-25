@@ -1,5 +1,7 @@
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.RateLimiting;
 
 using FluentAssertions;
 
@@ -15,6 +17,8 @@ namespace ConduitLLM.Tests.Http.Middleware
     public class VirtualKeyRateLimitMiddlewareTests
     {
         private readonly Mock<IVirtualKeyRateLimitService> _mockService = new();
+        private readonly Mock<IConcurrencyRateLimitService> _mockConcurrency = new();
+        private readonly RateLimitOptions _options = new();
         private bool _nextCalled;
 
         private VirtualKeyRateLimitMiddleware CreateMiddleware()
@@ -22,6 +26,18 @@ namespace ConduitLLM.Tests.Http.Middleware
             return new VirtualKeyRateLimitMiddleware(
                 next: _ => { _nextCalled = true; return Task.CompletedTask; },
                 rateLimitService: _mockService.Object,
+                concurrencyService: _mockConcurrency.Object,
+                options: _options,
+                logger: NullLogger<VirtualKeyRateLimitMiddleware>.Instance);
+        }
+
+        private VirtualKeyRateLimitMiddleware CreateMiddleware(RequestDelegate next)
+        {
+            return new VirtualKeyRateLimitMiddleware(
+                next: next,
+                rateLimitService: _mockService.Object,
+                concurrencyService: _mockConcurrency.Object,
+                options: _options,
                 logger: NullLogger<VirtualKeyRateLimitMiddleware>.Instance);
         }
 
@@ -222,6 +238,127 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             _nextCalled.Should().BeTrue();
             ctx.Response.StatusCode.Should().Be(StatusCodes.Status200OK);
+        }
+
+        [Fact]
+        public async Task Acquires_and_releases_a_concurrency_slot_around_the_request()
+        {
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.MaxParallelRequests"] = 4;
+
+            var slot = new ConcurrencySlot("rate:vk:hash-abc:concurrency", "slot-1");
+            _mockConcurrency.Setup(s => s.TryAcquireAsync(It.IsAny<HttpContext>()))
+                .ReturnsAsync(new ConcurrencyDecision(true, 4, 1, slot));
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            _nextCalled.Should().BeTrue();
+            _mockConcurrency.Verify(s => s.ReleaseAsync(slot), Times.Once);
+            _mockService.Verify(s => s.CheckRateLimitAsync(It.IsAny<string>(), It.IsAny<int?>(), It.IsAny<int?>()),
+                Times.Never, "a key with only a concurrency cap needs no window check");
+        }
+
+        [Fact]
+        public async Task Releases_the_concurrency_slot_when_the_pipeline_throws()
+        {
+            // A provider error or a client abort must not leak the slot for the whole TTL.
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.MaxParallelRequests"] = 4;
+
+            var slot = new ConcurrencySlot("rate:vk:hash-abc:concurrency", "slot-1");
+            _mockConcurrency.Setup(s => s.TryAcquireAsync(It.IsAny<HttpContext>()))
+                .ReturnsAsync(new ConcurrencyDecision(true, 4, 1, slot));
+
+            var middleware = CreateMiddleware(_ => throw new InvalidOperationException("upstream exploded"));
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => middleware.InvokeAsync(ctx));
+
+            _mockConcurrency.Verify(s => s.ReleaseAsync(slot), Times.Once);
+        }
+
+        [Fact]
+        public async Task Releases_the_concurrency_slot_when_the_client_aborts()
+        {
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.MaxParallelRequests"] = 4;
+
+            var slot = new ConcurrencySlot("rate:vk:hash-abc:concurrency", "slot-1");
+            _mockConcurrency.Setup(s => s.TryAcquireAsync(It.IsAny<HttpContext>()))
+                .ReturnsAsync(new ConcurrencyDecision(true, 4, 1, slot));
+
+            var middleware = CreateMiddleware(_ => throw new OperationCanceledException());
+
+            await Assert.ThrowsAsync<OperationCanceledException>(() => middleware.InvokeAsync(ctx));
+
+            _mockConcurrency.Verify(s => s.ReleaseAsync(slot), Times.Once);
+        }
+
+        [Fact]
+        public async Task Returns_429_with_concurrency_scope_when_the_cap_is_reached()
+        {
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.MaxParallelRequests"] = 4;
+
+            _mockConcurrency.Setup(s => s.TryAcquireAsync(It.IsAny<HttpContext>()))
+                .ReturnsAsync(new ConcurrencyDecision(false, 4, 4, null));
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            _nextCalled.Should().BeFalse();
+            ctx.Response.StatusCode.Should().Be(StatusCodes.Status429TooManyRequests);
+            ctx.Response.Headers["X-RateLimit-Scope"].ToString().Should().Be("concurrency");
+            ctx.Response.Headers["X-RateLimit-Limit"].ToString().Should().Be("4");
+            ctx.Response.Headers["X-RateLimit-Remaining"].ToString().Should().Be("0");
+
+            // Concurrency frees when some other request ends, which is unknowable — a short
+            // constant is advertised rather than a computed instant.
+            int.Parse(ctx.Response.Headers["Retry-After"].ToString())
+                .Should().Be(_options.ConcurrencyRetryAfterSeconds);
+            _mockConcurrency.Verify(s => s.ReleaseAsync(It.IsAny<ConcurrencySlot>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task Fails_open_when_the_concurrency_store_is_unavailable()
+        {
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.MaxParallelRequests"] = 1;
+
+            _mockConcurrency.Setup(s => s.TryAcquireAsync(It.IsAny<HttpContext>()))
+                .ThrowsAsync(new InvalidOperationException("redis is down"));
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            _nextCalled.Should().BeTrue();
+            ctx.Response.StatusCode.Should().Be(StatusCodes.Status200OK);
+        }
+
+        [Fact]
+        public async Task Checks_concurrency_only_after_the_request_windows_admit()
+        {
+            // A request already rejected for RPM must not take — and then have to release — a slot.
+            var ctx = NewContext();
+            ctx.Items["VirtualKey.KeyHash"] = "hash-abc";
+            ctx.Items["VirtualKey.RateLimitRpm"] = 10;
+            ctx.Items["VirtualKey.MaxParallelRequests"] = 4;
+
+            _mockService.Setup(s => s.CheckRateLimitAsync("hash-abc", 10, null))
+                .ReturnsAsync(new RateLimitCheckResult
+                {
+                    IsAllowed = false,
+                    Limit = 10,
+                    ResetsAt = DateTime.UtcNow.AddSeconds(5),
+                    LimitType = "RPM"
+                });
+
+            await CreateMiddleware().InvokeAsync(ctx);
+
+            ctx.Response.Headers["X-RateLimit-Scope"].ToString().Should().Be("RPM");
+            _mockConcurrency.Verify(s => s.TryAcquireAsync(It.IsAny<HttpContext>()), Times.Never);
         }
 
         [Fact]

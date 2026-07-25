@@ -31,6 +31,12 @@ public static class RedisKeys
         /// <summary>Weighted token-per-minute window; entry weights are token counts.</summary>
         public static string VirtualKeyTpm(string hash) => $"rate:vk:{hash}:tpm";
 
+        /// <summary>
+        /// In-flight request slots. Entries are released explicitly when a request finishes and
+        /// age out on their own if the node holding them dies.
+        /// </summary>
+        public static string VirtualKeyConcurrency(string hash) => $"rate:vk:{hash}:concurrency";
+
         public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
 
         /// <summary>

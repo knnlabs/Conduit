@@ -28,6 +28,7 @@ public static class RateLimitingServicesExtensions
         if (string.IsNullOrEmpty(redisConnectionString))
         {
             services.AddSingleton<ITokenRateLimitService, UnlimitedTokenRateLimitService>();
+            services.AddSingleton<IConcurrencyRateLimitService, UnlimitedConcurrencyRateLimitService>();
             return services;
         }
 
@@ -38,6 +39,7 @@ public static class RateLimitingServicesExtensions
             sp.GetRequiredService<ILogger<SlidingWindowRateLimiter>>()));
 
         services.AddSingleton<ITokenRateLimitService, TokenRateLimitService>();
+        services.AddSingleton<IConcurrencyRateLimitService, ConcurrencyRateLimitService>();
 
         return services;
     }

@@ -158,6 +158,7 @@ namespace ConduitLLM.Admin.Services
                 RateLimitRpm = virtualKey.RateLimitRpm,
                 RateLimitRpd = virtualKey.RateLimitRpd,
                 RateLimitTpm = virtualKey.RateLimitTpm,
+                MaxParallelRequests = virtualKey.MaxParallelRequests,
                 AllowedModels = VirtualKeyUtilities.ParseAllowedModels(virtualKey.AllowedModels)
             };
         }

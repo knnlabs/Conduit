@@ -4127,6 +4127,8 @@ export interface components {
       rateLimitRpd?: null | number;
       /** Format: int32 */
       rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
     };
     CreateVirtualKeyResponseDto: {
       virtualKey: string;
@@ -7551,6 +7553,8 @@ export interface components {
       rateLimitRpd?: null | number;
       /** Format: int32 */
       rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
     };
     UsageDto: {
       /** Format: int32 */
@@ -7686,6 +7690,8 @@ export interface components {
       rateLimitRpd?: null | number;
       /** Format: int32 */
       rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
       description?: null | string;
     };
     VirtualKeyGroupDto: {
@@ -7763,6 +7769,8 @@ export interface components {
       rateLimitRpd?: null | number;
       /** Format: int32 */
       rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
       allowedModels?: null | string[];
     };
     /** @description Virtual key usage summary */
@@ -7808,6 +7816,8 @@ export interface components {
       rateLimitRpd?: null | number;
       /** Format: int32 */
       rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
     };
     VirtualKeyValidationResult: {
       isValid?: boolean;

@@ -90,6 +90,7 @@ namespace ConduitLLM.Core.Services
                 RateLimitRpm = request.RateLimitRpm,
                 RateLimitRpd = request.RateLimitRpd,
                 RateLimitTpm = request.RateLimitTpm,
+                MaxParallelRequests = request.MaxParallelRequests,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -231,6 +232,12 @@ namespace ConduitLLM.Core.Services
             {
                 key.RateLimitTpm = request.RateLimitTpm;
                 changedProperties.Add(nameof(key.RateLimitTpm));
+            }
+
+            if (request.MaxParallelRequests.HasValue && key.MaxParallelRequests != request.MaxParallelRequests)
+            {
+                key.MaxParallelRequests = request.MaxParallelRequests;
+                changedProperties.Add(nameof(key.MaxParallelRequests));
             }
 
             if (!changedProperties.Any())

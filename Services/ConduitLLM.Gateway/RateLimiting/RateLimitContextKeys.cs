@@ -13,6 +13,7 @@ public static class RateLimitContextKeys
     public const string Rpm = "VirtualKey.RateLimitRpm";
     public const string Rpd = "VirtualKey.RateLimitRpd";
     public const string Tpm = "VirtualKey.RateLimitTpm";
+    public const string MaxParallelRequests = "VirtualKey.MaxParallelRequests";
 
     /// <summary>The in-flight token reservation, if this request made one.</summary>
     public const string TokenReservation = "RateLimit.TokenReservation";

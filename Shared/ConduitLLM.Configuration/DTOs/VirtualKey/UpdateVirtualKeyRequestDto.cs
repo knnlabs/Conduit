@@ -34,4 +34,9 @@ public class UpdateVirtualKeyRequestDto
     /// Optional tokens-per-minute ceiling. Null leaves the existing value untouched.
     /// </summary>
     public int? RateLimitTpm { get; set; }
+
+    /// <summary>
+    /// Optional cap on requests in flight at once. Null leaves the existing value untouched.
+    /// </summary>
+    public int? MaxParallelRequests { get; set; }
 }

@@ -33,4 +33,9 @@ public class CreateVirtualKeyRequestDto
     /// Optional tokens-per-minute ceiling. Null leaves the key without a token limit.
     /// </summary>
     public int? RateLimitTpm { get; set; }
+
+    /// <summary>
+    /// Optional cap on requests in flight at once. Null leaves the key without a cap.
+    /// </summary>
+    public int? MaxParallelRequests { get; set; }
 }

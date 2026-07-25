@@ -32,5 +32,29 @@ namespace ConduitLLM.Configuration.Options
         /// </summary>
         [Range(1, 10_000_000)]
         public int MaxCompletionTokenReservation { get; set; } = 32_768;
+
+        /// <summary>
+        /// How long a concurrency slot survives without being released.
+        /// </summary>
+        /// <remarks>
+        /// Slots are normally returned the moment a request ends. This bound exists for the
+        /// cases where that cannot happen — a killed pod, a severed connection — so a leaked
+        /// slot frees itself instead of permanently shrinking the key's capacity. It must
+        /// therefore exceed the longest legitimate request: streaming responses can run for
+        /// minutes, and a slot that expires underneath a live request would let the key exceed
+        /// its ceiling.
+        /// </remarks>
+        [Range(30, 86_400)]
+        public int ConcurrencySlotTtlSeconds { get; set; } = 900;
+
+        /// <summary>
+        /// Retry-After advertised when a request is turned away at the concurrency ceiling.
+        /// </summary>
+        /// <remarks>
+        /// Unlike a time window, concurrency frees up when some other request happens to
+        /// finish, which is unknowable in advance. A short constant is the honest answer.
+        /// </remarks>
+        [Range(1, 300)]
+        public int ConcurrencyRetryAfterSeconds { get; set; } = 1;
     }
 }

@@ -49,5 +49,10 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Rate limit in tokens per minute
         /// </summary>
         public int? RateLimitTpm { get; set; }
+
+        /// <summary>
+        /// Cap on concurrent in-flight requests
+        /// </summary>
+        public int? MaxParallelRequests { get; set; }
     }
 }

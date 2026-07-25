@@ -26622,6 +26622,13 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "maxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -34541,6 +34548,13 @@
               "integer"
             ],
             "format": "int32"
+          },
+          "maxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
           }
         }
       },
@@ -34940,6 +34954,13 @@
             ],
             "format": "int32"
           },
+          "maxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "description": {
             "type": [
               "null",
@@ -35159,6 +35180,13 @@
             ],
             "format": "int32"
           },
+          "maxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
           "allowedModels": {
             "type": [
               "null",
@@ -35258,6 +35286,13 @@
             "format": "int32"
           },
           "rateLimitTpm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxParallelRequests": {
             "type": [
               "null",
               "integer"

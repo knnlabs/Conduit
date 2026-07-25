@@ -102,6 +102,7 @@ namespace ConduitLLM.Configuration.Utilities
                 RateLimitRpm = virtualKey.RateLimitRpm,
                 RateLimitRpd = virtualKey.RateLimitRpd,
                 RateLimitTpm = virtualKey.RateLimitTpm,
+                MaxParallelRequests = virtualKey.MaxParallelRequests,
                 Description = virtualKey.Description,
             };
         }

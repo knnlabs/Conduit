@@ -150,6 +150,7 @@ namespace ConduitLLM.Gateway.Authentication
                 Context.Items["VirtualKey.RateLimitRpm"] = keyEntity.RateLimitRpm;
                 Context.Items["VirtualKey.RateLimitRpd"] = keyEntity.RateLimitRpd;
                 Context.Items["VirtualKey.RateLimitTpm"] = keyEntity.RateLimitTpm;
+                Context.Items["VirtualKey.MaxParallelRequests"] = keyEntity.MaxParallelRequests;
 
                 // Store ephemeral key status for logging/auditing
                 if (isEphemeralKey)
