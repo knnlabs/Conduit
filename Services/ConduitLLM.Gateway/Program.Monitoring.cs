@@ -85,9 +85,6 @@ public partial class Program
         // Unlike leader election, ALL instances warm their pools, but in a staggered manner
         builder.Services.AddCoordinatedConnectionPoolWarming(builder.Configuration, "CoreAPI");
 
-        // Add cache statistics registration service
-        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.CacheStatisticsRegistrationService>();
-
         // Add business metrics service for Prometheus/Grafana dashboards
         // Uses leader election to avoid duplicate metrics collection in scaled-out deployments
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.BusinessMetricsService>(

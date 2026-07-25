@@ -132,24 +132,6 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        private long EstimateObjectSize(object obj)
-        {
-            // This is a simplified estimation
-            // In production, consider using a more accurate serialization-based approach
-            try
-            {
-                if (obj == null) return 0;
-                
-                var json = System.Text.Json.JsonSerializer.Serialize(obj);
-                return System.Text.Encoding.UTF8.GetByteCount(json);
-            }
-            catch
-            {
-                // Fallback to rough estimation
-                return 1024; // 1KB default
-            }
-        }
-
     }
 
     /// <summary>
