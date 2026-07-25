@@ -30,6 +30,20 @@ update the stale threshold in `grafana/provisioning/alerting/billing-alerting-ru
 - `Model Cost Canary Failed` fires when an active mapping has no usable cost, invalid pricing JSON,
   an expired/inactive cost, a calculation error, or a non-positive result.
 - `Model Cost Canary Stale` fires when the canary is absent or has not completed for 15 minutes.
+- `Token Counting Degraded to Character Heuristic` fires when any token estimate falls back to the
+  chars/4 heuristic (`conduit_token_count_estimates_total{fidelity="character_heuristic"}`). That
+  only happens when tokenizer vocabulary data cannot be loaded, which means spend reservations and
+  streaming-fallback billing are running on estimates that under-count by 20-40%. Larger safety
+  buffers are applied automatically on this tier, but the underlying cause — look for
+  `Failed to load encoding` in Gateway/Admin logs — should be fixed promptly.
+
+## Token-count fidelity metric
+
+`conduit_token_count_estimates_total{fidelity=...}` counts every token estimate by how it was
+produced: `exact` (the model's own vocabulary), `approximate_vocabulary` (a documented tiktoken
+stand-in, normal for non-OpenAI models), or `character_heuristic` (vocabulary unavailable — the
+alarm condition above). The exact-to-approximate ratio is expected to reflect your provider mix;
+`character_heuristic` is expected to be permanently zero.
 
 ## Response
 

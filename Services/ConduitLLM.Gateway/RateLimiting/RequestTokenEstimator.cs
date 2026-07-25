@@ -86,7 +86,9 @@ public sealed class RequestTokenEstimator
 
     private async Task<TokenEstimate> EstimateChatAsync(ChatCompletionRequest chat)
     {
-        var prompt = await _tokenCounter.EstimateTokenCountAsync(chat.Model, chat.Messages);
+        // Rate-limit windows are estimate-then-reconcile, so the raw count is used without a
+        // fidelity buffer: padding here would only throttle callers earlier than their limit.
+        var prompt = (await _tokenCounter.EstimateTokenCountAsync(chat.Model, chat.Messages)).Tokens;
 
         // max_completion_tokens supersedes the legacy max_tokens where both are present.
         var declared = chat.MaxCompletionTokens ?? chat.MaxTokens;
@@ -96,7 +98,7 @@ public sealed class RequestTokenEstimator
     private async Task<TokenEstimate> EstimateEmbeddingAsync(EmbeddingRequest embedding)
     {
         var text = FlattenEmbeddingInput(embedding.Input);
-        var prompt = await _tokenCounter.EstimateTokenCountAsync(embedding.Model, text);
+        var prompt = (await _tokenCounter.EstimateTokenCountAsync(embedding.Model, text)).Tokens;
 
         // Embeddings produce vectors, not tokens, so only the input counts.
         return new TokenEstimate(embedding.Model, prompt, 0);

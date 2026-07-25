@@ -2,6 +2,8 @@ apiVersion: 1
 
 deleteRules:
   - orgId: 1
+    uid: conduit-token-count-degraded
+  - orgId: 1
     uid: conduit-billing-revenue-loss
   - orgId: 1
     uid: conduit-billing-zero-cost
@@ -101,6 +103,50 @@ groups:
         annotations:
           summary: A request with positive usage was billed at zero
           description: "A zero-cost billing event occurred in the last five minutes. Check the model and reason labels and the billing audit log."
+          runbook_url: "https://github.com/nickna/Conduit/blob/main/docs/billing-alerting.md"
+        labels: { severity: warning, service: conduit-billing }
+
+      - uid: conduit-token-count-degraded
+        title: Token Counting Degraded to Character Heuristic
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(conduit_token_count_estimates_total{fidelity="character_heuristic"}[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Token counts are falling back to the chars/4 heuristic
+          description: "Tokenizer vocabulary data is unavailable, so spend reservations and fallback billing are running on character-based estimates. Check Gateway logs for 'Failed to load encoding'."
           runbook_url: "https://github.com/nickna/Conduit/blob/main/docs/billing-alerting.md"
         labels: { severity: warning, service: conduit-billing }
 

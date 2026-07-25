@@ -98,8 +98,9 @@ namespace ConduitLLM.Core.Services
                 return request; // Nothing to do if no limit or no messages
             }
 
-            // Get the current token count using the token counter
-            int currentTokens = await _tokenCounter.EstimateTokenCountAsync(request.Model, request.Messages);
+            // Get the current token count using the token counter. Context trimming compares
+            // against a hard window, so the count alone is enough; fidelity is not consulted.
+            int currentTokens = (await _tokenCounter.EstimateTokenCountAsync(request.Model, request.Messages)).Tokens;
 
             // Account for completion tokens if MaxTokens is specified in the request
             int reservedCompletionTokens = request.MaxTokens ?? 0;
@@ -171,7 +172,7 @@ namespace ConduitLLM.Core.Services
                 trimmedMessages.RemoveAt(indexToRemove);
 
                 // Re-estimate token count after removal
-                currentTokens = await _tokenCounter.EstimateTokenCountAsync(request.Model, trimmedMessages);
+                currentTokens = (await _tokenCounter.EstimateTokenCountAsync(request.Model, trimmedMessages)).Tokens;
             }
 
             // If we removed messages, create a new request with trimmed messages

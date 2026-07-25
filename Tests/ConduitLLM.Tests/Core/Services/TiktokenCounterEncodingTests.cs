@@ -51,7 +51,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             var count = await counter.EstimateTokenCountAsync($"model-{tokenizerType}", Messages);
 
-            Assert.True(count > 0, $"{tokenizerType} produced no tokens");
+            Assert.True(count.Tokens > 0, $"{tokenizerType} produced no tokens");
+            Assert.NotEqual(TokenCountFidelity.CharacterHeuristic, count.Fidelity);
             Assert.Equal(0, CountLogs(logger, LogLevel.Warning));
             Assert.Equal(0, CountLogs(logger, LogLevel.Error));
         }
@@ -67,7 +68,32 @@ namespace ConduitLLM.Tests.Core.Services
 
             // LLaMA3 has no Tiktoken equivalent and is documented as a cl100k_base approximation,
             // so the two must agree — a divergence would mean the approximation silently changed.
-            Assert.Equal(exact, approximate);
+            Assert.Equal(exact.Tokens, approximate.Tokens);
+
+            // Same number, different trust: the stand-in vocabulary must be labeled as such (#1233).
+            Assert.Equal(TokenCountFidelity.Exact, exact.Fidelity);
+            Assert.Equal(TokenCountFidelity.ApproximateVocabulary, approximate.Fidelity);
+        }
+
+        [Theory]
+        [InlineData("Cl100KBase", TokenCountFidelity.Exact)]
+        [InlineData("P50KBase", TokenCountFidelity.Exact)]
+        [InlineData("P50KEdit", TokenCountFidelity.Exact)]
+        [InlineData("R50KBase", TokenCountFidelity.Exact)]
+        [InlineData("O200KBase", TokenCountFidelity.Exact)]
+        [InlineData("Claude3", TokenCountFidelity.ApproximateVocabulary)]
+        [InlineData("Gemini", TokenCountFidelity.ApproximateVocabulary)]
+        [InlineData("LLaMA3", TokenCountFidelity.ApproximateVocabulary)]
+        [InlineData("O200KHarmony", TokenCountFidelity.ApproximateVocabulary)]
+        [InlineData("None", TokenCountFidelity.ApproximateVocabulary)]
+        public async Task EstimateTokenCountAsync_ReportsFidelityMatchingTheResolutionTier(
+            string tokenizerType, TokenCountFidelity expected)
+        {
+            var (counter, _) = CreateCounter(tokenizerType);
+
+            var count = await counter.EstimateTokenCountAsync($"model-{tokenizerType}", Messages);
+
+            Assert.Equal(expected, count.Fidelity);
         }
 
         [Fact]
@@ -81,7 +107,8 @@ namespace ConduitLLM.Tests.Core.Services
             for (var i = 0; i < 25; i++)
             {
                 var count = await counter.EstimateTokenCountAsync("model-unknown", Messages);
-                Assert.True(count > 0);
+                Assert.True(count.Tokens > 0);
+                Assert.Equal(TokenCountFidelity.ApproximateVocabulary, count.Fidelity);
             }
 
             // Before #1051 the failed resolution was cached under the *resolved* name while the
