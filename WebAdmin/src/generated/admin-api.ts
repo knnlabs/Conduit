@@ -1787,6 +1787,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/admin/virtual-keys/{id}/rate-limit-usage": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["VirtualKeys_GetRateLimitUsage"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/admin/virtual-keys/usage/by-key/{key}": {
     parameters: {
       query?: never;
@@ -7769,6 +7785,45 @@ export interface components {
       initiatedByUserId?: null | string;
       /** Format: date-time */
       createdAt: string;
+    };
+    VirtualKeyRateLimitUsageDto: {
+      /** Format: int32 */
+      virtualKeyId?: number;
+      /** Format: int32 */
+      requestsThisMinute?: number;
+      /** Format: int32 */
+      requestsToday?: number;
+      /** Format: int64 */
+      tokensThisMinute?: number;
+      /** Format: int32 */
+      requestsInFlight?: number;
+      /** Format: int32 */
+      rateLimitRpm?: null | number;
+      /** Format: int32 */
+      rateLimitRpd?: null | number;
+      /** Format: int32 */
+      rateLimitTpm?: null | number;
+      /** Format: int32 */
+      maxParallelRequests?: null | number;
+      /** Format: int32 */
+      virtualKeyGroupId?: null | number;
+      /** Format: int32 */
+      groupRequestsThisMinute?: null | number;
+      /** Format: int32 */
+      groupRequestsToday?: null | number;
+      /** Format: int64 */
+      groupTokensThisMinute?: null | number;
+      /** Format: int32 */
+      groupRequestsInFlight?: null | number;
+      /** Format: int32 */
+      groupRateLimitRpm?: null | number;
+      /** Format: int32 */
+      groupRateLimitRpd?: null | number;
+      /** Format: int32 */
+      groupRateLimitTpm?: null | number;
+      /** Format: int32 */
+      groupMaxParallelRequests?: null | number;
+      unavailable?: boolean;
     };
     VirtualKeyUsageDto: {
       /** Format: int32 */
@@ -15744,6 +15799,54 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["VirtualKeyGroupDto"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
+  VirtualKeys_GetRateLimitUsage: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Strong validator for conditional resource mutations. */
+          ETag: string;
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["VirtualKeyRateLimitUsageDto"];
         };
       };
       /** @description Not Found */

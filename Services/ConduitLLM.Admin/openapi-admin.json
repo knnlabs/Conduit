@@ -14445,6 +14445,93 @@
         ]
       }
     },
+    "/v1/admin/virtual-keys/{id}/rate-limit-usage": {
+      "get": {
+        "tags": [
+          "Virtual Keys"
+        ],
+        "operationId": "VirtualKeys_GetRateLimitUsage",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for conditional resource mutations.",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualKeyRateLimitUsageDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "MasterKey": [ ]
+          }
+        ]
+      }
+    },
     "/v1/admin/virtual-keys/usage/by-key/{key}": {
       "get": {
         "tags": [
@@ -35212,6 +35299,125 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "VirtualKeyRateLimitUsageDto": {
+        "type": "object",
+        "properties": {
+          "virtualKeyId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "requestsThisMinute": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "requestsToday": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tokensThisMinute": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "requestsInFlight": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rateLimitRpm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rateLimitRpd": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "rateLimitTpm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "maxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "virtualKeyGroupId": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "groupRequestsThisMinute": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "groupRequestsToday": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "groupTokensThisMinute": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int64"
+          },
+          "groupRequestsInFlight": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "groupRateLimitRpm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "groupRateLimitRpd": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "groupRateLimitTpm": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "groupMaxParallelRequests": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "unavailable": {
+            "type": "boolean"
           }
         }
       },

@@ -304,17 +304,57 @@ namespace ConduitLLM.Tests.Core.Services
             
             // Make some requests to populate data
             await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(10, 100));
-            await _rateLimitService.UpdateRateLimitsAsync(virtualKeyHash, 10, 100);
-            
+
+            var before = await _rateLimitService.GetUsageAsync(virtualKeyHash);
+            Assert.Equal(1, before.RequestsThisMinute);
+
             // Act
             await _rateLimitService.RemoveRateLimitsAsync(virtualKeyHash);
-            
+
             // Verify data is removed
             var usage = await _rateLimitService.GetUsageAsync(virtualKeyHash);
 
             // Assert
             Assert.Equal(0, usage.RequestsThisMinute);
             Assert.Equal(0, usage.RequestsToday);
+            Assert.Equal(0, usage.TokensThisMinute);
+            Assert.Equal(0, usage.RequestsInFlight);
+        }
+
+        [SkippableFact]
+        public async Task GetUsageAsync_ReportsEveryWindowThatGovernsTheKey()
+        {
+            SkipIfRedisNotAvailable();
+
+            var virtualKeyHash = _testKeyPrefix + "usage-all-windows";
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var limiter = new SlidingWindowRateLimiter(_redis, _mockLogger.Object);
+
+            // Two requests, 1,500 tokens reserved, one slot held.
+            await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(10, 100));
+            await _rateLimitService.CheckRateLimitAsync(virtualKeyHash, new RequestRateLimits(10, 100));
+            await limiter.CheckAsync(
+                new[]
+                {
+                    new RateLimitWindow(
+                        RedisKeys.RateLimit.VirtualKeyTpm(virtualKeyHash), "TPM", 60_000, 100_000, 1_500, UnitWeight: false)
+                },
+                now);
+            await limiter.CheckAsync(
+                new[] { new RateLimitWindow(RedisKeys.RateLimit.VirtualKeyConcurrency(virtualKeyHash), "concurrency", 900_000, 5) },
+                now);
+
+            var usage = await _rateLimitService.GetUsageAsync(virtualKeyHash);
+
+            Assert.Equal(2, usage.RequestsThisMinute);
+            Assert.Equal(2, usage.RequestsToday);
+            Assert.Equal(1_500, usage.TokensThisMinute);
+            Assert.Equal(1, usage.RequestsInFlight);
+
+            // A key in no group reports no group figures at all, rather than zeroes that would
+            // read as "the group is idle".
+            Assert.Null(usage.GroupRequestsThisMinute);
+            Assert.Null(usage.GroupTokensThisMinute);
         }
 
         public void Dispose()

@@ -14,7 +14,7 @@ namespace ConduitLLM.Admin.Endpoints;
 /// <summary>
 /// Controller for managing virtual keys
 /// </summary>
-public class VirtualKeysEndpoints : AdminEndpointHandlerBase
+public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
 {
     private readonly IAdminVirtualKeyService _virtualKeyService;
 
@@ -67,6 +67,15 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             .WithName("VirtualKeys_PreviewDiscovery").Produces<VirtualKeyDiscoveryPreviewDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/{id}/group", ([FromServices] VirtualKeysEndpoints endpoints, int id) => endpoints.GetKeyGroup(id))
             .WithName("VirtualKeys_GetGroup").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
+        group.MapGet("/{id}/rate-limit-usage", (
+                [FromServices] VirtualKeysEndpoints endpoints,
+                int id,
+                [FromServices] ConduitLLM.Configuration.Interfaces.IVirtualKeyRepository keyRepository,
+                [FromServices] ConduitLLM.Configuration.Interfaces.IVirtualKeyGroupRepository groupRepository,
+                [FromServices] ConduitLLM.Core.Services.IVirtualKeyRateLimitService? rateLimitService) =>
+                endpoints.GetRateLimitUsage(id, keyRepository, groupRepository, rateLimitService))
+            .WithName("VirtualKeys_GetRateLimitUsage").Produces<VirtualKeyRateLimitUsageDto>()
+            .Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/usage/by-key/{key}", ([FromServices] VirtualKeysEndpoints endpoints, string key) => endpoints.GetUsageByKey(key))
             .WithName("VirtualKeys_GetUsageByKey").Produces<VirtualKeyUsageDto>().Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden)

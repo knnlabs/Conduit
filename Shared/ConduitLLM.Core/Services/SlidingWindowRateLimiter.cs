@@ -102,6 +102,13 @@ namespace ConduitLLM.Core.Services
     }
 
     /// <summary>
+    /// What a window currently holds, for reporting rather than admission.
+    /// </summary>
+    /// <param name="Entries">Number of entries inside the window.</param>
+    /// <param name="Total">Total weight inside it — equal to Entries for counting windows.</param>
+    public readonly record struct RateLimitWindowUsage(long Entries, long Total);
+
+    /// <summary>
     /// Result of a single-window rate limit check.
     /// </summary>
     public class SlidingWindowResult
@@ -131,6 +138,9 @@ namespace ConduitLLM.Core.Services
 
         /// <inheritdoc cref="SlidingWindowRateLimiter.CheckAsync(string, long, int, int)"/>
         Task<SlidingWindowResult> CheckAsync(string key, long nowMs, int windowMs, int limit);
+
+        /// <inheritdoc cref="SlidingWindowRateLimiter.ReadWindowAsync"/>
+        Task<RateLimitWindowUsage> ReadWindowAsync(string key, long nowMs, int windowMs);
 
         /// <inheritdoc cref="SlidingWindowRateLimiter.ReconcileAsync"/>
         Task<bool> ReconcileAsync(string key, string entryId, long oldWeight, long newWeight);
@@ -323,6 +333,37 @@ namespace ConduitLLM.Core.Services
             return 1
         ";
 
+        // Read-only inspection: evict what has aged out, then report what remains. Eviction is
+        // not a side effect to avoid — leaving it out would report a window that is stale in
+        // exactly the direction that misleads.
+        private const string ReadWindowScript = @"
+            local key = KEYS[1]
+            local sumKey = key .. ':sum'
+            local cutoff = tonumber(ARGV[1])
+
+            local expired = redis.call('ZRANGEBYSCORE', key, '-inf', cutoff)
+            if #expired > 0 then
+                local freed = 0
+                for j = 1, #expired do
+                    freed = freed + (tonumber(string.match(expired[j], '([^:]+)$')) or 1)
+                end
+                redis.call('ZREMRANGEBYSCORE', key, '-inf', cutoff)
+                if freed > 0 then
+                    redis.call('DECRBY', sumKey, freed)
+                end
+            end
+
+            local entries = redis.call('ZCARD', key)
+            if entries == 0 then
+                redis.call('DEL', sumKey)
+                return {0, 0}
+            end
+
+            local total = tonumber(redis.call('GET', sumKey) or '0')
+            if total < 0 then total = 0 end
+            return {entries, total}
+        ";
+
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger _logger;
 
@@ -436,6 +477,29 @@ namespace ConduitLLM.Core.Services
                 Limit = limit,
                 ResetsAt = state?.ResetsAt ?? DateTimeOffset.FromUnixTimeMilliseconds(nowMs + windowMs).UtcDateTime
             };
+        }
+
+        /// <summary>
+        /// Reports what a window currently holds, without admitting anything.
+        /// </summary>
+        /// <returns>Zeroes when the window is empty or Redis is unreachable.</returns>
+        public async Task<RateLimitWindowUsage> ReadWindowAsync(string key, long nowMs, int windowMs)
+        {
+            try
+            {
+                var raw = await _redis.GetDatabase().ScriptEvaluateAsync(
+                    ReadWindowScript,
+                    new RedisKey[] { key },
+                    new RedisValue[] { nowMs - windowMs });
+
+                var result = (RedisValue[])raw!;
+                return new RateLimitWindowUsage((long)result[0], (long)result[1]);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not read rate limit window {Key}", key);
+                return new RateLimitWindowUsage(0, 0);
+            }
         }
 
         /// <summary>

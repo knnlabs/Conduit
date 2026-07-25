@@ -45,8 +45,6 @@ public static class RedisKeys
         public static string VirtualKeyModelTpm(string hash, string modelAlias) =>
             $"rate:vk:{hash}:model:{modelAlias}:tpm";
 
-        public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
-
         // Group-scope windows. Every key in a group shares these, so the partition is the
         // group id rather than a key hash.
         public static string GroupRpm(int groupId) => $"rate:vkg:{groupId}:rpm";
