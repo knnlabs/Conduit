@@ -28,7 +28,8 @@ public static class ProviderAdapterDefaultsRegistry
             [ProviderType.DeepInfra] = new("https://api.deepinfra.com/v1/openai"),
             [ProviderType.Cloudflare] = new("https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/v1"),
             [ProviderType.OpenRouter] = new("https://openrouter.ai/api/v1"),
-            [ProviderType.Meta] = new("https://api.meta.ai/v1")
+            [ProviderType.Meta] = new("https://api.meta.ai/v1"),
+            [ProviderType.Azure] = new("https://{resource_name}.openai.azure.com")
         };
 
     public static ProviderAdapterDefaults GetRequired(ProviderType providerType) =>

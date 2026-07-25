@@ -17,6 +17,7 @@ export enum ProviderType {
   Cloudflare = 12,
   OpenRouter = 13,
   Meta = 14,
+  Azure = 15,
 }
 
 /**
@@ -37,6 +38,7 @@ export const PROVIDER_TYPE_NAMES: Record<number, string> = {
   [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
   [ProviderType.OpenRouter]: 'OpenRouter',
   [ProviderType.Meta]: 'Meta AI',
+  [ProviderType.Azure]: 'Azure OpenAI',
 };
 
 /**

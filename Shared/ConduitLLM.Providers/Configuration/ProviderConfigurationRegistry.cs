@@ -15,6 +15,13 @@ namespace ConduitLLM.Providers.Configuration
     public static class ProviderConfigurationRegistry
     {
         /// <summary>
+        /// The Azure OpenAI REST API version used when an operator supplies none. Declared as the
+        /// <c>api_version</c> setting's default so it is visible and overridable per provider rather
+        /// than pinned in client code.
+        /// </summary>
+        public const string AzureDefaultApiVersion = "2024-02-01";
+
+        /// <summary>
         /// Registry of provider configurations keyed by ProviderType.
         /// </summary>
         private static readonly Dictionary<ProviderType, ProviderConfiguration> Configurations = new()
@@ -250,6 +257,53 @@ namespace ConduitLLM.Providers.Configuration
                 }
             },
 
+            // Azure OpenAI is deployment-scoped: every operation lives under
+            // /openai/deployments/{deployment}/... on a per-resource host, and every request carries
+            // an api-version. The deployment is per-model and comes from the model mapping's
+            // provider model ID; the resource and api-version are provider-scoped and declared here.
+            [ProviderType.Azure] = new ProviderConfiguration
+            {
+                DefaultBaseUrl = DefaultUrl(ProviderType.Azure),
+                ModelsEndpoint = "/openai/deployments",
+                ChatCompletionsEndpoint = "/chat/completions",
+                EmbeddingsEndpoint = "/embeddings",
+                ImageGenerationsEndpoint = "/images/generations",
+                AuthenticationStrategy = ApiKeyHeaderStrategy.AzureInstance,
+                ErrorMessages = new ProviderErrorMessages
+                {
+                    InvalidApiKey = "Invalid API key for Azure OpenAI. Please verify the key from your Azure OpenAI resource.",
+                    RateLimitExceeded = "Azure OpenAI rate limit exceeded. Please try again later or raise the deployment's quota.",
+                    ModelNotFound = "Deployment not found. Azure addresses models by deployment name, not model name - verify the deployment exists on this resource.",
+                    MissingApiKey = "API key is required for Azure OpenAI"
+                },
+                Settings = new[]
+                {
+                    new ProviderSettingDefinition
+                    {
+                        Key = "resource_name",
+                        Label = "Resource Name",
+                        HelpText = "The name of your Azure OpenAI resource, as it appears in the portal. Used to build the endpoint https://<resource>.openai.azure.com. Set a custom API endpoint instead if your resource uses a private or custom domain.",
+                        Placeholder = "e.g. my-openai-resource",
+                        Required = true,
+                        Binding = ProviderSettingBinding.UrlPathToken,
+                        BindingTarget = "resource_name",
+                        ValidationRegex = "^[A-Za-z0-9][A-Za-z0-9-]{1,62}$"
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "api_version",
+                        Label = "API Version",
+                        HelpText = "The Azure OpenAI REST API version sent with every request. Leave blank to use the version Conduit was tested against.",
+                        Placeholder = AzureDefaultApiVersion,
+                        Required = false,
+                        Binding = ProviderSettingBinding.QueryParam,
+                        BindingTarget = "api-version",
+                        DefaultValue = AzureDefaultApiVersion,
+                        ValidationRegex = "^[0-9]{4}-[0-9]{2}-[0-9]{2}(-preview)?$"
+                    }
+                }
+            },
+
             [ProviderType.Meta] = new ProviderConfiguration
             {
                 DefaultBaseUrl = DefaultUrl(ProviderType.Meta),
@@ -449,6 +503,30 @@ namespace ConduitLLM.Providers.Configuration
             }
 
             return result.TrimEnd('/');
+        }
+
+        /// <summary>
+        /// Resolves the value of a single structured setting, falling back to the value declared in
+        /// the registry when the operator supplied none.
+        /// </summary>
+        /// <param name="providerType">The provider type whose setting definitions are consulted.</param>
+        /// <param name="settings">The operator-supplied setting values, keyed by setting key.</param>
+        /// <param name="key">The setting key to resolve.</param>
+        /// <returns>The effective value, or null when neither a value nor a default exists.</returns>
+        public static string? GetSettingValue(
+            ProviderType providerType,
+            IReadOnlyDictionary<string, string>? settings,
+            string key)
+        {
+            if (settings != null && settings.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+
+            var definition = GetConfiguration(providerType)?.Settings
+                .FirstOrDefault(setting => string.Equals(setting.Key, key, StringComparison.Ordinal));
+
+            return string.IsNullOrWhiteSpace(definition?.DefaultValue) ? null : definition!.DefaultValue;
         }
 
         /// <summary>

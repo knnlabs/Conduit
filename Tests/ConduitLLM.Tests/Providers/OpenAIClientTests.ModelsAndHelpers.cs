@@ -172,22 +172,27 @@ namespace ConduitLLM.Tests.Providers
                 _capabilityServiceMock.Object);
         }
 
+        /// <summary>
+        /// Builds an Azure OpenAI client. Azure is a first-class provider type whose endpoint is
+        /// derived from the declared resource_name setting; the model id is the deployment name.
+        /// </summary>
         private OpenAIClient CreateAzureOpenAIClient(string deploymentId = "my-deployment")
         {
             var provider = new Provider
             {
                 Id = 1,
-                ProviderType = ProviderType.OpenAI
+                ProviderType = ProviderType.Azure,
+                ProviderName = "azure",
+                Settings = new Dictionary<string, string> { ["resource_name"] = "myinstance" }
             };
-            
+
             var keyCredential = new ProviderKeyCredential
             {
                 Id = 1,
                 ProviderId = 1,
-                ApiKey = "test-api-key",
-                BaseUrl = "https://myinstance.openai.azure.com"
+                ApiKey = "test-api-key"
             };
-            
+
             var logger = CreateLogger<OpenAIClient>();
 
             return new OpenAIClient(
@@ -196,8 +201,7 @@ namespace ConduitLLM.Tests.Providers
                 deploymentId,
                 logger.Object,
                 _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object,
-                providerName: "azure");
+                _capabilityServiceMock.Object);
         }
 
         private void SetupHttpResponse<T>(HttpStatusCode statusCode, T content, string contentType = "application/json")

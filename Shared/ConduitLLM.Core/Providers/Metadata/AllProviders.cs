@@ -214,6 +214,34 @@ namespace ConduitLLM.Core.Providers.Metadata
     }
 
     /// <summary>
+    /// Provider metadata for Azure OpenAI Service.
+    /// </summary>
+    public class AzureProviderMetadata : BaseProviderMetadata
+    {
+        public override ProviderType ProviderType => ProviderType.Azure;
+        public override string DisplayName => "Azure OpenAI";
+        public override string DefaultBaseUrl => ProviderAdapterDefaultsRegistry.GetRequired(ProviderType).DefaultBaseUrl;
+
+        public AzureProviderMetadata()
+        {
+            AuthRequirements.ApiKeyHeaderName = "api-key";
+            ConfigurationHints.DocumentationUrl = "https://learn.microsoft.com/azure/ai-services/openai/";
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Models Are Addressed By Deployment",
+                Description = "Azure routes to a deployment, not a model name. Set each model mapping's provider model ID to the deployment name you created on the resource.",
+                Severity = TipSeverity.Warning
+            });
+            ConfigurationHints.Tips.Add(new ConfigurationTip
+            {
+                Title = "Resource Name Builds The Endpoint",
+                Description = "Enter the Azure OpenAI resource name to derive https://<resource>.openai.azure.com; set a custom API endpoint only for a private or custom domain.",
+                Severity = TipSeverity.Info
+            });
+        }
+    }
+
+    /// <summary>
     /// Provider metadata for Meta AI (Meta Model API).
     /// </summary>
     public class MetaProviderMetadata : BaseProviderMetadata

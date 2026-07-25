@@ -46,7 +46,7 @@ namespace ConduitLLM.Providers.OpenAI
                 {
                     // For Azure, test with deployments endpoint
                     var url = UrlBuilder.Combine(effectiveBaseUrl, "openai", "deployments");
-                    endpoint = UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
+                    endpoint = UrlBuilder.AppendQueryString(url, ("api-version", AzureApiVersion));
                 }
                 else
                 {
@@ -118,29 +118,28 @@ namespace ConduitLLM.Providers.OpenAI
         /// </summary>
         public override string GetHealthCheckUrl(string? baseUrl = null)
         {
-            var defaultBaseUrl = ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)!;
-
+            // Resolve through the registry so structured settings (Azure's {resource_name}) are
+            // substituted; a raw Provider.BaseUrl read would leave the placeholder in the URL.
             var effectiveBaseUrl = !string.IsNullOrWhiteSpace(baseUrl)
                 ? baseUrl.TrimEnd('/')
-                : (!string.IsNullOrWhiteSpace(Provider.BaseUrl)
-                    ? Provider.BaseUrl.TrimEnd('/')
-                    : defaultBaseUrl.TrimEnd('/'));
+                : ProviderConfigurationRegistry.ResolveBaseUrl(Provider);
 
             if (_isAzure)
             {
                 var url = UrlBuilder.Combine(effectiveBaseUrl, "openai", "deployments");
-                return UrlBuilder.AppendQueryString(url, ("api-version", Constants.AzureApiVersion));
+                return UrlBuilder.AppendQueryString(url, ("api-version", AzureApiVersion));
             }
 
             return UrlBuilder.Combine(effectiveBaseUrl, Constants.Endpoints.Models);
         }
 
         /// <summary>
-        /// Gets the default base URL for OpenAI from the configuration registry.
+        /// Gets the default base URL for the configured provider type from the registry.
         /// </summary>
         protected override string GetDefaultBaseUrl()
         {
-            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)!;
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(Provider.ProviderType)
+                ?? ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)!;
         }
     }
 }

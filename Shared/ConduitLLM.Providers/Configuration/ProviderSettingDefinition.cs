@@ -65,6 +65,13 @@ namespace ConduitLLM.Providers.Configuration
         public string? Placeholder { get; init; }
 
         /// <summary>
+        /// Optional value used when the operator supplies none (for example Azure's
+        /// <c>api-version</c>). Declaring the default here keeps it visible and overridable instead
+        /// of buried in a client-side constant.
+        /// </summary>
+        public string? DefaultValue { get; init; }
+
+        /// <summary>
         /// Whether the operator must supply this setting for the provider to function.
         /// </summary>
         public bool Required { get; init; }

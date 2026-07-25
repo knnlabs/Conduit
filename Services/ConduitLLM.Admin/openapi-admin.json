@@ -32535,7 +32535,8 @@
           "deepInfra",
           "cloudflare",
           "openRouter",
-          "meta"
+          "meta",
+          "azure"
         ]
       },
       "PruneMediaRequest": {

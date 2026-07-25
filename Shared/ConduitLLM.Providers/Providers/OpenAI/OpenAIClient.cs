@@ -24,8 +24,6 @@ namespace ConduitLLM.Providers.OpenAI
         // API configuration constants
         private static class Constants
         {
-            public const string AzureApiVersion = "2024-02-01";
-
             public static class Endpoints
             {
                 public const string Models = "/models";
@@ -39,11 +37,19 @@ namespace ConduitLLM.Providers.OpenAI
         private readonly IModelCapabilityService? _capabilityService;
 
         /// <summary>
-        /// Gets the authentication strategy based on whether this is Azure or standard OpenAI.
-        /// Azure uses api-key header, standard OpenAI uses Bearer token.
+        /// Gets the authentication strategy for the configured provider type.
+        /// Azure OpenAI uses the api-key header, standard OpenAI uses a Bearer token.
         /// </summary>
         protected override IAuthenticationStrategy AuthenticationStrategy =>
-            _isAzure ? ApiKeyHeaderStrategy.AzureInstance : BearerTokenStrategy.Instance;
+            ProviderConfigurationRegistry.GetAuthenticationStrategy(Provider.ProviderType);
+
+        /// <summary>
+        /// The Azure OpenAI REST API version to send with every request, taken from the provider's
+        /// declared <c>api_version</c> setting and falling back to the registry's default.
+        /// </summary>
+        private string AzureApiVersion =>
+            ProviderConfigurationRegistry.GetSettingValue(Provider.ProviderType, Provider.Settings, "api_version")
+            ?? ProviderConfigurationRegistry.AzureDefaultApiVersion;
 
         /// <summary>
         /// Initializes a new instance of the OpenAIClient class.
@@ -72,40 +78,29 @@ namespace ConduitLLM.Providers.OpenAI
                 logger,
                 httpClientFactory,
                 providerName ?? provider.ProviderType.ToString() ?? "openai",
-                DetermineBaseUrl(provider, primaryKeyCredential, providerName ?? provider.ProviderType.ToString() ?? "openai"))
+                DetermineBaseUrl(provider, primaryKeyCredential))
         {
-            _isAzure = (providerName ?? provider.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
+            _isAzure = provider.ProviderType == ProviderType.Azure;
             _capabilityService = capabilityService;
-
-            // Specific validation for Azure credentials
-            if (_isAzure && string.IsNullOrWhiteSpace(provider.BaseUrl) && string.IsNullOrWhiteSpace(primaryKeyCredential.BaseUrl))
-            {
-                throw new ConfigurationException("BaseUrl (Azure resource endpoint) is required for the 'azure' provider.");
-            }
         }
 
         /// <summary>
-        /// Determines the appropriate base URL based on the provider and credentials.
+        /// Determines the effective base URL for the provider and key.
         /// </summary>
-        private static string DetermineBaseUrl(Provider provider, ProviderKeyCredential keyCredential, string providerName)
+        /// <remarks>
+        /// A key-level base URL is the narrowest override and wins outright. Otherwise the registry
+        /// resolves the provider's base URL, substituting structured settings such as Azure's
+        /// <c>{resource_name}</c> - and raising an actionable configuration error when a required one
+        /// is missing, rather than letting a malformed URL reach the wire.
+        /// </remarks>
+        private static string DetermineBaseUrl(Provider provider, ProviderKeyCredential keyCredential)
         {
-            // Use key credential base URL if specified, otherwise fall back to provider base URL
-            var baseUrl = keyCredential.BaseUrl ?? provider.BaseUrl;
-
-            // For Azure, we'll handle this specially in the endpoint methods
-            if (providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(keyCredential.BaseUrl))
             {
-                return baseUrl ?? "";
+                return keyCredential.BaseUrl.TrimEnd('/');
             }
 
-            // For standard OpenAI or compatible providers, use registry default
-            baseUrl = string.IsNullOrWhiteSpace(baseUrl)
-                ? ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)
-                : baseUrl;
-
-            // Ensure consistent formatting
-            return baseUrl?.TrimEnd('/')
-                ?? ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAI)!;
+            return ProviderConfigurationRegistry.ResolveBaseUrl(provider);
         }
     }
 }

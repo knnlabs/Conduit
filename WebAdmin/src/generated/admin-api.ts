@@ -6650,7 +6650,8 @@ export interface components {
       | "deepInfra"
       | "cloudflare"
       | "openRouter"
-      | "meta";
+      | "meta"
+      | "azure";
     /** @description Request model for pruning old media. */
     PruneMediaRequest: {
       /**

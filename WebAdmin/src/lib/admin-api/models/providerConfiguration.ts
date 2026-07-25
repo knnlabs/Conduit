@@ -22,6 +22,7 @@ export const PROVIDER_DISPLAY_NAMES: Partial<Record<ProviderType, string>> = {
   [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
   [ProviderType.OpenRouter]: 'OpenRouter',
   [ProviderType.Meta]: 'Meta AI',
+  [ProviderType.Azure]: 'Azure OpenAI',
 };
 
 /** Provider categories for grouping in UI */
@@ -50,6 +51,7 @@ export const PROVIDER_CATEGORIES: Partial<Record<ProviderType, ProviderCategory[
   [ProviderType.Cloudflare]: [ProviderCategory.Chat, ProviderCategory.Embedding, ProviderCategory.Image],
   [ProviderType.OpenRouter]: [ProviderCategory.Chat],
   [ProviderType.Meta]: [ProviderCategory.Chat],
+  [ProviderType.Azure]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
 };
 
 /**
@@ -201,6 +203,16 @@ export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, Provider
     helpUrl: 'https://ai.developer.meta.com',
     helpText: 'Get your API key from ai.developer.meta.com - Meta Model API with Muse Spark multimodal reasoning models',
     supportedModelTypes: [ModelType.Chat]
+  },
+  [ProviderType.Azure]: {
+    requiresApiKey: true,
+    // The endpoint is derived from the Resource Name setting; an explicit endpoint is an advanced
+    // override for private or custom domains only.
+    requiresEndpoint: false,
+    supportsCustomEndpoint: true,
+    helpUrl: 'https://learn.microsoft.com/azure/ai-services/openai/',
+    helpText: 'Use a key from your Azure OpenAI resource. Azure routes to a deployment rather than a model name, so set each model mapping’s provider model ID to the deployment name.',
+    supportedModelTypes: [ModelType.Chat, ModelType.Image, ModelType.Embedding]
   },
 };
 
