@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Exceptions;
@@ -55,6 +56,18 @@ public static class ExceptionToResponseMapper
             InvalidRequestException invalidReq
                 => new(400, invalidReq.Message, invalidReq.ErrorCode ?? "invalid_request", LogLevel.Warning,
                     "Invalid request", true, "invalid_request_error", invalidReq.Param),
+
+            // Thrown by ValidationHelper / ToolValidation with user-facing parameter messages.
+            // Note: derives from Exception, not ConduitException.
+            ValidationException validationEx
+                => new(400, validationEx.Message, "validation_error", LogLevel.Warning,
+                    "Validation error", true, "invalid_request_error"),
+
+            // The provider reported the model as missing (e.g. an upstream 404).
+            // Note: derives from Exception, not ConduitException.
+            ModelUnavailableException modelUnavailableEx
+                => new(404, modelUnavailableEx.Message, "model_not_found", LogLevel.Warning,
+                    "Model unavailable", true, "invalid_request_error", "model"),
 
             RequestTimeoutException timeoutEx
                 => new(408, timeoutEx.Message, "request_timeout", LogLevel.Warning,
@@ -115,6 +128,13 @@ public static class ExceptionToResponseMapper
             NotImplementedException
                 => new(501, "Feature not implemented", "not_implemented", LogLevel.Warning,
                     "Not implemented", false, "server_error"),
+
+            // Raised by minimal-API model binding when the request body is malformed or missing a
+            // required member (400), or exceeds the body size limit (413). The framework message names
+            // internal types, so it is redacted. Keep ahead of the catch-all.
+            BadHttpRequestException badRequestEx
+                => new(badRequestEx.StatusCode, "The request body could not be read", "invalid_request_body",
+                    LogLevel.Warning, "Malformed request", false, "invalid_request_error"),
 
             // Catch-all for unexpected exceptions
             _ => new(500, "An unexpected error occurred", "internal_error", LogLevel.Error,

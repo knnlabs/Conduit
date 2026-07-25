@@ -302,10 +302,10 @@ namespace ConduitLLM.Tests.Admin.Middleware
         }
 
         [Fact]
-        public async Task LogsError_WithExceptionAndRequestDetails()
+        public async Task LogsServerError_AtErrorLevel_WithExceptionAndRequestDetails()
         {
-            // Arrange
-            var exception = new InvalidOperationException("something broke");
+            // Arrange — ConfigurationException maps to 500, so it is a genuine operator concern.
+            var exception = new ConfigurationException("something broke");
             _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
                 .ThrowsAsync(exception);
 
@@ -315,7 +315,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             // Act
             await _middleware.InvokeAsync(_httpContext);
 
-            // Assert — LogError was called with the exception
+            // Assert — logged at Error with the exception and the trace id
             _mockLogger.Verify(
                 x => x.Log(
                     LogLevel.Error,
@@ -324,6 +324,41 @@ namespace ConduitLLM.Tests.Admin.Middleware
                     exception,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task LogsClientError_AtWarningLevel_NotErrorLevel()
+        {
+            // The log severity must track the mapped status: a 4xx is the caller's problem, not the
+            // operator's. Logging every unknown model or malformed body at Error buries real faults.
+            var exception = new InvalidOperationException("something the caller did");
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(exception);
+
+            _httpContext.Request.Method = "POST";
+            _httpContext.Request.Path = "/api/providers";
+
+            await _middleware.InvokeAsync(_httpContext);
+
+            Assert.Equal(400, _httpContext.Response.StatusCode);
+
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Warning,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, _) => v.ToString()!.Contains("test-trace-id")),
+                    exception,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+
+            _mockLogger.Verify(
+                x => x.Log(
+                    LogLevel.Error,
+                    It.IsAny<EventId>(),
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception?>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Never);
         }
 
         [Fact]

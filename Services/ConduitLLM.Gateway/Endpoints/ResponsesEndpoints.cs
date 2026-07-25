@@ -162,15 +162,8 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
                 mapped.Code,
                 mapped.Type);
         }
-        catch (Exception exception)
-        {
-            Logger.LogError(exception, "Responses request failed for model {Model}", chatRequest.Model);
-            return GatewayResults.OpenAIError(
-                StatusCodes.Status500InternalServerError,
-                "The Responses request could not be completed.",
-                "internal_error",
-                "server_error");
-        }
+        // No blanket catch: OpenAIErrorMiddleware maps exceptions to proper HTTP responses via
+        // ExceptionToResponseMapper. A catch-all 500 here masked model-routing client errors (#1191).
     }
 
     internal static ResponseTranslation Translate(CreateResponseRequest request)

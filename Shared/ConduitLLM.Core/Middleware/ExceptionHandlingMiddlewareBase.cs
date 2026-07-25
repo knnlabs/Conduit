@@ -74,27 +74,29 @@ public abstract class ExceptionHandlingMiddlewareBase
             // Body capture should never prevent error handling
         }
 
+        // Map exception using the shared mapper. Mapped first so the log severity matches the
+        // response: client errors (404 model_not_found, 400 invalid_request) must not be logged as
+        // errors, or every unknown-model request pages an operator.
+        var mapping = ExceptionToResponseMapper.Map(exception);
+
         // Log with or without body
         if (requestBody != null)
         {
-            Logger.LogError(exception,
-                "Unhandled exception caught by {MiddlewareName}. TraceId: {TraceId}, Method: {Method}, Path: {Path}, RequestBody: {RequestBody}",
-                MiddlewareName, traceId,
+            Logger.Log(mapping.LogLevel, exception,
+                "{LogPrefix} caught by {MiddlewareName}. TraceId: {TraceId}, Method: {Method}, Path: {Path}, RequestBody: {RequestBody}",
+                mapping.LogPrefix, MiddlewareName, traceId,
                 LoggingSanitizer.S(context.Request.Method),
                 LoggingSanitizer.S(context.Request.Path.ToString()),
                 requestBody);
         }
         else
         {
-            Logger.LogError(exception,
-                "Unhandled exception caught by {MiddlewareName}. TraceId: {TraceId}, Method: {Method}, Path: {Path}",
-                MiddlewareName, traceId,
+            Logger.Log(mapping.LogLevel, exception,
+                "{LogPrefix} caught by {MiddlewareName}. TraceId: {TraceId}, Method: {Method}, Path: {Path}",
+                mapping.LogPrefix, MiddlewareName, traceId,
                 LoggingSanitizer.S(context.Request.Method),
                 LoggingSanitizer.S(context.Request.Path.ToString()));
         }
-
-        // Map exception using the shared mapper
-        var mapping = ExceptionToResponseMapper.Map(exception);
 
         // In development, show actual exception messages for redacted responses
         var message = mapping.IncludeExceptionMessageInLog

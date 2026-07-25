@@ -56,9 +56,113 @@ namespace ConduitLLM.Tests.Providers
                 async () => await _factory.GetClientAsync(modelName)
             );
 
-            Assert.Equal($"Model '{modelName}' not found. Please check your model configuration.", exception.Message);
+            Assert.Equal($"The model '{modelName}' does not exist or is not available.", exception.Message);
             Assert.Equal(modelName, exception.ModelName);
         }
+
+        // ---------------------------------------------------------------------
+        // GetClientForChatAsync route eligibility (#1191).
+        // Administratively disabled routes make the alias unavailable to the client: 404
+        // (ModelNotFoundException). Only route *health* exhaustion is a retryable 503.
+        // ---------------------------------------------------------------------
+
+        [Fact]
+        public async Task GetClientForChatAsync_WithNoMappings_ThrowsModelNotFoundException()
+        {
+            var request = new ConduitLLM.Core.Models.ChatCompletionRequest
+            {
+                Model = "unmapped-model",
+                Messages = []
+            };
+            _mockMappingService.Setup(x => x.GetMappingsByModelAliasAsync(request.Model))
+                .ReturnsAsync(new List<ModelProviderMapping>());
+
+            var exception = await Assert.ThrowsAsync<ModelNotFoundException>(
+                () => _factory.GetClientForChatAsync(request));
+
+            Assert.Equal($"The model '{request.Model}' does not exist or is not available.", exception.Message);
+        }
+
+        [Fact]
+        public async Task GetClientForChatAsync_WithDisabledMapping_ThrowsModelNotFoundException()
+        {
+            var request = NewChatRequest();
+            _mockMappingService.Setup(x => x.GetMappingsByModelAliasAsync(request.Model))
+                .ReturnsAsync([NewRoutableMapping(1, mappingEnabled: false)]);
+
+            var exception = await Assert.ThrowsAsync<ModelNotFoundException>(
+                () => _factory.GetClientForChatAsync(request));
+
+            Assert.Equal($"The model '{request.Model}' does not exist or is not available.", exception.Message);
+        }
+
+        [Fact]
+        public async Task GetClientForChatAsync_WithDisabledProvider_ThrowsModelNotFoundException()
+        {
+            var request = NewChatRequest();
+            _mockMappingService.Setup(x => x.GetMappingsByModelAliasAsync(request.Model))
+                .ReturnsAsync([NewRoutableMapping(1, providerEnabled: false)]);
+
+            await Assert.ThrowsAsync<ModelNotFoundException>(
+                () => _factory.GetClientForChatAsync(request));
+        }
+
+        [Fact]
+        public async Task GetClientForChatAsync_WithDisabledTypeAssociation_ThrowsModelNotFoundException()
+        {
+            var request = NewChatRequest();
+            _mockMappingService.Setup(x => x.GetMappingsByModelAliasAsync(request.Model))
+                .ReturnsAsync([NewRoutableMapping(1, associationEnabled: false)]);
+
+            await Assert.ThrowsAsync<ModelNotFoundException>(
+                () => _factory.GetClientForChatAsync(request));
+        }
+
+        [Fact]
+        public async Task GetClientForChatAsync_WithEnabledMappingButNoCredential_ThrowsServiceUnavailableException()
+        {
+            // The route is configured, so this is genuine health exhaustion — 503, not 404.
+            var request = NewChatRequest();
+            _mockMappingService.Setup(x => x.GetMappingsByModelAliasAsync(request.Model))
+                .ReturnsAsync([NewRoutableMapping(1)]);
+            _mockCredentialService.Setup(x => x.GetProviderByIdAsync(1))
+                .ReturnsAsync((Provider?)null);
+
+            await Assert.ThrowsAsync<ServiceUnavailableException>(
+                () => _factory.GetClientForChatAsync(request));
+        }
+
+        private static ConduitLLM.Core.Models.ChatCompletionRequest NewChatRequest() => new()
+        {
+            Model = "test-model",
+            Messages = []
+        };
+
+        private static ModelProviderMapping NewRoutableMapping(
+            int id,
+            bool mappingEnabled = true,
+            bool providerEnabled = true,
+            bool associationEnabled = true) => new()
+            {
+                Id = id,
+                ModelAlias = "test-model",
+                ProviderId = id,
+                ProviderModelId = "gpt-4",
+                IsEnabled = mappingEnabled,
+                ModelProviderTypeAssociationId = id,
+                Provider = new Provider
+                {
+                    Id = id,
+                    ProviderName = "TestProvider",
+                    ProviderType = ProviderType.OpenAI,
+                    IsEnabled = providerEnabled
+                },
+                ModelProviderTypeAssociation = new ModelProviderTypeAssociation
+                {
+                    Id = id,
+                    IsEnabled = associationEnabled
+                }
+            };
 
         [Fact]
         public async Task GetClientAsync_WithDisabledProvider_ThrowsServiceUnavailableException()

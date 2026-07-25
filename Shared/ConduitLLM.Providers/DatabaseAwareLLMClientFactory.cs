@@ -74,7 +74,16 @@ namespace ConduitLLM.Providers
         {
             var mappings = await _mappingService.GetMappingsByModelAliasAsync(request.Model);
             if (mappings.Count == 0)
-                throw new ModelNotFoundException(request.Model, $"Model '{request.Model}' not found. Please check your model configuration.");
+                throw new ModelNotFoundException(request.Model, ModelUnavailableMessage(request.Model));
+
+            // Administratively disabled routes make the alias unavailable to the client — that is a 404,
+            // not a retryable 503. Only route *health* exhaustion (open circuit below, or no usable
+            // credential further down) is 503. Collapsing both into one 503 was part of #1191.
+            var configured = mappings.Where(mapping => mapping.IsEnabled
+                && mapping.Provider?.IsEnabled == true
+                && mapping.ModelProviderTypeAssociation?.IsEnabled == true).ToList();
+            if (configured.Count == 0)
+                throw new ModelNotFoundException(request.Model, ModelUnavailableMessage(request.Model));
 
             var settings = _serviceProvider.GetService<IGlobalSettingsCacheService>();
             var switchValue = settings is null ? null : await settings.GetSettingValueAsync("Routing.Chat.Enabled");
@@ -82,8 +91,7 @@ namespace ConduitLLM.Providers
             var policy = await GetRoutePolicyAsync(request.Model, cancellationToken);
             if (routingEnabled && _logger.IsEnabled(LogLevel.Debug))
             {
-                foreach (var mapping in mappings.Where(mapping => mapping.IsEnabled && mapping.Provider?.IsEnabled == true &&
-                    mapping.ModelProviderTypeAssociation?.IsEnabled == true && !RouteCircuitRegistry.IsAvailable(mapping.Id)))
+                foreach (var mapping in configured.Where(mapping => !RouteCircuitRegistry.IsAvailable(mapping.Id)))
                 {
                     _logger.LogDebug(
                         "Excluding provider mapping {MappingId} for model {ModelAlias} because its route circuit is open or a recovery probe is already in progress",
@@ -91,8 +99,10 @@ namespace ConduitLLM.Providers
                         request.Model);
                 }
             }
-            var scored = routingEnabled ? BalancedRouteScorer.Score(mappings, policy) :
-                mappings.OrderBy(mapping => mapping.Id).Take(1).Select(mapping => new ScoredRoute(mapping, 0.5m)).ToArray();
+            // Both branches route over `configured` so that turning routing off never selects a
+            // mapping an operator has disabled.
+            var scored = routingEnabled ? BalancedRouteScorer.Score(configured, policy) :
+                configured.OrderBy(mapping => mapping.Id).Take(1).Select(mapping => new ScoredRoute(mapping, 0.5m)).ToArray();
             if (scored.Count == 0)
                 throw new ServiceUnavailableException($"No healthy provider route for model '{request.Model}'.", "Routing");
 
@@ -129,6 +139,14 @@ namespace ConduitLLM.Providers
             request.SelectedMappingId = routes[0].Item1.Id;
             return new RoutedChatClient(routes, request, _distributedCache, policy, _logger);
         }
+
+        /// <summary>
+        /// Client-facing message for an alias that has no route: either it does not exist or every
+        /// route for it is administratively disabled. Deliberately does not distinguish the two, and
+        /// deliberately avoids hinting at server configuration.
+        /// </summary>
+        private static string ModelUnavailableMessage(string modelAlias) =>
+            $"The model '{modelAlias}' does not exist or is not available.";
 
         private async Task<ModelRoutePolicy> GetRoutePolicyAsync(string alias, CancellationToken cancellationToken)
         {
@@ -173,7 +191,7 @@ namespace ConduitLLM.Providers
             if (mapping == null)
             {
                 _logger.LogWarning("No model mapping found in database for alias: {ModelAlias}", modelName);
-                throw new ModelNotFoundException(modelName, $"Model '{modelName}' not found. Please check your model configuration.");
+                throw new ModelNotFoundException(modelName, ModelUnavailableMessage(modelName));
             }
 
             _logger.LogDebug("Found mapping in database: {ModelAlias} -> ProviderId:{ProviderId}/{ProviderModelId}",
