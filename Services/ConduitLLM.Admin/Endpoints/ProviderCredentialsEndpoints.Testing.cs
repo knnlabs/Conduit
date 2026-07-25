@@ -35,14 +35,16 @@ namespace ConduitLLM.Admin.Endpoints
                 return Ok(nonTestableResponse);
             }
 
-            // Get a client for this provider to test
-            var client = await _clientFactory.GetClientByProviderIdAsync(id);
-
             // Perform a simple test - list models
             using var activity = AdminRequestMetrics.StartProviderTestActivity(provider.ProviderType.ToString(), id);
             var startTime = DateTime.UtcNow;
             try
             {
+                // Client construction resolves the effective base URL (substituting structured
+                // settings such as a Cloudflare account ID), so it runs inside the try: a missing
+                // required setting becomes an actionable test result instead of an unhandled 500
+                // that the caller can only report as an unexpected error.
+                var client = await _clientFactory.GetClientByProviderIdAsync(id);
                 var models = await client.ListModelsAsync();
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 var modelList = models?.Select(m => m.ToString()).ToArray();
@@ -191,12 +193,13 @@ namespace ConduitLLM.Admin.Endpoints
             }
 
             // Test the connection with this specific key
-            var client = _clientFactory.CreateTestClient(provider, key);
-
             using var activity = AdminRequestMetrics.StartProviderTestActivity(provider.ProviderType.ToString(), providerId);
             var startTime = DateTime.UtcNow;
             try
             {
+                // Inside the try for the same reason as above: resolving the base URL from
+                // structured settings can fail with an actionable configuration error.
+                var client = _clientFactory.CreateTestClient(provider, key);
                 var models = await client.ListModelsAsync();
                 var responseTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
                 var modelList = models?.Select(m => m.ToString()).ToArray();
