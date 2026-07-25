@@ -28,6 +28,12 @@ namespace ConduitLLM.Admin.Endpoints
         /// </summary>
         internal const int IncidentErrorThreshold = 10;
 
+        /// <summary>Smallest history window the endpoint will report on.</summary>
+        internal const int MinHistoryHours = 1;
+
+        /// <summary>Largest history window the endpoint will report on (30 days).</summary>
+        internal const int MaxHistoryHours = 720;
+
         /// <summary>
         /// Truncates a UTC timestamp to the start of its hour, preserving <see cref="DateTimeKind.Utc"/>.
         /// Incident timestamps built with <c>new DateTime(...)</c> defaulted to
@@ -216,48 +222,24 @@ namespace ConduitLLM.Admin.Endpoints
         {
             using var dbContext = await dbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var startTime = DateTime.UtcNow.AddHours(-hours);
-            var intervalMinutes = hours <= 24 ? 15 : 60; // 15 min intervals for 24h, 1h for longer
+            // Bound the window so a caller cannot ask for an unbounded number of buckets.
+            var requestedHours = Math.Clamp(hours, MinHistoryHours, MaxHistoryHours);
+            var now = DateTime.UtcNow;
+            var startTime = now.AddHours(-requestedHours);
+            var intervalMinutes = requestedHours <= 24 ? 15 : 60; // 15 min intervals for 24h, 1h for longer
 
-            var healthHistory = new List<HealthHistoryPointDto>();
-            var currentTime = startTime;
+            // One grouped query for the whole window. This previously issued a separate round trip
+            // per interval — 96 sequential queries for the default 24 hours, on an endpoint the
+            // dashboard polls.
+            var buckets = await QueryHealthIntervals(dbContext.RequestLogs, startTime, now, intervalMinutes)
+                .ToListAsync(cancellationToken);
 
-            while (currentTime < DateTime.UtcNow)
-            {
-                var intervalEnd = currentTime.AddMinutes(intervalMinutes);
-
-                // Get error rates for this interval
-                var errorStats = await dbContext.RequestLogs
-                    .Where(r => r.Timestamp >= currentTime && r.Timestamp < intervalEnd)
-                    .GroupBy(r => 1)
-                    .Select(g => new
-                    {
-                        TotalRequests = g.Count(),
-                        ErrorCount = g.Count(r => r.StatusCode >= 400),
-                        AvgLatency = g.Average(r => (double?)r.ResponseTimeMs) ?? 0
-                    })
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                healthHistory.Add(new HealthHistoryPointDto
-                {
-                    Timestamp = currentTime,
-                    SystemHealth = errorStats?.TotalRequests > 0
-                        ? 100 - (errorStats.ErrorCount * 100.0 / errorStats.TotalRequests)
-                        : 100,
-                    ResponseTime = errorStats?.AvgLatency ?? 0,
-                    RequestVolume = errorStats?.TotalRequests ?? 0,
-                    ErrorRate = errorStats?.TotalRequests > 0
-                        ? errorStats.ErrorCount * 100.0 / errorStats.TotalRequests
-                        : 0
-                });
-
-                currentTime = intervalEnd;
-            }
+            var healthHistory = BuildHealthHistory(buckets, startTime, now, intervalMinutes);
 
             return Results.Ok(new HealthHistoryResponse
             {
-                Timestamp = DateTime.UtcNow,
-                TimeRange = new TimeRangeDto { Start = startTime, End = DateTime.UtcNow },
+                Timestamp = now,
+                TimeRange = new TimeRangeDto { Start = startTime, End = now },
                 IntervalMinutes = intervalMinutes,
                 History = healthHistory
             });
@@ -350,6 +332,79 @@ namespace ConduitLLM.Admin.Endpoints
                     }
                 };
             }).ToList();
+
+        /// <summary>
+        /// Request totals for one interval of the health history. Mutable for the same reason as
+        /// <see cref="ErrorSpikeRow"/> — EF projects grouping aggregates via object initializers.
+        /// </summary>
+        internal sealed class HealthIntervalRow
+        {
+            /// <summary>Zero-based interval index measured from the window start.</summary>
+            public int Bucket { get; set; }
+
+            /// <summary>Requests recorded in the interval.</summary>
+            public int TotalRequests { get; set; }
+
+            /// <summary>Requests in the interval that returned a 4xx or 5xx status.</summary>
+            public int ErrorCount { get; set; }
+
+            /// <summary>Mean response time in milliseconds, or null when the interval is empty.</summary>
+            public double? AvgLatency { get; set; }
+        }
+
+        /// <summary>
+        /// Aggregates request logs into fixed-width intervals in a single grouped query. Intervals
+        /// are an epoch offset from <paramref name="startTime"/> for the same timezone-safety reason
+        /// as <see cref="QueryErrorSpikes"/>. Intervals with no traffic produce no row.
+        /// </summary>
+        internal static IQueryable<HealthIntervalRow> QueryHealthIntervals(
+            IQueryable<RequestLog> requestLogs,
+            DateTime startTime,
+            DateTime endTime,
+            int intervalMinutes) =>
+            requestLogs
+                .Where(r => r.Timestamp >= startTime && r.Timestamp < endTime)
+                .GroupBy(r => (int)Math.Floor((r.Timestamp - startTime).TotalMinutes / intervalMinutes))
+                .Select(g => new HealthIntervalRow
+                {
+                    Bucket = g.Key,
+                    TotalRequests = g.Count(),
+                    ErrorCount = g.Count(r => r.StatusCode >= 400),
+                    AvgLatency = g.Average(r => (double?)r.ResponseTimeMs)
+                });
+
+        /// <summary>
+        /// Expands sparse interval aggregates into a contiguous time series, filling intervals with
+        /// no traffic the same way the previous per-interval queries did (100% health, zero volume).
+        /// </summary>
+        internal static List<HealthHistoryPointDto> BuildHealthHistory(
+            IEnumerable<HealthIntervalRow> buckets,
+            DateTime startTime,
+            DateTime endTime,
+            int intervalMinutes)
+        {
+            var byBucket = buckets.ToDictionary(bucket => bucket.Bucket);
+            var history = new List<HealthHistoryPointDto>();
+
+            for (var index = 0; startTime.AddMinutes((double)index * intervalMinutes) < endTime; index++)
+            {
+                var hasTraffic = byBucket.TryGetValue(index, out var row) && row.TotalRequests > 0;
+                var errorRate = hasTraffic
+                    ? row!.ErrorCount * 100.0 / row.TotalRequests
+                    : 0;
+
+                history.Add(new HealthHistoryPointDto
+                {
+                    Timestamp = startTime.AddMinutes((double)index * intervalMinutes),
+                    SystemHealth = 100 - errorRate,
+                    ResponseTime = hasTraffic ? row!.AvgLatency ?? 0 : 0,
+                    RequestVolume = hasTraffic ? row!.TotalRequests : 0,
+                    ErrorRate = errorRate
+                });
+            }
+
+            return history;
+        }
 
         internal static ServiceStatusDto BuildClusterServiceStatus(
             string id,
