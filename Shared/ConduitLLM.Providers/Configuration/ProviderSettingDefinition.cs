@@ -12,20 +12,19 @@ namespace ConduitLLM.Providers.Configuration
         UrlPathToken = 0,
 
         /// <summary>
-        /// The value is sent as an HTTP request header (for example <c>OpenAI-Organization</c>).
-        /// Declared for future phases; header application is not wired in Phase 1.
+        /// The value is sent as an HTTP request header (for example <c>OpenAI-Organization</c>),
+        /// applied generically by <c>BaseLLMClient.ApplyHeaderSettings</c>.
         /// </summary>
         Header = 1,
 
         /// <summary>
         /// The value is sent as a query-string parameter (for example Azure's <c>api-version</c>).
-        /// Declared for future phases; query application is not wired in Phase 1.
         /// </summary>
         QueryParam = 2,
 
         /// <summary>
-        /// The value participates in request authentication/signing (for example an AWS region).
-        /// Declared for future phases; auth-scope application is not wired in Phase 1.
+        /// The value participates in request authentication/signing rather than being placed on the
+        /// request generically (for example AWS SigV4 secret material, consumed by the Bedrock client).
         /// </summary>
         AuthScope = 3,
     }
@@ -37,8 +36,8 @@ namespace ConduitLLM.Providers.Configuration
     /// <remarks>
     /// These declarations are the single source of truth consumed by request-time resolution,
     /// validation, and the WebAdmin provider form. Non-secret values are stored in
-    /// <c>Provider.Settings</c>; secret-valued settings are reserved for a later phase and must not
-    /// be placed in that non-encrypted bag.
+    /// <c>Provider.Settings</c>; secret-valued settings live encrypted on
+    /// <c>ProviderKeyCredential.SecretSettings</c> and must never be placed in that plaintext bag.
     /// </remarks>
     public record ProviderSettingDefinition
     {
@@ -77,8 +76,9 @@ namespace ConduitLLM.Providers.Configuration
         public bool Required { get; init; }
 
         /// <summary>
-        /// Whether the value is sensitive. Secret settings are reserved for a later phase and are not
-        /// stored in the non-encrypted <c>Provider.Settings</c> bag.
+        /// Whether the value is sensitive. Secret settings are stored encrypted on the key
+        /// credential (<c>ProviderKeyCredential.SecretSettings</c>), never in the plaintext
+        /// <c>Provider.Settings</c> bag, and their values are never returned by the API.
         /// </summary>
         public bool Secret { get; init; }
 
