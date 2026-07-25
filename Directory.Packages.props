@@ -100,6 +100,9 @@
     <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.14.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <!-- Runtime skips for tests that need external infrastructure (Redis). xUnit v2 has no
+         Assert.Skip, and swallowing the condition would make the tests silently green. -->
+    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.23" />
     <PackageVersion Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 </Project>

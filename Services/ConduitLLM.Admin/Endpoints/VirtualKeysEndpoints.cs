@@ -14,7 +14,7 @@ namespace ConduitLLM.Admin.Endpoints;
 /// <summary>
 /// Controller for managing virtual keys
 /// </summary>
-public class VirtualKeysEndpoints : AdminEndpointHandlerBase
+public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
 {
     private readonly IAdminVirtualKeyService _virtualKeyService;
 
@@ -67,6 +67,19 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             .WithName("VirtualKeys_PreviewDiscovery").Produces<VirtualKeyDiscoveryPreviewDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/{id}/group", ([FromServices] VirtualKeysEndpoints endpoints, int id) => endpoints.GetKeyGroup(id))
             .WithName("VirtualKeys_GetGroup").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
+        group.MapGet("/{id}/rate-limit-usage", (
+                [FromServices] VirtualKeysEndpoints endpoints,
+                int id,
+                [FromServices] ConduitLLM.Configuration.Interfaces.IVirtualKeyRepository keyRepository,
+                [FromServices] ConduitLLM.Configuration.Interfaces.IVirtualKeyGroupRepository groupRepository,
+                [FromServices] ConduitLLM.Core.Services.IVirtualKeyRateLimitService? rateLimitService) =>
+                endpoints.GetRateLimitUsage(id, keyRepository, groupRepository, rateLimitService))
+            .WithName("VirtualKeys_GetRateLimitUsage")
+            .WithSummary("Get a virtual key's current rate limit usage")
+            .Produces<VirtualKeyRateLimitUsageDto>()
+            .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden)
+            .Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status429TooManyRequests)
+            .RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/usage/by-key/{key}", ([FromServices] VirtualKeysEndpoints endpoints, string key) => endpoints.GetUsageByKey(key))
             .WithName("VirtualKeys_GetUsageByKey").Produces<VirtualKeyUsageDto>().Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden)
@@ -151,6 +164,17 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             changes.Add(("RateLimitRpm", preState.RateLimitRpm?.ToString() ?? "null", request.RateLimitRpm?.ToString() ?? "null"));
         if (request.RateLimitRpd.HasValue && preState.RateLimitRpd != request.RateLimitRpd)
             changes.Add(("RateLimitRpd", preState.RateLimitRpd?.ToString() ?? "null", request.RateLimitRpd?.ToString() ?? "null"));
+        if (request.RateLimitTpm.HasValue && preState.RateLimitTpm != request.RateLimitTpm)
+            changes.Add(("RateLimitTpm", preState.RateLimitTpm?.ToString() ?? "null", request.RateLimitTpm?.ToString() ?? "null"));
+        if (request.MaxParallelRequests.HasValue && preState.MaxParallelRequests != request.MaxParallelRequests)
+            changes.Add(("MaxParallelRequests", preState.MaxParallelRequests?.ToString() ?? "null", request.MaxParallelRequests?.ToString() ?? "null"));
+        if (request.ModelRateLimits is not null &&
+            DescribeModelLimits(preState.ModelRateLimits) != DescribeModelLimits(request.ModelRateLimits))
+        {
+            changes.Add(("ModelRateLimits",
+                DescribeModelLimits(preState.ModelRateLimits),
+                DescribeModelLimits(request.ModelRateLimits)));
+        }
         if (request.VirtualKeyGroupId.HasValue && preState.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
             changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId.Value.ToString()));
 
@@ -290,5 +314,20 @@ public class VirtualKeysEndpoints : AdminEndpointHandlerBase
             return AdminResults.NotFoundEntity("Virtual key", null);
         }
         return Ok(result);
+    }
+
+    /// <summary>
+    /// Renders per-model overrides as a stable one-line summary for the audit trail.
+    /// </summary>
+    private static string DescribeModelLimits(Dictionary<string, ModelRateLimitDto>? limits)
+    {
+        if (limits is null || limits.Count == 0)
+        {
+            return "none";
+        }
+
+        return string.Join(", ", limits
+            .OrderBy(entry => entry.Key, StringComparer.Ordinal)
+            .Select(entry => $"{entry.Key}:rpm={entry.Value.Rpm?.ToString() ?? "-"},tpm={entry.Value.Tpm?.ToString() ?? "-"}"));
     }
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 using ConduitLLM.Configuration.Entities.Interfaces;
 
@@ -84,6 +85,41 @@ public partial class VirtualKey : IEntity<int>, IAuditableEntity
     /// Requests per day rate limit for this key
     /// </summary>
     public int? RateLimitRpd { get; set; }
+
+    /// <summary>
+    /// Tokens per minute rate limit for this key. Null means no token ceiling.
+    /// </summary>
+    /// <remarks>
+    /// Counts prompt plus completion tokens over a rolling minute. Request counting alone
+    /// cannot police cost when request sizes differ by two orders of magnitude, which is what
+    /// this limit is for. Enforcement reserves an estimate up front and reconciles it to the
+    /// actual usage once the response is billed.
+    /// </remarks>
+    public int? RateLimitTpm { get; set; }
+
+    /// <summary>
+    /// Maximum number of requests this key may have in flight at once. Null means no cap.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from RPM: a key well inside its per-minute allowance can still hold hundreds of
+    /// simultaneous streaming connections open. The slot is held for the duration of the HTTP
+    /// request only — for asynchronous jobs that means the submit call, not the job.
+    /// </remarks>
+    public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
+    /// Per-model rate limit overrides, keyed by the model alias the caller sends.
+    /// JSON of the form <c>{"gpt-5": {"rpm": 1000, "tpm": 200000}, "sora*": {"rpm": 10}}</c>.
+    /// </summary>
+    /// <remarks>
+    /// A key's overall ceiling says nothing about which models it burns it on. An override lets
+    /// the same key call a cheap chat model freely while being held to a handful of requests a
+    /// minute against an expensive video model. Overrides apply on top of the key and group
+    /// ceilings; they narrow, never widen. A trailing <c>*</c> matches by prefix, and an exact
+    /// alias always wins over a prefix rule.
+    /// </remarks>
+    [Column(TypeName = "jsonb")]
+    public string? ModelRateLimits { get; set; }
 
     /// <summary>
     /// Virtual collection of request logs

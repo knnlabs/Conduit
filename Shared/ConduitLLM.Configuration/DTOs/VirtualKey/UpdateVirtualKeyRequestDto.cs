@@ -29,4 +29,20 @@ public class UpdateVirtualKeyRequestDto
 
     public int? RateLimitRpm { get; set; }
     public int? RateLimitRpd { get; set; }
+
+    /// <summary>
+    /// Optional tokens-per-minute ceiling. Null leaves the existing value untouched.
+    /// </summary>
+    public int? RateLimitTpm { get; set; }
+
+    /// <summary>
+    /// Optional cap on requests in flight at once. Null leaves the existing value untouched.
+    /// </summary>
+    public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
+    /// Per-model rate limit overrides keyed by model alias. Supplying this replaces the whole
+    /// map; null leaves the existing overrides untouched.
+    /// </summary>
+    public Dictionary<string, ModelRateLimitDto>? ModelRateLimits { get; set; }
 }

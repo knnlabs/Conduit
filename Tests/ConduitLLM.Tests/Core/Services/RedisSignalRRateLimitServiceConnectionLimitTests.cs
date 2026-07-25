@@ -1,253 +1,181 @@
-using Microsoft.Extensions.Logging;
-using Moq;
-using StackExchange.Redis;
 using ConduitLLM.Core.Services;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
+using Moq;
+
+using StackExchange.Redis;
+
+using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
 {
     /// <summary>
-    /// Unit tests for CheckConnectionLimitAsync method in RedisSignalRRateLimitService
+    /// Connection-limit admission for SignalR.
     /// </summary>
+    /// <remarks>
+    /// Admission is a single atomic script: the old shape read the count, returned, and let the
+    /// caller increment separately, so a burst of simultaneous connections all saw the same
+    /// pre-increment value and were admitted together.
+    /// </remarks>
     [Trait("Category", "Unit")]
     [Trait("Component", "RedisSignalRRateLimitService")]
     [Trait("Feature", "ConnectionLimiting")]
     public class RedisSignalRRateLimitServiceConnectionLimitTests
     {
-        private readonly Mock<IConnectionMultiplexer> _mockRedis;
-        private readonly Mock<IDatabase> _mockDatabase;
-        private readonly Mock<ILogger<RedisSignalRRateLimitService>> _mockLogger;
+        private readonly Mock<IConnectionMultiplexer> _mockRedis = new();
+        private readonly Mock<IDatabase> _mockDatabase = new();
         private readonly RedisSignalRRateLimitService _service;
 
         public RedisSignalRRateLimitServiceConnectionLimitTests()
         {
-            _mockRedis = new Mock<IConnectionMultiplexer>();
-            _mockDatabase = new Mock<IDatabase>();
-            _mockLogger = new Mock<ILogger<RedisSignalRRateLimitService>>();
-
             _mockRedis.Setup(x => x.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
                 .Returns(_mockDatabase.Object);
 
-            _service = new RedisSignalRRateLimitService(_mockRedis.Object, _mockLogger.Object);
+            _service = new RedisSignalRRateLimitService(
+                _mockRedis.Object, Mock.Of<ILogger<RedisSignalRRateLimitService>>());
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("")]
+        public async Task TryAcquireConnectionAsync_WithoutAKeyHash_Allows(string? hash)
+        {
+            var result = await _service.TryAcquireConnectionAsync(hash!, 100);
+
+            Assert.True(result.IsAllowed);
+            Assert.Equal(100, result.MaxConnections);
         }
 
         [Fact]
-        public async Task CheckConnectionLimitAsync_WithNullHash_ReturnsAllowed()
+        public async Task TryAcquireConnectionAsync_UnderTheCeiling_AdmitsAndReportsTheNewCount()
         {
-            // Arrange
-            string? nullHash = null;
-            const int maxConnections = 100;
+            SetupScript(admitted: true, count: 4);
 
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(nullHash!, maxConnections);
+            var result = await _service.TryAcquireConnectionAsync("key-hash", 10);
 
-            // Assert
             Assert.True(result.IsAllowed);
-            Assert.Equal(maxConnections, result.MaxConnections);
-        }
-
-        [Fact]
-        public async Task CheckConnectionLimitAsync_WithEmptyHash_ReturnsAllowed()
-        {
-            // Arrange
-            const string emptyHash = "";
-            const int maxConnections = 100;
-
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(emptyHash, maxConnections);
-
-            // Assert
-            Assert.True(result.IsAllowed);
-            Assert.Equal(maxConnections, result.MaxConnections);
-        }
-
-        [Fact]
-        public async Task CheckConnectionLimitAsync_UnderLimit_ReturnsAllowed()
-        {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-            const int maxConnections = 100;
-            const int currentConnections = 50;
-
-            _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)currentConnections);
-
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
-
-            // Assert
-            Assert.True(result.IsAllowed);
-            Assert.Equal(currentConnections, result.CurrentConnections);
-            Assert.Equal(maxConnections, result.MaxConnections);
+            Assert.Equal(4, result.CurrentConnections);
+            Assert.Equal(10, result.MaxConnections);
             Assert.Equal(string.Empty, result.DenialReason);
         }
 
         [Fact]
-        public async Task CheckConnectionLimitAsync_AtLimit_ReturnsNotAllowed()
+        public async Task TryAcquireConnectionAsync_AtTheCeiling_DeniesWithTheCurrentCount()
         {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-            const int maxConnections = 100;
-            const int currentConnections = 100; // At limit
+            SetupScript(admitted: false, count: 10);
 
-            _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)currentConnections);
+            var result = await _service.TryAcquireConnectionAsync("key-hash", 10);
 
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
-
-            // Assert
             Assert.False(result.IsAllowed);
-            Assert.Equal(currentConnections, result.CurrentConnections);
-            Assert.Equal(maxConnections, result.MaxConnections);
-            Assert.NotEmpty(result.DenialReason);
+            Assert.Equal(10, result.CurrentConnections);
+            Assert.Contains("10/10", result.DenialReason);
         }
 
         [Fact]
-        public async Task CheckConnectionLimitAsync_OverLimit_ReturnsNotAllowed()
+        public async Task TryAcquireConnectionAsync_RedisUnavailable_FailsOpen()
         {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-            const int maxConnections = 100;
-            const int currentConnections = 150; // Over limit
-
+            // A Redis outage must not stop clients connecting, consistent with the other limiters.
             _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)currentConnections);
+                .Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(), It.IsAny<RedisKey[]>(), It.IsAny<RedisValue[]>(), It.IsAny<CommandFlags>()))
+                .ThrowsAsync(new RedisConnectionException(ConnectionFailureType.UnableToConnect, "down"));
 
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
+            var result = await _service.TryAcquireConnectionAsync("key-hash", 10);
 
-            // Assert
-            Assert.False(result.IsAllowed);
-            Assert.Equal(currentConnections, result.CurrentConnections);
-            Assert.Equal(maxConnections, result.MaxConnections);
-        }
-
-        [Theory]
-        [InlineData(0, 100, true)]
-        [InlineData(50, 100, true)]
-        [InlineData(99, 100, true)]
-        [InlineData(100, 100, false)]
-        [InlineData(101, 100, false)]
-        [InlineData(200, 100, false)]
-        public async Task CheckConnectionLimitAsync_VariousConnectionCounts_ReturnsExpectedResult(
-            int currentConnections, int maxConnections, bool expectedIsAllowed)
-        {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-
-            _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)currentConnections);
-
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
-
-            // Assert
-            Assert.Equal(expectedIsAllowed, result.IsAllowed);
-        }
-
-        [Fact]
-        public async Task CheckConnectionLimitAsync_ReturnsCorrectCurrentConnections()
-        {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-            const int maxConnections = 100;
-            const int currentConnections = 75;
-
-            _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)currentConnections);
-
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
-
-            // Assert
-            Assert.Equal(currentConnections, result.CurrentConnections);
-        }
-
-        [Fact]
-        public async Task CheckConnectionLimitAsync_ReturnsCorrectMaxConnections()
-        {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-            const int maxConnections = 250;
-
-            _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)50);
-
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
-
-            // Assert
-            Assert.Equal(maxConnections, result.MaxConnections);
-        }
-
-        [Fact]
-        public async Task CheckConnectionLimitAsync_WhenLimitReached_DenialReasonContainsConnectionCounts()
-        {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-            const int maxConnections = 100;
-            const int currentConnections = 100;
-
-            _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)currentConnections);
-
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
-
-            // Assert
-            Assert.Contains("100", result.DenialReason);
-            Assert.Contains("Connection limit exceeded", result.DenialReason);
-        }
-
-        [Fact]
-        public async Task CheckConnectionLimitAsync_WhenNoExistingConnections_ReturnsAllowed()
-        {
-            // Arrange
-            const string virtualKeyHash = "test-vk-hash";
-            const int maxConnections = 100;
-
-            // When the hash key doesn't exist, HashGetAsync returns RedisValue.Null
-            _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync(RedisValue.Null);
-
-            // Act
-            var result = await _service.CheckConnectionLimitAsync(virtualKeyHash, maxConnections);
-
-            // Assert
             Assert.True(result.IsAllowed);
-            Assert.Equal(0, result.CurrentConnections);
         }
 
         [Fact]
-        public async Task CheckConnectionLimitAsync_WithDifferentMaxLimits_ReturnsCorrectResults()
+        public async Task TryAcquireConnectionAsync_PassesTheCeilingToTheScript()
         {
-            // Arrange - Test with different max limits
-            const string virtualKeyHash = "test-vk-hash";
-            const int currentConnections = 50;
-
+            RedisValue[]? args = null;
             _mockDatabase
-                .Setup(x => x.HashGetAsync(It.IsAny<RedisKey>(), "count", CommandFlags.None))
-                .ReturnsAsync((RedisValue)currentConnections);
+                .Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(), It.IsAny<RedisKey[]>(), It.IsAny<RedisValue[]>(), It.IsAny<CommandFlags>()))
+                .Callback((string _, RedisKey[] _, RedisValue[] values, CommandFlags _) => args = values)
+                .ReturnsAsync(RedisResult.Create(new RedisValue[] { 1, 1 }));
 
-            // Act & Assert - With max 100, should be allowed
-            var result100 = await _service.CheckConnectionLimitAsync(virtualKeyHash, 100);
-            Assert.True(result100.IsAllowed);
+            await _service.TryAcquireConnectionAsync("key-hash", 25);
 
-            // Act & Assert - With max 50, should not be allowed
-            var result50 = await _service.CheckConnectionLimitAsync(virtualKeyHash, 50);
-            Assert.False(result50.IsAllowed);
-
-            // Act & Assert - With max 25, should not be allowed
-            var result25 = await _service.CheckConnectionLimitAsync(virtualKeyHash, 25);
-            Assert.False(result25.IsAllowed);
+            Assert.NotNull(args);
+            Assert.Equal(25, (int)args![0]);
         }
+
+        private void SetupScript(bool admitted, int count)
+        {
+            _mockDatabase
+                .Setup(x => x.ScriptEvaluateAsync(
+                    It.IsAny<string>(), It.IsAny<RedisKey[]>(), It.IsAny<RedisValue[]>(), It.IsAny<CommandFlags>()))
+                .ReturnsAsync(RedisResult.Create(new RedisValue[] { admitted ? 1 : 0, count }));
+        }
+    }
+
+    /// <summary>
+    /// Connection admission executed against a real Redis, where the concurrency the fix exists
+    /// for can actually be reproduced.
+    /// </summary>
+    [Trait("Category", "Unit")]
+    [Trait("Component", "RedisSignalRRateLimitService")]
+    [Trait("Feature", "ConnectionLimiting")]
+    public class RedisSignalRConnectionLimitRedisTests : IAsyncLifetime
+    {
+        private readonly string _prefix = RedisTestServer.NewKeyPrefix("signalr-connections");
+
+        public Task InitializeAsync() => Task.CompletedTask;
+
+        public Task DisposeAsync() => RedisTestServer.CleanupAsync(_prefix);
+
+        [SkippableFact]
+        public async Task TryAcquireConnectionAsync_SimultaneousBurst_AdmitsNoMoreThanTheCeiling()
+        {
+            var service = NewService();
+            var keyHash = _prefix + "burst";
+
+            // 50 clients racing for 5 slots. Check-then-increment let far more than 5 through.
+            var attempts = Enumerable.Range(0, 50)
+                .Select(_ => service.TryAcquireConnectionAsync(keyHash, 5))
+                .ToArray();
+
+            var results = await Task.WhenAll(attempts);
+
+            Assert.Equal(5, results.Count(r => r.IsAllowed));
+            Assert.Equal(5, await service.GetConnectionCountAsync(keyHash));
+        }
+
+        [SkippableFact]
+        public async Task DecrementConnectionCountAsync_WithoutAMatchingConnect_StaysAtZero()
+        {
+            // A node that died holding connections, or a replayed lifetime event, must not drive
+            // the count negative — that would silently hand the key extra capacity.
+            var service = NewService();
+            var keyHash = _prefix + "stale-disconnect";
+
+            Assert.Equal(0, await service.DecrementConnectionCountAsync(keyHash));
+            Assert.Equal(0, await service.DecrementConnectionCountAsync(keyHash));
+            Assert.Equal(0, await service.GetConnectionCountAsync(keyHash));
+
+            var admitted = await service.TryAcquireConnectionAsync(keyHash, 1);
+            Assert.True(admitted.IsAllowed);
+            Assert.Equal(1, admitted.CurrentConnections);
+        }
+
+        [SkippableFact]
+        public async Task TryAcquireConnectionAsync_AfterADisconnect_ReleasesTheSlot()
+        {
+            var service = NewService();
+            var keyHash = _prefix + "release";
+
+            Assert.True((await service.TryAcquireConnectionAsync(keyHash, 1)).IsAllowed);
+            Assert.False((await service.TryAcquireConnectionAsync(keyHash, 1)).IsAllowed);
+
+            await service.DecrementConnectionCountAsync(keyHash);
+
+            Assert.True((await service.TryAcquireConnectionAsync(keyHash, 1)).IsAllowed);
+        }
+
+        private static RedisSignalRRateLimitService NewService() =>
+            new(RedisTestServer.Require(), NullLogger<RedisSignalRRateLimitService>.Instance);
     }
 }

@@ -170,6 +170,22 @@ public static class ServiceCollectionExtensions
             ?? throw new InvalidOperationException("PricingAuditService must implement IHostedService"),
             "PricingAuditService");
 
+        // The rate-limit usage endpoint reads windows the Gateway writes, so it needs the same
+        // store. Registered only when Redis is present; the endpoint reports the ceilings and
+        // flags the usage figures unavailable when it is not.
+        services.AddSingleton<ConduitLLM.Core.Services.IVirtualKeyRateLimitService?>(serviceProvider =>
+        {
+            var redis = serviceProvider.GetService<StackExchange.Redis.IConnectionMultiplexer>();
+            if (redis is null)
+            {
+                return null;
+            }
+
+            return new ConduitLLM.Core.Services.RedisVirtualKeyRateLimitService(
+                redis,
+                serviceProvider.GetRequiredService<ILogger<ConduitLLM.Core.Services.RedisVirtualKeyRateLimitService>>());
+        });
+
         // Register Redis error store with deferred resolution
         // IConnectionMultiplexer will be registered by AddRedisDataProtection in Program.cs after this method
         services.AddSingleton<ConduitLLM.Core.Interfaces.IRedisErrorStore>(serviceProvider =>

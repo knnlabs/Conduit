@@ -89,6 +89,9 @@ namespace ConduitLLM.Core.Services
                 Metadata = request.Metadata is null ? null : JsonSerializer.Serialize(request.Metadata),
                 RateLimitRpm = request.RateLimitRpm,
                 RateLimitRpd = request.RateLimitRpd,
+                RateLimitTpm = request.RateLimitTpm,
+                MaxParallelRequests = request.MaxParallelRequests,
+                ModelRateLimits = VirtualKeyUtilities.SerializeModelRateLimits(request.ModelRateLimits),
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -224,6 +227,29 @@ namespace ConduitLLM.Core.Services
             {
                 key.RateLimitRpd = request.RateLimitRpd;
                 changedProperties.Add(nameof(key.RateLimitRpd));
+            }
+
+            if (request.RateLimitTpm.HasValue && key.RateLimitTpm != request.RateLimitTpm)
+            {
+                key.RateLimitTpm = request.RateLimitTpm;
+                changedProperties.Add(nameof(key.RateLimitTpm));
+            }
+
+            if (request.MaxParallelRequests.HasValue && key.MaxParallelRequests != request.MaxParallelRequests)
+            {
+                key.MaxParallelRequests = request.MaxParallelRequests;
+                changedProperties.Add(nameof(key.MaxParallelRequests));
+            }
+
+            if (request.ModelRateLimits is not null)
+            {
+                // Supplying the map replaces it wholesale; an empty map clears every override.
+                var serialized = VirtualKeyUtilities.SerializeModelRateLimits(request.ModelRateLimits);
+                if (key.ModelRateLimits != serialized)
+                {
+                    key.ModelRateLimits = serialized;
+                    changedProperties.Add(nameof(key.ModelRateLimits));
+                }
             }
 
             if (!changedProperties.Any())

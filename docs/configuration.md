@@ -53,6 +53,11 @@ of the areas, not a copy of that file:
   to miss: correct client-IP handling behind a load balancer or CDN requires enabling **trusted-proxy
   / forwarded-headers** support — it is **off by default**, and without it IP-based rules act on the
   proxy's address, not the caller's.
+- **Rate limiting** — per-key and per-group ceilings on requests, tokens and concurrency are set at
+  runtime through the Admin API, not by environment variable. Two deploy-time knobs matter:
+  `CONDUIT_RATE_LIMIT_FAILURE_MODE` decides whether a Redis outage admits or rejects limited traffic
+  (it admits by default), and the token-reservation defaults bound what a single uncapped request
+  can hold. See [Rate limiting](./operations/rate-limiting.md).
 - **Observability** — metrics and tracing export via OpenTelemetry, with a Prometheus scrape endpoint
   and configurable OTLP target. Covered in [Monitoring](./monitoring.md).
 

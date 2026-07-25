@@ -1686,13 +1686,22 @@ namespace ConduitLLM.Configuration.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int?>("MaxParallelRequests")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Metadata")
                         .HasColumnType("text");
+
+                    b.Property<string>("ModelRateLimits")
+                        .HasColumnType("jsonb");
 
                     b.Property<int?>("RateLimitRpd")
                         .HasColumnType("integer");
 
                     b.Property<int?>("RateLimitRpm")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RateLimitTpm")
                         .HasColumnType("integer");
 
                     b.Property<byte[]>("RowVersion")
@@ -1745,7 +1754,19 @@ namespace ConduitLLM.Configuration.Migrations
                     b.Property<decimal>("LifetimeSpent")
                         .HasColumnType("decimal(19, 8)");
 
+                    b.Property<int?>("MaxParallelRequests")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("MediaRetentionPolicyId")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RateLimitRpd")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RateLimitRpm")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("RateLimitTpm")
                         .HasColumnType("integer");
 
                     b.Property<byte[]>("RowVersion")

@@ -9,6 +9,7 @@ using ConduitLLM.Core.Models.Responses;
 using ConduitLLM.Core.Models.Rerank;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Gateway.RateLimiting;
 
 namespace ConduitLLM.Gateway.Endpoints;
 
@@ -100,6 +101,7 @@ public static class GatewayApiEndpoints
 
         app.MapPost("/v1/embeddings", ([FromServices] EmbeddingsEndpoints endpoints, EmbeddingRequest request, CancellationToken cancellationToken) => endpoints.CreateEmbedding(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication").AddEndpointFilter<RequireBalanceEndpointFilter>()
+            .AddEndpointFilter<TokenRateLimitFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Embeddings").WithName("Embeddings_Create")
             .Produces<EmbeddingResponse>().Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(500);
 
@@ -185,6 +187,7 @@ public static class GatewayApiEndpoints
         app.MapPost("/v1/chat/completions", ([FromServices] ChatEndpoints endpoints, ChatCompletionRequest request, CancellationToken cancellationToken) => endpoints.CreateChatCompletion(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<RequireBalanceEndpointFilter>()
+            .AddEndpointFilter<TokenRateLimitFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Chat").WithName("Chat_CreateCompletion")
             .Produces<ChatCompletionResponse>(200, "application/json")
@@ -194,6 +197,7 @@ public static class GatewayApiEndpoints
         app.MapPost("/v1/responses", ([FromServices] ResponsesEndpoints endpoints, CreateResponseRequest request, CancellationToken cancellationToken) => endpoints.CreateResponse(request, cancellationToken))
             .RequireAuthorization("VirtualKeyAuthentication")
             .AddEndpointFilter<RequireBalanceEndpointFilter>()
+            .AddEndpointFilter<TokenRateLimitFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Responses").WithName("Responses_Create")
             .WithSummary("Create a stateless model response")

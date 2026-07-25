@@ -109,7 +109,7 @@ export function ViewVirtualKeyModal({
         </Card>
 
         {/* Rate Limits */}
-        {(virtualKey.rateLimitRpm ?? virtualKey.rateLimitRpd) && (
+        {(virtualKey.rateLimitRpm ?? virtualKey.rateLimitRpd ?? virtualKey.rateLimitTpm ?? virtualKey.maxParallelRequests) && (
           <Card withBorder>
             <Stack gap="sm">
               <Text size="sm" fw={500}>Rate Limits</Text>
@@ -125,6 +125,29 @@ export function ViewVirtualKeyModal({
                   <Text size="sm">{virtualKey.rateLimitRpd}</Text>
                 </Group>
               )}
+              {virtualKey.rateLimitTpm && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Tokens per minute</Text>
+                  <Text size="sm">{virtualKey.rateLimitTpm}</Text>
+                </Group>
+              )}
+              {virtualKey.maxParallelRequests && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Max parallel requests</Text>
+                  <Text size="sm">{virtualKey.maxParallelRequests}</Text>
+                </Group>
+              )}
+              {virtualKey.modelRateLimits && Object.entries(virtualKey.modelRateLimits).map(([model, limit]) => (
+                <Group justify="space-between" key={model}>
+                  <Text size="sm" c="dimmed">{model}</Text>
+                  <Text size="sm">
+                    {[
+                      limit.rpm ? `${limit.rpm}/min` : null,
+                      limit.tpm ? `${limit.tpm} tokens/min` : null,
+                    ].filter(Boolean).join(' · ')}
+                  </Text>
+                </Group>
+              ))}
             </Stack>
           </Card>
         )}

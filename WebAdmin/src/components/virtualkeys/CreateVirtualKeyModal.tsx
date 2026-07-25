@@ -3,7 +3,6 @@
 import {
   Modal,
   TextInput,
-  NumberInput,
   Switch,
   Button,
   Text,
@@ -24,6 +23,7 @@ import { validators } from '@/lib/utils/form-validators';
 import { notify } from '@/lib/notifications';
 import type { VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { RateLimitFields } from './RateLimitFields';
 
 interface CreateVirtualKeyModalProps {
   opened: boolean;
@@ -35,7 +35,10 @@ interface CreateVirtualKeyForm {
   keyName: string;
   description?: string;
   virtualKeyGroupId?: number;
-  rateLimitPerMinute?: number;
+  rateLimitRpm?: number;
+  rateLimitRpd?: number;
+  rateLimitTpm?: number;
+  maxParallelRequests?: number;
   isEnabled: boolean;
   allowedModels: string[];
   allowedEndpoints: string[];
@@ -98,7 +101,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
       keyName: '',
       description: '',
       virtualKeyGroupId: undefined,
-      rateLimitPerMinute: undefined,
+      rateLimitRpm: undefined,
+      rateLimitRpd: undefined,
+      rateLimitTpm: undefined,
+      maxParallelRequests: undefined,
       isEnabled: true,
       allowedModels: ['*'], // Default to all models
       allowedEndpoints: ['/v1/chat/completions'],
@@ -122,7 +128,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         if (!value) return 'Virtual Key Group is required';
         return null;
       },
-      rateLimitPerMinute: validators.minValue('Rate limit', 1),
+      rateLimitRpm: validators.minValue('Requests per minute', 1),
+      rateLimitRpd: validators.minValue('Requests per day', 1),
+      rateLimitTpm: validators.minValue('Tokens per minute', 1),
+      maxParallelRequests: validators.minValue('Max parallel requests', 1),
       allowedModels: validators.arrayMinLength('model', 1),
       allowedEndpoints: validators.arrayMinLength('endpoint', 1),
       allowedIpAddresses: validators.ipAddresses,
@@ -142,7 +151,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         keyName: values.keyName.trim(),
         description: values.description?.trim() ?? undefined,
         virtualKeyGroupId: values.virtualKeyGroupId, // Now guaranteed to be number
-        rateLimitRpm: values.rateLimitPerMinute ?? undefined,
+        rateLimitRpm: values.rateLimitRpm ?? undefined,
+        rateLimitRpd: values.rateLimitRpd ?? undefined,
+        rateLimitTpm: values.rateLimitTpm ?? undefined,
+        maxParallelRequests: values.maxParallelRequests ?? undefined,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
         metadata: values.metadata?.trim() ? JSON.parse(values.metadata) as Record<string, unknown> : undefined,
         isEnabled: values.isEnabled,
@@ -240,12 +252,15 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         <>
           <Divider mb="md" />
 
-          <NumberInput
-            label="Rate Limit"
-            description="Maximum requests per minute"
-            placeholder="No limit"
-            min={1}
-            {...form.getInputProps('rateLimitPerMinute')}
+          <Text size="sm" fw={500}>Rate limits</Text>
+          <RateLimitFields
+            values={{
+              rateLimitRpm: form.values.rateLimitRpm,
+              rateLimitRpd: form.values.rateLimitRpd,
+              rateLimitTpm: form.values.rateLimitTpm,
+              maxParallelRequests: form.values.maxParallelRequests,
+            }}
+            onChange={(field, value) => form.setFieldValue(field, value)}
           />
 
           <MultiSelect

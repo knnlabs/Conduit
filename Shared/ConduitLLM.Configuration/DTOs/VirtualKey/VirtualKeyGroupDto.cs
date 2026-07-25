@@ -51,5 +51,25 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Number of virtual keys in this group
         /// </summary>
         [Required] public int VirtualKeyCount { get; set; }
+
+        /// <summary>
+        /// Requests per minute shared by every key in this group, or null for no group ceiling.
+        /// </summary>
+        public int? RateLimitRpm { get; set; }
+
+        /// <summary>
+        /// Requests per day shared by every key in this group, or null for no group ceiling.
+        /// </summary>
+        public int? RateLimitRpd { get; set; }
+
+        /// <summary>
+        /// Tokens per minute shared by every key in this group, or null for no group ceiling.
+        /// </summary>
+        public int? RateLimitTpm { get; set; }
+
+        /// <summary>
+        /// Requests in flight at once across this group, or null for no group ceiling.
+        /// </summary>
+        public int? MaxParallelRequests { get; set; }
     }
 }

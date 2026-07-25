@@ -10,6 +10,7 @@ import {
   Textarea,
   Alert,
   Button,
+  Divider,
   Group,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
@@ -20,6 +21,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { VirtualKeyDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
+import { RateLimitFields } from './RateLimitFields';
 
 interface EditVirtualKeyModalProps {
   opened: boolean;
@@ -34,6 +36,10 @@ interface EditVirtualKeyForm {
   virtualKeyGroupId?: number;
   isEnabled: boolean;
   allowedModels: string[];
+  rateLimitRpm?: number;
+  rateLimitRpd?: number;
+  rateLimitTpm?: number;
+  maxParallelRequests?: number;
 }
 
 export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: EditVirtualKeyModalProps) {
@@ -43,6 +49,10 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
     virtualKeyGroupId: undefined,
     isEnabled: true,
     allowedModels: [],
+    rateLimitRpm: undefined,
+    rateLimitRpd: undefined,
+    rateLimitTpm: undefined,
+    maxParallelRequests: undefined,
   }));
   const lastVirtualKeyId = useRef<number | undefined>(undefined);
 
@@ -62,6 +72,10 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         return null;
       },
       virtualKeyGroupId: validators.positiveNumber('Virtual Key Group'),
+      rateLimitRpm: validators.minValue('Requests per minute', 1),
+      rateLimitRpd: validators.minValue('Requests per day', 1),
+      rateLimitTpm: validators.minValue('Tokens per minute', 1),
+      maxParallelRequests: validators.minValue('Max parallel requests', 1),
     },
   });
 
@@ -77,6 +91,10 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
         virtualKeyGroupId: values.virtualKeyGroupId ?? undefined,
         isEnabled: values.isEnabled,
         allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
+        rateLimitRpm: values.rateLimitRpm ?? undefined,
+        rateLimitRpd: values.rateLimitRpd ?? undefined,
+        rateLimitTpm: values.rateLimitTpm ?? undefined,
+        maxParallelRequests: values.maxParallelRequests ?? undefined,
         metadata: values.description?.trim()
           ? JSON.parse(values.description) as Record<string, unknown>
           : undefined,
@@ -112,6 +130,10 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
       virtualKeyGroupId: virtualKey.virtualKeyGroupId ?? undefined,
       isEnabled: virtualKey.isEnabled,
       allowedModels: models,
+      rateLimitRpm: virtualKey.rateLimitRpm ?? undefined,
+      rateLimitRpd: virtualKey.rateLimitRpd ?? undefined,
+      rateLimitTpm: virtualKey.rateLimitTpm ?? undefined,
+      maxParallelRequests: virtualKey.maxParallelRequests ?? undefined,
     };
 
     setInitialFormValues(newFormValues);
@@ -173,6 +195,18 @@ export function EditVirtualKeyModal({ opened, onClose, virtualKey, onSuccess }: 
             Virtual Key Group ID: {virtualKey.virtualKeyGroupId}
           </Text>
         </Alert>
+
+        <Divider label="Rate limits" labelPosition="left" />
+
+        <RateLimitFields
+          values={{
+            rateLimitRpm: form.values.rateLimitRpm,
+            rateLimitRpd: form.values.rateLimitRpd,
+            rateLimitTpm: form.values.rateLimitTpm,
+            maxParallelRequests: form.values.maxParallelRequests,
+          }}
+          onChange={(field, value) => form.setFieldValue(field, value)}
+        />
 
         <Group justify="flex-end" mt="md">
           <Button variant="subtle" onClick={handleClose}>

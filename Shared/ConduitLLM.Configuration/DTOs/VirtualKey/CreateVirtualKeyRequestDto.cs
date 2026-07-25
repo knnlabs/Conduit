@@ -28,4 +28,20 @@ public class CreateVirtualKeyRequestDto
 
     public int? RateLimitRpm { get; set; }
     public int? RateLimitRpd { get; set; }
+
+    /// <summary>
+    /// Optional tokens-per-minute ceiling. Null leaves the key without a token limit.
+    /// </summary>
+    public int? RateLimitTpm { get; set; }
+
+    /// <summary>
+    /// Optional cap on requests in flight at once. Null leaves the key without a cap.
+    /// </summary>
+    public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
+    /// Per-model rate limit overrides keyed by model alias. A trailing <c>*</c> matches by
+    /// prefix; an exact alias always wins over a prefix rule.
+    /// </summary>
+    public Dictionary<string, ModelRateLimitDto>? ModelRateLimits { get; set; }
 }

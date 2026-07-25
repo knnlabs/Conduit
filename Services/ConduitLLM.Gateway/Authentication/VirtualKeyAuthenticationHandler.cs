@@ -149,6 +149,21 @@ namespace ConduitLLM.Gateway.Authentication
                 Context.Items["VirtualKey.KeyHash"] = keyEntity.KeyHash;
                 Context.Items["VirtualKey.RateLimitRpm"] = keyEntity.RateLimitRpm;
                 Context.Items["VirtualKey.RateLimitRpd"] = keyEntity.RateLimitRpd;
+                Context.Items["VirtualKey.RateLimitTpm"] = keyEntity.RateLimitTpm;
+                Context.Items["VirtualKey.MaxParallelRequests"] = keyEntity.MaxParallelRequests;
+                Context.Items["VirtualKey.ModelRateLimits"] = keyEntity.ModelRateLimits;
+
+                // Group ceilings apply in addition to the key's own, so they travel with the
+                // request rather than being looked up again downstream.
+                var group = keyEntity.VirtualKeyGroup;
+                if (group is not null)
+                {
+                    Context.Items["VirtualKey.GroupId"] = group.Id;
+                    Context.Items["VirtualKeyGroup.RateLimitRpm"] = group.RateLimitRpm;
+                    Context.Items["VirtualKeyGroup.RateLimitRpd"] = group.RateLimitRpd;
+                    Context.Items["VirtualKeyGroup.RateLimitTpm"] = group.RateLimitTpm;
+                    Context.Items["VirtualKeyGroup.MaxParallelRequests"] = group.MaxParallelRequests;
+                }
 
                 // Store ephemeral key status for logging/auditing
                 if (isEphemeralKey)

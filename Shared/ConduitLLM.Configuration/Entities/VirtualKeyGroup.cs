@@ -70,6 +70,31 @@ public class VirtualKeyGroup : IEntity<int>, IAuditableEntity
     public virtual MediaRetentionPolicy? MediaRetentionPolicy { get; set; }
 
     /// <summary>
+    /// Requests per minute shared by every key in this group. Null means no group ceiling.
+    /// </summary>
+    /// <remarks>
+    /// Group limits are enforced <b>in addition to</b> each key's own limits, so the effective
+    /// ceiling is whichever is tighter. They exist because a per-key limit says nothing about
+    /// what a tenant can do in aggregate: fifty keys at 100 RPM each is 5,000 RPM.
+    /// </remarks>
+    public int? RateLimitRpm { get; set; }
+
+    /// <summary>
+    /// Requests per day shared by every key in this group. Null means no group ceiling.
+    /// </summary>
+    public int? RateLimitRpd { get; set; }
+
+    /// <summary>
+    /// Tokens per minute shared by every key in this group. Null means no group ceiling.
+    /// </summary>
+    public int? RateLimitTpm { get; set; }
+
+    /// <summary>
+    /// Requests in flight at once across every key in this group. Null means no group ceiling.
+    /// </summary>
+    public int? MaxParallelRequests { get; set; }
+
+    /// <summary>
     /// Collection of virtual keys that belong to this group
     /// </summary>
     public virtual ICollection<VirtualKey> VirtualKeys { get; set; } = new List<VirtualKey>();

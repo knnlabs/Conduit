@@ -28,6 +28,7 @@ import {
   IconCash,
   IconLayersLinked,
   IconHistory,
+  IconPencil,
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
@@ -40,6 +41,7 @@ import { withAdminClient } from '@/lib/client/adminClient';
 import { 
   LazyCreateVirtualKeyGroupModal as CreateVirtualKeyGroupModal,
   LazyViewVirtualKeyGroupModal as ViewVirtualKeyGroupModal,
+  LazyEditVirtualKeyGroupModal as EditVirtualKeyGroupModal,
   LazyAddCreditsModal as AddCreditsModal,
   LazyTransactionHistoryModal as TransactionHistoryModal,
 } from '@/components/lazy/LazyModals';
@@ -55,6 +57,7 @@ export default function VirtualKeyGroupsPage() {
   // Modal states
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
+  const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
   const [creditsModalOpened, { open: openCreditsModal, close: closeCreditsModal }] = useDisclosure(false);
   const [transactionHistoryOpened, { open: openTransactionHistory, close: closeTransactionHistory }] = useDisclosure(false);
 
@@ -285,6 +288,15 @@ export default function VirtualKeyGroupsPage() {
                               View Details
                             </Menu.Item>
                             <Menu.Item
+                              leftSection={<IconPencil style={{ width: rem(14), height: rem(14) }} />}
+                              onClick={() => {
+                                setSelectedGroup(group);
+                                openEditModal();
+                              }}
+                            >
+                              Edit Group &amp; Limits
+                            </Menu.Item>
+                            <Menu.Item
                               leftSection={<IconHistory style={{ width: rem(14), height: rem(14) }} />}
                               onClick={() => handleViewTransactionHistory(group)}
                             >
@@ -328,6 +340,13 @@ export default function VirtualKeyGroupsPage() {
         opened={viewModalOpened}
         onClose={closeViewModal}
         group={selectedGroup}
+      />
+
+      <EditVirtualKeyGroupModal
+        opened={editModalOpened}
+        onClose={closeEditModal}
+        group={selectedGroup}
+        onSuccess={() => void fetchGroups()}
       />
 
       <AddCreditsModal

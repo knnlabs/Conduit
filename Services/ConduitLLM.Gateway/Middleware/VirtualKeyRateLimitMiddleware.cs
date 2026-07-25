@@ -1,7 +1,7 @@
-using System.Text.Json;
-using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.RateLimiting;
 
 namespace ConduitLLM.Gateway.Middleware
 {
@@ -16,10 +16,15 @@ namespace ConduitLLM.Gateway.Middleware
     /// - Excluded paths (health, metrics, public media, SignalR hubs) are passed through.
     /// - Requests not authenticated via the VirtualKey scheme (e.g., Backend service-to-service)
     ///   are passed through — they have no <c>VirtualKey.KeyHash</c> in <c>HttpContext.Items</c>.
-    /// - Keys with <c>RateLimitRpm == null</c> AND <c>RateLimitRpd == null</c> are unlimited.
+    /// - A key with no request, daily or concurrency ceiling is unlimited and costs no round-trip.
     /// - On rate-limit rejection, returns 429 with <c>Retry-After</c> and an OpenAI-shaped error body.
     /// - On any internal exception (Redis unavailable, etc.), logs a warning and lets the request
     ///   through (fail open) — preferable to tanking the gateway.
+    /// - A concurrency slot, when the key has a cap, is held for the lifetime of the request and
+    ///   returned in a finally — so completion, failure and client abort all release it. For an
+    ///   asynchronous job that means the submit call is what occupies a slot, not the job itself.
+    /// - Token limits are not enforced here: they need the bound request body, so they run as an
+    ///   endpoint filter. See <see cref="ConduitLLM.Gateway.RateLimiting.TokenRateLimitFilter"/>.
     /// </remarks>
     public class VirtualKeyRateLimitMiddleware
     {
@@ -33,15 +38,24 @@ namespace ConduitLLM.Gateway.Middleware
 
         private readonly RequestDelegate _next;
         private readonly IVirtualKeyRateLimitService _rateLimitService;
+        private readonly IConcurrencyRateLimitService _concurrencyService;
+        private readonly IRateLimitFailurePolicy _failurePolicy;
+        private readonly RateLimitOptions _options;
         private readonly ILogger<VirtualKeyRateLimitMiddleware> _logger;
 
         public VirtualKeyRateLimitMiddleware(
             RequestDelegate next,
             IVirtualKeyRateLimitService rateLimitService,
+            IConcurrencyRateLimitService concurrencyService,
+            IRateLimitFailurePolicy failurePolicy,
+            RateLimitOptions options,
             ILogger<VirtualKeyRateLimitMiddleware> logger)
         {
             _next = next;
             _rateLimitService = rateLimitService;
+            _concurrencyService = concurrencyService;
+            _failurePolicy = failurePolicy;
+            _options = options;
             _logger = logger;
         }
 
@@ -55,48 +69,157 @@ namespace ConduitLLM.Gateway.Middleware
 
             // Only authenticated VirtualKey-scheme requests carry a KeyHash in Items.
             // Backend-scheme and unauthenticated requests pass through unrestricted here.
-            if (context.Items["VirtualKey.KeyHash"] is not string keyHash || string.IsNullOrEmpty(keyHash))
+            if (context.Items[RateLimitContextKeys.KeyHash] is not string keyHash || string.IsNullOrEmpty(keyHash))
             {
                 await _next(context);
                 return;
             }
 
-            var rpmLimit = context.Items["VirtualKey.RateLimitRpm"] as int?;
-            var rpdLimit = context.Items["VirtualKey.RateLimitRpd"] as int?;
+            var keyLimits = new RequestRateLimits(
+                context.Items[RateLimitContextKeys.Rpm] as int?,
+                context.Items[RateLimitContextKeys.Rpd] as int?);
+            var maxParallel = context.Items[RateLimitContextKeys.MaxParallelRequests] as int?;
 
-            // Null/zero on both = unlimited; skip the Redis round-trip.
-            if (!HasConfiguredLimit(rpmLimit) && !HasConfiguredLimit(rpdLimit))
+            // Group ceilings apply on top of the key's own; the tighter of the two governs.
+            var groupId = context.Items[RateLimitContextKeys.GroupId] as int?;
+            var groupLimits = groupId is null
+                ? default
+                : new RequestRateLimits(
+                    context.Items[RateLimitContextKeys.GroupRpm] as int?,
+                    context.Items[RateLimitContextKeys.GroupRpd] as int?);
+            var groupMaxParallel = groupId is null
+                ? null
+                : context.Items[RateLimitContextKeys.GroupMaxParallelRequests] as int?;
+
+            // Nothing configured at either tier = unlimited; skip the Redis round-trip entirely.
+            if (keyLimits.IsUnlimited && groupLimits.IsUnlimited &&
+                !HasConfiguredLimit(maxParallel) && !HasConfiguredLimit(groupMaxParallel))
             {
                 await _next(context);
                 return;
             }
 
-            RateLimitCheckResult? result = null;
+            if (!keyLimits.IsUnlimited || !groupLimits.IsUnlimited)
+            {
+                RateLimitCheckResult result;
+                try
+                {
+                    result = await _rateLimitService.CheckRateLimitAsync(
+                        keyHash, keyLimits, groupId, groupLimits);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Rate limit check threw for virtual key {KeyHashPrefix}",
+                        SafeKeyPrefix(keyHash));
+
+                    if (_failurePolicy.ShouldReject("request-limits", ex.Message))
+                    {
+                        await WriteDegradedResponseAsync(context, "request-limits");
+                        return;
+                    }
+
+                    await _next(context);
+                    return;
+                }
+
+                // The store answered but could not be trusted; the configured policy decides.
+                if (result.Degraded && _failurePolicy.ShouldReject(
+                        string.IsNullOrEmpty(result.LimitType) ? "request-limits" : result.LimitType,
+                        "the rate limit store was unreachable"))
+                {
+                    await WriteDegradedResponseAsync(context, "request-limits");
+                    return;
+                }
+
+                SetRateLimitHeaders(context, result);
+
+                if (!result.IsAllowed)
+                {
+                    GatewayRateLimitMetrics.RecordRejected(result.LimitType);
+                    await WriteRateLimitedResponseAsync(context, result);
+                    return;
+                }
+
+                GatewayRateLimitMetrics.RecordAllowed(result.LimitType);
+            }
+
+            await InvokeWithConcurrencySlotAsync(context, keyHash);
+        }
+
+        /// <summary>
+        /// Takes a concurrency slot for the request when the key has a cap, and returns it once
+        /// the request is over, however it ended.
+        /// </summary>
+        private async Task InvokeWithConcurrencySlotAsync(HttpContext context, string keyHash)
+        {
+            ConcurrencyDecision? decision;
             try
             {
-                result = await _rateLimitService.CheckRateLimitAsync(keyHash, rpmLimit, rpdLimit);
+                decision = await _concurrencyService.TryAcquireAsync(context);
             }
             catch (Exception ex)
             {
-                // Fail open: rate limiting is defense-in-depth; never tank the request path.
-                _logger.LogWarning(ex, "Rate limit check failed for virtual key {KeyHashPrefix}; allowing request",
+                _logger.LogDebug(ex, "Concurrency check threw for virtual key {KeyHashPrefix}",
                     SafeKeyPrefix(keyHash));
-                GatewayRateLimitMetrics.RecordError();
+
+                if (_failurePolicy.ShouldReject(ConcurrencyRateLimitService.ScopeName, ex.Message))
+                {
+                    await WriteDegradedResponseAsync(context, ConcurrencyRateLimitService.ScopeName);
+                    return;
+                }
+
                 await _next(context);
                 return;
             }
 
-            SetRateLimitHeaders(context, result);
-
-            if (!result.IsAllowed)
+            if (decision is { Degraded: true } &&
+                _failurePolicy.ShouldReject(decision.Scope, "the rate limit store was unreachable"))
             {
-                GatewayRateLimitMetrics.RecordRejected(result.LimitType);
-                await WriteRateLimitedResponseAsync(context, result);
+                await WriteDegradedResponseAsync(context, decision.Scope);
                 return;
             }
 
-            GatewayRateLimitMetrics.RecordAllowed(result.LimitType);
-            await _next(context);
+            // No cap configured, or the store was unavailable: nothing to hold.
+            if (decision is null || (decision.IsAllowed && decision.Slot is null))
+            {
+                await _next(context);
+                return;
+            }
+
+            if (!decision.IsAllowed)
+            {
+                // Capacity returns when some other request finishes, which cannot be predicted,
+                // so the advertised wait is a short documented constant rather than an instant.
+                var retryAt = DateTime.UtcNow.AddSeconds(_options.ConcurrencyRetryAfterSeconds);
+                RateLimitResponse.SetHeaders(context, decision.Limit, 0, retryAt, decision.Scope);
+                await RateLimitResponse.WriteAsync(
+                    context,
+                    decision.Scope,
+                    decision.Limit,
+                    retryAt,
+                    $"Too many concurrent requests ({decision.Limit} in flight). Retry once an in-flight request completes.");
+                return;
+            }
+
+            try
+            {
+                await _next(context);
+            }
+            finally
+            {
+                // Runs on completion, on a thrown exception, and on a client abort — an
+                // abandoned stream must not hold its slot until the TTL expires.
+                try
+                {
+                    await _concurrencyService.ReleaseAsync(decision.Slot!);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to release the concurrency slot for virtual key {KeyHashPrefix}; it will expire on its own",
+                        SafeKeyPrefix(keyHash));
+                }
+            }
         }
 
         private static bool ShouldSkip(HttpContext context)
@@ -115,33 +238,47 @@ namespace ConduitLLM.Gateway.Middleware
         private static void SetRateLimitHeaders(HttpContext context, RateLimitCheckResult result)
         {
             // Headers are informational — set on both allow and deny so clients can pace themselves.
-            context.Response.Headers["X-RateLimit-Limit"] = result.Limit.ToString();
-            context.Response.Headers["X-RateLimit-Remaining"] = result.RequestsRemaining.ToString();
-            context.Response.Headers["X-RateLimit-Reset"] = ((DateTimeOffset)result.ResetsAt).ToUnixTimeSeconds().ToString();
-            if (!string.IsNullOrEmpty(result.LimitType))
-            {
-                context.Response.Headers["X-RateLimit-Scope"] = result.LimitType;
-            }
+            RateLimitResponse.SetHeaders(
+                context, result.Limit, result.RequestsRemaining, result.ResetsAt, result.LimitType);
         }
 
-        private static async Task WriteRateLimitedResponseAsync(HttpContext context, RateLimitCheckResult result)
+        /// <summary>
+        /// Refuses a request whose limits could not be evaluated, under a fail-closed policy.
+        /// </summary>
+        /// <remarks>
+        /// 503 rather than 429: the caller has not exceeded anything, the gateway simply cannot
+        /// tell. Conflating the two would have clients back off against a quota they may be
+        /// nowhere near.
+        /// </remarks>
+        private static Task WriteDegradedResponseAsync(HttpContext context, string scope)
         {
-            var retryAfterSeconds = Math.Max(1, (int)(result.ResetsAt - DateTime.UtcNow).TotalSeconds);
-            context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
-            context.Response.Headers["Retry-After"] = retryAfterSeconds.ToString();
+            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+            context.Response.Headers["Retry-After"] = "5";
+            context.Response.Headers["X-RateLimit-Scope"] = scope;
             context.Response.ContentType = "application/json";
 
-            var error = new OpenAIErrorResponse
-            {
-                Error = new OpenAIError
+            return System.Text.Json.JsonSerializer.SerializeAsync(
+                context.Response.Body,
+                new ConduitLLM.Core.Models.OpenAIErrorResponse
                 {
-                    Message = $"{result.LimitType} rate limit exceeded ({result.Limit} requests). Retry after {retryAfterSeconds} seconds.",
-                    Type = "rate_limit_exceeded",
-                    Code = "rate_limit_exceeded"
-                }
-            };
+                    Error = new ConduitLLM.Core.Models.OpenAIError
+                    {
+                        Message = "Rate limits cannot be verified right now and this deployment is configured to fail closed. Retry shortly.",
+                        Type = "service_unavailable",
+                        Code = "rate_limit_unavailable"
+                    }
+                });
+        }
 
-            await JsonSerializer.SerializeAsync(context.Response.Body, error);
+        private static Task WriteRateLimitedResponseAsync(HttpContext context, RateLimitCheckResult result)
+        {
+            var retryAfterSeconds = RateLimitResponse.RetryAfterSeconds(result.ResetsAt);
+            return RateLimitResponse.WriteAsync(
+                context,
+                result.LimitType,
+                result.Limit,
+                result.ResetsAt,
+                $"{result.LimitType} rate limit exceeded ({result.Limit} requests). Retry after {retryAfterSeconds} seconds.");
         }
 
         private static string SafeKeyPrefix(string keyHash)

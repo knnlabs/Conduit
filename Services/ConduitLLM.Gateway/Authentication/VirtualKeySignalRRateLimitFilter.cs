@@ -105,10 +105,12 @@ namespace ConduitLLM.Gateway.Authentication
 
             if (!string.IsNullOrEmpty(virtualKeyHash))
             {
-                // Check connection limit FIRST (before incrementing)
                 if (_connectionOptions.EnforceLimits)
                 {
-                    var limitResult = await _signalRRateLimitService.CheckConnectionLimitAsync(
+                    // Admission and the increment are one atomic operation. Checking first and
+                    // incrementing after let a simultaneous burst of connections all read the
+                    // same count and be admitted together, overshooting the ceiling.
+                    var limitResult = await _signalRRateLimitService.TryAcquireConnectionAsync(
                         virtualKeyHash,
                         _connectionOptions.MaxConnectionsPerVirtualKey);
 
@@ -122,13 +124,17 @@ namespace ConduitLLM.Gateway.Authentication
                         PublishConnectionLimitExceeded(virtualKeyHash, limitResult, context);
                         throw new HubException(limitResult.DenialReason);
                     }
+
+                    _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
+                        LoggingSanitizer.S(virtualKeyHash), limitResult.CurrentConnections);
                 }
+                else
+                {
+                    var connectionCount = await _signalRRateLimitService.IncrementConnectionCountAsync(virtualKeyHash);
 
-                // Use Redis service to track connections across all instances
-                var connectionCount = await _signalRRateLimitService.IncrementConnectionCountAsync(virtualKeyHash);
-
-                _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
-                    LoggingSanitizer.S(virtualKeyHash), connectionCount);
+                    _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
+                        LoggingSanitizer.S(virtualKeyHash), connectionCount);
+                }
             }
 
             await next(context);

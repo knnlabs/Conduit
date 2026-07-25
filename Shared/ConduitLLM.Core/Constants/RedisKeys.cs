@@ -27,9 +27,37 @@ public static class RedisKeys
     {
         public static string VirtualKeyRpm(string hash) => $"rate:vk:{hash}:rpm";
         public static string VirtualKeyRpd(string hash) => $"rate:vk:{hash}:rpd";
-        public static string VirtualKeyLimits(string hash) => $"rate:vk:{hash}:limits";
-        public static string VirtualKeyRpmSeq(string hash) => $"rate:vk:{hash}:rpm:seq";
-        public static string VirtualKeyRpdSeq(string hash) => $"rate:vk:{hash}:rpd:seq";
+
+        /// <summary>Weighted token-per-minute window; entry weights are token counts.</summary>
+        public static string VirtualKeyTpm(string hash) => $"rate:vk:{hash}:tpm";
+
+        /// <summary>
+        /// In-flight request slots. Entries are released explicitly when a request finishes and
+        /// age out on their own if the node holding them dies.
+        /// </summary>
+        public static string VirtualKeyConcurrency(string hash) => $"rate:vk:{hash}:concurrency";
+
+        // Per-model overrides are partitioned by the alias the caller sends, which is what the
+        // operator configured a ceiling against.
+        public static string VirtualKeyModelRpm(string hash, string modelAlias) =>
+            $"rate:vk:{hash}:model:{modelAlias}:rpm";
+
+        public static string VirtualKeyModelTpm(string hash, string modelAlias) =>
+            $"rate:vk:{hash}:model:{modelAlias}:tpm";
+
+        // Group-scope windows. Every key in a group shares these, so the partition is the
+        // group id rather than a key hash.
+        public static string GroupRpm(int groupId) => $"rate:vkg:{groupId}:rpm";
+        public static string GroupRpd(int groupId) => $"rate:vkg:{groupId}:rpd";
+        public static string GroupTpm(int groupId) => $"rate:vkg:{groupId}:tpm";
+        public static string GroupConcurrency(int groupId) => $"rate:vkg:{groupId}:concurrency";
+
+        /// <summary>
+        /// Companion key holding the total weight currently inside a sliding window, so reading
+        /// the window's usage is O(1). Written by the limiter's Lua script — this builder exists
+        /// for cleanup paths that need to delete a window wholesale.
+        /// </summary>
+        public static string WindowSum(string windowKey) => $"{windowKey}:sum";
     }
 
     /// <summary>

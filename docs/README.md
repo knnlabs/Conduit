@@ -24,6 +24,8 @@ Deeper operational runbooks stand on their own and are linked from Monitoring:
   proxy.
 - **[Provider key auto-disable](./operations/provider-key-auto-disable.md)** — investigating fatal
   credential/account errors and restoring keys safely.
+- **[Rate limiting](./operations/rate-limiting.md)** — what can be limited and at which scope, what
+  a throttled client sees, and what happens when the limit store is unreachable.
 
 **[Versioning](./Versioning.md)** documents the release and version scheme.
 

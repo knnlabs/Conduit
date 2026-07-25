@@ -36,6 +36,13 @@ export const LazyCreateVirtualKeyGroupModal = (props: React.ComponentProps<typeo
   </Suspense>
 );
 
+const EditVirtualKeyGroupModalLazy = lazy(() => import('../virtualkeys/EditVirtualKeyGroupModal').then(mod => ({ default: mod.EditVirtualKeyGroupModal })));
+export const LazyEditVirtualKeyGroupModal = (props: React.ComponentProps<typeof EditVirtualKeyGroupModalLazy>) => (
+  <Suspense fallback={<ModalSkeleton />}>
+    <EditVirtualKeyGroupModalLazy {...props} />
+  </Suspense>
+);
+
 const ViewVirtualKeyGroupModalLazy = lazy(() => import('../virtualkeys/ViewVirtualKeyGroupModal').then(mod => ({ default: mod.ViewVirtualKeyGroupModal })));
 export const LazyViewVirtualKeyGroupModal = (props: React.ComponentProps<typeof ViewVirtualKeyGroupModalLazy>) => (
   <Suspense fallback={<ModalSkeleton />}>
