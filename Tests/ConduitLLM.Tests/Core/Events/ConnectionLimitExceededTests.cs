@@ -88,7 +88,7 @@ namespace ConduitLLM.Tests.Core.Events
             const string virtualKeyHash = "abc123hash";
             const int currentConnections = 99;
             const int maxConnections = 100;
-            const string hubName = "MetricsHub";
+            const string hubName = "VideoGenerationHub";
             const string ipAddress = "192.168.1.100";
             const string correlationId = "corr-123";
 

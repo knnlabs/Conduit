@@ -27,15 +27,6 @@ namespace ConduitLLM.Gateway.Extensions
                 provider.GetRequiredService<IDistributedAlertManagementService>() as DistributedAlertManagementService
                 ?? throw new InvalidOperationException("DistributedAlertManagementService not registered correctly"));
             
-            // Register distributed performance monitoring service
-            services.AddSingleton<IDistributedPerformanceMonitoringService, DistributedPerformanceMonitoringService>();
-            services.AddSingleton<IPerformanceMonitoringService>(provider => 
-                provider.GetRequiredService<IDistributedPerformanceMonitoringService>());
-            services.Configure<PerformanceMonitoringOptions>(configuration.GetSection("PerformanceMonitoring"));
-            services.AddHostedService<DistributedPerformanceMonitoringService>(provider =>
-                provider.GetRequiredService<IDistributedPerformanceMonitoringService>() as DistributedPerformanceMonitoringService
-                ?? throw new InvalidOperationException("DistributedPerformanceMonitoringService not registered correctly"));
-            
             // Register distributed SignalR metrics service
             services.AddSingleton<IDistributedSignalRMetricsService, DistributedSignalRMetricsService>();
             services.AddHostedService<DistributedSignalRMetricsService>(provider =>

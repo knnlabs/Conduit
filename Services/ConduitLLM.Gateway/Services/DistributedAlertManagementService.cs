@@ -1,11 +1,9 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading.Channels;
-using Microsoft.AspNetCore.SignalR;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Gateway.Interfaces;
 
 namespace ConduitLLM.Gateway.Services
@@ -17,7 +15,6 @@ namespace ConduitLLM.Gateway.Services
     {
         private readonly IDatabase _database;
         private readonly ILogger<DistributedAlertManagementService> _logger;
-        private readonly IHubContext<HealthMonitoringHub> _hubContext;
         private readonly IServiceProvider _serviceProvider;
         
         public string InstanceId { get; }
@@ -40,12 +37,10 @@ namespace ConduitLLM.Gateway.Services
         public DistributedAlertManagementService(
             IConnectionMultiplexer redis,
             ILogger<DistributedAlertManagementService> logger,
-            IHubContext<HealthMonitoringHub> hubContext,
             IServiceProvider serviceProvider)
         {
             _database = redis.GetDatabase();
             _logger = logger;
-            _hubContext = hubContext;
             _serviceProvider = serviceProvider;
             InstanceId = Environment.MachineName + "_" + Environment.ProcessId + "_" + Guid.NewGuid().ToString("N")[..8];
             // Bounded so a stalled stream consumer cannot grow memory without limit;
@@ -233,9 +228,6 @@ namespace ConduitLLM.Gateway.Services
                     
                     _logger.LogWarning("New alert triggered: {AlertTitle} - {AlertMessage}", 
                         alert.Title, alert.Message);
-                    
-                    // Send SignalR notifications
-                    await SendSignalRNotificationsAsync(alert);
                     
                     // Send external notifications
                     await SendExternalNotificationsAsync(alert);
@@ -543,24 +535,6 @@ namespace ConduitLLM.Gateway.Services
             await _database.ListLeftPushAsync(historyKey, JsonSerializer.Serialize(entry));
             await _database.ListTrimAsync(historyKey, 0, 99); // Keep last 100 entries
             await _database.KeyExpireAsync(historyKey, TimeSpan.FromDays(30));
-        }
-
-        private async Task SendSignalRNotificationsAsync(HealthAlert alert)
-        {
-            try
-            {
-                // Send to severity group
-                var severityGroup = $"severity:{alert.Severity}";
-                await _hubContext.Clients.Group(severityGroup).SendAsync("NewAlert", alert);
-
-                // Send to component subscribers
-                var componentGroup = $"component:{alert.Component}";
-                await _hubContext.Clients.Group(componentGroup).SendAsync("ComponentAlert", alert);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to send SignalR notifications for alert {AlertId}", alert.Id);
-            }
         }
 
         private async Task SendExternalNotificationsAsync(HealthAlert alert)

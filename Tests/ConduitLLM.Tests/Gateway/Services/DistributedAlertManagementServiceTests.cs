@@ -1,6 +1,4 @@
-using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Gateway.Services;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using Moq;
 using StackExchange.Redis;
@@ -30,7 +28,6 @@ public sealed class DistributedAlertManagementServiceTests
         using var service = new DistributedAlertManagementService(
             redis.Object,
             Mock.Of<ILogger<DistributedAlertManagementService>>(),
-            Mock.Of<IHubContext<HealthMonitoringHub>>(),
             Mock.Of<IServiceProvider>());
 
         await service.StartAsync(CancellationToken.None);

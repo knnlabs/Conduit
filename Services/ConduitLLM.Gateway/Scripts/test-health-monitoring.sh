@@ -148,17 +148,6 @@ for scenario in "high-cpu" "memory-leak" "slow-response"; do
         "$API_BASE_URL/api/test/health-monitoring/stop/$scenario"
 done
 
-# Test 9: SignalR Connection (if available)
-echo -e "\n${YELLOW}Test 9:${NC} SignalR Health Monitoring Hub"
-if command -v wscat &> /dev/null; then
-    # Test SignalR connection using wscat if available
-    timeout 5 wscat -c "ws://localhost:5000/hubs/health-monitoring" &> /dev/null && \
-        echo -e "${GREEN}✓${NC} SignalR hub is accessible" || \
-        echo -e "${YELLOW}!${NC} SignalR hub connection test failed (may require auth)"
-else
-    echo -e "${YELLOW}!${NC} wscat not installed, skipping SignalR test"
-fi
-
 # Summary
 echo -e "\n================================================"
 echo -e "${GREEN}Health Monitoring System Tests Completed!${NC}"

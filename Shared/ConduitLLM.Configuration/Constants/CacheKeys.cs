@@ -555,29 +555,6 @@ public static class CacheKeys
 
     #endregion
 
-    #region Performance Monitoring Cache
-
-    /// <summary>
-    /// Cache keys for performance monitoring metrics.
-    /// Used by DistributedPerformanceMonitoringService.
-    /// </summary>
-    public static class Performance
-    {
-        /// <summary>Prefix for general performance metrics</summary>
-        public const string MetricsPrefix = "perf_metrics";
-
-        /// <summary>Prefix for endpoint-specific metrics</summary>
-        public const string EndpointMetricsPrefix = "endpoint_metrics";
-
-        /// <summary>Prefix for cache performance metrics</summary>
-        public const string CacheMetricsPrefix = "cache_metrics";
-
-        /// <summary>Prefix for connection pool metrics</summary>
-        public const string PoolMetricsPrefix = "pool_metrics";
-    }
-
-    #endregion
-
     #region Alert Management Cache
 
     /// <summary>

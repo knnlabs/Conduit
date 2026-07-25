@@ -83,11 +83,9 @@ export type {
   ExportStatus,
 } from './models/analyticsExport';
 export * from './models/system';
-export * from './models/metrics';
 export * from './models/databaseBackup';
 export * from './models/signalr';
-// notifications model removed - was only used by deleted SignalR services
-export * from './models/monitoring';
+// notifications/metrics/monitoring models removed - observability is served by Grafana
 export * from './models/configuration';
 // Re-export configurationExtended types except RoutingRule and UpdateRoutingConfigDto (conflicts with configuration)
 export type {
@@ -152,12 +150,9 @@ export { FetchSettingsService } from './services/FetchSettingsService';
 export type { SettingUpdate, SettingsDto } from './services/FetchSettingsService';
 export { FetchAnalyticsService } from './services/FetchAnalyticsService';
 export { FetchConfigurationService } from './services/FetchConfigurationService';
-export { FetchMonitoringService } from './services/FetchMonitoringService';
 export { FetchIpFilterService } from './services/FetchIpFilterService';
 export { FetchMediaService } from './services/FetchMediaService';
 export { FetchModelCostService } from './services/FetchModelCostService';
-export { FetchMetricsService } from './services/FetchMetricsService';
-export { FetchNotificationsService } from './services/FetchNotificationsService';
 export type {
   CostDashboardDto,
   CostTrendDto,

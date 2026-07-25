@@ -29,14 +29,6 @@ namespace ConduitLLM.Gateway.Interfaces
     }
 
     /// <summary>
-    /// Interface for distributed performance monitoring with centralized storage
-    /// </summary>
-    public interface IDistributedPerformanceMonitoringService : IDistributedMonitoringService, ConduitLLM.Gateway.Services.IPerformanceMonitoringService
-    {
-        Task<List<string>> GetActiveInstancesAsync();
-    }
-
-    /// <summary>
     /// Interface for distributed alert management with deduplication
     /// </summary>
     public interface IDistributedAlertManagementService : IDistributedMonitoringService, IAlertManagementService
