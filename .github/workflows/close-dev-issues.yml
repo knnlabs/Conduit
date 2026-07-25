@@ -1,0 +1,142 @@
+name: Close dev issues
+
+# GitHub only honours "Closes #N" for PRs merged into the *default* branch (master).
+# Every PR here targets `dev`, so those references never fire and issues stay open
+# until someone closes them by hand. This workflow does that closing.
+
+on:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Merged PR number to process (backfill a single PR)'
+        required: true
+        type: string
+      dry_run:
+        description: 'List what would be closed without closing anything'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  close-referenced-issues:
+    name: Close issues referenced by merged PRs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      EVENT: ${{ github.event_name }}
+      BEFORE: ${{ github.event.before }}
+      AFTER: ${{ github.sha }}
+      BRANCH: ${{ github.ref_name }}
+      # Untrusted-ish inputs are passed through env, never interpolated into the script body.
+      INPUT_PR: ${{ inputs.pr }}
+      DRY_RUN: ${{ inputs.dry_run }}
+      WORKFLOW_URL: ${{ github.server_url }}/${{ github.repository }}/actions/workflows/close-dev-issues.yml
+    steps:
+      - name: Find merged PRs in this push
+        run: |
+          set -euo pipefail
+          : > prs.txt
+
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            printf '%s\n' "$INPUT_PR" | grep -oE '[0-9]+' > prs.txt || true
+          elif [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            echo "Branch was just created — no commit range to scan."
+          else
+            # compare/ returns every commit in the range (capped at 250 by the API,
+            # which no realistic push to dev exceeds).
+            gh api "repos/$REPO/compare/$BEFORE...$AFTER" --paginate \
+              --jq '.commits[].sha' > shas.txt
+            while read -r sha; do
+              [ -n "$sha" ] || continue
+              gh api "repos/$REPO/commits/$sha/pulls" \
+                --jq '.[] | select(.merged_at != null) | .number' >> prs.txt || true
+            done < shas.txt
+          fi
+
+          sort -u -o prs.txt prs.txt
+          echo "Merged PRs in range: $(tr '\n' ' ' < prs.txt)"
+
+      - name: Collect closing references
+        run: |
+          set -euo pipefail
+          : > refs.txt
+
+          # GitHub's closing-keyword set, plus the comma/and-separated list form this
+          # repo actually writes ("Closes #1205, #1206, #1207."), which GitHub itself
+          # only ever honours for the first number. \b stops `prefixes #99` matching.
+          keywords='\b(close[sd]?|fix(e[sd])?|resolve[sd]?)[[:space:]]*:?[[:space:]]*#[0-9]+([[:space:]]*(,|and|, and)[[:space:]]*#[0-9]+)*'
+
+          while read -r pr; do
+            [ -n "$pr" ] || continue
+            gh api "repos/$REPO/pulls/$pr" --jq '.title, (.body // "")' \
+              | grep -oiE "$keywords" \
+              | grep -oE '#[0-9]+' | tr -d '#' \
+              | sed "s/\$/ $pr/" >> refs.txt || true
+          done < prs.txt
+
+          sort -u -o refs.txt refs.txt
+          echo "Closing references found: $(wc -l < refs.txt)"
+
+      - name: Close the referenced issues
+        run: |
+          set -euo pipefail
+          closed=0
+          skipped=0
+          {
+            echo "### Close dev issues"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          while read -r issue pr; do
+            [ -n "$issue" ] || continue
+
+            # A PR referencing another PR in this same push is not an issue to close.
+            if grep -qx "$issue" prs.txt; then
+              echo "#$issue — skipped (it is a PR in this push)"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            state=$(gh api "repos/$REPO/issues/$issue" \
+              --jq 'if .pull_request then "is-a-pr" else .state end' 2>/dev/null || echo "not-found")
+
+            if [ "$state" != "open" ]; then
+              echo "#$issue — skipped ($state)"
+              echo "- \`#$issue\` skipped — $state" >> "$GITHUB_STEP_SUMMARY"
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            if [ "${DRY_RUN:-false}" = "true" ]; then
+              echo "#$issue — would close (referenced by #$pr)"
+              echo "- \`#$issue\` **would close** — referenced by #$pr (dry run)" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            gh issue close "$issue" --repo "$REPO" --comment \
+          "Completed in #$pr, merged to \`$BRANCH\` (\`$(echo "$AFTER" | cut -c1-8)\`).
+
+          Closed automatically by [\`close-dev-issues\`]($WORKFLOW_URL): pull requests in this repository target \`dev\` rather than the default branch, so GitHub's built-in \`Closes #N\` handling never fires."
+
+            echo "#$issue — closed (referenced by #$pr)"
+            echo "- \`#$issue\` closed — referenced by #$pr" >> "$GITHUB_STEP_SUMMARY"
+            closed=$((closed + 1))
+          done < refs.txt
+
+          if [ "$closed" = "0" ] && [ "$skipped" = "0" ]; then
+            echo "_No closing references in this push._" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "Closed $closed issue(s), skipped $skipped."
