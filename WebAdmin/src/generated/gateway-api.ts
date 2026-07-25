@@ -781,6 +781,7 @@ export interface components {
       capabilities_last_verified_at: unknown;
       parameters: string;
       capabilities: components["schemas"]["ModelCapabilitiesDto"];
+      pricing?: null | components["schemas"]["ModelPricingDto"];
     };
     /** @description Known model capability names. */
     DiscoveryCapabilitiesResponse: {
@@ -1121,6 +1122,22 @@ export interface components {
       model_alias: string;
       series_name: string;
       parameters: components["schemas"]["JsonElement"];
+    };
+    /** @description Operator-configured pricing for a discovered model, in USD per million tokens.
+     *     Only the standard token rates and the pricing-model discriminator are projected;
+     *     clients should treat any `pricing_model` other than `standard` as too
+     *     complex to preview rather than rendering a number from these fields. */
+    ModelPricingDto: {
+      pricing_model: string;
+      /** Format: double */
+      input_cost_per_million_tokens: number | string;
+      /** Format: double */
+      output_cost_per_million_tokens: number | string;
+      /** Format: double */
+      cached_input_cost_per_million_tokens: null | number | string;
+      /** Format: double */
+      embedding_cost_per_million_tokens: null | number | string;
+      currency: string;
     };
     OpenAIError: {
       message: string;

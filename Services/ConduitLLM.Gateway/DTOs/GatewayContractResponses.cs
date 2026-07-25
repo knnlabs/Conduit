@@ -58,6 +58,20 @@ public sealed record ModelMetadataDto(
 /// <summary>Model metadata response envelope.</summary>
 public sealed record ModelMetadataResponse(string ModelId, ModelMetadataDto Metadata);
 
+/// <summary>
+/// Operator-configured pricing for a discovered model, in USD per million tokens.
+/// Only the standard token rates and the pricing-model discriminator are projected;
+/// clients should treat any <c>pricing_model</c> other than <c>standard</c> as too
+/// complex to preview rather than rendering a number from these fields.
+/// </summary>
+public sealed record ModelPricingDto(
+    [property: JsonPropertyName("pricing_model")] string PricingModel,
+    [property: JsonPropertyName("input_cost_per_million_tokens")] decimal InputCostPerMillionTokens,
+    [property: JsonPropertyName("output_cost_per_million_tokens")] decimal OutputCostPerMillionTokens,
+    [property: JsonPropertyName("cached_input_cost_per_million_tokens")] decimal? CachedInputCostPerMillionTokens,
+    [property: JsonPropertyName("embedding_cost_per_million_tokens")] decimal? EmbeddingCostPerMillionTokens,
+    [property: JsonPropertyName("currency")] string Currency);
+
 /// <summary>A model returned by the Conduit discovery extension.</summary>
 public sealed record DiscoveredModelDto(
     [property: JsonPropertyName("id")] string Id,
@@ -74,7 +88,8 @@ public sealed record DiscoveredModelDto(
     [property: JsonPropertyName("capability_source")] string CapabilitySource,
     [property: JsonPropertyName("capabilities_last_verified_at")] DateTime? CapabilitiesLastVerifiedAt,
     [property: JsonPropertyName("parameters")] string Parameters,
-    [property: JsonPropertyName("capabilities")] ModelCapabilitiesDto Capabilities);
+    [property: JsonPropertyName("capabilities")] ModelCapabilitiesDto Capabilities,
+    [property: JsonPropertyName("pricing")] ModelPricingDto? Pricing = null);
 
 /// <summary>Model discovery response.</summary>
 public sealed record DiscoveryModelsResponse(

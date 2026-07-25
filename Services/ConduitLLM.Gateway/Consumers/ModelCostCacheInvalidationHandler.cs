@@ -9,12 +9,14 @@ namespace ConduitLLM.Gateway.Consumers
 {
     /// <summary>
     /// Handles ModelCostChanged events for cache invalidation.
-    /// Invalidates both the model cost cache and pricing rules cache.
+    /// Invalidates the model cost cache, the pricing rules cache, and the discovery
+    /// cache (discovery responses embed pricing, see #1238).
     /// </summary>
     public class ModelCostCacheInvalidationHandler : IEventHandler<ModelCostChanged>
     {
         private readonly ConfigurationModelCostService _modelCostService;
         private readonly ICachedPricingRulesService? _pricingRulesCache;
+        private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<ModelCostCacheInvalidationHandler> _logger;
 
         /// <summary>
@@ -22,14 +24,17 @@ namespace ConduitLLM.Gateway.Consumers
         /// </summary>
         /// <param name="modelCostService">The model cost service used by the billing path</param>
         /// <param name="pricingRulesCache">Optional pricing rules cache</param>
+        /// <param name="discoveryCacheService">Discovery cache holding pricing-bearing model payloads</param>
         /// <param name="logger">Logger for diagnostics</param>
         public ModelCostCacheInvalidationHandler(
             ConfigurationModelCostService modelCostService,
             ICachedPricingRulesService? pricingRulesCache,
+            IDiscoveryCacheService discoveryCacheService,
             ILogger<ModelCostCacheInvalidationHandler> logger)
         {
             _modelCostService = modelCostService ?? throw new ArgumentNullException(nameof(modelCostService));
             _pricingRulesCache = pricingRulesCache;
+            _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -77,6 +82,19 @@ namespace ConduitLLM.Gateway.Consumers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error invalidating billing model cost cache");
+                throw;
+            }
+
+            // Discovery responses embed pricing from ModelCost, so a repricing must also
+            // drop cached discovery payloads or clients keep seeing the old rates until TTL.
+            try
+            {
+                await _discoveryCacheService.InvalidateAllDiscoveryAsync(context.CancellationToken);
+                _logger.LogInformation("Discovery cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error invalidating discovery cache after model cost change");
                 throw;
             }
 

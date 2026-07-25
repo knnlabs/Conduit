@@ -23,9 +23,11 @@ public class ModelCostCacheInvalidationHandlerTests
     {
         var modelCostService = new Mock<IModelCostService>();
         var pricingRulesCache = new Mock<ICachedPricingRulesService>();
+        var discoveryCache = new Mock<IDiscoveryCacheService>();
         var handler = new ModelCostCacheInvalidationHandler(
             modelCostService.Object,
             pricingRulesCache.Object,
+            discoveryCache.Object,
             Mock.Of<ILogger<ModelCostCacheInvalidationHandler>>());
         var context = new TestEventContext();
 
@@ -40,6 +42,24 @@ public class ModelCostCacheInvalidationHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_InvalidatesDiscoveryCacheHoldingPricedModelPayloads()
+    {
+        var discoveryCache = new Mock<IDiscoveryCacheService>();
+        var handler = new ModelCostCacheInvalidationHandler(
+            Mock.Of<IModelCostService>(),
+            null,
+            discoveryCache.Object,
+            Mock.Of<ILogger<ModelCostCacheInvalidationHandler>>());
+        var context = new TestEventContext();
+
+        await handler.HandleAsync(CreateEvent(), context);
+
+        discoveryCache.Verify(
+            service => service.InvalidateAllDiscoveryAsync(context.CancellationToken),
+            Times.Once);
+    }
+
+    [Fact]
     public async Task HandleAsync_BillingCacheFailure_PropagatesForTransportRetry()
     {
         var modelCostService = new Mock<IModelCostService>();
@@ -49,6 +69,7 @@ public class ModelCostCacheInvalidationHandlerTests
         var handler = new ModelCostCacheInvalidationHandler(
             modelCostService.Object,
             null,
+            Mock.Of<IDiscoveryCacheService>(),
             Mock.Of<ILogger<ModelCostCacheInvalidationHandler>>());
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -89,6 +110,7 @@ public class ModelCostCacheInvalidationHandlerTests
         var handler = new ModelCostCacheInvalidationHandler(
             reader,
             null,
+            Mock.Of<IDiscoveryCacheService>(),
             Mock.Of<ILogger<ModelCostCacheInvalidationHandler>>());
 
         await handler.HandleAsync(CreateEvent(), new TestEventContext());

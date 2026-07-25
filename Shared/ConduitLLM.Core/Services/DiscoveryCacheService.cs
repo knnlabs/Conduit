@@ -25,6 +25,14 @@ namespace ConduitLLM.Core.Services
         public bool EnableCaching { get; set; } = true;
 
         /// <summary>
+        /// Whether discovery responses include the operator-configured model pricing.
+        /// Virtual keys already observe billed spend in these units, so rates are
+        /// derivable either way; operators that resell access at a markup can set
+        /// this to false (Discovery:ExposePricing) to keep their cost basis private.
+        /// </summary>
+        public bool ExposePricing { get; set; } = true;
+
+        /// <summary>
         /// Whether to warm cache on startup
         /// </summary>
         public bool WarmCacheOnStartup { get; set; } = false;
@@ -249,18 +257,22 @@ namespace ConduitLLM.Core.Services
         /// Builds cache key for discovery results.
         /// Note: CacheManager handles region prefixing internally, so we only need the logical key.
         /// </summary>
-        public static string BuildCacheKey(string? capability = null, int? virtualKeyId = null)
+        public static string BuildCacheKey(string? capability = null, int? virtualKeyId = null, bool includePricing = false)
         {
+            // Pricing-bearing entries use a distinct key so cached payloads written while
+            // ExposePricing was off (or before pricing existed) are never served as priced.
+            var suffix = includePricing ? ":with_pricing" : string.Empty;
+
             if (virtualKeyId.HasValue)
             {
                 return capability != null
-                    ? $"virtualkey:{virtualKeyId}:capability:{capability}"
-                    : $"virtualkey:{virtualKeyId}";
+                    ? $"virtualkey:{virtualKeyId}:capability:{capability}{suffix}"
+                    : $"virtualkey:{virtualKeyId}{suffix}";
             }
 
             return capability != null
-                ? $"capability:{capability}"
-                : "all";
+                ? $"capability:{capability}{suffix}"
+                : $"all{suffix}";
         }
     }
 }

@@ -7,6 +7,7 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Functions.Utilities;
 using GatewayDiscoveredModelDto = ConduitLLM.Gateway.DTOs.DiscoveredModelDto;
@@ -25,6 +26,7 @@ namespace ConduitLLM.Gateway.Endpoints
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly JsonSerializerOptions _wireJsonOptions;
+        private readonly DiscoveryCacheOptions _discoveryOptions;
 
         /// <summary>
         /// Initializes the Discovery endpoint handler.
@@ -35,6 +37,7 @@ namespace ConduitLLM.Gateway.Endpoints
             IVirtualKeyService virtualKeyService,
             IDiscoveryCacheService discoveryCacheService,
             JsonSerializerOptions wireJsonOptions,
+            IOptions<DiscoveryCacheOptions> discoveryOptions,
             IHttpContextAccessor httpContextAccessor,
             ILogger<DiscoveryEndpoints> logger)
             : base(null, httpContextAccessor, logger)
@@ -44,6 +47,7 @@ namespace ConduitLLM.Gateway.Endpoints
             _virtualKeyService = virtualKeyService ?? throw new ArgumentNullException(nameof(virtualKeyService));
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
             _wireJsonOptions = wireJsonOptions ?? throw new ArgumentNullException(nameof(wireJsonOptions));
+            _discoveryOptions = (discoveryOptions ?? throw new ArgumentNullException(nameof(discoveryOptions))).Value;
         }
 
         /// <summary>
@@ -89,8 +93,11 @@ namespace ConduitLLM.Gateway.Endpoints
                 return accessFailure;
             }
 
-            // Build cache key based on capability filter
-            var cacheKey = DiscoveryCacheService.BuildCacheKey(capability);
+            // Build cache key based on capability filter; pricing-bearing payloads are
+            // cached under a distinct key so toggling ExposePricing never serves the
+            // wrong shape from a stale entry.
+            var exposePricing = _discoveryOptions.ExposePricing;
+            var cacheKey = DiscoveryCacheService.BuildCacheKey(capability, includePricing: exposePricing);
 
             // Try to get from cache first
             var cachedResult = await _discoveryCacheService.GetDiscoveryResultsAsync(cacheKey);
@@ -113,6 +120,8 @@ namespace ConduitLLM.Gateway.Endpoints
                 .Include(m => m.ModelProviderTypeAssociation)
                     .ThenInclude(mpta => mpta.Model)
                         .ThenInclude(m => m.Series)
+                .Include(m => m.ModelProviderTypeAssociation)
+                    .ThenInclude(mpta => mpta.ModelCost)
                 .AsNoTracking()
                 .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
                 .ToListAsync();
@@ -168,6 +177,10 @@ namespace ConduitLLM.Gateway.Endpoints
                 var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? model.MaxInputTokens ?? 0;
                 var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? model.MaxOutputTokens ?? 0;
 
+                var pricing = exposePricing
+                    ? BuildPricing(mapping.ModelProviderTypeAssociation.ModelCost)
+                    : null;
+
                 models.Add(new GatewayDiscoveredModelDto(
                     mapping.ModelAlias,
                     mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
@@ -202,7 +215,8 @@ namespace ConduitLLM.Gateway.Endpoints
                         caps.SupportsFunctionCalling,
                         false,
                         maxInputTokens + maxOutputTokens,
-                        maxOutputTokens)));
+                        maxOutputTokens),
+                    pricing));
             }
 
             // Cache the results for future requests
@@ -220,6 +234,32 @@ namespace ConduitLLM.Gateway.Endpoints
                 LoggingSanitizer.S(capability ?? "all"), models.Count);
 
             return Ok(new DiscoveryModelsResponse(models, models.Count));
+        }
+
+        /// <summary>
+        /// Projects the mapping's linked cost configuration into the discovery contract.
+        /// Mirrors the billing path's notion of "active" (IsActive plus the
+        /// EffectiveDate/ExpiryDate window) so discovery never advertises a price the
+        /// billing pipeline would not apply. Returns null when no active cost resolves,
+        /// letting clients distinguish "unpriced" from a zero rate.
+        /// </summary>
+        private static ModelPricingDto? BuildPricing(ConduitLLM.Configuration.Entities.ModelCost? cost)
+        {
+            var now = DateTime.UtcNow;
+            if (cost is not { IsActive: true }
+                || cost.EffectiveDate > now
+                || (cost.ExpiryDate.HasValue && cost.ExpiryDate.Value <= now))
+            {
+                return null;
+            }
+
+            return new ModelPricingDto(
+                cost.PricingModel.ToString().ToLowerInvariant(),
+                cost.InputCostPerMillionTokens,
+                cost.OutputCostPerMillionTokens,
+                cost.CachedInputCostPerMillionTokens,
+                cost.EmbeddingCostPerMillionTokens,
+                "USD");
         }
 
         /// <summary>

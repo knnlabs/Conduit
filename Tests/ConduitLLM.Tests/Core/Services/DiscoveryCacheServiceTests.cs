@@ -254,6 +254,20 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(expected, actual);
         }
 
+        [Theory]
+        [InlineData(null, null, "all:with_pricing")]
+        [InlineData("chat", null, "capability:chat:with_pricing")]
+        [InlineData(null, 123, "virtualkey:123:with_pricing")]
+        [InlineData("chat", 456, "virtualkey:456:capability:chat:with_pricing")]
+        public void BuildCacheKey_WithPricing_AppendsVariantSuffix(string capability, int? virtualKeyId, string expected)
+        {
+            // Act
+            var actual = DiscoveryCacheService.BuildCacheKey(capability, virtualKeyId, includePricing: true);
+
+            // Assert
+            Assert.Equal(expected, actual);
+        }
+
         [Fact]
         public async Task SetDiscoveryResultsAsync_Should_Use_CacheManager()
         {

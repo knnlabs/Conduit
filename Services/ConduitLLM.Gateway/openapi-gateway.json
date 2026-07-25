@@ -4528,6 +4528,16 @@
           },
           "capabilities": {
             "$ref": "#/components/schemas/ModelCapabilitiesDto"
+          },
+          "pricing": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelPricingDto"
+              }
+            ]
           }
         },
         "description": "A model returned by the Conduit discovery extension."
@@ -5758,6 +5768,60 @@
           }
         },
         "description": "UI parameter metadata for a model."
+      },
+      "ModelPricingDto": {
+        "required": [
+          "pricing_model",
+          "input_cost_per_million_tokens",
+          "output_cost_per_million_tokens",
+          "cached_input_cost_per_million_tokens",
+          "embedding_cost_per_million_tokens",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "pricing_model": {
+            "type": "string"
+          },
+          "input_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "output_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "cached_input_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "embedding_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
+          }
+        },
+        "description": "Operator-configured pricing for a discovered model, in USD per million tokens.\r\nOnly the standard token rates and the pricing-model discriminator are projected;\r\nclients should treat any `pricing_model` other than `standard` as too\r\ncomplex to preview rather than rendering a number from these fields."
       },
       "OpenAIError": {
         "required": [

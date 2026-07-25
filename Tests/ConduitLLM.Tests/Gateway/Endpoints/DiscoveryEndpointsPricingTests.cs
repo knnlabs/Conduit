@@ -1,0 +1,248 @@
+using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
+using ConduitLLM.Gateway.Endpoints;
+using ConduitLLM.Gateway.Options;
+using ConduitLLM.Tests.Helpers;
+using ConduitLLM.Tests.TestInfrastructure;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Moq;
+
+namespace ConduitLLM.Tests.Gateway.Endpoints;
+
+/// <summary>
+/// Tests for #1238: discovery projects the operator-configured ModelCost so
+/// virtual-key clients can preview what a request will cost.
+/// </summary>
+public sealed class DiscoveryEndpointsPricingTests : IDisposable
+{
+    private const string Key = "condt_pricing";
+    private const string Alias = "priced-model";
+
+    private readonly SqliteTestDatabase _database = new();
+    private readonly Mock<IDiscoveryCacheService> _cache = new();
+
+    public DiscoveryEndpointsPricingTests()
+    {
+        _cache
+            .Setup(cache => cache.GetDiscoveryResultsAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((DiscoveryModelsResult?)null);
+    }
+
+    public void Dispose() => _database.Dispose();
+
+    [Fact]
+    public async Task GetModels_ActiveModelCost_ProjectsStandardTokenRates()
+    {
+        SeedMapping(new ModelCost
+        {
+            CostName = "priced-model standard",
+            PricingModel = PricingModel.Standard,
+            InputCostPerMillionTokens = 2.5m,
+            OutputCostPerMillionTokens = 10.0m,
+            CachedInputCostPerMillionTokens = 0.25m,
+            IsActive = true,
+            EffectiveDate = DateTime.UtcNow.AddDays(-1)
+        });
+
+        var model = await GetSingleModelAsync(CreateEndpoints());
+
+        var pricing = model.GetProperty("pricing");
+        Assert.Equal("standard", pricing.GetProperty("pricing_model").GetString());
+        Assert.Equal(2.5m, pricing.GetProperty("input_cost_per_million_tokens").GetDecimal());
+        Assert.Equal(10.0m, pricing.GetProperty("output_cost_per_million_tokens").GetDecimal());
+        Assert.Equal(0.25m, pricing.GetProperty("cached_input_cost_per_million_tokens").GetDecimal());
+        Assert.Equal("USD", pricing.GetProperty("currency").GetString());
+        // Unconfigured optional rates are omitted, not rendered as zero.
+        Assert.False(pricing.TryGetProperty("embedding_cost_per_million_tokens", out _));
+    }
+
+    [Fact]
+    public async Task GetModels_NonStandardPricingModel_ProjectsDiscriminator()
+    {
+        SeedMapping(new ModelCost
+        {
+            CostName = "priced-model per-video",
+            PricingModel = PricingModel.PerVideo,
+            IsActive = true,
+            EffectiveDate = DateTime.UtcNow.AddDays(-1)
+        });
+
+        var model = await GetSingleModelAsync(CreateEndpoints());
+
+        Assert.Equal(
+            "pervideo",
+            model.GetProperty("pricing").GetProperty("pricing_model").GetString());
+    }
+
+    [Fact]
+    public async Task GetModels_NoModelCost_OmitsPricing()
+    {
+        SeedMapping(cost: null);
+
+        var model = await GetSingleModelAsync(CreateEndpoints());
+
+        Assert.False(model.TryGetProperty("pricing", out _));
+    }
+
+    [Theory]
+    [InlineData(false, -1, null)] // disabled cost
+    [InlineData(true, 1, null)]   // not yet effective
+    [InlineData(true, -2, -1)]    // expired
+    public async Task GetModels_CostOutsideActiveWindow_OmitsPricing(
+        bool isActive, int effectiveOffsetDays, int? expiryOffsetDays)
+    {
+        SeedMapping(new ModelCost
+        {
+            CostName = "priced-model inactive",
+            InputCostPerMillionTokens = 2.5m,
+            OutputCostPerMillionTokens = 10.0m,
+            IsActive = isActive,
+            EffectiveDate = DateTime.UtcNow.AddDays(effectiveOffsetDays),
+            ExpiryDate = expiryOffsetDays.HasValue
+                ? DateTime.UtcNow.AddDays(expiryOffsetDays.Value)
+                : null
+        });
+
+        var model = await GetSingleModelAsync(CreateEndpoints());
+
+        Assert.False(model.TryGetProperty("pricing", out _));
+    }
+
+    [Fact]
+    public async Task GetModels_ExposePricingDisabled_OmitsPricingAndUsesUnpricedCacheKey()
+    {
+        SeedMapping(new ModelCost
+        {
+            CostName = "priced-model hidden",
+            InputCostPerMillionTokens = 2.5m,
+            OutputCostPerMillionTokens = 10.0m,
+            IsActive = true,
+            EffectiveDate = DateTime.UtcNow.AddDays(-1)
+        });
+
+        var model = await GetSingleModelAsync(CreateEndpoints(exposePricing: false));
+
+        Assert.False(model.TryGetProperty("pricing", out _));
+        _cache.Verify(cache => cache.SetDiscoveryResultsAsync(
+            "all", It.IsAny<DiscoveryModelsResult>(), It.IsAny<CancellationToken>()));
+    }
+
+    [Fact]
+    public async Task GetModels_ExposePricingEnabled_CachesUnderPricingVariantKey()
+    {
+        SeedMapping(cost: null);
+
+        await GetSingleModelAsync(CreateEndpoints());
+
+        _cache.Verify(cache => cache.SetDiscoveryResultsAsync(
+            "all:with_pricing", It.IsAny<DiscoveryModelsResult>(), It.IsAny<CancellationToken>()));
+    }
+
+    private void SeedMapping(ModelCost? cost)
+    {
+        _database.Seed(context =>
+        {
+            var model = ModelTestHelper.CreateCompleteTestModel(Alias);
+            var provider = new Provider
+            {
+                ProviderName = "OpenAI primary",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+            context.Models.Add(model);
+            context.Providers.Add(provider);
+            context.SaveChanges();
+
+            var association = new ModelProviderTypeAssociation
+            {
+                ModelId = model.Id,
+                Identifier = $"openai/{Alias}",
+                Provider = ProviderType.OpenAI,
+                IsEnabled = true,
+                IsPrimary = true,
+                ModelCost = cost
+            };
+            context.ModelProviderTypeAssociations.Add(association);
+            context.SaveChanges();
+
+            context.ModelProviderMappings.Add(new ModelProviderMapping
+            {
+                ModelAlias = Alias,
+                ProviderId = provider.Id,
+                ProviderModelId = $"openai/{Alias}",
+                ModelProviderTypeAssociationId = association.Id,
+                IsEnabled = true
+            });
+            context.SaveChanges();
+        });
+    }
+
+    private DiscoveryEndpoints CreateEndpoints(bool exposePricing = true)
+    {
+        var httpContext = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                new[] { new Claim("VirtualKey", Key) },
+                "TestAuthentication"))
+        };
+
+        var virtualKeyService = new Mock<IVirtualKeyService>();
+        virtualKeyService
+            .Setup(service => service.ValidateVirtualKeyForAuthenticationAsync(Key, null))
+            .ReturnsAsync(VirtualKeyValidationOutcome.Success(new VirtualKey
+            {
+                Id = 1,
+                IsEnabled = true
+            }));
+
+        return new DiscoveryEndpoints(
+            _database.CreateDbContextFactory(),
+            Mock.Of<IModelCapabilityService>(),
+            virtualKeyService.Object,
+            _cache.Object,
+            GatewayJsonOptions.Create(),
+            Options.Create(new DiscoveryCacheOptions { ExposePricing = exposePricing }),
+            Mock.Of<IHttpContextAccessor>(accessor => accessor.HttpContext == httpContext),
+            Mock.Of<ILogger<DiscoveryEndpoints>>());
+    }
+
+    private static async Task<JsonElement> GetSingleModelAsync(DiscoveryEndpoints endpoints)
+    {
+        var json = await RenderAsync(await endpoints.GetModels());
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(1, document.RootElement.GetProperty("count").GetInt32());
+        return document.RootElement.GetProperty("data")[0].Clone();
+    }
+
+    /// <summary>
+    /// Executes the result with the Gateway's canonical wire serializer and
+    /// returns the raw response body.
+    /// </summary>
+    private static async Task<string> RenderAsync(IResult result)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.ConfigureHttpJsonOptions(options =>
+            GatewayJsonOptions.Configure(options.SerializerOptions));
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = services.BuildServiceProvider()
+        };
+        using var body = new MemoryStream();
+        httpContext.Response.Body = body;
+
+        await result.ExecuteAsync(httpContext);
+
+        Assert.Equal(StatusCodes.Status200OK, httpContext.Response.StatusCode);
+        return Encoding.UTF8.GetString(body.ToArray());
+    }
+}

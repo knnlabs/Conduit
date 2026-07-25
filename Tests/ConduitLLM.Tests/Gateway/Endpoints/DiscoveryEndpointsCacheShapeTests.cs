@@ -4,6 +4,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Gateway.Endpoints;
@@ -12,6 +13,7 @@ using ConduitLLM.Tests.TestInfrastructure;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moq;
 
 namespace ConduitLLM.Tests.Gateway.Endpoints;
@@ -113,6 +115,7 @@ public sealed class DiscoveryEndpointsCacheShapeTests : IDisposable
             virtualKeyService.Object,
             _cache,
             GatewayJsonOptions.Create(),
+            Options.Create(new DiscoveryCacheOptions()),
             Mock.Of<IHttpContextAccessor>(accessor => accessor.HttpContext == httpContext),
             Mock.Of<ILogger<DiscoveryEndpoints>>());
     }
