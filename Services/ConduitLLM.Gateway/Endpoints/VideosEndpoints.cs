@@ -6,6 +6,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -391,7 +392,7 @@ namespace ConduitLLM.Gateway.Endpoints
 
             if (!string.IsNullOrEmpty(request.Size))
             {
-                pricingParameters["resolution"] = NormalizeResolution(request.Size);
+                pricingParameters["resolution"] = VideoUtils.NormalizeResolution(request.Size);
             }
             if (request.Duration.HasValue)
             {
@@ -458,33 +459,6 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 pricingParameters[parameterName] = value;
             }
-        }
-
-        /// <summary>
-        /// Normalizes video resolution to standard format (e.g., "1920x1080" → "1080p").
-        /// </summary>
-        private static string NormalizeResolution(string resolution)
-        {
-            if (string.IsNullOrEmpty(resolution))
-                return resolution;
-
-            if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
-                return resolution.ToLowerInvariant();
-
-            var parts = resolution.ToLowerInvariant().Split('x');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
-            {
-                return height switch
-                {
-                    >= 2160 => "4k",
-                    >= 1080 => "1080p",
-                    >= 720 => "720p",
-                    >= 480 => "480p",
-                    _ => $"{height}p"
-                };
-            }
-
-            return resolution;
         }
     }
 

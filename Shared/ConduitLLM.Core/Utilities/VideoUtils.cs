@@ -232,6 +232,39 @@ namespace ConduitLLM.Core.Utilities
         }
 
         /// <summary>
+        /// Normalizes a video resolution string to the canonical pricing key used by pricing
+        /// configurations (e.g. "1920x1080" → "1080p", "3840x2160" → "4k"). "4k" is the key
+        /// format the WebAdmin pricing editors offer, so it must be produced here or 4K videos
+        /// miss their configured rate and fall back to conservative pricing. All other heights
+        /// use the exact "{height}p" form; already-normalized values pass through lowercased.
+        /// This is the single normalization used by the Gateway endpoints, the video
+        /// orchestrator and the cost calculator — they must agree or the same video can be
+        /// keyed differently at request time and at billing time.
+        /// </summary>
+        /// <param name="resolution">The resolution string from a request or provider response.</param>
+        /// <returns>The canonical pricing key.</returns>
+        public static string NormalizeResolution(string resolution)
+        {
+            if (string.IsNullOrEmpty(resolution))
+                return resolution;
+
+            var normalized = resolution.ToLowerInvariant();
+
+            // Already a pricing key ("720p", "4k", "1080P")
+            if (normalized.EndsWith('p'))
+                return normalized;
+
+            // Parse "WIDTHxHEIGHT" format
+            var parts = normalized.Split('x');
+            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
+            {
+                return height == 2160 ? "4k" : $"{height}p";
+            }
+
+            return normalized;
+        }
+
+        /// <summary>
         /// Gets a list of common video resolutions.
         /// </summary>
         /// <returns>Dictionary of resolution names to resolution strings.</returns>
