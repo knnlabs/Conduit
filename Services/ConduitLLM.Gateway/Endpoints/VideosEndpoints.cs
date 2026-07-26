@@ -165,8 +165,8 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 TaskId = taskId,
                 Status = TaskStateConstants.Pending,
-                CreatedAt = DateTimeOffset.UtcNow,
-                EstimatedCompletionTime = DateTimeOffset.UtcNow.AddSeconds(60),
+                CreatedAt = DateTime.UtcNow,
+                EstimatedCompletionTime = DateTime.UtcNow.AddSeconds(60),
                 CheckStatusUrl = $"/v1/conduit/videos/generations/tasks/{taskId}"
             };
             accounting.RecordMetadata(JsonSerializer.Serialize(new
@@ -293,8 +293,8 @@ namespace ConduitLLM.Gateway.Endpoints
                 TaskId = taskId,
                 Status = updatedStatus != null ? TaskStateConstants.FromTaskState(updatedStatus.State) : TaskStateConstants.Pending,
                 Progress = updatedStatus?.Progress ?? 0,
-                CreatedAt = updatedStatus?.CreatedAt ?? DateTimeOffset.UtcNow,
-                UpdatedAt = updatedStatus?.UpdatedAt ?? DateTimeOffset.UtcNow,
+                CreatedAt = updatedStatus?.CreatedAt ?? DateTime.UtcNow,
+                UpdatedAt = updatedStatus?.UpdatedAt ?? DateTime.UtcNow,
                 Error = $"Retry {updatedStatus?.RetryCount ?? 0}/{updatedStatus?.MaxRetries ?? 3} scheduled"
             };
 
@@ -469,8 +469,11 @@ namespace ConduitLLM.Gateway.Endpoints
     {
         public string TaskId { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
-        public DateTimeOffset CreatedAt { get; set; }
-        public DateTimeOffset? EstimatedCompletionTime { get; set; }
+        // DateTime (not DateTimeOffset) so GatewayJsonOptions' UtcDateTimeConverter normalizes
+        // these to Z-suffixed UTC like the image endpoints; task-store timestamps arrive with
+        // DateTimeKind.Unspecified and must not pick up the host's local offset (#1258).
+        public DateTime CreatedAt { get; set; }
+        public DateTime? EstimatedCompletionTime { get; set; }
         public string CheckStatusUrl { get; set; } = string.Empty;
     }
 
@@ -482,9 +485,9 @@ namespace ConduitLLM.Gateway.Endpoints
         public string TaskId { get; set; } = string.Empty;
         public string Status { get; set; } = string.Empty;
         public int? Progress { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-        public DateTimeOffset UpdatedAt { get; set; }
-        public DateTimeOffset? CompletedAt { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public DateTime UpdatedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
         public string? Error { get; set; }
         public string? ResultRaw { get; set; }
         public VideoGenerationResponse? Result { get; set; }
