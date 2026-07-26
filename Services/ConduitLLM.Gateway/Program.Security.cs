@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using ConduitLLM.Gateway.Authentication;
 using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Security.Authorization;
+using ConduitLLM.Security.Extensions;
 
 public partial class Program
 {
