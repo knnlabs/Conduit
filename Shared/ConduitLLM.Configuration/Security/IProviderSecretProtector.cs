@@ -1,8 +1,8 @@
 namespace ConduitLLM.Configuration.Security;
 
 /// <summary>
-/// Protects the secret-valued structured settings a provider key carries in addition to its API key
-/// (for example an AWS secret access key or a Google service-account JSON document).
+/// Protects a provider credential's API key and secret-valued structured settings (for example an
+/// AWS secret access key or a Google service-account JSON document).
 /// </summary>
 /// <remarks>
 /// Values are encrypted at rest and carry a version prefix. <see cref="Reveal"/> passes through any

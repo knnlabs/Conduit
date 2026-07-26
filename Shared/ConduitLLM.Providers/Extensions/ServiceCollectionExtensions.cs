@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Security;
 using ConduitLLM.Core.Interfaces;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ namespace ConduitLLM.Providers.Extensions
 
             // Register LLM client factory
             services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
+            services.AddSingleton<IProviderSecretProtector, ProviderSecretProtector>();
 
             // OBSOLETE: External model discovery is no longer used. 
             // The Provider Models endpoint now returns models from the local database.

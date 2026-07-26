@@ -15,6 +15,29 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  source-ignore-guard:
+    name: Source ignore guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure source files are not ignored
+        shell: bash
+        run: |
+          ignored_sources="$(
+            {
+              git ls-files --cached --ignored --exclude-standard -- \
+                'Shared/**' 'Services/**' 'Tests/**' 'WebAdmin/src/**'
+              git ls-files --others --ignored --exclude-standard -- \
+                'Shared/**' 'Services/**' 'Tests/**' 'WebAdmin/src/**'
+            } | grep -E '\.(cs|ts|tsx)$' | sort -u || true
+          )"
+
+          if [[ -n "$ignored_sources" ]]; then
+            echo "::error::Source files must not be excluded by .gitignore:"
+            echo "$ignored_sources"
+            exit 1
+          fi
+
   billing-fault-injection:
     name: Billing fault injection
     runs-on: ubuntu-latest

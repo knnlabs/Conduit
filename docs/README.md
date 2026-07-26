@@ -20,8 +20,6 @@ Deeper operational runbooks stand on their own and are linked from Monitoring:
 
 - **[Billing correctness alerting](./billing-alerting.md)** — the cost canary, alert rules, and
   incident response.
-- **[SSE production validation](./sse-production-validation.md)** — deploying streaming behind a
-  proxy.
 - **[Provider key auto-disable](./operations/provider-key-auto-disable.md)** — investigating fatal
   credential/account errors and restoring keys safely.
 - **[Rate limiting](./operations/rate-limiting.md)** — what can be limited and at which scope, what

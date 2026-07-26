@@ -73,7 +73,7 @@ namespace ConduitLLM.Admin.Endpoints
             var keyCredential = new ProviderKeyCredential
             {
                 ProviderId = providerId,
-                ApiKey = request.ApiKey,
+                ApiKey = _secretProtector.Protect(request.ApiKey),
                 KeyName = request.KeyName,
                 BaseUrl = request.BaseUrl,
                 SecretSettings = _secretProtector.ProtectAll(request.SecretSettings),
@@ -122,6 +122,10 @@ namespace ConduitLLM.Admin.Endpoints
             // Track changes with before/after values
             var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
+            // Opportunistically protect legacy plaintext keys whenever the credential is written.
+            // Protect is idempotent, so already-encrypted values are left untouched.
+            key.ApiKey = _secretProtector.Protect(key.ApiKey);
+
             if (!string.IsNullOrEmpty(request.KeyName) && key.KeyName != request.KeyName)
             {
                 changes.Add(("KeyName", key.KeyName, request.KeyName));
@@ -130,7 +134,7 @@ namespace ConduitLLM.Admin.Endpoints
             if (!string.IsNullOrEmpty(request.ApiKey))
             {
                 changes.Add(("ApiKey", "***", "***")); // Never log API key values
-                key.ApiKey = request.ApiKey;
+                key.ApiKey = _secretProtector.Protect(request.ApiKey);
             }
             if (request.BaseUrl != null && key.BaseUrl != request.BaseUrl)
             {
@@ -189,22 +193,28 @@ namespace ConduitLLM.Admin.Endpoints
             return Ok(ToKeyDto(key));
         }
 
-        private static ProviderKeyCredentialDto ToKeyDto(ProviderKeyCredential key) => new()
+        private ProviderKeyCredentialDto ToKeyDto(ProviderKeyCredential key)
         {
-            Id = key.Id,
-            ProviderId = key.ProviderId,
-            KeyName = key.KeyName,
-            IsPrimary = key.IsPrimary,
-            IsEnabled = key.IsEnabled,
-            ProviderAccountGroup = key.ProviderAccountGroup,
-            ApiKey = key.ApiKey is null ? "***" : "***" + key.ApiKey[^Math.Min(4, key.ApiKey.Length)..],
-            BaseUrl = key.BaseUrl,
-            // Names only. Secret values are write-only by contract and never leave the server.
-            ConfiguredSecretSettings = key.SecretSettings?.Keys.OrderBy(name => name, StringComparer.Ordinal).ToArray()
-                ?? Array.Empty<string>(),
-            CreatedAt = key.CreatedAt,
-            UpdatedAt = key.UpdatedAt
-        };
+            // Mask the plaintext suffix operators recognize, never a coincidental ciphertext suffix.
+            var apiKey = _secretProtector.Reveal(key.ApiKey);
+
+            return new ProviderKeyCredentialDto
+            {
+                Id = key.Id,
+                ProviderId = key.ProviderId,
+                KeyName = key.KeyName,
+                IsPrimary = key.IsPrimary,
+                IsEnabled = key.IsEnabled,
+                ProviderAccountGroup = key.ProviderAccountGroup,
+                ApiKey = apiKey is null ? "***" : "***" + apiKey[^Math.Min(4, apiKey.Length)..],
+                BaseUrl = key.BaseUrl,
+                // Names only. Secret values are write-only by contract and never leave the server.
+                ConfiguredSecretSettings = key.SecretSettings?.Keys.OrderBy(name => name, StringComparer.Ordinal).ToArray()
+                    ?? Array.Empty<string>(),
+                CreatedAt = key.CreatedAt,
+                UpdatedAt = key.UpdatedAt
+            };
+        }
 
         /// <summary>
         /// Deletes a key credential

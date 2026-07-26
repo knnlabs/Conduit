@@ -19,8 +19,9 @@ using Moq;
 namespace ConduitLLM.Tests.Admin.Endpoints;
 
 /// <summary>
-/// Secret settings are write-only: the API accepts them, stores them encrypted, and never returns a
-/// value - only the names of the settings a credential has configured (issue #1187).
+/// Provider credential secrets are write-only: the API accepts them, stores them encrypted, and
+/// returns only a masked API key plus the names of configured structured settings (issues #1187 and
+/// #1242).
 /// </summary>
 public class ProviderKeySecretSettingsEndpointTests
 {
@@ -48,7 +49,7 @@ public class ProviderKeySecretSettingsEndpointTests
     }
 
     [Fact]
-    public async Task CreateKey_Should_Store_Secret_Settings_Encrypted_And_Never_Return_Their_Values()
+    public async Task CreateKey_Should_Store_All_Secrets_Encrypted_And_Never_Return_Their_Values()
     {
         _providerRepository
             .Setup(repository => repository.GetByIdAsync(1, It.IsAny<CancellationToken>()))
@@ -69,6 +70,10 @@ public class ProviderKeySecretSettingsEndpointTests
 
         // Stored encrypted, and recoverable.
         persisted.Should().NotBeNull();
+        persisted!.ApiKey.Should().NotBe("sk-test");
+        persisted.ApiKey.Should().StartWith(ProviderSecretProtector.Prefix);
+        _protector.Reveal(persisted.ApiKey).Should().Be("sk-test");
+
         var stored = persisted!.SecretSettings.Should().ContainKey("secret_access_key").WhoseValue;
         stored.Should().NotBe(SecretValue);
         stored.Should().StartWith(ProviderSecretProtector.Prefix);
@@ -76,6 +81,7 @@ public class ProviderKeySecretSettingsEndpointTests
 
         // Returned to the caller as a name only - never the value, in any form.
         var dto = ExtractKeyDto(result);
+        dto.ApiKey.Should().Be("***test");
         dto.ConfiguredSecretSettings.Should().Equal("secret_access_key");
         System.Text.Json.JsonSerializer.Serialize(dto).Should().NotContain(SecretValue);
     }
@@ -132,6 +138,52 @@ public class ProviderKeySecretSettingsEndpointTests
         await CreateEndpoints().UpdateProviderKeyCredential(1, 9, new UpdateKeyRequest { KeyName = "renamed" });
 
         existing.SecretSettings.Should().BeEquivalentTo(protectedSettings);
+        existing.ApiKey.Should().StartWith(ProviderSecretProtector.Prefix);
+        _protector.Reveal(existing.ApiKey).Should().Be("sk-test");
+    }
+
+    [Fact]
+    public async Task UpdateKey_Should_Encrypt_A_Replacement_Api_Key_And_Mask_Its_Plaintext_Suffix()
+    {
+        var existing = new ProviderKeyCredential
+        {
+            Id = 9,
+            ProviderId = 1,
+            ApiKey = _protector.Protect("old-key")
+        };
+        _keyRepository
+            .Setup(repository => repository.GetByIdAsync(9, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing);
+        _keyRepository
+            .Setup(repository => repository.UpdateAsync(It.IsAny<ProviderKeyCredential>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await CreateEndpoints().UpdateProviderKeyCredential(
+            1,
+            9,
+            new UpdateKeyRequest { ApiKey = "sk-replacement" });
+
+        existing.ApiKey.Should().NotBe("sk-replacement");
+        existing.ApiKey.Should().StartWith(ProviderSecretProtector.Prefix);
+        _protector.Reveal(existing.ApiKey).Should().Be("sk-replacement");
+        ExtractKeyDto(result).ApiKey.Should().Be("***ment");
+    }
+
+    [Fact]
+    public async Task GetKey_Should_Keep_Legacy_Plaintext_Keys_Readable_And_Mask_Their_Suffix()
+    {
+        _keyRepository
+            .Setup(repository => repository.GetByIdAsync(9, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProviderKeyCredential
+            {
+                Id = 9,
+                ProviderId = 1,
+                ApiKey = "legacy-key-1234"
+            });
+
+        var result = await CreateEndpoints().GetProviderKeyCredential(1, 9);
+
+        ExtractKeyDto(result).ApiKey.Should().Be("***1234");
     }
 
     private static ProviderKeyCredentialDto ExtractKeyDto(IResult result) => result switch
