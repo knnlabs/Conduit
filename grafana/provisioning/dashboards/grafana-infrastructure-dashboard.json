@@ -2,7 +2,7 @@
   "id": null,
   "uid": "conduit-infrastructure",
   "title": "Infrastructure",
-  "tags": ["conduit", "infrastructure", "redis", "rabbitmq", "postgres"],
+  "tags": ["conduit", "infrastructure", "redis", "postgres"],
   "timezone": "browser",
   "schemaVersion": 38,
   "version": 1,
@@ -250,255 +250,15 @@
       }
     },
     {
-      "id": 200,
-      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 12},
-      "type": "row",
-      "title": "RabbitMQ",
-      "collapsed": false
-    },
-    {
-      "id": 9,
-      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 14},
-      "type": "stat",
-      "title": "Total Queues",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rabbitmq_queues",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null}
-            ]
-          },
-          "unit": "short"
-        }
-      }
-    },
-    {
-      "id": 10,
-      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 14},
-      "type": "stat",
-      "title": "Total Messages",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rabbitmq_queue_messages)",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 1000},
-              {"color": "red", "value": 10000}
-            ]
-          },
-          "unit": "short",
-          "noValue": "0"
-        }
-      }
-    },
-    {
-      "id": 11,
-      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 14},
-      "type": "stat",
-      "title": "Messages Ready",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rabbitmq_queue_messages_ready)",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 500},
-              {"color": "red", "value": 2000}
-            ]
-          },
-          "unit": "short",
-          "noValue": "0"
-        }
-      }
-    },
-    {
-      "id": 12,
-      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 14},
-      "type": "stat",
-      "title": "Consumers",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "sum(rabbitmq_queue_consumers)",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "red", "value": null},
-              {"color": "yellow", "value": 1},
-              {"color": "green", "value": 5}
-            ]
-          },
-          "unit": "short",
-          "noValue": "0"
-        }
-      }
-    },
-    {
-      "id": 13,
-      "gridPos": {"h": 4, "w": 4, "x": 16, "y": 14},
-      "type": "stat",
-      "title": "Connections",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rabbitmq_connections",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 50},
-              {"color": "red", "value": 100}
-            ]
-          },
-          "unit": "short"
-        }
-      }
-    },
-    {
-      "id": 14,
-      "gridPos": {"h": 4, "w": 4, "x": 20, "y": 14},
-      "type": "stat",
-      "title": "Channels",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rabbitmq_channels",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "thresholds"},
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {"color": "green", "value": null}
-            ]
-          },
-          "unit": "short"
-        }
-      }
-    },
-    {
-      "id": 15,
-      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 18},
-      "type": "timeseries",
-      "title": "Message Rate",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rate(rabbitmq_queue_messages_published_total[5m])",
-          "legendFormat": "Published",
-          "refId": "A"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rate(rabbitmq_queue_messages_delivered_total[5m])",
-          "legendFormat": "Delivered",
-          "refId": "B"
-        },
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rate(rabbitmq_queue_messages_acked_total[5m])",
-          "legendFormat": "Acknowledged",
-          "refId": "C"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "showPoints": "never"
-          },
-          "unit": "ops"
-        }
-      },
-      "options": {
-        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
-        "tooltip": {"mode": "multi"}
-      }
-    },
-    {
-      "id": 16,
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 18},
-      "type": "timeseries",
-      "title": "Queue Depth by Queue",
-      "targets": [
-        {
-          "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "topk(10, rabbitmq_queue_messages)",
-          "legendFormat": "{{queue}}",
-          "refId": "A"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "color": {"mode": "palette-classic"},
-          "custom": {
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "lineWidth": 2,
-            "showPoints": "never"
-          },
-          "unit": "short"
-        }
-      },
-      "options": {
-        "legend": {"displayMode": "list", "placement": "bottom", "showLegend": true},
-        "tooltip": {"mode": "multi"}
-      }
-    },
-    {
       "id": 300,
-      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 24},
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 12},
       "type": "row",
       "title": "PostgreSQL",
       "collapsed": false
     },
     {
       "id": 17,
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 26},
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 14},
       "type": "stat",
       "title": "Active Connections",
       "targets": [
@@ -526,7 +286,7 @@
     },
     {
       "id": 18,
-      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 26},
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 14},
       "type": "stat",
       "title": "Total Connections",
       "targets": [
@@ -554,7 +314,7 @@
     },
     {
       "id": 19,
-      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 26},
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 14},
       "type": "stat",
       "title": "Database Size",
       "targets": [
@@ -580,7 +340,7 @@
     },
     {
       "id": 20,
-      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 26},
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 14},
       "type": "stat",
       "title": "Cache Hit Ratio",
       "targets": [
@@ -609,7 +369,7 @@
     },
     {
       "id": 21,
-      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 30},
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 18},
       "type": "table",
       "title": "Table Sizes",
       "targets": [
@@ -634,14 +394,14 @@
     },
     {
       "id": 400,
-      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 38},
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 26},
       "type": "row",
       "title": "Application Metrics",
       "collapsed": false
     },
     {
       "id": 24,
-      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 40},
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 28},
       "type": "stat",
       "title": "Application Cache Hit Rate",
       "targets": [
@@ -670,7 +430,7 @@
     },
     {
       "id": 25,
-      "gridPos": {"h": 6, "w": 18, "x": 6, "y": 40},
+      "gridPos": {"h": 6, "w": 18, "x": 6, "y": 28},
       "type": "timeseries",
       "title": "Application Cache Lookup Rate by Result",
       "targets": [
@@ -695,7 +455,7 @@
     },
     {
       "id": 26,
-      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 46},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 34},
       "type": "timeseries",
       "title": "Application Cache p95 Latency",
       "targets": [
@@ -720,7 +480,7 @@
     },
     {
       "id": 27,
-      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 46},
+      "gridPos": {"h": 6, "w": 6, "x": 12, "y": 34},
       "type": "timeseries",
       "title": "Application Cache Invalidations",
       "targets": [
@@ -745,7 +505,7 @@
     },
     {
       "id": 28,
-      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 46},
+      "gridPos": {"h": 6, "w": 6, "x": 18, "y": 34},
       "type": "timeseries",
       "title": "Application Cache Errors",
       "targets": [
@@ -770,7 +530,7 @@
     },
     {
       "id": 22,
-      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 52},
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 40},
       "type": "timeseries",
       "title": "Process Memory",
       "targets": [
@@ -806,19 +566,19 @@
     },
     {
       "id": 23,
-      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 52},
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 40},
       "type": "timeseries",
       "title": "GC Collections",
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rate(dotnet_gc_collection_count_total{job=\"conduit-api\"}[5m])",
+          "expr": "rate(dotnet_collection_count_total{job=\"conduit-api\"}[5m])",
           "legendFormat": "Gateway Gen {{generation}}",
           "refId": "A"
         },
         {
           "datasource": {"type": "prometheus", "uid": "prometheus"},
-          "expr": "rate(dotnet_gc_collection_count_total{job=\"conduit-admin\"}[5m])",
+          "expr": "rate(dotnet_collection_count_total{job=\"conduit-admin\"}[5m])",
           "legendFormat": "Admin Gen {{generation}}",
           "refId": "B"
         }

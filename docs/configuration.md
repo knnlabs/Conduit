@@ -58,8 +58,11 @@ of the areas, not a copy of that file:
   `CONDUIT_RATE_LIMIT_FAILURE_MODE` decides whether a Redis outage admits or rejects limited traffic
   (it admits by default), and the token-reservation defaults bound what a single uncapped request
   can hold. See [Rate limiting](./operations/rate-limiting.md).
-- **Observability** — metrics and tracing export via OpenTelemetry, with a Prometheus scrape endpoint
-  and configurable OTLP target. Covered in [Monitoring](./monitoring.md).
+- **Observability** — metrics are exported by prometheus-net on each service's `/metrics` endpoint
+  and scraped by Prometheus; dashboards and alert routing live in the Grafana stack. Distributed
+  tracing is **opt-in**: it starts only when both `Telemetry:TracingEnabled=true` and an explicit
+  `Telemetry:OtlpEndpoint` are set, since there is no collector in the default deployment. Covered
+  in [Monitoring](./monitoring.md).
 
 > A number of older variables (legacy Redis, cache toggles, database-recreate escape hatches) are
 > **deprecated or ignored** and log a warning on boot if set. Trust `.env.example` and the startup

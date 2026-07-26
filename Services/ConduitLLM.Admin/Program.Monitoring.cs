@@ -1,6 +1,5 @@
 using ConduitLLM.Core.Extensions;
 
-using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
@@ -47,35 +46,20 @@ public partial class Program
         // Add connection pool warmer with coordinated warming to prevent thundering herd during deployments
         builder.Services.AddCoordinatedConnectionPoolWarming(builder.Configuration, "AdminAPI");
 
-        // Configure OpenTelemetry metrics and tracing
-        var otlpEndpoint = builder.Configuration["Telemetry:OtlpEndpoint"] ?? "http://localhost:4317";
-        var tracingEnabled = builder.Configuration.GetValue<bool>("Telemetry:TracingEnabled", true);
+        // Metrics are exported by prometheus-net's meter adapter, which subscribes to every
+        // System.Diagnostics.Metrics instrument and serves /metrics. There is deliberately no
+        // OpenTelemetry MeterProvider: a second one would duplicate aggregation state for a
+        // pipeline with no exporter attached.
+        //
+        // Tracing is opt-in and requires an explicitly configured collector. Defaulting it on
+        // pointed every deployment at a localhost collector that does not exist.
+        var otlpEndpoint = builder.Configuration["Telemetry:OtlpEndpoint"];
+        var tracingEnabled = builder.Configuration.GetValue<bool>("Telemetry:TracingEnabled", false)
+            && !string.IsNullOrWhiteSpace(otlpEndpoint);
 
-        var otelBuilder = builder.Services.AddOpenTelemetry()
-            .WithMetrics(meterProviderBuilder =>
-            {
-                meterProviderBuilder
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                        .AddService(serviceName: "ConduitLLM.Admin", serviceVersion: "1.0.0"))
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddRuntimeInstrumentation()
-                    .AddProcessInstrumentation()
-                    .AddMeter("System.Runtime")
-                    .AddMeter("Microsoft.AspNetCore.Hosting")
-                    .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
-                    .AddMeter("ConduitLLM.Providers")
-                    // Bus metrics (#931). Wolverine's meter is "Wolverine:{ServiceName}",
-                    // so the wildcard is required; it emits sent/succeeded/failure
-                    // counters, execution/effective-time histograms, and (on the Postgres
-                    // transport) inbox/outbox/scheduled depth gauges + dead-letter counts.
-                    .AddMeter("Wolverine*");
-            });
-
-        // Add distributed tracing when enabled
         if (tracingEnabled)
         {
-            otelBuilder.WithTracing(tracerProviderBuilder =>
+            builder.Services.AddOpenTelemetry().WithTracing(tracerProviderBuilder =>
             {
                 tracerProviderBuilder
                     .SetResourceBuilder(ResourceBuilder.CreateDefault()
@@ -94,14 +78,15 @@ public partial class Program
                     .AddSource("Wolverine")
                     .AddOtlpExporter(options =>
                     {
-                        options.Endpoint = new Uri(otlpEndpoint);
+                        options.Endpoint = new Uri(otlpEndpoint!);
                     });
             });
             startupLogger.LogInformation("OpenTelemetry tracing enabled — exporting to {OtlpEndpoint}", otlpEndpoint);
         }
         else
         {
-            startupLogger.LogInformation("OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true to enable)");
+            startupLogger.LogInformation(
+                "OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true and Telemetry:OtlpEndpoint to enable)");
         }
 
         // Add monitoring services - with leader election

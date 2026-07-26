@@ -259,7 +259,9 @@ services:
     image: prometheuscommunity/postgres-exporter:latest
     restart: always
     environment:
-      DATA_SOURCE_NAME: "postgresql://conduit:conduitpass@postgres:5432/conduit?sslmode=disable"
+      # Database name must match POSTGRES_DB above; the exporter cannot connect otherwise
+      # and every pg_* series silently disappears from Prometheus.
+      DATA_SOURCE_NAME: "postgresql://conduit:conduitpass@postgres:5432/conduitdb?sslmode=disable"
     ports:
       - "9187:9187"
     depends_on:

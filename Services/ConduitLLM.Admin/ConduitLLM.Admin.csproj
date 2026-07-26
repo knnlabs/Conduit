@@ -34,8 +34,6 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.Process" />
     <PackageReference Include="prometheus-net" />
     <PackageReference Include="prometheus-net.AspNetCore" />
   </ItemGroup>
