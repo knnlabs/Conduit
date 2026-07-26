@@ -43,15 +43,7 @@ namespace ConduitLLM.Gateway.Endpoints
         {
             if (request == null)
             {
-                return BadRequest(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Invalid request body.",
-                        Type = "invalid_request_error",
-                        Code = "invalid_request"
-                    }
-                });
+                return OpenAIError(400, "Invalid request body.", "invalid_request");
             }
 
             using var activity = GatewayRequestMetrics.StartEmbeddingsActivity(request.Model);

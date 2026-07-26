@@ -47,15 +47,7 @@ namespace ConduitLLM.Gateway.Endpoints
             if (provider == null)
             {
                 Logger.LogWarning("Provider with ID {ProviderId} not found", providerId);
-                return NotFound(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = $"Provider with ID {providerId} not found",
-                        Type = "not_found_error",
-                        Code = "not_found"
-                    }
-                });
+                return OpenAIError(404, $"Provider with ID {providerId} not found", "not_found", "not_found_error");
             }
 
             // Associations are the source of truth for provider compatibility. This avoids

@@ -52,28 +52,12 @@ namespace ConduitLLM.Gateway.Endpoints
             // Validate request
             if (request.Updates == null || !request.Updates.Any())
             {
-                return BadRequest(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "No updates provided",
-                        Type = "invalid_request_error",
-                        Code = "invalid_request"
-                    }
-                });
+                return OpenAIError(400, "No updates provided", "invalid_request");
             }
 
             if (request.Updates.Count() > 10000)
             {
-                return BadRequest(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Maximum 10,000 items per batch",
-                        Type = "invalid_request_error",
-                        Code = "invalid_request"
-                    }
-                });
+                return OpenAIError(400, "Maximum 10,000 items per batch", "invalid_request");
             }
 
             // Convert to internal model
@@ -123,28 +107,12 @@ namespace ConduitLLM.Gateway.Endpoints
             // Validate request
             if (request.Updates == null || !request.Updates.Any())
             {
-                return BadRequest(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "No updates provided",
-                        Type = "invalid_request_error",
-                        Code = "invalid_request"
-                    }
-                });
+                return OpenAIError(400, "No updates provided", "invalid_request");
             }
 
             if (request.Updates.Count() > 1000)
             {
-                return BadRequest(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Maximum 1,000 items per batch",
-                        Type = "invalid_request_error",
-                        Code = "invalid_request"
-                    }
-                });
+                return OpenAIError(400, "Maximum 1,000 items per batch", "invalid_request");
             }
 
             // Convert to internal model
@@ -192,28 +160,12 @@ namespace ConduitLLM.Gateway.Endpoints
             // Validate request
             if (request.Webhooks == null || !request.Webhooks.Any())
             {
-                return BadRequest(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "No webhooks provided",
-                        Type = "invalid_request_error",
-                        Code = "invalid_request"
-                    }
-                });
+                return OpenAIError(400, "No webhooks provided", "invalid_request");
             }
 
             if (request.Webhooks.Count() > 5000)
             {
-                return BadRequest(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Maximum 5,000 webhooks per batch",
-                        Type = "invalid_request_error",
-                        Code = "invalid_request"
-                    }
-                });
+                return OpenAIError(400, "Maximum 5,000 webhooks per batch", "invalid_request");
             }
 
             // Convert to internal model
@@ -261,15 +213,7 @@ namespace ConduitLLM.Gateway.Endpoints
             if (status == null)
             {
                 Logger.LogWarning("Batch operation {OperationId} not found", operationId);
-                return NotFound(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Operation not found",
-                        Type = "not_found_error",
-                        Code = "not_found"
-                    }
-                });
+                return OpenAIError(404, "Operation not found", "not_found", "not_found_error");
             }
 
             return Ok(new BatchOperationStatusResponse
@@ -300,42 +244,18 @@ namespace ConduitLLM.Gateway.Endpoints
             var status = _batchOperationService.GetOperationStatus(operationId);
             if (status == null)
             {
-                return NotFound(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Operation not found",
-                        Type = "not_found_error",
-                        Code = "not_found"
-                    }
-                });
+                return OpenAIError(404, "Operation not found", "not_found", "not_found_error");
             }
 
             if (!status.CanCancel)
             {
-                return Conflict(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Operation cannot be cancelled",
-                        Type = "invalid_request_error",
-                        Code = "operation_not_cancellable"
-                    }
-                });
+                return OpenAIError(409, "Operation cannot be cancelled", "operation_not_cancellable");
             }
 
             var cancelled = await _batchOperationService.CancelBatchOperationAsync(operationId);
             if (!cancelled)
             {
-                return Conflict(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Failed to cancel operation",
-                        Type = "invalid_request_error",
-                        Code = "cancellation_failed"
-                    }
-                });
+                return OpenAIError(409, "Failed to cancel operation", "cancellation_failed");
             }
 
             Logger.LogInformation("Cancelled batch operation {OperationId}", operationId);

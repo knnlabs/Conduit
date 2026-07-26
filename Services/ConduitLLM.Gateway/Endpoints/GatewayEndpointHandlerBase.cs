@@ -69,8 +69,9 @@ public abstract class GatewayEndpointHandlerBase
         string message,
         string code,
         string type = "invalid_request_error",
+        string? param = null,
         JsonElement? metadata = null) =>
-        GatewayResults.OpenAIError(statusCode, message, code, type, metadata: metadata);
+        GatewayResults.OpenAIError(statusCode, message, code, type, param, metadata);
 
     protected void PublishEventFireAndForget<TEvent>(TEvent domainEvent, string operationName, object? contextData = null)
         where TEvent : class

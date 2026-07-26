@@ -38,15 +38,7 @@ namespace ConduitLLM.Gateway.Endpoints
             if (string.IsNullOrEmpty(virtualKeyIdClaim) || !int.TryParse(virtualKeyIdClaim, out int virtualKeyId))
             {
                 Logger.LogWarning("Failed to extract virtual key ID from claims");
-                return Unauthorized(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Virtual key not found in request context",
-                        Type = "authentication_error",
-                        Code = "unauthorized"
-                    }
-                });
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized", "authentication_error");
             }
 
             // Get the actual virtual key value from claims
@@ -54,15 +46,7 @@ namespace ConduitLLM.Gateway.Endpoints
             if (string.IsNullOrEmpty(virtualKey))
             {
                 Logger.LogWarning("Failed to extract virtual key from claims");
-                return Unauthorized(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Virtual key not found in request context",
-                        Type = "authentication_error",
-                        Code = "unauthorized"
-                    }
-                });
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized", "authentication_error");
             }
 
             // Create ephemeral key with the actual virtual key
