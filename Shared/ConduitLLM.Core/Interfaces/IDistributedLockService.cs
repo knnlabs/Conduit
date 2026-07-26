@@ -23,12 +23,35 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="retryDelay">The delay between retry attempts.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>A disposable lock handle if acquired within the timeout period.</returns>
-        Task<IDistributedLock> AcquireLockWithRetryAsync(
-            string key, 
-            TimeSpan expiry, 
+        async Task<IDistributedLock> AcquireLockWithRetryAsync(
+            string key,
+            TimeSpan expiry,
             TimeSpan timeout,
             TimeSpan retryDelay,
-            CancellationToken cancellationToken = default);
+            CancellationToken cancellationToken = default)
+        {
+            var endTime = DateTime.UtcNow.Add(timeout);
+
+            while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
+            {
+                var distributedLock = await AcquireLockAsync(key, expiry, cancellationToken);
+                if (distributedLock != null)
+                {
+                    return distributedLock;
+                }
+
+                var remainingTime = endTime - DateTime.UtcNow;
+                var delay = remainingTime < retryDelay ? remainingTime : retryDelay;
+                if (delay > TimeSpan.Zero)
+                {
+                    await Task.Delay(delay, cancellationToken);
+                }
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+            throw new TimeoutException(
+                $"Failed to acquire lock for key '{key}' within timeout period of {timeout}");
+        }
 
         /// <summary>
         /// Checks if a lock is currently held for the specified key.

@@ -66,36 +66,6 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<IDistributedLock> AcquireLockWithRetryAsync(
-            string key, 
-            TimeSpan expiry, 
-            TimeSpan timeout,
-            TimeSpan retryDelay,
-            CancellationToken cancellationToken = default)
-        {
-            var endTime = DateTime.UtcNow.Add(timeout);
-
-            while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
-            {
-                var lockHandle = await AcquireLockAsync(key, expiry, cancellationToken);
-                if (lockHandle != null)
-                {
-                    return lockHandle;
-                }
-
-                var remainingTime = endTime - DateTime.UtcNow;
-                var delay = remainingTime < retryDelay ? remainingTime : retryDelay;
-                
-                if (delay > TimeSpan.Zero)
-                {
-                    await Task.Delay(delay, cancellationToken);
-                }
-            }
-
-            throw new TimeoutException($"Failed to acquire lock for key '{key}' within timeout period of {timeout}");
-        }
-
-        /// <inheritdoc/>
         public Task<bool> IsLockedAsync(string key, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(key))
