@@ -32,12 +32,6 @@ namespace ConduitLLM.Admin.Interfaces
         void RecordFetchDuration(string dataSource, double durationMs);
 
         /// <summary>
-        /// Records cache memory usage
-        /// </summary>
-        /// <param name="sizeBytes">Size in bytes</param>
-        void RecordCacheMemoryUsage(long sizeBytes);
-
-        /// <summary>
         /// Records a cache invalidation event
         /// </summary>
         /// <param name="reason">Reason for invalidation</param>

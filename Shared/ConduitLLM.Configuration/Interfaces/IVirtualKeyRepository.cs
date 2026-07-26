@@ -95,6 +95,16 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Counts virtual keys whose expiration timestamp has passed, regardless of enabled state.
+        /// </summary>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// the count of expired virtual keys.
+        /// </returns>
+        Task<int> CountExpiredAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Deletes a virtual key entity from the database by key hash.
         /// </summary>
         /// <param name="keyHash">The hashed key value of the virtual key to delete.</param>

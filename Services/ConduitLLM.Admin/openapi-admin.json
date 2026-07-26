@@ -24061,7 +24061,6 @@
           "totalHits",
           "totalMisses",
           "hitRate",
-          "cacheMemoryMb",
           "totalInvalidations",
           "uptimeMinutes",
           "topHitKeys",
@@ -24078,10 +24077,6 @@
             "format": "int64"
           },
           "hitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "cacheMemoryMb": {
             "type": "number",
             "format": "double"
           },
@@ -26694,7 +26689,10 @@
             "type": "string"
           },
           "tableCount": {
-            "type": "integer",
+            "type": [
+              "null",
+              "integer"
+            ],
             "format": "int32"
           }
         }
@@ -30378,13 +30376,19 @@
             "format": "int64"
           },
           "averageResponseTime": {
-            "type": "number",
-            "description": "Average response time in milliseconds",
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Average response time in milliseconds, or null when the aggregation does not measure it",
             "format": "double"
           },
           "errorRate": {
-            "type": "number",
-            "description": "Error rate as percentage (0-100)",
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Error rate as percentage (0-100), or null when the aggregation does not measure it",
             "format": "double"
           }
         },
@@ -35265,11 +35269,14 @@
             "format": "date-time"
           },
           "modelsUsed": {
-            "type": "array",
+            "type": [
+              "null",
+              "array"
+            ],
             "items": {
               "type": "string"
             },
-            "description": "List of model names used with this key"
+            "description": "List of model names used with this key, or null when the aggregation does not provide it"
           }
         },
         "description": "Virtual key usage summary"

@@ -22,7 +22,7 @@ export interface DatabaseInfo {
   connectionString?: string;
   location?: string;
   size?: string;
-  tableCount?: number;
+  tableCount?: number | null;
 }
 
 export interface RuntimeInfo {

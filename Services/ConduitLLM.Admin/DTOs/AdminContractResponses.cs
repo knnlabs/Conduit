@@ -9,7 +9,6 @@ public sealed record AnalyticsCacheMetricsResponse(
     long TotalHits,
     long TotalMisses,
     double HitRate,
-    double CacheMemoryMb,
     long TotalInvalidations,
     double UptimeMinutes,
     IReadOnlyList<MetricKeyCountDto> TopHitKeys,

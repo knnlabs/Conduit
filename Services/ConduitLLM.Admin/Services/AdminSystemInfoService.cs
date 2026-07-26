@@ -295,7 +295,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         return counts;
     }
 
-    private async Task<int> GetTableCountAsync()
+    private async Task<int?> GetTableCountAsync()
     {
         try
         {
@@ -326,9 +326,9 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 }
                 else
                 {
-                    // Default to known table count for other providers
+                    // No table-count query for this provider — report unknown, not a guess
                     await dbConnection.CloseAsync();
-                    return 13;
+                    return null;
                 }
 
                 var result = await command.ExecuteScalarAsync();
@@ -340,13 +340,12 @@ public class AdminSystemInfoService : IAdminSystemInfoService
                 }
             }
 
-            // Default to known table count
-            return 13;
+            return null;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting table count");
-            return 13; // Default known table count
+            return null;
         }
     }
 

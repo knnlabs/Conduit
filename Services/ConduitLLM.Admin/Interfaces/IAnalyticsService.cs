@@ -198,14 +198,14 @@ public class ModelUsageSummary
     public long OutputTokens { get; set; }
     
     /// <summary>
-    /// Average response time in milliseconds
+    /// Average response time in milliseconds, or null when the aggregation does not measure it
     /// </summary>
-    public double AverageResponseTime { get; set; }
-    
+    public double? AverageResponseTime { get; set; }
+
     /// <summary>
-    /// Error rate as percentage (0-100)
+    /// Error rate as percentage (0-100), or null when the aggregation does not measure it
     /// </summary>
-    public double ErrorRate { get; set; }
+    public double? ErrorRate { get; set; }
 }
 
 /// <summary>
@@ -239,9 +239,9 @@ public class VirtualKeyUsageSummary
     public DateTime? LastUsed { get; set; }
     
     /// <summary>
-    /// List of model names used with this key
+    /// List of model names used with this key, or null when the aggregation does not provide it
     /// </summary>
-    public List<string> ModelsUsed { get; set; } = new();
+    public List<string>? ModelsUsed { get; set; }
 }
 
 /// <summary>

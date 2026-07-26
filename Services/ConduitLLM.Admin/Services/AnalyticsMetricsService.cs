@@ -15,7 +15,6 @@ namespace ConduitLLM.Admin.Services
         private readonly ConcurrentDictionary<string, long> _cacheMisses = new();
         private readonly ConcurrentDictionary<string, List<double>> _operationDurations = new();
         private readonly ConcurrentDictionary<string, List<double>> _fetchDurations = new();
-        private long _cacheMemoryUsage;
         private long _totalCacheInvalidations;
         private DateTime _metricsStartTime;
 
@@ -108,19 +107,6 @@ namespace ConduitLLM.Admin.Services
         }
 
         /// <inheritdoc/>
-        public void RecordCacheMemoryUsage(long sizeBytes)
-        {
-            Interlocked.Exchange(ref _cacheMemoryUsage, sizeBytes);
-            
-            // Log if memory usage is high (> 100MB)
-            if (sizeBytes > 100 * 1024 * 1024)
-            {
-                _logger.LogWarning("High cache memory usage: {SizeMB}MB", 
-                    sizeBytes / (1024 * 1024));
-            }
-        }
-
-        /// <inheritdoc/>
         public void RecordCacheInvalidation(string reason, int keysInvalidated)
         {
             Interlocked.Increment(ref _totalCacheInvalidations);
@@ -143,7 +129,6 @@ namespace ConduitLLM.Admin.Services
                 ["TotalHits"] = totalHits,
                 ["TotalMisses"] = totalMisses,
                 ["HitRate"] = Math.Round(hitRate, 2),
-                ["CacheMemoryMB"] = _cacheMemoryUsage / (1024.0 * 1024.0),
                 ["TotalInvalidations"] = _totalCacheInvalidations,
                 ["UptimeMinutes"] = (DateTime.UtcNow - _metricsStartTime).TotalMinutes,
                 ["TopHitKeys"] = GetTopKeys(_cacheHits, 5),

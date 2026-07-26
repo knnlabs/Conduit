@@ -110,9 +110,9 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         public string Size { get; set; } = string.Empty;
 
         /// <summary>
-        /// Number of tables in the database
+        /// Number of tables in the database, or null when it could not be determined
         /// </summary>
-        public int TableCount { get; set; }
+        public int? TableCount { get; set; }
     }
 
     /// <summary>

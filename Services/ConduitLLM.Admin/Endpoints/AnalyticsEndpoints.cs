@@ -309,7 +309,6 @@ public class AnalyticsEndpoints
             Convert.ToInt64(metrics["TotalHits"]),
             Convert.ToInt64(metrics["TotalMisses"]),
             Convert.ToDouble(metrics["HitRate"]),
-            Convert.ToDouble(metrics["CacheMemoryMB"]),
             Convert.ToInt64(metrics["TotalInvalidations"]),
             Convert.ToDouble(metrics["UptimeMinutes"]),
             ToMetricCounts(metrics["TopHitKeys"]),

@@ -3146,8 +3146,6 @@ export interface components {
       totalMisses: number;
       /** Format: double */
       hitRate: number;
-      /** Format: double */
-      cacheMemoryMb: number;
       /** Format: int64 */
       totalInvalidations: number;
       /** Format: double */
@@ -4110,7 +4108,7 @@ export interface components {
       location?: string;
       size?: string;
       /** Format: int32 */
-      tableCount?: number;
+      tableCount?: null | number;
     };
     /** @description Connection pool configuration settings. */
     DatabasePoolConfigurationDto: {
@@ -5737,14 +5735,14 @@ export interface components {
       outputTokens?: number;
       /**
        * Format: double
-       * @description Average response time in milliseconds
+       * @description Average response time in milliseconds, or null when the aggregation does not measure it
        */
-      averageResponseTime?: number;
+      averageResponseTime?: null | number;
       /**
        * Format: double
-       * @description Error rate as percentage (0-100)
+       * @description Error rate as percentage (0-100), or null when the aggregation does not measure it
        */
-      errorRate?: number;
+      errorRate?: null | number;
     };
     /** @description Extended model DTO that includes the provider-specific identifier for the model. */
     ModelWithProviderIdDto: {
@@ -7662,8 +7660,8 @@ export interface components {
        * @description Last time this key was used
        */
       lastUsed?: null | string;
-      /** @description List of model names used with this key */
-      modelsUsed?: string[];
+      /** @description List of model names used with this key, or null when the aggregation does not provide it */
+      modelsUsed?: null | string[];
     };
     VirtualKeyValidationInfoDto: {
       /** Format: int32 */

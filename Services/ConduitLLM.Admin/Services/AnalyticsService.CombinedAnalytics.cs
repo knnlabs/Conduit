@@ -73,8 +73,11 @@ namespace ConduitLLM.Admin.Services
                     TotalCost = m.TotalCost,
                     InputTokens = m.InputTokens,
                     OutputTokens = m.OutputTokens,
-                    AverageResponseTime = 0, // Not available from model aggregation (would need additional query)
-                    ErrorRate = 0 // Not available from model aggregation
+                    // Not available from the model aggregation (would need an additional
+                    // query) — left null so consumers can render "unknown" instead of a
+                    // fabricated 0ms / 0% reading
+                    AverageResponseTime = null,
+                    ErrorRate = null
                 }).ToList();
 
                 // Convert virtual key aggregations to top keys summary
@@ -85,7 +88,7 @@ namespace ConduitLLM.Admin.Services
                     RequestCount = v.RequestCount,
                     TotalCost = v.TotalCost,
                     LastUsed = v.LastUsed,
-                    ModelsUsed = new List<string>() // Not available from aggregation
+                    ModelsUsed = null // Not available from aggregation; null, not an empty list
                 }).ToList();
 
                 // Aggregate daily stats to requested timeframe

@@ -31,7 +31,7 @@ export interface BackendSystemInfoResponse {
     connectionString: string;
     location: string;
     size: string;
-    tableCount: number;
+    tableCount: number | null;
   };
   runtime: {
     runtimeVersion: string;

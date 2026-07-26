@@ -182,23 +182,24 @@ namespace ConduitLLM.Admin.Services
             {
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
 
-                // Use database-level count for active keys
+                // Use database-level counts; active = enabled and not expired,
+                // expired = past ExpiresAt regardless of enabled state,
+                // disabled = the remainder (not enabled, not expired)
                 var activeCount = await virtualKeyRepo.CountActiveAsync();
+                var expiredCount = await virtualKeyRepo.CountExpiredAsync();
 
                 // Get total count via pagination (just need count, not items)
                 var (_, totalCount) = await virtualKeyRepo.GetPaginatedAsync(1, 1);
 
-                // Calculate disabled and expired from total
-                // Note: This is an approximation - for precise counts, add dedicated count methods
-                var nonActiveCount = totalCount - activeCount;
+                var disabledCount = Math.Max(0, totalCount - activeCount - expiredCount);
 
                 TotalVirtualKeys.WithLabels("active").Set(activeCount);
-                TotalVirtualKeys.WithLabels("disabled").Set(nonActiveCount);
-                TotalVirtualKeys.WithLabels("expired").Set(0); // Expired keys are included in non-active count
+                TotalVirtualKeys.WithLabels("disabled").Set(disabledCount);
+                TotalVirtualKeys.WithLabels("expired").Set(expiredCount);
 
                 _logger.LogDebug(
-                    "Virtual key metrics: {ActiveCount} active, {NonActiveCount} non-active",
-                    activeCount, nonActiveCount);
+                    "Virtual key metrics: {ActiveCount} active, {DisabledCount} disabled, {ExpiredCount} expired",
+                    activeCount, disabledCount, expiredCount);
             }
             catch (Exception ex)
             {

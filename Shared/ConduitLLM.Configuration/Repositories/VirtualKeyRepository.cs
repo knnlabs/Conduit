@@ -180,6 +180,17 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public async Task<int> CountExpiredAsync(CancellationToken cancellationToken = default)
+        {
+            return await ExecuteAsync(async context =>
+                await context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.ExpiresAt != null && vk.ExpiresAt <= DateTime.UtcNow)
+                    .CountAsync(cancellationToken),
+                cancellationToken, "counting expired");
+        }
+
+        /// <inheritdoc/>
         public async Task<bool> DeleteAsync(string keyHash, CancellationToken cancellationToken = default)
         {
             return await ExecuteAsync(async context =>
