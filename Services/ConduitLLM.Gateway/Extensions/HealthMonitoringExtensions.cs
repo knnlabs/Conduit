@@ -11,18 +11,16 @@ namespace ConduitLLM.Gateway.Extensions
     public static class HealthMonitoringExtensions
     {
         /// <summary>
-        /// Adds distributed monitoring services with Redis-based storage for multi-instance consistency
+        /// Adds the operational alert publisher and security event monitoring.
         /// </summary>
+        /// <remarks>
+        /// Metrics collection and alert evaluation belong to the Prometheus/Grafana stack; what
+        /// remains here is the business-facing alert entry point and security event tracking.
+        /// </remarks>
         public static IServiceCollection AddHealthMonitoring(this IServiceCollection services, IConfiguration configuration)
         {
             // Publishes business alerts to logs and Prometheus; Grafana owns alert routing
             services.AddSingleton<IOperationalAlertPublisher, OperationalAlertPublisher>();
-
-            // Register distributed SignalR metrics service
-            services.AddSingleton<IDistributedSignalRMetricsService, DistributedSignalRMetricsService>();
-            services.AddHostedService<DistributedSignalRMetricsService>(provider =>
-                provider.GetRequiredService<IDistributedSignalRMetricsService>() as DistributedSignalRMetricsService
-                ?? throw new InvalidOperationException("DistributedSignalRMetricsService not registered correctly"));
 
             // Register security event monitoring services
             services.AddSingleton<ISecurityEventMonitoringService, ConduitLLM.Security.Services.SecurityEventMonitoringService>();

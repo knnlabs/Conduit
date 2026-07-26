@@ -572,21 +572,4 @@ public static class CacheKeys
 
     #endregion
 
-    #region SignalR Metrics Cache
-
-    /// <summary>
-    /// Cache keys for SignalR connection metrics.
-    /// Used by DistributedSignalRMetricsService.
-    /// </summary>
-    public static class SignalRMetrics
-    {
-        /// <summary>Prefix for active connection tracking</summary>
-        public const string ConnectionsPrefix = "signalr_connections";
-
-        /// <summary>Prefix for virtual key connection mapping</summary>
-        public const string VirtualKeyConnectionsPrefix = "signalr_vk_connections";
-    }
-
-    #endregion
-
 }
