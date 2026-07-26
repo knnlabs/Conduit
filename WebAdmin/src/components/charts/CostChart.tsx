@@ -10,6 +10,21 @@ export interface ChartDataItem {
   [key: string]: string | number;
 }
 
+// Distinct hues assigned by index so pie segments keep a stable, non-colliding
+// color across re-renders (previously randomized per render)
+const PIE_COLORS = [
+  'blue.6',
+  'teal.6',
+  'orange.6',
+  'grape.6',
+  'red.6',
+  'cyan.6',
+  'lime.6',
+  'pink.6',
+  'indigo.6',
+  'yellow.6',
+];
+
 interface CostChartProps {
   data: ChartDataItem[];
   title: string;
@@ -94,10 +109,12 @@ export function CostChart({
         return (
           <PieChart
             h={height}
-            data={data.map(item => ({
+            data={data.map((item, index) => ({
               name: String(item[nameKey]),
               value: Number(item[valueKey]),
-              color: `blue.${Math.floor(Math.random() * 9) + 1}`,
+              // Deterministic palette: colors must be stable across re-renders
+              // so a segment keeps its identity between refreshes
+              color: PIE_COLORS[index % PIE_COLORS.length],
             }))}
             valueFormatter={formatChartCurrency}
             withLabelsLine={false}

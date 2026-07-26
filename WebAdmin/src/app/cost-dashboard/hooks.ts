@@ -115,8 +115,10 @@ export function useTransformedData(costSummary: CostDashboardDto | undefined, co
   const daysInMonth = 30;
   const projectedMonthlySpend = averageDailyCost * daysInMonth;
   
-  // Calculate trend (comparing last 7 days to previous 7 days)
-  const projectedTrend = last7DaysCost > 0 && last30DaysCost > 0
+  // Trend of the last 7 days vs the prior 7-day average. This is always a
+  // 7-day comparison regardless of the selected time range — surface it as
+  // such rather than implying it matches the range.
+  const sevenDayTrend = last7DaysCost > 0 && last30DaysCost > 0
     ? ((last7DaysCost - (last30DaysCost - last7DaysCost) / 3) / ((last30DaysCost - last7DaysCost) / 3)) * 100
     : 0;
 
@@ -125,33 +127,24 @@ export function useTransformedData(costSummary: CostDashboardDto | undefined, co
     provider: provider.name,
     cost: provider.cost,
     usage: provider.percentage,
-    trend: 0, // Trend calculation would require historical data
   })) ?? [];
 
-  // Transform model usage
+  // Transform model usage. The cost summary does not attribute models to
+  // providers or report token counts — those fields are deliberately absent
+  // rather than filled with guesses or zeros.
   const modelUsage: ModelUsage[] = costSummary?.topModelsBySpend?.map((model: DetailedCostDataDto) => ({
     model: model.name,
-    provider: model.name.includes('/') ? model.name.split('/')[0] : 'unknown',
     requests: model.requestCount,
-    tokensIn: 0, // Not available in cost summary
-    tokensOut: 0, // Not available in cost summary
     cost: model.cost,
   })) ?? [];
 
-  // Transform daily costs from trends - flatten providers for chart compatibility
-  const dailyCosts: DailyCost[] = costTrends?.data?.map((trend: CostTrendDataDto) => {
-    const result: DailyCost = {
-      date: trend.date,
-      cost: trend.cost,
-    };
-    
-    // Add provider costs as separate fields for chart compatibility
-    costSummary?.topProvidersBySpend?.forEach((provider: DetailedCostDataDto) => {
-      result[provider.name] = (trend.cost * provider.percentage) / 100;
-    });
-
-    return result;
-  }) ?? [];
+  // Daily costs from trends. Only the measured total is included — a per-day
+  // provider split does not exist in the data (multiplying each day's total by
+  // the period-wide provider share fabricates an identical daily mix).
+  const dailyCosts: DailyCost[] = costTrends?.data?.map((trend: CostTrendDataDto) => ({
+    date: trend.date,
+    cost: trend.cost,
+  })) ?? [];
 
   // Calculate budget utilization (if we had budget data)
   const monthlyBudget: number | null = null; // Budget feature not yet implemented
@@ -164,7 +157,7 @@ export function useTransformedData(costSummary: CostDashboardDto | undefined, co
     last30DaysCost,
     averageDailyCost,
     projectedMonthlySpend,
-    projectedTrend,
+    sevenDayTrend,
     providerCosts,
     modelUsage,
     dailyCosts,

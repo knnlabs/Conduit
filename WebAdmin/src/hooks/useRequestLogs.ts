@@ -305,8 +305,10 @@ export function useRequestLogs({
       setTotalPages(result.totalPages ?? Math.ceil((result.totalCount ?? 0) / pageSize));
       setCurrentPage(result.page ?? page);
 
-      // Calculate stats from current page (for display purposes)
-      // In a real scenario, you might want to fetch stats from a separate endpoint
+      // Stats below (success/error counts, cost, latency) are computed from the
+      // CURRENT PAGE of logs only — totalRequests is the only period-wide figure.
+      // The UI must label them as page-scoped; a period-wide summary would need
+      // a dedicated server-side endpoint.
       if (mappedLogs.length > 0) {
         const successCount = mappedLogs.filter(
           (log) => log.statusCode === null || (log.statusCode >= 200 && log.statusCode < 400)

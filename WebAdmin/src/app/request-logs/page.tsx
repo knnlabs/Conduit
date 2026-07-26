@@ -233,6 +233,9 @@ export default function RequestLogsPage() {
   const statCards = useMemo(() => {
     if (!stats) return [];
 
+    // All but Total Requests are computed from the rows on the current page,
+    // so they are labeled as page-scoped — presenting them as period totals
+    // would change with every pagination click.
     return [
       {
         title: 'Total Requests',
@@ -241,19 +244,19 @@ export default function RequestLogsPage() {
         color: 'blue',
       },
       {
-        title: 'Success Rate',
+        title: 'Success Rate (page)',
         value: `${stats.successRate.toFixed(1)}%`,
         icon: IconCheck,
         color: 'green',
       },
       {
-        title: 'Total Cost',
+        title: 'Cost (page)',
         value: `$${stats.totalCost.toFixed(4)}`,
         icon: IconCoin,
         color: 'orange',
       },
       {
-        title: 'Avg Duration',
+        title: 'Avg Duration (page)',
         value: `${Math.round(stats.avgLatency)} ms`,
         icon: IconClock,
         color: 'violet',

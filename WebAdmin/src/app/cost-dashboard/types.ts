@@ -32,27 +32,25 @@ export interface CostTrendDto {
   data: CostTrendDataDto[];
 }
 
-// Local types for transformed data
+// Local types for transformed data. Fields the analytics summary does not
+// measure (per-model provider/token counts, per-provider trend, per-day
+// provider splits) are deliberately absent — do not re-add them with
+// placeholder values.
 export interface ProviderCost {
   provider: string;
   cost: number;
   usage: number;
-  trend: number;
 }
 
 export interface ModelUsage {
   model: string;
-  provider: string;
   requests: number;
-  tokensIn: number;
-  tokensOut: number;
   cost: number;
 }
 
 export interface DailyCost {
   date: string;
   cost: number;
-  [providerName: string]: string | number;
 }
 
 export interface DateRange {

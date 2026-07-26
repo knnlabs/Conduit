@@ -49,7 +49,7 @@ export default function CostDashboard() {
     totalSpend,
     averageDailyCost,
     projectedMonthlySpend,
-    projectedTrend,
+    sevenDayTrend,
     providerCosts,
     modelUsage,
     dailyCosts,
@@ -63,13 +63,12 @@ export default function CostDashboard() {
     handleExport
   } = useCostDashboardHandlers(refetchAll, timeRange, setIsExporting);
 
-  const filteredProviderCosts = selectedProvider === 'all' 
-    ? providerCosts 
+  // The provider filter applies to the Provider Breakdown panel only: the cost
+  // summary does not attribute models to providers, so the model table cannot
+  // be filtered by provider without guessing from model-name prefixes.
+  const filteredProviderCosts = selectedProvider === 'all'
+    ? providerCosts
     : providerCosts.filter((p: ProviderCost) => p.provider === selectedProvider);
-
-  const filteredModelUsage = selectedProvider === 'all'
-    ? modelUsage
-    : modelUsage.filter((m: ModelUsage) => m.provider === selectedProvider);
 
   if (error) {
     return <ErrorDisplay error={error} />;
@@ -142,7 +141,7 @@ export default function CostDashboard() {
 
       <CostMetricsCards
         totalSpend={totalSpend}
-        projectedTrend={projectedTrend}
+        sevenDayTrend={sevenDayTrend}
         averageDailyCost={averageDailyCost}
         projectedMonthlySpend={projectedMonthlySpend}
         monthlyBudget={monthlyBudget}
@@ -156,8 +155,8 @@ export default function CostDashboard() {
           <Card padding="lg" radius="md" withBorder>
             <Title order={4} mb="md">Cost Trends</Title>
             {dailyCosts.length > 0 ? (
-              <CostChart 
-                data={dailyCosts} 
+              <CostChart
+                data={dailyCosts.map(d => ({ date: d.date, cost: d.cost }))}
                 height={300} 
                 title="Cost Trends"
                 type="line"
@@ -211,25 +210,19 @@ export default function CostDashboard() {
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>Model</Table.Th>
-                <Table.Th>Provider</Table.Th>
                 <Table.Th>Requests</Table.Th>
                 <Table.Th>Cost</Table.Th>
                 <Table.Th>Avg Cost/Request</Table.Th>
               </Table.Tr>
             </Table.Thead>
             <Table.Tbody>
-              {filteredModelUsage.length > 0 ? (
-                filteredModelUsage.map((model: ModelUsage) => (
+              {modelUsage.length > 0 ? (
+                modelUsage.map((model: ModelUsage) => (
                   <Table.Tr key={model.model}>
                     <Table.Td>
                       <Text size="sm" fw={500}>
                         {model.model}
                       </Text>
-                    </Table.Td>
-                    <Table.Td>
-                      <Badge size="sm" variant="light">
-                        {model.provider}
-                      </Badge>
                     </Table.Td>
                     <Table.Td>{model.requests.toLocaleString()}</Table.Td>
                     <Table.Td>${model.cost.toFixed(4)}</Table.Td>
@@ -240,7 +233,7 @@ export default function CostDashboard() {
                 ))
               ) : (
                 <Table.Tr>
-                  <Table.Td colSpan={5}>
+                  <Table.Td colSpan={4}>
                     <Text c="dimmed" ta="center" py="md">
                       No model usage data available
                     </Text>

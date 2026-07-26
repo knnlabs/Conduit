@@ -18,7 +18,8 @@ import {
 
 interface CostMetricsCardsProps {
   totalSpend: number;
-  projectedTrend: number;
+  /** Last 7 days vs the prior 7-day average — always a 7-day comparison, independent of timeRange */
+  sevenDayTrend: number;
   averageDailyCost: number;
   projectedMonthlySpend: number;
   monthlyBudget: number | null;
@@ -29,7 +30,7 @@ interface CostMetricsCardsProps {
 
 export function CostMetricsCards({
   totalSpend,
-  projectedTrend,
+  sevenDayTrend,
   averageDailyCost,
   projectedMonthlySpend,
   monthlyBudget,
@@ -59,15 +60,15 @@ export function CostMetricsCards({
             <Text size="xl" fw={700}>
               ${totalSpend.toFixed(2)}
             </Text>
-            {projectedTrend !== 0 && (
+            {sevenDayTrend !== 0 && (
               <Badge
-                color={projectedTrend > 0 ? 'red' : 'green'}
+                color={sevenDayTrend > 0 ? 'red' : 'green'}
                 variant="light"
                 leftSection={
-                  projectedTrend > 0 ? <IconTrendingUp size={12} /> : <IconTrendingDown size={12} />
+                  sevenDayTrend > 0 ? <IconTrendingUp size={12} /> : <IconTrendingDown size={12} />
                 }
               >
-                {Math.abs(projectedTrend).toFixed(1)}%
+                {Math.abs(sevenDayTrend).toFixed(1)}% (7d)
               </Badge>
             )}
           </Group>
