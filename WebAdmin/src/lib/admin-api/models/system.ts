@@ -291,22 +291,25 @@ export interface SystemHealthDto {
       lastChecked: string;
     };
   };
+  // Null means "not measured" — the backend does not report these; consumers
+  // must render an unavailable state rather than treating null as 0
   metrics: {
-    cpu: number;
-    memory: number;
-    disk: number;
-    activeConnections: number;
+    cpu: number | null;
+    memory: number | null;
+    disk: number | null;
+    activeConnections: number | null;
   };
 }
 
 // Client-side normalized resource view (CPU/memory/disk percentages). Distinct from the
 // wire `SystemMetricsDto` (process diagnostics: cpuCount/gcMemoryMb/threadCount/workingSetMb),
 // so it is intentionally named differently to avoid a false type-drift pairing. See issue #1038.
+// Null values mean "not measured", never 0.
 export interface SystemResourceMetricsDto {
-  cpuUsage: number;
-  memoryUsage: number;
-  diskUsage: number;
-  activeConnections: number;
+  cpuUsage: number | null;
+  memoryUsage: number | null;
+  diskUsage: number | null;
+  activeConnections: number | null;
   uptime: number;
 }
 

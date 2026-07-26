@@ -170,10 +170,10 @@ export class FetchSystemService implements ISystemService {
   }
 
   /**
-   * Get the number of active connections to the system.
+   * Get the number of active connections to the system (null when unknown).
    * Delegates to FetchSystemMetricsService
    */
-  async getActiveConnections(config?: RequestConfig): Promise<number> {
+  async getActiveConnections(config?: RequestConfig): Promise<number | null> {
     return this.metricsService.getActiveConnections(config);
   }
 

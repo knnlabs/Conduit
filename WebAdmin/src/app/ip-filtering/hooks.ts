@@ -20,8 +20,7 @@ export function useIpFilteringData() {
         allowRules: fetchedRules.filter(r => r.action === 'allow').length,
         blockRules: fetchedRules.filter(r => r.action === 'block').length,
         activeRules: fetchedRules.filter(r => r.isEnabled !== false).length,
-        blockedRequests24h: 0, // This would need to come from a real endpoint
-        lastRuleUpdate: fetchedRules.length > 0 
+        lastRuleUpdate: fetchedRules.length > 0
           ? new Date(Math.max(...fetchedRules.map(r => new Date(r.createdAt ?? '').getTime()).filter(t => !isNaN(t)))).toISOString()
           : null,
       };

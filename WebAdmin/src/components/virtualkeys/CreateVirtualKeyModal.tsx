@@ -58,28 +58,20 @@ const ENDPOINT_OPTIONS = [
   { value: '/v1/conduit/videos/generations', label: 'Video Generation' },
 ];
 
-// Common models - hardcoded for now since we removed SDK
-const MODEL_OPTIONS = [
-  { value: '*', label: 'All Models' },
-  { value: 'gpt-4', label: 'gpt-4' },
-  { value: 'gpt-4-turbo', label: 'gpt-4-turbo' },
-  { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
-  { value: 'claude-3-opus', label: 'claude-3-opus' },
-  { value: 'claude-3-sonnet', label: 'claude-3-sonnet' },
-  { value: 'claude-3-haiku', label: 'claude-3-haiku' },
-];
-
 export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirtualKeyModalProps) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [groups, setGroups] = useState<VirtualKeyGroupDto[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([
+    { value: '*', label: 'All Models' },
+  ]);
 
-  // Fetch groups when modal opens
+  // Fetch groups and the deployment's actual model aliases when the modal opens
   useEffect(() => {
     const fetchGroups = async () => {
       if (!opened) return;
-      
+
       try {
         setIsLoadingGroups(true);
         const data = await withAdminClient(client =>
@@ -92,8 +84,25 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         setIsLoadingGroups(false);
       }
     };
-    
+
+    const fetchModels = async () => {
+      if (!opened) return;
+
+      try {
+        const mappings = await withAdminClient(client => client.modelMappings.list());
+        const aliases = [...new Set(mappings.map(m => m.modelAlias))].sort();
+        setModelOptions([
+          { value: '*', label: 'All Models' },
+          ...aliases.map(alias => ({ value: alias, label: alias })),
+        ]);
+      } catch (error) {
+        // Leave only the "All Models" wildcard rather than offering a made-up list
+        console.warn('Failed to fetch model mappings:', error);
+      }
+    };
+
     void fetchGroups();
+    void fetchModels();
   }, [opened]);
 
   const form = useForm<CreateVirtualKeyForm>({
@@ -266,7 +275,7 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
           <MultiSelect
             label="Allowed Models"
             description="Models this key can access"
-            data={MODEL_OPTIONS}
+            data={modelOptions}
             placeholder="Select models"
             searchable
             clearable

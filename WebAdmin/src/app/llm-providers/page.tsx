@@ -19,7 +19,6 @@ import {
   IconServer,
   IconPlus,
   IconCircleCheck,
-  IconCircleX,
   IconRefresh,
   IconAlertCircle,
   IconDownload,
@@ -38,18 +37,10 @@ import { ApiKeyTestResult, type ProviderDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
-// Use local Admin API types with health extensions
-interface ProviderWithHealth extends ProviderDto {
-  healthStatus: 'healthy' | 'unhealthy' | 'unknown';
-  lastHealthCheck?: string;
-  models?: string[];
-  endpoint?: string;
-}
-
 export default function ProvidersPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [providers, setProviders] = useState<ProviderWithHealth[]>([]);
+  const [providers, setProviders] = useState<ProviderDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [testingProviders, setTestingProviders] = useState<Set<number>>(new Set());
@@ -84,14 +75,7 @@ export default function ProvidersPage() {
             }
           }
           
-          const providerWithHealth: ProviderWithHealth = {
-            ...provider,
-            healthStatus: 'unknown' as const,
-            models: [],
-            keyCount
-          };
-          
-          return providerWithHealth;
+          return { ...provider, keyCount };
         })
       );
       
@@ -115,9 +99,6 @@ export default function ProvidersPage() {
       } else {
         notify.error(new Error(result.message ?? 'Failed to connect to provider'), 'Connection Failed');
       }
-      
-      // Refresh providers to get updated health status
-      void fetchProviders();
     } catch {
       notify.error(new Error('Failed to test provider connection'));
     } finally {
@@ -169,11 +150,9 @@ export default function ProvidersPage() {
   const stats = {
     totalProviders: filteredProviders.length,
     activeProviders: filteredProviders.filter((p) => p.isEnabled).length,
-    healthyProviders: filteredProviders.filter((p) => p.healthStatus === 'healthy').length,
-    unhealthyProviders: filteredProviders.filter((p) => p.healthStatus === 'unhealthy').length,
   };
 
-  const handleEdit = (provider: ProviderWithHealth) => {
+  const handleEdit = (provider: ProviderDto) => {
     router.push(`/llm-providers/edit/${provider.id}`);
   };
 
@@ -191,10 +170,7 @@ export default function ProvidersPage() {
         name: provider.providerName ?? displayName,
         type: displayName,
         status: provider.isEnabled ? 'Enabled' : 'Disabled',
-        health: provider.healthStatus,
         endpoint: provider.baseUrl ?? '',
-        models: provider.models?.join('; ') ?? '',
-        lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
         createdAt: formatDateForExport(provider.createdAt),
       };
     });
@@ -206,10 +182,7 @@ export default function ProvidersPage() {
         { key: 'name', label: 'Provider Name' },
         { key: 'type', label: 'Type' },
         { key: 'status', label: 'Status' },
-        { key: 'health', label: 'Health' },
         { key: 'endpoint', label: 'Endpoint' },
-        { key: 'models', label: 'Models' },
-        { key: 'lastHealthCheck', label: 'Last Health Check' },
         { key: 'createdAt', label: 'Created At' },
       ]
     );
@@ -231,6 +204,8 @@ export default function ProvidersPage() {
     notify.success(`Exported ${filteredProviders.length} providers`, 'Export successful');
   };
 
+  // Note: per-provider health is not continuously monitored, so there are no
+  // "Healthy"/"Unhealthy" cards here — use Test Connection for an on-demand check
   const statCards = [
     {
       title: 'Total Providers',
@@ -243,18 +218,6 @@ export default function ProvidersPage() {
       value: stats.activeProviders,
       icon: IconCircleCheck,
       color: 'green',
-    },
-    {
-      title: 'Healthy',
-      value: stats.healthyProviders,
-      icon: IconCircleCheck,
-      color: 'teal',
-    },
-    {
-      title: 'Unhealthy',
-      value: stats.unhealthyProviders,
-      icon: IconCircleX,
-      color: 'red',
     },
   ];
 
@@ -328,7 +291,7 @@ export default function ProvidersPage() {
       </Group>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
+      <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
         {statCards.map((stat) => (
           <Card key={stat.title} p="md" withBorder>
             <Group justify="space-between">

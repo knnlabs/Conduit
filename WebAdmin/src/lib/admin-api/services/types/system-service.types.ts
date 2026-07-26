@@ -108,7 +108,7 @@ export interface ISystemHealthService {
   getSystemMetrics(config?: RequestConfig): Promise<SystemResourceMetricsDto>;
   getServiceStatus(config?: RequestConfig): Promise<ServiceStatusMapDto>;
   getUptime(config?: RequestConfig): Promise<number>;
-  getActiveConnections(config?: RequestConfig): Promise<number>;
+  getActiveConnections(config?: RequestConfig): Promise<number | null>;
   getHealthEvents(limit?: number, config?: RequestConfig): Promise<HealthEventsResponseDto>;
   subscribeToHealthEvents(
     options?: HealthEventSubscriptionOptions,

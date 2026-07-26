@@ -45,10 +45,12 @@ export function IpFilteringStats({ stats, isLoading = false }: IpFilteringStatsP
       icon: IconShieldX,
       color: 'red',
     },
+    // Note: no "Blocked Today" card — blocked-request counts are not tracked
+    // server-side, and a hardcoded 0 would read as "no attacks in 24h"
     {
-      title: 'Blocked Today',
-      value: stats?.blockedRequests24h ?? 0,
-      description: 'Requests blocked in 24h',
+      title: 'Active Rules',
+      value: stats?.activeRules ?? 0,
+      description: 'Currently enabled rules',
       icon: IconClock,
       color: 'orange',
     },

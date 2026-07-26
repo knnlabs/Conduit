@@ -90,10 +90,21 @@ export default function FunctionExecutionsPage() {
           client.functionExecutions.getByConfiguration(Number(filterConfigId))
         );
       } else {
-        // For demo purposes, get by state Completed to avoid empty list
-        response = await executeWithAdmin(client =>
-          client.functionExecutions.getByState(ExecutionState.Completed)
+        // "All States" means all states: the Admin API has no unfiltered list
+        // endpoint, so fetch every state and merge. Silently showing only
+        // Completed here hid failed/running executions behind an "All States"
+        // filter label.
+        const allStates = Object.values(ExecutionState);
+        const byState = await Promise.all(
+          allStates.map(state =>
+            executeWithAdmin(client => client.functionExecutions.getByState(state))
+          )
         );
+        response = byState
+          .flat()
+          .sort((a, b) =>
+            new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime()
+          );
       }
 
       setExecutions(response);

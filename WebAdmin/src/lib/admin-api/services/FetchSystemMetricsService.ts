@@ -66,12 +66,9 @@ export class FetchSystemMetricsService {
    * with fallback to constructed metrics from system info.
    *
    * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<SystemResourceMetricsDto> - System resource metrics including:
-   *   - cpuUsage: CPU utilization percentage (0-100)
-   *   - memoryUsage: Memory utilization percentage (0-100)
-   *   - diskUsage: Disk utilization percentage (0-100)
-   *   - activeConnections: Number of active connections
-   *   - uptime: System uptime in seconds
+   * @returns Promise<SystemResourceMetricsDto> - System resource metrics. Fields that
+   *   the backend does not measure (cpuUsage, memoryUsage, diskUsage in the fallback
+   *   path) are null, never a fabricated 0.
    * @throws {Error} When metrics data cannot be retrieved
    * @since Issue #427 - System Health SDK Methods
    */
@@ -87,15 +84,16 @@ export class FetchSystemMetricsService {
         }
       );
     } catch {
-      // Fallback: construct from system info
+      // Fallback: construct from system info. Resource percentages are not
+      // available from the backend — report them as unknown, not as 0%.
       const systemService = new FetchSystemService(this.client);
       const systemInfo = await systemService.getSystemInfo(config);
       const activeConnections = await this.getActiveConnections(config);
 
       return {
-        cpuUsage: 0, // CPU usage not available from backend
-        memoryUsage: 0, // Memory usage not available from backend
-        diskUsage: 0, // Will be enhanced when disk monitoring is available
+        cpuUsage: null,
+        memoryUsage: null,
+        diskUsage: null,
         activeConnections,
         uptime: this.computeUptimeSeconds(systemInfo),
       };
@@ -109,11 +107,13 @@ export class FetchSystemMetricsService {
    * connection data is unavailable.
    *
    * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<number> - Number of currently active connections to the system
-   * @throws {Error} When connection count cannot be determined
+   * @returns Promise<number | null> - Number of currently active connections, or null
+   *   when the metrics endpoint is unavailable or does not report a count. Null is
+   *   deliberately not coerced to a plausible number — a fabricated reading is
+   *   indistinguishable from a real one.
    * @since Issue #427 - System Health SDK Methods
    */
-  async getActiveConnections(config?: RequestConfig): Promise<number> {
+  async getActiveConnections(config?: RequestConfig): Promise<number | null> {
     try {
       // Try to get from metrics endpoint
       const metrics = await this.client['get']<Record<string, unknown>>(
@@ -131,10 +131,10 @@ export class FetchSystemMetricsService {
         database?: { connectionCount?: number };
       };
 
-      return typedMetrics.activeConnections ?? typedMetrics.database?.connectionCount ?? 0;
+      return typedMetrics.activeConnections ?? typedMetrics.database?.connectionCount ?? null;
     } catch {
-      // Fallback: return default value when metrics endpoint is not available
-      return 1;
+      // Metrics endpoint unavailable — the count is unknown
+      return null;
     }
   }
 

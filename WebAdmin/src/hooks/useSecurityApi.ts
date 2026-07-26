@@ -22,12 +22,13 @@ export interface IpRule {
 }
 
 // Legacy statistics shape retained by the active security hook.
+// Note: blocked-request counts are not tracked server-side (removed in #1038),
+// so this shape deliberately has no blockedRequests24h field.
 export interface IpStats {
   totalRules: number;
   allowRules: number;
   blockRules: number;
   activeRules: number;
-  blockedRequests24h: number;
   lastRuleUpdate: string | null;
 }
 
@@ -186,8 +187,6 @@ export function useSecurityApi() {
         allowRules: filters.filter(f => f.filterType === 'whitelist').length,
         blockRules: filters.filter(f => f.filterType === 'blacklist').length,
         activeRules: filters.filter(f => f.isEnabled).length,
-        // Per-filter match counts are no longer tracked server-side (removed in #1038)
-        blockedRequests24h: 0,
         lastRuleUpdate: filters.length > 0 ?
           Math.max(...filters.map(f => new Date(f.updatedAt).getTime())).toString() :
           null,

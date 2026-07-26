@@ -113,17 +113,18 @@ export class FetchSystemHealthService implements ISystemHealthService {
     if (hasUnhealthy) overall = 'unhealthy';
     else if (hasDegradedOrUnknown) overall = 'degraded';
 
-    // Get active connections count (fallback to estimated value based on system load)
+    // Get active connections count (null when the metrics endpoint is unavailable)
     const metricsService = new FetchSystemMetricsService(this.client);
     const activeConnections = await metricsService.getActiveConnections(config);
 
     return {
       overall,
       components,
+      // Resource percentages are not measured by the backend — null, not 0%
       metrics: {
-        cpu: 0, // CPU usage not available from backend
-        memory: 0, // Memory usage not available from backend
-        disk: 0, // Will be enhanced when disk monitoring is available
+        cpu: null,
+        memory: null,
+        disk: null,
         activeConnections,
       },
     };
@@ -253,10 +254,10 @@ export class FetchSystemHealthService implements ISystemHealthService {
   }
 
   /**
-   * Get the number of active connections to the system.
+   * Get the number of active connections to the system (null when unknown).
    * Delegates to FetchSystemMetricsService.
    */
-  async getActiveConnections(config?: RequestConfig): Promise<number> {
+  async getActiveConnections(config?: RequestConfig): Promise<number | null> {
     const metricsService = new FetchSystemMetricsService(this.client);
     return metricsService.getActiveConnections(config);
   }
