@@ -137,55 +137,6 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
     #region Query Methods
 
     /// <inheritdoc/>
-    public decimal CalculateCost(string modelName, int inputTokens, int outputTokens)
-    {
-        // This is a simplified implementation - in a real system,
-        // you'd likely have a more sophisticated pricing model
-        decimal inputRate = 0;
-        decimal outputRate = 0;
-
-        // Set rates based on model
-        switch (modelName.ToLowerInvariant())
-        {
-            case string name when name.Contains("gpt-4"):
-                inputRate = 0.00001m;  // $0.01 per 1K tokens
-                outputRate = 0.00003m;  // $0.03 per 1K tokens
-                break;
-            case string name when name.Contains("gpt-3.5"):
-                inputRate = 0.0000015m;  // $0.0015 per 1K tokens
-                outputRate = 0.000002m;  // $0.002 per 1K tokens
-                break;
-            default:
-                inputRate = 0.000001m;  // Default rate
-                outputRate = 0.000002m;  // Default rate
-                break;
-        }
-
-        decimal inputCost = inputTokens * inputRate;
-        decimal outputCost = outputTokens * outputRate;
-
-        return inputCost + outputCost;
-    }
-
-    /// <inheritdoc/>
-    public (int InputTokens, int OutputTokens) EstimateTokens(string requestContent, string responseContent)
-    {
-        // This is a simplified implementation - in a real system,
-        // you'd likely use a tokenizer like GPT-2/3 BPE
-
-        // Rough estimate: ~4 characters per token for English text
-        int inputTokens = !string.IsNullOrEmpty(requestContent)
-            ? (int)Math.Ceiling(requestContent.Length / 4.0)
-            : 0;
-
-        int outputTokens = !string.IsNullOrEmpty(responseContent)
-            ? (int)Math.Ceiling(responseContent.Length / 4.0)
-            : 0;
-
-        return (inputTokens, outputTokens);
-    }
-
-    /// <inheritdoc/>
     public async Task<int?> GetVirtualKeyIdFromKeyValueAsync(string keyValue)
     {
         using var scope = ServiceProvider.CreateScope();
