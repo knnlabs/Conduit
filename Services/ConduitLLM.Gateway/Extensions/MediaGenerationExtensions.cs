@@ -22,11 +22,8 @@ public static class MediaGenerationExtensions
             options.MaxDelaySeconds = configuration.GetValue<int>("VideoGeneration:MaxDelaySeconds", 3600);
             options.EnableRetries = configuration.GetValue<bool>("VideoGeneration:EnableRetries", true);
             options.RetryCheckIntervalSeconds = configuration.GetValue<int>("VideoGeneration:RetryCheckIntervalSeconds", 30);
+            options.JitterPercentage = configuration.GetValue<int>("VideoGeneration:JitterPercentage", 20);
         });
-
-        // Register Image Generation Retry Configuration
-        services.Configure<ImageGenerationRetryConfiguration>(
-            configuration.GetSection("ConduitLLM:ImageGenerationRetry"));
 
         // Add background services for monitoring and cleanup (skip in test environment to prevent endless loops)
         if (environment.EnvironmentName != "Test")

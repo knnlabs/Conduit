@@ -37,7 +37,16 @@ namespace ConduitLLM.Core.Configuration
         public int RetryCheckIntervalSeconds { get; set; } = 30;
 
         /// <summary>
+        /// Jitter percentage applied to retry delays (0-100).
+        /// Default: 20
+        /// </summary>
+        public int JitterPercentage { get; set; } = 20;
+
+        /// <summary>
         /// Calculate the retry delay using exponential backoff with jitter.
+        /// The order is deliberate: jitter first, then cap, then floor — so
+        /// <see cref="MaxDelaySeconds"/> is a hard ceiling (jitter can never push past it)
+        /// and the result is never less than 1 second.
         /// </summary>
         /// <param name="retryCount">Current retry attempt (0-based)</param>
         /// <returns>Delay in seconds before the next retry</returns>
@@ -45,13 +54,14 @@ namespace ConduitLLM.Core.Configuration
         {
             // Exponential backoff: BaseDelay * 2^retryCount
             var delay = BaseDelaySeconds * Math.Pow(2, retryCount);
-            
-            // Add jitter (±20% randomization)
-            var jitter = new Random().NextDouble() * 0.4 - 0.2; // -0.2 to +0.2
-            delay = delay * (1 + jitter);
-            
-            // Cap at maximum delay
-            return (int)Math.Min(delay, MaxDelaySeconds);
+
+            // Jitter (±JitterPercentage%)
+            var jitterFraction = Math.Clamp(JitterPercentage, 0, 100) / 100.0;
+            delay *= 1 + (Random.Shared.NextDouble() * 2 - 1) * jitterFraction;
+
+            // Cap, then floor
+            delay = Math.Min(delay, MaxDelaySeconds);
+            return Math.Max(1, (int)delay);
         }
     }
 }
