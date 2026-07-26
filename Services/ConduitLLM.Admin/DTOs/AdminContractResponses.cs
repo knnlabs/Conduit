@@ -105,8 +105,6 @@ public sealed record BatchSpendingInformationResponse(
     IReadOnlyList<string> OperationalNotes,
     DateTime Timestamp);
 
-public sealed record MessageResponse(string Message);
-
 public sealed record CacheInvalidationPublishedResponse(
     string Message,
     DateTime Timestamp,
