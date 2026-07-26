@@ -121,8 +121,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     Data = response.Data?.Select(d => new CoreModels.ImageData
                     {
                         Url = d.Url,
-                        B64Json = d.B64Json
-                        // Note: Core.Models.ImageData doesn't have RevisedPrompt property
+                        B64Json = d.B64Json,
+                        RevisedPrompt = d.RevisedPrompt
                     }).ToList() ?? new List<CoreModels.ImageData>()
                 };
             }, "CreateImage", cancellationToken);
