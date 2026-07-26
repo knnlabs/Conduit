@@ -64,21 +64,6 @@ export const LazyTransactionHistoryModal = (props: React.ComponentProps<typeof T
   </Suspense>
 );
 
-// Provider Modals
-const CreateProviderModalLazy = lazy(() => import('../providers/CreateProviderModal').then(mod => ({ default: mod.CreateProviderModal })));
-export const LazyCreateProviderModal = (props: React.ComponentProps<typeof CreateProviderModalLazy>) => (
-  <Suspense fallback={<ModalSkeleton />}>
-    <CreateProviderModalLazy {...props} />
-  </Suspense>
-);
-
-const EditProviderModalLazy = lazy(() => import('../providers/EditProviderModal').then(mod => ({ default: mod.EditProviderModal })));
-export const LazyEditProviderModal = (props: React.ComponentProps<typeof EditProviderModalLazy>) => (
-  <Suspense fallback={<ModalSkeleton />}>
-    <EditProviderModalLazy {...props} />
-  </Suspense>
-);
-
 // Model Mapping Modals
 const CreateModelMappingModalLazy = lazy(() => import('../modelmappings/CreateModelMappingModal').then(mod => ({ default: mod.CreateModelMappingModal })));
 export const LazyCreateModelMappingModal = (props: React.ComponentProps<typeof CreateModelMappingModalLazy>) => (
