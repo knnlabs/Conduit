@@ -70,6 +70,23 @@ namespace ConduitLLM.Admin.Endpoints
                     $"{provider.ProviderType} requires: {string.Join(", ", missingSecrets)}.");
             }
 
+            // The (ProviderId, ApiKey) unique index compares ciphertext, and Data Protection
+            // produces different ciphertext for the same plaintext on every write — the database
+            // cannot catch semantic duplicates. Compare revealed values instead (#1261).
+            if (!string.IsNullOrEmpty(request.ApiKey))
+            {
+                var existingKeys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _keyRepository.GetByProviderIdPaginatedAsync, providerId);
+                if (existingKeys.Any(k => TryRevealApiKey(k.ApiKey) == request.ApiKey))
+                {
+                    Logger.LogWarning("Duplicate API key attempted for provider {ProviderId} ({ProviderName})",
+                        providerId, LoggingSanitizer.S(provider.ProviderName));
+                    return AdminResults.Conflict(
+                        $"An API key with this value already exists for {provider.ProviderName}. Each API key must be unique per provider.",
+                        "duplicate_provider_key");
+                }
+            }
+
             var keyCredential = new ProviderKeyCredential
             {
                 ProviderId = providerId,
@@ -101,6 +118,23 @@ namespace ConduitLLM.Admin.Endpoints
             AdminOperationsMetricsService.RecordConfigurationChange("providerkey", "create");
 
             return Results.Created($"/v1/admin/providers/{providerId}/keys/{createdKeyId}", ToKeyDto(keyCredential));
+        }
+
+        /// <summary>
+        /// Reveals a stored API key for duplicate comparison. An unreadable row (rotated or
+        /// lost Data Protection key ring) must not block creating a new key, so it compares
+        /// as no-match instead of throwing.
+        /// </summary>
+        private string? TryRevealApiKey(string? storedApiKey)
+        {
+            try
+            {
+                return _secretProtector.Reveal(storedApiKey);
+            }
+            catch (InvalidOperationException)
+            {
+                return null;
+            }
         }
 
         /// <summary>

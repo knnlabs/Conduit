@@ -59,6 +59,37 @@ public class ExceptionToResponseMapperTests
     }
 
     [Fact]
+    public void Map_DuplicateProviderKeyException_Returns409()
+    {
+        // Derives from InvalidOperationException; must not fall into the generic 400 arm (#1261).
+        var provider = new ConduitLLM.Configuration.Entities.Provider
+        {
+            Id = 1,
+            ProviderType = ConduitLLM.Configuration.ProviderType.OpenAI,
+            ProviderName = "openai"
+        };
+        var exception = new ConduitLLM.Configuration.Exceptions.DuplicateProviderKeyException(provider, 1);
+
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        result.StatusCode.Should().Be(409);
+        result.ErrorCode.Should().Be("duplicate_provider_key");
+        result.IncludeExceptionMessageInLog.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Map_IdempotencyConflictException_Returns409()
+    {
+        var exception = new ConduitLLM.Configuration.Exceptions.IdempotencyConflictException(
+            "A conflicting request with the same idempotency key is in progress");
+
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        result.StatusCode.Should().Be(409);
+        result.ErrorCode.Should().Be("conflict");
+    }
+
+    [Fact]
     public void Map_InvalidOperationException_Returns400WithInvalidOperation()
     {
         // Arrange

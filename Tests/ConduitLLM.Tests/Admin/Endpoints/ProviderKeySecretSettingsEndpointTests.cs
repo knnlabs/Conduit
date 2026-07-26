@@ -60,6 +60,9 @@ public class ProviderKeySecretSettingsEndpointTests
             .Setup(repository => repository.CreateAsync(It.IsAny<ProviderKeyCredential>(), It.IsAny<CancellationToken>()))
             .Callback<ProviderKeyCredential, CancellationToken>((key, _) => persisted = key)
             .ReturnsAsync(9);
+        _keyRepository
+            .Setup(repository => repository.GetByProviderIdPaginatedAsync(1, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<ProviderKeyCredential>(), 0));
 
         var result = await CreateEndpoints().CreateProviderKeyCredential(1, new CreateKeyRequest
         {
@@ -84,6 +87,80 @@ public class ProviderKeySecretSettingsEndpointTests
         dto.ApiKey.Should().Be("***test");
         dto.ConfiguredSecretSettings.Should().Equal("secret_access_key");
         System.Text.Json.JsonSerializer.Serialize(dto).Should().NotContain(SecretValue);
+    }
+
+    [Fact]
+    public async Task CreateKey_Should_Return409_When_ApiKey_Already_Exists_Encrypted()
+    {
+        _providerRepository
+            .Setup(repository => repository.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Provider { Id = 1, ProviderType = ProviderType.OpenAI, ProviderName = "openai" });
+        // Data Protection ciphertext differs on every Protect call, so this only matches if the
+        // endpoint compares revealed values, not stored ones.
+        _keyRepository
+            .Setup(repository => repository.GetByProviderIdPaginatedAsync(1, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<ProviderKeyCredential>
+            {
+                new() { Id = 5, ProviderId = 1, ApiKey = _protector.Protect("sk-test") }
+            }, 1));
+
+        var result = await CreateEndpoints().CreateProviderKeyCredential(1, new CreateKeyRequest
+        {
+            ApiKey = "sk-test",
+            KeyName = "duplicate"
+        });
+
+        ((IStatusCodeHttpResult)result).StatusCode.Should().Be(StatusCodes.Status409Conflict);
+        _keyRepository.Verify(
+            repository => repository.CreateAsync(It.IsAny<ProviderKeyCredential>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task CreateKey_Should_Return409_When_ApiKey_Matches_Legacy_Plaintext_Row()
+    {
+        _providerRepository
+            .Setup(repository => repository.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Provider { Id = 1, ProviderType = ProviderType.OpenAI, ProviderName = "openai" });
+        _keyRepository
+            .Setup(repository => repository.GetByProviderIdPaginatedAsync(1, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<ProviderKeyCredential>
+            {
+                new() { Id = 5, ProviderId = 1, ApiKey = "sk-test" }
+            }, 1));
+
+        var result = await CreateEndpoints().CreateProviderKeyCredential(1, new CreateKeyRequest
+        {
+            ApiKey = "sk-test",
+            KeyName = "duplicate"
+        });
+
+        ((IStatusCodeHttpResult)result).StatusCode.Should().Be(StatusCodes.Status409Conflict);
+    }
+
+    [Fact]
+    public async Task CreateKey_Should_Succeed_When_ApiKey_Differs_From_Existing_Keys()
+    {
+        _providerRepository
+            .Setup(repository => repository.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Provider { Id = 1, ProviderType = ProviderType.OpenAI, ProviderName = "openai" });
+        _keyRepository
+            .Setup(repository => repository.GetByProviderIdPaginatedAsync(1, It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<ProviderKeyCredential>
+            {
+                new() { Id = 5, ProviderId = 1, ApiKey = _protector.Protect("sk-other") }
+            }, 1));
+        _keyRepository
+            .Setup(repository => repository.CreateAsync(It.IsAny<ProviderKeyCredential>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(9);
+
+        var result = await CreateEndpoints().CreateProviderKeyCredential(1, new CreateKeyRequest
+        {
+            ApiKey = "sk-test",
+            KeyName = "unique"
+        });
+
+        ((IStatusCodeHttpResult)result).StatusCode.Should().Be(StatusCodes.Status201Created);
     }
 
     [Fact]
