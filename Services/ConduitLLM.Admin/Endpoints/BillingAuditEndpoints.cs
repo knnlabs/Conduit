@@ -310,7 +310,10 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 try
                 {
-                    var usage = JsonSerializer.Deserialize<UsageDto>(entity.UsageJson);
+                    // Usage must round-trip through the same type that serialized UsageJson
+                    // (Core.Models.Usage, snake_case attributes) — a PascalCase DTO matched
+                    // no properties and returned empty usage on every audit event (#1260).
+                    var usage = JsonSerializer.Deserialize<ConduitLLM.Core.Models.Usage>(entity.UsageJson);
                     dto.Usage = usage;
                 }
                 catch (JsonException)

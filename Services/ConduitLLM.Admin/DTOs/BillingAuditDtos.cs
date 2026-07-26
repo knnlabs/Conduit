@@ -146,40 +146,15 @@ namespace ConduitLLM.Admin.DTOs
         public bool IsEstimated { get; set; }
 
         /// <summary>
-        /// Usage details (parsed from JSON)
+        /// Usage details (parsed from JSON). Typed as the core Usage model — the same type
+        /// that wrote UsageJson — so no fields are lost in the audit round-trip.
         /// </summary>
-        public UsageDto? Usage { get; set; }
+        public ConduitLLM.Core.Models.Usage? Usage { get; set; }
 
         /// <summary>
         /// Additional metadata
         /// </summary>
         public Dictionary<string, object>? Metadata { get; set; }
-    }
-
-    /// <summary>
-    /// DTO for usage data
-    /// </summary>
-    public class UsageDto
-    {
-        /// <summary>
-        /// Prompt/input tokens
-        /// </summary>
-        public int? PromptTokens { get; set; }
-
-        /// <summary>
-        /// Completion/output tokens
-        /// </summary>
-        public int? CompletionTokens { get; set; }
-
-        /// <summary>
-        /// Total tokens
-        /// </summary>
-        public int? TotalTokens { get; set; }
-
-        /// <summary>
-        /// Image count for image generation
-        /// </summary>
-        public int? ImageCount { get; set; }
     }
 
     /// <summary>
