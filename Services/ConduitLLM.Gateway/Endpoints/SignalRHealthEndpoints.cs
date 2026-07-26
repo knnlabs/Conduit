@@ -4,15 +4,11 @@ using ConduitLLM.Gateway.DTOs;
 namespace ConduitLLM.Gateway.Endpoints
 {
     /// <summary>
-    /// Controller for SignalR health and monitoring endpoints.
-    /// Access is controlled by the HealthEndpointAuthorizationMiddleware which allows
-    /// requests from private networks or with a valid X-Conduit-Health-Key header.
+    /// Handler for SignalR health and monitoring endpoints.
+    /// All routes are mapped under /internal/diagnostics/signalr by
+    /// GatewayInternalOperationsEndpoints, which requires the "AdminOnly" policy
+    /// (service-to-service backend authentication) at the route-group level.
     /// </summary>
-    /// <remarks>
-    /// The middleware handles basic health endpoint authorization (private network or health key).
-    /// Methods without explicit auth attributes are protected by the middleware.
-    /// Methods with [Authorize(Policy = "AdminOnly")] require additional backend authentication.
-    /// </remarks>
     public class SignalRHealthEndpoints : GatewayEndpointHandlerBase
     {
         private readonly ISignalRConnectionMonitor _connectionMonitor;
@@ -33,9 +29,7 @@ namespace ConduitLLM.Gateway.Endpoints
         }
 
         /// <summary>
-        /// Gets SignalR connection statistics.
-        /// Access controlled by health endpoint middleware (private network or valid health key).
-        /// </summary>
+        /// Gets SignalR connection statistics.        /// </summary>
         public async Task<IResult> GetConnectionStatistics()
         {
             var stats = await _connectionMonitor.GetStatisticsAsync();
@@ -43,9 +37,7 @@ namespace ConduitLLM.Gateway.Endpoints
         }
 
         /// <summary>
-        /// Gets SignalR message queue statistics.
-        /// Access controlled by health endpoint middleware (private network or valid health key).
-        /// </summary>
+        /// Gets SignalR message queue statistics.        /// </summary>
         public IResult GetQueueStatistics()
         {
             var stats = _messageQueueService.GetStatistics();
@@ -53,7 +45,7 @@ namespace ConduitLLM.Gateway.Endpoints
         }
 
         /// <summary>
-        /// Gets detailed connection information (requires admin auth)
+        /// Gets detailed connection information
         /// </summary>
         public async Task<IResult> GetConnectionDetails()
         {
@@ -63,9 +55,7 @@ namespace ConduitLLM.Gateway.Endpoints
         }
 
         /// <summary>
-        /// Gets connections for a specific hub.
-        /// Access controlled by health endpoint middleware (private network or valid health key).
-        /// </summary>
+        /// Gets connections for a specific hub.        /// </summary>
         public async Task<IResult> GetHubConnections(string hubName)
         {
             var connections = await _connectionMonitor.GetHubConnectionsAsync(hubName);
@@ -84,9 +74,6 @@ namespace ConduitLLM.Gateway.Endpoints
         /// </summary>
         public async Task<IResult> GetVirtualKeyConnections(int virtualKeyId)
         {
-            // Check if the requester has permission to view this virtual key's connections
-            // This would normally involve checking if the requester owns or has admin access to the key
-
             var connections = await _connectionMonitor.GetVirtualKeyConnectionsAsync(virtualKeyId);
             var projected = connections.Select(c => new VirtualKeyConnectionDto(
                 c.ConnectionId,
@@ -98,9 +85,7 @@ namespace ConduitLLM.Gateway.Endpoints
         }
 
         /// <summary>
-        /// Gets connections in a specific group.
-        /// Access controlled by health endpoint middleware (private network or valid health key).
-        /// </summary>
+        /// Gets connections in a specific group.        /// </summary>
         public async Task<IResult> GetGroupConnections(string groupName)
         {
             var connections = await _connectionMonitor.GetGroupConnectionsAsync(groupName);
@@ -141,9 +126,7 @@ namespace ConduitLLM.Gateway.Endpoints
         }
 
         /// <summary>
-        /// Gets overall SignalR health status.
-        /// Access controlled by health endpoint middleware (private network or valid health key).
-        /// </summary>
+        /// Gets overall SignalR health status.        /// </summary>
         public async Task<IResult> GetHealthStatus()
         {
             var connectionStats = await _connectionMonitor.GetStatisticsAsync();

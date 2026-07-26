@@ -85,7 +85,6 @@ namespace ConduitLLM.Core.Services
         private long _totalHits;
         private long _totalMisses;
         private DateTime? _lastInvalidation;
-        private DateTime? _lastWarmingTime;
 
         private const CacheRegion DISCOVERY_REGION = CacheRegion.ModelDiscovery;
 
@@ -200,40 +199,6 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        public async Task WarmDiscoveryCacheAsync(CancellationToken cancellationToken = default)
-        {
-            if (!_options.WarmCacheOnStartup || !_options.EnableCaching)
-            {
-                return;
-            }
-
-            try
-            {
-                _lastWarmingTime = DateTime.UtcNow;
-                _logger.LogInformation("Starting discovery cache warming for {CapabilityCount} capabilities", 
-                    _options.WarmupCapabilities.Count);
-
-                // Note: Actual warming would require calling the discovery service
-                // This is a placeholder for the warming logic
-                foreach (var capability in _options.WarmupCapabilities)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
-
-                    _logger.LogDebug("Would warm cache for capability: {Capability}", capability);
-                    // In production: call discovery service and cache results
-                    
-                    await Task.Delay(100, cancellationToken); // Prevent overwhelming
-                }
-
-                _logger.LogInformation("Discovery cache warming completed at {Time}", _lastWarmingTime);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during discovery cache warming");
-            }
-        }
-
         public Task<DiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
         {
             var hits = Interlocked.Read(ref _totalHits);
@@ -246,8 +211,7 @@ namespace ConduitLLM.Core.Services
                 Misses = misses,
                 HitRate = total > 0 ? (double)hits / total * 100 : 0,
                 CachedEntries = 0, // Would require cache key scanning in production
-                LastInvalidation = _lastInvalidation,
-                LastWarmingTime = _lastWarmingTime
+                LastInvalidation = _lastInvalidation
             };
 
             return Task.FromResult(stats);

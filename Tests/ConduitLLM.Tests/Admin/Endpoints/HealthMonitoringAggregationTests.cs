@@ -50,6 +50,23 @@ public class HealthMonitoringAggregationTests
     }
 
     [Fact]
+    public void UnrecognizedReportedStatus_ProducesUnknownInstanceStatus()
+    {
+        var heartbeat = Heartbeat("garbled", 10);
+        heartbeat.Status = "definitely-not-a-status";
+
+        var status = HealthMonitoringEndpoints.BuildClusterServiceStatus(
+            "core-api",
+            "Gateway API",
+            [Heartbeat("ok", 10), heartbeat],
+            Now);
+
+        status.Instances.Single(item => item.InstanceId == "garbled").Status
+            .Should().Be("unknown");
+        status.Status.Should().Be("degraded");
+    }
+
+    [Fact]
     public void NoInstances_ProduceUnknownLogicalService()
     {
         var status = HealthMonitoringEndpoints.BuildClusterServiceStatus(

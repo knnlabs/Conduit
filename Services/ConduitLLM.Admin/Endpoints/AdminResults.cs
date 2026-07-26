@@ -58,6 +58,7 @@ public static class AdminResults
         StatusCodes.Status404NotFound => "Not Found",
         StatusCodes.Status409Conflict => "Conflict",
         StatusCodes.Status429TooManyRequests => "Too Many Requests",
+        StatusCodes.Status501NotImplemented => "Not Implemented",
         StatusCodes.Status503ServiceUnavailable => "Service Unavailable",
         _ => "Internal Server Error"
     };

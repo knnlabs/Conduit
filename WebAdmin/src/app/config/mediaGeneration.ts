@@ -149,10 +149,7 @@ export const PROCESSING_CONFIG = {
 export const DEV_CONFIG = {
   /** Enable debug logging */
   DEBUG_ENABLED: process.env.NEXT_PUBLIC_DEBUG === 'true',
-  
-  /** Mock delay for simulated operations in milliseconds */
-  MOCK_DELAY_MS: Number(process.env.NEXT_PUBLIC_MOCK_DELAY_MS ?? 1000),
-  
+
   /** Enable performance monitoring */
   PERF_MONITORING: process.env.NEXT_PUBLIC_PERF_MONITORING === 'true',
 } as const;

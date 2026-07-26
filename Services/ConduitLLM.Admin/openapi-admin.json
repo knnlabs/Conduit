@@ -19911,26 +19911,8 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "OK",
-            "headers": {
-              "x-request-id": {
-                "description": "Request identifier for support and distributed tracing.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CleanupResultDto"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
+          "501": {
+            "description": "Not Implemented",
             "headers": {
               "x-request-id": {
                 "description": "Request identifier for support and distributed tracing.",
@@ -25344,38 +25326,6 @@
             "format": "int32"
           }
         }
-      },
-      "CleanupResultDto": {
-        "type": "object",
-        "properties": {
-          "virtualKeyGroupId": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "dryRun": {
-            "type": "boolean"
-          },
-          "mediaRecordsEvaluated": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "mediaRecordsMarkedForDeletion": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "mediaRecordsDeleted": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "storageBytesFreed": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "message": {
-            "type": "string"
-          }
-        },
-        "description": "Represents the result of a media cleanup operation."
       },
       "ClearErrorsRequest": {
         "required": [

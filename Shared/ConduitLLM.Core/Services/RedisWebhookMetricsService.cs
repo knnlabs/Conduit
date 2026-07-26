@@ -297,7 +297,8 @@ namespace ConduitLLM.Core.Services
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting statistics for webhook URL {WebhookUrl}", webhookUrl);
-                return new WebhookUrlStatistics { Url = webhookUrl, IsHealthy = true };
+                // Metrics store unavailable — report unhealthy rather than fabricating a healthy reading
+                return new WebhookUrlStatistics { Url = webhookUrl, IsHealthy = false };
             }
         }
         

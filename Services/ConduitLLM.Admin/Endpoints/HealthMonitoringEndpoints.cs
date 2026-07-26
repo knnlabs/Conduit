@@ -672,15 +672,16 @@ namespace ConduitLLM.Admin.Endpoints
         private static string NormalizeReportedStatus(string? status) =>
             status?.ToLowerInvariant() is "healthy" or "degraded" or "unhealthy"
                 ? status.ToLowerInvariant()
-                : "healthy";
+                : "unknown";
 
         private static string WorstStatus(string left, string right) =>
             StatusRank(left) >= StatusRank(right) ? left : right;
 
         private static int StatusRank(string status) => status switch
         {
-            "unhealthy" => 2,
-            "degraded" => 1,
+            "unhealthy" => 3,
+            "degraded" => 2,
+            "unknown" => 1,
             _ => 0
         };
 

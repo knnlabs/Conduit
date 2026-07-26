@@ -111,18 +111,4 @@ namespace ConduitLLM.Admin.DTOs
         public MediaQuotaExceededBehavior? QuotaExceededBehavior { get; set; }
         public bool? IsActive { get; set; }
     }
-
-    /// <summary>
-    /// Represents the result of a media cleanup operation.
-    /// </summary>
-    public class CleanupResultDto
-    {
-        public int VirtualKeyGroupId { get; set; }
-        public bool DryRun { get; set; }
-        public int MediaRecordsEvaluated { get; set; }
-        public int MediaRecordsMarkedForDeletion { get; set; }
-        public int MediaRecordsDeleted { get; set; }
-        public long StorageBytesFreed { get; set; }
-        public string Message { get; set; } = string.Empty;
-    }
 }

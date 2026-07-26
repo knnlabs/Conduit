@@ -50,7 +50,7 @@ namespace ConduitLLM.Admin.Endpoints
             group.MapDelete("/{id}", ([FromServices] MediaRetentionEndpoints e, int id) => e.DeletePolicy(id)).WithName("MediaRetention_DeletePolicy").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status400BadRequest);
             group.MapPost("/{policyId}/group-assignments/{groupId}", ([FromServices] MediaRetentionEndpoints e, int groupId, int policyId) => e.AssignPolicyToGroup(groupId, policyId)).WithName("MediaRetention_AssignPolicyToGroup").Produces<MessageResponse>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id}/set-default", ([FromServices] MediaRetentionEndpoints e, int id) => e.SetDefaultPolicy(id)).WithName("MediaRetention_SetDefaultPolicy").Produces<MessageResponse>().Produces(StatusCodes.Status404NotFound);
-            group.MapPost("/{groupId}/cleanup-jobs", ([FromServices] MediaRetentionEndpoints e, int groupId, bool dryRun = true) => e.TriggerCleanup(groupId, dryRun)).WithName("MediaRetention_TriggerCleanup").Produces<CleanupResultDto>().Produces(StatusCodes.Status404NotFound);
+            group.MapPost("/{groupId}/cleanup-jobs", ([FromServices] MediaRetentionEndpoints e, int groupId, bool dryRun = true) => e.TriggerCleanup(groupId, dryRun)).WithName("MediaRetention_TriggerCleanup").Produces<AdminProblemDetails>(StatusCodes.Status501NotImplemented, "application/problem+json");
             return app;
         }
 
@@ -382,22 +382,12 @@ namespace ConduitLLM.Admin.Endpoints
         /// </summary>
         /// <param name="groupId">Virtual key group ID</param>
         /// <param name="dryRun">Whether to perform a dry run (default: true)</param>
-        /// <returns>Cleanup statistics</returns>
-        public async Task<IResult> TriggerCleanup(int groupId, bool dryRun = true)
-        {
-            // Placeholder — manual cleanup not yet implemented
-            await Task.CompletedTask;
-            return Results.Ok(new CleanupResultDto
-            {
-                VirtualKeyGroupId = groupId,
-                DryRun = dryRun,
-                MediaRecordsEvaluated = 0,
-                MediaRecordsMarkedForDeletion = 0,
-                MediaRecordsDeleted = 0,
-                StorageBytesFreed = 0,
-                Message = "Manual cleanup trigger not yet implemented. Use the scheduled cleanup system."
-            });
-        }
+        /// <returns>501 Not Implemented — manual cleanup is not available; use the scheduled cleanup system</returns>
+        public IResult TriggerCleanup(int groupId, bool dryRun = true) =>
+            AdminResults.Problem(
+                StatusCodes.Status501NotImplemented,
+                "Manual cleanup trigger is not implemented. Use the scheduled cleanup system.",
+                "not_implemented");
 
         private void LogAdminAudit(string operation, string entityType, object? entityId = null, string? detail = null) =>
             AdminAudit.Log(_httpContextAccessor.HttpContext!, _logger, operation, entityType, entityId, detail);

@@ -40,12 +40,6 @@ namespace ConduitLLM.Core.Interfaces
         Task InvalidatePatternAsync(string pattern, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Warms the discovery cache with common queries
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        Task WarmDiscoveryCacheAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets discovery cache statistics
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
@@ -110,10 +104,5 @@ namespace ConduitLLM.Core.Interfaces
         /// Last cache invalidation time
         /// </summary>
         public DateTime? LastInvalidation { get; set; }
-
-        /// <summary>
-        /// Last cache warming time
-        /// </summary>
-        public DateTime? LastWarmingTime { get; set; }
     }
 }

@@ -3619,21 +3619,6 @@ export interface components {
       /** Format: int32 */
       identifiers: number;
     };
-    /** @description Represents the result of a media cleanup operation. */
-    CleanupResultDto: {
-      /** Format: int32 */
-      virtualKeyGroupId?: number;
-      dryRun?: boolean;
-      /** Format: int32 */
-      mediaRecordsEvaluated?: number;
-      /** Format: int32 */
-      mediaRecordsMarkedForDeletion?: number;
-      /** Format: int32 */
-      mediaRecordsDeleted?: number;
-      /** Format: int64 */
-      storageBytesFreed?: number;
-      message?: string;
-    };
     /** @description Request DTO for clearing errors and re-enabling a key */
     ClearErrorsRequest: {
       /** @description Whether to re-enable the key */
@@ -18481,19 +18466,8 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CleanupResultDto"];
-        };
-      };
-      /** @description Not Found */
-      404: {
+      /** @description Internal Server Error */
+      500: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
@@ -18503,8 +18477,8 @@ export interface operations {
           "application/problem+json": components["schemas"]["AdminProblemDetails"];
         };
       };
-      /** @description Internal Server Error */
-      500: {
+      /** @description Not Implemented */
+      501: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
