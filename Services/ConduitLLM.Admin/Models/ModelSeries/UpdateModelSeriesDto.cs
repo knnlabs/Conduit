@@ -4,9 +4,8 @@ namespace ConduitLLM.Admin.Models.ModelSeries
     /// Data transfer object for updating an existing model series.
     /// </summary>
     /// <remarks>
-    /// Supports partial updates to model series properties. Only properties that are
-    /// provided (non-null) will be updated, allowing for targeted modifications without
-    /// affecting other properties.
+    /// Supports JSON Merge Patch. Omitted properties remain unchanged, null clears nullable
+    /// properties, and nested parameter objects merge recursively.
     /// 
     /// Common update scenarios:
     /// - Updating the description to reflect new capabilities
@@ -41,9 +40,9 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         /// 
         /// Only provide this if you intend to rename the series.
         /// The new name should maintain clarity and follow naming conventions.
-        /// Leave null to keep the existing name.
+        /// Omit this member to keep the existing name.
         /// </remarks>
-        /// <value>The new series name, or null to keep existing.</value>
+        /// <value>The new series name.</value>
         public string? Name { get; set; }
         
         /// <summary>
@@ -56,9 +55,9 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         /// - Additional context or clarifications
         /// 
         /// This is commonly updated as model families evolve and gain new features.
-        /// Leave null to keep the existing description.
+        /// Omit this member to keep the existing description; send null to clear it.
         /// </remarks>
-        /// <value>The new description, or null to keep existing.</value>
+        /// <value>The new description, or null to clear it.</value>
         public string? Description { get; set; }
         
         /// <summary>
@@ -76,9 +75,9 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         /// - You're correcting an error in the original configuration
         /// 
         /// Ensure all models in the series actually use the new tokenizer type.
-        /// Leave null to keep the existing tokenizer.
+        /// Omit this member to keep the existing tokenizer.
         /// </remarks>
-        /// <value>The new tokenizer type, or null to keep existing.</value>
+        /// <value>The new tokenizer type.</value>
         public TokenizerType? TokenizerType { get; set; }
         
         /// <summary>
@@ -102,9 +101,9 @@ namespace ConduitLLM.Admin.Models.ModelSeries
         ///   "max_tokens": {"min": 1, "max": 8192, "default": 1000}  // Updated limit
         /// }
         /// 
-        /// Leave null to keep the existing parameters.
+        /// Omit this member to keep the existing parameters; send null to clear them.
         /// </remarks>
-        /// <value>The new parameters JSON string, or null to keep existing.</value>
+        /// <value>The parameter object to merge, or null to clear it.</value>
         public Dictionary<string, System.Text.Json.JsonElement>? Parameters { get; set; }
     }
 }

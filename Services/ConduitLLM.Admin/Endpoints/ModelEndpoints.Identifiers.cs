@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Models;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Functions.Utilities;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -217,44 +218,143 @@ namespace ConduitLLM.Admin.Endpoints
                 return NotFound($"Identifier with ID {identifierId} not found for model {id}");
             }
 
-            // Parse provider if provided as integer
-            ProviderType? providerType = dto.Provider.HasValue ? (ProviderType)dto.Provider.Value : null;
+            JsonMergePatchState.TryGetPatchedProperty(
+                dto,
+                nameof(dto.Identifier),
+                identifier.Identifier,
+                out var effectiveIdentifier);
+            if (string.IsNullOrWhiteSpace(effectiveIdentifier))
+            {
+                throw new InvalidOperationException("identifier cannot be null or empty.");
+            }
+            JsonMergePatchState.TryGetPatchedProperty(
+                dto,
+                nameof(dto.Provider),
+                (int?)identifier.Provider,
+                out int? effectiveProvider);
+            ProviderType? providerType = effectiveProvider.HasValue
+                ? (ProviderType)effectiveProvider.Value
+                : null;
 
             // Check if the new identifier/provider combo already exists (if changed)
-            if (identifier.Identifier != dto.Identifier || identifier.Provider != providerType)
+            if (identifier.Identifier != effectiveIdentifier || identifier.Provider != providerType)
             {
                 var existing = model.Identifiers.FirstOrDefault(i =>
                     i.Id != identifierId &&
-                    i.Identifier == dto.Identifier &&
+                    i.Identifier == effectiveIdentifier &&
                     i.Provider == providerType);
 
                 if (existing != null)
                 {
-                    return Conflict($"Identifier '{dto.Identifier}' already exists for provider '{dto.Provider}'");
+                    return Conflict($"Identifier '{effectiveIdentifier}' already exists for provider '{effectiveProvider}'");
                 }
             }
 
-            identifier.Identifier = dto.Identifier;
+            identifier.Identifier = effectiveIdentifier;
             identifier.Provider = providerType;
-            identifier.IsPrimary = dto.IsPrimary ?? identifier.IsPrimary;
-            identifier.Metadata = dto.Metadata is null ? null : JsonSerializer.Serialize(dto.Metadata);
-            identifier.MaxInputTokens = dto.MaxInputTokens;
-            identifier.MaxOutputTokens = dto.MaxOutputTokens;
-            identifier.SpeedScore = dto.SpeedScore;
-            identifier.QualityScore = dto.QualityScore;
-            identifier.ProviderVariation = dto.ProviderVariation;
-            identifier.InputModalitiesJson = ModelModalities.Serialize(dto.InputModalities);
-            identifier.OutputModalitiesJson = ModelModalities.Serialize(dto.OutputModalities);
-            identifier.OperationalCapabilitiesJson =
-                ModelCapabilityResolver.SerializeOverrides(dto.OperationalCapabilities);
-            identifier.CapabilitySource = dto.CapabilitySource;
-            identifier.CapabilitiesLastVerifiedAt = dto.CapabilitiesLastVerifiedAt;
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.IsPrimary),
+                    identifier.IsPrimary,
+                    out var isPrimary))
+            {
+                identifier.IsPrimary = isPrimary;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.Metadata),
+                    StructuredJson.ParseObject(identifier.Metadata),
+                    out Dictionary<string, JsonElement>? metadata))
+            {
+                identifier.Metadata = StructuredJson.SerializeObject(metadata);
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.MaxInputTokens),
+                    identifier.MaxInputTokens,
+                    out int? maxInputTokens))
+            {
+                identifier.MaxInputTokens = maxInputTokens;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.MaxOutputTokens),
+                    identifier.MaxOutputTokens,
+                    out int? maxOutputTokens))
+            {
+                identifier.MaxOutputTokens = maxOutputTokens;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.SpeedScore),
+                    identifier.SpeedScore,
+                    out decimal? speedScore))
+            {
+                identifier.SpeedScore = speedScore;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.QualityScore),
+                    identifier.QualityScore,
+                    out decimal? qualityScore))
+            {
+                identifier.QualityScore = qualityScore;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.ProviderVariation),
+                    identifier.ProviderVariation,
+                    out string? providerVariation))
+            {
+                identifier.ProviderVariation = providerVariation;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.InputModalities),
+                    ModelModalities.Parse(identifier.InputModalitiesJson),
+                    out IReadOnlyList<string>? inputModalities))
+            {
+                identifier.InputModalitiesJson = ModelModalities.Serialize(inputModalities);
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.OutputModalities),
+                    ModelModalities.Parse(identifier.OutputModalitiesJson),
+                    out IReadOnlyList<string>? outputModalities))
+            {
+                identifier.OutputModalitiesJson = ModelModalities.Serialize(outputModalities);
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.OperationalCapabilities),
+                    ModelCapabilityResolver.DeserializeOverrides(identifier.OperationalCapabilitiesJson),
+                    out ProviderOperationalCapabilities? operationalCapabilities))
+            {
+                identifier.OperationalCapabilitiesJson =
+                    ModelCapabilityResolver.SerializeOverrides(operationalCapabilities);
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.CapabilitySource),
+                    identifier.CapabilitySource,
+                    out ModelCapabilitySource? capabilitySource))
+            {
+                identifier.CapabilitySource = capabilitySource;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.CapabilitiesLastVerifiedAt),
+                    identifier.CapabilitiesLastVerifiedAt,
+                    out DateTime? capabilitiesLastVerifiedAt))
+            {
+                identifier.CapabilitiesLastVerifiedAt = capabilitiesLastVerifiedAt;
+            }
 
             await _modelRepository.UpdateModelAsync(model);
             await PublishIdentifierCapabilityChangeAsync(model, "Updated");
 
             LogAdminAudit("Updated", "ModelIdentifier", identifierId,
-                $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
+                $"ModelId: {id}, Identifier: {LoggingSanitizer.S(identifier.Identifier)}");
 
             return Ok(new ModelIdentifierDto
             {

@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Admin.Interfaces;
@@ -197,9 +198,35 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 return (false, $"IP filter with ID {id} not found");
             }
 
-            // Validate the IP address format
-            if (updateFilter.IpAddressOrCidr is not null &&
-                !IsValidIpAddressOrCidr(updateFilter.IpAddressOrCidr))
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.FilterType),
+                existingFilter.FilterType,
+                out string? filterType);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.IpAddressOrCidr),
+                existingFilter.IpAddressOrCidr,
+                out string? ipAddressOrCidr);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.Name),
+                existingFilter.Name,
+                out string? name);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.Description),
+                existingFilter.Description,
+                out string? description);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.IsEnabled),
+                existingFilter.IsEnabled,
+                out bool isEnabled);
+
+            if (updateFilter.IsDefined(nameof(updateFilter.FilterType)) &&
+                string.IsNullOrWhiteSpace(filterType))
+            {
+                return (false, "Filter type cannot be null or empty");
+            }
+            if (updateFilter.IsDefined(nameof(updateFilter.IpAddressOrCidr)) &&
+                (string.IsNullOrWhiteSpace(ipAddressOrCidr) ||
+                 !IsValidIpAddressOrCidr(ipAddressOrCidr)))
             {
                 return (false, "Invalid IP address or CIDR format");
             }
@@ -207,40 +234,40 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             // Track changes for event publishing
             var changedProperties = new List<string>();
 
-            if (updateFilter.FilterType is not null &&
-                existingFilter.FilterType != updateFilter.FilterType)
+            if (updateFilter.IsDefined(nameof(updateFilter.FilterType)) &&
+                existingFilter.FilterType != filterType)
             {
-                existingFilter.FilterType = updateFilter.FilterType;
+                existingFilter.FilterType = filterType!;
                 changedProperties.Add(nameof(existingFilter.FilterType));
             }
 
-            if (updateFilter.IpAddressOrCidr is not null &&
-                existingFilter.IpAddressOrCidr != updateFilter.IpAddressOrCidr)
+            if (updateFilter.IsDefined(nameof(updateFilter.IpAddressOrCidr)) &&
+                existingFilter.IpAddressOrCidr != ipAddressOrCidr)
             {
-                existingFilter.IpAddressOrCidr = updateFilter.IpAddressOrCidr;
+                existingFilter.IpAddressOrCidr = ipAddressOrCidr!;
                 changedProperties.Add(nameof(existingFilter.IpAddressOrCidr));
             }
 
             // Normalize null vs empty so a null-named legacy row and an unset ("") DTO field are not
             // treated as a change (which would break the no-op-skip path).
-            if (updateFilter.Name is not null &&
-                (existingFilter.Name ?? string.Empty) != updateFilter.Name)
+            if (updateFilter.IsDefined(nameof(updateFilter.Name)) &&
+                existingFilter.Name != name)
             {
-                existingFilter.Name = updateFilter.Name;
+                existingFilter.Name = name;
                 changedProperties.Add(nameof(existingFilter.Name));
             }
 
-            if (updateFilter.Description is not null &&
-                existingFilter.Description != updateFilter.Description)
+            if (updateFilter.IsDefined(nameof(updateFilter.Description)) &&
+                existingFilter.Description != description)
             {
-                existingFilter.Description = updateFilter.Description;
+                existingFilter.Description = description;
                 changedProperties.Add(nameof(existingFilter.Description));
             }
 
-            if (updateFilter.IsEnabled.HasValue &&
-                existingFilter.IsEnabled != updateFilter.IsEnabled.Value)
+            if (updateFilter.IsDefined(nameof(updateFilter.IsEnabled)) &&
+                existingFilter.IsEnabled != isEnabled)
             {
-                existingFilter.IsEnabled = updateFilter.IsEnabled.Value;
+                existingFilter.IsEnabled = isEnabled;
                 changedProperties.Add(nameof(existingFilter.IsEnabled));
             }
 

@@ -24,6 +24,7 @@ const ratchetRules = [
 ];
 const allowedMediaTypes = new Set([
   'application/json',
+  'application/merge-patch+json',
   'application/problem+json',
   'application/octet-stream',
   'text/event-stream',

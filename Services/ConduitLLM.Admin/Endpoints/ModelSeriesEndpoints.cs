@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Functions.Utilities;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -33,7 +34,7 @@ public static class ModelSeriesEndpoints
             .Produces<ModelSeriesDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status409Conflict, "application/problem+json");
-        group.MapPatch("/{id}", Update).WithName("ModelSeries_Update")
+        group.MapPatch("/{id}", Update).AcceptsJsonMergePatch<UpdateModelSeriesDto>().WithName("ModelSeries_Update")
             .Produces<ModelSeriesDto>(StatusCodes.Status200OK)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json")
@@ -99,26 +100,53 @@ public static class ModelSeriesEndpoints
 
     private static async Task<IResult> Update(
         int id,
-        UpdateModelSeriesDto dto,
+        JsonMergePatch<UpdateModelSeriesDto> patch,
         [FromServices] IModelSeriesRepository repository,
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
+        var dto = patch.Value;
         var series = await repository.GetByIdAsync(id)
             ?? throw new KeyNotFoundException($"Model series with ID {id} not found");
-        if (!string.IsNullOrEmpty(dto.Name) && dto.Name != series.Name)
+        if (JsonMergePatchState.TryGetPatchedProperty(dto, nameof(dto.Name), series.Name, out var name)
+            && name != series.Name)
         {
-            var existing = await repository.GetByNameAndAuthorAsync(dto.Name, series.AuthorId);
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                throw new InvalidOperationException("name cannot be null or empty.");
+            }
+            var existing = await repository.GetByNameAndAuthorAsync(name, series.AuthorId);
             if (existing is not null && existing.Id != id)
             {
                 throw new InvalidOperationException(
-                    $"A model series with name '{dto.Name}' already exists for this author");
+                    $"A model series with name '{name}' already exists for this author");
             }
-            series.Name = dto.Name;
+            series.Name = name;
         }
-        if (dto.Description is not null) series.Description = dto.Description;
-        if (dto.TokenizerType.HasValue) series.TokenizerType = dto.TokenizerType.Value;
-        if (dto.Parameters is not null) series.Parameters = JsonSerializer.Serialize(dto.Parameters);
+        if (JsonMergePatchState.TryGetPatchedProperty(
+                dto,
+                nameof(dto.Description),
+                series.Description,
+                out string? description))
+        {
+            series.Description = description;
+        }
+        if (JsonMergePatchState.TryGetPatchedProperty(
+                dto,
+                nameof(dto.TokenizerType),
+                series.TokenizerType,
+                out var tokenizerType))
+        {
+            series.TokenizerType = tokenizerType;
+        }
+        if (JsonMergePatchState.TryGetPatchedProperty(
+                dto,
+                nameof(dto.Parameters),
+                StructuredJson.ParseObject(series.Parameters),
+                out Dictionary<string, JsonElement>? parameters))
+        {
+            series.Parameters = JsonSerializer.Serialize(parameters ?? []);
+        }
         await repository.UpdateAsync(series);
         AdminAudit.Log(context, Logger(loggerFactory), "Updated", "ModelSeries", id,
             $"Name: {LoggingSanitizer.S(series.Name)}");

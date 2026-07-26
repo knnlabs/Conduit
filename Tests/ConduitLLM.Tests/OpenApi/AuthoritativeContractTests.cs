@@ -246,10 +246,11 @@ public sealed class AuthoritativeContractTests : IDisposable
                 {
                     content.EnumerateObject().Select(item => item.Name)
                         .Should().NotContain(mediaType =>
-                            mediaType == "text/json" || mediaType == "text/plain" ||
-                            mediaType.StartsWith("application/", StringComparison.Ordinal) &&
-                            mediaType.EndsWith("+json", StringComparison.Ordinal) &&
-                            mediaType != "application/problem+json");
+                             mediaType == "text/json" || mediaType == "text/plain" ||
+                             mediaType.StartsWith("application/", StringComparison.Ordinal) &&
+                             mediaType.EndsWith("+json", StringComparison.Ordinal) &&
+                             mediaType != "application/problem+json" &&
+                             mediaType != "application/merge-patch+json");
                 }
             }
         }
@@ -428,8 +429,7 @@ public sealed class AuthoritativeContractTests : IDisposable
         }
         else
         {
-            operation.GetProperty("requestBody").GetProperty("content")
-                .GetProperty("application/json").GetProperty("schema")
+            RequestSchema(_admin, path, method)
                 .GetProperty("$ref").GetString()
                 .Should().Be($"#/components/schemas/{requestSchema}");
         }
@@ -732,14 +732,23 @@ public sealed class AuthoritativeContractTests : IDisposable
     {
         foreach (var (method, path, operation) in Operations(_admin).Where(item => item.Method == "PATCH"))
         {
-            var schema = ResolveSchema(_admin,
-                operation.GetProperty("requestBody").GetProperty("content")
-                    .GetProperty("application/json").GetProperty("schema"));
+            var content = operation.GetProperty("requestBody").GetProperty("content");
+            content.TryGetProperty("application/json", out _)
+                .Should().BeFalse($"{method} {path} only accepts RFC 7386 JSON Merge Patch");
+            var schema = ResolveSchema(
+                _admin,
+                content.GetProperty("application/merge-patch+json").GetProperty("schema"));
 
             if (schema.TryGetProperty("required", out var required))
                 required.GetArrayLength().Should().Be(0, $"{method} {path} must be partial");
             schema.GetProperty("properties").TryGetProperty("id", out _)
                 .Should().BeFalse($"{method} {path} already carries its identifier in the path");
+
+            var responses = operation.GetProperty("responses");
+            responses.TryGetProperty("200", out _)
+                .Should().BeTrue($"{method} {path} returns the updated resource");
+            responses.TryGetProperty("204", out _)
+                .Should().BeFalse($"{method} {path} returns a response body");
         }
     }
 
@@ -819,7 +828,8 @@ public sealed class AuthoritativeContractTests : IDisposable
 
     private static JsonElement RequestSchema(JsonDocument document, string path, string method) =>
         Operation(document, path, method).GetProperty("requestBody").GetProperty("content")
-            .GetProperty("application/json").GetProperty("schema");
+            .GetProperty(method == "patch" ? "application/merge-patch+json" : "application/json")
+            .GetProperty("schema");
 
     private static IEnumerable<(string Method, string Path, JsonElement Operation)> Operations(
         JsonDocument document)

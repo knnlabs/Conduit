@@ -164,15 +164,20 @@ namespace ConduitLLM.Core.Services
             // Track actual changes
             var changedProperties = new List<string>();
 
-            if (request.KeyName != null && key.KeyName != request.KeyName)
+            if (request.HasKeyName)
             {
-                key.KeyName = request.KeyName;
-                changedProperties.Add(nameof(key.KeyName));
+                if (string.IsNullOrWhiteSpace(request.KeyName))
+                    throw new InvalidOperationException("Virtual key name cannot be null or empty.");
+                if (key.KeyName != request.KeyName)
+                {
+                    key.KeyName = request.KeyName;
+                    changedProperties.Add(nameof(key.KeyName));
+                }
             }
 
-            if (request.AllowedModels != null)
+            if (request.HasAllowedModels)
             {
-                var allowedModels = request.AllowedModels.Count == 0
+                var allowedModels = request.AllowedModels is null or { Count: 0 }
                     ? null
                     : string.Join(',', request.AllowedModels);
                 if (key.AllowedModels != allowedModels)
@@ -182,33 +187,43 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            if (request.VirtualKeyGroupId.HasValue && key.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
+            if (request.HasVirtualKeyGroupId)
             {
-                var newGroup = await GroupRepository.GetByIdAsync(request.VirtualKeyGroupId.Value);
-                if (newGroup == null)
+                if (!request.VirtualKeyGroupId.HasValue)
+                    throw new InvalidOperationException("Virtual key group ID cannot be null.");
+                if (key.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
                 {
-                    throw new InvalidOperationException(
-                        $"Virtual key group with ID {request.VirtualKeyGroupId.Value} not found");
+                    var newGroup = await GroupRepository.GetByIdAsync(request.VirtualKeyGroupId.Value);
+                    if (newGroup == null)
+                    {
+                        throw new InvalidOperationException(
+                            $"Virtual key group with ID {request.VirtualKeyGroupId.Value} not found");
+                    }
+                    key.VirtualKeyGroupId = request.VirtualKeyGroupId.Value;
+                    changedProperties.Add(nameof(key.VirtualKeyGroupId));
                 }
-                key.VirtualKeyGroupId = request.VirtualKeyGroupId.Value;
-                changedProperties.Add(nameof(key.VirtualKeyGroupId));
             }
 
-            if (request.IsEnabled.HasValue && key.IsEnabled != request.IsEnabled.Value)
+            if (request.HasIsEnabled)
             {
-                key.IsEnabled = request.IsEnabled.Value;
-                changedProperties.Add(nameof(key.IsEnabled));
+                if (!request.IsEnabled.HasValue)
+                    throw new InvalidOperationException("Virtual key enabled state cannot be null.");
+                if (key.IsEnabled != request.IsEnabled.Value)
+                {
+                    key.IsEnabled = request.IsEnabled.Value;
+                    changedProperties.Add(nameof(key.IsEnabled));
+                }
             }
 
-            if (request.ExpiresAt.HasValue && key.ExpiresAt != request.ExpiresAt)
+            if (request.HasExpiresAt && key.ExpiresAt != request.ExpiresAt)
             {
                 key.ExpiresAt = request.ExpiresAt;
                 changedProperties.Add(nameof(key.ExpiresAt));
             }
 
-            if (request.Metadata != null)
+            if (request.HasMetadata)
             {
-                var metadata = request.Metadata.Count == 0
+                var metadata = request.Metadata is null or { Count: 0 }
                     ? null
                     : JsonSerializer.Serialize(request.Metadata);
                 if (key.Metadata != metadata)
@@ -218,39 +233,40 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            if (request.RateLimitRpm.HasValue && key.RateLimitRpm != request.RateLimitRpm)
+            if (request.HasRateLimitRpm && key.RateLimitRpm != request.RateLimitRpm)
             {
                 key.RateLimitRpm = request.RateLimitRpm;
                 changedProperties.Add(nameof(key.RateLimitRpm));
             }
 
-            if (request.RateLimitRpd.HasValue && key.RateLimitRpd != request.RateLimitRpd)
+            if (request.HasRateLimitRpd && key.RateLimitRpd != request.RateLimitRpd)
             {
                 key.RateLimitRpd = request.RateLimitRpd;
                 changedProperties.Add(nameof(key.RateLimitRpd));
             }
 
-            if (request.RateLimitTpm.HasValue && key.RateLimitTpm != request.RateLimitTpm)
+            if (request.HasRateLimitTpm && key.RateLimitTpm != request.RateLimitTpm)
             {
                 key.RateLimitTpm = request.RateLimitTpm;
                 changedProperties.Add(nameof(key.RateLimitTpm));
             }
 
-            if (request.MaxParallelRequests.HasValue && key.MaxParallelRequests != request.MaxParallelRequests)
+            if (request.HasMaxParallelRequests && key.MaxParallelRequests != request.MaxParallelRequests)
             {
                 key.MaxParallelRequests = request.MaxParallelRequests;
                 changedProperties.Add(nameof(key.MaxParallelRequests));
             }
 
-            if (request.RateLimitPriority.HasValue && key.RateLimitPriority != request.RateLimitPriority)
+            if (request.HasRateLimitPriority && key.RateLimitPriority != request.RateLimitPriority)
             {
                 key.RateLimitPriority = request.RateLimitPriority;
                 changedProperties.Add(nameof(key.RateLimitPriority));
             }
 
-            if (request.ModelRateLimits is not null)
+            if (request.HasModelRateLimits)
             {
-                // Supplying the map replaces it wholesale; an empty map clears every override.
+                // The Admin merge-patch adapter has already merged object members. Null or an
+                // empty object clears every override.
                 var serialized = VirtualKeyUtilities.SerializeModelRateLimits(request.ModelRateLimits);
                 if (key.ModelRateLimits != serialized)
                 {

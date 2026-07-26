@@ -56,8 +56,8 @@ public sealed class UpdateKeyRequest
     public string? BaseUrl { get; set; }
 
     /// <summary>
-    /// Secret-valued structured settings to replace wholesale. Null leaves the stored values
-    /// untouched (PATCH semantics); a supplied map replaces them.
+    /// Secret-valued structured settings. Object members merge recursively; null removes the
+    /// entire settings object or an individual member at that member's path.
     /// </summary>
     public Dictionary<string, string>? SecretSettings { get; set; }
     public bool? IsPrimary { get; set; }

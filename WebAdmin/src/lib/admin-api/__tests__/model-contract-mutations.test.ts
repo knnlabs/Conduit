@@ -172,6 +172,9 @@ describe('contract-native model-family mutations', () => {
     expect(request.method).toBe(method);
     expect(request.url).toBe(`https://admin.test${path}`);
     expect(request.headers.get('X-Master-Key')).toBe('master-key');
+    expect(request.headers.get('Content-Type')).toBe(
+      method === 'PATCH' ? 'application/merge-patch+json' : 'application/json',
+    );
     expect(requestBody(request)).toEqual(body);
   });
 

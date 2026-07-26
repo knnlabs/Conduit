@@ -71,7 +71,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("ProviderCredentials_GetById").Produces<ProviderDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/", ([FromServices] ProviderCredentialsEndpoints endpoints, CreateProviderRequest request) => endpoints.CreateProvider(request))
                 .WithName("ProviderCredentials_Create").Produces<ProviderDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-            group.MapPatch("/{id:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int id, UpdateProviderRequest request) => endpoints.UpdateProvider(id, request))
+            group.MapPatch("/{id:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int id, JsonMergePatch<UpdateProviderRequest> patch) => endpoints.UpdateProvider(id, patch.Value))
+                .AcceptsJsonMergePatch<UpdateProviderRequest>()
                 .WithName("ProviderCredentials_Update").Produces<ProviderDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int id) => endpoints.DeleteProvider(id))
                 .WithName("ProviderCredentials_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -81,7 +82,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("ProviderCredentials_GetKey").Produces<ProviderKeyCredentialDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{providerId:int}/keys", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, CreateKeyRequest request) => endpoints.CreateProviderKeyCredential(providerId, request))
                 .WithName("ProviderCredentials_CreateKey").Produces<ProviderKeyCredentialDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
-            group.MapPatch("/{providerId:int}/keys/{keyId:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, int keyId, UpdateKeyRequest request) => endpoints.UpdateProviderKeyCredential(providerId, keyId, request))
+            group.MapPatch("/{providerId:int}/keys/{keyId:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, int keyId, JsonMergePatch<UpdateKeyRequest> patch) => endpoints.UpdateProviderKeyCredential(providerId, keyId, patch.Value))
+                .AcceptsJsonMergePatch<UpdateKeyRequest>()
                 .WithName("ProviderCredentials_UpdateKey").Produces<ProviderKeyCredentialDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{providerId:int}/keys/{keyId:int}", ([FromServices] ProviderCredentialsEndpoints endpoints, int providerId, int keyId) => endpoints.DeleteProviderKeyCredential(providerId, keyId))
                 .WithName("ProviderCredentials_DeleteKey").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -259,41 +261,76 @@ namespace ConduitLLM.Admin.Endpoints
 
             var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
-            if (!string.IsNullOrEmpty(request.ProviderName) && provider.ProviderName != request.ProviderName)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.ProviderName),
+                    provider.ProviderName,
+                    out var providerName))
             {
-                changes.Add(("ProviderName", provider.ProviderName, request.ProviderName));
-                provider.ProviderName = request.ProviderName;
+                if (string.IsNullOrWhiteSpace(providerName))
+                {
+                    throw new InvalidOperationException("providerName cannot be null or empty.");
+                }
+                if (provider.ProviderName != providerName)
+                {
+                    changes.Add(("ProviderName", provider.ProviderName, providerName));
+                    provider.ProviderName = providerName;
+                }
             }
 
-            if (provider.BaseUrl != request.BaseUrl)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.BaseUrl),
+                    provider.BaseUrl,
+                    out string? baseUrl)
+                && provider.BaseUrl != baseUrl)
             {
-                changes.Add(("BaseUrl", provider.BaseUrl, request.BaseUrl));
-                provider.BaseUrl = request.BaseUrl;
+                changes.Add(("BaseUrl", provider.BaseUrl, baseUrl));
+                provider.BaseUrl = baseUrl;
             }
 
-            if (provider.IsEnabled != request.IsEnabled)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.IsEnabled),
+                    provider.IsEnabled,
+                    out var isEnabled)
+                && provider.IsEnabled != isEnabled)
             {
-                changes.Add(("IsEnabled", provider.IsEnabled.ToString(), request.IsEnabled.ToString()));
-                provider.IsEnabled = request.IsEnabled;
+                changes.Add(("IsEnabled", provider.IsEnabled.ToString(), isEnabled.ToString()));
+                provider.IsEnabled = isEnabled;
             }
 
-            if (provider.TrustProviderReportedCosts != request.TrustProviderReportedCosts)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.TrustProviderReportedCosts),
+                    provider.TrustProviderReportedCosts,
+                    out var trustProviderReportedCosts)
+                && provider.TrustProviderReportedCosts != trustProviderReportedCosts)
             {
-                changes.Add(("TrustProviderReportedCosts", provider.TrustProviderReportedCosts.ToString(), request.TrustProviderReportedCosts.ToString()));
-                provider.TrustProviderReportedCosts = request.TrustProviderReportedCosts;
+                changes.Add(("TrustProviderReportedCosts", provider.TrustProviderReportedCosts.ToString(), trustProviderReportedCosts.ToString()));
+                provider.TrustProviderReportedCosts = trustProviderReportedCosts;
             }
 
-            if (provider.ProviderCostMarkupMultiplier != request.ProviderCostMarkupMultiplier)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.ProviderCostMarkupMultiplier),
+                    provider.ProviderCostMarkupMultiplier,
+                    out var markupMultiplier)
+                && provider.ProviderCostMarkupMultiplier != markupMultiplier)
             {
-                changes.Add(("ProviderCostMarkupMultiplier", provider.ProviderCostMarkupMultiplier.ToString(), request.ProviderCostMarkupMultiplier.ToString()));
-                provider.ProviderCostMarkupMultiplier = request.ProviderCostMarkupMultiplier;
+                changes.Add(("ProviderCostMarkupMultiplier", provider.ProviderCostMarkupMultiplier.ToString(), markupMultiplier.ToString()));
+                provider.ProviderCostMarkupMultiplier = markupMultiplier;
             }
 
-            // Settings replace wholesale when provided; null means "leave unchanged" (PATCH semantics).
-            if (request.Settings != null && !SettingsEqual(provider.Settings, request.Settings))
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.Settings),
+                    provider.Settings,
+                    out Dictionary<string, string>? settings)
+                && !SettingsEqual(provider.Settings, settings))
             {
                 changes.Add(("Settings", null, null));
-                provider.Settings = request.Settings;
+                provider.Settings = settings;
             }
 
             // Validate that required structured settings still resolve after the update.

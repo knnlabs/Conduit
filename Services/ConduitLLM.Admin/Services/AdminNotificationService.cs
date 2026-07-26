@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Extensions;
@@ -214,12 +215,17 @@ namespace ConduitLLM.Admin.Services
                     return false;
                 }
 
-                // Update properties
-                existingNotification.IsRead = notification.IsRead;
-                if (!string.IsNullOrEmpty(notification.Message))
-                {
-                    existingNotification.Message = notification.Message;
-                }
+                if (notification.TryGetPatchedProperty(
+                        nameof(notification.IsRead),
+                        existingNotification.IsRead,
+                        out bool isRead))
+                    existingNotification.IsRead = isRead;
+                if (notification.TryGetPatchedProperty(
+                        nameof(notification.Message),
+                        existingNotification.Message,
+                        out string? message))
+                    existingNotification.Message = message
+                        ?? throw new InvalidOperationException("message cannot be null.");
 
                 // Save changes
                 return await _notificationRepository.UpdateAsync(existingNotification);

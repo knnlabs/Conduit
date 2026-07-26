@@ -126,41 +126,73 @@ namespace ConduitLLM.Admin.Endpoints
             // Protect is idempotent, so already-encrypted values are left untouched.
             key.ApiKey = _secretProtector.Protect(key.ApiKey);
 
-            if (!string.IsNullOrEmpty(request.KeyName) && key.KeyName != request.KeyName)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.KeyName),
+                    key.KeyName,
+                    out string? keyName)
+                && key.KeyName != keyName)
             {
-                changes.Add(("KeyName", key.KeyName, request.KeyName));
-                key.KeyName = request.KeyName;
+                changes.Add(("KeyName", key.KeyName, keyName));
+                key.KeyName = keyName;
             }
-            if (!string.IsNullOrEmpty(request.ApiKey))
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.ApiKey),
+                    _secretProtector.Reveal(key.ApiKey),
+                    out string? apiKey))
             {
                 changes.Add(("ApiKey", "***", "***")); // Never log API key values
-                key.ApiKey = _secretProtector.Protect(request.ApiKey);
+                key.ApiKey = _secretProtector.Protect(apiKey);
             }
-            if (request.BaseUrl != null && key.BaseUrl != request.BaseUrl)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.BaseUrl),
+                    key.BaseUrl,
+                    out string? baseUrl)
+                && key.BaseUrl != baseUrl)
             {
-                changes.Add(("BaseUrl", key.BaseUrl, request.BaseUrl));
-                key.BaseUrl = request.BaseUrl;
+                changes.Add(("BaseUrl", key.BaseUrl, baseUrl));
+                key.BaseUrl = baseUrl;
             }
-            if (request.SecretSettings != null)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.SecretSettings),
+                    key.SecretSettings,
+                    out Dictionary<string, string>? secretSettings))
             {
-                // Replace wholesale, and never record the values: only which keys were set.
                 changes.Add(("SecretSettings", "***", "***"));
-                key.SecretSettings = _secretProtector.ProtectAll(request.SecretSettings);
+                key.SecretSettings = _secretProtector.ProtectAll(secretSettings);
             }
-            if (request.IsPrimary.HasValue && key.IsPrimary != request.IsPrimary.Value)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.IsPrimary),
+                    key.IsPrimary,
+                    out var isPrimary)
+                && key.IsPrimary != isPrimary)
             {
-                changes.Add(("IsPrimary", key.IsPrimary.ToString(), request.IsPrimary.Value.ToString()));
-                key.IsPrimary = request.IsPrimary.Value;
+                changes.Add(("IsPrimary", key.IsPrimary.ToString(), isPrimary.ToString()));
+                key.IsPrimary = isPrimary;
             }
-            if (request.IsEnabled.HasValue && key.IsEnabled != request.IsEnabled.Value)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.IsEnabled),
+                    key.IsEnabled,
+                    out var isEnabled)
+                && key.IsEnabled != isEnabled)
             {
-                changes.Add(("IsEnabled", key.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
-                key.IsEnabled = request.IsEnabled.Value;
+                changes.Add(("IsEnabled", key.IsEnabled.ToString(), isEnabled.ToString()));
+                key.IsEnabled = isEnabled;
             }
-            if (request.ProviderAccountGroup.HasValue && key.ProviderAccountGroup != (short)request.ProviderAccountGroup.Value)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    nameof(request.ProviderAccountGroup),
+                    (int)key.ProviderAccountGroup,
+                    out var providerAccountGroup)
+                && key.ProviderAccountGroup != (short)providerAccountGroup)
             {
-                changes.Add(("ProviderAccountGroup", key.ProviderAccountGroup.ToString(), request.ProviderAccountGroup.Value.ToString()));
-                key.ProviderAccountGroup = (short)request.ProviderAccountGroup.Value;
+                changes.Add(("ProviderAccountGroup", key.ProviderAccountGroup.ToString(), providerAccountGroup.ToString()));
+                key.ProviderAccountGroup = (short)providerAccountGroup;
             }
 
             key.UpdatedAt = DateTime.UtcNow;

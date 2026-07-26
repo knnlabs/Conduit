@@ -14,6 +14,7 @@ using ConduitLLM.Configuration.Models;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Functions.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -77,7 +78,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .ExcludeFromDescription();
             group.MapPost("/", ([FromServices] ModelEndpoints endpoints, CreateModelDto dto) => endpoints.CreateModel(dto))
                 .WithName("Model_Create").Produces<ModelDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status409Conflict);
-            group.MapPatch("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id, UpdateModelDto dto) => endpoints.UpdateModel(id, dto))
+            group.MapPatch("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id, JsonMergePatch<UpdateModelDto> patch) => endpoints.UpdateModel(id, patch.Value))
+                .AcceptsJsonMergePatch<UpdateModelDto>()
                 .WithName("Model_Update").Produces<ModelDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
             group.MapDelete("/{id:int}", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.DeleteModel(id))
                 .WithName("Model_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
@@ -88,7 +90,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("Model_GetAvailableProviders").Produces<IEnumerable<ModelProviderAvailabilityDto>>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id:int}/identifiers", ([FromServices] ModelEndpoints endpoints, int id, CreateModelIdentifierDto dto) => endpoints.CreateModelIdentifier(id, dto))
                 .WithName("Model_CreateIdentifier").Produces<CreatedModelIdentifierDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapPatch("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, UpdateModelIdentifierDto dto) => endpoints.UpdateModelIdentifier(id, identifierId, dto))
+            group.MapPatch("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, JsonMergePatch<UpdateModelIdentifierDto> patch) => endpoints.UpdateModelIdentifier(id, identifierId, patch.Value))
+                .AcceptsJsonMergePatch<UpdateModelIdentifierDto>()
                 .WithName("Model_UpdateIdentifier").Produces<ModelIdentifierDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
             group.MapDelete("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId) => endpoints.DeleteModelIdentifier(id, identifierId))
                 .WithName("Model_DeleteIdentifier").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -97,7 +100,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("Model_GetProviderMappings").Produces<IEnumerable<ModelProviderMappingDto>>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id:int}/provider-mappings", ([FromServices] ModelEndpoints endpoints, int id, ModelProviderMappingDto dto) => endpoints.CreateModelProviderMapping(id, dto))
                 .WithName("Model_CreateProviderMapping").Produces<ModelProviderMappingDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapPatch("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId, UpdateModelProviderMappingDto dto) => endpoints.UpdateModelProviderMapping(id, mappingId, dto))
+            group.MapPatch("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId, JsonMergePatch<UpdateModelProviderMappingDto> patch) => endpoints.UpdateModelProviderMapping(id, mappingId, patch.Value))
+                .AcceptsJsonMergePatch<UpdateModelProviderMappingDto>()
                 .WithName("Model_UpdateProviderMapping").Produces<ModelProviderMappingDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id:int}/provider-mappings/{mappingId:int}", ([FromServices] ModelEndpoints endpoints, int id, int mappingId) => endpoints.DeleteModelProviderMapping(id, mappingId))
                 .WithName("Model_DeleteProviderMapping").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -371,54 +375,78 @@ namespace ConduitLLM.Admin.Endpoints
             // Capture pre-state for change tracking
             var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
-            // Check for name conflicts if name is being changed
-            if (!string.IsNullOrEmpty(dto.Name) && dto.Name != model.Name)
+            // Check for name conflicts if name is being changed.
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.Name),
+                    model.Name,
+                    out var name)
+                && name != model.Name)
             {
-                var existing = await _modelRepository.GetByNameAsync(dto.Name);
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    throw new InvalidOperationException("name cannot be null or empty.");
+                }
+                var existing = await _modelRepository.GetByNameAsync(name);
                 if (existing != null && existing.Id != id)
                 {
-                    return Conflict($"A model with name '{dto.Name}' already exists");
+                    return Conflict($"A model with name '{name}' already exists");
                 }
-                changes.Add(("Name", model.Name, dto.Name));
-                model.Name = dto.Name;
+                changes.Add(("Name", model.Name, name));
+                model.Name = name;
             }
 
-            if (dto.ModelSeriesId.HasValue)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.ModelSeriesId),
+                    model.ModelSeriesId,
+                    out var modelSeriesId))
             {
-                if (!await _modelSeriesRepository.ExistsAsync(dto.ModelSeriesId.Value))
+                if (!await _modelSeriesRepository.ExistsAsync(modelSeriesId))
                 {
-                    return BadRequest($"Model series with ID {dto.ModelSeriesId.Value} does not exist");
+                    return BadRequest($"Model series with ID {modelSeriesId} does not exist");
                 }
-                if (model.ModelSeriesId != dto.ModelSeriesId.Value)
+                if (model.ModelSeriesId != modelSeriesId)
                 {
-                    changes.Add(("ModelSeriesId", model.ModelSeriesId.ToString(), dto.ModelSeriesId.Value.ToString()));
+                    changes.Add(("ModelSeriesId", model.ModelSeriesId.ToString(), modelSeriesId.ToString()));
                     // Clear the loaded navigation so EF repoints by FK instead of the old graph.
                     model.Series = null!;
                 }
-                model.ModelSeriesId = dto.ModelSeriesId.Value;
+                model.ModelSeriesId = modelSeriesId;
             }
 
-            if (dto.IsActive.HasValue && model.IsActive != dto.IsActive.Value)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.IsActive),
+                    model.IsActive,
+                    out var isActive))
             {
-                changes.Add(("IsActive", model.IsActive.ToString(), dto.IsActive.Value.ToString()));
-                model.IsActive = dto.IsActive.Value;
-            }
-            else if (dto.IsActive.HasValue)
-            {
-                model.IsActive = dto.IsActive.Value;
+                SetWithChangeTracking(nameof(model.IsActive), model.IsActive, isActive, value => model.IsActive = value, changes);
             }
 
-            if (dto.ModelParameters != null)
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.ModelParameters),
+                    StructuredJson.ParseObject(model.ModelParameters),
+                    out Dictionary<string, JsonElement>? modelParameters))
             {
-                var newParams = dto.ModelParameters.Count == 0
+                var newParams = modelParameters is null or { Count: 0 }
                     ? null
-                    : JsonSerializer.Serialize(dto.ModelParameters);
+                    : JsonSerializer.Serialize(modelParameters);
                 if (model.ModelParameters != newParams)
                     changes.Add(("ModelParameters", model.ModelParameters ?? "null", newParams ?? "null"));
                 model.ModelParameters = newParams;
             }
 
-            if (dto.ClearDirectionalCapabilities == true)
+            var clearDirectionalCapabilities = JsonMergePatchState.TryGetPatchedProperty(
+                dto,
+                nameof(dto.ClearDirectionalCapabilities),
+                false,
+                out var clearDirectional) && clearDirectional;
+            var inputModalitiesPatched = JsonMergePatchState.IsDefined(dto, nameof(dto.InputModalities));
+            var outputModalitiesPatched = JsonMergePatchState.IsDefined(dto, nameof(dto.OutputModalities));
+
+            if (clearDirectionalCapabilities)
             {
                 changes.Add(("DirectionalCapabilities", "configured", "unknown"));
                 model.InputModalitiesJson = null;
@@ -426,111 +454,90 @@ namespace ConduitLLM.Admin.Endpoints
                 model.CapabilitySource = ModelCapabilitySource.Unknown;
                 model.CapabilitiesLastVerifiedAt = null;
             }
-            else if (dto.InputModalities is not null)
+            else if (JsonMergePatchState.TryGetPatchedProperty(
+                         dto,
+                         nameof(dto.InputModalities),
+                         ModelModalities.Parse(model.InputModalitiesJson),
+                         out IReadOnlyList<string>? inputModalities))
             {
-                var serialized = ModelModalities.Serialize(dto.InputModalities);
+                var serialized = ModelModalities.Serialize(inputModalities);
                 if (model.InputModalitiesJson != serialized)
                     changes.Add(("InputModalities", model.InputModalitiesJson ?? "unknown", serialized ?? "unknown"));
                 model.InputModalitiesJson = serialized;
             }
-            if (dto.ClearDirectionalCapabilities != true && dto.OutputModalities is not null)
+            if (!clearDirectionalCapabilities
+                && JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.OutputModalities),
+                    ModelModalities.Parse(model.OutputModalitiesJson),
+                    out IReadOnlyList<string>? outputModalities))
             {
-                var serialized = ModelModalities.Serialize(dto.OutputModalities);
+                var serialized = ModelModalities.Serialize(outputModalities);
                 if (model.OutputModalitiesJson != serialized)
                     changes.Add(("OutputModalities", model.OutputModalitiesJson ?? "unknown", serialized ?? "unknown"));
                 model.OutputModalitiesJson = serialized;
             }
-            if (dto.ClearDirectionalCapabilities != true && dto.CapabilitySource.HasValue)
+            if (!clearDirectionalCapabilities
+                && JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.CapabilitySource),
+                    model.CapabilitySource,
+                    out var capabilitySource))
             {
-                if (model.CapabilitySource != dto.CapabilitySource.Value)
-                    changes.Add(("CapabilitySource", model.CapabilitySource.ToString(), dto.CapabilitySource.Value.ToString()));
-                model.CapabilitySource = dto.CapabilitySource.Value;
+                SetWithChangeTracking(
+                    nameof(model.CapabilitySource),
+                    model.CapabilitySource,
+                    capabilitySource,
+                    value => model.CapabilitySource = value,
+                    changes);
             }
-            else if (dto.ClearDirectionalCapabilities != true &&
-                     (dto.InputModalities is not null || dto.OutputModalities is not null))
+            else if (!clearDirectionalCapabilities && (inputModalitiesPatched || outputModalitiesPatched))
             {
                 model.CapabilitySource = ModelCapabilitySource.Manual;
             }
-            if (dto.ClearDirectionalCapabilities != true && dto.CapabilitiesLastVerifiedAt.HasValue)
+            if (!clearDirectionalCapabilities
+                && JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.CapabilitiesLastVerifiedAt),
+                    model.CapabilitiesLastVerifiedAt,
+                    out DateTime? capabilitiesLastVerifiedAt))
             {
-                model.CapabilitiesLastVerifiedAt = dto.CapabilitiesLastVerifiedAt.Value;
+                model.CapabilitiesLastVerifiedAt = capabilitiesLastVerifiedAt;
             }
 
             // Update capability fields with change tracking
-            if (dto.SupportsChat.HasValue)
-            {
-                if (model.SupportsChat != dto.SupportsChat.Value)
-                    changes.Add(("SupportsChat", model.SupportsChat.ToString(), dto.SupportsChat.Value.ToString()));
-                model.SupportsChat = dto.SupportsChat.Value;
-            }
-            if (dto.SupportsVision.HasValue)
-            {
-                if (model.SupportsVision != dto.SupportsVision.Value)
-                    changes.Add(("SupportsVision", model.SupportsVision.ToString(), dto.SupportsVision.Value.ToString()));
-                model.SupportsVision = dto.SupportsVision.Value;
-            }
-            if (dto.SupportsFunctionCalling.HasValue)
-            {
-                if (model.SupportsFunctionCalling != dto.SupportsFunctionCalling.Value)
-                    changes.Add(("SupportsFunctionCalling", model.SupportsFunctionCalling.ToString(), dto.SupportsFunctionCalling.Value.ToString()));
-                model.SupportsFunctionCalling = dto.SupportsFunctionCalling.Value;
-            }
-            if (dto.SupportsStreaming.HasValue)
-            {
-                if (model.SupportsStreaming != dto.SupportsStreaming.Value)
-                    changes.Add(("SupportsStreaming", model.SupportsStreaming.ToString(), dto.SupportsStreaming.Value.ToString()));
-                model.SupportsStreaming = dto.SupportsStreaming.Value;
-            }
-            if (dto.SupportsImageGeneration.HasValue)
-            {
-                if (model.SupportsImageGeneration != dto.SupportsImageGeneration.Value)
-                    changes.Add(("SupportsImageGeneration", model.SupportsImageGeneration.ToString(), dto.SupportsImageGeneration.Value.ToString()));
-                model.SupportsImageGeneration = dto.SupportsImageGeneration.Value;
-            }
-            if (dto.SupportsVideoGeneration.HasValue)
-            {
-                if (model.SupportsVideoGeneration != dto.SupportsVideoGeneration.Value)
-                    changes.Add(("SupportsVideoGeneration", model.SupportsVideoGeneration.ToString(), dto.SupportsVideoGeneration.Value.ToString()));
-                model.SupportsVideoGeneration = dto.SupportsVideoGeneration.Value;
-            }
-            if (dto.SupportsSpeechToText.HasValue)
-            {
-                if (model.SupportsSpeechToText != dto.SupportsSpeechToText.Value)
-                    changes.Add(("SupportsSpeechToText", model.SupportsSpeechToText.ToString(), dto.SupportsSpeechToText.Value.ToString()));
-                model.SupportsSpeechToText = dto.SupportsSpeechToText.Value;
-            }
-            if (dto.SupportsTextToSpeech.HasValue)
-            {
-                if (model.SupportsTextToSpeech != dto.SupportsTextToSpeech.Value)
-                    changes.Add(("SupportsTextToSpeech", model.SupportsTextToSpeech.ToString(), dto.SupportsTextToSpeech.Value.ToString()));
-                model.SupportsTextToSpeech = dto.SupportsTextToSpeech.Value;
-            }
-            if (dto.SupportsRerank.HasValue)
-            {
-                if (model.SupportsRerank != dto.SupportsRerank.Value)
-                    changes.Add(("SupportsRerank", model.SupportsRerank.ToString(), dto.SupportsRerank.Value.ToString()));
-                model.SupportsRerank = dto.SupportsRerank.Value;
-            }
-            if (dto.SupportsEmbeddings.HasValue)
-            {
-                if (model.SupportsEmbeddings != dto.SupportsEmbeddings.Value)
-                    changes.Add(("SupportsEmbeddings", model.SupportsEmbeddings.ToString(), dto.SupportsEmbeddings.Value.ToString()));
-                model.SupportsEmbeddings = dto.SupportsEmbeddings.Value;
-            }
+            ApplyBooleanPatch(dto, nameof(dto.SupportsChat), model.SupportsChat, value => model.SupportsChat = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsVision), model.SupportsVision, value => model.SupportsVision = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsFunctionCalling), model.SupportsFunctionCalling, value => model.SupportsFunctionCalling = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsStreaming), model.SupportsStreaming, value => model.SupportsStreaming = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsImageGeneration), model.SupportsImageGeneration, value => model.SupportsImageGeneration = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsVideoGeneration), model.SupportsVideoGeneration, value => model.SupportsVideoGeneration = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsSpeechToText), model.SupportsSpeechToText, value => model.SupportsSpeechToText = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsTextToSpeech), model.SupportsTextToSpeech, value => model.SupportsTextToSpeech = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsRerank), model.SupportsRerank, value => model.SupportsRerank = value, changes);
+            ApplyBooleanPatch(dto, nameof(dto.SupportsEmbeddings), model.SupportsEmbeddings, value => model.SupportsEmbeddings = value, changes);
 
-            // For nullable int fields, always update since frontend always sends them
-            if (model.MaxInputTokens != dto.MaxInputTokens)
-                changes.Add(("MaxInputTokens", model.MaxInputTokens?.ToString() ?? "null", dto.MaxInputTokens?.ToString() ?? "null"));
-            model.MaxInputTokens = dto.MaxInputTokens;
-
-            if (model.MaxOutputTokens != dto.MaxOutputTokens)
-                changes.Add(("MaxOutputTokens", model.MaxOutputTokens?.ToString() ?? "null", dto.MaxOutputTokens?.ToString() ?? "null"));
-            model.MaxOutputTokens = dto.MaxOutputTokens;
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.MaxInputTokens),
+                    model.MaxInputTokens,
+                    out int? maxInputTokens))
+            {
+                SetWithChangeTracking(nameof(model.MaxInputTokens), model.MaxInputTokens, maxInputTokens, value => model.MaxInputTokens = value, changes);
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.MaxOutputTokens),
+                    model.MaxOutputTokens,
+                    out int? maxOutputTokens))
+            {
+                SetWithChangeTracking(nameof(model.MaxOutputTokens), model.MaxOutputTokens, maxOutputTokens, value => model.MaxOutputTokens = value, changes);
+            }
 
             model.UpdatedAt = DateTime.UtcNow;
 
             // Track if parameters were changed
-            bool parametersChanged = dto.ModelParameters != null;
+            bool parametersChanged = JsonMergePatchState.IsDefined(dto, nameof(dto.ModelParameters));
 
             var updatedModel = await _modelRepository.UpdateModelAsync(model);
 
@@ -597,31 +604,41 @@ namespace ConduitLLM.Admin.Endpoints
         /// </summary>
         private static string[] GetChangedProperties(UpdateModelDto dto)
         {
-            var changedProps = new List<string>();
+            return typeof(UpdateModelDto)
+                .GetProperties()
+                .Where(property => JsonMergePatchState.IsDefined(dto, property.Name))
+                .Select(property => property.Name)
+                .ToArray();
+        }
 
-            if (dto.Name != null) changedProps.Add("Name");
-            if (dto.ModelSeriesId.HasValue) changedProps.Add("ModelSeriesId");
-            if (dto.InputModalities is not null) changedProps.Add("InputModalities");
-            if (dto.OutputModalities is not null) changedProps.Add("OutputModalities");
-            if (dto.CapabilitySource.HasValue) changedProps.Add("CapabilitySource");
-            if (dto.CapabilitiesLastVerifiedAt.HasValue) changedProps.Add("CapabilitiesLastVerifiedAt");
-            if (dto.ClearDirectionalCapabilities.HasValue) changedProps.Add("ClearDirectionalCapabilities");
-            if (dto.IsActive.HasValue) changedProps.Add("IsActive");
-            if (dto.ModelParameters != null) changedProps.Add("ModelParameters");
-            if (dto.SupportsChat.HasValue) changedProps.Add("SupportsChat");
-            if (dto.SupportsVision.HasValue) changedProps.Add("SupportsVision");
-            if (dto.SupportsFunctionCalling.HasValue) changedProps.Add("SupportsFunctionCalling");
-            if (dto.SupportsStreaming.HasValue) changedProps.Add("SupportsStreaming");
-            if (dto.SupportsImageGeneration.HasValue) changedProps.Add("SupportsImageGeneration");
-            if (dto.SupportsVideoGeneration.HasValue) changedProps.Add("SupportsVideoGeneration");
-            if (dto.SupportsSpeechToText.HasValue) changedProps.Add("SupportsSpeechToText");
-            if (dto.SupportsTextToSpeech.HasValue) changedProps.Add("SupportsTextToSpeech");
-            if (dto.SupportsRerank.HasValue) changedProps.Add("SupportsRerank");
-            if (dto.SupportsEmbeddings.HasValue) changedProps.Add("SupportsEmbeddings");
-            if (dto.MaxInputTokens.HasValue) changedProps.Add("MaxInputTokens");
-            if (dto.MaxOutputTokens.HasValue) changedProps.Add("MaxOutputTokens");
+        private static void ApplyBooleanPatch(
+            UpdateModelDto dto,
+            string propertyName,
+            bool currentValue,
+            Action<bool> setter,
+            List<(string Property, string? OldValue, string? NewValue)> changes)
+        {
+            if (JsonMergePatchState.TryGetPatchedProperty(dto, propertyName, currentValue, out var patchedValue))
+            {
+                SetWithChangeTracking(propertyName, currentValue, patchedValue, setter, changes);
+            }
+        }
 
-            return changedProps.ToArray();
+        private static void SetWithChangeTracking<T>(
+            string propertyName,
+            T currentValue,
+            T patchedValue,
+            Action<T> setter,
+            List<(string Property, string? OldValue, string? NewValue)> changes)
+        {
+            if (!EqualityComparer<T>.Default.Equals(currentValue, patchedValue))
+            {
+                changes.Add((
+                    propertyName,
+                    currentValue?.ToString() ?? "null",
+                    patchedValue?.ToString() ?? "null"));
+            }
+            setter(patchedValue);
         }
 
         private static string[] GetInvalidModalities(

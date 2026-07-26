@@ -41,5 +41,9 @@ at the root.
 | `/api/VirtualKeys` | `/v1/admin/virtual-keys` |
 
 Resource identifiers occur only in paths. Partial resource changes use `PATCH`
-and return the updated resource. Versioned resources publish an `ETag` and
-require `If-Match` for update and delete operations.
+with `Content-Type: application/merge-patch+json` and return the updated resource.
+PATCH bodies follow RFC 7386: omitted members remain unchanged, object members merge
+recursively, arrays and scalar values replace their targets, and `null` clears a
+nullable member. Unknown members and attempts to clear required members are rejected.
+Versioned resources publish an `ETag` and require `If-Match` for update and delete
+operations.

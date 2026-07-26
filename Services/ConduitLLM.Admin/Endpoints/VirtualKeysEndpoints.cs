@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
@@ -49,8 +50,9 @@ public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
             .WithName("VirtualKeys_GetAll").Produces<List<VirtualKeyDto>>().RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/{id}", ([FromServices] VirtualKeysEndpoints endpoints, int id) => endpoints.GetKeyById(id))
             .WithName("VirtualKeys_GetById").Produces<VirtualKeyDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
-        group.MapPatch("/{id}", ([FromServices] VirtualKeysEndpoints endpoints, int id, UpdateVirtualKeyRequestDto request) => endpoints.UpdateKey(id, request))
-            .WithName("VirtualKeys_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest)
+        group.MapPatch("/{id}", ([FromServices] VirtualKeysEndpoints endpoints, int id, JsonMergePatch<UpdateVirtualKeyRequestDto> patch) => endpoints.UpdateKey(id, patch.Value))
+            .AcceptsJsonMergePatch<UpdateVirtualKeyRequestDto>()
+            .WithName("VirtualKeys_Update").Produces<VirtualKeyDto>().Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden).Produces(StatusCodes.Status404NotFound)
             .RequireAuthorization("MasterKeyPolicy");
         group.MapDelete("/{id}", ([FromServices] VirtualKeysEndpoints endpoints, int id) => endpoints.DeleteKey(id))
@@ -140,45 +142,56 @@ public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
         if (preState == null)
             throw new KeyNotFoundException();
 
+        if (request.TryGetPatchedProperty(
+                nameof(request.Metadata),
+                preState.Metadata,
+                out Dictionary<string, JsonElement>? metadata))
+            request.Metadata = metadata;
+        if (request.TryGetPatchedProperty(
+                nameof(request.ModelRateLimits),
+                preState.ModelRateLimits,
+                out Dictionary<string, ModelRateLimitDto>? modelRateLimits))
+            request.ModelRateLimits = modelRateLimits;
+
         if (!await _virtualKeyService.UpdateVirtualKeyAsync(id, request))
             throw new KeyNotFoundException();
 
         // Build change list from pre-state vs request
         var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
-        if (request.KeyName != null && preState.KeyName != request.KeyName)
+        if (request.HasKeyName && preState.KeyName != request.KeyName)
             changes.Add(("KeyName", preState.KeyName, request.KeyName));
-        if (request.IsEnabled.HasValue && preState.IsEnabled != request.IsEnabled.Value)
-            changes.Add(("IsEnabled", preState.IsEnabled.ToString(), request.IsEnabled.Value.ToString()));
-        if (request.AllowedModels != null &&
-            !(preState.AllowedModels ?? []).SequenceEqual(request.AllowedModels))
+        if (request.HasIsEnabled && preState.IsEnabled != request.IsEnabled)
+            changes.Add(("IsEnabled", preState.IsEnabled.ToString(), request.IsEnabled?.ToString()));
+        if (request.HasAllowedModels &&
+            !(preState.AllowedModels ?? []).SequenceEqual(request.AllowedModels ?? []))
         {
             changes.Add((
                 "AllowedModels",
                 preState.AllowedModels is null ? "null" : string.Join(',', preState.AllowedModels),
-                string.Join(',', request.AllowedModels)));
+                request.AllowedModels is null ? "null" : string.Join(',', request.AllowedModels)));
         }
-        if (request.ExpiresAt.HasValue && preState.ExpiresAt != request.ExpiresAt)
+        if (request.HasExpiresAt && preState.ExpiresAt != request.ExpiresAt)
             changes.Add(("ExpiresAt", preState.ExpiresAt?.ToString("o") ?? "null", request.ExpiresAt?.ToString("o") ?? "null"));
-        if (request.RateLimitRpm.HasValue && preState.RateLimitRpm != request.RateLimitRpm)
+        if (request.HasRateLimitRpm && preState.RateLimitRpm != request.RateLimitRpm)
             changes.Add(("RateLimitRpm", preState.RateLimitRpm?.ToString() ?? "null", request.RateLimitRpm?.ToString() ?? "null"));
-        if (request.RateLimitRpd.HasValue && preState.RateLimitRpd != request.RateLimitRpd)
+        if (request.HasRateLimitRpd && preState.RateLimitRpd != request.RateLimitRpd)
             changes.Add(("RateLimitRpd", preState.RateLimitRpd?.ToString() ?? "null", request.RateLimitRpd?.ToString() ?? "null"));
-        if (request.RateLimitTpm.HasValue && preState.RateLimitTpm != request.RateLimitTpm)
+        if (request.HasRateLimitTpm && preState.RateLimitTpm != request.RateLimitTpm)
             changes.Add(("RateLimitTpm", preState.RateLimitTpm?.ToString() ?? "null", request.RateLimitTpm?.ToString() ?? "null"));
-        if (request.MaxParallelRequests.HasValue && preState.MaxParallelRequests != request.MaxParallelRequests)
+        if (request.HasMaxParallelRequests && preState.MaxParallelRequests != request.MaxParallelRequests)
             changes.Add(("MaxParallelRequests", preState.MaxParallelRequests?.ToString() ?? "null", request.MaxParallelRequests?.ToString() ?? "null"));
-        if (request.RateLimitPriority.HasValue && preState.RateLimitPriority != request.RateLimitPriority)
+        if (request.HasRateLimitPriority && preState.RateLimitPriority != request.RateLimitPriority)
             changes.Add(("RateLimitPriority", preState.RateLimitPriority?.ToString() ?? "null", request.RateLimitPriority?.ToString() ?? "null"));
-        if (request.ModelRateLimits is not null &&
+        if (request.HasModelRateLimits &&
             DescribeModelLimits(preState.ModelRateLimits) != DescribeModelLimits(request.ModelRateLimits))
         {
             changes.Add(("ModelRateLimits",
                 DescribeModelLimits(preState.ModelRateLimits),
                 DescribeModelLimits(request.ModelRateLimits)));
         }
-        if (request.VirtualKeyGroupId.HasValue && preState.VirtualKeyGroupId != request.VirtualKeyGroupId.Value)
-            changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId.Value.ToString()));
+        if (request.HasVirtualKeyGroupId && preState.VirtualKeyGroupId != request.VirtualKeyGroupId)
+            changes.Add(("VirtualKeyGroupId", preState.VirtualKeyGroupId.ToString(), request.VirtualKeyGroupId?.ToString()));
 
         if (changes.Count > 0)
         {

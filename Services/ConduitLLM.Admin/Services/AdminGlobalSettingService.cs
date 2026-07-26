@@ -1,5 +1,6 @@
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Events;
@@ -175,9 +176,15 @@ namespace ConduitLLM.Admin.Services
                         "WebAdmin_VirtualKey can only be managed through the explicit by-key bootstrap API.");
                 }
 
-                if (setting.Value != null)
+                var valueDefined = setting.IsDefined(nameof(setting.Value));
+                var descriptionDefined = setting.IsDefined(nameof(setting.Description));
+                if (valueDefined && setting.Value is null)
                 {
-                    await ValidateValueAsync(existingSetting.Key, setting.Value);
+                    throw new InvalidOperationException("Global setting value cannot be null.");
+                }
+                if (valueDefined)
+                {
+                    await ValidateValueAsync(existingSetting.Key, setting.Value!);
                 }
 
                 // Track changed properties for event publishing
@@ -185,12 +192,12 @@ namespace ConduitLLM.Admin.Services
                 var originalKey = existingSetting.Key;
                 
                 // Check what properties will change
-                if (setting.Value != null && existingSetting.Value != setting.Value)
+                if (valueDefined && existingSetting.Value != setting.Value)
                 {
                     changedProperties.Add(nameof(existingSetting.Value));
                 }
                 
-                if (setting.Description != null && existingSetting.Description != setting.Description)
+                if (descriptionDefined && existingSetting.Description != setting.Description)
                 {
                     changedProperties.Add(nameof(existingSetting.Description));
                 }
@@ -203,7 +210,11 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Update the entity
-                existingSetting.UpdateFrom(setting);
+                if (valueDefined)
+                    existingSetting.Value = setting.Value!;
+                if (descriptionDefined)
+                    existingSetting.Description = setting.Description;
+                existingSetting.UpdatedAt = DateTime.UtcNow;
 
                 // Save changes
                 var result = await _globalSettingRepository.UpdateAsync(existingSetting);

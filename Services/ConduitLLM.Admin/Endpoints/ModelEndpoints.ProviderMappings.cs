@@ -102,7 +102,7 @@ namespace ConduitLLM.Admin.Endpoints
                 return BadRequest($"Mapping with ID {mappingId} does not belong to model with ID {id}");
             }
 
-            existingMapping.UpdateFromDto(mappingDto);
+            ModelProviderMappingMergePatch.Apply(mappingDto, existingMapping);
             var success = await _mappingService.UpdateMappingAsync(existingMapping);
 
             if (!success)

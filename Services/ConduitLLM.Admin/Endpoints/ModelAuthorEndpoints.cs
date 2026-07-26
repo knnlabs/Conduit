@@ -44,6 +44,7 @@ namespace ConduitLLM.Admin.Endpoints
                 .Produces<ModelAuthorDto>(StatusCodes.Status201Created)
                 .Produces(StatusCodes.Status400BadRequest);
             group.MapPatch("/{id:int}", Update)
+                .AcceptsJsonMergePatch<UpdateModelAuthorDto>()
                 .WithName("ModelAuthors_Update")
                 .Produces<ModelAuthorDto>(StatusCodes.Status200OK)
                 .Produces(StatusCodes.Status400BadRequest)
@@ -118,11 +119,12 @@ namespace ConduitLLM.Admin.Endpoints
 
         private static async Task<IResult> Update(
             int id,
-            UpdateModelAuthorDto dto,
+            JsonMergePatch<UpdateModelAuthorDto> patch,
             IModelAuthorRepository repository,
             HttpContext httpContext,
             ILoggerFactory loggerFactory)
         {
+            var dto = patch.Value;
             var author = await repository.GetByIdAsync(id);
             if (author == null)
             {
@@ -130,20 +132,22 @@ namespace ConduitLLM.Admin.Endpoints
             }
 
             // Check for name conflicts if the name is being changed
-            if (!string.IsNullOrEmpty(dto.Name) && dto.Name != author.Name)
+            if (dto.TryGetPatchedProperty(nameof(dto.Name), author.Name, out string? name))
             {
-                var existing = await repository.GetByNameAsync(dto.Name);
+                if (string.IsNullOrWhiteSpace(name))
+                    throw new InvalidOperationException("name cannot be null or empty.");
+                var existing = await repository.GetByNameAsync(name);
                 if (existing != null && existing.Id != id)
                 {
-                    throw new InvalidOperationException($"A model author with name '{dto.Name}' already exists");
+                    throw new InvalidOperationException($"A model author with name '{name}' already exists");
                 }
-                author.Name = dto.Name;
+                author.Name = name;
             }
 
-            if (dto.Description != null)
-                author.Description = dto.Description;
-            if (dto.WebsiteUrl != null)
-                author.WebsiteUrl = dto.WebsiteUrl;
+            if (dto.TryGetPatchedProperty(nameof(dto.Description), author.Description, out string? description))
+                author.Description = description;
+            if (dto.TryGetPatchedProperty(nameof(dto.WebsiteUrl), author.WebsiteUrl, out string? websiteUrl))
+                author.WebsiteUrl = websiteUrl;
 
             await repository.UpdateAsync(author);
             AdminAudit.Log(httpContext, Logger(loggerFactory), "Updated", "ModelAuthor", id,

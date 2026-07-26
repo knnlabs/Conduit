@@ -49,18 +49,45 @@ public sealed class AdminContractEndpointFilterTests
         Assert.Equal(100, page.Pagination.PageSize);
     }
 
-    [Fact]
-    public async Task CollectionFilter_DoesNotWrapDocumentedTailWindow()
+    [Theory]
+    [InlineData("/v1/admin/provider-errors/recent")]
+    [InlineData("/v1/admin/providers/settings-schema")]
+    public async Task CollectionFilter_DoesNotWrapDocumentedArrayResponses(string path)
     {
         var filter = new OperationLoggingEndpointFilter(
             NullLogger<OperationLoggingEndpointFilter>.Instance);
         var original = Results.Ok(new[] { 1, 2, 3 });
 
         var result = await filter.InvokeAsync(
-            Context("GET", "/v1/admin/provider-errors/recent"),
+            Context("GET", path),
             _ => ValueTask.FromResult<object?>(original));
 
         Assert.Same(original, result);
+    }
+
+    [Theory]
+    [InlineData("application/merge-patch+json", true)]
+    [InlineData("application/merge-patch+json; charset=utf-8", true)]
+    [InlineData("application/json", false)]
+    public async Task MergePatchFilter_RequiresTheRfc7386MediaType(
+        string contentType,
+        bool shouldContinue)
+    {
+        var context = Context("PATCH", "/v1/admin/example");
+        context.HttpContext.Request.ContentType = contentType;
+        var called = false;
+
+        var result = await new JsonMergePatchContentTypeEndpointFilter()
+            .InvokeAsync(context, _ =>
+            {
+                called = true;
+                return ValueTask.FromResult<object?>(Results.Ok());
+            });
+
+        Assert.Equal(shouldContinue, called);
+        Assert.Equal(
+            shouldContinue ? StatusCodes.Status200OK : StatusCodes.Status415UnsupportedMediaType,
+            Assert.IsAssignableFrom<IStatusCodeHttpResult>(result).StatusCode);
     }
 
     [Fact]

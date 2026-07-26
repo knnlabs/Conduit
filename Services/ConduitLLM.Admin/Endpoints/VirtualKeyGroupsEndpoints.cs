@@ -62,8 +62,9 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("VirtualKeyGroups_GetById").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/", ([FromServices] VirtualKeyGroupsEndpoints endpoints, CreateVirtualKeyGroupRequestDto request) => endpoints.CreateGroup(request))
                 .WithName("VirtualKeyGroups_Create").Produces<VirtualKeyGroupDto>(StatusCodes.Status201Created);
-            group.MapPatch("/{id}", ([FromServices] VirtualKeyGroupsEndpoints endpoints, int id, UpdateVirtualKeyGroupRequestDto request) => endpoints.UpdateGroup(id, request))
-                .WithName("VirtualKeyGroups_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
+            group.MapPatch("/{id}", ([FromServices] VirtualKeyGroupsEndpoints endpoints, int id, JsonMergePatch<UpdateVirtualKeyGroupRequestDto> patch) => endpoints.UpdateGroup(id, patch.Value))
+                .AcceptsJsonMergePatch<UpdateVirtualKeyGroupRequestDto>()
+                .WithName("VirtualKeyGroups_Update").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id}/adjust-balance", ([FromServices] VirtualKeyGroupsEndpoints endpoints, int id, AdjustBalanceDto request) => endpoints.AdjustBalance(id, request))
                 .WithName("VirtualKeyGroups_AdjustBalance").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id}", ([FromServices] VirtualKeyGroupsEndpoints endpoints, int id) => endpoints.DeleteGroup(id))
@@ -193,45 +194,51 @@ namespace ConduitLLM.Admin.Endpoints
 
             var changes = new List<(string Property, string? OldValue, string? NewValue)>();
 
-            if (!string.IsNullOrEmpty(request.GroupName))
+            if (request.TryGetPatchedProperty(nameof(request.GroupName), group.GroupName, out string? groupName))
             {
-                changes.Add(("GroupName", group.GroupName, request.GroupName));
-                group.GroupName = request.GroupName;
+                if (string.IsNullOrWhiteSpace(groupName))
+                    throw new InvalidOperationException("groupName cannot be null or empty.");
+                changes.Add(("GroupName", group.GroupName, groupName));
+                group.GroupName = groupName;
             }
 
-            if (!string.IsNullOrEmpty(request.ExternalGroupId))
+            if (request.TryGetPatchedProperty(nameof(request.ExternalGroupId), group.ExternalGroupId, out string? externalGroupId))
             {
-                changes.Add(("ExternalGroupId", group.ExternalGroupId, request.ExternalGroupId));
-                group.ExternalGroupId = request.ExternalGroupId;
+                changes.Add(("ExternalGroupId", group.ExternalGroupId, externalGroupId));
+                group.ExternalGroupId = externalGroupId;
             }
 
             var rateLimitsChanged = false;
 
-            if (request.RateLimitRpm.HasValue && group.RateLimitRpm != request.RateLimitRpm)
+            if (request.TryGetPatchedProperty(nameof(request.RateLimitRpm), group.RateLimitRpm, out int? rateLimitRpm) &&
+                group.RateLimitRpm != rateLimitRpm)
             {
-                changes.Add(("RateLimitRpm", group.RateLimitRpm?.ToString(), request.RateLimitRpm.ToString()));
-                group.RateLimitRpm = request.RateLimitRpm;
+                changes.Add(("RateLimitRpm", group.RateLimitRpm?.ToString(), rateLimitRpm?.ToString()));
+                group.RateLimitRpm = rateLimitRpm;
                 rateLimitsChanged = true;
             }
 
-            if (request.RateLimitRpd.HasValue && group.RateLimitRpd != request.RateLimitRpd)
+            if (request.TryGetPatchedProperty(nameof(request.RateLimitRpd), group.RateLimitRpd, out int? rateLimitRpd) &&
+                group.RateLimitRpd != rateLimitRpd)
             {
-                changes.Add(("RateLimitRpd", group.RateLimitRpd?.ToString(), request.RateLimitRpd.ToString()));
-                group.RateLimitRpd = request.RateLimitRpd;
+                changes.Add(("RateLimitRpd", group.RateLimitRpd?.ToString(), rateLimitRpd?.ToString()));
+                group.RateLimitRpd = rateLimitRpd;
                 rateLimitsChanged = true;
             }
 
-            if (request.RateLimitTpm.HasValue && group.RateLimitTpm != request.RateLimitTpm)
+            if (request.TryGetPatchedProperty(nameof(request.RateLimitTpm), group.RateLimitTpm, out int? rateLimitTpm) &&
+                group.RateLimitTpm != rateLimitTpm)
             {
-                changes.Add(("RateLimitTpm", group.RateLimitTpm?.ToString(), request.RateLimitTpm.ToString()));
-                group.RateLimitTpm = request.RateLimitTpm;
+                changes.Add(("RateLimitTpm", group.RateLimitTpm?.ToString(), rateLimitTpm?.ToString()));
+                group.RateLimitTpm = rateLimitTpm;
                 rateLimitsChanged = true;
             }
 
-            if (request.MaxParallelRequests.HasValue && group.MaxParallelRequests != request.MaxParallelRequests)
+            if (request.TryGetPatchedProperty(nameof(request.MaxParallelRequests), group.MaxParallelRequests, out int? maxParallelRequests) &&
+                group.MaxParallelRequests != maxParallelRequests)
             {
-                changes.Add(("MaxParallelRequests", group.MaxParallelRequests?.ToString(), request.MaxParallelRequests.ToString()));
-                group.MaxParallelRequests = request.MaxParallelRequests;
+                changes.Add(("MaxParallelRequests", group.MaxParallelRequests?.ToString(), maxParallelRequests?.ToString()));
+                group.MaxParallelRequests = maxParallelRequests;
                 rateLimitsChanged = true;
             }
 

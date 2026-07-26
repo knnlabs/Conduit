@@ -46,7 +46,7 @@ namespace ConduitLLM.Admin.Endpoints
             group.MapGet("/", ([FromServices] ProviderToolsEndpoints e, ProviderType? provider = null, bool? isActive = null) => e.GetProviderTools(provider, isActive)).WithName("ProviderTools_GetAll").Produces<IEnumerable<ProviderToolDto>>();
             group.MapGet("/{id}", ([FromServices] ProviderToolsEndpoints e, int id) => e.GetProviderTool(id)).WithName("ProviderTools_GetById").Produces<ProviderToolDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/", ([FromServices] ProviderToolsEndpoints e, CreateProviderToolDto dto) => e.CreateProviderTool(dto)).WithName("ProviderTools_Create").Produces<ProviderToolDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-            group.MapPatch("/{id}", ([FromServices] ProviderToolsEndpoints e, int id, UpdateProviderToolDto dto) => e.UpdateProviderTool(id, dto)).WithName("ProviderTools_Update").Produces<ProviderToolDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            group.MapPatch("/{id}", ([FromServices] ProviderToolsEndpoints e, int id, JsonMergePatch<UpdateProviderToolDto> patch) => e.UpdateProviderTool(id, patch.Value)).AcceptsJsonMergePatch<UpdateProviderToolDto>().WithName("ProviderTools_Update").Produces<ProviderToolDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
             group.MapDelete("/{id}", ([FromServices] ProviderToolsEndpoints e, int id) => e.DeleteProviderTool(id)).WithName("ProviderTools_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
             group.MapGet("/providers", ([FromServices] ProviderToolsEndpoints e) => e.GetToolProviders()).WithName("ProviderTools_GetProviders").Produces<IEnumerable<ToolProviderDto>>();
             group.MapGet("/billing-units", ([FromServices] ProviderToolsEndpoints e) => e.GetBillingUnits()).WithName("ProviderTools_GetBillingUnits").Produces<IEnumerable<string>>();
@@ -152,20 +152,56 @@ namespace ConduitLLM.Admin.Endpoints
         /// <returns>Updated provider tool</returns>
         public async Task<IResult> UpdateProviderTool(int id, UpdateProviderToolDto dto)
         {
-            // Validate billing unit
-            ValidateBillingUnit(dto.BillingUnit);
-
             var tool = await _context.ProviderTools.FindAsync(id);
             if (tool == null)
             {
                 throw new KeyNotFoundException($"Provider tool with ID '{id}' not found");
             }
 
-            tool.IsActive = dto.IsActive;
-            tool.ToolParameters = dto.ToolParameters;
-            tool.CostPerUnit = dto.CostPerUnit;
-            tool.BillingUnit = dto.BillingUnit;
-            tool.CostDescription = dto.CostDescription;
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.IsActive),
+                    tool.IsActive,
+                    out var isActive))
+            {
+                tool.IsActive = isActive;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.ToolParameters),
+                    tool.ToolParameters,
+                    out string? toolParameters))
+            {
+                tool.ToolParameters = toolParameters;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.CostPerUnit),
+                    tool.CostPerUnit,
+                    out decimal? costPerUnit))
+            {
+                tool.CostPerUnit = costPerUnit;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.BillingUnit),
+                    tool.BillingUnit,
+                    out string? billingUnit))
+            {
+                if (billingUnit is not null)
+                {
+                    ValidateBillingUnit(billingUnit);
+                }
+                tool.BillingUnit = billingUnit;
+            }
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    dto,
+                    nameof(dto.CostDescription),
+                    tool.CostDescription,
+                    out string? costDescription))
+            {
+                tool.CostDescription = costDescription;
+            }
             tool.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

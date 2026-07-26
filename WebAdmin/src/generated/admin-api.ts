@@ -7058,8 +7058,8 @@ export interface components {
       keyName?: null | string;
       apiKey?: null | string;
       baseUrl?: null | string;
-      /** @description Secret-valued structured settings to replace wholesale. Null leaves the stored values
-       *     untouched (PATCH semantics); a supplied map replaces them. */
+      /** @description Secret-valued structured settings. Object members merge recursively; null removes the
+       *     entire settings object or an individual member at that member's path. */
       secretSettings?: null | {
         [key: string]: string;
       };
@@ -7147,7 +7147,7 @@ export interface components {
       /**
        * Format: int32
        * @description Gets or sets the new model series ID.
-       *     The new series ID, or null to keep existing.
+       *     The new series ID.
        */
       modelSeriesId?: null | number;
       /** @description Replaces the model's accepted modalities when provided. */
@@ -7164,22 +7164,22 @@ export interface components {
        *     supplying empty arrays, which explicitly means no modalities are supported. */
       clearDirectionalCapabilities?: null | boolean;
       /** @description Gets or sets whether the model supports chat/conversation interactions.
-       *     True to enable chat support, false to disable, or null to keep existing. */
+       *     True to enable chat support or false to disable it. */
       supportsChat?: null | boolean;
       /** @description Gets or sets whether the model supports vision/image understanding.
-       *     True to enable vision support, false to disable, or null to keep existing. */
+       *     True to enable vision support or false to disable it. */
       supportsVision?: null | boolean;
       /** @description Gets or sets whether the model supports function/tool calling.
-       *     True to enable function calling, false to disable, or null to keep existing. */
+       *     True to enable function calling or false to disable it. */
       supportsFunctionCalling?: null | boolean;
       /** @description Gets or sets whether the model supports streaming responses.
-       *     True to enable streaming, false to disable, or null to keep existing. */
+       *     True to enable streaming or false to disable it. */
       supportsStreaming?: null | boolean;
       /** @description Gets or sets whether the model supports image generation.
-       *     True to enable image generation, false to disable, or null to keep existing. */
+       *     True to enable image generation or false to disable it. */
       supportsImageGeneration?: null | boolean;
       /** @description Gets or sets whether the model supports video generation.
-       *     True to enable video generation, false to disable, or null to keep existing. */
+       *     True to enable video generation or false to disable it. */
       supportsVideoGeneration?: null | boolean;
       /** @description Whether the model supports speech-to-text transcription. */
       supportsSpeechToText?: null | boolean;
@@ -7188,22 +7188,22 @@ export interface components {
       /** @description Whether the model supports document reranking. */
       supportsRerank?: null | boolean;
       /** @description Gets or sets whether the model supports text embeddings generation.
-       *     True to enable embeddings, false to disable, or null to keep existing. */
+       *     True to enable embeddings or false to disable it. */
       supportsEmbeddings?: null | boolean;
       /**
        * Format: int32
        * @description Gets or sets the maximum number of input tokens the model can process.
-       *     The new max input tokens, or null to keep existing.
+       *     The new max input tokens, or null to clear the override.
        */
       maxInputTokens?: null | number;
       /**
        * Format: int32
        * @description Gets or sets the maximum number of output tokens the model can generate.
-       *     The new max output tokens, or null to keep existing.
+       *     The new max output tokens, or null to clear the override.
        */
       maxOutputTokens?: null | number;
       /** @description Gets or sets the new activation status for the model.
-       *     True to activate, false to deactivate, or null to keep existing status. */
+       *     True to activate or false to deactivate. */
       isActive?: null | boolean;
       /** @description Gets or sets the model-specific parameter configuration for UI generation.
        *     JSON string containing parameter definitions, or null to use series defaults. */
@@ -7280,11 +7280,11 @@ export interface components {
        *     The unique identifier of the series to update. */
       name?: null | string;
       /** @description Gets or sets the new description for the series.
-       *     The new description, or null to keep existing. */
+       *     The new description, or null to clear it. */
       description?: null | string;
       tokenizerType?: null | components["schemas"]["TokenizerType"];
       /** @description Gets or sets the new UI parameters configuration.
-       *     The new parameters JSON string, or null to keep existing. */
+       *     The parameter object to merge, or null to clear it. */
       parameters?: {
         [key: string]: unknown;
       };
@@ -7923,7 +7923,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateModelAuthorDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateModelAuthorDto"];
       };
     };
     responses: {
@@ -8257,7 +8257,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateModelSeriesDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateModelSeriesDto"];
       };
     };
     responses: {
@@ -8630,18 +8630,20 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateNotificationDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateNotificationDto"];
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["NotificationDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -9947,7 +9949,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateFunctionCostDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateFunctionCostDto"];
       };
     };
     responses: {
@@ -10338,7 +10340,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateFunctionCredentialRequest"];
+        "application/merge-patch+json": components["schemas"]["UpdateFunctionCredentialRequest"];
       };
     };
     responses: {
@@ -11391,18 +11393,20 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateGlobalSettingDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateGlobalSettingDto"];
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["GlobalSettingDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -12962,7 +12966,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateProviderRequest"];
+        "application/merge-patch+json": components["schemas"]["UpdateProviderRequest"];
       };
     };
     responses: {
@@ -13240,7 +13244,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateKeyRequest"];
+        "application/merge-patch+json": components["schemas"]["UpdateKeyRequest"];
       };
     };
     responses: {
@@ -13750,7 +13754,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateModelDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateModelDto"];
       };
     };
     responses: {
@@ -14180,7 +14184,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateModelIdentifierDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateModelIdentifierDto"];
       };
     };
     responses: {
@@ -14433,7 +14437,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateModelProviderMappingDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateModelProviderMappingDto"];
       };
     };
     responses: {
@@ -14698,18 +14702,20 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateVirtualKeyGroupRequestDto"];
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["VirtualKeyGroupDto"];
+        };
       };
       /** @description Not Found */
       404: {
@@ -15331,18 +15337,20 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateVirtualKeyRequestDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateVirtualKeyRequestDto"];
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["VirtualKeyDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -16205,18 +16213,20 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateIpFilterDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateIpFilterDto"];
       };
     };
     responses: {
-      /** @description No Content */
-      204: {
+      /** @description OK */
+      200: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["IpFilterDto"];
+        };
       };
       /** @description Bad Request */
       400: {
@@ -17635,7 +17645,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateFunctionConfigurationRequest"];
+        "application/merge-patch+json": components["schemas"]["UpdateFunctionConfigurationRequest"];
       };
     };
     responses: {
@@ -18308,7 +18318,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
+        "application/merge-patch+json": components["schemas"]["UpdateMediaRetentionPolicyRequest"];
       };
     };
     responses: {
@@ -18689,7 +18699,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateProviderToolDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateProviderToolDto"];
       };
     };
     responses: {
@@ -19529,7 +19539,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateModelProviderMappingDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateModelProviderMappingDto"];
       };
     };
     responses: {
@@ -20068,7 +20078,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["UpdateModelCostDto"];
+        "application/merge-patch+json": components["schemas"]["UpdateModelCostDto"];
       };
     };
     responses: {

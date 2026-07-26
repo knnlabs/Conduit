@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
@@ -297,72 +298,102 @@ namespace ConduitLLM.Admin.Services
                     return null;
                 }
 
-                var effectivePricingModel = modelCost.PricingModel ?? existingModelCost.PricingModel;
-                var effectivePricingConfiguration = modelCost.PricingConfiguration is null
-                    ? existingModelCost.PricingConfiguration
-                    : StructuredJson.SerializeObject(modelCost.PricingConfiguration);
+                JsonMergePatchState.TryGetPatchedProperty(
+                    modelCost,
+                    nameof(modelCost.PricingModel),
+                    existingModelCost.PricingModel,
+                    out var effectivePricingModel);
+                JsonMergePatchState.TryGetPatchedProperty(
+                    modelCost,
+                    nameof(modelCost.PricingConfiguration),
+                    StructuredJson.ParseObject(existingModelCost.PricingConfiguration),
+                    out Dictionary<string, System.Text.Json.JsonElement>? effectivePricingConfigurationObject);
+                var effectivePricingConfiguration =
+                    StructuredJson.SerializeObject(effectivePricingConfigurationObject);
                 ModelPricingConfigurationValidator.Validate(
                     effectivePricingModel,
                     effectivePricingConfiguration);
 
                 // Check if the cost name is being changed and a model cost with the new name already exists
-                if (modelCost.CostName is not null &&
-                    existingModelCost.CostName != modelCost.CostName)
+                JsonMergePatchState.TryGetPatchedProperty(
+                    modelCost,
+                    nameof(modelCost.CostName),
+                    existingModelCost.CostName,
+                    out var effectiveCostName);
+                if (string.IsNullOrWhiteSpace(effectiveCostName))
                 {
-                    var nameExists = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
+                    throw new InvalidOperationException("costName cannot be null or empty.");
+                }
+                JsonMergePatchState.TryGetPatchedProperty(
+                    modelCost,
+                    nameof(modelCost.ModelType),
+                    existingModelCost.ModelType,
+                    out var effectiveModelType);
+                if (string.IsNullOrWhiteSpace(effectiveModelType))
+                {
+                    throw new InvalidOperationException("modelType cannot be null or empty.");
+                }
+                if (existingModelCost.CostName != effectiveCostName)
+                {
+                    var nameExists = await _modelCostRepository.GetByCostNameAsync(effectiveCostName);
                     if (nameExists != null && nameExists.Id != id)
                     {
-                        throw new InvalidOperationException($"Another model cost with name '{modelCost.CostName}' already exists");
+                        throw new InvalidOperationException($"Another model cost with name '{effectiveCostName}' already exists");
                     }
                 }
 
-                // Track changes for event publishing (compare before UpdateFrom mutates the entity)
                 var changedProperties = new List<string>();
-                if (modelCost.CostName is not null && existingModelCost.CostName != modelCost.CostName)
-                    changedProperties.Add(nameof(modelCost.CostName));
-                if (modelCost.PricingModel.HasValue && existingModelCost.PricingModel != modelCost.PricingModel)
-                    changedProperties.Add(nameof(modelCost.PricingModel));
-                if (modelCost.PricingConfiguration is not null &&
-                    existingModelCost.PricingConfiguration != effectivePricingConfiguration)
-                    changedProperties.Add(nameof(modelCost.PricingConfiguration));
-                if (modelCost.ModelType is not null && existingModelCost.ModelType != modelCost.ModelType)
-                    changedProperties.Add(nameof(modelCost.ModelType));
-                if (modelCost.IsActive.HasValue && existingModelCost.IsActive != modelCost.IsActive)
-                    changedProperties.Add(nameof(modelCost.IsActive));
-                if (modelCost.Priority.HasValue && existingModelCost.Priority != modelCost.Priority)
-                    changedProperties.Add(nameof(modelCost.Priority));
-                if (modelCost.Description is not null && existingModelCost.Description != modelCost.Description)
-                    changedProperties.Add(nameof(modelCost.Description));
-                if (modelCost.InputCostPerMillionTokens.HasValue &&
-                    existingModelCost.InputCostPerMillionTokens != modelCost.InputCostPerMillionTokens)
-                    changedProperties.Add(nameof(modelCost.InputCostPerMillionTokens));
-                if (modelCost.OutputCostPerMillionTokens.HasValue &&
-                    existingModelCost.OutputCostPerMillionTokens != modelCost.OutputCostPerMillionTokens)
-                    changedProperties.Add(nameof(modelCost.OutputCostPerMillionTokens));
-                if (existingModelCost.EmbeddingCostPerMillionTokens != modelCost.EmbeddingCostPerMillionTokens)
-                    changedProperties.Add(nameof(modelCost.EmbeddingCostPerMillionTokens));
-                if (existingModelCost.BatchProcessingMultiplier != modelCost.BatchProcessingMultiplier)
-                    changedProperties.Add(nameof(modelCost.BatchProcessingMultiplier));
-                if (existingModelCost.SupportsBatchProcessing != modelCost.SupportsBatchProcessing)
-                    changedProperties.Add(nameof(modelCost.SupportsBatchProcessing));
-                if (existingModelCost.CachedInputCostPerMillionTokens != modelCost.CachedInputCostPerMillionTokens)
-                    changedProperties.Add(nameof(modelCost.CachedInputCostPerMillionTokens));
-                if (existingModelCost.CachedInputWriteCostPerMillionTokens != modelCost.CachedInputWriteCostPerMillionTokens)
-                    changedProperties.Add(nameof(modelCost.CachedInputWriteCostPerMillionTokens));
-                if (existingModelCost.CostPerSearchUnit != modelCost.CostPerSearchUnit)
-                    changedProperties.Add(nameof(modelCost.CostPerSearchUnit));
-
-                // Update entity
-                existingModelCost.UpdateFrom(modelCost);
+                ApplyPatch(modelCost, nameof(modelCost.CostName), existingModelCost.CostName,
+                    value => existingModelCost.CostName = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.PricingModel), existingModelCost.PricingModel,
+                    value => existingModelCost.PricingModel = value, changedProperties);
+                if (JsonMergePatchState.IsDefined(modelCost, nameof(modelCost.PricingConfiguration)))
+                {
+                    SetPatchedValue(
+                        nameof(modelCost.PricingConfiguration),
+                        existingModelCost.PricingConfiguration,
+                        effectivePricingConfiguration,
+                        value => existingModelCost.PricingConfiguration = value,
+                        changedProperties);
+                }
+                ApplyPatch(modelCost, nameof(modelCost.ModelType), existingModelCost.ModelType,
+                    value => existingModelCost.ModelType = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.IsActive), existingModelCost.IsActive,
+                    value => existingModelCost.IsActive = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.Priority), existingModelCost.Priority,
+                    value => existingModelCost.Priority = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.Description), existingModelCost.Description,
+                    value => existingModelCost.Description = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.InputCostPerMillionTokens), existingModelCost.InputCostPerMillionTokens,
+                    value => existingModelCost.InputCostPerMillionTokens = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.OutputCostPerMillionTokens), existingModelCost.OutputCostPerMillionTokens,
+                    value => existingModelCost.OutputCostPerMillionTokens = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.EmbeddingCostPerMillionTokens), existingModelCost.EmbeddingCostPerMillionTokens,
+                    value => existingModelCost.EmbeddingCostPerMillionTokens = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.BatchProcessingMultiplier), existingModelCost.BatchProcessingMultiplier,
+                    value => existingModelCost.BatchProcessingMultiplier = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.SupportsBatchProcessing), existingModelCost.SupportsBatchProcessing,
+                    value => existingModelCost.SupportsBatchProcessing = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.CachedInputCostPerMillionTokens), existingModelCost.CachedInputCostPerMillionTokens,
+                    value => existingModelCost.CachedInputCostPerMillionTokens = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.CachedInputWriteCostPerMillionTokens), existingModelCost.CachedInputWriteCostPerMillionTokens,
+                    value => existingModelCost.CachedInputWriteCostPerMillionTokens = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.CostPerSearchUnit), existingModelCost.CostPerSearchUnit,
+                    value => existingModelCost.CostPerSearchUnit = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.AudioCostPerMinute), existingModelCost.AudioCostPerMinute,
+                    value => existingModelCost.AudioCostPerMinute = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.AudioCostPerThousandCharacters), existingModelCost.AudioCostPerThousandCharacters,
+                    value => existingModelCost.AudioCostPerThousandCharacters = value, changedProperties);
+                existingModelCost.UpdatedAt = DateTime.UtcNow;
 
                 // Save changes
                 var result = await _modelCostRepository.UpdateAsync(existingModelCost);
 
-                // Update ModelProviderTypeAssociations only when the caller provided them.
-                // Null means "leave associations unchanged" (a GET→PUT round-trip does not carry
-                // association IDs); an explicit empty list clears all associations.
-                if (modelCost.ModelProviderTypeAssociationIds != null)
+                if (JsonMergePatchState.IsDefined(
+                        modelCost,
+                        nameof(modelCost.ModelProviderTypeAssociationIds)))
                 {
+                    var associationIds = modelCost.ModelProviderTypeAssociationIds ?? [];
                     using var dbContext = await _dbContextFactory.CreateDbContextAsync();
 
                     // Clear existing associations for this cost
@@ -377,7 +408,7 @@ namespace ConduitLLM.Admin.Services
 
                     // Set new associations
                     var newAssociations = await dbContext.ModelProviderTypeAssociations
-                        .Where(mpta => modelCost.ModelProviderTypeAssociationIds.Contains(mpta.Id))
+                        .Where(mpta => associationIds.Contains(mpta.Id))
                         .ToListAsync();
 
                     foreach (var association in newAssociations)
@@ -431,6 +462,37 @@ namespace ConduitLLM.Admin.Services
                 id);
                 throw;
             }
+        }
+
+        private static void ApplyPatch<T>(
+            UpdateModelCostDto request,
+            string propertyName,
+            T currentValue,
+            Action<T> setter,
+            List<string> changedProperties)
+        {
+            if (JsonMergePatchState.TryGetPatchedProperty(
+                    request,
+                    propertyName,
+                    currentValue,
+                    out T patchedValue))
+            {
+                SetPatchedValue(propertyName, currentValue, patchedValue, setter, changedProperties);
+            }
+        }
+
+        private static void SetPatchedValue<T>(
+            string propertyName,
+            T currentValue,
+            T patchedValue,
+            Action<T> setter,
+            List<string> changedProperties)
+        {
+            if (!EqualityComparer<T>.Default.Equals(currentValue, patchedValue))
+            {
+                changedProperties.Add(propertyName);
+            }
+            setter(patchedValue);
         }
 
     }

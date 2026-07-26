@@ -51,8 +51,9 @@ public class IpFilterEndpoints : AdminEndpointHandlerBase
         group.MapPost("/", ([FromServices] IpFilterEndpoints endpoints, CreateIpFilterDto filter) => endpoints.CreateFilter(filter))
             .WithName("IpFilter_Create").Produces<IpFilterDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden);
-        group.MapPatch("/{id}", ([FromServices] IpFilterEndpoints endpoints, int id, UpdateIpFilterDto filter) => endpoints.UpdateFilter(id, filter))
-            .WithName("IpFilter_Update").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status400BadRequest)
+        group.MapPatch("/{id}", ([FromServices] IpFilterEndpoints endpoints, int id, JsonMergePatch<UpdateIpFilterDto> patch) => endpoints.UpdateFilter(id, patch.Value))
+            .AcceptsJsonMergePatch<UpdateIpFilterDto>()
+            .WithName("IpFilter_Update").Produces<IpFilterDto>().Produces(StatusCodes.Status400BadRequest)
             .Produces(StatusCodes.Status401Unauthorized).Produces(StatusCodes.Status403Forbidden).Produces(StatusCodes.Status404NotFound);
         group.MapDelete("/{id}", ([FromServices] IpFilterEndpoints endpoints, int id) => endpoints.DeleteFilter(id))
             .WithName("IpFilter_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status401Unauthorized)

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Admin.Extensions;
@@ -9,6 +10,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.DTOs;
+using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Utilities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -57,7 +59,8 @@ public class FunctionConfigurationsEndpoints
             .WithName("FunctionConfigurations_GetByPurpose").Produces<List<FunctionConfigurationDto>>();
         group.MapPost("/", ([FromServices] FunctionConfigurationsEndpoints e, CreateFunctionConfigurationRequest request) => e.CreateConfiguration(request))
             .WithName("FunctionConfigurations_Create").Produces<FunctionConfigurationDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-        group.MapPatch("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id, UpdateFunctionConfigurationRequest request) => e.UpdateConfiguration(id, request))
+        group.MapPatch("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id, JsonMergePatch<UpdateFunctionConfigurationRequest> patch) => e.UpdateConfiguration(id, patch.Value))
+            .AcceptsJsonMergePatch<UpdateFunctionConfigurationRequest>()
             .WithName("FunctionConfigurations_Update").Produces<FunctionConfigurationDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
         group.MapDelete("/{id}", ([FromServices] FunctionConfigurationsEndpoints e, int id) => e.DeleteConfiguration(id))
             .WithName("FunctionConfigurations_Delete").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);
@@ -202,21 +205,61 @@ public class FunctionConfigurationsEndpoints
             return AdminResults.NotFoundEntity("FunctionConfiguration", id);
         }
 
-        // Detect changes for event publishing
-        bool isEnabledChanged = request.IsEnabled.HasValue && existing.IsEnabled != request.IsEnabled.Value;
-        bool cacheTtlChanged = request.CacheTtlMinutes.HasValue && existing.CacheTtlMinutes != request.CacheTtlMinutes;
         var changedProperties = new List<string>();
-        Apply(request.ConfigurationName, existing.ConfigurationName, value => existing.ConfigurationName = value, "ConfigurationName", changedProperties);
-        Apply(request.Purpose, existing.Purpose, value => existing.Purpose = value, "Purpose", changedProperties);
-        Apply(request.DefaultExecutionMode, existing.DefaultExecutionMode, value => existing.DefaultExecutionMode = value, "DefaultExecutionMode", changedProperties);
-        Apply(request.BaseUrl, existing.BaseUrl, value => existing.BaseUrl = value, "BaseUrl", changedProperties);
-        Apply(request.IsEnabled, existing.IsEnabled, value => existing.IsEnabled = value, "IsEnabled", changedProperties);
-        Apply(request.CacheTtlMinutes, existing.CacheTtlMinutes, value => existing.CacheTtlMinutes = value, "CacheTtlMinutes", changedProperties);
-        Apply(request.TimeoutSeconds, existing.TimeoutSeconds, value => existing.TimeoutSeconds = value, "TimeoutSeconds", changedProperties);
-        Apply(request.MaxRetries, existing.MaxRetries, value => existing.MaxRetries = value, "MaxRetries", changedProperties);
-        Apply(StructuredJson.SerializeObject(request.ProviderSettings), existing.ProviderSettings, value => existing.ProviderSettings = value, "ProviderSettings", changedProperties);
-        Apply(StructuredJson.SerializeObject(request.ParameterSchema), existing.ParameterSchema, value => existing.ParameterSchema = value, "ParameterSchema", changedProperties);
-        Apply(request.Description, existing.Description, value => existing.Description = value, "Description", changedProperties);
+        var isEnabledChanged = false;
+        var cacheTtlChanged = false;
+
+        if (request.TryGetPatchedProperty(nameof(request.ConfigurationName), existing.ConfigurationName, out string? configurationName))
+        {
+            configurationName = configurationName ?? throw new InvalidOperationException("configurationName cannot be null.");
+            SetIfChanged(configurationName, existing.ConfigurationName, value => existing.ConfigurationName = value, nameof(existing.ConfigurationName), changedProperties);
+        }
+        if (request.TryGetPatchedProperty(nameof(request.Purpose), existing.Purpose, out FunctionPurpose purpose))
+            SetIfChanged(purpose, existing.Purpose, value => existing.Purpose = value, nameof(existing.Purpose), changedProperties);
+        if (request.TryGetPatchedProperty(nameof(request.DefaultExecutionMode), existing.DefaultExecutionMode, out ExecutionMode executionMode))
+            SetIfChanged(executionMode, existing.DefaultExecutionMode, value => existing.DefaultExecutionMode = value, nameof(existing.DefaultExecutionMode), changedProperties);
+        if (request.TryGetPatchedProperty(nameof(request.BaseUrl), existing.BaseUrl, out string? baseUrl))
+            SetIfChanged(baseUrl, existing.BaseUrl, value => existing.BaseUrl = value, nameof(existing.BaseUrl), changedProperties);
+        if (request.TryGetPatchedProperty(nameof(request.IsEnabled), existing.IsEnabled, out bool isEnabled))
+        {
+            isEnabledChanged = existing.IsEnabled != isEnabled;
+            SetIfChanged(isEnabled, existing.IsEnabled, value => existing.IsEnabled = value, nameof(existing.IsEnabled), changedProperties);
+        }
+        if (request.TryGetPatchedProperty(nameof(request.CacheTtlMinutes), existing.CacheTtlMinutes, out int? cacheTtl))
+        {
+            cacheTtlChanged = existing.CacheTtlMinutes != cacheTtl;
+            SetIfChanged(cacheTtl, existing.CacheTtlMinutes, value => existing.CacheTtlMinutes = value, nameof(existing.CacheTtlMinutes), changedProperties);
+        }
+        if (request.TryGetPatchedProperty(nameof(request.TimeoutSeconds), existing.TimeoutSeconds, out int? timeout))
+            SetIfChanged(timeout, existing.TimeoutSeconds, value => existing.TimeoutSeconds = value, nameof(existing.TimeoutSeconds), changedProperties);
+        if (request.TryGetPatchedProperty(nameof(request.MaxRetries), existing.MaxRetries, out int? maxRetries))
+            SetIfChanged(maxRetries, existing.MaxRetries, value => existing.MaxRetries = value, nameof(existing.MaxRetries), changedProperties);
+        if (request.TryGetPatchedProperty(
+                nameof(request.ProviderSettings),
+                StructuredJson.ParseObject(existing.ProviderSettings),
+                out Dictionary<string, JsonElement>? providerSettings))
+        {
+            SetIfChanged(
+                StructuredJson.SerializeObject(providerSettings),
+                existing.ProviderSettings,
+                value => existing.ProviderSettings = value,
+                nameof(existing.ProviderSettings),
+                changedProperties);
+        }
+        if (request.TryGetPatchedProperty(
+                nameof(request.ParameterSchema),
+                StructuredJson.ParseObject(existing.ParameterSchema),
+                out Dictionary<string, JsonElement>? parameterSchema))
+        {
+            SetIfChanged(
+                StructuredJson.SerializeObject(parameterSchema),
+                existing.ParameterSchema,
+                value => existing.ParameterSchema = value,
+                nameof(existing.ParameterSchema),
+                changedProperties);
+        }
+        if (request.TryGetPatchedProperty(nameof(request.Description), existing.Description, out string? description))
+            SetIfChanged(description, existing.Description, value => existing.Description = value, nameof(existing.Description), changedProperties);
         existing.UpdatedAt = DateTime.UtcNow;
 
         await _configurationRepository.UpdateAsync(existing);
@@ -311,44 +354,14 @@ public class FunctionConfigurationsEndpoints
         UpdatedAt = configuration.UpdatedAt
     };
 
-    private static void Apply<T>(
-        T? requested,
+    private static void SetIfChanged<T>(
+        T requested,
         T current,
         Action<T> setter,
         string property,
         ICollection<string> changed)
-        where T : struct
     {
-        if (requested.HasValue && !EqualityComparer<T>.Default.Equals(requested.Value, current))
-        {
-            setter(requested.Value);
-            changed.Add(property);
-        }
-    }
-
-    private static void Apply<T>(
-        T? requested,
-        T? current,
-        Action<T?> setter,
-        string property,
-        ICollection<string> changed)
-        where T : struct
-    {
-        if (requested.HasValue && !EqualityComparer<T?>.Default.Equals(requested, current))
-        {
-            setter(requested);
-            changed.Add(property);
-        }
-    }
-
-    private static void Apply(
-        string? requested,
-        string? current,
-        Action<string> setter,
-        string property,
-        ICollection<string> changed)
-    {
-        if (requested is not null && !string.Equals(requested, current, StringComparison.Ordinal))
+        if (!EqualityComparer<T>.Default.Equals(requested, current))
         {
             setter(requested);
             changed.Add(property);

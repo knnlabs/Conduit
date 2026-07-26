@@ -46,7 +46,7 @@ namespace ConduitLLM.Admin.Endpoints
             group.MapGet("", ([FromServices] MediaRetentionEndpoints e) => e.GetPolicies()).WithName("MediaRetention_GetPolicies").Produces<List<MediaRetentionPolicyDto>>();
             group.MapGet("/{id}", ([FromServices] MediaRetentionEndpoints e, int id) => e.GetPolicy(id)).WithName("MediaRetention_GetPolicy").Produces<MediaRetentionPolicyDetailDto>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("", ([FromServices] MediaRetentionEndpoints e, CreateMediaRetentionPolicyRequest request) => e.CreatePolicy(request)).WithName("MediaRetention_CreatePolicy").Produces<MediaRetentionPolicyDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest);
-            group.MapPatch("/{id}", ([FromServices] MediaRetentionEndpoints e, int id, UpdateMediaRetentionPolicyRequest request) => e.UpdatePolicy(id, request)).WithName("MediaRetention_UpdatePolicy").Produces<MediaRetentionPolicyDto>().Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status400BadRequest);
+            group.MapPatch("/{id}", ([FromServices] MediaRetentionEndpoints e, int id, JsonMergePatch<UpdateMediaRetentionPolicyRequest> patch) => e.UpdatePolicy(id, patch.Value)).AcceptsJsonMergePatch<UpdateMediaRetentionPolicyRequest>().WithName("MediaRetention_UpdatePolicy").Produces<MediaRetentionPolicyDto>().Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status400BadRequest);
             group.MapDelete("/{id}", ([FromServices] MediaRetentionEndpoints e, int id) => e.DeletePolicy(id)).WithName("MediaRetention_DeletePolicy").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status400BadRequest);
             group.MapPost("/{policyId}/group-assignments/{groupId}", ([FromServices] MediaRetentionEndpoints e, int groupId, int policyId) => e.AssignPolicyToGroup(groupId, policyId)).WithName("MediaRetention_AssignPolicyToGroup").Produces<MessageResponse>().Produces(StatusCodes.Status404NotFound);
             group.MapPost("/{id}/set-default", ([FromServices] MediaRetentionEndpoints e, int id) => e.SetDefaultPolicy(id)).WithName("MediaRetention_SetDefaultPolicy").Produces<MessageResponse>().Produces(StatusCodes.Status404NotFound);
@@ -220,7 +220,9 @@ namespace ConduitLLM.Admin.Endpoints
                 return AdminResults.NotFoundEntity("Retention policy", id);
             }
 
-            if (request.IsDefault == true && !policy.IsDefault)
+            var isDefaultDefined = request.TryGetPatchedProperty(
+                nameof(request.IsDefault), policy.IsDefault, out bool isDefault);
+            if (isDefaultDefined && isDefault && !policy.IsDefault)
             {
                 // Ensure only one default policy exists
                 var existingDefault = await _context.MediaRetentionPolicies
@@ -232,22 +234,42 @@ namespace ConduitLLM.Admin.Endpoints
             }
 
             // Update fields
-            policy.Name = request.Name ?? policy.Name;
-            policy.Description = request.Description ?? policy.Description;
-            policy.PositiveBalanceRetentionDays = request.PositiveBalanceRetentionDays ?? policy.PositiveBalanceRetentionDays;
-            policy.ZeroBalanceRetentionDays = request.ZeroBalanceRetentionDays ?? policy.ZeroBalanceRetentionDays;
-            policy.NegativeBalanceRetentionDays = request.NegativeBalanceRetentionDays ?? policy.NegativeBalanceRetentionDays;
-            policy.SoftDeleteGracePeriodDays = request.SoftDeleteGracePeriodDays ?? policy.SoftDeleteGracePeriodDays;
-            policy.RespectRecentAccess = request.RespectRecentAccess ?? policy.RespectRecentAccess;
-            policy.RecentAccessWindowDays = request.RecentAccessWindowDays ?? policy.RecentAccessWindowDays;
-            policy.IsDefault = request.IsDefault ?? policy.IsDefault;
-            if (request.HasMaxStorageSizeBytes)
+            if (request.TryGetPatchedProperty(nameof(request.Name), policy.Name, out string? name))
+                policy.Name = name ?? throw new InvalidOperationException("name cannot be null.");
+            if (request.TryGetPatchedProperty(nameof(request.Description), policy.Description, out string? description))
+                policy.Description = description;
+            if (request.TryGetPatchedProperty(nameof(request.PositiveBalanceRetentionDays), policy.PositiveBalanceRetentionDays, out int positiveDays))
+                policy.PositiveBalanceRetentionDays = positiveDays;
+            if (request.TryGetPatchedProperty(nameof(request.ZeroBalanceRetentionDays), policy.ZeroBalanceRetentionDays, out int zeroDays))
+                policy.ZeroBalanceRetentionDays = zeroDays;
+            if (request.TryGetPatchedProperty(nameof(request.NegativeBalanceRetentionDays), policy.NegativeBalanceRetentionDays, out int negativeDays))
+                policy.NegativeBalanceRetentionDays = negativeDays;
+            if (request.TryGetPatchedProperty(nameof(request.SoftDeleteGracePeriodDays), policy.SoftDeleteGracePeriodDays, out int graceDays))
+                policy.SoftDeleteGracePeriodDays = graceDays;
+            if (request.TryGetPatchedProperty(nameof(request.RespectRecentAccess), policy.RespectRecentAccess, out bool respectRecentAccess))
+                policy.RespectRecentAccess = respectRecentAccess;
+            if (request.TryGetPatchedProperty(nameof(request.RecentAccessWindowDays), policy.RecentAccessWindowDays, out int recentAccessDays))
+                policy.RecentAccessWindowDays = recentAccessDays;
+            if (isDefaultDefined)
+                policy.IsDefault = isDefault;
+            if (request.TryGetPatchedProperty(
+                    nameof(request.MaxStorageSizeBytes),
+                    policy.MaxStorageSizeBytes,
+                    out long? maxStorageSizeBytes))
+                policy.MaxStorageSizeBytes = maxStorageSizeBytes;
+            else if (request.HasMaxStorageSizeBytes)
                 policy.MaxStorageSizeBytes = request.MaxStorageSizeBytes;
-            if (request.HasMaxFileCount)
+            if (request.TryGetPatchedProperty(
+                    nameof(request.MaxFileCount),
+                    policy.MaxFileCount,
+                    out int? maxFileCount))
+                policy.MaxFileCount = maxFileCount;
+            else if (request.HasMaxFileCount)
                 policy.MaxFileCount = request.MaxFileCount;
-            policy.QuotaExceededBehavior =
-                request.QuotaExceededBehavior ?? policy.QuotaExceededBehavior;
-            policy.IsActive = request.IsActive ?? policy.IsActive;
+            if (request.TryGetPatchedProperty(nameof(request.QuotaExceededBehavior), policy.QuotaExceededBehavior, out MediaQuotaExceededBehavior quotaBehavior))
+                policy.QuotaExceededBehavior = quotaBehavior;
+            if (request.TryGetPatchedProperty(nameof(request.IsActive), policy.IsActive, out bool isActive))
+                policy.IsActive = isActive;
             policy.UpdatedAt = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();

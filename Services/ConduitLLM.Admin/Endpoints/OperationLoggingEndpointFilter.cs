@@ -46,6 +46,7 @@ namespace ConduitLLM.Admin.Endpoints
         {
             if (request.Method != "GET" ||
                 request.Path.Equals("/v1/admin/provider-errors/recent", StringComparison.OrdinalIgnoreCase) ||
+                request.Path.Equals("/v1/admin/providers/settings-schema", StringComparison.OrdinalIgnoreCase) ||
                 result is not IValueHttpResult { Value: IEnumerable values } ||
                 values is string or IDictionary ||
                 result is IStatusCodeHttpResult { StatusCode: not (null or StatusCodes.Status200OK) })

@@ -32,9 +32,8 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         /// <remarks>
         /// These are the IDs of ModelProviderTypeAssociation entities that should use this cost configuration.
-        /// Null (field absent from the request body) means "leave the existing associations unchanged" —
-        /// a GET→PUT round-trip does not carry association IDs and must not drop the cost→model links.
-        /// An explicit empty list clears all associations.
+        /// Omitting the member leaves associations unchanged. Null or an empty list clears all
+        /// associations; a supplied list replaces the association set.
         /// </remarks>
         public List<int>? ModelProviderTypeAssociationIds { get; set; }
 

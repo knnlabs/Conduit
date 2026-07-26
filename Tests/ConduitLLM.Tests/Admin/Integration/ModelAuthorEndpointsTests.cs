@@ -1,6 +1,8 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
@@ -250,7 +252,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.UpdateAsync(It.IsAny<ModelAuthor>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            var response = await _client.PatchAsJsonAsync("/v1/admin/model-authors/1",
+            var response = await PatchAsMergePatchAsync(_client, "/v1/admin/model-authors/1",
                 new UpdateModelAuthorDto { Description = "Updated" });
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -269,7 +271,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .Setup(r => r.GetByIdAsync(5, It.IsAny<CancellationToken>()))
                 .ReturnsAsync((ModelAuthor?)null);
 
-            var response = await _client.PatchAsJsonAsync("/v1/admin/model-authors/5",
+            var response = await PatchAsMergePatchAsync(_client, "/v1/admin/model-authors/5",
                 new UpdateModelAuthorDto { Name = "X" });
 
             response.StatusCode.Should().Be(HttpStatusCode.NotFound);
@@ -287,7 +289,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 .ReturnsAsync(true);
 
             // Same name → skips the name-conflict branch; only Description changes.
-            var response = await _client.PatchAsJsonAsync("/v1/admin/model-authors/8",
+            var response = await PatchAsMergePatchAsync(_client, "/v1/admin/model-authors/8",
                 new UpdateModelAuthorDto { Name = "Cohere", Description = "Enterprise LLMs" });
 
             response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -296,6 +298,48 @@ namespace ConduitLLM.Tests.Admin.Integration
             _repository.Verify(r => r.UpdateAsync(
                 It.Is<ModelAuthor>(a => a.Id == 8 && a.Description == "Enterprise LLMs"),
                 It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Update_WhenDescriptionIsNull_ClearsDescription()
+        {
+            _repository
+                .Setup(r => r.GetByIdAsync(9, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ModelAuthor
+                {
+                    Id = 9,
+                    Name = "Existing",
+                    Description = "Remove me"
+                });
+            _repository
+                .Setup(r => r.UpdateAsync(It.IsAny<ModelAuthor>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(true);
+
+            var response = await _client.PatchAsync(
+                "/v1/admin/model-authors/9",
+                MergePatchContent("""{"description":null}"""));
+
+            response.StatusCode.Should().Be(HttpStatusCode.OK);
+            _repository.Verify(r => r.UpdateAsync(
+                It.Is<ModelAuthor>(author => author.Description == null),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task Update_WhenRequiredNameIsNull_Returns400()
+        {
+            _repository
+                .Setup(r => r.GetByIdAsync(10, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new ModelAuthor { Id = 10, Name = "Existing" });
+
+            var response = await _client.PatchAsync(
+                "/v1/admin/model-authors/10",
+                MergePatchContent("""{"name":null}"""));
+
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+            _repository.Verify(r => r.UpdateAsync(
+                It.IsAny<ModelAuthor>(),
+                It.IsAny<CancellationToken>()), Times.Never);
         }
 
         // ---- Delete -------------------------------------------------------------------------
@@ -363,6 +407,25 @@ namespace ConduitLLM.Tests.Admin.Integration
 
             return null;
         }
+
+        private static async Task<HttpResponseMessage> PatchAsMergePatchAsync<T>(
+            HttpClient client,
+            string path,
+            T value)
+        {
+            using var content = JsonContent.Create(
+                value,
+                options: new JsonSerializerOptions(JsonSerializerDefaults.Web)
+                {
+                    DefaultIgnoreCondition =
+                        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+                });
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/merge-patch+json");
+            return await client.PatchAsync(path, content);
+        }
+
+        private static StringContent MergePatchContent(string json) =>
+            new(json, Encoding.UTF8, "application/merge-patch+json");
 
         public void Dispose()
         {

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -60,9 +61,10 @@ public sealed class ModelProviderMappingEndpointsTests
                 Priority = 3,
                 Weight = 1.8m,
                 IsEnabled = false,
-                ProviderOptions = new()
+                ProviderOptions = null
             };
-            var patch = await host.Client.PatchAsJsonAsync(
+            var patch = await PatchAsMergePatchAsync(
+                host.Client,
                 $"/v1/admin/model-provider-mappings/{created.Id}", update);
 
             Assert.Equal(HttpStatusCode.OK, patch.StatusCode);
@@ -78,7 +80,7 @@ public sealed class ModelProviderMappingEndpointsTests
             Assert.Equal(update.Priority, response.Priority);
             Assert.Equal(update.Weight, response.Weight);
             Assert.Equal(update.IsEnabled, response.IsEnabled);
-            Assert.Empty(response.ProviderOptions!);
+            Assert.Null(response.ProviderOptions);
 
             await using var verification = database.CreateContext();
             var persisted = await verification.ModelProviderMappings.AsNoTracking().SingleAsync();
@@ -86,7 +88,7 @@ public sealed class ModelProviderMappingEndpointsTests
             Assert.Equal(update.ProviderId, persisted.ProviderId);
             Assert.Equal(update.ModelProviderTypeAssociationId, persisted.ModelProviderTypeAssociationId);
             Assert.Equal(update.Weight, persisted.RoutingWeight);
-            Assert.Equal("{}", persisted.ProviderOptions);
+            Assert.Null(persisted.ProviderOptions);
             Assert.Equal(3, await verification.Providers.CountAsync());
             Assert.Equal(4, await verification.ModelProviderTypeAssociations.CountAsync());
         }
@@ -158,7 +160,8 @@ public sealed class ModelProviderMappingEndpointsTests
                     seed.GroqAssociationId));
             Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
 
-            var response = await host.Client.PatchAsJsonAsync(
+            var response = await PatchAsMergePatchAsync(
+                host.Client,
                 $"/v1/admin/model-provider-mappings/{first.Id}",
                 new UpdateModelProviderMappingDto
                 {
@@ -286,4 +289,14 @@ public sealed class ModelProviderMappingEndpointsTests
                 ? null
                 : JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(providerOptions)
         };
+
+    private static async Task<HttpResponseMessage> PatchAsMergePatchAsync<T>(
+        HttpClient client,
+        string path,
+        T value)
+    {
+        using var content = JsonContent.Create(value);
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/merge-patch+json");
+        return await client.PatchAsync(path, content);
+    }
 }

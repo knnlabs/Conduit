@@ -338,7 +338,7 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
       const requestInfo: RequestConfigInfo = {
         method: options.method ?? 'GET',
         url: fullUrl,
-        headers: this.adminBuildHeaders(options.headers),
+        headers: this.adminBuildHeaders(options.headers, options.method),
         data: options.body,
       };
 
@@ -495,9 +495,14 @@ export abstract class FetchBaseApiClient extends BaseApiClient {
   /**
    * Build headers including auth, defaults, and additional headers
    */
-  private adminBuildHeaders(additionalHeaders?: Record<string, string>): Record<string, string> {
+  private adminBuildHeaders(
+    additionalHeaders?: Record<string, string>,
+    method?: HttpMethod,
+  ): Record<string, string> {
     return {
-      [HTTP_HEADERS.CONTENT_TYPE]: CONTENT_TYPES.JSON,
+      [HTTP_HEADERS.CONTENT_TYPE]: method === HttpMethod.PATCH
+        ? CONTENT_TYPES.JSON_MERGE_PATCH
+        : CONTENT_TYPES.JSON,
       'X-Master-Key': this.masterKey,
       [HTTP_HEADERS.USER_AGENT]: CLIENT_INFO.USER_AGENT,
       ...(this as unknown as { defaultHeaders: Record<string, string> }).defaultHeaders,

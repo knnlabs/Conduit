@@ -1,3 +1,4 @@
+using System.Text.Json;
 using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
@@ -5,6 +6,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Entities;
+using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Utilities;
 
@@ -30,7 +32,7 @@ public static class FunctionCostsEndpoints
         group.MapPost("/", Create).WithName("FunctionCosts_Create")
             .Produces<FunctionCostDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPatch("/{id:int}", Update).WithName("FunctionCosts_Update")
+        group.MapPatch("/{id:int}", Update).AcceptsJsonMergePatch<UpdateFunctionCostDto>().WithName("FunctionCosts_Update")
             .Produces<FunctionCostDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapDelete("/{id:int}", Delete).WithName("FunctionCosts_Delete")
@@ -73,11 +75,12 @@ public static class FunctionCostsEndpoints
 
     private static async Task<IResult> Update(
         int id,
-        [FromBody] UpdateFunctionCostDto updateDto,
+        JsonMergePatch<UpdateFunctionCostDto> patch,
         [FromServices] IFunctionCostService service,
         HttpContext httpContext,
         ILoggerFactory loggerFactory)
     {
+        var updateDto = patch.Value;
         var existing = await service.GetCostByIdAsync(id) ?? throw new KeyNotFoundException();
         await service.UpdateCostAsync(MapToEntity(updateDto, existing));
         var updated = await service.GetCostByIdAsync(id);
@@ -138,17 +141,31 @@ public static class FunctionCostsEndpoints
 
     private static FunctionCost MapToEntity(UpdateFunctionCostDto dto, FunctionCost existing)
     {
-        if (dto.CostName is not null) existing.CostName = dto.CostName;
-        if (dto.Purpose.HasValue) existing.Purpose = dto.Purpose;
-        if (dto.Description is not null) existing.Description = dto.Description;
-        if (dto.BaseCost.HasValue) existing.BaseCost = dto.BaseCost;
-        if (dto.PricingModel.HasValue) existing.PricingModel = dto.PricingModel.Value;
-        if (dto.PricingConfiguration is not null)
-            existing.PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration);
-        if (dto.IsActive.HasValue) existing.IsActive = dto.IsActive.Value;
-        if (dto.Priority.HasValue) existing.Priority = dto.Priority.Value;
-        if (dto.EffectiveDate.HasValue) existing.EffectiveDate = dto.EffectiveDate.Value;
-        if (dto.ExpiryDate.HasValue) existing.ExpiryDate = dto.ExpiryDate;
+        if (dto.TryGetPatchedProperty(nameof(dto.CostName), existing.CostName, out string? costName))
+            existing.CostName = costName ?? throw new InvalidOperationException("costName cannot be null.");
+        if (dto.TryGetPatchedProperty(nameof(dto.Purpose), existing.Purpose, out FunctionPurpose? purpose))
+            existing.Purpose = purpose;
+        if (dto.TryGetPatchedProperty(nameof(dto.Description), existing.Description, out string? description))
+            existing.Description = description;
+        if (dto.TryGetPatchedProperty(nameof(dto.BaseCost), existing.BaseCost, out decimal? baseCost))
+            existing.BaseCost = baseCost;
+        if (dto.TryGetPatchedProperty(nameof(dto.PricingModel), existing.PricingModel, out FunctionPricingModel pricingModel))
+            existing.PricingModel = pricingModel;
+        if (dto.TryGetPatchedProperty(
+                nameof(dto.PricingConfiguration),
+                StructuredJson.ParseObject(existing.PricingConfiguration),
+                out Dictionary<string, JsonElement>? pricingConfiguration))
+        {
+            existing.PricingConfiguration = StructuredJson.SerializeObject(pricingConfiguration);
+        }
+        if (dto.TryGetPatchedProperty(nameof(dto.IsActive), existing.IsActive, out bool isActive))
+            existing.IsActive = isActive;
+        if (dto.TryGetPatchedProperty(nameof(dto.Priority), existing.Priority, out int priority))
+            existing.Priority = priority;
+        if (dto.TryGetPatchedProperty(nameof(dto.EffectiveDate), existing.EffectiveDate, out DateTime effectiveDate))
+            existing.EffectiveDate = effectiveDate;
+        if (dto.TryGetPatchedProperty(nameof(dto.ExpiryDate), existing.ExpiryDate, out DateTime? expiryDate))
+            existing.ExpiryDate = expiryDate;
         existing.UpdatedAt = DateTime.UtcNow;
         return existing;
     }

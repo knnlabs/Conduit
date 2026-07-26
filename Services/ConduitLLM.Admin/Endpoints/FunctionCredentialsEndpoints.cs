@@ -28,7 +28,7 @@ public static class FunctionCredentialsEndpoints
         group.MapPost("/", Create).WithName("FunctionCredentials_Create")
             .Produces<FunctionCredentialDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPatch("/{id:int}", Update).WithName("FunctionCredentials_Update")
+        group.MapPatch("/{id:int}", Update).AcceptsJsonMergePatch<UpdateFunctionCredentialRequest>().WithName("FunctionCredentials_Update")
             .Produces<FunctionCredentialDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapDelete("/{id:int}", Delete).WithName("FunctionCredentials_Delete")
@@ -88,20 +88,28 @@ public static class FunctionCredentialsEndpoints
 
     private static async Task<IResult> Update(
         int id,
-        [FromBody] UpdateFunctionCredentialRequest request,
+        JsonMergePatch<UpdateFunctionCredentialRequest> patch,
         [FromServices] IFunctionCredentialRepository repository,
         [FromServices] IFunctionCredentialProtector protector,
         HttpContext httpContext,
         ILoggerFactory loggerFactory)
     {
+        var request = patch.Value;
         var credential = await repository.GetByIdAsync(id) ?? throw new KeyNotFoundException();
-        if (request.ApiKey is not null) credential.ApiKey = request.ApiKey;
-        if (request.BaseUrl is not null) credential.BaseUrl = request.BaseUrl;
-        if (request.Organization is not null) credential.Organization = request.Organization;
-        if (request.FunctionAccountGroup.HasValue) credential.FunctionAccountGroup = request.FunctionAccountGroup.Value;
-        if (request.IsPrimary.HasValue) credential.IsPrimary = request.IsPrimary.Value;
-        if (request.IsEnabled.HasValue) credential.IsEnabled = request.IsEnabled.Value;
-        if (request.KeyName is not null) credential.KeyName = request.KeyName;
+        if (request.TryGetPatchedProperty(nameof(request.ApiKey), credential.ApiKey, out string? apiKey))
+            credential.ApiKey = apiKey;
+        if (request.TryGetPatchedProperty(nameof(request.BaseUrl), credential.BaseUrl, out string? baseUrl))
+            credential.BaseUrl = baseUrl;
+        if (request.TryGetPatchedProperty(nameof(request.Organization), credential.Organization, out string? organization))
+            credential.Organization = organization;
+        if (request.TryGetPatchedProperty(nameof(request.FunctionAccountGroup), credential.FunctionAccountGroup, out short accountGroup))
+            credential.FunctionAccountGroup = accountGroup;
+        if (request.TryGetPatchedProperty(nameof(request.IsPrimary), credential.IsPrimary, out bool isPrimary))
+            credential.IsPrimary = isPrimary;
+        if (request.TryGetPatchedProperty(nameof(request.IsEnabled), credential.IsEnabled, out bool isEnabled))
+            credential.IsEnabled = isEnabled;
+        if (request.TryGetPatchedProperty(nameof(request.KeyName), credential.KeyName, out string? keyName))
+            credential.KeyName = keyName;
         EncryptScopedSecret(credential, protector);
         await repository.UpdateAsync(credential);
         var updated = await repository.GetByIdAsync(id) ?? throw new KeyNotFoundException();

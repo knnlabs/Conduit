@@ -27,6 +27,7 @@ export type HttpHeader = (typeof HTTP_HEADERS)[keyof typeof HTTP_HEADERS];
  */
 export const CONTENT_TYPES = {
   JSON: "application/json",
+  JSON_MERGE_PATCH: "application/merge-patch+json",
   FORM_DATA: "multipart/form-data",
   FORM_URLENCODED: "application/x-www-form-urlencoded",
   TEXT_PLAIN: "text/plain",

@@ -26,8 +26,8 @@ public static class NotificationsEndpoints
         group.MapPost("/", Create).WithName("Notifications_Create")
             .Produces<NotificationDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPatch("/{id}", Update).WithName("Notifications_Update")
-            .Produces(StatusCodes.Status204NoContent)
+        group.MapPatch("/{id}", Update).AcceptsJsonMergePatch<UpdateNotificationDto>().WithName("Notifications_Update")
+            .Produces<NotificationDto>()
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPost("/{id}/read", MarkAsRead).WithName("Notifications_MarkAsRead")
@@ -63,11 +63,12 @@ public static class NotificationsEndpoints
     }
     private static async Task<IResult> Update(
         int id,
-        UpdateNotificationDto notification,
+        JsonMergePatch<UpdateNotificationDto> patch,
         [FromServices] IAdminNotificationService service,
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
+        var notification = patch.Value;
         if (!await service.UpdateNotificationAsync(id, notification)) throw new KeyNotFoundException();
         AdminAudit.Log(context, Logger(loggerFactory), "Updated", "Notification", id,
             notification.Message is null ? null : $"Message: {LoggingSanitizer.S(notification.Message)}");

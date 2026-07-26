@@ -294,7 +294,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateModelAuthorDto"
               }
@@ -917,7 +917,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateModelSeriesDto"
               }
@@ -1650,7 +1650,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateNotificationDto"
               }
@@ -1659,13 +1659,20 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content",
+          "200": {
+            "description": "OK",
             "headers": {
               "x-request-id": {
                 "description": "Request identifier for support and distributed tracing.",
                 "schema": {
                   "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationDto"
                 }
               }
             }
@@ -4002,7 +4009,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateFunctionCostDto"
               }
@@ -4723,7 +4730,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateFunctionCredentialRequest"
               }
@@ -6689,7 +6696,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateGlobalSettingDto"
               }
@@ -6698,13 +6705,20 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content",
+          "200": {
+            "description": "OK",
             "headers": {
               "x-request-id": {
                 "description": "Request identifier for support and distributed tracing.",
                 "schema": {
                   "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GlobalSettingDto"
                 }
               }
             }
@@ -9407,7 +9421,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateProviderRequest"
               }
@@ -9934,7 +9948,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateKeyRequest"
               }
@@ -10877,7 +10891,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateModelDto"
               }
@@ -11766,7 +11780,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateModelIdentifierDto"
               }
@@ -12250,7 +12264,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateModelProviderMappingDto"
               }
@@ -12664,7 +12678,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateVirtualKeyGroupRequestDto"
               }
@@ -12673,13 +12687,20 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content",
+          "200": {
+            "description": "OK",
             "headers": {
               "x-request-id": {
                 "description": "Request identifier for support and distributed tracing.",
                 "schema": {
                   "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualKeyGroupDto"
                 }
               }
             }
@@ -13826,7 +13847,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateVirtualKeyRequestDto"
               }
@@ -13835,13 +13856,20 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content",
+          "200": {
+            "description": "OK",
             "headers": {
               "x-request-id": {
                 "description": "Request identifier for support and distributed tracing.",
                 "schema": {
                   "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VirtualKeyDto"
                 }
               }
             }
@@ -15401,7 +15429,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateIpFilterDto"
               }
@@ -15410,13 +15438,20 @@
           "required": true
         },
         "responses": {
-          "204": {
-            "description": "No Content",
+          "200": {
+            "description": "OK",
             "headers": {
               "x-request-id": {
                 "description": "Request identifier for support and distributed tracing.",
                 "schema": {
                   "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IpFilterDto"
                 }
               }
             }
@@ -18253,7 +18288,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateFunctionConfigurationRequest"
               }
@@ -19538,7 +19573,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateMediaRetentionPolicyRequest"
               }
@@ -20243,7 +20278,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateProviderToolDto"
               }
@@ -21880,7 +21915,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateModelProviderMappingDto"
               }
@@ -22844,7 +22879,7 @@
         ],
         "requestBody": {
           "content": {
-            "application/json": {
+            "application/merge-patch+json": {
               "schema": {
                 "$ref": "#/components/schemas/UpdateModelCostDto"
               }
@@ -33490,7 +33525,7 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Secret-valued structured settings to replace wholesale. Null leaves the stored values\r\nuntouched (PATCH semantics); a supplied map replaces them."
+            "description": "Secret-valued structured settings. Object members merge recursively; null removes the\r\nentire settings object or an individual member at that member's path."
           },
           "isPrimary": {
             "type": [
@@ -33794,7 +33829,7 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the new model series ID.\nThe new series ID, or null to keep existing.",
+            "description": "Gets or sets the new model series ID.\nThe new series ID.",
             "format": "int32"
           },
           "inputModalities": {
@@ -33848,42 +33883,42 @@
               "null",
               "boolean"
             ],
-            "description": "Gets or sets whether the model supports chat/conversation interactions.\nTrue to enable chat support, false to disable, or null to keep existing."
+            "description": "Gets or sets whether the model supports chat/conversation interactions.\nTrue to enable chat support or false to disable it."
           },
           "supportsVision": {
             "type": [
               "null",
               "boolean"
             ],
-            "description": "Gets or sets whether the model supports vision/image understanding.\nTrue to enable vision support, false to disable, or null to keep existing."
+            "description": "Gets or sets whether the model supports vision/image understanding.\nTrue to enable vision support or false to disable it."
           },
           "supportsFunctionCalling": {
             "type": [
               "null",
               "boolean"
             ],
-            "description": "Gets or sets whether the model supports function/tool calling.\nTrue to enable function calling, false to disable, or null to keep existing."
+            "description": "Gets or sets whether the model supports function/tool calling.\nTrue to enable function calling or false to disable it."
           },
           "supportsStreaming": {
             "type": [
               "null",
               "boolean"
             ],
-            "description": "Gets or sets whether the model supports streaming responses.\nTrue to enable streaming, false to disable, or null to keep existing."
+            "description": "Gets or sets whether the model supports streaming responses.\nTrue to enable streaming or false to disable it."
           },
           "supportsImageGeneration": {
             "type": [
               "null",
               "boolean"
             ],
-            "description": "Gets or sets whether the model supports image generation.\nTrue to enable image generation, false to disable, or null to keep existing."
+            "description": "Gets or sets whether the model supports image generation.\nTrue to enable image generation or false to disable it."
           },
           "supportsVideoGeneration": {
             "type": [
               "null",
               "boolean"
             ],
-            "description": "Gets or sets whether the model supports video generation.\nTrue to enable video generation, false to disable, or null to keep existing."
+            "description": "Gets or sets whether the model supports video generation.\nTrue to enable video generation or false to disable it."
           },
           "supportsSpeechToText": {
             "type": [
@@ -33911,14 +33946,14 @@
               "null",
               "boolean"
             ],
-            "description": "Gets or sets whether the model supports text embeddings generation.\nTrue to enable embeddings, false to disable, or null to keep existing."
+            "description": "Gets or sets whether the model supports text embeddings generation.\nTrue to enable embeddings or false to disable it."
           },
           "maxInputTokens": {
             "type": [
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum number of input tokens the model can process.\nThe new max input tokens, or null to keep existing.",
+            "description": "Gets or sets the maximum number of input tokens the model can process.\nThe new max input tokens, or null to clear the override.",
             "format": "int32"
           },
           "maxOutputTokens": {
@@ -33926,7 +33961,7 @@
               "null",
               "integer"
             ],
-            "description": "Gets or sets the maximum number of output tokens the model can generate.\nThe new max output tokens, or null to keep existing.",
+            "description": "Gets or sets the maximum number of output tokens the model can generate.\nThe new max output tokens, or null to clear the override.",
             "format": "int32"
           },
           "isActive": {
@@ -33934,7 +33969,7 @@
               "null",
               "boolean"
             ],
-            "description": "Gets or sets the new activation status for the model.\nTrue to activate, false to deactivate, or null to keep existing status."
+            "description": "Gets or sets the new activation status for the model.\nTrue to activate or false to deactivate."
           },
           "modelParameters": {
             "type": "object",
@@ -34130,7 +34165,7 @@
               "null",
               "string"
             ],
-            "description": "Gets or sets the new description for the series.\nThe new description, or null to keep existing."
+            "description": "Gets or sets the new description for the series.\nThe new description, or null to clear it."
           },
           "tokenizerType": {
             "oneOf": [
@@ -34138,7 +34173,7 @@
                 "type": "null"
               },
               {
-                "description": "Gets or sets the new tokenizer type for the series.\nThe new tokenizer type, or null to keep existing.",
+                "description": "Gets or sets the new tokenizer type for the series.\nThe new tokenizer type.",
                 "$ref": "#/components/schemas/TokenizerType"
               }
             ]
@@ -34146,7 +34181,7 @@
           "parameters": {
             "type": "object",
             "additionalProperties": { },
-            "description": "Gets or sets the new UI parameters configuration.\nThe new parameters JSON string, or null to keep existing."
+            "description": "Gets or sets the new UI parameters configuration.\nThe parameter object to merge, or null to clear it."
           }
         },
         "description": "Data transfer object for updating an existing model series."

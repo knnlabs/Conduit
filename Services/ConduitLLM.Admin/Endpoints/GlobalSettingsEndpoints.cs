@@ -35,8 +35,8 @@ public static class GlobalSettingsEndpoints
         group.MapPost("/", Create).WithName("GlobalSettings_Create")
             .Produces<GlobalSettingDto>(StatusCodes.Status201Created)
             .Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
-        group.MapPatch("/{id:int}", Update).WithName("GlobalSettings_Update")
-            .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
+        group.MapPatch("/{id:int}", Update).AcceptsJsonMergePatch<UpdateGlobalSettingDto>().WithName("GlobalSettings_Update")
+            .Produces<GlobalSettingDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status404NotFound, "application/problem+json");
         group.MapPut("/by-key", UpdateByKey).WithName("GlobalSettings_UpdateByKey")
             .Produces(StatusCodes.Status204NoContent).Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
@@ -88,20 +88,21 @@ public static class GlobalSettingsEndpoints
 
     private static async Task<IResult> Update(
         int id,
-        [FromBody] UpdateGlobalSettingDto setting,
+        JsonMergePatch<UpdateGlobalSettingDto> patch,
         [FromServices] IAdminGlobalSettingService service,
         HttpContext context,
         ILoggerFactory loggerFactory)
     {
+        var setting = patch.Value;
         var preState = await service.GetSettingByIdAsync(id) ?? throw new KeyNotFoundException();
         if (!await service.UpdateSettingAsync(id, setting))
         {
             throw new KeyNotFoundException();
         }
         var changes = new List<(string Property, string? OldValue, string? NewValue)>();
-        if (setting.Value is not null && preState.Value != setting.Value)
+        if (setting.IsDefined(nameof(setting.Value)) && preState.Value != setting.Value)
             changes.Add(("Value", preState.Value, setting.Value));
-        if (setting.Description is not null && preState.Description != setting.Description)
+        if (setting.IsDefined(nameof(setting.Description)) && preState.Description != setting.Description)
             changes.Add(("Description", preState.Description, setting.Description));
         if (changes.Count > 0)
         {
