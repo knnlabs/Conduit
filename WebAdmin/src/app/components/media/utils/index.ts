@@ -1,15 +1,19 @@
+import { formatters } from '@/lib/utils/formatters';
+
 // Download utilities
 export {
   downloadMedia,
   createBlobFromBase64,
   createBlobFromUrl,
   triggerDownload,
-  formatFileSize,
   getMimeTypeFromFilename,
   validateUrl,
   getFileSizeFromUrl,
   getBase64Size
 } from './download';
+
+// File-size formatting comes straight from the canonical shared formatter.
+export const formatFileSize = formatters.fileSize;
 export type {
   MediaDownloadOptions,
   DownloadResult

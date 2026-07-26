@@ -18,6 +18,7 @@ import {
 import { IconCheck, IconCopy, IconInfoCircle } from '@tabler/icons-react';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
 import type { RequestLogEntry, RequestLogMetadata } from '@/hooks/useRequestLogs';
+import { formatCost, formatDuration, getHttpStatusColor } from './formatters';
 
 interface RequestLogDetailsDrawerProps {
   opened: boolean;
@@ -47,16 +48,6 @@ function parseMetadata(metadata: string | null): ParsedMetadata {
   return { value: null, malformed: true };
 }
 
-function formatCost(cost: number | null | undefined): string {
-  if (cost === null || cost === undefined) return '—';
-  if (cost === 0) return '$0.00';
-  return cost < 0.01 ? `$${cost.toFixed(6)}` : `$${cost.toFixed(4)}`;
-}
-
-function formatDuration(ms: number): string {
-  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`;
-}
-
 function formatBillingMethod(method: number | null): string {
   if (method === 1) return 'Provider-reported cost';
   if (method === 0) return 'Configured model cost';
@@ -69,13 +60,6 @@ function formatMetadataValue(value: unknown): string {
     return String(value);
   }
   return JSON.stringify(value) ?? 'Unknown';
-}
-
-function getStatusColor(statusCode: number | null): string {
-  if (statusCode === null) return 'gray';
-  if (statusCode >= 500) return 'red';
-  if (statusCode >= 400) return 'orange';
-  return 'green';
 }
 
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
@@ -160,7 +144,7 @@ export function RequestLogDetailsDrawer({
     log.cachedWriteTokens !== null ||
     log.cachedReadSavings !== 0 ||
     log.cacheWritePremium !== 0;
-  const statusColor = getStatusColor(log.statusCode);
+  const statusColor = getHttpStatusColor(log.statusCode);
 
   return (
     <Drawer

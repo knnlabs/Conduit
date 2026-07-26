@@ -21,7 +21,7 @@ export type SystemStatusType =
   | 'warning'
   | 'error';
 
-export interface StatusConfig {
+export interface SystemStatusConfig {
   type: SystemStatusType;
   color: string;
   label: string;
@@ -30,12 +30,12 @@ export interface StatusConfig {
   priority: 'low' | 'medium' | 'high' | 'critical';
 }
 
-type StatusIndicatorConfig = Omit<StatusConfig, 'icon' | 'priority'> &
-  Partial<Pick<StatusConfig, 'icon' | 'priority'>>;
+type StatusIndicatorConfig = Omit<SystemStatusConfig, 'icon' | 'priority'> &
+  Partial<Pick<SystemStatusConfig, 'icon' | 'priority'>>;
 
 const STATUS_CONFIGS: Record<
   SystemStatusType,
-  Pick<StatusConfig, 'icon' | 'priority' | 'description'>
+  Pick<SystemStatusConfig, 'icon' | 'priority' | 'description'>
 > = {
   healthy: {
     icon: 'check-circle',
@@ -114,7 +114,7 @@ const STATUS_CONFIGS: Record<
   },
 };
 
-function getStatusConfig(status: SystemStatusType): StatusConfig {
+function getStatusConfig(status: SystemStatusType): SystemStatusConfig {
   const baseConfig = badgeHelpers.getStatusConfig(status);
   const specificConfig = STATUS_CONFIGS[status];
 

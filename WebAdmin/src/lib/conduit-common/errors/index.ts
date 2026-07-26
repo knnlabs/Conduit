@@ -270,7 +270,11 @@ export function isConflictError(error: unknown): error is ConflictError {
 export function isInsufficientBalanceError(
   error: unknown,
 ): error is InsufficientBalanceError {
-  return error instanceof InsufficientBalanceError;
+  return (
+    error instanceof InsufficientBalanceError ||
+    (error instanceof ConduitError &&
+      (error.statusCode === 402 || error.code === "INSUFFICIENT_BALANCE"))
+  );
 }
 
 export function isRateLimitError(error: unknown): error is RateLimitError {

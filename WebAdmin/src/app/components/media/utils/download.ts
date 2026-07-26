@@ -2,8 +2,6 @@
  * Media download utilities for handling various media download scenarios
  */
 
-import { formatters } from '@/lib/utils/formatters';
-
 /**
  * Options for downloading media
  */
@@ -165,16 +163,6 @@ export function getMimeTypeFromFilename(filename: string): string {
   };
   
   return mimeTypes[extension ?? ''] ?? 'application/octet-stream';
-}
-
-/**
- * Formats file size in human-readable format
- * Delegates to the canonical shared formatter.
- * @param bytes - Size in bytes
- * @returns Formatted string
- */
-export function formatFileSize(bytes: number): string {
-  return formatters.fileSize(bytes);
 }
 
 /**

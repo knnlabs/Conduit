@@ -194,3 +194,5 @@ export const badgeHelpers = {
 // Standalone re-exports for convenient named imports
 export const getBalanceColor = badgeHelpers.getBalanceColor;
 export const getBalanceBadgeVariant = badgeHelpers.getBalanceBadgeVariant;
+export const getHealthColor = badgeHelpers.getHealthColor;
+export const getPercentageColor = badgeHelpers.getPercentageColor;

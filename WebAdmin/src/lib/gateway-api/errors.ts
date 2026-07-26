@@ -1,11 +1,13 @@
 import {
   AuthError,
   ConduitError,
+  InsufficientBalanceError,
   NetworkError,
   RateLimitError,
   ServerError,
   ValidationError,
   isAuthError,
+  isInsufficientBalanceError,
   isRateLimitError,
   isValidationError,
 } from "@/lib/conduit-common";
@@ -13,33 +15,16 @@ import {
 export {
   AuthError,
   ConduitError,
+  InsufficientBalanceError,
   NetworkError,
   RateLimitError,
   ServerError,
   ValidationError,
   isAuthError,
+  isInsufficientBalanceError,
   isRateLimitError,
   isValidationError,
 };
-
-export class InsufficientBalanceError extends ConduitError {
-  constructor(
-    message = "Insufficient balance",
-    context?: Record<string, unknown>,
-  ) {
-    super(message, 402, "INSUFFICIENT_BALANCE", context);
-  }
-}
-
-export function isInsufficientBalanceError(
-  error: unknown,
-): error is InsufficientBalanceError {
-  return (
-    error instanceof InsufficientBalanceError ||
-    (error instanceof ConduitError &&
-      (error.statusCode === 402 || error.code === "INSUFFICIENT_BALANCE"))
-  );
-}
 
 function extractMessage(payload: unknown, fallback: string): string {
   if (!payload || typeof payload !== "object") return fallback;
