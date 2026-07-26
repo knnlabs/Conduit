@@ -1,4 +1,3 @@
-using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Gateway.EventHandlers;
@@ -14,10 +13,10 @@ namespace ConduitLLM.Tests.Gateway.EventHandlers;
 [Trait("Component", "MediaLifecycle")]
 public sealed class MediaCleanupAlertHandlerTests
 {
-    private readonly Mock<IAlertManagementService> _alerts = new();
+    private readonly Mock<IOperationalAlertPublisher> _alerts = new();
 
     [Fact]
-    public async Task HandleAsync_OperationFailure_PublishesHealthAlert()
+    public async Task HandleAsync_OperationFailure_RaisesErrorAlert()
     {
         var handler = CreateHandler();
 
@@ -32,17 +31,18 @@ public sealed class MediaCleanupAlertHandlerTests
             },
             Mock.Of<IEventContext>());
 
-        _alerts.Verify(alerts => alerts.TriggerAlertAsync(
-            It.Is<HealthAlert>(alert =>
-                alert.Component == "media-cleanup" &&
-                alert.Severity == AlertSeverity.Error &&
-                alert.Type == AlertType.ServiceDegraded &&
-                alert.Context["cleanupType"].Equals("retention"))),
+        _alerts.Verify(alerts => alerts.Raise(
+                OperationalAlertSeverity.Error,
+                "media-cleanup",
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.Is<IReadOnlyDictionary<string, object>>(context =>
+                    context["cleanupType"].Equals("retention"))),
             Times.Once);
     }
 
     [Fact]
-    public async Task HandleAsync_ExhaustedBudget_PublishesCriticalHealthAlert()
+    public async Task HandleAsync_ExhaustedBudget_RaisesCriticalAlert()
     {
         var handler = CreateHandler();
 
@@ -58,12 +58,38 @@ public sealed class MediaCleanupAlertHandlerTests
             },
             Mock.Of<IEventContext>());
 
-        _alerts.Verify(alerts => alerts.TriggerAlertAsync(
-            It.Is<HealthAlert>(alert =>
-                alert.Component == "media-cleanup" &&
-                alert.Severity == AlertSeverity.Critical &&
-                alert.Type == AlertType.ResourceExhaustion &&
-                alert.Message.Contains("100%"))),
+        _alerts.Verify(alerts => alerts.Raise(
+                OperationalAlertSeverity.Critical,
+                "media-cleanup",
+                It.IsAny<string>(),
+                It.Is<string>(message => message.Contains("100%")),
+                It.IsAny<IReadOnlyDictionary<string, object>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_BudgetBelowLimit_RaisesWarningRatherThanCritical()
+    {
+        var handler = CreateHandler();
+
+        await handler.HandleAsync(
+            new MediaCleanupAlertRaised
+            {
+                Kind = MediaCleanupAlertKind.BudgetThreshold,
+                CleanupType = "purge",
+                Status = "Deletion budget threshold reached",
+                MonthlyDeleteCount = 400_000,
+                MonthlyDeleteBudget = 500_000,
+                BudgetUsedPercent = 80
+            },
+            Mock.Of<IEventContext>());
+
+        _alerts.Verify(alerts => alerts.Raise(
+                OperationalAlertSeverity.Warning,
+                "media-cleanup",
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<IReadOnlyDictionary<string, object>>()),
             Times.Once);
     }
 

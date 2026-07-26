@@ -23,15 +23,14 @@ namespace ConduitLLM.Gateway.Services
     /// <summary>
     /// Implementation of security service for Gateway API.
     /// Handles authentication-related state (failed-auth tracking, IP bans, IP filtering,
-    /// discovery-specific rate limits, security event monitoring). Virtual Key rate limits
-    /// are enforced by <see cref="ConduitLLM.Gateway.Middleware.VirtualKeyRateLimitMiddleware"/>.
+    /// discovery-specific rate limits). Virtual Key rate limits are enforced by
+    /// <see cref="ConduitLLM.Gateway.Middleware.VirtualKeyRateLimitMiddleware"/>.
     /// </summary>
     public partial class SecurityService : SecurityServiceBase, IGatewaySecurityService
     {
         private readonly GatewaySecurityOptions _options;
         private readonly IConfiguration _configuration;
         private readonly IServiceProvider _serviceProvider;
-        private readonly ISecurityEventMonitoringService? _securityEventMonitoring;
 
         /// <inheritdoc/>
         protected override string ServiceName => "core-api";
@@ -57,7 +56,6 @@ namespace ConduitLLM.Gateway.Services
             _options = options.Value;
             _configuration = configuration;
             _serviceProvider = serviceProvider;
-            _securityEventMonitoring = serviceProvider.GetService<ISecurityEventMonitoringService>();
         }
 
         /// <summary>
@@ -108,7 +106,6 @@ namespace ConduitLLM.Gateway.Services
             {
                 var attemptedKey = context.Items["AttemptedKey"] as string ?? "unknown";
                 await RecordFailedAuthAsync(clientIp, attemptedKey);
-                _securityEventMonitoring?.RecordAuthenticationFailure(clientIp, attemptedKey, path);
             }
 
             // Check if IP is banned
@@ -121,8 +118,6 @@ namespace ConduitLLM.Gateway.Services
             if (context.Items.ContainsKey("AuthSuccess") && context.Items["AuthSuccess"] is bool authSuccess && authSuccess)
             {
                 await ClearFailedAuthAttemptsAsync(clientIp);
-                var virtualKey = context.Items["VirtualKey"] as string ?? "";
-                _securityEventMonitoring?.RecordAuthenticationSuccess(clientIp, virtualKey, path);
             }
 
             // Check IP-based rate limiting
@@ -162,12 +157,6 @@ namespace ConduitLLM.Gateway.Services
             // the Redis-backed sliding-window IVirtualKeyRateLimitService.
 
             return SecurityCheckResult.Allowed();
-        }
-
-        /// <inheritdoc/>
-        protected override void OnIpBanned(string ipAddress, BannedIpInfo banInfo, int attempts)
-        {
-            _securityEventMonitoring?.RecordIpBan(ipAddress, banInfo.Reason, attempts);
         }
 
         /// <inheritdoc/>

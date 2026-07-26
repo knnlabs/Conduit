@@ -1,4 +1,3 @@
-using ConduitLLM.Security.Interfaces;
 using ConduitLLM.Security.Middleware;
 using ConduitLLM.Security.Models;
 using ISecurityService = ConduitLLM.Security.Interfaces.ISecurityService;
@@ -7,12 +6,10 @@ namespace ConduitLLM.Gateway.Middleware
 {
     /// <summary>
     /// Unified security middleware for Gateway API that handles IP filtering, rate limiting, and ban checks.
-    /// Inherits from SecurityMiddlewareBase and adds event monitoring functionality.
+    /// Inherits from SecurityMiddlewareBase and adds granular violation logging.
     /// </summary>
     public class SecurityMiddleware : SecurityMiddlewareBase
     {
-        private ISecurityEventMonitoringService? _securityEventMonitoring;
-
         /// <summary>
         /// Initializes a new instance of the SecurityMiddleware
         /// </summary>
@@ -24,14 +21,13 @@ namespace ConduitLLM.Gateway.Middleware
         /// <summary>
         /// Processes the HTTP request through security checks
         /// </summary>
-        public async Task InvokeAsync(HttpContext context, ISecurityService securityService, ISecurityEventMonitoringService? securityEventMonitoring = null)
+        public async Task InvokeAsync(HttpContext context, ISecurityService securityService)
         {
-            _securityEventMonitoring = securityEventMonitoring;
             await ProcessRequestAsync(context, ctx => securityService.IsRequestAllowedAsync(ctx));
         }
 
         /// <summary>
-        /// Logs granular security events and records them via the monitoring service.
+        /// Logs granular security events.
         /// </summary>
         protected override Task OnSecurityViolationAsync(HttpContext context, SecurityCheckResult result, string clientIp)
         {
@@ -61,24 +57,6 @@ namespace ConduitLLM.Gateway.Middleware
                         "Security event: Blocked ({StatusCode}) — {Method} {Path} from {ClientIp}. Reason: {Reason}",
                         result.StatusCode, method, path, clientIp, result.Reason);
                     break;
-            }
-
-            // Record to monitoring service if available
-            if (_securityEventMonitoring == null)
-                return Task.CompletedTask;
-
-            var endpoint = path;
-
-            if (result.Reason.Contains("rate limit", StringComparison.OrdinalIgnoreCase))
-            {
-                var limitType = result.Headers.ContainsKey("X-RateLimit-Scope")
-                    ? result.Headers["X-RateLimit-Scope"]
-                    : "general";
-                _securityEventMonitoring.RecordRateLimitViolation(clientIp, virtualKey, endpoint, limitType);
-            }
-            else if (!result.Reason.Contains("banned", StringComparison.OrdinalIgnoreCase))
-            {
-                _securityEventMonitoring.RecordSuspiciousActivity(clientIp, "Access Denied", result.Reason);
             }
 
             return Task.CompletedTask;

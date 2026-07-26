@@ -172,21 +172,6 @@ public static class RedisKeys
 
     #endregion
 
-    #region Cache Statistics
-
-    /// <summary>
-    /// Keys for cache statistics storage (time-series, snapshots).
-    /// Used by RedisCacheStatisticsStore.
-    /// </summary>
-    public static class CacheStats
-    {
-        public static string Current(string region) => $"cache:stats:{region}:current";
-        public static string TimeSeries(string region, DateTime timestamp) => $"cache:stats:ts:{region}:{timestamp:yyyyMMddHHmm}";
-        public static string Snapshot(string region, DateTime timestamp) => $"cache:stats:snapshot:{region}:{timestamp:yyyyMMddHH}";
-    }
-
-    #endregion
-
     #region Spend Notifications
 
     /// <summary>

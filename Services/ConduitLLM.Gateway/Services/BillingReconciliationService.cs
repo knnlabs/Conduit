@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
 using ConduitLLM.Configuration;
-using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Options;
@@ -19,7 +18,7 @@ public sealed class BillingReconciliationService : BackgroundService
 {
     private const int CheckpointId = 1;
     private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-    private readonly IAlertManagementService _alertService;
+    private readonly IOperationalAlertPublisher _alertPublisher;
     private readonly BillingReconciliationOptions _options;
     private readonly ILogger<BillingReconciliationService> _logger;
 
@@ -40,12 +39,12 @@ public sealed class BillingReconciliationService : BackgroundService
 
     public BillingReconciliationService(
         IDbContextFactory<ConduitDbContext> dbContextFactory,
-        IAlertManagementService alertService,
+        IOperationalAlertPublisher alertPublisher,
         IOptions<BillingReconciliationOptions> options,
         ILogger<BillingReconciliationService> logger)
     {
         _dbContextFactory = dbContextFactory;
-        _alertService = alertService;
+        _alertPublisher = alertPublisher;
         _options = options.Value;
         _logger = logger;
     }
@@ -229,23 +228,19 @@ public sealed class BillingReconciliationService : BackgroundService
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            await _alertService.TriggerAlertAsync(new HealthAlert
-            {
-                Severity = AlertSeverity.Critical,
-                Type = AlertType.DataIntegrity,
-                Component = "BillingReconciliation",
-                Title = $"Billing mismatch for virtual-key group {groupId}",
-                Message = $"Window {start:O}: request logs ${request.RequestCost:F6}, ledger ${transaction.LedgerCost:F6}.",
-                Fingerprint = requestId,
-                Context = new Dictionary<string, object>
+            _alertPublisher.Raise(
+                severity: OperationalAlertSeverity.Critical,
+                component: "BillingReconciliation",
+                title: $"Billing mismatch for virtual-key group {groupId}",
+                message: $"Window {start:O}: request logs ${request.RequestCost:F6}, ledger ${transaction.LedgerCost:F6}.",
+                context: new Dictionary<string, object>
                 {
                     ["virtualKeyGroupId"] = groupId,
                     ["windowStartUtc"] = start,
                     ["windowEndUtc"] = end,
-                    ["comparisonTypes"] = comparisonTypes
-                },
-                SuggestedActions = ["Review the billing audit event and correlated request/ledger rows."]
-            });
+                    ["comparisonTypes"] = comparisonTypes,
+                    ["auditEventId"] = requestId
+                });
         }
 
         Groups.WithLabels("matched").Set(groupIds.Count - mismatchCount);

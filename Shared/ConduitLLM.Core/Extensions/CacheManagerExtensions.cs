@@ -30,9 +30,8 @@ namespace ConduitLLM.Core.Extensions
 
             // Configure options from configuration
             services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
-            services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
 
-            // Check if Redis is configured for distributed statistics
+            // Check if Redis is configured for the distributed cache tier
             var redisConnection = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];
             if (!string.IsNullOrEmpty(redisConnection))
             {
@@ -43,14 +42,11 @@ namespace ConduitLLM.Core.Extensions
                     options.InstanceName = "conduit:cache:";
                 });
 
-                // Register statistics store for Redis
-                services.TryAddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
-
                 // Register Redis connection multiplexer with lazy initialization
                 services.TryAddSingleton<IConnectionMultiplexer>(sp =>
                 {
                     var logger = sp.GetRequiredService<ILogger<CacheManager>>();
-                    logger.LogInformation("Creating Redis connection for cache statistics");
+                    logger.LogInformation("Creating Redis connection for the distributed cache tier");
 
                     var configOptions = ConfigurationOptions.Parse(redisConnection);
                     configOptions.AbortOnConnectFail = false;
@@ -63,148 +59,11 @@ namespace ConduitLLM.Core.Extensions
                     }
                     catch (Exception ex)
                     {
-                        logger.LogError(ex, "Failed to create Redis connection. Cache statistics will use in-memory storage.");
+                        logger.LogError(ex, "Failed to create Redis connection. Cache will fall back to memory only.");
                         throw;
                     }
                 });
-
-                // Register distributed statistics collector
-                services.TryAddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
             }
-
-            // Register statistics collector (hybrid if Redis is available, local otherwise)
-            services.AddSingleton<ICacheStatisticsCollector>(sp =>
-            {
-                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
-                var localCollector = new CacheStatisticsCollector(
-                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
-                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
-                    sp.GetService<ICacheStatisticsStore>());
-
-                if (distributedCollector != null)
-                {
-                    return new HybridCacheStatisticsCollector(
-                        localCollector,
-                        distributedCollector,
-                        sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
-                }
-
-                return localCollector;
-            });
-
-            // Register policy engine
-            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
-
-            // Register the cache manager as singleton
-            services.AddSingleton<ICacheManager, CacheManager>();
-
-            // Health checks removed per YAGNI principle
-
-            return services;
-        }
-
-        /// <summary>
-        /// Adds the unified cache manager with custom options.
-        /// Note: This overload does not support distributed statistics as it lacks configuration access.
-        /// Use <see cref="AddCacheManager(IServiceCollection, IConfiguration)"/> for Redis-backed statistics.
-        /// </summary>
-        /// <param name="services">The service collection.</param>
-        /// <param name="configureOptions">Action to configure options.</param>
-        /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCacheManager(this IServiceCollection services, Action<CacheManagerOptions> configureOptions)
-        {
-            // Ensure memory cache is registered
-            services.AddMemoryCache();
-
-            // Configure options
-            services.Configure(configureOptions);
-
-            // Register statistics collector with default options
-            services.AddSingleton<ICacheStatisticsCollector, CacheStatisticsCollector>();
-
-            // Register the cache manager as singleton
-            services.AddSingleton<ICacheManager, CacheManager>();
-
-            // Health checks removed per YAGNI principle
-
-            return services;
-        }
-
-        /// <summary>
-        /// Adds the unified cache manager with Redis distributed cache.
-        /// </summary>
-        /// <param name="services">The service collection.</param>
-        /// <param name="redisConnectionString">Redis connection string.</param>
-        /// <param name="configureOptions">Optional action to configure options.</param>
-        /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection AddCacheManagerWithRedis(
-            this IServiceCollection services, 
-            string redisConnectionString,
-            Action<CacheManagerOptions>? configureOptions = null)
-        {
-            // Ensure memory cache is registered
-            services.AddMemoryCache();
-
-            // Add Redis distributed cache
-            services.AddStackExchangeRedisCache(options =>
-            {
-                options.Configuration = redisConnectionString;
-                options.InstanceName = "conduit:cache:";
-            });
-
-            // Configure options
-            if (configureOptions != null)
-            {
-                services.Configure(configureOptions);
-            }
-
-            // Register statistics store for Redis
-            services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
-
-            // Register Redis connection multiplexer with lazy initialization
-            services.AddSingleton<IConnectionMultiplexer>(sp =>
-            {
-                var logger = sp.GetRequiredService<ILogger<CacheManager>>();
-                logger.LogInformation("Creating Redis connection multiplexer (lazy initialization)");
-                
-                // Parse connection string and set non-blocking options
-                var configOptions = ConfigurationOptions.Parse(redisConnectionString);
-                configOptions.AbortOnConnectFail = false; // Don't block on startup
-                configOptions.ConnectTimeout = 5000; // 5 second timeout
-                configOptions.ConnectRetry = 3;
-                
-                try
-                {
-                    var multiplexer = ConnectionMultiplexer.Connect(configOptions);
-                    logger.LogInformation("Redis connection multiplexer created successfully");
-                    return multiplexer;
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Failed to create Redis connection multiplexer. Cache functionality may be degraded.");
-                    throw;
-                }
-            });
-
-            // Register distributed statistics collector
-            services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
-            
-            // Statistics health check removed per YAGNI principle
-
-            // Register hybrid collector as the main statistics collector
-            services.AddSingleton<ICacheStatisticsCollector>(sp =>
-            {
-                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
-                var localCollector = new CacheStatisticsCollector(
-                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
-                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
-                    sp.GetService<ICacheStatisticsStore>());
-                
-                return new HybridCacheStatisticsCollector(
-                    localCollector,
-                    distributedCollector,
-                    sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
-            });
 
             // Register policy engine
             services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
@@ -259,7 +118,6 @@ namespace ConduitLLM.Core.Extensions
 
             // Configure options from configuration
             services.Configure<CacheManagerOptions>(configuration.GetSection("CacheManager"));
-            services.Configure<CacheStatisticsOptions>(configuration.GetSection("CacheStatistics"));
 
             // Add cache registry
             services.AddCacheRegistry(autoDiscover);
@@ -267,7 +125,7 @@ namespace ConduitLLM.Core.Extensions
             // Register policy engine
             services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
 
-            // Check if we have Redis configuration for statistics store
+            // Check if we have Redis configuration for the distributed cache tier
             var redisConnection = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];
             if (!string.IsNullOrEmpty(redisConnection))
             {
@@ -276,8 +134,7 @@ namespace ConduitLLM.Core.Extensions
                     options.Configuration = redisConnection;
                     options.InstanceName = "conduit:cache:";
                 });
-                services.AddSingleton<ICacheStatisticsStore, RedisCacheStatisticsStore>();
-                
+
                 // Use existing RedisConnectionFactory if available, otherwise register a lazy connection
                 services.TryAddSingleton<IConnectionMultiplexer>(sp =>
                 {
@@ -301,30 +158,7 @@ namespace ConduitLLM.Core.Extensions
                         throw;
                     }
                 });
-
-                // Register distributed statistics collector
-                services.AddSingleton<IDistributedCacheStatisticsCollector, RedisCacheStatisticsCollector>();
             }
-
-            // Register statistics collector (hybrid if Redis is available, local otherwise)
-            services.AddSingleton<ICacheStatisticsCollector>(sp =>
-            {
-                var distributedCollector = sp.GetService<IDistributedCacheStatisticsCollector>();
-                var localCollector = new CacheStatisticsCollector(
-                    sp.GetRequiredService<ILogger<CacheStatisticsCollector>>(),
-                    sp.GetRequiredService<IOptions<CacheStatisticsOptions>>(),
-                    sp.GetService<ICacheStatisticsStore>());
-                
-                if (distributedCollector != null)
-                {
-                    return new HybridCacheStatisticsCollector(
-                        localCollector,
-                        distributedCollector,
-                        sp.GetRequiredService<ILogger<HybridCacheStatisticsCollector>>());
-                }
-                
-                return localCollector;
-            });
 
             // Register cache manager with registry integration
             services.AddSingleton<ICacheManager>(provider =>
@@ -334,9 +168,8 @@ namespace ConduitLLM.Core.Extensions
                 var logger = provider.GetRequiredService<ILogger<CacheManager>>();
                 var options = provider.GetService<Microsoft.Extensions.Options.IOptions<CacheManagerOptions>>();
                 var registry = provider.GetService<ICacheRegistry>();
-                var statisticsCollector = provider.GetService<ICacheStatisticsCollector>();
 
-                var cacheManager = new CacheManager(memoryCache, distributedCache, logger, options, statisticsCollector);
+                var cacheManager = new CacheManager(memoryCache, distributedCache, logger, options);
 
                 // Defer registry sync to avoid blocking during startup
                 if (registry != null)

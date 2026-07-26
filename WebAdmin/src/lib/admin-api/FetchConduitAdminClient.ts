@@ -8,7 +8,6 @@ import { FetchModelMappingsService } from './services/FetchModelMappingsService'
 import { FetchSettingsService } from './services/FetchSettingsService';
 import { FetchAnalyticsService } from './services/FetchAnalyticsService';
 import { FetchConfigurationService } from './services/FetchConfigurationService';
-import { FetchMonitoringService } from './services/FetchMonitoringService';
 import { FetchIpFilterService } from './services/FetchIpFilterService';
 import { FetchModelCostService } from './services/FetchModelCostService';
 import { FetchMediaService } from './services/FetchMediaService';
@@ -17,8 +16,6 @@ import { FetchModelSeriesService } from './services/FetchModelSeriesService';
 import { FetchModelAuthorService } from './services/FetchModelAuthorService';
 import { FetchProviderErrorsService } from './services/FetchProviderErrorsService';
 import { ProviderToolsService } from './services/ProviderToolsService';
-import { FetchMetricsService } from './services/FetchMetricsService';
-import { FetchNotificationsService } from './services/FetchNotificationsService';
 import {
   FetchFunctionConfigurationsService,
   FetchFunctionCredentialsService,
@@ -64,7 +61,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly settings: FetchSettingsService;
   public readonly analytics: FetchAnalyticsService;
   public readonly configuration: FetchConfigurationService;
-  public readonly monitoring: FetchMonitoringService;
   public readonly ipFilters: FetchIpFilterService;
   public readonly modelCosts: FetchModelCostService;
   public readonly media: FetchMediaService;
@@ -73,8 +69,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly modelAuthors: FetchModelAuthorService;
   public readonly providerErrors: FetchProviderErrorsService;
   public readonly providerTools: ProviderToolsService;
-  public readonly metrics: FetchMetricsService;
-  public readonly notifications: FetchNotificationsService;
   public readonly functionConfigurations: FetchFunctionConfigurationsService;
   public readonly functionCredentials: FetchFunctionCredentialsService;
   public readonly functionCosts: FetchFunctionCostsService;
@@ -95,7 +89,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.settings = new FetchSettingsService(this);
     this.analytics = new FetchAnalyticsService(this);
     this.configuration = new FetchConfigurationService(this);
-    this.monitoring = new FetchMonitoringService(this);
     this.ipFilters = new FetchIpFilterService(this);
     this.modelCosts = new FetchModelCostService(this);
     this.media = new FetchMediaService(this);
@@ -104,8 +97,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.modelAuthors = new FetchModelAuthorService(this);
     this.providerErrors = new FetchProviderErrorsService(this);
     this.providerTools = new ProviderToolsService(this);
-    this.metrics = new FetchMetricsService(this);
-    this.notifications = new FetchNotificationsService(this);
     this.functionConfigurations = new FetchFunctionConfigurationsService(this);
     this.functionCredentials = new FetchFunctionCredentialsService(this);
     this.functionCosts = new FetchFunctionCostsService(this);

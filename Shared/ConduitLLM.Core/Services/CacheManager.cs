@@ -19,7 +19,6 @@ namespace ConduitLLM.Core.Services
         private readonly IMemoryCache _memoryCache;
         private readonly IDistributedCache? _distributedCache;
         private readonly ILogger<CacheManager> _logger;
-        private readonly ICacheStatisticsCollector? _statisticsCollector;
         private readonly ConcurrentDictionary<CacheRegion, CacheRegionConfig> _regionConfigs;
         private readonly ConcurrentDictionary<CacheRegion, CacheRegionStatistics> _statistics;
         private readonly ConcurrentDictionary<CacheRegion, ConcurrentDictionary<string, byte>> _regionKeys;
@@ -36,13 +35,11 @@ namespace ConduitLLM.Core.Services
             IMemoryCache memoryCache,
             IDistributedCache? distributedCache,
             ILogger<CacheManager> logger,
-            IOptions<CacheManagerOptions>? options = null,
-            ICacheStatisticsCollector? statisticsCollector = null)
+            IOptions<CacheManagerOptions>? options = null)
         {
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _distributedCache = distributedCache;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _statisticsCollector = statisticsCollector;
             _useDistributedCache = distributedCache != null;
 
             _regionConfigs = new ConcurrentDictionary<CacheRegion, CacheRegionConfig>();
@@ -115,19 +112,6 @@ namespace ConduitLLM.Core.Services
 
                 // Update statistics
                 await UpdateStatisticsAsync(region, found ? "Hit" : "Miss", stopwatch.Elapsed, found);
-                
-                // Record operation in statistics collector
-                if (_statisticsCollector != null)
-                {
-                    await _statisticsCollector.RecordOperationAsync(new CacheOperation
-                    {
-                        Region = region,
-                        OperationType = found ? CacheOperationType.Hit : CacheOperationType.Miss,
-                        Success = true,
-                        Duration = stopwatch.Elapsed,
-                        Key = key
-                    });
-                }
 
                 if (!found)
                 {
@@ -220,20 +204,6 @@ namespace ConduitLLM.Core.Services
 
                 _logger.LogDebug("Cached key {Key} in region {Region} with TTL {TTL}", key, region, expiry);
                 await UpdateStatisticsAsync(region, "Set", stopwatch.Elapsed, true);
-                
-                // Record operation in statistics collector
-                if (_statisticsCollector != null)
-                {
-                    await _statisticsCollector.RecordOperationAsync(new CacheOperation
-                    {
-                        Region = region,
-                        OperationType = CacheOperationType.Set,
-                        Success = true,
-                        Duration = stopwatch.Elapsed,
-                        Key = key,
-                        DataSizeBytes = value != null ? EstimateObjectSize(value) : 0
-                    });
-                }
             }
             catch (Exception ex)
             {

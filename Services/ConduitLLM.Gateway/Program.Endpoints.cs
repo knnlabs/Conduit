@@ -32,24 +32,8 @@ public partial class Program
         app.MapHub<ConduitLLM.Gateway.Hubs.WebhookDeliveryHub>("/hubs/webhooks")
             .RequireAuthorization();
 
-        // Admin-only hub for metrics dashboard
-        app.MapHub<ConduitLLM.Gateway.Hubs.MetricsHub>("/hubs/metrics")
-            .RequireAuthorization("AdminOnly");
-
-        // Admin-only hub for health monitoring
-        app.MapHub<ConduitLLM.Gateway.Hubs.HealthMonitoringHub>("/hubs/health-monitoring")
-            .RequireAuthorization("AdminOnly");
-
-        // Admin-only hub for security monitoring
-        app.MapHub<ConduitLLM.Gateway.Hubs.SecurityMonitoringHub>("/hubs/security-monitoring")
-            .RequireAuthorization("AdminOnly");
-
         // Virtual key management hub for real-time key management updates
         app.MapHub<ConduitLLM.Gateway.Hubs.VirtualKeyManagementHub>("/hubs/virtual-key-management")
-            .RequireAuthorization();
-
-        // Usage analytics hub for real-time analytics and monitoring
-        app.MapHub<ConduitLLM.Gateway.Hubs.UsageAnalyticsHub>("/hubs/usage-analytics")
             .RequireAuthorization();
 
         // Enhanced video generation hub with acknowledgment support

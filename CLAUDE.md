@@ -450,7 +450,8 @@ if (isMetricsData(event.data)) {
 - **SignalR** provides real-time updates via WebSockets
 - Redis backplane for horizontal scaling
 - Falls back to polling if WebSocket fails
-- 15+ specialized hubs: content-generation, task-tracking, spend-notifications, virtual-key-management, webhook-delivery, usage-analytics, metrics, health-monitoring, security-monitoring, and others
+- Specialized hubs for content-generation, task-tracking, spend-notifications, virtual-key-management, webhook-delivery, and others
+- Observability hubs (metrics, health-monitoring, security-monitoring, usage-analytics) were removed — Prometheus/Grafana owns that surface
 - Hub source: `Services/ConduitLLM.Gateway/Hubs/` and `Services/ConduitLLM.Admin/Hubs/`
 
 **See:** `docs/architecture/real-time/streaming-and-websockets.md`

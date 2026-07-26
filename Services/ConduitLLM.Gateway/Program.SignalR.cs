@@ -64,22 +64,6 @@ public partial class Program
         // Register SignalR authentication service
         builder.Services.AddScoped<ConduitLLM.Gateway.Authentication.ISignalRAuthenticationService, ConduitLLM.Gateway.Authentication.SignalRAuthenticationService>();
 
-        // Register Metrics Aggregation Service and Hub - with leader election
-        // Use factory to prevent auto-discovery by ASP.NET Core
-        builder.Services.AddSingleton<ConduitLLM.Gateway.Hubs.IMetricsAggregationService>(sp =>
-        {
-            var serviceProvider = sp;
-            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.MetricsAggregationService>>();
-            var hubContext = sp.GetRequiredService<IHubContext<ConduitLLM.Gateway.Hubs.MetricsHub>>();
-            return new ConduitLLM.Gateway.Services.MetricsAggregationService(serviceProvider, logger, hubContext);
-        });
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.MetricsAggregationService>(
-            sp => {
-                var service = (ConduitLLM.Gateway.Services.MetricsAggregationService)sp.GetRequiredService<ConduitLLM.Gateway.Hubs.IMetricsAggregationService>();
-                return service;
-            },
-            "MetricsAggregationService");
-
         // Add SignalR with shared configuration (MessagePack, Redis backplane)
         var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
         builder.Services.AddConduitSignalR(
@@ -110,9 +94,6 @@ public partial class Program
 
         // Register virtual key management notification service
         builder.Services.AddSingleton<IVirtualKeyManagementNotificationService, VirtualKeyManagementNotificationService>();
-
-        // Register usage analytics notification service
-        builder.Services.AddSingleton<IUsageAnalyticsNotificationService, UsageAnalyticsNotificationService>();
 
         // Register billing alerting service for critical failure notifications
         builder.Services.AddSingleton<ConduitLLM.Configuration.Interfaces.IBillingAlertingService, ConduitLLM.Configuration.Services.BillingAlertingService>();
