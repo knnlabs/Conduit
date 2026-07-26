@@ -363,7 +363,7 @@ namespace ConduitLLM.Gateway.Endpoints
                     return;
                 }
 
-                var errorType = ClassifyExceptionToProviderErrorType(ex);
+                var errorType = ConduitLLM.Core.Models.ProviderErrorClassifier.ClassifyException(ex);
                 int? httpStatusCode = (ex as LLMCommunicationException)?.StatusCode.HasValue == true
                     ? (int)(ex as LLMCommunicationException)!.StatusCode!.Value
                     : null;
@@ -392,33 +392,5 @@ namespace ConduitLLM.Gateway.Endpoints
             }
         }
 
-        /// <summary>
-        /// Maps an exception to a <see cref="ConduitLLM.Core.Models.ProviderErrorType"/> for error tracking.
-        /// </summary>
-        private static ConduitLLM.Core.Models.ProviderErrorType ClassifyExceptionToProviderErrorType(Exception ex)
-        {
-            return ex switch
-            {
-                LLMCommunicationException commEx when commEx.StatusCode.HasValue => commEx.StatusCode.Value switch
-                {
-                    HttpStatusCode.Unauthorized => ConduitLLM.Core.Models.ProviderErrorType.InvalidApiKey,
-                    HttpStatusCode.PaymentRequired => ConduitLLM.Core.Models.ProviderErrorType.InsufficientBalance,
-                    HttpStatusCode.Forbidden => ConduitLLM.Core.Models.ProviderErrorType.AccessForbidden,
-                    HttpStatusCode.TooManyRequests => ConduitLLM.Core.Models.ProviderErrorType.RateLimitExceeded,
-                    HttpStatusCode.NotFound => ConduitLLM.Core.Models.ProviderErrorType.ModelNotFound,
-                    HttpStatusCode.ServiceUnavailable => ConduitLLM.Core.Models.ProviderErrorType.ServiceUnavailable,
-                    HttpStatusCode.BadGateway => ConduitLLM.Core.Models.ProviderErrorType.ServiceUnavailable,
-                    HttpStatusCode.GatewayTimeout => ConduitLLM.Core.Models.ProviderErrorType.Timeout,
-                    HttpStatusCode.RequestTimeout => ConduitLLM.Core.Models.ProviderErrorType.Timeout,
-                    _ => ConduitLLM.Core.Models.ProviderErrorType.Unknown
-                },
-                RateLimitExceededException => ConduitLLM.Core.Models.ProviderErrorType.RateLimitExceeded,
-                RequestTimeoutException => ConduitLLM.Core.Models.ProviderErrorType.Timeout,
-                ModelNotFoundException => ConduitLLM.Core.Models.ProviderErrorType.ModelNotFound,
-                ServiceUnavailableException => ConduitLLM.Core.Models.ProviderErrorType.ServiceUnavailable,
-                HttpRequestException => ConduitLLM.Core.Models.ProviderErrorType.NetworkError,
-                _ => ConduitLLM.Core.Models.ProviderErrorType.Unknown
-            };
-        }
     }
 }

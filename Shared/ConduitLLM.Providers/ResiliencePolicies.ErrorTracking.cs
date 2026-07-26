@@ -207,28 +207,17 @@ namespace ConduitLLM.Providers
         /// </summary>
         private static ProviderErrorType ClassifyResponseError(HttpResponseMessage response)
         {
-            return response.StatusCode switch
-            {
-                HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
-                HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
-                HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
-                HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
-                HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
-                HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
-                _ => ProviderErrorType.Unknown
-            };
+            return ProviderErrorClassifier.Classify(response.StatusCode);
         }
-        
+
         /// <summary>
         /// Determines if an error type is fatal (should disable key)
         /// </summary>
         private static bool IsFatalError(ProviderErrorType errorType)
         {
-            return (int)errorType <= 9; // Fatal errors are 1-9
+            return ProviderErrorClassifier.IsFatal(errorType);
         }
-        
+
         /// <summary>
         /// Extracts error message from HTTP response
         /// </summary>

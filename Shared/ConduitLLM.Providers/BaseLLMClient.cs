@@ -689,23 +689,11 @@ namespace ConduitLLM.Providers
         /// <param name="responseBody">The response body content.</param>
         /// <returns>The classified error type.</returns>
         protected virtual ProviderErrorType ClassifyHttpError(
-            HttpResponseMessage response, 
+            HttpResponseMessage response,
             string? responseBody)
         {
-            // Base classification by status code
-            var errorType = response.StatusCode switch
-            {
-                HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
-                HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
-                HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
-                HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
-                HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
-                HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
-                HttpStatusCode.RequestTimeout => ProviderErrorType.Timeout,
-                _ => ProviderErrorType.Unknown
-            };
+            // Base classification by status code (shared with key tracking and failover)
+            var errorType = ProviderErrorClassifier.Classify(response.StatusCode, responseBody);
 
             // Allow provider-specific refinement
             return RefineErrorClassification(errorType, responseBody);
