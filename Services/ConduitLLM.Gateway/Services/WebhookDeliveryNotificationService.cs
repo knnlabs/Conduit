@@ -90,12 +90,22 @@ namespace ConduitLLM.Gateway.Services
             using var scope = _serviceProvider.CreateScope();
             _metricsService = scope.ServiceProvider.GetService<IWebhookMetricsService>();
 
-            // Start periodic statistics broadcasting
-            _statisticsTimer = new Timer(
-                async _ => await BroadcastStatisticsAsync(),
-                null,
-                TimeSpan.FromMinutes(1),
-                TimeSpan.FromMinutes(1));
+            if (_metricsService != null)
+            {
+                // Start periodic statistics broadcasting
+                _statisticsTimer = new Timer(
+                    async _ => await BroadcastStatisticsAsync(),
+                    null,
+                    TimeSpan.FromMinutes(1),
+                    TimeSpan.FromMinutes(1));
+            }
+            else
+            {
+                // Without a metrics backend there is nothing measured to broadcast —
+                // pushing all-zero statistics would present fabricated data as real
+                _logger.LogInformation(
+                    "Webhook statistics broadcasting disabled: no metrics backend (Redis) available");
+            }
 
             _logger.LogInformation("WebhookDeliveryNotificationService started");
             return Task.CompletedTask;

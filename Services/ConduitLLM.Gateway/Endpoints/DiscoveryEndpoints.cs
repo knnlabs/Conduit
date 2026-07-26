@@ -213,7 +213,7 @@ namespace ConduitLLM.Gateway.Endpoints
                         caps.SupportsTextToSpeech,
                         caps.SupportsRerank,
                         caps.SupportsFunctionCalling,
-                        false,
+                        null, // json_mode support is not tracked — null, not a confident false
                         maxInputTokens + maxOutputTokens,
                         maxOutputTokens),
                     pricing));
@@ -283,8 +283,9 @@ namespace ConduitLLM.Gateway.Endpoints
                 "text_to_speech",
                 "rerank",
                 "function_calling",
-                "tool_use",
-                "json_mode"
+                "tool_use"
+                // "json_mode" is intentionally not advertised: per-model JSON-mode
+                // support is not tracked, so filtering by it could never match
             };
 
             return Ok(new DiscoveryCapabilitiesResponse(capabilities));

@@ -76,12 +76,12 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         }
 
         public async Task NotifySpendUpdateAsync(
-            int virtualKeyId, 
-            decimal amount, 
-            decimal totalSpend, 
+            int virtualKeyId,
+            decimal amount,
+            decimal totalSpend,
             decimal? budget,
-            string model,
-            string provider)
+            string? model,
+            string? provider)
         {
             try
             {
@@ -118,7 +118,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         /// <summary>
         /// Legacy method for backward compatibility
         /// </summary>
-        public async Task NotifySpendUpdatedAsync(int virtualKeyId, decimal spendAmount, string model, string provider)
+        public async Task NotifySpendUpdatedAsync(int virtualKeyId, decimal spendAmount, string? model, string? provider)
         {
             await NotifySpendUpdateAsync(virtualKeyId, spendAmount, spendAmount, null, model, provider);
         }
@@ -209,7 +209,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         }
 
         private async Task SendSpendUpdateNotificationAsync(
-            int virtualKeyId, decimal amount, decimal totalSpend, decimal? budget, string model, string provider)
+            int virtualKeyId, decimal amount, decimal totalSpend, decimal? budget, string? model, string? provider)
         {
             var notification = new SpendUpdateNotification
             {
@@ -218,12 +218,9 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
                 Budget = budget,
                 BudgetPercentage = budget.HasValue && budget.Value > 0 ? (totalSpend / budget.Value) * 100 : null,
                 Model = model,
-                Provider = provider,
-                Metadata = new RequestMetadata
-                {
-                    RequestId = Guid.NewGuid().ToString(),
-                    Endpoint = "/v1/chat/completions"
-                }
+                Provider = provider
+                // Metadata is intentionally not set: this notification has no per-request
+                // context, so fabricating a request id / endpoint here would be misleading
             };
 
             var groupName = $"vkey-{virtualKeyId}";

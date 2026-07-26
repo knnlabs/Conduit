@@ -69,15 +69,13 @@ namespace ConduitLLM.Gateway.Services
                 var existing = await _repository.GetByIdAsync(operationId);
                 if (existing == null)
                 {
-                    // Create a new record if start wasn't recorded
-                    existing = new BatchOperationHistory
-                    {
-                        OperationId = operationId,
-                        OperationType = result.OperationType,
-                        VirtualKeyId = 0, // Would need to be passed in result
-                        TotalItems = result.TotalItems,
-                        StartedAt = result.StartedAt
-                    };
+                    // The start record is what carries virtual-key attribution; without it
+                    // we cannot persist a truthful history row (fabricating VirtualKeyId = 0
+                    // would misattribute the operation), so log and skip.
+                    _logger.LogWarning(
+                        "Cannot record completion of batch operation {OperationId}: no start record exists",
+                        operationId);
+                    return;
                 }
 
                 existing.SuccessCount = result.SuccessCount;
@@ -94,7 +92,9 @@ namespace ConduitLLM.Gateway.Services
                 }
                 else if (result.Status == BatchOperationStatusEnum.Cancelled)
                 {
-                    existing.CancellationReason = "User requested cancellation";
+                    // The result does not carry the cancellation cause (user request,
+                    // shutdown, timeout, ...) — record the fact without inventing one
+                    existing.CancellationReason = "Operation was cancelled";
                 }
 
                 // Store summary of results
@@ -111,15 +111,8 @@ namespace ConduitLLM.Gateway.Services
                     existing.ResultSummary = JsonSerializer.Serialize(summary);
                 }
 
-                if (existing.OperationId == operationId)
-                {
-                    await _repository.UpdateAsync(existing);
-                }
-                else
-                {
-                    await _repository.SaveAsync(existing);
-                }
-                
+                await _repository.UpdateAsync(existing);
+
                 _logger.LogInformation(
                     "Recorded completion of batch operation {OperationId} - Status: {Status}, Success: {Success}, Failed: {Failed}",
                     operationId, result.Status, result.SuccessCount, result.FailedCount);

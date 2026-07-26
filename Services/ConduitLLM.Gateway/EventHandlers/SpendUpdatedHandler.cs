@@ -50,19 +50,18 @@ namespace ConduitLLM.Gateway.EventHandlers
                 var group = await _groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
                 decimal? maxBudget = group?.Balance;
 
-                // Extract model and provider from request context if available
-                // For now, use defaults - in production, this would come from request metadata
-                var model = "unknown";
-                var provider = "unknown";
-                
-                // Get model/provider from message properties if available
+                // Extract model and provider from message headers when present; SpendUpdated
+                // events from the batch pipeline aggregate many requests, so attribution is
+                // often genuinely absent — leave null rather than inventing a value
+                string? model = null;
+                string? provider = null;
                 if (context.TryGetHeader("Model", out var modelHeader))
                 {
-                    model = modelHeader?.ToString() ?? "unknown";
+                    model = modelHeader?.ToString();
                 }
                 if (context.TryGetHeader("Provider", out var providerHeader))
                 {
-                    provider = providerHeader?.ToString() ?? "unknown";
+                    provider = providerHeader?.ToString();
                 }
 
                 // Log budget proximity warnings

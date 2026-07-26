@@ -12,9 +12,9 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="virtualKeyId">The virtual key ID</param>
         /// <param name="spendAmount">The amount spent</param>
-        /// <param name="model">The model used</param>
-        /// <param name="provider">The provider used</param>
-        Task NotifySpendUpdatedAsync(int virtualKeyId, decimal spendAmount, string model, string provider);
+        /// <param name="model">The model used, or null when not known (e.g. aggregated batch updates)</param>
+        /// <param name="provider">The provider used, or null when not known</param>
+        Task NotifySpendUpdatedAsync(int virtualKeyId, decimal spendAmount, string? model, string? provider);
 
         /// <summary>
         /// Notifies about a spend update with budget information.
@@ -23,9 +23,9 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="amount">The amount spent in this transaction</param>
         /// <param name="totalSpend">The total spend after this transaction</param>
         /// <param name="budget">The budget limit (if set)</param>
-        /// <param name="model">The model used</param>
-        /// <param name="provider">The provider used</param>
-        Task NotifySpendUpdateAsync(int virtualKeyId, decimal amount, decimal totalSpend, decimal? budget, string model, string provider);
+        /// <param name="model">The model used, or null when not known (e.g. aggregated batch updates)</param>
+        /// <param name="provider">The provider used, or null when not known</param>
+        Task NotifySpendUpdateAsync(int virtualKeyId, decimal amount, decimal totalSpend, decimal? budget, string? model, string? provider);
 
         /// <summary>
         /// Sends a spend summary for a period.

@@ -104,18 +104,17 @@ namespace ConduitLLM.Gateway.Hubs
         }
 
         /// <summary>
-        /// Sends a message to a group that requires acknowledgment from all members
+        /// Sends a message to a group. Group sends are fire-and-forget: tracking
+        /// acknowledgments from every member is not implemented, so this method makes
+        /// no delivery guarantee (use the per-client overloads for acknowledged sends).
         /// </summary>
-        protected async Task SendToGroupWithAcknowledgmentAsync(
+        protected async Task SendToGroupAsync(
             string groupName,
             string methodName,
-            SignalRMessage message,
-            TimeSpan? timeout = null)
+            SignalRMessage message)
         {
-            // For group messages, we'd need to track acknowledgments from all group members
-            // This is a simplified version that just sends without tracking individual acknowledgments
             await Clients.Group(groupName).SendAsync(methodName, message);
-            
+
             Logger.LogDebug(
                 "Sent message {MessageId} to group {GroupName} via {MethodName}",
                 message.MessageId, groupName, methodName);

@@ -96,16 +96,16 @@ namespace ConduitLLM.Gateway.Consumers
                 }
                 
                 // Determine which method to call based on event type
-                bool success;
+                WebhookSendResult sendResult;
                 var stopwatch = Stopwatch.StartNew();
-                
+
                 if (request.EventType == WebhookEventType.TaskProgress)
                 {
                     // Deserialize the JSON payload
                     var payload = System.Text.Json.JsonSerializer.Deserialize<object>(request.PayloadJson)
                         ?? new { error = "Failed to deserialize payload" };
-                    
-                    success = await _webhookService.SendTaskProgressWebhookAsync(
+
+                    sendResult = await _webhookService.SendTaskProgressWebhookAsync(
                         request.WebhookUrl,
                         payload,
                         request.Headers,
@@ -116,29 +116,29 @@ namespace ConduitLLM.Gateway.Consumers
                     // Deserialize the JSON payload
                     var payload = System.Text.Json.JsonSerializer.Deserialize<object>(request.PayloadJson)
                         ?? new { error = "Failed to deserialize payload" };
-                    
-                    success = await _webhookService.SendTaskCompletionWebhookAsync(
+
+                    sendResult = await _webhookService.SendTaskCompletionWebhookAsync(
                         request.WebhookUrl,
                         payload,
                         request.Headers,
                         context.CancellationToken);
                 }
-                
+
                 stopwatch.Stop();
-                
-                if (success)
+
+                if (sendResult.Success)
                 {
                     // Mark as delivered
                     await _deliveryTracker.MarkDeliveredAsync(deliveryKey, request.WebhookUrl);
-                    
+
                     // Record success in circuit breaker
                     _circuitBreaker.RecordSuccess(request.WebhookUrl);
-                    
-                    // Notify about successful delivery
+
+                    // Notify about successful delivery with the endpoint's actual status code
                     await _notificationService.NotifyDeliverySuccessAsync(
                         request.WebhookUrl,
                         request.TaskId,
-                        200, // Assume 200 OK for successful delivery
+                        sendResult.StatusCode ?? 0,
                         stopwatch.ElapsedMilliseconds,
                         request.RetryCount + 1);
                     
@@ -156,12 +156,12 @@ namespace ConduitLLM.Gateway.Consumers
                         "Webhook delivery failed for TaskId={TaskId}, scheduling retry {RetryCount}/{MaxRetry} in {RetryDelay}s",
                         request.TaskId, request.RetryCount + 1, MAX_RETRY_COUNT, retryDelay.TotalSeconds);
                     
-                    // Notify about failure and retry
+                    // Notify about failure and retry, with the endpoint's actual status code
                     await _notificationService.NotifyDeliveryFailureAsync(
                         request.WebhookUrl,
                         request.TaskId,
-                        "Delivery failed, retry scheduled",
-                        null,
+                        $"Delivery failed ({sendResult.Error}), retry scheduled",
+                        sendResult.StatusCode,
                         request.RetryCount + 1,
                         false);
                     
@@ -206,12 +206,12 @@ namespace ConduitLLM.Gateway.Consumers
                         "Webhook delivery failed after {RetryCount} attempts for TaskId={TaskId} to {WebhookUrl}",
                         request.RetryCount, request.TaskId, request.WebhookUrl);
                     
-                    // Notify about permanent failure
+                    // Notify about permanent failure with the endpoint's actual status code
                     await _notificationService.NotifyDeliveryFailureAsync(
                         request.WebhookUrl,
                         request.TaskId,
-                        $"Max retries ({MAX_RETRY_COUNT}) exceeded",
-                        null,
+                        $"Max retries ({MAX_RETRY_COUNT}) exceeded ({sendResult.Error})",
+                        sendResult.StatusCode,
                         request.RetryCount + 1,
                         true);
                     

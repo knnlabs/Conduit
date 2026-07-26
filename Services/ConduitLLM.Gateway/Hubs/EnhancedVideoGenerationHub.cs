@@ -69,11 +69,12 @@ namespace ConduitLLM.Gateway.Hubs
         }
 
         /// <summary>
-        /// Send task progress update with acknowledgment
+        /// Send task progress update to the task group (fire-and-forget; group sends
+        /// are not individually acknowledged)
         /// </summary>
         public async Task SendTaskProgressWithAck(string taskId, int progress, string status)
         {
-            _logger.LogDebug("Sending acknowledged progress for video task {TaskId}: {Progress}% - {Status}",
+            _logger.LogDebug("Sending progress for video task {TaskId}: {Progress}% - {Status}",
                 taskId, progress, status);
 
             var message = new TaskProgressMessage
@@ -84,28 +85,33 @@ namespace ConduitLLM.Gateway.Hubs
                 CorrelationId = taskId
             };
 
-            // Send to task group with acknowledgment required
-            await SendToGroupWithAcknowledgmentAsync(
+            await SendToGroupAsync(
                 SignalRConstants.Groups.VideoTask(taskId),
                 "TaskProgress",
-                message,
-                TimeSpan.FromSeconds(10)); // 10 second timeout for progress updates
+                message);
         }
 
         /// <summary>
-        /// Send task completion notification with acknowledgment
+        /// Send task completion notification to the task group (fire-and-forget; group
+        /// sends are not individually acknowledged)
         /// </summary>
         public async Task SendTaskCompletedWithAck(string taskId, bool success, object? result, string? error)
         {
             if (success)
             {
-                _logger.LogInformation("Sending acknowledged completion for video task {TaskId}: succeeded", taskId);
+                _logger.LogInformation("Sending completion for video task {TaskId}: succeeded", taskId);
             }
             else
             {
-                _logger.LogWarning("Sending acknowledged completion for video task {TaskId}: failed - {Error}",
+                _logger.LogWarning("Sending completion for video task {TaskId}: failed - {Error}",
                     taskId, error);
             }
+
+            // Compute the actual task duration from the task record
+            var task = await _taskService.GetTaskStatusAsync(taskId);
+            var durationMs = task != null
+                ? (long)(((task.CompletedAt ?? DateTime.UtcNow) - task.CreatedAt).TotalMilliseconds)
+                : 0;
 
             var message = new TaskCompletedMessage
             {
@@ -114,15 +120,13 @@ namespace ConduitLLM.Gateway.Hubs
                 Result = result,
                 ErrorMessage = error,
                 CorrelationId = taskId,
-                DurationMilliseconds = 0 // Would be calculated from task start time
+                DurationMilliseconds = durationMs
             };
 
-            // Send to task group with acknowledgment required
-            await SendToGroupWithAcknowledgmentAsync(
+            await SendToGroupAsync(
                 SignalRConstants.Groups.VideoTask(taskId),
                 "TaskCompleted",
-                message,
-                TimeSpan.FromSeconds(30)); // 30 second timeout for completion notifications
+                message);
         }
     }
 }

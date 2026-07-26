@@ -250,7 +250,7 @@ namespace ConduitLLM.Gateway.Services
                             video_understanding = caps.SupportsVideoUnderstanding,
                             function_calling = caps.SupportsFunctionCalling,
                             tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
-                            json_mode = false, // Not yet tracked
+                            json_mode = (bool?)null, // Not tracked — null, not a confident false
                             max_tokens = maxInputTokens + maxOutputTokens,
                             max_output_tokens = maxOutputTokens
                         }

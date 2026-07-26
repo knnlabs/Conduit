@@ -36,15 +36,17 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public decimal? BudgetPercentage { get; set; }
 
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider name, or null when the update is not attributable
+        /// to a single provider (e.g. aggregated batch spend updates).
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public string? Provider { get; set; }
 
 
         /// <summary>
-        /// Gets or sets the model used.
+        /// Gets or sets the model used, or null when the update is not attributable
+        /// to a single model.
         /// </summary>
-        public string Model { get; set; } = string.Empty;
+        public string? Model { get; set; }
 
         /// <summary>
         /// Gets or sets the amount of new spend.

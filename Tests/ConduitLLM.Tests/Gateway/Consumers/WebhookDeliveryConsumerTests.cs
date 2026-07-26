@@ -22,7 +22,7 @@ public sealed class WebhookDeliveryConsumerTests
             .Setup(service => service.SendTaskCompletionWebhookAsync(
                 It.IsAny<string>(), It.IsAny<object>(), It.IsAny<Dictionary<string, string>?>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+            .ReturnsAsync(WebhookSendResult.Failed(503, "Endpoint returned 503 Service Unavailable"));
         var request = Fixture.Request with { RetryCount = 3 };
 
         await Assert.ThrowsAsync<NonRetryableMessageException>(() =>
@@ -32,8 +32,26 @@ public sealed class WebhookDeliveryConsumerTests
         fixture.Webhook.Verify(service => service.SendTaskCompletionWebhookAsync(
             It.IsAny<string>(), It.IsAny<object>(), It.IsAny<Dictionary<string, string>?>(),
             It.IsAny<CancellationToken>()), Times.Once);
+        // The endpoint's actual status code must be forwarded, not null / a fabricated 200
         fixture.Notifications.Verify(service => service.NotifyDeliveryFailureAsync(
-            request.WebhookUrl, request.TaskId, It.IsAny<string>(), null, 4, true), Times.Once);
+            request.WebhookUrl, request.TaskId, It.IsAny<string>(), 503, 4, true), Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_SuccessfulDelivery_ReportsEndpointsActualStatusCode()
+    {
+        var fixture = new Fixture();
+        fixture.Webhook
+            .Setup(service => service.SendTaskCompletionWebhookAsync(
+                It.IsAny<string>(), It.IsAny<object>(), It.IsAny<Dictionary<string, string>?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(WebhookSendResult.Ok(202));
+
+        await fixture.Consumer.HandleAsync(Fixture.Request, fixture.Context);
+
+        // A 202 from the endpoint must be reported as 202, not assumed to be 200
+        fixture.Notifications.Verify(service => service.NotifyDeliverySuccessAsync(
+            Fixture.Request.WebhookUrl, Fixture.Request.TaskId, 202, It.IsAny<long>(), 1), Times.Once);
     }
 
     [Fact]
