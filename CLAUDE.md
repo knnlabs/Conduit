@@ -334,11 +334,14 @@ if (isMetricsData(event.data)) {
 - PostgreSQL syntax only (double quotes for identifiers, `true`/`false` booleans)
 - Test tooling first: `dotnet ef --version`
 - **Expand/contract policy**: migrations must be backward-compatible with the previous
-  release's code; destructive steps (drop/rename) ship one release later — see
-  `docs/architecture/adr-002-expand-contract-migration-policy.md`
+  release's code; destructive steps (drop/rename) ship one release later, after no
+  deployed code references the old shape
 - Runtime application is governed by `CONDUIT_MIGRATION_MODE` (Apply/Wait/Skip) and the
-  `migrate` CLI verb — see `docs/operations/deployment/migration-deployment-strategy.md`
-- See `docs/architecture/patterns/repository-and-data-access.md` for best practices
+  `migrate` CLI verb — see
+  [`docs/configuration.md`](docs/configuration.md#deploy-time-configuration-the-environment)
+- Repository interfaces and implementations live in
+  `Shared/ConduitLLM.Configuration/Interfaces/` and
+  `Shared/ConduitLLM.Configuration/Repositories/`; follow the neighboring patterns
 
 ### Common Mistakes
 - ❌ SQL Server syntax: `IsActive = 1`
@@ -367,10 +370,11 @@ if (isMetricsData(event.data)) {
 
 > Provider types live in the `ProviderType` enum (`Shared/ConduitLLM.Configuration`) — read it for the current set.
 
-**Documentation:**
-- `docs/architecture/provider-system/provider-architecture.md` - Detailed architecture
-- `docs/architecture/provider-system/model-and-cost-mapping.md` - Cost configuration
-- `docs/architecture/provider-system/provider-system-analysis.md` - System analysis
+**References:**
+- [`docs/concepts.md`](docs/concepts.md) - Provider and model mental model
+- [`docs/routing.md`](docs/routing.md) - Provider selection, failover, and session affinity
+- `Shared/ConduitLLM.Configuration/ProviderService.cs` and
+  `Shared/ConduitLLM.Providers/DatabaseAwareLLMClientFactory.cs` - Current implementation
 
 ## Security & Authentication
 
@@ -391,7 +395,8 @@ if (isMetricsData(event.data)) {
 - Passed via `X-Conduit-Health-Key` header
 - Private network requests (10.x, 172.16-31.x, 192.168.x, 127.x) don't require this key
 - External requests without valid key receive `404 Not Found`
-- See `docs/operations/monitoring/health-checks.md` for configuration details
+- See [`docs/monitoring.md`](docs/monitoring.md#securing-the-health-endpoints) for
+  configuration details
 
 ## WebAdmin API Architecture
 
@@ -409,7 +414,8 @@ if (isMetricsData(event.data)) {
 - ❌ **Never** create SDK clients directly with `new ConduitAdminClient()`
 - ❌ **Never** expose master keys to clients
 
-**Full guide:** `docs/development/API-PATTERNS-BEST-PRACTICES.md`
+**Source of truth:** `WebAdmin/src/lib/server/api-client-config.ts` and the route examples
+under `WebAdmin/src/app/api/`
 
 ## Media Storage & Cleanup
 
@@ -454,7 +460,8 @@ if (isMetricsData(event.data)) {
 - Observability hubs (metrics, health-monitoring, security-monitoring, usage-analytics) were removed — Prometheus/Grafana owns that surface
 - Hub source: `Services/ConduitLLM.Gateway/Hubs/` and `Services/ConduitLLM.Admin/Hubs/`
 
-**See:** `docs/architecture/real-time/streaming-and-websockets.md`
+**See:** [`docs/monitoring.md`](docs/monitoring.md#real-time-event-streams) and
+[`docs/configuration.md`](docs/configuration.md#reliable-signalr-queue-delivery)
 
 ## High-Throughput Configuration
 
@@ -467,22 +474,25 @@ if (isMetricsData(event.data)) {
 
 # Documentation Index
 
-The full documentation lives in **[docs/README.md](docs/README.md)**. Key entry points:
+The documentation starts at **[docs/README.md](docs/README.md)**. Current entry points:
 
 | Topic | Start Here |
 |-------|------------|
-| API usage | [docs/api-guides/](docs/api-guides/README.md) — Gateway API, Admin API, SDKs, SignalR |
-| Architecture | [docs/architecture/](docs/architecture/README.md) — Provider system, patterns, infrastructure |
-| Operations | [docs/operations/](docs/operations/README.md) — Deployment, monitoring, runbooks, security |
-| Model pricing | [docs/model-pricing/](docs/model-pricing/README.md) — Per-provider pricing reference |
-| Development | [docs/development/](docs/development/README.md) — Contributing, API patterns, testing |
+| Core concepts | [docs/concepts.md](docs/concepts.md) — APIs, core objects, request and spend flow |
+| Configuration | [docs/configuration.md](docs/configuration.md) — Deploy-time and runtime settings |
+| Model routing | [docs/routing.md](docs/routing.md) — Selection, failover, affinity, and controls |
+| Monitoring | [docs/monitoring.md](docs/monitoring.md) — Health, metrics, streams, and alerts |
+| API route maps | [Gateway namespaces](docs/api-guides/gateway-route-namespaces.md) and [Admin routes](docs/api-guides/admin-api-routing-map.md) |
+| Operations | [Provider keys](docs/operations/provider-key-auto-disable.md), [rate limiting](docs/operations/rate-limiting.md), and [messaging](docs/operations/messaging-throughput.md) |
+| Versioning | [docs/Versioning.md](docs/Versioning.md) — Release and package version scheme |
 
 ### Frequently Referenced Docs
-- **[Provider Architecture](docs/architecture/provider-system/provider-architecture.md)** — Multi-instance provider design
-- **[Repository & Data Access](docs/architecture/patterns/repository-and-data-access.md)** — EF Core patterns
-- **[API Patterns](docs/development/API-PATTERNS-BEST-PRACTICES.md)** — Backend API conventions
-- **[LLM Client Factory](docs/development/llm-client-factory-guide.md)** — Adding LLM providers
+- **[Core Concepts](docs/concepts.md)** — Provider, model, key, mapping, and request flow
+- **[Configuration](docs/configuration.md)** — Environment and Admin-managed settings
+- **[Model Routing](docs/routing.md)** — Candidate selection and failover
+- **[Monitoring](docs/monitoring.md)** — Health endpoints, metrics, streams, and alerting
 - **[Media Cleanup](docs/operations/deployment/media-cleanup-configuration.md)** — S3/R2 cleanup (CRITICAL)
+- **[Messaging Throughput](docs/operations/messaging-throughput.md)** — Queue limits and tuning
 
 ---
 
