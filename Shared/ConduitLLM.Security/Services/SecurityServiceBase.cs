@@ -94,9 +94,6 @@ namespace ConduitLLM.Security.Services
                 Logger.LogWarning("IP {IpAddress} has been banned after {Attempts} failed authentication attempts",
                     ipAddress, attempts);
 
-                // Record the ban event (Gateway overrides to add security event monitoring)
-                OnIpBanned(ipAddress, banInfo, attempts);
-
                 await RemoveCacheValueAsync(key);
             }
             else
@@ -111,14 +108,6 @@ namespace ConduitLLM.Security.Services
 
                 await SetCacheValueAsync(key, authData, TimeSpan.FromMinutes(Options.FailedAuth.BanDurationMinutes), sliding: true);
             }
-        }
-
-        /// <summary>
-        /// Called when an IP is banned. Override in derived classes to add monitoring events.
-        /// </summary>
-        protected virtual void OnIpBanned(string ipAddress, BannedIpInfo banInfo, int attempts)
-        {
-            // Default: no additional action. Gateway overrides to report to ISecurityEventMonitoringService.
         }
 
         /// <inheritdoc/>

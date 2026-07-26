@@ -1984,54 +1984,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/admin/security-reports/events": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["SecurityMonitoring_GetSecurityEvents"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/admin/security-reports/threats": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["SecurityMonitoring_GetThreatAnalytics"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/admin/security-reports/compliance": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["SecurityMonitoring_GetComplianceMetrics"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/admin/billing-audits": {
     parameters: {
       query?: never;
@@ -3141,23 +3093,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
-    /** @description Access control compliance details. */
-    AccessControlDto: {
-      /**
-       * Format: int32
-       * @description Number of active virtual keys.
-       */
-      activeKeys?: number;
-      /**
-       * Format: int32
-       * @description Number of key groups with a positive balance (budget controls).
-       */
-      keysWithBudgets?: number;
-      /** @description Whether IP whitelisting is enabled. */
-      ipWhitelistEnabled?: boolean;
-      /** @description Whether rate limiting is enabled. */
-      rateLimitingEnabled?: boolean;
-    };
     AdjustBalanceDto: {
       /** Format: double */
       amount: number;
@@ -3720,42 +3655,6 @@ export interface components {
       /** @description Whether the key was re-enabled as part of the operation */
       reenabled: boolean;
     };
-    /** @description Response containing compliance metrics. */
-    ComplianceMetricsResponse: {
-      /**
-       * Format: date-time
-       * @description Timestamp when the metrics were generated (UTC).
-       */
-      timestamp?: string;
-      /** @description Data protection compliance details. */
-      dataProtection?: components["schemas"]["DataProtectionDto"];
-      /** @description Access control compliance details. */
-      accessControl?: components["schemas"]["AccessControlDto"];
-      /** @description Monitoring compliance details. */
-      monitoring?: components["schemas"]["ComplianceMonitoringDto"];
-      /**
-       * Format: double
-       * @description Overall compliance score percentage.
-       */
-      complianceScore?: number;
-    };
-    /** @description Monitoring compliance details. */
-    ComplianceMonitoringDto: {
-      /**
-       * Format: int32
-       * @description Log retention period in days.
-       */
-      logRetentionDays?: number;
-      /** @description Whether request logging is enabled. */
-      requestLoggingEnabled?: boolean;
-      /** @description Whether security alerts are enabled. */
-      securityAlertsEnabled?: boolean;
-      /**
-       * Format: date-time
-       * @description Date of the last security review (UTC).
-       */
-      lastSecurityReview?: string;
-    };
     ComponentHealth: {
       status?: string;
       description?: string;
@@ -4295,26 +4194,6 @@ export interface components {
       poolConfiguration?: components["schemas"]["DatabasePoolConfigurationDto"];
       /** @description Current measured pool health metrics. */
       currentMetrics?: components["schemas"]["DatabasePoolCurrentMetricsDto"];
-    };
-    /** @description Data protection compliance details. */
-    DataProtectionDto: {
-      /**
-       * Format: int32
-       * @description Number of enabled (encrypted) virtual keys.
-       */
-      encryptedKeys?: number;
-      /** @description Whether endpoints are secured with HTTPS. */
-      secureEndpoints?: boolean;
-      /**
-       * Format: int32
-       * @description Data retention period in days.
-       */
-      dataRetentionDays?: number;
-      /**
-       * Format: date-time
-       * @description Date of the last data protection audit (UTC).
-       */
-      lastAudit?: string;
     };
     DetailedCostDataDto: {
       name?: string;
@@ -6876,70 +6755,6 @@ export interface components {
       startTime?: string;
       uptime?: string;
     };
-    /** @description Number of security events of a given severity. */
-    SecurityEventSeverityCountDto: {
-      /** @description Event severity (warning or high). */
-      severity?: string;
-      /**
-       * Format: int32
-       * @description Number of events with this severity.
-       */
-      count?: number;
-    };
-    /** @description Response containing recent security events. */
-    SecurityEventsResponse: {
-      /**
-       * Format: date-time
-       * @description Timestamp when the response was generated (UTC).
-       */
-      timestamp?: string;
-      /** @description Time range analyzed for security events. */
-      timeRange?: components["schemas"]["TimeRangeDto"];
-      /**
-       * Format: int32
-       * @description Total number of security events returned.
-       */
-      totalEvents?: number;
-      /** @description Event counts grouped by event type. */
-      eventsByType?: components["schemas"]["SecurityEventTypeCountDto"][];
-      /** @description Event counts grouped by severity. */
-      eventsBySeverity?: components["schemas"]["SecurityEventSeverityCountDto"][];
-      /** @description The individual security events, most recent first. */
-      events?: components["schemas"]["SecurityMonitoringEventDto"][];
-    };
-    /** @description Number of security events of a given type. */
-    SecurityEventTypeCountDto: {
-      /** @description Security event type identifier. */
-      type?: string;
-      /**
-       * Format: int32
-       * @description Number of events of this type.
-       */
-      count?: number;
-    };
-    /** @description A single security event derived from request log analysis. */
-    SecurityMonitoringEventDto: {
-      /**
-       * Format: date-time
-       * @description When the event occurred (UTC).
-       */
-      timestamp?: string;
-      /** @description Event type (auth_failure, rate_limit, blocked_ip, or suspicious_activity). */
-      type?: string;
-      /** @description Event severity (warning or high). */
-      severity?: string;
-      /** @description Source IP address of the event. */
-      source?: string;
-      /** @description Identifier of the virtual key involved, if applicable. */
-      virtualKeyId?: null | string;
-      /** @description Human-readable event description. */
-      details?: string;
-      /**
-       * Format: int32
-       * @description HTTP status code associated with the event, if applicable.
-       */
-      statusCode?: null | number;
-    };
     /** @description Simplified model information for display within a series context. */
     SeriesSimpleModelDto: {
       /**
@@ -7139,73 +6954,6 @@ export interface components {
         [key: string]: string;
       };
     };
-    /** @description Aggregate security metrics for threat analytics. */
-    ThreatAnalyticsMetricsDto: {
-      /**
-       * Format: int32
-       * @description Total number of threats detected today.
-       */
-      totalThreatsToday?: number;
-      /**
-       * Format: int32
-       * @description Number of unique threat source IPs detected today.
-       */
-      uniqueThreatsToday?: number;
-      /**
-       * Format: int32
-       * @description Number of IP addresses currently blocked.
-       */
-      blockedIPs?: number;
-      /**
-       * Format: double
-       * @description Overall compliance score percentage.
-       */
-      complianceScore?: number;
-    };
-    /** @description Response containing threat analytics data. */
-    ThreatAnalyticsResponse: {
-      /**
-       * Format: date-time
-       * @description Timestamp when the analytics were generated (UTC).
-       */
-      timestamp?: string;
-      /** @description Aggregate security metrics. */
-      metrics?: components["schemas"]["ThreatAnalyticsMetricsDto"];
-      /** @description Highest-risk threat sources, ordered by risk score. */
-      topThreats?: components["schemas"]["TopThreatSourceDto"][];
-      /** @description Threat counts grouped by threat type. */
-      threatDistribution?: components["schemas"]["ThreatDistributionDto"][];
-      /** @description Daily threat counts over the analyzed period. */
-      threatTrend?: components["schemas"]["ThreatTrendPointDto"][];
-    };
-    /** @description Threat counts for a single threat type. */
-    ThreatDistributionDto: {
-      /** @description Threat type (Authentication, Authorization, RateLimit, InvalidRequest, or Other). */
-      type?: string;
-      /**
-       * Format: int32
-       * @description Number of threats of this type.
-       */
-      count?: number;
-      /**
-       * Format: int32
-       * @description Number of unique source IPs for this threat type.
-       */
-      uniqueIPs?: number;
-    };
-    /** @description Threat count for a single day. */
-    ThreatTrendPointDto: {
-      /**
-       * Format: date-time
-       * @description The day the threats occurred (UTC).
-       */
-      date?: string;
-      /**
-       * Format: int32
-       * @description Number of threats detected on this day.
-       */
-      threats?: number;
-    };
     /** @description Time range covered by a monitoring response. */
     TimeRangeDto: {
       /**
@@ -7256,31 +7004,6 @@ export interface components {
       name?: string;
       /** @description Description of the provider's tool support */
       description?: string;
-    };
-    /** @description A threat source ranked by risk score. */
-    TopThreatSourceDto: {
-      /** @description IP address of the threat source. */
-      ipAddress?: null | string;
-      /**
-       * Format: int32
-       * @description Total number of failed requests from this source.
-       */
-      totalFailures?: number;
-      /**
-       * Format: int32
-       * @description Number of distinct days this source was active.
-       */
-      daysActive?: number;
-      /**
-       * Format: date-time
-       * @description Date this source was last seen (UTC).
-       */
-      lastSeen?: string;
-      /**
-       * Format: double
-       * @description Calculated risk score (failures per active day).
-       */
-      riskScore?: number;
     };
     /** @enum {unknown} */
     TransactionType: "credit" | "debit" | "refund" | "adjustment";
@@ -16826,107 +16549,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HealthHistoryResponse"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  SecurityMonitoring_GetSecurityEvents: {
-    parameters: {
-      query?: {
-        hours?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SecurityEventsResponse"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  SecurityMonitoring_GetThreatAnalytics: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ThreatAnalyticsResponse"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  SecurityMonitoring_GetComplianceMetrics: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ComplianceMetricsResponse"];
         };
       };
       /** @description Internal Server Error */

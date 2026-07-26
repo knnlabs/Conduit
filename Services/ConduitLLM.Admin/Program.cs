@@ -131,7 +131,6 @@ public partial class Program
             VirtualKeysEndpoints.MapVirtualKeysEndpoints(openApiApp);
             IpFilterEndpoints.MapIpFilterEndpoints(openApiApp);
             openApiApp.MapHealthMonitoringEndpoints();
-            openApiApp.MapSecurityMonitoringEndpoints();
             BillingAuditEndpoints.MapBillingAuditEndpoints(openApiApp);
             AnalyticsEndpoints.MapAnalyticsEndpoints(openApiApp);
             FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(openApiApp);
@@ -251,7 +250,6 @@ public partial class Program
         VirtualKeysEndpoints.MapVirtualKeysEndpoints(app);
         IpFilterEndpoints.MapIpFilterEndpoints(app);
         app.MapHealthMonitoringEndpoints();
-        app.MapSecurityMonitoringEndpoints();
         BillingAuditEndpoints.MapBillingAuditEndpoints(app);
         AnalyticsEndpoints.MapAnalyticsEndpoints(app);
         FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(app);

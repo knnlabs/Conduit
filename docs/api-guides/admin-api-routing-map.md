@@ -35,7 +35,6 @@ at the root.
 | `/api/provider-errors` | `/v1/admin/provider-errors` |
 | `/api/ProviderSync` | `/v1/admin/provider-sync-jobs` |
 | `/api/admin/provider-tools` | `/v1/admin/provider-tools` |
-| `/api/security` | `/v1/admin/security-reports` |
 | `/api/SystemInfo` | `/v1/admin/system-metadata` |
 | `/v1/admin/tasks` | `/v1/admin/tasks` |
 | `/api/VirtualKeyGroups` | `/v1/admin/virtual-key-groups` |
