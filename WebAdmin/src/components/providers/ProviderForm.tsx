@@ -11,6 +11,7 @@ import {
   Select,
   PasswordInput,
   Alert,
+  Anchor,
   Divider,
   Stack,
   Card,
@@ -21,10 +22,6 @@ import {
   NumberInput,
 } from '@mantine/core';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck, IconArrowLeft, IconServer, IconSparkles, IconEdit } from '@tabler/icons-react';
-import { 
-  ProviderType, 
-  PROVIDER_CONFIG_REQUIREMENTS,
-} from '@/lib/admin-api';
 import { useProviderFormLogic } from './ProviderFormLogic';
 import { useProviderFormHandlers } from './ProviderFormHandlers';
 
@@ -48,6 +45,7 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
     providerDisplayName,
     isLoading,
     settingFields,
+    providerConfiguration,
   } = logic;
 
   const {
@@ -57,32 +55,21 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
     handleCancel,
   } = handlers;
 
-  const getProviderHelp = (providerType: string) => {
-    const config = PROVIDER_CONFIG_REQUIREMENTS[providerType as ProviderType];
-    if (!config?.helpText) {
-      return null;
-    }
-
-    return (
-      <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-        <Text size="sm">
-          {config.helpUrl ? (
-            <>
-              {config.helpText.split(config.helpUrl)[0]}
-              <Text component="span" fw={600}>{config.helpUrl}</Text>
-              {config.helpText.split(config.helpUrl)[1] ?? ''}
-            </>
-          ) : (
-            config.helpText
-          )}
-        </Text>
-      </Alert>
-    );
-  };
-
-  const providerHelp = getProviderHelp(form.values.providerType);
-  const providerTypeNum = form.values.providerType as ProviderType;
-  const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
+  const providerHelp = providerConfiguration?.helpText ? (
+    <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+      <Text size="sm">{providerConfiguration.helpText}</Text>
+      {providerConfiguration.helpUrl && (
+        <Anchor
+          href={providerConfiguration.helpUrl}
+          target="_blank"
+          rel="noreferrer"
+          size="sm"
+        >
+          Provider documentation
+        </Anchor>
+      )}
+    </Alert>
+  ) : null;
 
   return (
     <Container size="md" py="xl">
@@ -167,13 +154,14 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                 </Group>
                 
                 <Stack gap="md">
-                  {mode === 'edit' ? (
+                  {mode === 'edit' && providerConfiguration?.requiresApiKey !== false && (
                     <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
                       <Text size="sm">
                         API keys cannot be updated here. To manage API keys, use the <Text component="span" fw={600}>Manage Keys</Text> button on the providers list page.
                       </Text>
                     </Alert>
-                  ) : (
+                  )}
+                  {mode === 'add' && providerConfiguration?.requiresApiKey !== false && (
                     <PasswordInput
                       label="API Key"
                       placeholder="Enter API key"
@@ -209,11 +197,13 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     />
                   ))}
 
-                  {config && mode === 'add' && (config.requiresEndpoint || config.supportsCustomEndpoint) && (
+                  {providerConfiguration
+                    && (providerConfiguration.requiresEndpoint
+                      || providerConfiguration.supportsCustomEndpoint) && (
                     <TextInput
-                      label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
-                      placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
-                      required={config.requiresEndpoint}
+                      label={providerConfiguration.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
+                      placeholder={providerConfiguration.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
+                      required={providerConfiguration.requiresEndpoint}
                       autoComplete="off"
                       aria-autocomplete="none"
                       list="autocompleteOff"

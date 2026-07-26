@@ -28,6 +28,9 @@ namespace ConduitLLM.Providers.Configuration
         {
             [ProviderType.OpenAI] = new ProviderConfiguration
             {
+                DisplayName = "OpenAI",
+                HelpUrl = "https://platform.openai.com/api-keys",
+                HelpText = "Create or manage an API key in the OpenAI platform.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.OpenAI),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -72,6 +75,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Groq] = new ProviderConfiguration
             {
+                DisplayName = "Groq",
+                HelpUrl = "https://console.groq.com/keys",
+                HelpText = "Create or manage an API key in the Groq console.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Groq),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -86,6 +92,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Fireworks] = new ProviderConfiguration
             {
+                DisplayName = "Fireworks AI",
+                HelpUrl = "https://app.fireworks.ai/account/api-keys",
+                HelpText = "Create or manage an API key in your Fireworks AI account.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Fireworks),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -102,6 +111,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Cerebras] = new ProviderConfiguration
             {
+                DisplayName = "Cerebras",
+                HelpUrl = "https://cloud.cerebras.ai",
+                HelpText = "Create or manage an API key in Cerebras Cloud.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Cerebras),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -117,6 +129,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.SambaNova] = new ProviderConfiguration
             {
+                DisplayName = "SambaNova Cloud",
+                HelpUrl = "https://cloud.sambanova.ai/plans/pricing",
+                HelpText = "Create or manage an API key in SambaNova Cloud.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.SambaNova),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -131,6 +146,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.DeepInfra] = new ProviderConfiguration
             {
+                DisplayName = "DeepInfra",
+                HelpUrl = "https://deepinfra.com/docs/openai_api",
+                HelpText = "Use a DeepInfra API key with its OpenAI-compatible inference API.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.DeepInfra),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -146,6 +164,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Cloudflare] = new ProviderConfiguration
             {
+                DisplayName = "Cloudflare Workers AI",
+                HelpUrl = "https://developers.cloudflare.com/workers-ai/",
+                HelpText = "Create an API token in the Cloudflare dashboard and enter the account ID used to build the Workers AI endpoint.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Cloudflare),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -178,6 +199,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Replicate] = new ProviderConfiguration
             {
+                DisplayName = "Replicate",
+                HelpUrl = "https://replicate.com/account/api-tokens",
+                HelpText = "Create or manage an API token in your Replicate account.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Replicate),
                 ModelsEndpoint = "/models",
                 HealthCheckEndpoint = "/account",
@@ -192,6 +216,8 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.MiniMax] = new ProviderConfiguration
             {
+                DisplayName = "MiniMax",
+                HelpText = "Contact MiniMax support or use the MiniMax platform to obtain API access.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.MiniMax),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/text/chatcompletion_v2",
@@ -207,6 +233,8 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.OpenAICompatible] = new ProviderConfiguration
             {
+                DisplayName = "OpenAI Compatible",
+                HelpText = "Configure the endpoint and API key for an OpenAI-compatible service.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.OpenAICompatible), // Explicit provider URL remains required.
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -223,6 +251,8 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Ultravox] = new ProviderConfiguration
             {
+                DisplayName = "Ultravox",
+                HelpText = "Create or manage an API key in the Ultravox platform.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Ultravox),
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
@@ -234,6 +264,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.ElevenLabs] = new ProviderConfiguration
             {
+                DisplayName = "ElevenLabs",
+                HelpUrl = "https://elevenlabs.io/api",
+                HelpText = "Create or manage an API key in your ElevenLabs account.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.ElevenLabs),
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
@@ -245,6 +278,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.OpenRouter] = new ProviderConfiguration
             {
+                DisplayName = "OpenRouter",
+                HelpUrl = "https://openrouter.ai/keys",
+                HelpText = "Create or manage an API key in OpenRouter.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.OpenRouter),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -263,6 +299,9 @@ namespace ConduitLLM.Providers.Configuration
             // provider model ID; the resource and api-version are provider-scoped and declared here.
             [ProviderType.Azure] = new ProviderConfiguration
             {
+                DisplayName = "Azure OpenAI",
+                HelpUrl = "https://learn.microsoft.com/azure/ai-services/openai/",
+                HelpText = "Use a key from the Azure OpenAI resource. Set each model mapping's provider model ID to its Azure deployment name.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Azure),
                 ModelsEndpoint = "/openai/deployments",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -312,6 +351,9 @@ namespace ConduitLLM.Providers.Configuration
             // the Bearer mode.
             [ProviderType.Bedrock] = new ProviderConfiguration
             {
+                DisplayName = "Amazon Bedrock",
+                HelpUrl = "https://docs.aws.amazon.com/bedrock/latest/userguide/getting-started.html",
+                HelpText = "Use an AWS access key ID with its secret access key, or a Bedrock API key, and select the AWS region hosting the models.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Bedrock),
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
@@ -357,6 +399,9 @@ namespace ConduitLLM.Providers.Configuration
 
             [ProviderType.Meta] = new ProviderConfiguration
             {
+                DisplayName = "Meta AI",
+                HelpUrl = "https://ai.developer.meta.com",
+                HelpText = "Create or manage an API key in the Meta AI developer platform.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Meta),
                 ModelsEndpoint = "/models",
                 ChatCompletionsEndpoint = "/chat/completions",
@@ -737,6 +782,21 @@ namespace ConduitLLM.Providers.Configuration
     /// </summary>
     public record ProviderConfiguration
     {
+        /// <summary>
+        /// The operator-facing provider name used by administrative clients.
+        /// </summary>
+        public required string DisplayName { get; init; }
+
+        /// <summary>
+        /// Optional provider documentation URL shown while configuring credentials.
+        /// </summary>
+        public string? HelpUrl { get; init; }
+
+        /// <summary>
+        /// Optional provider-level guidance shown while configuring credentials.
+        /// </summary>
+        public string? HelpText { get; init; }
+
         /// <summary>
         /// The default base URL for the provider's API.
         /// </summary>

@@ -37,6 +37,9 @@ namespace ConduitLLM.Providers.Authentication
         public string AuthenticationType => $"Header:{_headerName}";
 
         /// <inheritdoc />
+        public bool RequiresApiKey => true;
+
+        /// <inheritdoc />
         public void ApplyAuthentication(HttpClient client, string apiKey)
         {
             if (string.IsNullOrWhiteSpace(apiKey))

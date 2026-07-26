@@ -3,6 +3,7 @@ using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Providers;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Configuration.Messaging;
@@ -61,8 +62,8 @@ namespace ConduitLLM.Admin.Endpoints
                 .Produces<Configuration.DTOs.PagedResult<ProviderDto>>();
             group.MapGet("/settings-schema", () => GetProviderSettingsSchema())
                 .WithName("ProviderCredentials_GetSettingsSchema")
-                .WithSummary("List the structured settings declared per provider type")
-                .WithDescription("Returns the structured settings declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.")
+                .WithSummary("List configuration metadata declared per provider type")
+                .WithDescription("Returns the configuration and presentation metadata declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.")
                 .Produces<IReadOnlyList<ProviderSettingsSchemaDto>>()
                 .Produces(StatusCodes.Status401Unauthorized)
                 .Produces(StatusCodes.Status403Forbidden)
@@ -136,40 +137,50 @@ namespace ConduitLLM.Admin.Endpoints
         }
 
         /// <summary>
-        /// Gets the structured settings every configurable provider type declares.
+        /// Gets the configuration metadata every configurable provider type declares.
         /// </summary>
         /// <remarks>
         /// Projected straight from <see cref="ProviderConfigurationRegistry"/> so the C# registry is the
-        /// single source of truth for the fields administrative UIs render, label and validate — the
-        /// hand-mirrored client-side copy this replaces drifted from the backend.
-        /// Provider types without declared settings are omitted.
+        /// single source of truth for the provider choices, endpoint requirements, help content, and
+        /// structured fields administrative UIs render, label and validate. Every configurable type
+        /// is returned, including providers with no structured settings.
         /// </remarks>
         /// <returns>The declared settings per provider type.</returns>
         public static IResult GetProviderSettingsSchema()
         {
             var schema = ProviderTypeCatalog.ConfigurableTypes
-                .Select(providerType => new
+                .Select(providerType =>
                 {
-                    ProviderType = providerType,
-                    Definitions = ProviderConfigurationRegistry.GetConfiguration(providerType)?.Settings
-                        ?? (IReadOnlyList<ProviderSettingDefinition>)Array.Empty<ProviderSettingDefinition>()
-                })
-                .Where(entry => entry.Definitions.Count > 0)
-                .Select(entry => new ProviderSettingsSchemaDto
-                {
-                    ProviderType = entry.ProviderType,
-                    Settings = entry.Definitions
-                        .Select(definition => new ProviderSettingFieldDto
-                        {
-                            Key = definition.Key,
-                            Label = definition.Label,
-                            HelpText = definition.HelpText,
-                            Placeholder = definition.Placeholder,
-                            Required = definition.Required,
-                            Secret = definition.Secret,
-                            ValidationRegex = definition.ValidationRegex
-                        })
-                        .ToArray()
+                    var configuration = ProviderConfigurationRegistry.GetConfiguration(providerType)
+                        ?? throw new InvalidOperationException(
+                            $"No provider configuration is registered for {providerType}.");
+                    var adapterDefaults = ProviderAdapterDefaultsRegistry.GetRequired(providerType);
+
+                    return new ProviderSettingsSchemaDto
+                    {
+                        ProviderType = providerType,
+                        ProviderTypeId = (int)providerType,
+                        DisplayName = configuration.DisplayName,
+                        RequiresApiKey = configuration.AuthenticationStrategy.RequiresApiKey,
+                        RequiresEndpoint = adapterDefaults.RequiresBaseUrlOverride,
+                        // ResolveBaseUrl honors an explicit Provider.BaseUrl for every registered
+                        // adapter, including providers whose default is assembled from settings.
+                        SupportsCustomEndpoint = true,
+                        HelpUrl = configuration.HelpUrl,
+                        HelpText = configuration.HelpText,
+                        Settings = configuration.Settings
+                            .Select(definition => new ProviderSettingFieldDto
+                            {
+                                Key = definition.Key,
+                                Label = definition.Label,
+                                HelpText = definition.HelpText,
+                                Placeholder = definition.Placeholder,
+                                Required = definition.Required,
+                                Secret = definition.Secret,
+                                ValidationRegex = definition.ValidationRegex
+                            })
+                            .ToArray()
+                    };
                 })
                 .ToArray();
 

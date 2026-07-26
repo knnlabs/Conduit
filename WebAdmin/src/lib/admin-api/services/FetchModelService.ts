@@ -9,18 +9,15 @@ import {
 } from '../types/models';
 import {
   normalizeProviderType,
-  getProviderMetadata,
-  getAvailableProviders,
   getProviderConstraints,
   getProviderTypeName,
   providerTypeToOrdinal,
-  ProviderMetadata,
   ProviderConstraints
 } from '../types/providers';
 import { ProviderType } from '../models/providerType';
 import {
-  validateProviderTypeAssociation,
-  applyProviderDefaults
+  applyProviderAssociationDefaults,
+  validateProviderTypeAssociation
 } from '../validation/modelValidation';
 import {
   ModelValidationError,
@@ -47,20 +44,6 @@ export type BundledModelCatalogImportResult = components['schemas']['BundledMode
  */
 export class FetchModelService {
   constructor(private readonly client: FetchBaseApiClient) {}
-
-  /**
-   * Get available provider types with metadata
-   */
-  getAvailableProviders(): ProviderMetadata[] {
-    return getAvailableProviders();
-  }
-
-  /**
-   * Get provider metadata by type
-   */
-  getProviderMetadata(provider: string): ProviderMetadata | undefined {
-    return getProviderMetadata(provider);
-  }
 
   /**
    * Get provider validation constraints
@@ -462,19 +445,26 @@ export class FetchModelService {
     }
 
     // Normalize provider type to numeric value
-    if (data.provider !== undefined && data.provider !== null) {
+    if (data.provider !== undefined
+      && data.provider !== null
+      && typeof data.provider !== 'number') {
       const normalized = normalizeProviderType(data.provider);
       if (!normalized) {
         throw new InvalidProviderTypeError(String(data.provider));
       }
-      data.provider = providerTypeToOrdinal(normalized);
+      const providerTypeId = providerTypeToOrdinal(normalized);
+      if (providerTypeId <= 0) {
+        throw new InvalidProviderTypeError(String(data.provider));
+      }
+      data.provider = providerTypeId;
     }
 
-    // Apply provider defaults
-    const dataWithDefaults = applyProviderDefaults(data);
+    const dataWithDefaults = applyProviderAssociationDefaults(data);
     const requestBody: CreateModelIdentifierDto = {
       ...dataWithDefaults,
-      provider: typeof dataWithDefaults.provider === 'number' ? dataWithDefaults.provider : undefined,
+      provider: typeof dataWithDefaults.provider === 'number'
+        ? dataWithDefaults.provider
+        : undefined,
     };
 
     const result = await this.client['executeContractOperation']<CreatedModelIdentifierDto, CreateModelIdentifierDto>(
@@ -516,19 +506,26 @@ export class FetchModelService {
     }
 
     // Normalize provider type to numeric value
-    if (data.provider !== undefined && data.provider !== null) {
+    if (data.provider !== undefined
+      && data.provider !== null
+      && typeof data.provider !== 'number') {
       const normalized = normalizeProviderType(data.provider);
       if (!normalized) {
         throw new InvalidProviderTypeError(String(data.provider));
       }
-      data.provider = providerTypeToOrdinal(normalized);
+      const providerTypeId = providerTypeToOrdinal(normalized);
+      if (providerTypeId <= 0) {
+        throw new InvalidProviderTypeError(String(data.provider));
+      }
+      data.provider = providerTypeId;
     }
 
-    // Apply provider defaults
-    const dataWithDefaults = applyProviderDefaults(data);
+    const dataWithDefaults = applyProviderAssociationDefaults(data);
     const requestBody: UpdateModelIdentifierDto = {
       ...dataWithDefaults,
-      provider: typeof dataWithDefaults.provider === 'number' ? dataWithDefaults.provider : undefined,
+      provider: typeof dataWithDefaults.provider === 'number'
+        ? dataWithDefaults.provider
+        : undefined,
     };
 
     return this.client['executeContractOperation'](

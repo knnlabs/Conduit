@@ -1,7 +1,12 @@
 import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { ApiKeyTestResult, type ProviderSettingField, type ProviderType } from '@/lib/admin-api';
+import {
+  ApiKeyTestResult,
+  type ProviderConfigurationDefinition,
+  type ProviderSettingField,
+  type ProviderType
+} from '@/lib/admin-api';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
 
 interface UseProviderFormHandlersParams {
@@ -77,6 +82,21 @@ function validateSettings(
   return errors;
 }
 
+function validateProviderConfiguration(
+  values: ProviderFormData,
+  configuration: ProviderConfigurationDefinition | undefined,
+  mode: 'add' | 'edit'
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (mode === 'add' && configuration?.requiresApiKey !== false && !values.apiKey.trim()) {
+    errors.apiKey = 'API key is required';
+  }
+  if (configuration?.requiresEndpoint && !values.apiEndpoint?.trim()) {
+    errors.apiEndpoint = 'API endpoint is required';
+  }
+  return errors;
+}
+
 export function useProviderFormHandlers({ mode, providerId, logic }: UseProviderFormHandlersParams) {
   const router = useRouter();
   const {
@@ -86,15 +106,18 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
     setTestResult,
     availableProviders,
     settingFields,
+    providerConfiguration,
   } = logic;
 
   const handleSubmit = async (values: ProviderFormData) => {
     setIsSubmitting(true);
     try {
-      // Validate declared structured settings (for example a required Cloudflare account ID).
-      const settingsErrors = validateSettings(values, settingFields, mode);
-      if (Object.keys(settingsErrors).length > 0) {
-        Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
+      const errors = {
+        ...validateProviderConfiguration(values, providerConfiguration, mode),
+        ...validateSettings(values, settingFields, mode),
+      };
+      if (Object.keys(errors).length > 0) {
+        Object.entries(errors).forEach(([path, message]) => form.setFieldError(path, message));
         return;
       }
 
@@ -179,10 +202,12 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
       return;
     }
 
-    // Validate declared structured settings before hitting the provider.
-    const settingsErrors = validateSettings(form.values, settingFields, mode);
-    if (Object.keys(settingsErrors).length > 0) {
-      Object.entries(settingsErrors).forEach(([path, message]) => form.setFieldError(path, message));
+    const errors = {
+      ...validateProviderConfiguration(form.values, providerConfiguration, mode),
+      ...validateSettings(form.values, settingFields, mode),
+    };
+    if (Object.keys(errors).length > 0) {
+      Object.entries(errors).forEach(([path, message]) => form.setFieldError(path, message));
       return;
     }
 

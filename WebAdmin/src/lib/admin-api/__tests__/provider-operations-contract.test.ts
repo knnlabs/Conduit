@@ -1,4 +1,8 @@
-import { ConduitAdminClient } from '..';
+import {
+  ConduitAdminClient,
+  getProviderTypeName,
+  type ProviderType,
+} from '..';
 
 const mockFetch: jest.MockedFunction<typeof fetch> = jest.fn();
 global.fetch = mockFetch;
@@ -68,5 +72,42 @@ describe('provider error generated operations', () => {
     expect(request.url).toBe(`https://admin.test${path}`);
     expect(request.headers.get('X-Master-Key')).toBe('master-key');
     if (body) expect(requestBody(request)).toEqual(body);
+  });
+});
+
+describe('provider configuration catalog', () => {
+  it('accepts provider types returned by the backend without a runtime TypeScript registry entry', async () => {
+    mockFetch.mockResolvedValueOnce(response([
+      {
+        providerType: 'futureProvider',
+        providerTypeId: 99,
+        displayName: 'Future Provider',
+        requiresApiKey: true,
+        requiresEndpoint: false,
+        supportsCustomEndpoint: true,
+        helpText: 'Configure the future provider.',
+        settings: [],
+      },
+    ]));
+
+    const catalog = await client().providers.getConfigurationSchema();
+    const futureProvider = Reflect.get(catalog, 'futureProvider') as {
+      providerType: ProviderType;
+      providerTypeId: number;
+      displayName: string;
+      settings: unknown[];
+    };
+
+    expect(futureProvider).toMatchObject({
+      providerType: 'futureProvider',
+      providerTypeId: 99,
+      displayName: 'Future Provider',
+      settings: [],
+    });
+    expect(getProviderTypeName('futureProvider' as ProviderType)).toBe('Future Provider');
+
+    const request = mockFetch.mock.calls[0]?.[0] as Request;
+    expect(request.method).toBe('GET');
+    expect(request.url).toBe('https://admin.test/v1/admin/providers/settings-schema');
   });
 });

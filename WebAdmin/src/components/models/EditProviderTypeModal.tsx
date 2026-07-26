@@ -5,8 +5,10 @@ import { Modal, TextInput, Select, Switch, Button, Group, Stack, NumberInput, Mu
 import { useForm } from '@mantine/form';
 import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
-import { getProviderSelectOptions } from '@/lib/utils/providerTypeUtils';
-import type { ProviderTypeAssociationInput } from '@/lib/admin-api';
+import type {
+  ProviderConfigurationDefinition,
+  ProviderTypeAssociationInput
+} from '@/lib/admin-api';
 
 interface EditProviderTypeModalProps {
   isOpen: boolean;
@@ -26,10 +28,37 @@ export function EditProviderTypeModal({
   onSave 
 }: EditProviderTypeModalProps) {
   const [loading, setLoading] = useState(false);
+  const [providerTypes, setProviderTypes] = useState<Array<{ value: string; label: string }>>([]);
   const { executeWithAdmin } = useAdminClient();
 
-  // Get provider types from the enum utility
-  const providerTypes = getProviderSelectOptions();
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const loadProviderTypes = async () => {
+      try {
+        const schema = await executeWithAdmin(client =>
+          client.providers.getConfigurationSchema()
+        );
+        setProviderTypes(
+          Object.values(schema)
+            .filter((entry): entry is ProviderConfigurationDefinition => entry !== undefined)
+            .map(entry => ({
+              value: String(entry.providerTypeId),
+              label: entry.displayName,
+            }))
+        );
+      } catch (error) {
+        console.warn('Failed to load provider types:', error);
+        notify.error('Failed to load provider types');
+      }
+    };
+
+    void loadProviderTypes();
+    // executeWithAdmin is intentionally omitted because the hook does not return a stable callback.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const handleClose = () => {
     form.reset();

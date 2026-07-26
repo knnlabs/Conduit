@@ -22,6 +22,11 @@ namespace ConduitLLM.Providers.Authentication
         string AuthenticationType { get; }
 
         /// <summary>
+        /// Gets whether the strategy consumes the provider credential's API key value.
+        /// </summary>
+        bool RequiresApiKey { get; }
+
+        /// <summary>
         /// Applies authentication to an HttpClient's default request headers.
         /// </summary>
         /// <param name="client">The HttpClient to configure.</param>

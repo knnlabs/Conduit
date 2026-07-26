@@ -1,6 +1,7 @@
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Providers;
 using ConduitLLM.Providers.Configuration;
 
 using FluentAssertions;
@@ -10,8 +11,8 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace ConduitLLM.Tests.Admin.Endpoints;
 
 /// <summary>
-/// Covers the settings-schema projection that lets administrative UIs render provider settings
-/// straight from the backend registry instead of a hand-maintained client-side copy.
+/// Covers the settings-schema projection that lets administrative UIs render the complete provider
+/// catalog straight from backend registries instead of hand-maintained client-side copies.
 /// </summary>
 public class ProviderSettingsSchemaEndpointTests
 {
@@ -22,26 +23,45 @@ public class ProviderSettingsSchemaEndpointTests
     }
 
     [Fact]
-    public void Schema_Should_Project_Every_Declared_Setting_From_The_Registry()
+    public void Schema_Should_Project_Every_Configurable_Provider_From_The_Registry()
     {
         var schema = GetSchema();
 
+        schema.Select(entry => entry.ProviderType)
+            .Should().Equal(ProviderTypeCatalog.ConfigurableTypes);
+
         foreach (var providerType in ProviderTypeCatalog.ConfigurableTypes)
         {
-            var declared = ProviderConfigurationRegistry.GetConfiguration(providerType)?.Settings
-                ?? (IReadOnlyList<ProviderSettingDefinition>)Array.Empty<ProviderSettingDefinition>();
-            var published = schema.SingleOrDefault(entry => entry.ProviderType == providerType);
+            var configuration = ProviderConfigurationRegistry.GetConfiguration(providerType);
+            configuration.Should().NotBeNull($"{providerType} must have a provider configuration");
+            var adapterDefaults = ProviderAdapterDefaultsRegistry.GetRequired(providerType);
+            var published = schema.Should()
+                .ContainSingle(entry => entry.ProviderType == providerType).Subject;
 
-            if (declared.Count == 0)
-            {
-                published.Should().BeNull($"{providerType} declares no settings and should be omitted");
-                continue;
-            }
-
-            published.Should().NotBeNull($"{providerType} declares settings that clients must render");
-            published!.Settings.Select(setting => setting.Key)
-                .Should().Equal(declared.Select(definition => definition.Key));
+            published.ProviderTypeId.Should().Be((int)providerType);
+            published.DisplayName.Should().Be(configuration!.DisplayName);
+            published.DisplayName.Should().NotBeNullOrWhiteSpace();
+            published.RequiresApiKey.Should().Be(configuration.AuthenticationStrategy.RequiresApiKey);
+            published.RequiresEndpoint.Should().Be(adapterDefaults.RequiresBaseUrlOverride);
+            published.SupportsCustomEndpoint.Should().BeTrue();
+            published.HelpUrl.Should().Be(configuration.HelpUrl);
+            published.HelpText.Should().Be(configuration.HelpText);
+            published.Settings.Select(setting => setting.Key)
+                .Should().Equal(configuration.Settings.Select(definition => definition.Key));
         }
+    }
+
+    [Fact]
+    public void Schema_Should_Publish_Required_Endpoint_Metadata_For_OpenAiCompatible()
+    {
+        var openAiCompatible = GetSchema()
+            .Should().ContainSingle(entry => entry.ProviderType == ProviderType.OpenAICompatible).Subject;
+
+        openAiCompatible.DisplayName.Should().Be("OpenAI Compatible");
+        openAiCompatible.RequiresApiKey.Should().BeTrue();
+        openAiCompatible.RequiresEndpoint.Should().BeTrue();
+        openAiCompatible.SupportsCustomEndpoint.Should().BeTrue();
+        openAiCompatible.HelpText.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -66,7 +86,6 @@ public class ProviderSettingsSchemaEndpointTests
         // would silently collapse two operator inputs into one stored value.
         foreach (var entry in GetSchema())
         {
-            entry.Settings.Should().NotBeEmpty();
             entry.Settings.Should().OnlyContain(setting =>
                 !string.IsNullOrWhiteSpace(setting.Key) && !string.IsNullOrWhiteSpace(setting.Label));
             entry.Settings.Select(setting => setting.Key)

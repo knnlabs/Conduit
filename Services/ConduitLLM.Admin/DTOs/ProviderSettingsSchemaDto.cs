@@ -3,13 +3,34 @@ using ConduitLLM.Configuration;
 namespace ConduitLLM.Admin.DTOs;
 
 /// <summary>
-/// The structured settings a provider type declares, projected from the backend provider registry
-/// so administrative UIs render and validate the same fields the backend enforces.
+/// The configuration and presentation metadata a provider type declares, projected from the
+/// backend provider registry so administrative UIs do not maintain a second provider catalog.
 /// </summary>
 public sealed class ProviderSettingsSchemaDto
 {
     /// <summary>The provider type these settings belong to.</summary>
     public ProviderType ProviderType { get; init; }
+
+    /// <summary>The stable numeric value used by legacy provider-association contracts.</summary>
+    public int ProviderTypeId { get; init; }
+
+    /// <summary>The operator-facing provider name.</summary>
+    public string DisplayName { get; init; } = string.Empty;
+
+    /// <summary>Whether credentials for this provider require an API key value.</summary>
+    public bool RequiresApiKey { get; init; }
+
+    /// <summary>Whether an explicit API endpoint is required.</summary>
+    public bool RequiresEndpoint { get; init; }
+
+    /// <summary>Whether an operator may override the provider's registered endpoint.</summary>
+    public bool SupportsCustomEndpoint { get; init; }
+
+    /// <summary>Optional provider documentation URL.</summary>
+    public string? HelpUrl { get; init; }
+
+    /// <summary>Optional provider-level configuration guidance.</summary>
+    public string? HelpText { get; init; }
 
     /// <summary>The declared settings, in the order they should be presented.</summary>
     public IReadOnlyList<ProviderSettingFieldDto> Settings { get; init; } = Array.Empty<ProviderSettingFieldDto>();

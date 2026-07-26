@@ -9,8 +9,9 @@ import {
 import {
   normalizeProviderType,
   isValidProviderType,
+  getProviderAssociationDefaults,
   getProviderConstraints,
-  getProviderMetadata
+  getProviderTypeName
 } from '../types/providers';
 
 /**
@@ -59,11 +60,10 @@ export function validateProviderTypeAssociation(
       errors.speedScore = `Speed score must be between ${constraints.speedScore.min} and ${constraints.speedScore.max}`;
     }
 
-    // Check if provider supports speed score
     if (input.provider) {
-      const metadata = getProviderMetadata(input.provider);
-      if (metadata && !metadata.supportsSpeedScore) {
-        errors.speedScore = `Provider ${metadata.label} does not support speed scores`;
+      const defaults = getProviderAssociationDefaults(input.provider);
+      if (defaults && !defaults.supportsSpeedScore) {
+        errors.speedScore = `Provider ${getProviderTypeName(input.provider)} does not support speed scores`;
       }
     }
   }
@@ -77,11 +77,10 @@ export function validateProviderTypeAssociation(
       errors.qualityScore = `Quality score must be between ${constraints.qualityScore.min} and ${constraints.qualityScore.max}`;
     }
 
-    // Check if provider supports quality score
     if (input.provider) {
-      const metadata = getProviderMetadata(input.provider);
-      if (metadata && !metadata.supportsQualityScore) {
-        errors.qualityScore = `Provider ${metadata.label} does not support quality scores`;
+      const defaults = getProviderAssociationDefaults(input.provider);
+      if (defaults && !defaults.supportsQualityScore) {
+        errors.qualityScore = `Provider ${getProviderTypeName(input.provider)} does not support quality scores`;
       }
     }
   }
@@ -112,11 +111,10 @@ export function validateProviderTypeAssociation(
 
   // Validate provider variation
   if (input.providerVariation) {
-    // Check if provider supports variations
     if (input.provider) {
-      const metadata = getProviderMetadata(input.provider);
-      if (metadata && !metadata.supportsVariation) {
-        errors.providerVariation = `Provider ${metadata.label} does not support variations`;
+      const defaults = getProviderAssociationDefaults(input.provider);
+      if (defaults && !defaults.supportsVariation) {
+        errors.providerVariation = `Provider ${getProviderTypeName(input.provider)} does not support variations`;
       }
     }
 
@@ -138,7 +136,38 @@ export function validateProviderTypeAssociation(
     data: input as ProviderTypeAssociationInput
   };
 }
+/** Preserve the existing model-editor defaults without using them as provider catalog data. */
+export function applyProviderAssociationDefaults(
+  input: ProviderTypeAssociationInput
+): ProviderTypeAssociationInput {
+  if (!input.provider) {
+    return input;
+  }
 
+  const defaults = getProviderAssociationDefaults(input.provider);
+  if (!defaults) {
+    return input;
+  }
+
+  const result = { ...input };
+  if (result.maxInputTokens === undefined && defaults.defaultMaxInputTokens) {
+    result.maxInputTokens = defaults.defaultMaxInputTokens;
+  }
+  if (result.maxOutputTokens === undefined && defaults.defaultMaxOutputTokens) {
+    result.maxOutputTokens = defaults.defaultMaxOutputTokens;
+  }
+  if (!defaults.supportsSpeedScore) {
+    result.speedScore = null;
+  }
+  if (!defaults.supportsQualityScore) {
+    result.qualityScore = null;
+  }
+  if (!defaults.supportsVariation) {
+    result.providerVariation = null;
+  }
+
+  return result;
+}
 /**
  * Check if an identifier/provider combination would be a duplicate
  * @param identifier The identifier to check
@@ -186,42 +215,4 @@ export function checkPrimaryConflict(
     const existingNormalized = normalizeProviderType(assoc.provider);
     return existingNormalized === normalizedProvider && assoc.isPrimary;
   });
-}
-
-/**
- * Apply default values based on provider metadata
- */
-export function applyProviderDefaults(
-  input: ProviderTypeAssociationInput
-): ProviderTypeAssociationInput {
-  if (!input.provider) return input;
-
-  const metadata = getProviderMetadata(input.provider);
-  if (!metadata) return input;
-
-  const result = { ...input };
-
-  // Apply default token limits if not specified
-  if (result.maxInputTokens === undefined && metadata.defaultMaxInputTokens) {
-    result.maxInputTokens = metadata.defaultMaxInputTokens;
-  }
-
-  if (result.maxOutputTokens === undefined && metadata.defaultMaxOutputTokens) {
-    result.maxOutputTokens = metadata.defaultMaxOutputTokens;
-  }
-
-  // Clear unsupported fields
-  if (!metadata.supportsSpeedScore) {
-    result.speedScore = null;
-  }
-
-  if (!metadata.supportsQualityScore) {
-    result.qualityScore = null;
-  }
-
-  if (!metadata.supportsVariation) {
-    result.providerVariation = null;
-  }
-
-  return result;
 }

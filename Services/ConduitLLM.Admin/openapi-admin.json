@@ -9217,8 +9217,8 @@
         "tags": [
           "Provider Credentials"
         ],
-        "summary": "List the structured settings declared per provider type",
-        "description": "Returns the structured settings declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.",
+        "summary": "List configuration metadata declared per provider type",
+        "description": "Returns the configuration and presentation metadata declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.",
         "operationId": "ProviderCredentials_GetSettingsSchema",
         "responses": {
           "200": {
@@ -32093,6 +32093,41 @@
             "description": "The provider type these settings belong to.",
             "$ref": "#/components/schemas/ProviderType"
           },
+          "providerTypeId": {
+            "type": "integer",
+            "description": "The stable numeric value used by legacy provider-association contracts.",
+            "format": "int32"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "The operator-facing provider name."
+          },
+          "requiresApiKey": {
+            "type": "boolean",
+            "description": "Whether credentials for this provider require an API key value."
+          },
+          "requiresEndpoint": {
+            "type": "boolean",
+            "description": "Whether an explicit API endpoint is required."
+          },
+          "supportsCustomEndpoint": {
+            "type": "boolean",
+            "description": "Whether an operator may override the provider's registered endpoint."
+          },
+          "helpUrl": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional provider documentation URL."
+          },
+          "helpText": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional provider-level configuration guidance."
+          },
           "settings": {
             "type": "array",
             "items": {
@@ -32101,7 +32136,7 @@
             "description": "The declared settings, in the order they should be presented."
           }
         },
-        "description": "The structured settings a provider type declares, projected from the backend provider registry\r\nso administrative UIs render and validate the same fields the backend enforces."
+        "description": "The configuration and presentation metadata a provider type declares, projected from the\r\nbackend provider registry so administrative UIs do not maintain a second provider catalog."
       },
       "ProviderSyncRunDto": {
         "required": [

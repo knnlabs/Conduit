@@ -10,7 +10,13 @@ import {
   type StandardApiKeyTestResponse
 } from '../models/provider';
 import { ProviderType } from '../models/providerType';
-import type { ProviderSettingField, ProviderSettingsSchema } from '../models/providerConfiguration';
+import {
+  cacheProviderConfigurations,
+  type ProviderConfigurationDefinition,
+  type ProviderConfigurationSchema,
+  type ProviderSettingField,
+  type ProviderSettingsSchema
+} from '../models/providerConfiguration';
 import {
   normalizeApiKeyTestResponse,
   type RawApiKeyTestResponse
@@ -73,24 +79,50 @@ export class FetchProvidersService {
   }
 
   /**
-   * Get the structured settings each provider type declares, keyed by provider type.
+   * Get the complete backend-owned provider catalog, keyed by provider type.
    *
-   * The backend registry is the single source of truth for these fields, so the form renders,
-   * labels and validates exactly what the backend enforces instead of a hand-maintained copy.
+   * The backend registries are the single source of truth for provider choices, display names,
+   * endpoint requirements, help content, and structured fields.
    */
-  async getSettingsSchema(config?: RequestConfig): Promise<ProviderSettingsSchema> {
+  async getConfigurationSchema(config?: RequestConfig): Promise<ProviderConfigurationSchema> {
     const response = await this.client['executeContractRead']<ProviderSettingsSchemaDto[]>(
       '/v1/admin/providers/settings-schema',
       (contractClient, options) => contractClient.GET('/v1/admin/providers/settings-schema', options), config);
 
-    const schema: ProviderSettingsSchema = {};
+    const schema: ProviderConfigurationSchema = {};
     for (const entry of response ?? []) {
-      if (!entry.providerType) {
+      if (!entry.providerType || !entry.providerTypeId || !entry.displayName) {
         continue;
       }
-      schema[entry.providerType] = (entry.settings ?? [])
-        .map(toProviderSettingField)
-        .filter(field => field.key !== '');
+
+      const configuration: ProviderConfigurationDefinition = {
+        providerType: entry.providerType,
+        providerTypeId: entry.providerTypeId,
+        displayName: entry.displayName,
+        requiresApiKey: entry.requiresApiKey ?? false,
+        requiresEndpoint: entry.requiresEndpoint ?? false,
+        supportsCustomEndpoint: entry.supportsCustomEndpoint ?? false,
+        helpUrl: entry.helpUrl ?? undefined,
+        helpText: entry.helpText ?? undefined,
+        settings: (entry.settings ?? [])
+          .map(toProviderSettingField)
+          .filter(field => field.key !== ''),
+      };
+      schema[entry.providerType] = configuration;
+    }
+
+    cacheProviderConfigurations(schema);
+    return schema;
+  }
+
+  /** Get only the structured setting fields, for credential forms that need no presentation data. */
+  async getSettingsSchema(config?: RequestConfig): Promise<ProviderSettingsSchema> {
+    const configurations = await this.getConfigurationSchema(config);
+    const schema: ProviderSettingsSchema = {};
+    for (const configuration of Object.values(configurations)) {
+      if (configuration) {
+        schema[configuration.providerType] = configuration.settings;
+      }
     }
     return schema;
   }
@@ -247,12 +279,10 @@ export class FetchProvidersService {
    * @returns Promise<ProviderType[]> - Array of all available provider types
    * @throws {Error} When provider types cannot be retrieved
    */
-  async getAvailableProviderTypes(): Promise<ProviderType[]> {
-    // Get all provider types from the enum
-    const allProviderTypes = Object.values(ProviderType)
-      .filter((value): value is ProviderType => value !== ProviderType.Unknown);
-
-    // Return all provider types (allowing multiple instances of same type)
-    return allProviderTypes;
+  async getAvailableProviderTypes(config?: RequestConfig): Promise<ProviderType[]> {
+    const schema = await this.getConfigurationSchema(config);
+    return Object.values(schema)
+      .filter((entry): entry is ProviderConfigurationDefinition => entry !== undefined)
+      .map(entry => entry.providerType);
   }
 }

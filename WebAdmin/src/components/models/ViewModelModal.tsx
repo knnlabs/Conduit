@@ -8,7 +8,7 @@ import type { ModelDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getModelPrimaryType, getModelTypeBadgeColor } from '@/utils/modelHelpers';
 import { useModelSeriesById } from '@/hooks/useModelSeries';
-import { getProviderTypeName } from '@/constants/providers';
+import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 import { getErrorMessage, isProviderMapping } from '@/utils/typeGuards';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
 
@@ -188,7 +188,7 @@ export function ViewModelModal({ isOpen, model, onClose }: ViewModelModalProps) 
                       variant="light"
                       title={mapping.isEnabled ? 'Active mapping' : 'Inactive mapping'}
                     >
-                      {mapping.provider?.providerName ?? (mapping.provider?.providerType ? getProviderTypeName(mapping.provider.providerType) : 'Unknown')}
+                      {mapping.provider?.providerName ?? (mapping.provider?.providerType ? getProviderDisplayName(mapping.provider.providerType) : 'Unknown')}
                     </Badge>
                   ))}
                 </Group>

@@ -1,69 +1,14 @@
-/**
- * Provider Configuration and Business Logic
- * This file contains the canonical definitions for provider configurations and capabilities
- */
-
-import { ProviderType } from './providerType';
-import { ModelType } from './modelType';
-
-/** Provider display configuration */
-export const PROVIDER_DISPLAY_NAMES: Partial<Record<ProviderType, string>> = {
-  [ProviderType.OpenAI]: 'OpenAI',
-  [ProviderType.Groq]: 'Groq',
-  [ProviderType.Replicate]: 'Replicate',
-  [ProviderType.Fireworks]: 'Fireworks AI',
-  [ProviderType.OpenAICompatible]: 'OpenAI Compatible',
-  [ProviderType.MiniMax]: 'MiniMax',
-  [ProviderType.Ultravox]: 'Ultravox',
-  [ProviderType.ElevenLabs]: 'ElevenLabs',
-  [ProviderType.Cerebras]: 'Cerebras',
-  [ProviderType.SambaNova]: 'SambaNova Cloud',
-  [ProviderType.DeepInfra]: 'DeepInfra',
-  [ProviderType.Cloudflare]: 'Cloudflare Workers AI',
-  [ProviderType.OpenRouter]: 'OpenRouter',
-  [ProviderType.Meta]: 'Meta AI',
-  [ProviderType.Azure]: 'Azure OpenAI',
-};
-
-/** Provider categories for grouping in UI */
-export enum ProviderCategory {
-  Chat = 'chat',
-  Audio = 'audio',
-  Image = 'image',
-  Video = 'video',
-  Embedding = 'embedding',
-  Custom = 'custom',
-}
-
-/** Map providers to their primary categories */
-export const PROVIDER_CATEGORIES: Partial<Record<ProviderType, ProviderCategory[]>> = {
-  [ProviderType.OpenAI]: [ProviderCategory.Chat, ProviderCategory.Audio, ProviderCategory.Image, ProviderCategory.Embedding],
-  [ProviderType.Groq]: [ProviderCategory.Chat],
-  [ProviderType.Replicate]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Video],
-  [ProviderType.Fireworks]: [ProviderCategory.Chat, ProviderCategory.Image],
-  [ProviderType.OpenAICompatible]: [ProviderCategory.Chat, ProviderCategory.Embedding],
-  [ProviderType.MiniMax]: [ProviderCategory.Chat, ProviderCategory.Audio],
-  [ProviderType.Ultravox]: [ProviderCategory.Audio],
-  [ProviderType.ElevenLabs]: [ProviderCategory.Audio],
-  [ProviderType.Cerebras]: [ProviderCategory.Chat],
-  [ProviderType.SambaNova]: [ProviderCategory.Chat],
-  [ProviderType.DeepInfra]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
-  [ProviderType.Cloudflare]: [ProviderCategory.Chat, ProviderCategory.Embedding, ProviderCategory.Image],
-  [ProviderType.OpenRouter]: [ProviderCategory.Chat],
-  [ProviderType.Meta]: [ProviderCategory.Chat],
-  [ProviderType.Azure]: [ProviderCategory.Chat, ProviderCategory.Image, ProviderCategory.Embedding],
-};
+import type { ProviderType } from './providerType';
 
 /**
  * A structured, provider-scoped setting an operator supplies in addition to the API key
  * (for example a Cloudflare account ID).
  *
- * These are **not** declared here: the backend `ProviderConfigurationRegistry` owns them and serves
- * them from `GET /v1/admin/providers/settings-schema`. This type only describes the shape the form
- * consumes after narrowing the wire DTO.
+ * The backend ProviderConfigurationRegistry owns these declarations. This type only narrows the
+ * generated wire DTO into the shape forms consume.
  */
 export interface ProviderSettingField {
-  /** Stable machine key; also the storage key in the provider's `settings` map. */
+  /** Stable machine key; also the storage key in the provider's settings map. */
   key: string;
   /** Human-readable field label. */
   label: string;
@@ -79,236 +24,64 @@ export interface ProviderSettingField {
   placeholder?: string;
 }
 
-/** Declared settings per provider type, as served by the Admin API. */
-export type ProviderSettingsSchema = Partial<Record<ProviderType, ProviderSettingField[]>>;
-
-/** Provider-specific configuration requirements */
-export interface ProviderConfigRequirements {
+/** Complete backend-owned configuration metadata for one provider type. */
+export interface ProviderConfigurationDefinition {
+  providerType: ProviderType;
+  /** Stable numeric value used by legacy provider-association contracts. */
+  providerTypeId: number;
+  displayName: string;
   requiresApiKey: boolean;
   requiresEndpoint: boolean;
   supportsCustomEndpoint: boolean;
   helpUrl?: string;
   helpText?: string;
-  supportedModelTypes: ModelType[];
+  settings: ProviderSettingField[];
 }
 
-export const PROVIDER_CONFIG_REQUIREMENTS: Partial<Record<ProviderType, ProviderConfigRequirements>> = {
-  [ProviderType.OpenAI]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpUrl: 'https://platform.openai.com/api-keys',
-    helpText: 'Get your API key from platform.openai.com/api-keys',
-    supportedModelTypes: [ModelType.Chat, ModelType.Audio, ModelType.Image, ModelType.Embedding]
-  },
-  [ProviderType.Groq]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: false,
-    helpUrl: 'https://console.groq.com/keys',
-    helpText: 'Get your API key from console.groq.com/keys',
-    supportedModelTypes: [ModelType.Chat]
-  },
-  [ProviderType.Replicate]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: false,
-    helpUrl: 'https://replicate.com/account/api-tokens',
-    helpText: 'Get your API token from replicate.com/account/api-tokens',
-    supportedModelTypes: [ModelType.Chat, ModelType.Image, ModelType.Video]
-  },
-  [ProviderType.Fireworks]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: false,
-    helpUrl: 'https://app.fireworks.ai/account/api-keys',
-    helpText: 'Get your API key from app.fireworks.ai/account/api-keys',
-    supportedModelTypes: [ModelType.Chat, ModelType.Image]
-  },
-  [ProviderType.OpenAICompatible]: {
-    requiresApiKey: true,
-    requiresEndpoint: true,
-    supportsCustomEndpoint: true,
-    helpText: 'Configure OpenAI-compatible endpoint and API key',
-    supportedModelTypes: [ModelType.Chat, ModelType.Embedding]
-  },
-  [ProviderType.MiniMax]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpText: 'Contact MiniMax support for API access',
-    supportedModelTypes: [ModelType.Chat, ModelType.Audio]
-  },
-  [ProviderType.Ultravox]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: false,
-    helpText: 'Get your API key from Ultravox platform',
-    supportedModelTypes: [ModelType.Audio]
-  },
-  [ProviderType.ElevenLabs]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: false,
-    helpUrl: 'https://elevenlabs.io/api',
-    helpText: 'Get your API key from elevenlabs.io/api',
-    supportedModelTypes: [ModelType.Audio]
-  },
-  [ProviderType.Cerebras]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpUrl: 'https://cloud.cerebras.ai',
-    helpText: 'Get your API key from cloud.cerebras.ai - offers high-performance inference',
-    supportedModelTypes: [ModelType.Chat]
-  },
-  [ProviderType.SambaNova]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpUrl: 'https://cloud.sambanova.ai/plans/pricing',
-    helpText: 'Get your API key from cloud.sambanova.ai - ultra-fast inference with 250+ tokens/second',
-    supportedModelTypes: [ModelType.Chat]
-  },
-  [ProviderType.DeepInfra]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpUrl: 'https://deepinfra.com/docs/openai_api',
-    helpText: 'Get your API key from deepinfra.com - OpenAI-compatible API with advanced reasoning models',
-    supportedModelTypes: [ModelType.Chat, ModelType.Image, ModelType.Embedding]
-  },
-  [ProviderType.Cloudflare]: {
-    requiresApiKey: true,
-    // The account ID is entered as a structured setting below; the base URL is derived from it,
-    // so an explicit endpoint is optional (advanced override only).
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpUrl: 'https://developers.cloudflare.com/workers-ai/',
-    helpText: 'Create an API token at dash.cloudflare.com/profile/api-tokens. Enter your account ID below — it is used to build the API base URL.',
-    supportedModelTypes: [ModelType.Chat, ModelType.Embedding, ModelType.Image],
-  },
-  [ProviderType.OpenRouter]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: false,
-    helpUrl: 'https://openrouter.ai/keys',
-    helpText: 'Get your API key from openrouter.ai/keys - Routes to 100+ models from multiple providers',
-    supportedModelTypes: [ModelType.Chat]
-  },
-  [ProviderType.Meta]: {
-    requiresApiKey: true,
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpUrl: 'https://ai.developer.meta.com',
-    helpText: 'Get your API key from ai.developer.meta.com - Meta Model API with Muse Spark multimodal reasoning models',
-    supportedModelTypes: [ModelType.Chat]
-  },
-  [ProviderType.Azure]: {
-    requiresApiKey: true,
-    // The endpoint is derived from the Resource Name setting; an explicit endpoint is an advanced
-    // override for private or custom domains only.
-    requiresEndpoint: false,
-    supportsCustomEndpoint: true,
-    helpUrl: 'https://learn.microsoft.com/azure/ai-services/openai/',
-    helpText: 'Use a key from your Azure OpenAI resource. Azure routes to a deployment rather than a model name, so set each model mapping’s provider model ID to the deployment name.',
-    supportedModelTypes: [ModelType.Chat, ModelType.Image, ModelType.Embedding]
-  },
-};
+/** Provider configuration metadata keyed by the canonical wire provider value. */
+export type ProviderConfigurationSchema =
+  Partial<Record<ProviderType, ProviderConfigurationDefinition>>;
 
-/** Utility functions for provider configuration */
-export const ProviderConfigUtils = {
-  /**
-   * Get all providers as select options
-   */
-  getSelectOptions: () => {
-    return Object.values(ProviderType)
-      .filter((value): value is ProviderType => value !== ProviderType.Unknown)
-      .map(type => ({
-        value: type.toString(),
-        label: PROVIDER_DISPLAY_NAMES[type] ?? type,
-        categories: PROVIDER_CATEGORIES[type]
-      }));
-  },
+/** Declared settings per provider type, retained for key-credential forms. */
+export type ProviderSettingsSchema = Partial<Record<ProviderType, ProviderSettingField[]>>;
 
-  /**
-   * Get LLM providers only (excluding audio-only providers)
-   */
-  getLLMProviderSelectOptions: () => {
-    return Object.values(ProviderType)
-      .filter((value): value is ProviderType => {
-        if (value === ProviderType.Unknown) return false;
-        const categories = PROVIDER_CATEGORIES[value];
-        return categories?.some(category =>
-          category === ProviderCategory.Chat || category === ProviderCategory.Embedding
-        ) ?? false;
-      })
-      .map(type => ({
-        value: type.toString(),
-        label: PROVIDER_DISPLAY_NAMES[type] ?? type,
-        categories: PROVIDER_CATEGORIES[type]
-      }));
-  },
+// Some older synchronous formatting utilities cannot fetch the catalog themselves. Cache the
+// latest contract response so those fallbacks can use backend-owned names and numeric IDs after any
+// provider surface has loaded it, without recreating a client-side provider registry.
+let cachedProviderConfigurations: ProviderConfigurationSchema = {};
 
-  /**
-   * Get providers by category
-   */
-  getProvidersByCategory: (category: ProviderCategory) => {
-    return Object.values(ProviderType)
-      .filter((value): value is ProviderType => {
-        if (value === ProviderType.Unknown) return false;
-        const categories = PROVIDER_CATEGORIES[value];
-        return categories?.includes(category) ?? false;
-      })
-      .map(type => ({
-        value: type.toString(),
-        label: PROVIDER_DISPLAY_NAMES[type] ?? type,
-        categories: PROVIDER_CATEGORIES[type]
-      }));
-  },
+export function cacheProviderConfigurations(schema: ProviderConfigurationSchema): void {
+  cachedProviderConfigurations = schema;
+}
 
-  /**
-   * Get providers that support a specific model type
-   */
-  getProvidersByModelType: (modelType: ModelType) => {
-    return Object.entries(PROVIDER_CONFIG_REQUIREMENTS)
-      .filter(([, config]) => config.supportedModelTypes.includes(modelType))
-      .map(([providerType]) => {
-        const type = providerType as ProviderType;
-        return {
-          value: type.toString(),
-          label: PROVIDER_DISPLAY_NAMES[type] ?? type,
-          categories: PROVIDER_CATEGORIES[type]
-        };
-      });
-  },
+export function getCachedProviderConfiguration(
+  providerType: ProviderType
+): ProviderConfigurationDefinition | undefined {
+  return cachedProviderConfigurations[providerType];
+}
 
-  /**
-   * Get configuration requirements for a provider
-   */
-  getConfigRequirements: (providerType: ProviderType) => {
-    return PROVIDER_CONFIG_REQUIREMENTS[providerType];
-  },
+export function getCachedProviderConfigurationById(
+  providerTypeId: number
+): ProviderConfigurationDefinition | undefined {
+  return Object.values(cachedProviderConfigurations)
+    .find(configuration => configuration?.providerTypeId === providerTypeId);
+}
 
-  /**
-   * Check if a provider supports a specific model type
-   */
-  supportsModelType: (providerType: ProviderType, modelType: ModelType) => {
-    const requirements = PROVIDER_CONFIG_REQUIREMENTS[providerType];
-    return requirements?.supportedModelTypes.includes(modelType) ?? false;
-  },
-
-  /**
-   * Get display name for a provider
-   */
-  getDisplayName: (providerType: ProviderType) => {
-    return PROVIDER_DISPLAY_NAMES[providerType];
-  },
-
-  /**
-   * Get categories for a provider
-   */
-  getCategories: (providerType: ProviderType) => {
-    return PROVIDER_CATEGORIES[providerType] ?? [];
+/** Human-readable fallback used only before the backend provider catalog has loaded. */
+export function formatProviderTypeFallback(providerType: string): string {
+  if (!providerType || providerType.toLowerCase() === 'unknown') {
+    return 'Unknown';
   }
-};
+
+  const words = providerType
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[-_]+/g, ' ');
+
+  return words
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.toUpperCase() === 'AI'
+      ? 'AI'
+      : `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(' ');
+}

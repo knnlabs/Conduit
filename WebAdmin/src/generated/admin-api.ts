@@ -1315,8 +1315,8 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List the structured settings declared per provider type
-     * @description Returns the structured settings declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.
+     * List configuration metadata declared per provider type
+     * @description Returns the configuration and presentation metadata declared by every configurable provider type; this fixed, registry-sized catalog is intentionally not a paged collection.
      */
     get: operations["ProviderCredentials_GetSettingsSchema"];
     put?: never;
@@ -6440,11 +6440,28 @@ export interface components {
        *     clients use this only to fail fast before submitting. */
       validationRegex?: null | string;
     };
-    /** @description The structured settings a provider type declares, projected from the backend provider registry
-     *     so administrative UIs render and validate the same fields the backend enforces. */
+    /** @description The configuration and presentation metadata a provider type declares, projected from the
+     *     backend provider registry so administrative UIs do not maintain a second provider catalog. */
     ProviderSettingsSchemaDto: {
       /** @description The provider type these settings belong to. */
       providerType?: components["schemas"]["ProviderType"];
+      /**
+       * Format: int32
+       * @description The stable numeric value used by legacy provider-association contracts.
+       */
+      providerTypeId?: number;
+      /** @description The operator-facing provider name. */
+      displayName?: string;
+      /** @description Whether credentials for this provider require an API key value. */
+      requiresApiKey?: boolean;
+      /** @description Whether an explicit API endpoint is required. */
+      requiresEndpoint?: boolean;
+      /** @description Whether an operator may override the provider's registered endpoint. */
+      supportsCustomEndpoint?: boolean;
+      /** @description Optional provider documentation URL. */
+      helpUrl?: null | string;
+      /** @description Optional provider-level configuration guidance. */
+      helpText?: null | string;
       /** @description The declared settings, in the order they should be presented. */
       settings?: components["schemas"]["ProviderSettingFieldDto"][];
     };

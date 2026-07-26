@@ -4,12 +4,13 @@ import { useRouter } from 'next/navigation';
 import { notify } from '@/lib/notifications';
 import {
   type ProviderDto,
+  type ProviderConfigurationDefinition,
+  type ProviderConfigurationSchema,
   type ProviderSettingField,
-  type ProviderSettingsSchema,
   type ProviderType
 } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
+import { getProviderTypeFromDto } from '@/lib/utils/providerTypeUtils';
 import { validators } from '@/lib/utils/form-validators';
 
 export interface ProviderFormData {
@@ -51,6 +52,8 @@ export interface ProviderFormLogicResult {
   isLoading: boolean;
   /** Backend-declared settings fields for the currently selected provider type. */
   settingFields: ProviderSettingField[];
+  /** Backend-declared metadata for the currently selected provider type. */
+  providerConfiguration?: ProviderConfigurationDefinition;
 }
 
 export function useProviderFormLogic(
@@ -65,8 +68,8 @@ export function useProviderFormLogic(
   const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
   const [existingProvider, setExistingProvider] = useState<ProviderDto | null>(null);
   const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');
-  const [settingsSchema, setSettingsSchema] = useState<ProviderSettingsSchema>({});
-  const [isLoadingSettingsSchema, setIsLoadingSettingsSchema] = useState(true);
+  const [configurationSchema, setConfigurationSchema] = useState<ProviderConfigurationSchema>({});
+  const [isLoadingConfigurationSchema, setIsLoadingConfigurationSchema] = useState(true);
   const [initialFormValues, setInitialFormValues] = useState<ProviderFormData>(() => ({
     providerType: '',
     providerName: '',
@@ -88,7 +91,6 @@ export function useProviderFormLogic(
         }
         return null;
       },
-      apiKey: (value) => (mode === 'add' && !value ? 'API key is required' : null),
       apiEndpoint: (value) => {
         if (value && !validators.url(value)) {
           return 'Please enter a valid URL';
@@ -98,55 +100,45 @@ export function useProviderFormLogic(
     },
   });
 
-  // Load the backend-declared settings schema. It drives which structured fields are rendered and
-  // validated, so it is fetched in both modes rather than mirrored in the client.
+  // Load the complete backend-owned provider catalog. It drives provider choices, labels, endpoint
+  // requirements, help content, and structured fields in both add and edit modes.
   useEffect(() => {
-    const loadSettingsSchema = async () => {
+    const loadConfigurationSchema = async () => {
+      if (mode === 'add') {
+        setIsLoadingProviders(true);
+      }
+
       try {
-        const schema = await withAdminClient(client => client.providers.getSettingsSchema());
-        setSettingsSchema(schema);
+        const schema = await withAdminClient(client => client.providers.getConfigurationSchema());
+        setConfigurationSchema(schema);
+
+        if (mode === 'add') {
+          const providers = Object.values(schema)
+            .filter((entry): entry is ProviderConfigurationDefinition => entry !== undefined)
+            .map(entry => ({
+              value: entry.providerType,
+              label: entry.displayName,
+            }));
+
+          setAvailableProviders(providers);
+
+          if (providers.length === 0) {
+            notify.warning('No configurable provider types were returned.', 'No Providers Available');
+            router.push('/llm-providers');
+          }
+        }
       } catch (error) {
-        console.error('Error fetching provider settings schema:', error);
-        notify.error('Failed to load provider settings fields');
+        console.error('Error fetching provider configuration schema:', error);
+        notify.error('Failed to load provider configuration');
       } finally {
-        setIsLoadingSettingsSchema(false);
+        setIsLoadingConfigurationSchema(false);
+        if (mode === 'add') {
+          setIsLoadingProviders(false);
+        }
       }
     };
 
-    void loadSettingsSchema();
-  }, []);
-
-  // Fetch available providers for add mode
-  useEffect(() => {
-    if (mode === 'add') {
-      const loadProviders = async () => {
-        setIsLoadingProviders(true);
-        try {
-          const providerTypes = await withAdminClient(client => 
-            client.providers.getAvailableProviderTypes()
-          );
-          
-          const providers: ProviderOption[] = providerTypes.map(type => ({
-            value: type.toString(),
-            label: getProviderDisplayName(type)
-          }));
-          
-          setAvailableProviders(providers);
-          
-          if (providers.length === 0) {
-            notify.warning('All provider types have already been configured.', 'No Providers Available');
-            router.push('/llm-providers');
-          }
-        } catch (error) {
-          console.error('Error fetching available providers:', error);
-          notify.error('Failed to load available providers');
-        } finally {
-          setIsLoadingProviders(false);
-        }
-      };
-      
-      void loadProviders();
-    }
+    void loadConfigurationSchema();
   }, [mode, router]);
 
   // Fetch existing provider for edit mode and reinitialize form
@@ -199,7 +191,9 @@ export function useProviderFormLogic(
   if (mode === 'edit' && existingProvider) {
     try {
       const providerType = getProviderTypeFromDto(existingProvider);
-      providerDisplayName = getProviderDisplayName(providerType);
+      providerDisplayName = configurationSchema[providerType]?.displayName
+        ?? existingProvider.providerName
+        ?? 'Unknown Provider';
     } catch {
       // Fallback to provider name if available
       const apiProvider = existingProvider;
@@ -207,10 +201,13 @@ export function useProviderFormLogic(
     }
   }
 
-  const isLoading = isLoadingProviders || isLoadingProvider || isLoadingSettingsSchema;
+  const providerConfiguration =
+    configurationSchema[form.values.providerType as ProviderType];
+  const isLoading =
+    isLoadingProviders || isLoadingProvider || isLoadingConfigurationSchema;
   // Secret-valued settings are deliberately excluded: they belong to a key credential, where they
   // are stored encrypted, not to the provider's plaintext settings bag. The key editor renders them.
-  const settingFields = (settingsSchema[form.values.providerType as ProviderType] ?? [])
+  const settingFields = (providerConfiguration?.settings ?? [])
     .filter(field => !field.secret);
 
   return {
@@ -234,5 +231,6 @@ export function useProviderFormLogic(
     providerDisplayName,
     isLoading,
     settingFields,
+    providerConfiguration,
   };
 }

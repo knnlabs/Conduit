@@ -1,281 +1,225 @@
-// Import and re-export the existing ProviderType enum
 import { ProviderType } from '../models/providerType';
+import {
+  formatProviderTypeFallback,
+  getCachedProviderConfiguration,
+  getCachedProviderConfigurationById,
+} from '../models/providerConfiguration';
+
 export { ProviderType };
 
+const knownProviderValues = Object.values(ProviderType);
+const knownConfigurableProviderValues = knownProviderValues
+  .filter(value => value !== ProviderType.Unknown);
+
 /**
- * Provider metadata including display information and capabilities
+ * Legacy defaults applied when editing a model/provider association.
+ *
+ * This is deliberately not a provider catalog: it has no display data, is never enumerated, and a
+ * provider absent from it remains fully usable. These values preserve existing model-editor
+ * behavior until model capability data replaces them.
  */
-export interface ProviderMetadata {
-  value: ProviderType;
-  name: string;
-  label: string;
+export interface ProviderAssociationDefaults {
   supportsSpeedScore: boolean;
   supportsQualityScore: boolean;
   supportsVariation: boolean;
   defaultMaxInputTokens?: number;
   defaultMaxOutputTokens?: number;
-  description?: string;
 }
 
-/**
- * Provider configuration registry
- */
-export const PROVIDER_REGISTRY: Partial<Record<ProviderType, ProviderMetadata>> = {
+const PROVIDER_ASSOCIATION_DEFAULTS: Partial<
+  Record<ProviderType, ProviderAssociationDefaults>
+> = {
   [ProviderType.OpenAI]: {
-    value: ProviderType.OpenAI,
-    name: 'OpenAI',
-    label: 'OpenAI',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
     defaultMaxInputTokens: 128000,
     defaultMaxOutputTokens: 4096,
-    description: 'OpenAI GPT models'
   },
   [ProviderType.Groq]: {
-    value: ProviderType.Groq,
-    name: 'Groq',
-    label: 'Groq',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: true,
     defaultMaxInputTokens: 32768,
     defaultMaxOutputTokens: 8192,
-    description: 'Groq high-speed inference'
   },
   [ProviderType.Replicate]: {
-    value: ProviderType.Replicate,
-    name: 'Replicate',
-    label: 'Replicate',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: true,
-    description: 'Replicate model hosting'
   },
   [ProviderType.Fireworks]: {
-    value: ProviderType.Fireworks,
-    name: 'Fireworks',
-    label: 'Fireworks',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
-    description: 'Fireworks AI inference'
   },
   [ProviderType.OpenAICompatible]: {
-    value: ProviderType.OpenAICompatible,
-    name: 'OpenAICompatible',
-    label: 'OpenAI Compatible',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: true,
-    description: 'OpenAI-compatible APIs'
   },
   [ProviderType.MiniMax]: {
-    value: ProviderType.MiniMax,
-    name: 'MiniMax',
-    label: 'MiniMax',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
-    description: 'MiniMax AI models'
   },
   [ProviderType.Cerebras]: {
-    value: ProviderType.Cerebras,
-    name: 'Cerebras',
-    label: 'Cerebras',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
     defaultMaxInputTokens: 128000,
     defaultMaxOutputTokens: 8192,
-    description: 'Cerebras high-performance inference'
   },
   [ProviderType.SambaNova]: {
-    value: ProviderType.SambaNova,
-    name: 'SambaNova',
-    label: 'SambaNova',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
-    description: 'SambaNova ultra-fast inference'
   },
   [ProviderType.DeepInfra]: {
-    value: ProviderType.DeepInfra,
-    name: 'DeepInfra',
-    label: 'DeepInfra',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: true,
-    description: 'DeepInfra model hosting'
   },
   [ProviderType.Meta]: {
-    value: ProviderType.Meta,
-    name: 'Meta',
-    label: 'Meta AI',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
     defaultMaxInputTokens: 1048576,
     defaultMaxOutputTokens: 131072,
-    description: 'Meta Model API (Muse Spark models)'
   },
   [ProviderType.Azure]: {
-    value: ProviderType.Azure,
-    name: 'Azure',
-    label: 'Azure OpenAI',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
     defaultMaxInputTokens: 128000,
     defaultMaxOutputTokens: 16384,
-    description: 'Azure OpenAI Service (deployment-scoped OpenAI models)'
   },
   [ProviderType.Bedrock]: {
-    value: ProviderType.Bedrock,
-    name: 'Bedrock',
-    label: 'Amazon Bedrock',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
     defaultMaxInputTokens: 200000,
     defaultMaxOutputTokens: 65536,
-    description: 'Amazon Bedrock (AWS-hosted foundation models via the Converse API)'
   },
   [ProviderType.Ultravox]: {
-    value: ProviderType.Ultravox,
-    name: 'Ultravox',
-    label: 'Ultravox',
     supportsSpeedScore: false,
     supportsQualityScore: false,
     supportsVariation: false,
-    description: 'Ultravox voice models'
   },
   [ProviderType.ElevenLabs]: {
-    value: ProviderType.ElevenLabs,
-    name: 'ElevenLabs',
-    label: 'ElevenLabs',
     supportsSpeedScore: false,
     supportsQualityScore: true,
     supportsVariation: false,
-    description: 'ElevenLabs audio synthesis'
   },
   [ProviderType.Cloudflare]: {
-    value: ProviderType.Cloudflare,
-    name: 'Cloudflare',
-    label: 'Cloudflare Workers AI',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: false,
-    description: 'Cloudflare Workers AI serverless inference'
   },
   [ProviderType.OpenRouter]: {
-    value: ProviderType.OpenRouter,
-    name: 'OpenRouter',
-    label: 'OpenRouter',
     supportsSpeedScore: true,
     supportsQualityScore: true,
     supportsVariation: true,
-    description: 'OpenRouter multi-provider routing'
-  }
+  },
 };
 
-/**
- * Get list of available providers for dropdown/selection
- */
-export function getAvailableProviders(): ProviderMetadata[] {
-  return Object.values(PROVIDER_REGISTRY).filter(
-    (provider): provider is ProviderMetadata => provider !== undefined
-  );
+function normalizeProviderName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
 /**
- * Get provider metadata by type
- */
-export function getProviderMetadata(provider: string | number): ProviderMetadata | undefined {
-  const normalizedProvider = normalizeProviderType(provider);
-  if (normalizedProvider !== undefined) {
-    return PROVIDER_REGISTRY[normalizedProvider];
-  }
-
-  return undefined;
-}
-
-/**
- * Get provider type name from enum value
- */
-export function getProviderTypeName(value: ProviderType): string {
-  const metadata = PROVIDER_REGISTRY[value];
-  return metadata ? metadata.name : String(value);
-}
-
-/**
- * Normalize provider type string to enum value
+ * Normalize provider values used by legacy numeric association contracts and import surfaces.
+ *
+ * The backend catalog supplies numeric IDs for newly added providers. Named constants above are
+ * only compatibility fallbacks for code that runs before that catalog has loaded.
  */
 export function normalizeProviderType(provider: string | number): ProviderType | undefined {
-  if (!provider && provider !== 0) return undefined;
-
-  // Numeric values are accepted only as a compatibility bridge for persisted UI state.
   if (typeof provider === 'number') {
-    return Object.values(ProviderType).filter(value => value !== ProviderType.Unknown)[provider - 1];
-  }
-
-  const numValue = parseInt(provider, 10);
-  if (!isNaN(numValue)) {
-    return normalizeProviderType(numValue);
-  }
-
-  const direct = Object.values(ProviderType).find(
-    value => value.toLowerCase() === provider.toLowerCase()
-  );
-  if (direct) {
-    return direct;
-  }
-
-  const upperProvider = provider.toUpperCase();
-  for (const [key, metadata] of Object.entries(PROVIDER_REGISTRY)) {
-    if (metadata?.name.toUpperCase() === upperProvider) {
-      return key as ProviderType;
+    if (!Number.isInteger(provider) || provider <= 0) {
+      return undefined;
     }
+    return getCachedProviderConfigurationById(provider)?.providerType
+      ?? knownConfigurableProviderValues[provider - 1];
   }
 
-  // Handle special cases
-  const specialCases: Record<string, ProviderType> = {
-    'openai': ProviderType.OpenAI,
-    'openaicompatible': ProviderType.OpenAICompatible,
-    'openai-compatible': ProviderType.OpenAICompatible,
-    'deepinfra': ProviderType.DeepInfra,
-    'deep-infra': ProviderType.DeepInfra,
-    'elevenlabs': ProviderType.ElevenLabs,
-    'eleven-labs': ProviderType.ElevenLabs,
-    'sambanova': ProviderType.SambaNova,
-    'samba-nova': ProviderType.SambaNova,
-    'cloudflare': ProviderType.Cloudflare,
-    'workers-ai': ProviderType.Cloudflare,
-    'workersai': ProviderType.Cloudflare,
-    'openrouter': ProviderType.OpenRouter,
-    'open-router': ProviderType.OpenRouter,
-    'meta': ProviderType.Meta,
-    'metaai': ProviderType.Meta,
-    'meta-ai': ProviderType.Meta
-  };
-
-  const lowerProvider = provider.toLowerCase().replace(/[\s_]/g, '');
-  if (lowerProvider in specialCases) {
-    return specialCases[lowerProvider];
+  const value = provider.trim();
+  if (!value) {
+    return undefined;
   }
 
-  return undefined;
+  const numericValue = Number(value);
+  if (Number.isInteger(numericValue) && String(numericValue) === value) {
+    return normalizeProviderType(numericValue);
+  }
+
+  const normalizedName = normalizeProviderName(value);
+  const known = knownProviderValues.find(
+    candidate => normalizeProviderName(candidate) === normalizedName
+  );
+  if (known) {
+    return known;
+  }
+
+  const catalogValue = getCachedProviderConfiguration(value as ProviderType)?.providerType;
+  if (catalogValue) {
+    return catalogValue;
+  }
+
+  const cached = getCachedProviderConfigurationById(
+    Number.isInteger(numericValue) ? numericValue : -1
+  );
+  if (cached) {
+    return cached.providerType;
+  }
+
+  // Compatibility aliases whose display names do not normalize to their wire enum value.
+  if (normalizedName === 'workersai') {
+    return ProviderType.Cloudflare;
+  }
+  if (normalizedName === 'metaai') {
+    return ProviderType.Meta;
+  }
+
+  // Generated contract types remain authoritative. Accept a canonical enum-shaped value that a
+  // newer generated contract added even when no provider-specific frontend constant exists.
+  return /^[A-Za-z][A-Za-z0-9]*$/.test(value)
+    ? value as ProviderType
+    : undefined;
 }
 
-/**
- * Check if a provider type is valid
- */
+/** Return the backend-owned display name when cached, with a readable pre-load fallback. */
+export function getProviderTypeName(value: string | number): string {
+  const providerType = normalizeProviderType(value);
+  if (!providerType) {
+    return typeof value === 'number' ? `Provider ${value}` : 'Unknown';
+  }
+  return getCachedProviderConfiguration(providerType)?.displayName
+    ?? formatProviderTypeFallback(providerType);
+}
+
+export function getProviderAssociationDefaults(
+  provider: string | number
+): ProviderAssociationDefaults | undefined {
+  const providerType = normalizeProviderType(provider);
+  return providerType ? PROVIDER_ASSOCIATION_DEFAULTS[providerType] : undefined;
+}
+
+/** Check whether a value can identify a configurable provider. */
 export function isValidProviderType(provider: string | number): boolean {
-  return normalizeProviderType(provider) !== undefined;
+  if (typeof provider === 'number') {
+    // The backend remains authoritative for numeric enum membership. Accept positive integer IDs so
+    // a newly generated provider contract is usable before this compatibility module changes.
+    return Number.isInteger(provider) && provider > 0;
+  }
+  const normalized = normalizeProviderType(provider);
+  return normalized !== undefined && normalized !== ProviderType.Unknown;
 }
 
 /**
- * Provider validation constraints
+ * Validation constraints for legacy model-provider association inputs.
+ *
+ * Token limits and operation support are model/association data, not provider-type metadata, so no
+ * provider-specific defaults live here.
  */
 export interface ProviderConstraints {
   speedScore: {
@@ -298,36 +242,40 @@ export interface ProviderConstraints {
   };
 }
 
-/**
- * Get validation constraints for all providers
- */
 export function getProviderConstraints(): ProviderConstraints {
   return {
     speedScore: {
       min: 0.01,
       max: 100,
-      step: 0.01
+      step: 0.01,
     },
     qualityScore: {
       min: 0,
       max: 1,
-      step: 0.05
+      step: 0.05,
     },
     maxInputTokens: {
       min: 0,
-      max: 2000000
+      max: 2000000,
     },
     maxOutputTokens: {
       min: 0,
-      max: 200000
-    }
+      max: 200000,
+    },
   };
 }
 
 /** Converts a canonical wire provider value for legacy numeric association fields. */
 export function providerTypeToOrdinal(provider: ProviderType): number {
-  if (provider === ProviderType.Unknown) return 0;
-  return Object.values(ProviderType)
-    .filter(value => value !== ProviderType.Unknown)
-    .indexOf(provider) + 1;
+  if (provider === ProviderType.Unknown) {
+    return 0;
+  }
+
+  const catalogId = getCachedProviderConfiguration(provider)?.providerTypeId;
+  if (catalogId) {
+    return catalogId;
+  }
+
+  const knownIndex = knownConfigurableProviderValues.indexOf(provider);
+  return knownIndex >= 0 ? knownIndex + 1 : 0;
 }
