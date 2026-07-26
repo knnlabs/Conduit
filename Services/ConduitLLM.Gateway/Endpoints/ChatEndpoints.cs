@@ -189,49 +189,18 @@ namespace ConduitLLM.Gateway.Endpoints
 
         internal static ProviderCommunicationError MapProviderCommunicationError(HttpStatusCode? upstreamStatus)
         {
-            return upstreamStatus switch
+            // The status table is shared with OpenAIErrorMiddleware via ExceptionToResponseMapper,
+            // so chat and non-chat routes report identical statuses for the same provider failure.
+            var mapping = ConduitLLM.Core.Exceptions.ExceptionToResponseMapper
+                .MapProviderCommunicationStatus(upstreamStatus, string.Empty);
+            var metricOutcome = mapping.ErrorCode switch
             {
-                HttpStatusCode.TooManyRequests => new(
-                    StatusCodes.Status429TooManyRequests,
-                    "rate_limit_exceeded",
-                    "rate_limit_error",
-                    "rate_limited"),
-                HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden => new(
-                    StatusCodes.Status502BadGateway,
-                    "provider_authentication_error",
-                    "server_error",
-                    "provider_error"),
-                HttpStatusCode.RequestTimeout => new(
-                    StatusCodes.Status503ServiceUnavailable,
-                    "provider_timeout",
-                    "server_error",
-                    "provider_unavailable"),
-                HttpStatusCode.BadGateway => new(
-                    StatusCodes.Status502BadGateway,
-                    "provider_bad_gateway",
-                    "server_error",
-                    "provider_unavailable"),
-                HttpStatusCode.ServiceUnavailable => new(
-                    StatusCodes.Status503ServiceUnavailable,
-                    "provider_unavailable",
-                    "server_error",
-                    "provider_unavailable"),
-                HttpStatusCode.GatewayTimeout => new(
-                    StatusCodes.Status504GatewayTimeout,
-                    "provider_timeout",
-                    "server_error",
-                    "provider_unavailable"),
-                { } status when (int)status >= 400 && (int)status < 500 => new(
-                    (int)status,
-                    "provider_request_error",
-                    "invalid_request_error",
-                    "provider_rejected"),
-                _ => new(
-                    StatusCodes.Status502BadGateway,
-                    "provider_communication_error",
-                    "server_error",
-                    "provider_error")
+                "rate_limit_exceeded" => "rate_limited",
+                "provider_timeout" or "provider_unavailable" or "provider_bad_gateway" => "provider_unavailable",
+                "provider_request_error" => "provider_rejected",
+                _ => "provider_error"
             };
+            return new(mapping.StatusCode, mapping.ErrorCode, mapping.OpenAIErrorType, metricOutcome);
         }
 
         internal readonly record struct ProviderCommunicationError(

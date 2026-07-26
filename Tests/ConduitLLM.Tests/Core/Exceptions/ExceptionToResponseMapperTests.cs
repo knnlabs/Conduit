@@ -363,9 +363,39 @@ public class ExceptionToResponseMapperTests
 
         // Assert
         result.StatusCode.Should().Be(502);
-        result.ErrorCode.Should().Be("provider_communication_error");
+        result.ErrorCode.Should().Be("provider_bad_gateway");
         result.ResponseMessage.Should().Be("Provider returned error");
         result.IncludeExceptionMessageInLog.Should().BeTrue();
+        result.OpenAIErrorType.Should().Be("server_error");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    public void Map_LLMCommunicationException_WithProviderAuthFailure_Returns502(HttpStatusCode upstreamStatus)
+    {
+        // A provider credential rejection must not surface as a client 401/403 — an
+        // OpenAI-compatible SDK would read that as "your gateway key is invalid" (#1257).
+        var exception = new LLMCommunicationException("Provider rejected credentials",
+            upstreamStatus, "auth failure");
+
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        result.StatusCode.Should().Be(502);
+        result.ErrorCode.Should().Be("provider_authentication_error");
+        result.OpenAIErrorType.Should().Be("server_error");
+    }
+
+    [Fact]
+    public void Map_LLMCommunicationException_WithProviderTimeout_Returns503()
+    {
+        var exception = new LLMCommunicationException("Provider timed out",
+            HttpStatusCode.RequestTimeout, "timeout");
+
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        result.StatusCode.Should().Be(503);
+        result.ErrorCode.Should().Be("provider_timeout");
         result.OpenAIErrorType.Should().Be("server_error");
     }
 
@@ -386,7 +416,7 @@ public class ExceptionToResponseMapperTests
     }
 
     [Fact]
-    public void Map_LLMCommunicationException_WithoutStatusCode_Returns500()
+    public void Map_LLMCommunicationException_WithoutStatusCode_Returns502()
     {
         // Arrange
         var exception = new LLMCommunicationException("Unknown provider error");
@@ -394,8 +424,8 @@ public class ExceptionToResponseMapperTests
         // Act
         var result = ExceptionToResponseMapper.Map(exception);
 
-        // Assert
-        result.StatusCode.Should().Be(500);
+        // Assert: unknown provider failure is an upstream fault, not a Conduit fault.
+        result.StatusCode.Should().Be(502);
         result.ErrorCode.Should().Be("provider_communication_error");
         result.OpenAIErrorType.Should().Be("server_error");
         result.LogLevel.Should().Be(LogLevel.Error);
