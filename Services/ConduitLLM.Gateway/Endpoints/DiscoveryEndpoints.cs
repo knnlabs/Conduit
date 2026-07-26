@@ -76,9 +76,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 validation.HttpStatusCode,
                 validation.Reason ?? "Virtual key validation failed.",
                 validation.FailureCode ?? VirtualKeyValidationFailureCodes.ValidationError,
-                validation.HttpStatusCode == StatusCodes.Status401Unauthorized
-                    ? "authentication_error"
-                    : "server_error");
+                GatewayResults.OpenAIErrorTypeFor(validation.HttpStatusCode));
         }
 
         /// <summary>

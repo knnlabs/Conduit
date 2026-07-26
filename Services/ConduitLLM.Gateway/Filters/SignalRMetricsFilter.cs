@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.AspNetCore.SignalR;
 
 using ConduitLLM.Gateway.Interfaces;
+using ConduitLLM.Gateway.Utilities;
 using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Filters
@@ -204,29 +205,10 @@ namespace ConduitLLM.Gateway.Filters
             return null;
         }
 
-        private static string GetOrCreateCorrelationId(HubLifetimeContext context)
-        {
-            if (context.Context.Items.TryGetValue("CorrelationId", out var value) && value is string correlationId)
-            {
-                return correlationId;
-            }
+        private static string GetOrCreateCorrelationId(HubLifetimeContext context) =>
+            HubContextHelpers.GetOrCreateCorrelationId(context.Context.Items);
 
-            correlationId = Guid.NewGuid().ToString();
-            context.Context.Items["CorrelationId"] = correlationId;
-            return correlationId;
-        }
-
-        private static string GetOrCreateCorrelationId(HubCallerContext context)
-        {
-            if (context.Items.TryGetValue("CorrelationId", out var value) && value is string correlationId)
-            {
-                return correlationId;
-            }
-
-            correlationId = Guid.NewGuid().ToString();
-            context.Items["CorrelationId"] = correlationId;
-            return correlationId;
-        }
-
+        private static string GetOrCreateCorrelationId(HubCallerContext context) =>
+            HubContextHelpers.GetOrCreateCorrelationId(context.Items);
     }
 }
