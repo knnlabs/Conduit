@@ -286,17 +286,17 @@ namespace ConduitLLM.Providers
         }
 
         /// <summary>
-        /// Returns a copy of the credential whose secret settings hold plaintext, decrypting the
-        /// stored values so provider clients consume them exactly as they consume the API key.
+        /// Returns a copy of the credential whose API key and secret settings hold plaintext,
+        /// decrypting stored values at the single seam before provider clients consume them.
         /// </summary>
         /// <remarks>
         /// A copy, not an in-place mutation: the credential can come from a cached or tracked entity,
         /// and writing plaintext back into it would leak decrypted secrets into that shared instance
-        /// and risk persisting them. A credential with no secret settings is returned untouched.
+        /// and risk persisting them. A credential with no stored secrets is returned untouched.
         /// </remarks>
-        private ProviderKeyCredential RevealSecretSettings(ProviderKeyCredential keyCredential)
+        private ProviderKeyCredential RevealSecrets(ProviderKeyCredential keyCredential)
         {
-            if (keyCredential.SecretSettings is not { Count: > 0 })
+            if (keyCredential.ApiKey == null && keyCredential.SecretSettings is not { Count: > 0 })
             {
                 return keyCredential;
             }
@@ -305,7 +305,7 @@ namespace ConduitLLM.Providers
             if (protector == null)
             {
                 _logger.LogWarning(
-                    "No provider secret protector is registered; secret settings for provider {ProviderId} cannot be decrypted.",
+                    "No provider secret protector is registered; credentials for provider {ProviderId} cannot be decrypted.",
                     keyCredential.ProviderId);
                 return keyCredential;
             }
@@ -314,7 +314,7 @@ namespace ConduitLLM.Providers
             {
                 Id = keyCredential.Id,
                 ProviderId = keyCredential.ProviderId,
-                ApiKey = keyCredential.ApiKey,
+                ApiKey = protector.Reveal(keyCredential.ApiKey),
                 KeyName = keyCredential.KeyName,
                 BaseUrl = keyCredential.BaseUrl,
                 SecretSettings = protector.RevealAll(keyCredential.SecretSettings),
@@ -404,7 +404,7 @@ namespace ConduitLLM.Providers
             _logger.LogDebug("Creating client for provider type: {ProviderType}, model: {ModelId}",
                 provider.ProviderType, modelId);
 
-            keyCredential = RevealSecretSettings(keyCredential);
+            keyCredential = RevealSecrets(keyCredential);
 
             // Create the client creation context with all dependencies
             var context = new ClientCreationContext

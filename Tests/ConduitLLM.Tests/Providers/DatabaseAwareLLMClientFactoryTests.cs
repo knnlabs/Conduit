@@ -1,12 +1,20 @@
+using System.Net;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Security;
 using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers;
 using ConduitLLM.Providers.OpenAI;
+
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+
 using Moq;
-using ConduitLLM.Configuration.Interfaces;
+using Moq.Protected;
 
 namespace ConduitLLM.Tests.Providers
 {
@@ -17,6 +25,7 @@ namespace ConduitLLM.Tests.Providers
         private readonly Mock<ILoggerFactory> _mockLoggerFactory;
         private readonly Mock<IHttpClientFactory> _mockHttpClientFactory;
         private readonly Mock<ILogger<DatabaseAwareLLMClientFactory>> _mockLogger;
+        private readonly ProviderSecretProtector _protector;
         private readonly DatabaseAwareLLMClientFactory _factory;
 
         public DatabaseAwareLLMClientFactoryTests()
@@ -32,7 +41,13 @@ namespace ConduitLLM.Tests.Providers
             _mockHttpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>()))
                 .Returns(new HttpClient());
 
+            _protector = new ProviderSecretProtector(
+                DataProtectionProvider.Create(nameof(DatabaseAwareLLMClientFactoryTests)),
+                NullLogger<ProviderSecretProtector>.Instance);
             var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider
+                .Setup(provider => provider.GetService(typeof(IProviderSecretProtector)))
+                .Returns(_protector);
 
             _factory = new DatabaseAwareLLMClientFactory(
                 _mockCredentialService.Object,
@@ -433,6 +448,50 @@ namespace ConduitLLM.Tests.Providers
             Assert.IsType<OpenAIClient>(contextClient.InnerClient);
             _mockCredentialService.VerifyNoOtherCalls();
             _mockMappingService.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public async Task CreateTestClient_WithProtectedApiKey_RevealsItBeforeTheProviderUsesIt()
+        {
+            const string plaintext = "sk-provider-plaintext";
+            var stored = _protector.Protect(plaintext);
+            string? observedApiKey = null;
+            var handler = new Mock<HttpMessageHandler>();
+            handler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Callback<HttpRequestMessage, CancellationToken>((request, _) =>
+                    observedApiKey = request.Headers.Authorization?.Parameter)
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK));
+            _mockHttpClientFactory
+                .Setup(factory => factory.CreateClient(It.IsAny<string>()))
+                .Returns(new HttpClient(handler.Object));
+
+            var provider = new Provider
+            {
+                Id = 17,
+                ProviderName = "CredentialTest",
+                ProviderType = ProviderType.OpenAI,
+                IsEnabled = true
+            };
+            var credential = new ProviderKeyCredential
+            {
+                Id = 23,
+                ProviderId = provider.Id,
+                ApiKey = stored,
+                IsEnabled = true
+            };
+
+            var client = _factory.CreateTestClient(provider, credential);
+            var contextClient = Assert.IsType<ContextAwareLLMClient>(client);
+            var providerClient = Assert.IsType<OpenAIClient>(contextClient.InnerClient);
+
+            await providerClient.VerifyAuthenticationAsync();
+
+            Assert.Equal(plaintext, observedApiKey);
+            Assert.Equal(stored, credential.ApiKey);
         }
 
         [Fact]

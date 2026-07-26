@@ -49,7 +49,9 @@ namespace ConduitLLM.Configuration.Entities
         public short ProviderAccountGroup { get; set; } = 0;
     
         /// <summary>
-        /// Gets or sets the API key for this credential. Made nullable to allow for empty/cleared keys.
+        /// Gets or sets the API key for this credential. Stored encrypted through
+        /// <c>IProviderSecretProtector</c>; legacy plaintext values remain readable and are protected
+        /// on their next update. Made nullable to allow for empty/cleared keys.
         /// </summary>
         // Made ApiKey nullable to allow for empty/cleared keys
         public string? ApiKey { get; set; }
