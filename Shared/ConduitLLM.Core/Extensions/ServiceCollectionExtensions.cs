@@ -237,9 +237,6 @@ namespace ConduitLLM.Core.Extensions
                 return new CachedModelProviderMappingService(innerService, cacheManager, logger);
             });
 
-            // Provider metadata registry — single source of truth for provider metadata
-            services.AddSingleton<IProviderMetadataRegistry, ProviderMetadataRegistry>();
-
             return services;
         }
 

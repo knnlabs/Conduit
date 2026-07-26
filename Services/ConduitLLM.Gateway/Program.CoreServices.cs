@@ -25,7 +25,7 @@ public partial class Program
         builder.Services.AddLeaderElection();
 
         // Shared application services (GlobalSettingsCache, ProviderService,
-        // ModelProviderMapping+decorator, ProviderMetadataRegistry)
+        // ModelProviderMapping+decorator)
         builder.Services.AddSharedApplicationServices();
 
         // ========== Caching Infrastructure ==========
@@ -67,8 +67,6 @@ public partial class Program
 
         // Register LLM client factory and provider services from shared extension
         builder.Services.AddProviderServices();
-
-        // Note: ProviderMetadataRegistry registered via AddSharedApplicationServices() above
 
         // Provider error tracking service
         builder.Services.AddSingleton<IRedisErrorStore, RedisErrorStore>();

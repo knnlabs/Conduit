@@ -46,13 +46,6 @@ public interface ILLMClientFactory
     Task<ILLMClient> GetClientByProviderIdAsync(int providerId, string providerModelId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets provider metadata for the specified provider type without requiring credentials.
-    /// </summary>
-    /// <param name="providerType">The provider type to get metadata for.</param>
-    /// <returns>Provider metadata if the provider implements IProviderMetadata, null otherwise.</returns>
-    IProviderMetadata? GetProviderMetadata(ConduitLLM.Configuration.ProviderType providerType);
-
-    /// <summary>
     /// Asynchronously gets an ILLMClient instance for the specified provider type directly.
     /// </summary>
     /// <param name="providerType">The provider type enum value.</param>

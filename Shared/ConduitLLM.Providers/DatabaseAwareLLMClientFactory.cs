@@ -234,14 +234,6 @@ namespace ConduitLLM.Providers
         }
 
         /// <inheritdoc />
-        public IProviderMetadata? GetProviderMetadata(ProviderType providerType)
-        {
-            // This factory doesn't have access to provider metadata
-            // Return null to indicate metadata is not available through this factory
-            return null;
-        }
-
-        /// <inheritdoc />
         public async Task<ILLMClient> GetClientByProviderTypeAsync(ProviderType providerType, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Getting client for provider type {ProviderType} using database credentials", providerType);

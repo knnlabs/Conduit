@@ -27,7 +27,7 @@ namespace ConduitLLM.Admin.Extensions
             services.AddDatabaseMigration();
 
             // Shared application services (GlobalSettingsCache, ProviderService,
-            // ModelProviderMapping+decorator, ProviderMetadataRegistry)
+            // ModelProviderMapping+decorator)
             services.AddSharedApplicationServices();
 
             return services;

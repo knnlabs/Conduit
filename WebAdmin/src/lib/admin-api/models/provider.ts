@@ -1,5 +1,4 @@
 import { FilterOptions } from './common';
-import { ProviderConfigMetadata } from './metadata';
 import { ProviderType } from './providerType';
 import type { components } from '../generated/admin-api';
 
@@ -23,16 +22,6 @@ export interface ProviderConnectionTestResultDto {
   modelsAvailable?: string[];
   responseTimeMs?: number;
   timestamp?: string;
-}
-
-export interface ProviderDataDto {
-  name: string;
-  displayName: string;
-  supportedModels: string[];
-  requiresApiKey: boolean;
-  requiresEndpoint: boolean;
-  requiresOrganizationId: boolean;
-  configSchema?: ProviderConfigMetadata;
 }
 
 export interface ProviderFilters extends FilterOptions {
