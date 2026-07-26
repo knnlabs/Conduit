@@ -233,40 +233,19 @@ public partial class CostCalculationService
             tier = orderedTiers.Last(); // Use the highest configured tier if none match
         }
 
-        decimal calculatedCost = 0m;
-        var regularInputTokens = inputTokens;
-
-        if (usage.CachedInputTokens is > 0 && modelCost.CachedInputCostPerMillionTokens.HasValue)
+        // Reuse the shared token-pricing math with the tier's input/output rates substituted.
+        // Embedding, audio and TTS rates are intentionally omitted: tiered pricing does not
+        // cover those modalities, so the helper skips them.
+        var tierRates = new TokenPricingRates
         {
-            if (usage.CachedInputTokensIncludedInPrompt)
-                regularInputTokens -= usage.CachedInputTokens.Value;
-
-            calculatedCost += usage.CachedInputTokens.Value * modelCost.CachedInputCostPerMillionTokens.Value / 1_000_000m;
-        }
-
-        if (usage.CachedWriteTokens is > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
-        {
-            if (usage.CachedWriteTokensIncludedInPrompt)
-                regularInputTokens -= usage.CachedWriteTokens.Value;
-
-            calculatedCost += usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value / 1_000_000m;
-        }
-
-        if (regularInputTokens > 0)
-            calculatedCost += regularInputTokens * tier.InputCost / 1_000_000m;
-
-        var reasoningTokens = usage.ReasoningTokens.GetValueOrDefault();
-        var regularOutputTokens = Math.Max(0, usage.CompletionTokens.GetValueOrDefault() - reasoningTokens);
-        calculatedCost += regularOutputTokens * tier.OutputCost / 1_000_000m;
-
-        if (reasoningTokens > 0)
-        {
-            var reasoningRate = modelCost.ReasoningCostPerMillionTokens ?? tier.OutputCost;
-            calculatedCost += reasoningTokens * reasoningRate / 1_000_000m;
-        }
-
-        if (usage.SearchUnits is > 0 && modelCost.CostPerSearchUnit.HasValue)
-            calculatedCost += usage.SearchUnits.Value * modelCost.CostPerSearchUnit.Value / 1000m;
+            InputCostPerMillion = tier.InputCost,
+            OutputCostPerMillion = tier.OutputCost,
+            CachedInputCostPerMillion = modelCost.CachedInputCostPerMillionTokens,
+            CachedWriteCostPerMillion = modelCost.CachedInputWriteCostPerMillionTokens,
+            ReasoningCostPerMillion = modelCost.ReasoningCostPerMillionTokens,
+            CostPerThousandSearchUnits = modelCost.CostPerSearchUnit
+        };
+        var calculatedCost = ApplyTokenPricing(modelId, usage, tierRates).Total;
 
         _logger.LogDebug("Tiered tokens cost for model {ModelId}: Input context {InputTokens}, Tier ≤{MaxContext}, " +
             "Input rate ${InputRate}, Output rate ${OutputRate}, Total cost ${TotalCost}",
