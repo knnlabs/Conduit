@@ -54,13 +54,7 @@ namespace ConduitLLM.Admin.Endpoints
                     CalculatedCost = e.CalculatedCost,
                     RequestId = e.RequestId
                 }).ToList(),
-                Pagination = new PaginationMetadata
-                {
-                    Page = request.PageNumber,
-                    PageSize = request.PageSize,
-                    TotalItems = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize)
-                }
+                Pagination = PaginationMetadata.Create(request.PageNumber, request.PageSize, totalCount)
             });
         }
 

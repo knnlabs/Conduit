@@ -65,13 +65,7 @@ namespace ConduitLLM.Admin.Endpoints
             return Results.Ok(new PagedResult<object?>
             {
                 Data = data,
-                Pagination = new PaginationMetadata
-                {
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalItems = allItems.Count,
-                    TotalPages = (int)Math.Ceiling(allItems.Count / (double)pageSize)
-                }
+                Pagination = PaginationMetadata.Create(page, pageSize, allItems.Count)
             });
         }
 

@@ -133,13 +133,7 @@ namespace ConduitLLM.Admin.Endpoints
             var response = new PagedResult<BillingAuditEventDto>
             {
                 Data = events.Select(e => MapToDto(e)).ToList(),
-                Pagination = new PaginationMetadata
-                {
-                    Page = request.PageNumber,
-                    PageSize = request.PageSize,
-                    TotalItems = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)request.PageSize)
-                }
+                Pagination = PaginationMetadata.Create(request.PageNumber, request.PageSize, totalCount)
             };
 
             _logger.LogDebug("Billing audit query returned {TotalCount} events (page {Page}/{PageSize})",
