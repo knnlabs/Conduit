@@ -218,46 +218,10 @@ namespace ConduitLLM.Gateway.Authentication
         }
 
         /// <summary>
-        /// Extracts the Virtual Key from the request headers
+        /// Extracts the Virtual Key from the request
         /// </summary>
-        private string? ExtractVirtualKey(Microsoft.AspNetCore.Http.HttpContext context)
-        {
-            // For SignalR connections, check query string first
-            if (context.Request.Path.StartsWithSegments("/hubs"))
-            {
-                // Check for access_token in query string (standard for SignalR)
-                if (context.Request.Query.TryGetValue("access_token", out var accessToken))
-                {
-                    return accessToken.ToString();
-                }
-                
-                // Also check for api_key in query string
-                if (context.Request.Query.TryGetValue("api_key", out var apiKey))
-                {
-                    return apiKey.ToString();
-                }
-            }
-
-            // Try Authorization header first (Bearer token)
-            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(authHeader))
-            {
-                var token = SpanHelper.ExtractBearerToken(authHeader);
-                if (!string.IsNullOrEmpty(token))
-                {
-                    return token;
-                }
-            }
-
-            // Try X-API-Key header
-            var apiKeyHeader = context.Request.Headers["X-API-Key"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(apiKeyHeader))
-            {
-                return apiKeyHeader.Trim();
-            }
-
-            return null;
-        }
+        private static string? ExtractVirtualKey(Microsoft.AspNetCore.Http.HttpContext context) =>
+            VirtualKeyExtractor.Extract(context);
 
         /// <summary>
         /// Sanitizes a key for logging by showing only first few characters
