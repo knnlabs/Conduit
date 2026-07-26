@@ -573,7 +573,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         private static object? ConvertJsonElement(System.Text.Json.JsonElement element) =>
-            ProviderHelpers.JsonElementConverter.ConvertJsonElement(element);
+            ConduitLLM.Functions.Utilities.JsonElementConverter.ConvertJsonElement(element);
 
     }
 }

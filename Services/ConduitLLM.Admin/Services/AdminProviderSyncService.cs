@@ -23,10 +23,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IDbContextFactory<ConduitDbContext> _dbFactory;
         private readonly IAdminModelCostService _modelCostService;
 
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
+        private static readonly JsonSerializerOptions JsonOptions = ConduitLLM.Core.Serialization.ConduitJsonOptions.Compact;
 
         public AdminProviderSyncService(
             IDbContextFactory<ConduitDbContext> dbFactory,

@@ -61,11 +61,7 @@ namespace ConduitLLM.Providers
         protected readonly string ProviderName;
         protected readonly IHttpClientFactory? HttpClientFactory;
 
-        protected static readonly JsonSerializerOptions DefaultJsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
+        protected static readonly JsonSerializerOptions DefaultJsonOptions = ConduitLLM.Core.Serialization.ConduitJsonOptions.Wire;
 
         /// <summary>
         /// Gets the authentication strategy for this provider.

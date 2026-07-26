@@ -189,10 +189,7 @@ namespace ConduitLLM.Admin.Security
         private static string SanitizeKeyForLogging(string key)
         {
             // Only show first 10 characters of the key for security
-            if (key.Length <= 10)
-                return key;
-
-            return SpanHelper.TruncateWithEllipsis(key, 10);
+            return SpanHelper.MaskSecret(key);
         }
     }
 

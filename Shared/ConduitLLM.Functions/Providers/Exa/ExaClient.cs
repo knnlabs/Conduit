@@ -62,12 +62,7 @@ public partial class ExaClient : IFunctionClient
         // Determine base URL (credential > configuration > default)
         _baseUrl = DetermineBaseUrl();
 
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
+        _jsonOptions = Utilities.FunctionsJsonOptions.CompactWire;
     }
 
     /// <summary>

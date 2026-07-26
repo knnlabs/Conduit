@@ -105,6 +105,24 @@ public static class SpanHelper
     }
 
     /// <summary>
+    /// Masks a secret (API key, token, etc.) for safe logging.
+    /// </summary>
+    /// <param name="value">The secret value to mask.</param>
+    /// <returns>
+    /// "[empty]" when <paramref name="value"/> is null or empty; the value unchanged when it is
+    /// 10 characters or fewer; otherwise the first 10 characters followed by "...".
+    /// </returns>
+    public static string MaskSecret(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "[empty]";
+        }
+
+        return value.Length <= 10 ? value : TruncateWithEllipsis(value.AsSpan(), 10);
+    }
+
+    /// <summary>
     /// Combines a base URL and endpoint path with proper slash handling.
     /// </summary>
     /// <param name="baseUrl">The base URL (e.g., "https://api.example.com").</param>

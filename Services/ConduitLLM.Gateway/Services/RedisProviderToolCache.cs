@@ -21,11 +21,7 @@ public class RedisProviderToolCache : BufferedStatsRedisCacheBase, IProviderTool
     public RedisProviderToolCache(
         IConnectionMultiplexer redis,
         ILogger<RedisProviderToolCache> logger)
-        : base(redis, logger, TimeSpan.FromHours(1), new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        })
+        : base(redis, logger, TimeSpan.FromHours(1), ConduitLLM.Core.Serialization.ConduitJsonOptions.Compact)
     {
         _subscriber = redis.GetSubscriber();
 

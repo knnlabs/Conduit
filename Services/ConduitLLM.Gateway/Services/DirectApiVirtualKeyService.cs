@@ -73,9 +73,9 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 var keyHash = VirtualKeyUtilities.HashKey(key);
-                Logger.LogDebug("Validating key ({ValidationMode}): {KeyPrefix}..., Hash: {Hash}",
+                Logger.LogDebug("Validating key ({ValidationMode}): {KeyPrefix}, Hash: {Hash}",
                     checkBalance ? "balance" : "authentication",
-                    LoggingSanitizer.S(key[..Math.Min(10, key.Length)]),
+                    LoggingSanitizer.S(ConduitLLM.Core.Utilities.SpanHelper.MaskSecret(key)),
                     keyHash);
 
                 var virtualKey = await VirtualKeyRepository.GetByKeyHashAsync(keyHash);
