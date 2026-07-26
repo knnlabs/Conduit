@@ -73,6 +73,7 @@ export default function ProviderKeysPage() {
   // Secret-valued settings the provider type declares (for example an AWS secret access key).
   // They are held on the key credential, encrypted at rest, and never read back from the server.
   const [secretFields, setSecretFields] = useState<ProviderSettingField[]>([]);
+  const [requiresApiKey, setRequiresApiKey] = useState(true);
   const [newKeySecrets, setNewKeySecrets] = useState<Record<string, string>>({});
   const [editingGroupKey, setEditingGroupKey] = useState<ProviderKeyCredentialDto | null>(null);
   const [editGroupValue, setEditGroupValue] = useState<number>(0);
@@ -116,8 +117,10 @@ export default function ProviderKeysPage() {
 
     const loadSecretFields = async () => {
       try {
-        const schema = await withAdminClient(client => client.providers.getSettingsSchema());
-        setSecretFields((schema[providerType] ?? []).filter(field => field.secret));
+        const schema = await withAdminClient(client => client.providers.getConfigurationSchema());
+        const configuration = schema[providerType];
+        setRequiresApiKey(configuration?.requiresApiKey ?? true);
+        setSecretFields((configuration?.settings ?? []).filter(field => field.secret));
       } catch (error) {
         console.error('Error fetching provider settings schema:', error);
         notify.error(new Error('Failed to load provider credential fields'));
@@ -128,7 +131,9 @@ export default function ProviderKeysPage() {
   }, [provider?.providerType]);
 
   const handleAddKey = async () => {
-    if (!newKeyForm.apiKey) return;
+    if (requiresApiKey && !newKeyForm.apiKey) return;
+    if (secretFields.some(field =>
+      field.required && !(newKeySecrets[field.key]?.trim()))) return;
 
     try {
       setIsAddingKey(true);
@@ -319,22 +324,26 @@ export default function ProviderKeysPage() {
             onClick={() => setShowAddForm(!showAddForm)}
             disabled={showAddForm}
           >
-            Add New Key
+            Add New Credential
           </Button>
         </Group>
       </Group>
 
       {showAddForm && (
         <Paper shadow="sm" p="lg" mb="xl" withBorder>
-          <Title order={4} mb="md">Add New API Key</Title>
+          <Title order={4} mb="md">
+            Add New {requiresApiKey ? 'API Key' : 'Credential'}
+          </Title>
           <Stack>
-            <TextInput
-              label="API Key"
-              placeholder="Enter API key"
-              value={newKeyForm.apiKey}
-              onChange={(e) => setNewKeyForm({ ...newKeyForm, apiKey: e.target.value })}
-              required
-            />
+            {requiresApiKey && (
+              <TextInput
+                label="API Key"
+                placeholder="Enter API key"
+                value={newKeyForm.apiKey}
+                onChange={(e) => setNewKeyForm({ ...newKeyForm, apiKey: e.target.value })}
+                required
+              />
+            )}
             
             <TextInput
               label="Key Name (optional)"
@@ -385,9 +394,11 @@ export default function ProviderKeysPage() {
               <Button
                 onClick={() => void handleAddKey()}
                 loading={isAddingKey}
-                disabled={!newKeyForm.apiKey}
+                disabled={(requiresApiKey && !newKeyForm.apiKey)
+                  || secretFields.some(field =>
+                    field.required && !(newKeySecrets[field.key]?.trim()))}
               >
-                Add Key
+                Add Credential
               </Button>
               <Button
                 variant="default"

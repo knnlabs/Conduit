@@ -264,9 +264,21 @@ namespace ConduitLLM.Providers
                 throw new ArgumentNullException(nameof(keyCredential));
             }
 
-            if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
+            var configuration = ProviderConfigurationRegistry.GetConfiguration(provider.ProviderType);
+            if (configuration?.AuthenticationStrategy.RequiresApiKey != false
+                && string.IsNullOrWhiteSpace(keyCredential.ApiKey))
             {
                 throw new ArgumentException("API key is required for testing credentials", nameof(keyCredential));
+            }
+
+            var missingSecrets = ProviderConfigurationRegistry.GetMissingRequiredSecrets(
+                provider.ProviderType,
+                keyCredential.SecretSettings);
+            if (missingSecrets.Count > 0)
+            {
+                throw new ArgumentException(
+                    $"{provider.ProviderType} requires: {string.Join(", ", missingSecrets)}.",
+                    nameof(keyCredential));
             }
 
             _logger.LogDebug("Creating test client for provider type: {ProviderType}", provider.ProviderType);

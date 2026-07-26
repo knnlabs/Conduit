@@ -45,6 +45,7 @@ public static class ProviderHttpClientNames
             [ProviderType.Meta] = "meta",
             [ProviderType.Azure] = "Azure",
             [ProviderType.Bedrock] = "bedrock",
+            [ProviderType.Vertex] = "Vertex",
         };
 
     /// <summary>

@@ -1,4 +1,6 @@
 using System.Net;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
@@ -8,6 +10,7 @@ using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers;
 using ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.Vertex;
 
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging;
@@ -448,6 +451,67 @@ namespace ConduitLLM.Tests.Providers
             Assert.IsType<OpenAIClient>(contextClient.InnerClient);
             _mockCredentialService.VerifyNoOtherCalls();
             _mockMappingService.VerifyNoOtherCalls();
+        }
+
+        [Fact]
+        public void CreateTestClient_WithVertexServiceAccount_DoesNotRequireApiKey()
+        {
+            using var rsa = RSA.Create(2048);
+            var provider = new Provider
+            {
+                Id = 17,
+                ProviderName = "VertexTest",
+                ProviderType = ProviderType.Vertex,
+                IsEnabled = true,
+                Settings = new Dictionary<string, string>
+                {
+                    ["project_id"] = "test-project",
+                    ["location"] = "us-central1"
+                }
+            };
+            var credential = new ProviderKeyCredential
+            {
+                Id = 23,
+                ProviderId = provider.Id,
+                ApiKey = string.Empty,
+                SecretSettings = new Dictionary<string, string>
+                {
+                    ["service_account_json"] = JsonSerializer.Serialize(
+                        new Dictionary<string, string>
+                        {
+                            ["type"] = "service_account",
+                            ["client_email"] = "vertex-test@example.iam.gserviceaccount.com",
+                            ["private_key"] = rsa.ExportPkcs8PrivateKeyPem()
+                        })
+                },
+                IsEnabled = true
+            };
+
+            var client = _factory.CreateTestClient(provider, credential);
+
+            var contextClient = Assert.IsType<ContextAwareLLMClient>(client);
+            Assert.IsType<VertexClient>(contextClient.InnerClient);
+        }
+
+        [Fact]
+        public void CreateTestClient_WithVertexMissingServiceAccount_ThrowsActionableError()
+        {
+            var provider = new Provider
+            {
+                ProviderType = ProviderType.Vertex,
+                Settings = new Dictionary<string, string>
+                {
+                    ["project_id"] = "test-project",
+                    ["location"] = "us-central1"
+                }
+            };
+            var credential = new ProviderKeyCredential { ApiKey = string.Empty };
+
+            var exception = Assert.Throws<ArgumentException>(
+                () => _factory.CreateTestClient(provider, credential));
+
+            Assert.Contains("Service Account JSON", exception.Message);
+            Assert.Equal("keyCredential", exception.ParamName);
         }
 
         [Fact]

@@ -92,7 +92,12 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Amazon Bedrock (AWS-hosted foundation models via the Converse API, SigV4 or API-key auth)
         /// </summary>
-        Bedrock = 16
+        Bedrock = 16,
+
+        /// <summary>
+        /// Google Vertex AI (Google Cloud-hosted Gemini and Model Garden models)
+        /// </summary>
+        Vertex = 17
     }
 
     /// <summary>

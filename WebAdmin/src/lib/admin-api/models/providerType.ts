@@ -28,4 +28,5 @@ export const ProviderType = {
   Meta: 'meta',
   Azure: 'azure',
   Bedrock: 'bedrock',
+  Vertex: 'vertex',
 } as const satisfies Record<string, ProviderType>;

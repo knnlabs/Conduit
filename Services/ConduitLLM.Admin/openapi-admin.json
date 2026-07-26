@@ -32319,7 +32319,8 @@
           "openRouter",
           "meta",
           "azure",
-          "bedrock"
+          "bedrock",
+          "vertex"
         ]
       },
       "PruneMediaRequest": {
@@ -33154,6 +33155,15 @@
             ]
           },
           "settings": {
+            "type": [
+              "null",
+              "object"
+            ],
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "secretSettings": {
             "type": [
               "null",
               "object"

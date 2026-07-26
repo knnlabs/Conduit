@@ -31,6 +31,7 @@ public sealed class TestProviderRequest
     public string? ApiKey { get; set; }
     public string? BaseUrl { get; set; }
     public Dictionary<string, string>? Settings { get; set; }
+    public Dictionary<string, string>? SecretSettings { get; set; }
 }
 
 public sealed class CreateKeyRequest

@@ -6541,7 +6541,8 @@ export interface components {
       | "openRouter"
       | "meta"
       | "azure"
-      | "bedrock";
+      | "bedrock"
+      | "vertex";
     /** @description Request model for pruning old media. */
     PruneMediaRequest: {
       /**
@@ -6951,6 +6952,9 @@ export interface components {
       apiKey?: null | string;
       baseUrl?: null | string;
       settings?: null | {
+        [key: string]: string;
+      };
+      secretSettings?: null | {
         [key: string]: string;
       };
     };

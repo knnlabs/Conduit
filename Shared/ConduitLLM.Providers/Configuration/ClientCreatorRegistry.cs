@@ -13,6 +13,7 @@ using ConduitLLM.Providers.Cloudflare;
 using ConduitLLM.Providers.Meta;
 using ConduitLLM.Providers.OpenRouter;
 using ConduitLLM.Providers.SambaNova;
+using ConduitLLM.Providers.Vertex;
 
 using Microsoft.Extensions.Logging;
 
@@ -83,7 +84,8 @@ namespace ConduitLLM.Providers.Configuration
             [ProviderType.OpenRouter] = CreateOpenRouterClient,
             [ProviderType.Meta] = CreateMetaClient,
             [ProviderType.Azure] = CreateOpenAIClient,
-            [ProviderType.Bedrock] = CreateBedrockClient
+            [ProviderType.Bedrock] = CreateBedrockClient,
+            [ProviderType.Vertex] = CreateVertexClient
         };
 
         /// <summary>
@@ -326,6 +328,21 @@ namespace ConduitLLM.Providers.Configuration
         {
             var logger = context.LoggerFactory.CreateLogger<BedrockClient>();
             return new BedrockClient(
+                provider,
+                keyCredential,
+                modelId,
+                logger,
+                context.HttpClientFactory);
+        }
+
+        private static ILLMClient CreateVertexClient(
+            Provider provider,
+            ProviderKeyCredential keyCredential,
+            string modelId,
+            ClientCreationContext context)
+        {
+            var logger = context.LoggerFactory.CreateLogger<VertexClient>();
+            return new VertexClient(
                 provider,
                 keyCredential,
                 modelId,

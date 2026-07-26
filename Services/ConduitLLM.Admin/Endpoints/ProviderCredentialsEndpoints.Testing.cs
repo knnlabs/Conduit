@@ -127,6 +127,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 ApiKey = testRequest.ApiKey,
                 BaseUrl = testRequest.BaseUrl,
+                SecretSettings = testRequest.SecretSettings,
                 IsPrimary = true,
                 IsEnabled = true
             };

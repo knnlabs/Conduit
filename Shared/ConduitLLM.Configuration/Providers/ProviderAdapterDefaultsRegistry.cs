@@ -30,7 +30,9 @@ public static class ProviderAdapterDefaultsRegistry
             [ProviderType.OpenRouter] = new("https://openrouter.ai/api/v1"),
             [ProviderType.Meta] = new("https://api.meta.ai/v1"),
             [ProviderType.Azure] = new("https://{resource_name}.openai.azure.com"),
-            [ProviderType.Bedrock] = new("https://bedrock-runtime.{region}.amazonaws.com")
+            [ProviderType.Bedrock] = new("https://bedrock-runtime.{region}.amazonaws.com"),
+            [ProviderType.Vertex] = new(
+                "https://aiplatform.googleapis.com/v1beta1/projects/{project_id}/locations/{location}/endpoints/openapi")
         };
 
     public static ProviderAdapterDefaults GetRequired(ProviderType providerType) =>

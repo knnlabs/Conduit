@@ -397,6 +397,66 @@ namespace ConduitLLM.Providers.Configuration
                 }
             },
 
+            // Vertex AI exposes an OpenAI-compatible Chat Completions surface. Project and
+            // location identify the Google Cloud resource in every endpoint; authentication uses
+            // a short-lived OAuth access token minted from the service-account JSON stored on the
+            // key credential. The client owns that exchange, so no separate API-key value is
+            // required from the operator.
+            [ProviderType.Vertex] = new ProviderConfiguration
+            {
+                DisplayName = "Google Vertex AI",
+                HelpUrl = "https://cloud.google.com/vertex-ai/generative-ai/docs/start/openai",
+                HelpText = "Use a Google Cloud service account with the Vertex AI User role. "
+                    + "The project and location select the Vertex AI endpoint; the service-account JSON is stored encrypted on the key credential.",
+                DefaultBaseUrl = DefaultUrl(ProviderType.Vertex),
+                ModelsEndpoint = "/models",
+                ChatCompletionsEndpoint = "/chat/completions",
+                AuthenticationStrategy = OAuthAccessTokenStrategy.Instance,
+                ErrorMessages = new ProviderErrorMessages
+                {
+                    InvalidApiKey = "Vertex AI rejected the service-account credentials. Verify the JSON key and that the service account is enabled.",
+                    RateLimitExceeded = "Vertex AI quota was exceeded. Please try again later or increase the project's quota.",
+                    ModelNotFound = "Vertex AI model not found. Use a publisher-qualified model ID such as 'google/gemini-2.5-flash'.",
+                    MissingApiKey = "A service-account JSON credential is required for Google Vertex AI."
+                },
+                Settings = new[]
+                {
+                    new ProviderSettingDefinition
+                    {
+                        Key = "project_id",
+                        Label = "Google Cloud Project ID",
+                        HelpText = "The Google Cloud project with Vertex AI enabled and billing configured.",
+                        Placeholder = "e.g. my-vertex-project",
+                        Required = true,
+                        Binding = ProviderSettingBinding.UrlPathToken,
+                        BindingTarget = "project_id",
+                        ValidationRegex = "^[a-z][a-z0-9-]{4,28}[a-z0-9]$"
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "location",
+                        Label = "Vertex AI Location",
+                        HelpText = "The Vertex AI region hosting the models, or global for models that support the global endpoint.",
+                        Placeholder = "e.g. us-central1",
+                        Required = true,
+                        Binding = ProviderSettingBinding.UrlPathToken,
+                        BindingTarget = "location",
+                        ValidationRegex = "^(global|[a-z]+(?:-[a-z0-9]+)+[0-9])$"
+                    },
+                    new ProviderSettingDefinition
+                    {
+                        Key = "service_account_json",
+                        Label = "Service Account JSON",
+                        HelpText = "The complete JSON key document for a service account with permission to use Vertex AI. "
+                            + "It is encrypted at rest and never returned by the API.",
+                        Placeholder = "{ \"type\": \"service_account\", ... }",
+                        Required = true,
+                        Secret = true,
+                        Binding = ProviderSettingBinding.AuthScope
+                    }
+                }
+            },
+
             [ProviderType.Meta] = new ProviderConfiguration
             {
                 DisplayName = "Meta AI",
