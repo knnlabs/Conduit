@@ -1,6 +1,5 @@
 using System.Text.Json;
 using ConduitLLM.Admin.Models.Models;
-using ConduitLLM.Admin.Models.ModelCapabilities;
 using FluentAssertions;
 
 namespace ConduitLLM.Tests.Admin.Models.Models
