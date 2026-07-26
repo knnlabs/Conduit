@@ -103,6 +103,15 @@ public static class ExceptionToResponseMapper
                 => new(400, "Invalid parameter value", "invalid_parameter", LogLevel.Warning,
                     "Argument error", false, "invalid_request_error", argEx.ParamName),
 
+            // Both derive from InvalidOperationException, so these arms must precede its arms.
+            ConduitLLM.Configuration.Exceptions.DuplicateProviderKeyException dupKeyEx
+                => new(409, dupKeyEx.Message, "duplicate_provider_key", LogLevel.Warning,
+                    "Duplicate provider key", true, "invalid_request_error"),
+
+            ConduitLLM.Configuration.Exceptions.IdempotencyConflictException idemEx
+                => new(409, idemEx.Message, "conflict", LogLevel.Warning,
+                    "Idempotency conflict", true, "invalid_request_error"),
+
             InvalidOperationException invalidOp when IsDependencyResolutionFailure(invalidOp)
                 => new(500, "A server dependency could not be resolved", "dependency_resolution_error", LogLevel.Error,
                     "Dependency resolution error", false, "server_error"),
