@@ -33,69 +33,6 @@ namespace ConduitLLM.Core.Events
 
 
     /// <summary>
-    /// Represents the status of a video generation task
-    /// </summary>
-    public enum VideoGenerationStatus
-    {
-        /// <summary>
-        /// Task has been submitted and is waiting to be processed
-        /// </summary>
-        Pending = 0,
-        
-        /// <summary>
-        /// Task is currently being processed
-        /// </summary>
-        Processing = 1,
-        
-        /// <summary>
-        /// Task completed successfully
-        /// </summary>
-        Completed = 2,
-        
-        /// <summary>
-        /// Task failed with an error
-        /// </summary>
-        Failed = 3,
-        
-        /// <summary>
-        /// Task was cancelled by user or system
-        /// </summary>
-        Cancelled = 4
-    }
-
-    /// <summary>
-    /// Represents the status of an image generation task
-    /// </summary>
-    public enum ImageGenerationStatus
-    {
-        /// <summary>
-        /// Task has been submitted and is waiting to be processed
-        /// </summary>
-        Pending = 0,
-        
-        /// <summary>
-        /// Task is currently being processed
-        /// </summary>
-        Processing = 1,
-        
-        /// <summary>
-        /// Task completed successfully
-        /// </summary>
-        Completed = 2,
-        
-        /// <summary>
-        /// Task failed with an error
-        /// </summary>
-        Failed = 3,
-        
-        /// <summary>
-        /// Task was cancelled by user or system
-        /// </summary>
-        Cancelled = 4
-    }
-
-
-    /// <summary>
     /// Represents the delivery status of a webhook
     /// </summary>
     public enum WebhookDeliveryStatus

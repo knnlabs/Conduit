@@ -35,15 +35,4 @@ namespace ConduitLLM.Security.Models
         public string Source { get; set; } = "";
         public DateTime WindowStart { get; set; }
     }
-
-    /// <summary>
-    /// Result of a Virtual Key rate limit check (Gateway-specific).
-    /// </summary>
-    public class RateLimitCheckResult
-    {
-        public bool IsAllowed { get; set; }
-        public int? Remaining { get; set; }
-        public int? Limit { get; set; }
-        public DateTime? ResetsAt { get; set; }
-    }
 }

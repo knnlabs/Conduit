@@ -79,10 +79,6 @@ public static class ExceptionToResponseMapper
                 => new(408, timeoutEx.Message, "request_timeout", LogLevel.Warning,
                     "Request timeout", true, "timeout_error"),
 
-            PayloadTooLargeException payloadEx
-                => new(413, payloadEx.Message, "payload_too_large", LogLevel.Warning,
-                    "Payload too large", true, "invalid_request_error"),
-
             RateLimitExceededException rateEx
                 => new(429, rateEx.Message, "rate_limit_exceeded", LogLevel.Warning,
                     "Rate limit exceeded", true, "rate_limit_error"),
