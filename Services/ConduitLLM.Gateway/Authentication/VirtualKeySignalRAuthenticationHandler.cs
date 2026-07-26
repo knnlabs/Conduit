@@ -98,40 +98,8 @@ namespace ConduitLLM.Gateway.Authentication
         /// <summary>
         /// Extracts the Virtual Key from the request
         /// </summary>
-        private string? ExtractVirtualKey(HttpContext context)
-        {
-            // Check query string first (for SignalR JavaScript clients)
-            if (context.Request.Query.TryGetValue("access_token", out var queryToken))
-            {
-                return queryToken.ToString();
-            }
-            
-            // Also check for api_key in query string
-            if (context.Request.Query.TryGetValue("api_key", out var queryKey))
-            {
-                return queryKey.ToString();
-            }
-
-            // Try Authorization header (for .NET clients)
-            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(authHeader))
-            {
-                var token = SpanHelper.ExtractBearerToken(authHeader);
-                if (!string.IsNullOrEmpty(token))
-                {
-                    return token;
-                }
-            }
-
-            // Try X-API-Key header
-            var apiKeyHeader = context.Request.Headers["X-API-Key"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(apiKeyHeader))
-            {
-                return apiKeyHeader.Trim();
-            }
-
-            return null;
-        }
+        private static string? ExtractVirtualKey(HttpContext context) =>
+            VirtualKeyExtractor.Extract(context);
 
         /// <summary>
         /// Gets the client IP address from the request
