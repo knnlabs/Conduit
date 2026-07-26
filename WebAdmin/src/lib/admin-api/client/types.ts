@@ -1,77 +1,16 @@
 // Import common client configuration types
-import {
+import type {
   RetryConfig as CommonRetryConfig,
-  ResponseInfo as CommonResponseInfo
+  ResponseInfo as CommonResponseInfo,
+  Logger,
+  CacheProvider,
+  RequestConfigInfo,
+  SignalRConfig
 } from '@/lib/conduit-common';
 
-// Define types locally to avoid bundler issues with type-only exports
-/**
- * Logger interface for client logging
- */
-export interface Logger {
-  debug(message: string, ...args: unknown[]): void;
-  info(message: string, ...args: unknown[]): void;
-  warn(message: string, ...args: unknown[]): void;
-  error(message: string, ...args: unknown[]): void;
-}
-
-/**
- * Cache provider interface for client-side caching
- */
-export interface CacheProvider {
-  get<T>(key: string): Promise<T | null>;
-  set<T>(key: string, value: T, ttl?: number): Promise<void>;
-  delete(key: string): Promise<void>;
-  clear(): Promise<void>;
-}
-
-/**
- * HTTP error class
- */
-export class HttpError extends Error {
-  public code?: string;
-  public response?: {
-    status: number;
-    data: unknown;
-    headers: Record<string, string>;
-  };
-  public request?: unknown;
-  public config?: {
-    url?: string;
-    method?: string;
-    _retry?: number;
-  };
-
-  constructor(message: string, code?: string) {
-    super(message);
-    this.name = 'HttpError';
-    this.code = code;
-  }
-}
-
-/**
- * SignalR client configuration
- */
-export interface SignalRConfig {
-  enabled?: boolean;
-  autoConnect?: boolean;
-  reconnectDelay?: number[];
-  logLevel?: number; // SignalRLogLevel enum value
-  transport?: number; // HttpTransportType enum value
-  headers?: Record<string, string>;
-  connectionTimeout?: number;
-}
-
-/**
- * Request configuration info for callbacks
- */
-export interface RequestConfigInfo {
-  method: string;
-  url: string;
-  headers: Record<string, string>;
-  data?: unknown;
-  params?: Record<string, unknown>;
-}
+// Re-export shared client types so the Admin SDK public surface stays unchanged
+export { HttpError } from '@/lib/conduit-common';
+export type { Logger, CacheProvider, RequestConfigInfo, SignalRConfig };
 
 // Admin SDK specific RetryConfig (uses fixed delay)
 export interface RetryConfig extends CommonRetryConfig {

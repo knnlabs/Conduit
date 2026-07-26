@@ -22,14 +22,12 @@ export * from './models/provider';
 export * from './models/providerType';
 export * from './models/modelType';
 export * from './models/providerConfiguration';
-export * from './models/providerModels';
 export * from './models/settings';
 export * from './models/ipFilter';
 export * from './models/media';
 export * from './models/functions';
 export * from './models/promptCaching';
 export * from './models/providerSync';
-// Re-export model types except ModelCapabilities (conflicts with providerModels)
 export { ModelType } from './models/model';
 export type {
   ModelDto,
@@ -156,6 +154,7 @@ export { FetchModelCostService } from './services/FetchModelCostService';
 export type {
   CostDashboardDto,
   CostTrendDto,
+  CostTrendDataDto,
   DetailedCostDataDto,
 } from './services/FetchAnalyticsService';
 export { FetchModelService } from './services/FetchModelService';

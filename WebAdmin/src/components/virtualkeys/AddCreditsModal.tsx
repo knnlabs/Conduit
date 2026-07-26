@@ -13,6 +13,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconCash, IconAlertCircle } from '@tabler/icons-react';
 import { formatters } from '@/lib/utils/formatters';
+import { getBalanceColor, getBalanceBadgeVariant } from '@/lib/utils/badge-helpers';
 import type { VirtualKeyGroupDto, AdjustBalanceDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
@@ -56,11 +57,6 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
   if (!group) return null;
 
   const newBalance = group.balance + (form.values.amount || 0);
-  const getBalanceColor = (balance: number) => {
-    if (balance <= 0) return 'red';
-    if (balance < 10) return 'orange';
-    return 'green';
-  };
 
   return (
     <EntityFormModal
@@ -89,7 +85,7 @@ export function AddCreditsModal({ opened, onClose, group, onSuccess }: AddCredit
             <Text size="sm" c="dimmed">Current Balance</Text>
             <Badge
               color={getBalanceColor(group.balance)}
-              variant={group.balance <= 0 ? 'filled' : 'light'}
+              variant={getBalanceBadgeVariant(group.balance)}
             >
               {formatters.currency(group.balance)}
             </Badge>

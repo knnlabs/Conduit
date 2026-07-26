@@ -34,6 +34,7 @@ import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useSearchParams } from 'next/navigation';
 import { formatters } from '@/lib/utils/formatters';
+import { getBalanceColor, getBalanceBadgeVariant } from '@/lib/utils/badge-helpers';
 import type { VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
@@ -127,12 +128,6 @@ export default function VirtualKeyGroupsPage() {
   const handleViewTransactionHistory = (group: VirtualKeyGroupDto) => {
     setSelectedGroup(group);
     openTransactionHistory();
-  };
-
-  const getBalanceColor = (balance: number) => {
-    if (balance <= 0) return 'red';
-    if (balance < 10) return 'orange';
-    return 'green';
   };
 
   const statCards = [
@@ -260,7 +255,7 @@ export default function VirtualKeyGroupsPage() {
                     <Table.Td>
                       <Badge 
                         color={getBalanceColor(group.balance)} 
-                        variant={group.balance <= 0 ? 'filled' : 'light'}
+                        variant={getBalanceBadgeVariant(group.balance)}
                       >
                         {formatters.currency(group.balance)}
                       </Badge>
