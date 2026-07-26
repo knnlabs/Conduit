@@ -78,19 +78,6 @@ namespace ConduitLLM.Configuration.Entities
         public Dictionary<string, string>? SecretSettings { get; set; }
 
         /// <summary>
-        /// Retired. The organization is a header-bound provider setting
-        /// (<c>Provider.Settings["organization"]</c>) that is actually sent on requests; this column
-        /// was stored but read by nothing.
-        /// </summary>
-        /// <remarks>
-        /// Retained only so the column keeps a mapping while operators' values are migrated off it
-        /// (see MoveKeyOrganizationToProviderSettings). Nothing reads or writes it; dropping the
-        /// column is the contract step per ADR-002 and ships a later release. Do not reintroduce a
-        /// write path here - see issue #1185.
-        /// </remarks>
-        public string? Organization { get; set; }
-        
-        /// <summary>
         /// Gets or sets a human-readable name for this key to help with identification and management.
         /// </summary>
         // Optional: Human-readable name for this key

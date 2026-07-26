@@ -150,10 +150,11 @@ public class ProviderDefaultsRegistryTests
     }
 
     [Fact]
-    public void ResolveBaseUrl_Should_Let_Settings_Supersede_A_BaseUrl_That_Is_Only_The_Default_Shape()
+    public void ResolveBaseUrl_Should_Treat_Every_Remaining_BaseUrl_As_An_Operator_Override()
     {
-        // The pre-settings way to configure Cloudflare was to bake the account into the default URL,
-        // so that URL holds nothing the settings do not. Editing the Account ID must take effect.
+        // The contract migration clears pre-settings URLs that only bake an account ID into the
+        // default shape. After that migration, any stored value is deliberately operator-owned and
+        // must not be reclassified by application code.
         var provider = new Provider
         {
             ProviderType = ProviderType.Cloudflare,
@@ -164,7 +165,7 @@ public class ProviderDefaultsRegistryTests
 
         ProviderConfigurationRegistry.ResolveBaseUrl(provider)
             .Should()
-            .Be("https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai/v1");
+            .Be("https://api.cloudflare.com/client/v4/accounts/deadbeefdeadbeefdeadbeefdeadbeef/ai/v1");
     }
 
     [Fact]
@@ -238,7 +239,8 @@ public class ProviderDefaultsRegistryTests
     [Fact]
     public void ResolveBaseUrl_Should_Keep_A_Database_Override_For_Providers_Without_UrlTokenSettings()
     {
-        // Providers that declare no URL-path-token settings are unaffected by the dual-read rule.
+        // Database values are explicit operator overrides regardless of whether a provider declares
+        // URL-path-token settings.
         var provider = new Provider
         {
             ProviderType = ProviderType.Groq,
