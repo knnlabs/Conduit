@@ -12,6 +12,10 @@ namespace ConduitLLM.Core.Utilities
     /// Helper class for common HTTP client operations used across the application.
     /// Provides standardized methods for request/response handling and error processing.
     /// </summary>
+    /// <remarks>
+    /// Debug diagnostics may emit header names for troubleshooting, but must never emit
+    /// request or response header values because they can contain provider credentials.
+    /// </remarks>
     public static class HttpClientHelper
     {
         private static readonly JsonSerializerOptions DefaultJsonOptions = new()
@@ -33,6 +37,7 @@ namespace ConduitLLM.Core.Utilities
         /// <param name="jsonOptions">Optional JSON serialization options.</param>
         /// <param name="logger">Optional logger for request/response logging.</param>
         /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <param name="errorTranslator">Optional provider-specific HTTP error translator.</param>
         /// <returns>The deserialized response object.</returns>
         /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
         public static async Task<TResponse> SendJsonRequestAsync<TRequest, TResponse>(
@@ -43,17 +48,24 @@ namespace ConduitLLM.Core.Utilities
             IDictionary<string, string>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
             ILogger? logger = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            Func<HttpResponseMessage, string, Exception?>? errorTranslator = null)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
 
             try
             {
                 var request = CreateJsonRequest(method, endpoint, requestData, headers, options, logger);
+                LogRequestHeaderNames(request, logger);
                 logger?.LogDebug("Sending {Method} request to {Endpoint}", method, endpoint);
 
                 using var response = await client.SendAsync(request, cancellationToken);
-                return await ProcessResponseAsync<TResponse>(response, options, logger, cancellationToken);
+                return await ProcessResponseAsync<TResponse>(
+                    response,
+                    options,
+                    logger,
+                    cancellationToken,
+                    errorTranslator);
             }
             catch (HttpRequestException ex)
             {
@@ -75,7 +87,11 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "JSON error processing response from {Endpoint}", endpoint);
                 throw new LLMCommunicationException("Error processing response", ex);
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelUnavailableException &&
+                ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
@@ -116,7 +132,8 @@ namespace ConduitLLM.Core.Utilities
                         request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                     }
                 }
-                
+
+                LogRequestHeaderNames(request, logger);
                 logger?.LogDebug("Sending GET request to {Endpoint}", endpoint);
 
                 using var response = await client.SendAsync(request, cancellationToken);
@@ -142,7 +159,11 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "Failed to deserialize JSON response from {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Failed to deserialize response: {ex.Message}", ex);
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelUnavailableException &&
+                ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
@@ -180,26 +201,27 @@ namespace ConduitLLM.Core.Utilities
                     request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
             }
-            
-            // Log all headers for debugging (especially for authentication issues)
-            if (logger != null && logger.IsEnabled(LogLevel.Debug))
-            {
-                var allHeaders = new List<string>();
-                foreach (var header in request.Headers)
-                {
-                    allHeaders.Add($"{header.Key}: {string.Join(", ", header.Value)}");
-                }
-                if (request.Content?.Headers != null)
-                {
-                    foreach (var header in request.Content.Headers)
-                    {
-                        allHeaders.Add($"{header.Key}: {string.Join(", ", header.Value)}");
-                    }
-                }
-                logger.LogDebug("Request headers: {Headers}", string.Join("; ", allHeaders));
-            }
 
             return request;
+        }
+
+        /// <summary>
+        /// Logs request header names without emitting any header values.
+        /// </summary>
+        private static void LogRequestHeaderNames(HttpRequestMessage request, ILogger? logger)
+        {
+            if (logger?.IsEnabled(LogLevel.Debug) != true)
+            {
+                return;
+            }
+
+            var headerNames = request.Headers
+                .Select(header => header.Key)
+                .Concat(request.Content?.Headers.Select(header => header.Key) ?? Enumerable.Empty<string>())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+
+            logger.LogDebug("Request header names: {HeaderNames}", string.Join("; ", headerNames));
         }
 
         /// <summary>
@@ -209,7 +231,8 @@ namespace ConduitLLM.Core.Utilities
             HttpResponseMessage response,
             JsonSerializerOptions options,
             ILogger? logger,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Func<HttpResponseMessage, string, Exception?>? errorTranslator = null)
         {
             if (!response.IsSuccessStatusCode)
             {
@@ -226,7 +249,13 @@ namespace ConduitLLM.Core.Utilities
                         errorContent,
                         null);
                 }
-                
+
+                var translatedError = errorTranslator?.Invoke(response, errorContent);
+                if (translatedError != null)
+                {
+                    throw translatedError;
+                }
+
                 throw new LLMCommunicationException(
                     $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",
                     response.StatusCode,
@@ -291,6 +320,7 @@ namespace ConduitLLM.Core.Utilities
         /// <param name="jsonOptions">Optional JSON serialization options.</param>
         /// <param name="logger">Optional logger for request/response logging.</param>
         /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <param name="errorTranslator">Optional provider-specific HTTP error translator.</param>
         /// <returns>The HttpResponseMessage for further processing.</returns>
         /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
         public static async Task<HttpResponseMessage> SendStreamingRequestAsync<TRequest>(
@@ -301,7 +331,8 @@ namespace ConduitLLM.Core.Utilities
             IDictionary<string, string>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
             ILogger? logger = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            Func<HttpResponseMessage, string, Exception?>? errorTranslator = null)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
 
@@ -314,9 +345,9 @@ namespace ConduitLLM.Core.Utilities
                 {
                     request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
                 }
-                
+
+                LogRequestHeaderNames(request, logger);
                 logger?.LogDebug("Sending streaming {Method} request to {Endpoint}", method, endpoint);
-                logger?.LogDebug("Request headers: {Headers}", request.Headers.ToString());
 
                 var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
@@ -324,7 +355,13 @@ namespace ConduitLLM.Core.Utilities
                 {
                     var errorContent = await ReadErrorContentAsync(response, cancellationToken);
                     logger?.LogError("API streaming error: {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    
+
+                    var translatedError = errorTranslator?.Invoke(response, errorContent);
+                    if (translatedError != null)
+                    {
+                        throw translatedError;
+                    }
+
                     throw new LLMCommunicationException(
                         $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",
                         response.StatusCode,
@@ -350,7 +387,11 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "Streaming request to {Endpoint} timed out", endpoint);
                 throw new LLMCommunicationException("Streaming request timed out", ex);
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelUnavailableException &&
+                ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during streaming API communication with {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Unexpected streaming error: {ex.Message}", ex);

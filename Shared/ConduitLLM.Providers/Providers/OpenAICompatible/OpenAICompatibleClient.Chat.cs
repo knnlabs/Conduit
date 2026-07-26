@@ -63,7 +63,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     CreateStandardHeaders(apiKey),
                     DefaultJsonOptions,
                     Logger,
-                    cancellationToken);
+                    cancellationToken,
+                    TranslateHttpError);
 
                 var mapped = MapFromOpenAIResponse(openAiResponse, request.Model);
                 RecordUsage(mapped.Usage, "ChatCompletion");

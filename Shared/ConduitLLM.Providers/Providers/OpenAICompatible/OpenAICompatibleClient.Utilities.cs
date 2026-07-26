@@ -8,6 +8,14 @@ namespace ConduitLLM.Providers.OpenAICompatible
     public abstract partial class OpenAICompatibleClient
     {
         /// <summary>
+        /// Translates an unsuccessful HTTP response into a provider-specific exception.
+        /// Return <see langword="null"/> to use the shared communication exception.
+        /// </summary>
+        protected virtual Exception? TranslateHttpError(
+            HttpResponseMessage response,
+            string responseContent) => null;
+
+        /// <summary>
         /// Configure the HTTP client with provider-specific settings.
         /// </summary>
         /// <param name="client">The HTTP client to configure.</param>

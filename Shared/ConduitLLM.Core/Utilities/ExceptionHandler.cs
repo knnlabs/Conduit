@@ -35,6 +35,7 @@ namespace ConduitLLM.Core.Utilities
             catch (Exception ex) when (
                 ex is not LLMCommunicationException &&
                 ex is not ConfigurationException &&
+                ex is not ModelUnavailableException &&
                 ex is not ValidationException &&
                 ex is not OperationCanceledException)
             {
@@ -89,7 +90,11 @@ namespace ConduitLLM.Core.Utilities
                 logger.LogWarning("Request to {ServiceName} was canceled by user", serviceName);
                 throw; // Pass cancellation exceptions through unchanged
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelUnavailableException &&
+                ex is not ValidationException)
             {
                 logger.LogError(ex, "Unexpected error during {ServiceName} communication", serviceName);
                 throw new LLMCommunicationException($"Unexpected error during {serviceName} communication: {ex.Message}", ex);
@@ -110,6 +115,15 @@ namespace ConduitLLM.Core.Utilities
             string providerName,
             string modelName)
         {
+            if (ex is LLMCommunicationException or
+                ConfigurationException or
+                ModelUnavailableException or
+                ValidationException)
+            {
+                // Provider-specific translations are already safe for the caller.
+                return ex;
+            }
+
             if (ex is HttpRequestException httpEx)
             {
                 var statusCode = httpEx.StatusCode ?? HttpStatusCode.ServiceUnavailable;
@@ -141,12 +155,6 @@ namespace ConduitLLM.Core.Utilities
             {
                 logger.LogWarning(ex, "Request to {Provider} timed out for model {Model}", providerName, modelName);
                 return new LLMCommunicationException($"Request to {providerName} timed out", ex);
-            }
-
-            if (ex is ConfigurationException)
-            {
-                // Pass through configuration exceptions
-                return ex;
             }
 
             // General error handling

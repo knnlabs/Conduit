@@ -113,8 +113,18 @@ namespace ConduitLLM.Core.Utilities
             [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             logger?.LogDebug("Beginning to process SSE stream");
-            logger?.LogDebug("Response headers: {Headers}", response.Headers.ToString());
-            logger?.LogDebug("Content headers: {ContentHeaders}", response.Content.Headers.ToString());
+            logger?.LogDebug(
+                "Response header names: {HeaderNames}",
+                string.Join(
+                    "; ",
+                    response.Headers.Select(header => header.Key)
+                        .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)));
+            logger?.LogDebug(
+                "Content header names: {HeaderNames}",
+                string.Join(
+                    "; ",
+                    response.Content.Headers.Select(header => header.Key)
+                        .OrderBy(name => name, StringComparer.OrdinalIgnoreCase)));
 
             var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
             using var reader = new StreamReader(stream, Encoding.UTF8);

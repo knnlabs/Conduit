@@ -263,7 +263,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 CreateStandardHeaders(apiKey),
                 DefaultJsonOptions,
                 Logger,
-                cancellationToken);
+                cancellationToken,
+                TranslateHttpError);
         }
 
     }
