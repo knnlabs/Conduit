@@ -142,20 +142,8 @@ namespace ConduitLLM.Configuration.Utilities
                 ? null
                 : allowedModels.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
-        private static Dictionary<string, JsonElement>? ParseMetadata(string? metadata)
-        {
-            if (string.IsNullOrWhiteSpace(metadata))
-                return null;
-
-            try
-            {
-                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadata);
-            }
-            catch (JsonException)
-            {
-                return null;
-            }
-        }
+        private static Dictionary<string, JsonElement>? ParseMetadata(string? metadata) =>
+            JsonMetadataParser.Parse(metadata);
 
         /// <summary>
         /// Generates a masked key prefix for display purposes using the hash

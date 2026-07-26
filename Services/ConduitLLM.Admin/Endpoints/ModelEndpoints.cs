@@ -153,13 +153,7 @@ namespace ConduitLLM.Admin.Endpoints
             return Ok(new PagedResult<ModelDto>
             {
                 Data = models.Select(m => m.ToDto()).ToList(),
-                Pagination = new PaginationMetadata
-                {
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalItems = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                }
+                Pagination = PaginationMetadata.Create(page, pageSize, totalCount)
             });
         }
 

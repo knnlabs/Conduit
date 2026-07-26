@@ -112,13 +112,7 @@ namespace ConduitLLM.Admin.Endpoints
             return Ok(new PagedResult<VirtualKeyGroupDto>
             {
                 Data = dtos,
-                Pagination = new PaginationMetadata
-                {
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalItems = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                }
+                Pagination = PaginationMetadata.Create(page, pageSize, totalCount)
             });
         }
 
@@ -388,7 +382,6 @@ namespace ConduitLLM.Admin.Endpoints
                 .CountAsync();
 
             // Calculate pagination
-            var totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
             var skip = (page - 1) * pageSize;
 
             // Get paginated transactions (soft delete filter applied automatically via named query filter)
@@ -416,13 +409,7 @@ namespace ConduitLLM.Admin.Endpoints
             return Ok(new PagedResult<VirtualKeyGroupTransactionDto>
             {
                 Data = transactions,
-                Pagination = new PaginationMetadata
-                {
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalItems = totalCount,
-                    TotalPages = totalPages
-                }
+                Pagination = PaginationMetadata.Create(page, pageSize, totalCount)
             });
         }
 

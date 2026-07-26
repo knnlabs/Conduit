@@ -107,13 +107,7 @@ namespace ConduitLLM.Admin.Endpoints
             return Results.Ok(new PagedResult<ModelCostDto>
             {
                 Data = modelCosts.Skip((effectivePage - 1) * effectivePageSize).Take(effectivePageSize).ToList(),
-                Pagination = new PaginationMetadata
-                {
-                    Page = effectivePage,
-                    PageSize = effectivePageSize,
-                    TotalItems = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)effectivePageSize)
-                }
+                Pagination = PaginationMetadata.Create(effectivePage, effectivePageSize, totalCount)
             });
         }
 

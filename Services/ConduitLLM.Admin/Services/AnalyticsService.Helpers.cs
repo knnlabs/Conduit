@@ -52,22 +52,8 @@ namespace ConduitLLM.Admin.Services
             };
         }
 
-        private static Dictionary<string, JsonElement>? DeserializeMetadata(string? metadata)
-        {
-            if (string.IsNullOrWhiteSpace(metadata))
-                return null;
-
-            try
-            {
-                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadata);
-            }
-            catch (JsonException)
-            {
-                // Historical rows may contain malformed metadata. A diagnostic field must
-                // not make the entire request-log resource unreadable.
-                return null;
-            }
-        }
+        private static Dictionary<string, JsonElement>? DeserializeMetadata(string? metadata) =>
+            ConduitLLM.Configuration.Utilities.JsonMetadataParser.Parse(metadata);
 
         private static string NormalizeTimeframe(string timeframe)
         {

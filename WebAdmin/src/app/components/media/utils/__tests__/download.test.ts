@@ -3,12 +3,12 @@ import {
   createBlobFromBase64,
   createBlobFromUrl,
   triggerDownload,
-  formatFileSize,
   getMimeTypeFromFilename,
   validateUrl,
   getFileSizeFromUrl,
   getBase64Size
 } from '../download';
+import { formatFileSize } from '../index';
 
 // Mock fetch globally
 global.fetch = jest.fn();

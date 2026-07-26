@@ -31,23 +31,17 @@ import type { components } from '@/generated/admin-api';
 import type { SystemInfoDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
+import { getHealthColor } from '@/lib/utils/badge-helpers';
 import { buildDiagnosticBundle } from './diagnosticBundle';
 
 type ServiceHealthResponse = components['schemas']['ServiceHealthResponse'];
 type ServiceStatusDto = components['schemas']['ServiceStatusDto'];
 type ServiceInstanceStatusDto = components['schemas']['ServiceInstanceStatusDto'];
 
-const statusColor: Record<string, string> = {
-  healthy: 'green',
-  degraded: 'yellow',
-  unhealthy: 'red',
-  unknown: 'gray',
-};
-
 function statusBadge(status?: string) {
   const normalized = status ?? 'unknown';
   return (
-    <Badge color={statusColor[normalized] ?? 'gray'} variant="light">
+    <Badge color={getHealthColor(normalized)} variant="light">
       {normalized}
     </Badge>
   );
@@ -260,7 +254,7 @@ export default function SystemInfoPage() {
               <ThemeIcon
                 size="xl"
                 variant="light"
-                color={statusColor[health?.overallStatus ?? 'unknown']}
+                color={getHealthColor(health?.overallStatus ?? 'unknown')}
               >
                 <IconActivityHeartbeat size={24} />
               </ThemeIcon>

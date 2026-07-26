@@ -136,28 +136,6 @@ namespace ConduitLLM.Tests.Middleware
         }
 
         [Fact]
-        public async Task PayloadTooLargeException_Returns413WithOpenAIFormat()
-        {
-            // Arrange
-            var exception = new PayloadTooLargeException("Payload too large", 10000, 5000);
-            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
-                .ThrowsAsync(exception);
-
-            // Act
-            await _middleware.InvokeAsync(_httpContext);
-
-            // Assert
-            Assert.Equal(413, _httpContext.Response.StatusCode);
-
-            var errorResponse = GetErrorResponse(_httpContext);
-
-            Assert.NotNull(errorResponse);
-            Assert.Equal("Payload too large", errorResponse.Error.Message);
-            Assert.Equal("invalid_request_error", errorResponse.Error.Type);
-            Assert.Equal("payload_too_large", errorResponse.Error.Code);
-        }
-
-        [Fact]
         public async Task RateLimitException_Returns429WithOpenAIFormat()
         {
             // Arrange

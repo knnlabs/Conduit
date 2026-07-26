@@ -24,22 +24,15 @@ namespace ConduitLLM.Functions.Providers.Exa;
 /// - Usage tracking for billing
 /// - Authentication verification
 /// </remarks>
-public partial class ExaClient : IFunctionClient
+public partial class ExaClient : FunctionClientBase, IFunctionClient
 {
-    private readonly FunctionConfiguration _configuration;
-    private readonly FunctionCredential _credential;
-    private readonly IHttpClientFactory? _httpClientFactory;
-    private readonly ILogger<ExaClient> _logger;
-    private readonly string _baseUrl;
-    private readonly JsonSerializerOptions _jsonOptions;
-
     private const string DefaultBaseUrl = "https://api.exa.ai";
 
     /// <inheritdoc />
     public FunctionProviderType ProviderType => FunctionProviderType.Exa;
 
     /// <inheritdoc />
-    public string ProviderName => "Exa";
+    public override string ProviderName => "Exa";
 
     /// <summary>
     /// Creates a new instance of the ExaClient.
@@ -53,75 +46,15 @@ public partial class ExaClient : IFunctionClient
         FunctionCredential credential,
         IHttpClientFactory? httpClientFactory,
         ILogger<ExaClient> logger)
+        : base(configuration, credential, httpClientFactory, logger, DefaultBaseUrl)
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _credential = credential ?? throw new ArgumentNullException(nameof(credential));
-        _httpClientFactory = httpClientFactory;
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        // Determine base URL (credential > configuration > default)
-        _baseUrl = DetermineBaseUrl();
-
-        _jsonOptions = Utilities.FunctionsJsonOptions.CompactWire;
     }
 
-    /// <summary>
-    /// Determines the effective base URL for the Exa API.
-    /// </summary>
-    private string DetermineBaseUrl()
+    /// <inheritdoc />
+    protected override void ApplyAuthHeader(HttpClient client, string apiKey)
     {
-        // Priority: Credential BaseUrl > Configuration BaseUrl > Default
-        if (!string.IsNullOrWhiteSpace(_credential.BaseUrl))
-        {
-            return _credential.BaseUrl.TrimEnd('/');
-        }
-
-        if (!string.IsNullOrWhiteSpace(_configuration.BaseUrl))
-        {
-            return _configuration.BaseUrl.TrimEnd('/');
-        }
-
-        return DefaultBaseUrl;
-    }
-
-    /// <summary>
-    /// Creates an HTTP client instance.
-    /// </summary>
-    /// <exception cref="InvalidOperationException">Thrown when IHttpClientFactory is not available.</exception>
-    protected virtual HttpClient CreateHttpClient(string? apiKey = null)
-    {
-        if (_httpClientFactory == null)
-        {
-            throw new InvalidOperationException(
-                $"IHttpClientFactory is required for {ProviderName} but was not injected. " +
-                "Ensure IHttpClientFactory is registered in the dependency injection container. " +
-                "Creating HttpClient instances directly can cause socket exhaustion under load.");
-        }
-
-        var client = _httpClientFactory.CreateClient($"{ProviderName}FunctionClient");
-        ConfigureHttpClient(client, apiKey);
-        return client;
-    }
-
-    /// <summary>
-    /// Configures the HTTP client with headers and authentication.
-    /// </summary>
-    protected virtual void ConfigureHttpClient(HttpClient client, string? apiKey = null)
-    {
-        client.BaseAddress = new Uri(_baseUrl);
-        client.DefaultRequestHeaders.Clear();
-        client.DefaultRequestHeaders.Add("Accept", "application/json");
-        client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-
         // Exa uses x-api-key header
-        var effectiveApiKey = apiKey ?? _credential.ApiKey;
-        if (!string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-            client.DefaultRequestHeaders.Add("x-api-key", effectiveApiKey);
-        }
-
-        // Default timeout (can be overridden by configuration)
-        client.Timeout = TimeSpan.FromSeconds(_configuration.TimeoutSeconds ?? 30);
+        client.DefaultRequestHeaders.Add("x-api-key", apiKey);
     }
 
     /// <summary>

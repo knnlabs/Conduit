@@ -138,22 +138,6 @@ export const canRetry = (task: VideoTask): boolean => {
          task.status === MediaGenerationStatus.Failed;
 };
 
-export interface VideoStoreState {
-  // UI State
-  error: string | null;
-  
-  // Settings
-  settings: VideoSettings;
-  
-  // Tasks
-  currentTask: VideoTask | null;
-  taskHistory: VideoTask[];
-  
-  // Actions
-  updateSettings: (updates: Partial<VideoSettings>) => void;
-  setError: (error: string | null) => void;
-  addTask: (task: VideoTask) => void;
-  updateTask: (taskId: string, updates: Partial<VideoTask>) => void;
-  removeTask: (taskId: string) => void;
-  clearHistory: () => void;
-}
+// Re-export the live store type so consumers (and test mocks) stay in sync
+// with the real store shape defined next to the store itself.
+export type { VideoStoreState } from '../hooks/useVideoStore';

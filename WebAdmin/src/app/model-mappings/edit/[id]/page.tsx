@@ -23,6 +23,7 @@ import {
 import { IconAlertCircle, IconRobot, IconBolt, IconStar } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { formatScore, formatTokenLimit } from '@/utils/modelHelpers';
 import type { 
   ModelProviderMappingDto, 
   UpdateModelProviderMappingDto,
@@ -209,29 +210,6 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const formatTokenLimit = (tokens: number | null) => {
-    if (!tokens) return 'Default';
-    if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
-    if (tokens >= 1000) return `${(tokens / 1000).toFixed(0)}K`;
-    return tokens.toString();
-  };
-
-  const formatScore = (score: number | null, type: 'speed' | 'quality') => {
-    if (!score) return null;
-    
-    if (type === 'speed') {
-      if (score >= 2) return `${score.toFixed(1)}x faster`;
-      if (score === 1) return 'Standard speed';
-      return `${(1 / score).toFixed(1)}x slower`;
-    }
-    
-    // Quality score
-    const percentage = (score * 100).toFixed(0);
-    if (score >= 0.95) return `${percentage}% quality`;
-    if (score >= 0.9) return `${percentage}% quality`;
-    return `${percentage}% quality (degraded)`;
   };
 
   // Handle invalid ID case

@@ -108,9 +108,6 @@ public sealed record ModelParametersResponse(
     [property: JsonPropertyName("series_name")] string SeriesName,
     [property: JsonPropertyName("parameters")] JsonElement Parameters);
 
-/// <summary>A simple operation acknowledgement.</summary>
-public sealed record MessageResponse(string Message);
-
 /// <summary>Image task cancellation acknowledgement.</summary>
 public sealed record TaskCancellationResponse(
     string Message,

@@ -37,15 +37,7 @@ namespace ConduitLLM.Gateway.Endpoints
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = ex.Message,
-                        Type = "not_found_error",
-                        Code = "not_found"
-                    }
-                });
+                return OpenAIError(404, ex.Message, "not_found", "not_found_error");
             }
         }
 
@@ -64,15 +56,7 @@ namespace ConduitLLM.Gateway.Endpoints
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = ex.Message,
-                        Type = "not_found_error",
-                        Code = "not_found"
-                    }
-                });
+                return OpenAIError(404, ex.Message, "not_found", "not_found_error");
             }
         }
 
@@ -103,27 +87,11 @@ namespace ConduitLLM.Gateway.Endpoints
             }
             catch (InvalidOperationException ex)
             {
-                return NotFound(new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = ex.Message,
-                        Type = "not_found_error",
-                        Code = "not_found"
-                    }
-                });
+                return OpenAIError(404, ex.Message, "not_found", "not_found_error");
             }
             catch (OperationCanceledException)
             {
-                return StatusCode(408, new OpenAIErrorResponse
-                {
-                    Error = new OpenAIError
-                    {
-                        Message = "Task polling timed out",
-                        Type = "timeout",
-                        Code = "timeout"
-                    }
-                });
+                return OpenAIError(408, "Task polling timed out", "timeout", "timeout");
             }
         }
 

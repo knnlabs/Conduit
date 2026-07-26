@@ -124,13 +124,7 @@ namespace ConduitLLM.Admin.Endpoints
             var result = new Configuration.DTOs.PagedResult<ProviderDto>
             {
                 Data = items,
-                Pagination = new Configuration.DTOs.PaginationMetadata
-                {
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalItems = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                }
+                Pagination = Configuration.DTOs.PaginationMetadata.Create(page, pageSize, totalCount)
             };
 
             return Ok(result);

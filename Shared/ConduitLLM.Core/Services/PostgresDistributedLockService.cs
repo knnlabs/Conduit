@@ -93,37 +93,6 @@ public class PostgresDistributedLockService : IDistributedLockService
     }
 
     /// <inheritdoc/>
-    public async Task<IDistributedLock> AcquireLockWithRetryAsync(
-        string key,
-        TimeSpan expiry,
-        TimeSpan timeout,
-        TimeSpan retryDelay,
-        CancellationToken cancellationToken = default)
-    {
-        var endTime = DateTime.UtcNow.Add(timeout);
-
-        while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
-        {
-            var distributedLock = await AcquireLockAsync(key, expiry, cancellationToken);
-            if (distributedLock != null)
-            {
-                return distributedLock;
-            }
-
-            var remainingTime = endTime - DateTime.UtcNow;
-            var delay = remainingTime < retryDelay ? remainingTime : retryDelay;
-            if (delay > TimeSpan.Zero)
-            {
-                await Task.Delay(delay, cancellationToken);
-            }
-        }
-
-        cancellationToken.ThrowIfCancellationRequested();
-        throw new TimeoutException(
-            $"Failed to acquire lock for key '{key}' within timeout period of {timeout}");
-    }
-
-    /// <inheritdoc/>
     public async Task<bool> IsLockedAsync(
         string key,
         CancellationToken cancellationToken = default)

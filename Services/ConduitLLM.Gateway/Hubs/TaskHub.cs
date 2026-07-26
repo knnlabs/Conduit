@@ -1,3 +1,4 @@
+using ConduitLLM.Gateway.Utilities;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -120,7 +121,7 @@ namespace ConduitLLM.Gateway.Hubs
             else if (metadata is IDictionary<string, object> metadataDict &&
                 metadataDict.TryGetValue("virtualKeyId", out var virtualKeyIdObj))
             {
-                virtualKeyId = TaskHub.ConvertToInt(virtualKeyIdObj);
+                virtualKeyId = HubContextHelpers.ConvertToInt(virtualKeyIdObj);
             }
 
             if (virtualKeyId.HasValue)
@@ -192,17 +193,6 @@ namespace ConduitLLM.Gateway.Hubs
 
             // TaskMetadata is the expected type in AsyncTaskStatus
             return taskStatus.Metadata.VirtualKeyId == virtualKeyId;
-        }
-        
-        private static int? ConvertToInt(object value)
-        {
-            return value switch
-            {
-                int intValue => intValue,
-                long longValue => (int)longValue,
-                string stringValue when int.TryParse(stringValue, out var parsedValue) => parsedValue,
-                _ => null
-            };
         }
     }
 }

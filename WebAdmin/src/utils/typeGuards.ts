@@ -3,6 +3,7 @@
  */
 
 import type { ModelDto } from '@/lib/admin-api';
+import { isErrorLike } from '@/lib/conduit-common';
 
 // Removed capabilities-related type guards as capabilities are now embedded directly in ModelDto
 
@@ -68,15 +69,9 @@ export function isValidModelId(id: unknown): id is number {
 
 /**
  * Type guard to check if error has a message property
+ * (alias of the canonical `isErrorLike` in conduit-common)
  */
-export function isErrorWithMessage(error: unknown): error is { message: string } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof (error as Record<string, unknown>).message === 'string'
-  );
-}
+export const isErrorWithMessage = isErrorLike;
 
 /**
  * Get error message from unknown error type

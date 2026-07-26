@@ -34,33 +34,16 @@ public class ImageDownloadService : IImageDownloadService
     /// <inheritdoc />
     public async Task<byte[]> DownloadImageAsync(string url, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(url))
-        {
-            throw new ArgumentException("URL cannot be null or empty", nameof(url));
-        }
-
-        // Handle data URLs directly
-        if (url.StartsWith("data:"))
-        {
-            byte[]? imageData = ImageUtility.ExtractImageDataFromDataUrl(url, out _);
-            if (imageData == null)
-            {
-                throw new ArgumentException("Invalid data URL format", nameof(url));
-            }
-            return imageData;
-        }
-
-        var httpClient = _httpClientFactory.CreateClient(HttpClientName);
-
         try
         {
             _logger.LogDebug("Downloading image from {Url}", url);
-            return await httpClient.GetByteArrayAsync(url, cancellationToken);
+            return await ImageUtility.DownloadImageAsync(
+                url, _httpClientFactory.CreateClient(HttpClientName), cancellationToken);
         }
-        catch (HttpRequestException ex)
+        catch (IOException ex)
         {
             _logger.LogError(ex, "Failed to download image from {Url}", url);
-            throw new IOException($"Failed to download image from URL: {ex.Message}", ex);
+            throw;
         }
     }
 

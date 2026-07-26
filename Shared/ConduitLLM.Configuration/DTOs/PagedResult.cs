@@ -37,5 +37,16 @@ namespace ConduitLLM.Configuration.DTOs
         public int PageSize { get; set; }
         public int TotalItems { get; set; }
         public int TotalPages { get; set; }
+
+        /// <summary>
+        /// Creates metadata for a page, computing <see cref="TotalPages"/> from the item count.
+        /// </summary>
+        public static PaginationMetadata Create(int page, int pageSize, int totalItems) => new()
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = pageSize > 0 ? (int)Math.Ceiling(totalItems / (double)pageSize) : 0
+        };
     }
 }

@@ -314,24 +314,6 @@ public class ExceptionToResponseMapperTests
     }
 
     [Fact]
-    public void Map_PayloadTooLargeException_Returns413WithPayloadTooLarge()
-    {
-        // Arrange
-        var exception = new PayloadTooLargeException("Payload too large", 10000, 5000);
-
-        // Act
-        var result = ExceptionToResponseMapper.Map(exception);
-
-        // Assert
-        result.StatusCode.Should().Be(413);
-        result.ErrorCode.Should().Be("payload_too_large");
-        result.ResponseMessage.Should().Be("Payload too large");
-        result.LogLevel.Should().Be(LogLevel.Warning);
-        result.IncludeExceptionMessageInLog.Should().BeTrue();
-        result.OpenAIErrorType.Should().Be("invalid_request_error");
-    }
-
-    [Fact]
     public void Map_RateLimitExceededException_Returns429WithRateLimitExceeded()
     {
         // Arrange

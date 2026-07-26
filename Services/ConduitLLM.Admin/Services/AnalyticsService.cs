@@ -113,13 +113,7 @@ public partial class AnalyticsService : IAnalyticsService
             return new PagedResult<LogRequestDto>
             {
                 Data = pagedLogs,
-                Pagination = new PaginationMetadata
-                {
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalItems = totalCount,
-                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
-                }
+                Pagination = PaginationMetadata.Create(page, pageSize, totalCount)
             };
         }
         catch (Exception ex)

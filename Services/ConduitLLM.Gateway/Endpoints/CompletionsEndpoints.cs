@@ -21,15 +21,7 @@ namespace ConduitLLM.Gateway.Endpoints
         public IResult CreateCompletion()
         {
             Logger.LogInformation("Legacy /completions endpoint called.");
-            return StatusCode(501, new OpenAIErrorResponse
-            {
-                Error = new OpenAIError
-                {
-                    Message = "The /completions endpoint is not implemented. Please use /chat/completions.",
-                    Type = "invalid_request_error",
-                    Code = "not_implemented"
-                }
-            });
+            return OpenAIError(501, "The /completions endpoint is not implemented. Please use /chat/completions.", "not_implemented");
         }
     }
 }

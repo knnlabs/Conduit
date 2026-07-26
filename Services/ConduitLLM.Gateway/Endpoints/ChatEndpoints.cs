@@ -173,7 +173,7 @@ namespace ConduitLLM.Gateway.Endpoints
                     ConduitLLM.Core.Utilities.SensitiveDataRedactor.Redact(ex.Message),
                     error.Code,
                     error.Type,
-                    TryExtractFileAnnotationMetadata(ex.ResponseBody));
+                    metadata: TryExtractFileAnnotationMetadata(ex.ResponseBody));
             }
             catch (Exception ex)
             {

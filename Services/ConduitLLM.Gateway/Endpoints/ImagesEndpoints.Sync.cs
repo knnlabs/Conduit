@@ -31,16 +31,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 // Validate request
                 if (string.IsNullOrWhiteSpace(request.Prompt))
                 {
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = "Prompt is required",
-                            Type = "invalid_request_error",
-                            Code = "missing_parameter",
-                            Param = "prompt"
-                        }
-                    });
+                    return OpenAIError(400, "Prompt is required", "missing_parameter", "invalid_request_error", "prompt");
                 }
 
                 var modelName = request.Model ?? "dall-e-2";
@@ -90,16 +81,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 
                 if (!supportsImageGen)
                 {
-                    return BadRequest(new OpenAIErrorResponse
-                    {
-                        Error = new OpenAIError
-                        {
-                            Message = $"Model {modelName} does not support image generation",
-                            Type = "invalid_request_error",
-                            Code = "unsupported_model",
-                            Param = "model"
-                        }
-                    });
+                    return OpenAIError(400, $"Model {modelName} does not support image generation", "unsupported_model", "invalid_request_error", "model");
                 }
 
                 // If we don't have a mapping, try to create a client anyway (for direct model names)

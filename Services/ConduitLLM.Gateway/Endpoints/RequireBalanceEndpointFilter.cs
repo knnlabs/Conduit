@@ -74,18 +74,10 @@ public sealed class RequireBalanceEndpointFilter : IEndpointFilter
                 validation.HttpStatusCode,
                 validation.Reason ?? "Virtual key validation failed.",
                 validation.FailureCode ?? VirtualKeyValidationFailureCodes.ValidationError,
-                GetErrorType(validation.HttpStatusCode));
+                GatewayResults.OpenAIErrorTypeFor(validation.HttpStatusCode));
         }
 
         httpContext.Items["ValidatedVirtualKey"] = validation.Key;
         return await next(context);
     }
-
-    private static string GetErrorType(int statusCode) => statusCode switch
-    {
-        StatusCodes.Status401Unauthorized => "authentication_error",
-        StatusCodes.Status402PaymentRequired => "billing_error",
-        StatusCodes.Status403Forbidden => "permission_error",
-        _ => "server_error"
-    };
 }

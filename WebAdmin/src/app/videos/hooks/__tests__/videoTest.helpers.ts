@@ -34,6 +34,12 @@ export const createMockStore = () => {
     updateSettings: jest.fn(),
     removeTask: jest.fn(),
     clearHistory: jest.fn(),
+    getTaskById: jest.fn(() => undefined),
+    getCompletedTasks: jest.fn(() => []),
+    getFailedTasks: jest.fn(() => []),
+    getPendingTasks: jest.fn(() => []),
+    maxHistorySize: 50,
+    persistHistory: true,
   };
 
   return {

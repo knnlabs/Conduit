@@ -6,6 +6,16 @@ namespace ConduitLLM.Gateway.Endpoints;
 /// <summary>OpenAI-compatible explicit results shared by Gateway endpoint groups.</summary>
 public static class GatewayResults
 {
+    /// <summary>Maps a virtual-key validation status code to the OpenAI error envelope type.</summary>
+    public static string OpenAIErrorTypeFor(int statusCode) => statusCode switch
+    {
+        StatusCodes.Status401Unauthorized => "authentication_error",
+        StatusCodes.Status402PaymentRequired => "billing_error",
+        StatusCodes.Status403Forbidden => "permission_error",
+        _ => "server_error"
+    };
+
+
     public static IResult OpenAIError(
         int statusCode,
         string message,

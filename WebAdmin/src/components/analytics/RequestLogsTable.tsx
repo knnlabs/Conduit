@@ -19,6 +19,7 @@ import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
 import type { RequestLogEntry } from '@/hooks/useRequestLogs';
 import { RequestLogDetailsDrawer } from './RequestLogDetailsDrawer';
+import { formatCost, formatDuration, getHttpStatusColor } from './formatters';
 
 interface RequestLogsTableProps {
   data: RequestLogEntry[];
@@ -26,24 +27,6 @@ interface RequestLogsTableProps {
   virtualKeyGroups?: VirtualKeyGroupDto[];
   isLoading?: boolean;
   onViewVirtualKey?: (virtualKey: VirtualKeyDto) => void;
-}
-
-function formatCost(cost: number): string {
-  if (cost === 0) return '$0.00';
-  return cost < 0.01 ? `$${cost.toFixed(6)}` : `$${cost.toFixed(4)}`;
-}
-
-function formatDuration(ms: number): string {
-  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`;
-}
-
-function getStatusColor(statusCode: number | null): string {
-  if (statusCode === null) return 'gray';
-  if (statusCode >= 200 && statusCode < 300) return 'green';
-  if (statusCode >= 300 && statusCode < 400) return 'blue';
-  if (statusCode >= 400 && statusCode < 500) return 'orange';
-  if (statusCode >= 500) return 'red';
-  return 'gray';
 }
 
 function getStatusLabel(statusCode: number | null): string {
@@ -251,7 +234,7 @@ export function RequestLogsTable({
         </Table.Td>
         <Table.Td>
           <Tooltip label={log.statusCode !== null ? `HTTP ${log.statusCode}` : 'No status'}>
-            <Badge color={getStatusColor(log.statusCode)} variant="light" size="sm">
+            <Badge color={getHttpStatusColor(log.statusCode)} variant="light" size="sm">
               {getStatusLabel(log.statusCode)}
             </Badge>
           </Tooltip>

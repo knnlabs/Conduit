@@ -35,8 +35,7 @@ import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { MediaCleanupStatus } from '@/lib/admin-api';
 import { formatters } from '@/lib/utils/formatters';
-
-const formatBytes = (bytes: number): string => formatters.fileSize(bytes);
+import { getPercentageColor } from '@/lib/utils/badge-helpers';
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return 'Never';
@@ -50,12 +49,6 @@ function formatDuration(seconds: number | null): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes}m ${remainingSeconds.toFixed(0)}s`;
-}
-
-function getBudgetColor(percent: number): string {
-  if (percent > 90) return 'red';
-  if (percent > 75) return 'yellow';
-  return 'green';
 }
 
 function getRunStatusColor(runStatus: string | null): string {
@@ -198,7 +191,9 @@ export default function MediaCleanupStatusContent() {
   }
 
   const budgetPercent = Math.min(status.monthlyBudgetUsedPercent, 100);
-  const budgetColor = getBudgetColor(budgetPercent);
+  // good === warning so the shared helper's intermediate "orange" band is skipped:
+  // >=90 red, >=75 yellow, else green (matches the previous local thresholds).
+  const budgetColor = getPercentageColor(budgetPercent, { danger: 90, warning: 75, good: 75 });
   const failedOperations = status.operationStatuses.filter(operation => {
     const operationStatus = operation.lastRunStatus?.toLowerCase() ?? '';
     return operationStatus.startsWith('failed') || operationStatus.includes('errors');
@@ -359,7 +354,7 @@ export default function MediaCleanupStatusContent() {
                         {approval.candidateCount.toLocaleString()} candidates
                       </Text>
                       <Text size="sm" c="dimmed">
-                        {formatBytes(approval.candidateBytes)}
+                        {formatters.fileSize(approval.candidateBytes)}
                       </Text>
                     </Group>
                     <Text size="xs" c="dimmed">
@@ -506,7 +501,7 @@ export default function MediaCleanupStatusContent() {
           <Paper p="md" withBorder>
             <Text size="sm" c="dimmed">Untracked Bytes</Text>
             <Text size="xl" fw={700}>
-              {formatBytes(status.untrackedBytes)}
+              {formatters.fileSize(status.untrackedBytes)}
             </Text>
           </Paper>
         </SimpleGrid>
@@ -556,7 +551,7 @@ export default function MediaCleanupStatusContent() {
               <Text size="sm" c="dimmed">Space Freed</Text>
             </Group>
             <Text size="lg" fw={500}>
-              {formatBytes(status.lastRunBytesFreed)}
+              {formatters.fileSize(status.lastRunBytesFreed)}
             </Text>
           </Paper>
         </SimpleGrid>

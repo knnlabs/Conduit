@@ -240,16 +240,5 @@ namespace ConduitLLM.Gateway.Authentication
                 return false;
             }
         }
-        
-        private static int? ConvertToInt(object value)
-        {
-            return value switch
-            {
-                int intValue => intValue,
-                long longValue => (int)longValue,
-                string stringValue when int.TryParse(stringValue, out var parsedValue) => parsedValue,
-                _ => null
-            };
-        }
     }
 }

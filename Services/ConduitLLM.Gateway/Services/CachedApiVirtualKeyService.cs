@@ -72,68 +72,22 @@ namespace ConduitLLM.Gateway.Services
             return ValidateInternalAsync(key, requestedModel, checkBalance: true);
         }
 
-        private async Task<VirtualKeyValidationOutcome> ValidateInternalAsync(
+        private Task<VirtualKeyValidationOutcome> ValidateInternalAsync(
             string key,
             string? requestedModel,
             bool checkBalance)
         {
-            if (string.IsNullOrWhiteSpace(key))
-            {
-                _logger.LogWarning("Empty key provided for virtual key validation");
-                return VirtualKeyValidationOutcome.Failure(
-                    VirtualKeyValidationFailureCodes.MissingKey,
-                    401,
-                    "Virtual key is required.");
-            }
-
-            try
-            {
-                var keyHash = VirtualKeyUtilities.HashKey(key);
-                _logger.LogDebug("Validating key ({ValidationMode}): {KeyPrefix}, Hash: {Hash}",
-                    checkBalance ? "balance" : "authentication",
-                    LoggingSanitizer.S(ConduitLLM.Core.Utilities.SpanHelper.MaskSecret(key)),
-                    keyHash);
-
-                var virtualKey = await _cache.GetVirtualKeyAsync(keyHash, async hash =>
+            return ValidateVirtualKeyInternalAsync(
+                key,
+                requestedModel,
+                checkBalance,
+                keyHash => _cache.GetVirtualKeyAsync(keyHash, async hash =>
                 {
                     var dbKey = await VirtualKeyRepository.GetByKeyHashAsync(hash);
                     _logger.LogDebug("Database fallback executed for Virtual Key validation");
                     return dbKey;
-                });
-
-                if (virtualKey == null)
-                {
-                    _logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
-                    return VirtualKeyValidationOutcome.Failure(
-                        VirtualKeyValidationFailureCodes.KeyNotFound,
-                        401,
-                        "Virtual key was not found.");
-                }
-
-                var validationResult = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
-                    virtualKey,
-                    requestedModel,
-                    checkBalance,
-                    checkBalance ? GroupRepository : null,
-                    _logger,
-                    checkBalance ? _batchSpendService : null);
-
-                if (!validationResult.IsValid)
-                {
-                    _logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
-                        virtualKey.Id, validationResult.Reason ?? "unknown");
-                }
-
-                return validationResult;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error validating virtual key");
-                return VirtualKeyValidationOutcome.Failure(
-                    VirtualKeyValidationFailureCodes.ValidationError,
-                    500,
-                    "Virtual key validation failed.");
-            }
+                }),
+                _batchSpendService);
         }
 
         /// <inheritdoc />
