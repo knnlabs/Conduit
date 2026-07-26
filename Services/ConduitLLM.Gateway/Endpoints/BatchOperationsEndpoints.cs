@@ -47,7 +47,7 @@ namespace ConduitLLM.Gateway.Endpoints
             BatchSpendUpdateRequest request,
             string? idempotencyKey)
         {
-            var virtualKeyId = GetVirtualKeyId();
+            var virtualKeyId = CurrentVirtualKeyId ?? 0;
 
             // Validate request
             if (request.Updates == null || !request.Updates.Any())
@@ -102,7 +102,7 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>Operation result with tracking ID</returns>
         public async Task<IResult> StartBatchVirtualKeyUpdate(BatchVirtualKeyUpdateRequest request)
         {
-            var virtualKeyId = GetVirtualKeyId();
+            var virtualKeyId = CurrentVirtualKeyId ?? 0;
 
             // Validate request
             if (request.Updates == null || !request.Updates.Any())
@@ -155,7 +155,7 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>Operation result with tracking ID</returns>
         public async Task<IResult> StartBatchWebhookSend(BatchWebhookSendRequest request)
         {
-            var virtualKeyId = GetVirtualKeyId();
+            var virtualKeyId = CurrentVirtualKeyId ?? 0;
 
             // Validate request
             if (request.Webhooks == null || !request.Webhooks.Any())
@@ -262,10 +262,5 @@ namespace ConduitLLM.Gateway.Endpoints
             return NoContent();
         }
 
-        private int GetVirtualKeyId()
-        {
-            var claim = User.FindFirst("VirtualKeyId");
-            return claim != null ? int.Parse(claim.Value) : 0;
-        }
     }
 }

@@ -38,11 +38,11 @@ namespace ConduitLLM.Gateway.Endpoints
             CancellationToken cancellationToken = default)
         {
             if (request == null || string.IsNullOrEmpty(request.Model))
-                return OpenAIError(400, "A model is required.", "invalid_request_error", "invalid_request");
+                return OpenAIError(400, "A model is required.", "invalid_request");
             if (string.IsNullOrEmpty(request.Query))
-                return OpenAIError(400, "A query is required.", "invalid_request_error", "invalid_request");
+                return OpenAIError(400, "A query is required.", "invalid_request");
             if (request.Documents == null || request.Documents.Count == 0)
-                return OpenAIError(400, "At least one document is required.", "invalid_request_error", "invalid_request");
+                return OpenAIError(400, "At least one document is required.", "invalid_request");
 
             var alias = request.Model;
             var virtualKeyId = HttpContext.Items.TryGetValue("VirtualKeyId", out var keyValue) && keyValue is int keyId
@@ -53,7 +53,7 @@ namespace ConduitLLM.Gateway.Endpoints
             var mapping = await _modelMappingService.GetMappingByModelAliasAsync(alias);
             var supported = mapping?.ModelProviderTypeAssociation?.Model?.SupportsRerank ?? false;
             if (mapping == null || !supported)
-                return OpenAIError(400, $"Model {alias} does not support reranking.", "invalid_request_error", "unsupported_model");
+                return OpenAIError(400, $"Model {alias} does not support reranking.", "unsupported_model");
 
             HttpContext.Items["ProviderId"] = mapping.ProviderId;
             HttpContext.Items["ProviderType"] = mapping.Provider?.ProviderType;
@@ -63,7 +63,7 @@ namespace ConduitLLM.Gateway.Endpoints
             var client = await _clientFactory.GetClientAsync(alias, cancellationToken);
             var reranker = client.FindInChain<IRerankClient>();
             if (reranker == null)
-                return OpenAIError(400, $"Model {alias} does not support reranking.", "invalid_request_error", "unsupported_model");
+                return OpenAIError(400, $"Model {alias} does not support reranking.", "unsupported_model");
 
             request.Model = mapping.ProviderModelId; // swap alias -> provider model id before dispatch
 

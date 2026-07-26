@@ -35,7 +35,7 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>The file content.</returns>
         public async Task<IResult> DownloadFile(string fileId, bool inline = false)
         {
-            var virtualKeyId = GetVirtualKeyId();
+            var virtualKeyId = CurrentVirtualKeyId ?? 0;
             Logger.LogDebug("File download requested by Virtual Key {VirtualKeyId}: {FileId}, inline: {Inline}",
                 virtualKeyId, LoggingSanitizer.S(fileId), inline);
 
@@ -83,7 +83,7 @@ namespace ConduitLLM.Gateway.Endpoints
         public async Task<IResult> GetFileMetadata(string fileId)
         {
             // Validate ownership
-            var virtualKeyId = GetVirtualKeyId();
+            var virtualKeyId = CurrentVirtualKeyId ?? 0;
             if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
                 return OpenAIError(404, "File not found", "not_found", "not_found_error");
@@ -119,7 +119,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 return OpenAIError(400, "File ID is required", "invalid_request", "invalid_request_error");
             }
 
-            var virtualKeyId = GetVirtualKeyId();
+            var virtualKeyId = CurrentVirtualKeyId ?? 0;
             Logger.LogInformation("Download URL generation requested by Virtual Key {VirtualKeyId} for {FileId}, expiration: {ExpirationMinutes}m",
                 virtualKeyId, LoggingSanitizer.S(request.FileId), request.ExpirationMinutes ?? 60);
 
@@ -157,7 +157,7 @@ namespace ConduitLLM.Gateway.Endpoints
         public async Task<IResult> CheckFileExists(string fileId)
         {
             // Validate ownership
-            var virtualKeyId = GetVirtualKeyId();
+            var virtualKeyId = CurrentVirtualKeyId ?? 0;
             if (!await ValidateFileOwnership(fileId, virtualKeyId))
             {
                 return NotFound();
@@ -181,16 +181,6 @@ namespace ConduitLLM.Gateway.Endpoints
             }
 
             return Ok();
-        }
-
-        /// <summary>
-        /// Gets the Virtual Key ID from the authenticated user's claims.
-        /// </summary>
-        /// <returns>The Virtual Key ID.</returns>
-        private int GetVirtualKeyId()
-        {
-            var claim = User.FindFirst("VirtualKeyId");
-            return claim != null ? int.Parse(claim.Value) : 0;
         }
 
         /// <summary>
