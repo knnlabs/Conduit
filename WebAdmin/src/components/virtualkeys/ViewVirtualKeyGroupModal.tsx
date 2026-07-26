@@ -19,6 +19,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { formatters } from '@/lib/utils/formatters';
+import { getBalanceColor, getBalanceBadgeVariant } from '@/lib/utils/badge-helpers';
 import type { VirtualKeyGroupDto, VirtualKeyDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
@@ -55,12 +56,6 @@ export function ViewVirtualKeyGroupModal({ opened, onClose, group }: ViewVirtual
   }, [opened, group]);
 
   if (!group) return null;
-
-  const getBalanceColor = (balance: number) => {
-    if (balance <= 0) return 'red';
-    if (balance < 10) return 'orange';
-    return 'green';
-  };
 
   return (
     <Modal
@@ -99,7 +94,7 @@ export function ViewVirtualKeyGroupModal({ opened, onClose, group }: ViewVirtual
               <Text size="sm" c="dimmed">Current Balance</Text>
               <Badge 
                 color={getBalanceColor(group.balance)} 
-                variant={group.balance <= 0 ? 'filled' : 'light'}
+                variant={getBalanceBadgeVariant(group.balance)}
                 size="lg"
               >
                 {formatters.currency(group.balance)}

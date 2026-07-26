@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Security.Extensions;
 using ConduitLLM.Security.Middleware;
 
 using System.Text.Json;

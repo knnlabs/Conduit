@@ -34,14 +34,9 @@ import Link from 'next/link';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { MediaCleanupStatus } from '@/lib/admin-api';
+import { formatters } from '@/lib/utils/formatters';
 
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const k = 1024;
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
-}
+const formatBytes = (bytes: number): string => formatters.fileSize(bytes);
 
 function formatDate(dateString: string | null): string {
   if (!dateString) return 'Never';

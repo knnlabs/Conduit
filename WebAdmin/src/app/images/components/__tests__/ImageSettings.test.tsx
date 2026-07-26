@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@/app/test-utils';
 import ImageSettings from '../ImageSettings';
 import { useImageStore } from '../../hooks/useImageStore';
 import type { DiscoveryModel } from '@/app/chat/hooks/useDiscoveryModels';
-import { ProviderType } from '@/lib/gateway-api';
+import { ProviderType } from '@/lib/admin-api';
 
 jest.mock('../../hooks/useImageStore');
 

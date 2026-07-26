@@ -354,7 +354,7 @@ namespace ConduitLLM.Core.Services
             // Build pricing parameters for rules-based pricing
             var pricingParameters = new Dictionary<string, object>
             {
-                ["resolution"] = NormalizeResolution(resolution),
+                ["resolution"] = Utilities.VideoUtils.NormalizeResolution(resolution),
                 ["duration"] = duration
             };
 
@@ -397,28 +397,6 @@ namespace ConduitLLM.Core.Services
         protected override Usage CreateEstimatedUsageObject(VideoGenerationRequested request)
         {
             return CreateUsageObject(request, new VideoGenerationResponse());
-        }
-
-        /// <summary>
-        /// Normalizes video resolution to standard format (e.g., "1920x1080" -> "1080p").
-        /// </summary>
-        private static string NormalizeResolution(string resolution)
-        {
-            if (string.IsNullOrEmpty(resolution))
-                return resolution;
-
-            // Already normalized (e.g., "1080p", "720p")
-            if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
-                return resolution.ToLowerInvariant();
-
-            // Parse "WIDTHxHEIGHT" format
-            var parts = resolution.ToLowerInvariant().Split('x');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
-            {
-                return $"{height}p";
-            }
-
-            return resolution;
         }
 
         protected override async Task PublishStartedEventAsync(VideoGenerationRequested request)

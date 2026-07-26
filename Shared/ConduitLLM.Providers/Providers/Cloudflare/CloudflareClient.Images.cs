@@ -316,7 +316,7 @@ namespace ConduitLLM.Providers.Cloudflare
         }
 
         private static object? ConvertJsonElement(JsonElement element) =>
-            JsonElementConverter.ConvertJsonElement(element);
+            ConduitLLM.Functions.Utilities.JsonElementConverter.ConvertJsonElement(element);
 
         /// <summary>
         /// Classifies a Cloudflare model ID into its model family.

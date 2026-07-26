@@ -477,6 +477,26 @@ public class ExceptionToResponseMapperTests
         result.Param.Should().Be("model");
     }
 
+    [Fact]
+    public void Map_UnsupportedProviderException_Returns400WithUnsupportedProvider()
+    {
+        // Arrange
+        var exception = new UnsupportedProviderException("acme-ai");
+
+        // Act
+        var result = ExceptionToResponseMapper.Map(exception);
+
+        // Assert
+        result.StatusCode.Should().Be(400);
+        result.ErrorCode.Should().Be("unsupported_provider");
+        result.ResponseMessage.Should().Contain("acme-ai");
+        result.LogLevel.Should().Be(LogLevel.Warning);
+        result.LogPrefix.Should().Be("Unsupported provider");
+        result.IncludeExceptionMessageInLog.Should().BeTrue();
+        result.OpenAIErrorType.Should().Be("invalid_request_error");
+        result.Param.Should().Be("provider");
+    }
+
     #endregion
 
     #region Framework Binding Exception Tests

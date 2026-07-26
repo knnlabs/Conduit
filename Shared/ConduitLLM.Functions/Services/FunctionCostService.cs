@@ -52,11 +52,7 @@ public class FunctionCostService : IFunctionCostService
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _distributedCache = distributedCache;
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        };
+        _jsonOptions = Utilities.FunctionsJsonOptions.Compact;
     }
 
     /// <inheritdoc />

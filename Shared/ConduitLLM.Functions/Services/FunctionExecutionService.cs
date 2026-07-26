@@ -50,12 +50,7 @@ public class FunctionExecutionService : IFunctionExecutionService
         _credentialProtector = credentialProtector ?? throw new ArgumentNullException(nameof(credentialProtector));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
 
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
+        _jsonOptions = Utilities.FunctionsJsonOptions.CompactWire;
     }
 
     /// <inheritdoc />

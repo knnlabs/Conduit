@@ -23,6 +23,7 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { formatters } from '@/lib/utils/formatters';
+import { getBalanceColor, getBalanceBadgeVariant } from '@/lib/utils/badge-helpers';
 import { withAdminClient } from '@/lib/client/adminClient';
 import {
   TransactionType,
@@ -111,12 +112,6 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
     }
   };
 
-  const getBalanceColor = (balance: number) => {
-    if (balance <= 0) return 'red';
-    if (balance < 10) return 'orange';
-    return 'green';
-  };
-
   const getTransactionTypeLabel = (type: TransactionType): string => {
     switch (type) {
       case TransactionType.Credit: return 'Credit';
@@ -163,7 +158,7 @@ export function TransactionHistoryModal({ opened, onClose, group }: TransactionH
               <Text size="sm" c="dimmed">Current Balance</Text>
               <Badge 
                 color={getBalanceColor(group.balance)} 
-                variant={group.balance <= 0 ? 'filled' : 'light'}
+                variant={getBalanceBadgeVariant(group.balance)}
                 size="lg"
               >
                 {formatters.currency(group.balance)}

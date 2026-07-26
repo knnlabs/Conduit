@@ -9,11 +9,7 @@ namespace ConduitLLM.Core.Helpers
     public static class WebhookPayloadHelper
     {
         private const int MAX_PAYLOAD_SIZE_BYTES = 1024 * 1024; // 1MB limit
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false // Minimize size
-        };
+        private static readonly JsonSerializerOptions JsonOptions = Serialization.ConduitJsonOptions.Compact;
         
         /// <summary>
         /// Serializes a webhook payload to JSON with size validation

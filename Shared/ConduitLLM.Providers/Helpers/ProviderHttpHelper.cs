@@ -52,11 +52,7 @@ namespace ConduitLLM.Providers.Helpers
             CancellationToken cancellationToken = default)
         {
             // Use Core's default options if none specified
-            var options = jsonOptions ?? new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            };
+            var options = jsonOptions ?? ConduitLLM.Core.Serialization.ConduitJsonOptions.Wire;
 
             try
             {
@@ -265,23 +261,7 @@ namespace ConduitLLM.Providers.Helpers
         /// <returns>The MIME content type if recognized, or null.</returns>
         private static string? GetContentTypeFromFileName(string fileName)
         {
-            var extension = Path.GetExtension(fileName).ToLowerInvariant();
-
-            return extension switch
-            {
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".bmp" => "image/bmp",
-                ".webp" => "image/webp",
-                ".pdf" => "application/pdf",
-                ".json" => "application/json",
-                ".txt" => "text/plain",
-                ".csv" => "text/csv",
-                ".xml" => "application/xml",
-                ".html" => "text/html",
-                _ => null
-            };
+            return ConduitLLM.Core.Utilities.MediaContentTypes.GetContentType(Path.GetExtension(fileName));
         }
     }
 }

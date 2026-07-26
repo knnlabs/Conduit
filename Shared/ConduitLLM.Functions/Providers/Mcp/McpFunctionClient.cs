@@ -58,12 +58,7 @@ public sealed partial class McpFunctionClient : IFunctionClient, IDynamicToolPro
         _settings = McpServerSettings.Parse(configuration.ProviderSettings);
         _serverUrl = DetermineServerUrl();
 
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
+        _jsonOptions = Utilities.FunctionsJsonOptions.CompactWire;
     }
 
     /// <inheritdoc />

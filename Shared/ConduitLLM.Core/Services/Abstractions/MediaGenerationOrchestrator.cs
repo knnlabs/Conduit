@@ -740,7 +740,7 @@ namespace ConduitLLM.Core.Services.Abstractions
                     return;
                 }
 
-                var errorType = ClassifyExceptionToProviderErrorType(ex);
+                var errorType = ProviderErrorClassifier.ClassifyException(ex);
 
                 var errorInfo = new ProviderErrorInfo
                 {
@@ -764,35 +764,6 @@ namespace ConduitLLM.Core.Services.Abstractions
             {
                 _logger.LogWarning(trackEx, "Failed to track provider error for {MediaType} generation", GetMediaType());
             }
-        }
-
-        /// <summary>
-        /// Classifies an exception into a <see cref="ProviderErrorType"/> for error tracking.
-        /// </summary>
-        private static ProviderErrorType ClassifyExceptionToProviderErrorType(Exception ex)
-        {
-            return ex switch
-            {
-                LLMCommunicationException commEx when commEx.StatusCode.HasValue => commEx.StatusCode.Value switch
-                {
-                    System.Net.HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
-                    System.Net.HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
-                    System.Net.HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
-                    System.Net.HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
-                    System.Net.HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
-                    System.Net.HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
-                    System.Net.HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
-                    System.Net.HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
-                    System.Net.HttpStatusCode.RequestTimeout => ProviderErrorType.Timeout,
-                    _ => ProviderErrorType.Unknown
-                },
-                RateLimitExceededException => ProviderErrorType.RateLimitExceeded,
-                Exceptions.RequestTimeoutException => ProviderErrorType.Timeout,
-                ModelNotFoundException => ProviderErrorType.ModelNotFound,
-                ServiceUnavailableException => ProviderErrorType.ServiceUnavailable,
-                HttpRequestException => ProviderErrorType.NetworkError,
-                _ => ProviderErrorType.Unknown
-            };
         }
 
         protected virtual async Task UpdateSpendAsync(int virtualKeyId, decimal amount, string requestId, string? correlationId)

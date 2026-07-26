@@ -327,8 +327,9 @@ namespace ConduitLLM.Security.Services
 
         private static string MaskKey(string key)
         {
+            // Empty stays "" (callers use it to omit the " with key ..." log suffix entirely).
             if (string.IsNullOrEmpty(key)) return "";
-            return key.Length > 10 ? key[..10] + "..." : key;
+            return ConduitLLM.Core.Utilities.SpanHelper.MaskSecret(key);
         }
     }
 }

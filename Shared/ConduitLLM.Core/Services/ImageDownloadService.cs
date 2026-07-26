@@ -99,33 +99,6 @@ public class ImageDownloadService : IImageDownloadService
     /// <returns>The detected MIME type, or "image/jpeg" as fallback.</returns>
     private static string DetectMimeType(byte[] imageBytes)
     {
-        // Use ImageUtility's detection if available, otherwise fall back to inline detection
-        string? detectedType = ImageUtility.DetectMimeType(imageBytes);
-        if (detectedType != null)
-        {
-            return detectedType;
-        }
-
-        // Fallback detection using magic numbers
-        if (imageBytes.Length >= 2)
-        {
-            if (imageBytes[0] == 0xFF && imageBytes[1] == 0xD8)
-                return "image/jpeg";
-
-            if (imageBytes.Length >= 8 &&
-                imageBytes[0] == 0x89 && imageBytes[1] == 0x50 &&
-                imageBytes[2] == 0x4E && imageBytes[3] == 0x47)
-                return "image/png";
-
-            if (imageBytes.Length >= 3 &&
-                imageBytes[0] == 0x47 && imageBytes[1] == 0x49 &&
-                imageBytes[2] == 0x46)
-                return "image/gif";
-
-            if (imageBytes[0] == 0x42 && imageBytes[1] == 0x4D)
-                return "image/bmp";
-        }
-
-        return "image/jpeg"; // Default fallback
+        return ImageUtility.DetectMimeType(imageBytes) ?? "image/jpeg"; // Default fallback
     }
 }

@@ -749,19 +749,7 @@ namespace ConduitLLM.Core.Services
 
         private static string GetExtensionFromContentType(string contentType)
         {
-            return contentType?.ToLower() switch
-            {
-                "image/jpeg" => ".jpg",
-                "image/png" => ".png",
-                "image/gif" => ".gif",
-                "image/webp" => ".webp",
-                "video/mp4" => ".mp4",
-                "video/webm" => ".webm",
-                "audio/mpeg" => ".mp3",
-                "audio/wav" => ".wav",
-                "audio/webm" => ".weba",
-                _ => ""
-            };
+            return Utilities.MediaContentTypes.GetExtension(contentType) ?? "";
         }
     }
 }

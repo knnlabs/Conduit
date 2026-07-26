@@ -150,6 +150,6 @@ namespace ConduitLLM.Providers.Replicate
         }
 
         private static object? ConvertJsonElement(JsonElement element) =>
-            JsonElementConverter.ConvertJsonElement(element);
+            ConduitLLM.Functions.Utilities.JsonElementConverter.ConvertJsonElement(element);
     }
 }

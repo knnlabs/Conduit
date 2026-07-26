@@ -1,5 +1,7 @@
 using System.Net;
 
+using ConduitLLM.Core.Exceptions;
+
 namespace ConduitLLM.Core.Models;
 
 /// <summary>
@@ -32,6 +34,26 @@ public static class ProviderErrorClassifier
         }
 
         return errorType;
+    }
+
+    /// <summary>
+    /// Classifies an exception from a provider call into a <see cref="ProviderErrorType"/>
+    /// for error tracking. Communication exceptions carrying an HTTP status defer to
+    /// <see cref="Classify"/> (including the balance-in-403 body refinement).
+    /// </summary>
+    public static ProviderErrorType ClassifyException(Exception ex)
+    {
+        return ex switch
+        {
+            LLMCommunicationException commEx when commEx.StatusCode.HasValue =>
+                Classify(commEx.StatusCode.Value, commEx.ResponseBody),
+            RateLimitExceededException => ProviderErrorType.RateLimitExceeded,
+            RequestTimeoutException => ProviderErrorType.Timeout,
+            ModelNotFoundException => ProviderErrorType.ModelNotFound,
+            ServiceUnavailableException => ProviderErrorType.ServiceUnavailable,
+            HttpRequestException => ProviderErrorType.NetworkError,
+            _ => ProviderErrorType.Unknown
+        };
     }
 
     public static bool IsFatal(ProviderErrorType errorType)

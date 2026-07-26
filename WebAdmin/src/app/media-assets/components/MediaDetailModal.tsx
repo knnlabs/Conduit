@@ -119,18 +119,6 @@ export default function MediaDetailModal({
             <Text size="sm" c="dimmed">Virtual Key ID:</Text>
             <Text size="sm">{media.virtualKeyId}</Text>
           </Group>
-          {media.virtualKeyGroupId && (
-            <Group justify="space-between">
-              <Text size="sm" c="dimmed">Virtual Key Group ID:</Text>
-              <Text size="sm">{media.virtualKeyGroupId}</Text>
-            </Group>
-          )}
-          {media.virtualKeyGroupName && (
-            <Group justify="space-between">
-              <Text size="sm" c="dimmed">Virtual Key Group:</Text>
-              <Text size="sm" fw={500}>{media.virtualKeyGroupName}</Text>
-            </Group>
-          )}
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Access Count:</Text>
             <Text size="sm">{media.accessCount}</Text>

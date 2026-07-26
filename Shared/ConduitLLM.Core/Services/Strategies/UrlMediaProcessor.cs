@@ -284,16 +284,9 @@ namespace ConduitLLM.Core.Services.Strategies
 
         private string GetFileExtension(string contentType, MediaType mediaType)
         {
-            return contentType switch
-            {
-                "image/jpeg" => "jpg",
-                "image/png" => "png",
-                "image/gif" => "gif",
-                "image/webp" => "webp",
-                "video/mp4" => "mp4",
-                "video/webm" => "webm",
-                _ => mediaType == MediaType.Video ? "mp4" : "png"
-            };
+            // Shared map returns a leading dot; this processor uses dotless extensions.
+            return Utilities.MediaContentTypes.GetExtension(contentType)?.TrimStart('.')
+                ?? (mediaType == MediaType.Video ? "mp4" : "png");
         }
 
         private async Task PublishMediaCompletedEvent(

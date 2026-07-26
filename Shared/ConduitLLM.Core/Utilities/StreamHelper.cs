@@ -15,11 +15,7 @@ namespace ConduitLLM.Core.Utilities
     /// </summary>
     public static class StreamHelper
     {
-        private static readonly JsonSerializerOptions DefaultJsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
+        private static readonly JsonSerializerOptions DefaultJsonOptions = Serialization.ConduitJsonOptions.Wire;
 
         /// <summary>
         /// Processes a server-sent event (SSE) stream from an HTTP response and yields deserialized objects.

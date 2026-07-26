@@ -264,9 +264,7 @@ namespace ConduitLLM.Gateway.Authentication
         /// </summary>
         private static string SanitizeKeyForLogging(string key)
         {
-            if (key.Length <= 10)
-                return key;
-            return SpanHelper.TruncateWithEllipsis(key, 10);
+            return SpanHelper.MaskSecret(key);
         }
 
         /// <summary>

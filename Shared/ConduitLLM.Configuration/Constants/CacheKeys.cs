@@ -489,37 +489,6 @@ public static class CacheKeys
 
     #endregion
 
-    #region Spend Notification Cache
-
-    /// <summary>
-    /// Cache keys for spend notification and alerting.
-    /// Used by SpendDataRepository for budget tracking.
-    /// </summary>
-    public static class SpendNotification
-    {
-        /// <summary>Prefix for spending pattern data</summary>
-        public const string PatternsPrefix = "spend:patterns";
-
-        /// <summary>Prefix for sent alert tracking</summary>
-        public const string SentAlertsPrefix = "spend:alerts:sent";
-
-        /// <summary>Prefix for alert cooldown tracking</summary>
-        public const string CooldownPrefix = "spend:alerts:cooldown";
-
-        /// <summary>Key for spend history stream</summary>
-        public const string HistoryStream = "spend:history:stream";
-
-        /// <summary>Key for notification service instances set</summary>
-        public const string InstancesSet = "spend:notification:instances";
-
-        /// <summary>Builds a key for spending patterns by virtual key</summary>
-        /// <param name="virtualKeyId">The virtual key ID</param>
-        /// <returns>Full key like "spend:patterns:123"</returns>
-        public static string PatternsByVirtualKey(int virtualKeyId) => $"{PatternsPrefix}:{virtualKeyId}";
-    }
-
-    #endregion
-
     #region Analytics Cache
 
     /// <summary>

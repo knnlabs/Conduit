@@ -6,6 +6,7 @@ import { IconTrash, IconAlertCircle } from '@tabler/icons-react';
 import { useConfirmModal } from '@/hooks/useFormModal';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { MediaCleanupPreview } from '@/lib/admin-api/models/media';
+import { formatters } from '@/lib/utils/formatters';
 
 async function runCleanup(
   type: 'expired' | 'reconciliation' | 'prune',
@@ -19,13 +20,6 @@ async function runCleanup(
       ...(type === 'prune' && { daysToKeep }),
     })
   );
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const unit = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${(bytes / 1024 ** unit).toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 
 interface CleanupModalProps {
@@ -111,7 +105,7 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
     const outcome = destructivePrune
       ? 'This run will permanently delete them.'
       : 'This run will be a dry run.';
-    previewMessage = `${preview.fileCount.toLocaleString()} files (${formatBytes(preview.sizeBytes)}) match. ${outcome}`;
+    previewMessage = `${preview.fileCount.toLocaleString()} files (${formatters.fileSize(preview.sizeBytes)}) match. ${outcome}`;
   }
 
   return (

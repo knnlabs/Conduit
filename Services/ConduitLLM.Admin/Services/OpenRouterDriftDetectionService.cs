@@ -24,10 +24,7 @@ namespace ConduitLLM.Admin.Services
         private readonly OpenRouterSyncOptions _options;
         private readonly ILogger<OpenRouterDriftDetectionService> _logger;
 
-        private static readonly JsonSerializerOptions JsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
+        private static readonly JsonSerializerOptions JsonOptions = ConduitLLM.Core.Serialization.ConduitJsonOptions.Compact;
 
         public OpenRouterDriftDetectionService(
             IDbContextFactory<ConduitDbContext> dbFactory,

@@ -2,14 +2,18 @@ using System.Net;
 
 using ConduitLLM.Security.Options;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace ConduitLLM.Admin.Extensions
+namespace ConduitLLM.Security.Extensions
 {
     /// <summary>
     /// Configures ASP.NET Core's <see cref="ForwardedHeadersMiddleware"/> as the single, spoof-resistant
     /// source of the client IP address. Forwarded headers are only honored when the connecting peer is an
     /// explicitly-trusted proxy (see <see cref="TrustedProxyOptions"/>); otherwise the raw socket peer is used.
+    /// Shared by the Admin and Gateway services so proxy-trust hardening cannot diverge between them.
     /// </summary>
     public static class ForwardedHeadersExtensions
     {
@@ -74,7 +78,8 @@ namespace ConduitLLM.Admin.Extensions
 
         /// <summary>
         /// Inserts <see cref="ForwardedHeadersMiddleware"/> into the pipeline when trusted-proxy support is
-        /// enabled. Must run before any middleware that reads the client IP (auth, security, metrics gate).
+        /// enabled. Must run before any middleware that reads the client IP (auth, correlation, security,
+        /// metrics gate).
         /// </summary>
         public static IApplicationBuilder UseTrustedProxyForwardedHeaders(this WebApplication app)
         {

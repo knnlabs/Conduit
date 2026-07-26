@@ -2,6 +2,8 @@
  * Media download utilities for handling various media download scenarios
  */
 
+import { formatters } from '@/lib/utils/formatters';
+
 /**
  * Options for downloading media
  */
@@ -167,17 +169,12 @@ export function getMimeTypeFromFilename(filename: string): string {
 
 /**
  * Formats file size in human-readable format
+ * Delegates to the canonical shared formatter.
  * @param bytes - Size in bytes
  * @returns Formatted string
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
+  return formatters.fileSize(bytes);
 }
 
 /**

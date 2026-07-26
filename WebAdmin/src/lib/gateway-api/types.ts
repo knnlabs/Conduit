@@ -49,25 +49,6 @@ export interface ImageAttachment {
 }
 export type ChatAttachment = ImageAttachment;
 
-export enum ProviderType {
-  OpenAI = 1,
-  Groq,
-  Replicate,
-  Fireworks,
-  OpenAICompatible,
-  MiniMax,
-  Ultravox,
-  ElevenLabs,
-  Cerebras,
-  SambaNova,
-  DeepInfra,
-  Cloudflare,
-  OpenRouter,
-  Meta,
-  Azure,
-  Bedrock,
-}
-
 export interface TextContent {
   type: "text";
   text: string;

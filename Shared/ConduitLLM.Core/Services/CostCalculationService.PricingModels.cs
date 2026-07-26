@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
+using ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -57,7 +58,7 @@ public partial class CostCalculationService
         // match their discrete billable duration. Prefer the exact key, but never make a delivered
         // generation free merely because the measured value was slightly different.
         var duration = (int)Math.Round(usage.VideoDurationSeconds.Value);
-        var resolution = NormalizeResolution(usage.VideoResolution);
+        var resolution = VideoUtils.NormalizeResolution(usage.VideoResolution);
         var lookupKey = $"{resolution}_{duration}";
 
         if (!config.Rates.TryGetValue(lookupKey, out var flatRate))
@@ -127,7 +128,7 @@ public partial class CostCalculationService
         if (!string.IsNullOrEmpty(usage.VideoResolution) &&
             config.ResolutionMultipliers is { Count: > 0 })
         {
-            var resolution = NormalizeResolution(usage.VideoResolution);
+            var resolution = VideoUtils.NormalizeResolution(usage.VideoResolution);
             if (!config.ResolutionMultipliers.TryGetValue(resolution, out var multiplier))
             {
                 var fallback = config.ResolutionMultipliers.MaxBy(entry => entry.Value);
@@ -233,40 +234,19 @@ public partial class CostCalculationService
             tier = orderedTiers.Last(); // Use the highest configured tier if none match
         }
 
-        decimal calculatedCost = 0m;
-        var regularInputTokens = inputTokens;
-
-        if (usage.CachedInputTokens is > 0 && modelCost.CachedInputCostPerMillionTokens.HasValue)
+        // Reuse the shared token-pricing math with the tier's input/output rates substituted.
+        // Embedding, audio and TTS rates are intentionally omitted: tiered pricing does not
+        // cover those modalities, so the helper skips them.
+        var tierRates = new TokenPricingRates
         {
-            if (usage.CachedInputTokensIncludedInPrompt)
-                regularInputTokens -= usage.CachedInputTokens.Value;
-
-            calculatedCost += usage.CachedInputTokens.Value * modelCost.CachedInputCostPerMillionTokens.Value / 1_000_000m;
-        }
-
-        if (usage.CachedWriteTokens is > 0 && modelCost.CachedInputWriteCostPerMillionTokens.HasValue)
-        {
-            if (usage.CachedWriteTokensIncludedInPrompt)
-                regularInputTokens -= usage.CachedWriteTokens.Value;
-
-            calculatedCost += usage.CachedWriteTokens.Value * modelCost.CachedInputWriteCostPerMillionTokens.Value / 1_000_000m;
-        }
-
-        if (regularInputTokens > 0)
-            calculatedCost += regularInputTokens * tier.InputCost / 1_000_000m;
-
-        var reasoningTokens = usage.ReasoningTokens.GetValueOrDefault();
-        var regularOutputTokens = Math.Max(0, usage.CompletionTokens.GetValueOrDefault() - reasoningTokens);
-        calculatedCost += regularOutputTokens * tier.OutputCost / 1_000_000m;
-
-        if (reasoningTokens > 0)
-        {
-            var reasoningRate = modelCost.ReasoningCostPerMillionTokens ?? tier.OutputCost;
-            calculatedCost += reasoningTokens * reasoningRate / 1_000_000m;
-        }
-
-        if (usage.SearchUnits is > 0 && modelCost.CostPerSearchUnit.HasValue)
-            calculatedCost += usage.SearchUnits.Value * modelCost.CostPerSearchUnit.Value / 1000m;
+            InputCostPerMillion = tier.InputCost,
+            OutputCostPerMillion = tier.OutputCost,
+            CachedInputCostPerMillion = modelCost.CachedInputCostPerMillionTokens,
+            CachedWriteCostPerMillion = modelCost.CachedInputWriteCostPerMillionTokens,
+            ReasoningCostPerMillion = modelCost.ReasoningCostPerMillionTokens,
+            CostPerThousandSearchUnits = modelCost.CostPerSearchUnit
+        };
+        var calculatedCost = ApplyTokenPricing(modelId, usage, tierRates).Total;
 
         _logger.LogDebug("Tiered tokens cost for model {ModelId}: Input context {InputTokens}, Tier ≤{MaxContext}, " +
             "Input rate ${InputRate}, Output rate ${OutputRate}, Total cost ${TotalCost}",
@@ -379,7 +359,7 @@ public partial class CostCalculationService
         // This allows using rules-based pricing even when providers don't set PricingParameters
         if (!parameters.ContainsKey("resolution") && !string.IsNullOrEmpty(usage.VideoResolution))
         {
-            parameters["resolution"] = NormalizeResolution(usage.VideoResolution);
+            parameters["resolution"] = VideoUtils.NormalizeResolution(usage.VideoResolution);
         }
         if (!parameters.ContainsKey("image_resolution") && !string.IsNullOrEmpty(usage.ImageResolution))
         {
@@ -399,27 +379,5 @@ public partial class CostCalculationService
             result.MatchedRule?.Description ?? "none", result.UsedDefaultRate);
 
         return result.Cost;
-    }
-
-    /// <summary>
-    /// Normalizes video resolution to standard format (e.g., "1920x1080" -> "1080p").
-    /// </summary>
-    private static string NormalizeResolution(string resolution)
-    {
-        if (string.IsNullOrEmpty(resolution))
-            return resolution;
-
-        // Already normalized
-        if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
-            return resolution.ToLowerInvariant();
-
-        // Parse "WIDTHxHEIGHT" format
-        var parts = resolution.ToLowerInvariant().Split('x');
-        if (parts.Length == 2 && int.TryParse(parts[1], out var height))
-        {
-            return $"{height}p";
-        }
-
-        return resolution;
     }
 }

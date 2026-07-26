@@ -22,11 +22,7 @@ public abstract class ExceptionHandlingMiddlewareBase
     private readonly IWebHostEnvironment _environment;
     protected readonly ILogger Logger;
 
-    protected static readonly JsonSerializerOptions ErrorJsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
-    };
+    protected static readonly JsonSerializerOptions ErrorJsonOptions = Serialization.ConduitJsonOptions.Compact;
 
     /// <summary>
     /// Display name used in log messages (e.g., "AdminExceptionMiddleware").

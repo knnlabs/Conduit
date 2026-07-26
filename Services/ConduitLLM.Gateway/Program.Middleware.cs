@@ -3,6 +3,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Middleware;
 using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Security.Extensions;
 using ConduitLLM.Security.Middleware;
 using Scalar.AspNetCore;
 

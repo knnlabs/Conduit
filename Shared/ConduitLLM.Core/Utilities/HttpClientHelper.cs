@@ -18,11 +18,7 @@ namespace ConduitLLM.Core.Utilities
     /// </remarks>
     public static class HttpClientHelper
     {
-        private static readonly JsonSerializerOptions DefaultJsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
+        private static readonly JsonSerializerOptions DefaultJsonOptions = Serialization.ConduitJsonOptions.Wire;
 
         /// <summary>
         /// Sends a request with JSON content and deserializes the response.

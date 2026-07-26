@@ -69,6 +69,12 @@ public static class ExceptionToResponseMapper
                 => new(404, modelUnavailableEx.Message, "model_not_found", LogLevel.Warning,
                     "Model unavailable", true, "invalid_request_error", "model"),
 
+            // A provider was requested that is not configured or not supported — a client
+            // mistake, not a server fault.
+            UnsupportedProviderException unsupportedEx
+                => new(400, unsupportedEx.Message, "unsupported_provider", LogLevel.Warning,
+                    "Unsupported provider", true, "invalid_request_error", "provider"),
+
             RequestTimeoutException timeoutEx
                 => new(408, timeoutEx.Message, "request_timeout", LogLevel.Warning,
                     "Request timeout", true, "timeout_error"),

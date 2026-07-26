@@ -69,7 +69,7 @@ public sealed class RequireBalanceEndpointFilter : IEndpointFilter
             _logger.LogWarning(
                 "Virtual key validation failed with {FailureCode} during balance check for key prefix {KeyPrefix}",
                 validation.FailureCode ?? "unknown",
-                LoggingSanitizer.S(virtualKey[..Math.Min(10, virtualKey.Length)]));
+                LoggingSanitizer.S(ConduitLLM.Core.Utilities.SpanHelper.MaskSecret(virtualKey)));
             return GatewayResults.OpenAIError(
                 validation.HttpStatusCode,
                 validation.Reason ?? "Virtual key validation failed.",

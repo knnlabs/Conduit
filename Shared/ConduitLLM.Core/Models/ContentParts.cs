@@ -283,27 +283,7 @@ public static class ImageUrlExtensions
     /// <returns>The detected MIME type, or "image/jpeg" as fallback.</returns>
     private static string DetectMimeTypeFromBytes(byte[] imageBytes)
     {
-        string mimeType = "image/jpeg"; // Default fallback
-
-        // Check magic numbers for common image formats
-        if (imageBytes.Length >= 2)
-        {
-            if (imageBytes[0] == 0xFF && imageBytes[1] == 0xD8) // JPEG
-                mimeType = "image/jpeg";
-            else if (imageBytes.Length >= 8 &&
-                     imageBytes[0] == 0x89 && imageBytes[1] == 0x50 &&
-                     imageBytes[2] == 0x4E && imageBytes[3] == 0x47) // PNG
-                mimeType = "image/png";
-            else if (imageBytes.Length >= 3 &&
-                     imageBytes[0] == 0x47 && imageBytes[1] == 0x49 &&
-                     imageBytes[2] == 0x46) // GIF
-                mimeType = "image/gif";
-            else if (imageBytes.Length >= 4 &&
-                     (imageBytes[0] == 0x42 && imageBytes[1] == 0x4D)) // BMP
-                mimeType = "image/bmp";
-        }
-
-        return mimeType;
+        return Utilities.ImageUtility.DetectMimeType(imageBytes) ?? "image/jpeg"; // Default fallback
     }
 
     /// <summary>
@@ -311,14 +291,6 @@ public static class ImageUrlExtensions
     /// </summary>
     private static string GetMimeTypeFromFileExtension(string extension)
     {
-        return extension.ToLowerInvariant() switch
-        {
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".png" => "image/png",
-            ".gif" => "image/gif",
-            ".webp" => "image/webp",
-            ".bmp" => "image/bmp",
-            _ => "application/octet-stream" // Default fallback
-        };
+        return Utilities.MediaContentTypes.GetContentType(extension) ?? "application/octet-stream";
     }
 }

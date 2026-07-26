@@ -1,37 +1,17 @@
 // ImageAttachment moved to SDK - import from the local Gateway API boundary
-import type { ChatAttachment, ImageAttachment } from '@/lib/gateway-api';
+import type { ChatAttachment, ImageAttachment, TextContent, ImageContent, MessageContent } from '@/lib/gateway-api';
 export type { ChatAttachment, ImageAttachment };
 
-// Content types for chat messages (similar to SDK types)
-export interface TextContent {
-  type: 'text';
-  text: string;
-}
-
-export interface ImageContent {
-  type: 'image_url';
-  image_url: {
-    url: string;
-    detail?: 'auto' | 'low' | 'high';
-  };
-}
-
-export interface VideoContent {
-  type: 'video_url';
-  video_url: { url: string };
-}
-
-export interface AudioContent {
-  type: 'input_audio';
-  input_audio: { data: string; format: string };
-}
-
-export interface FileContent {
-  type: 'file';
-  file: { filename?: string; file_data?: string; file_id?: string };
-}
-
-export type MessageContent = string | Array<TextContent | ImageContent | VideoContent | AudioContent | FileContent>;
+// Content types for chat messages - re-exported from the Gateway API boundary
+export type {
+  TextContent,
+  ImageContent,
+  VideoContent,
+  AudioContent,
+  FileContent,
+  MessageContentPart,
+  MessageContent,
+} from '@/lib/gateway-api';
 
 // Content helpers
 export const ContentHelpers = {

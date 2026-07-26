@@ -1,7 +1,6 @@
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Models.Models;
 using ConduitLLM.Admin.Models.ModelSeries;
-using ConduitLLM.Admin.Models.ModelCapabilities;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
