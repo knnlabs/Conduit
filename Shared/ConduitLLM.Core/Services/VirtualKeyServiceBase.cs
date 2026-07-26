@@ -7,6 +7,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
 
 using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -35,6 +36,76 @@ namespace ConduitLLM.Core.Services
             VirtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
             GroupRepository = groupRepository ?? throw new ArgumentNullException(nameof(groupRepository));
             SpendHistoryRepository = spendHistoryRepository ?? throw new ArgumentNullException(nameof(spendHistoryRepository));
+        }
+
+        /// <summary>
+        /// Shared key-validation flow: hash the key, resolve the entity via
+        /// <paramref name="lookupByHashAsync"/>, then run <see cref="VirtualKeyValidationHelper"/>.
+        /// Subclasses supply the lookup (direct repository or cache-backed).
+        /// </summary>
+        protected async Task<VirtualKeyValidationOutcome> ValidateVirtualKeyInternalAsync(
+            string key,
+            string? requestedModel,
+            bool checkBalance,
+            Func<string, Task<VirtualKey?>> lookupByHashAsync,
+            IBatchSpendUpdateService? batchSpendService)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+            {
+                Logger.LogWarning("Empty key provided for virtual key validation");
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.MissingKey,
+                    401,
+                    "Virtual key is required.");
+            }
+
+            try
+            {
+                var keyHash = VirtualKeyUtilities.HashKey(key);
+                Logger.LogDebug("Validating key ({ValidationMode}): {KeyPrefix}, Hash: {Hash}",
+                    checkBalance ? "balance" : "authentication",
+                    LoggingSanitizer.S(ConduitLLM.Core.Utilities.SpanHelper.MaskSecret(key)),
+                    keyHash);
+
+                var virtualKey = await lookupByHashAsync(keyHash);
+                if (virtualKey == null)
+                {
+                    Logger.LogWarning("No matching virtual key found for hash: {Hash}", keyHash);
+                    return VirtualKeyValidationOutcome.Failure(
+                        VirtualKeyValidationFailureCodes.KeyNotFound,
+                        401,
+                        "Virtual key was not found.");
+                }
+
+                var result = await VirtualKeyValidationHelper.ValidateVirtualKeyAsync(
+                    virtualKey,
+                    requestedModel,
+                    checkBalance,
+                    checkBalance ? GroupRepository : null,
+                    Logger,
+                    checkBalance ? batchSpendService : null);
+
+                if (!result.IsValid)
+                {
+                    Logger.LogWarning("Virtual key {KeyId} validation failed: {Reason}",
+                        virtualKey.Id, result.Reason ?? "unknown");
+                }
+                else
+                {
+                    Logger.LogDebug("Virtual key {KeyId} validated successfully for model: {Model}",
+                        virtualKey.Id, LoggingSanitizer.S(requestedModel ?? "any"));
+                }
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error validating virtual key");
+                return VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.ValidationError,
+                    500,
+                    "Virtual key validation failed.");
+            }
         }
 
         #region Virtual Hooks
