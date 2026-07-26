@@ -200,11 +200,11 @@ namespace ConduitLLM.Tests.Middleware
             Assert.NotNull(errorResponse);
             Assert.Equal("Provider error", errorResponse.Error.Message);
             Assert.Equal("server_error", errorResponse.Error.Type);
-            Assert.Equal("provider_communication_error", errorResponse.Error.Code);
+            Assert.Equal("provider_bad_gateway", errorResponse.Error.Code);
         }
 
         [Fact]
-        public async Task LLMCommunicationException_WithoutStatusCode_Returns500()
+        public async Task LLMCommunicationException_WithoutStatusCode_Returns502()
         {
             // Arrange
             var exception = new LLMCommunicationException("Unknown provider error");
@@ -214,8 +214,8 @@ namespace ConduitLLM.Tests.Middleware
             // Act
             await _middleware.InvokeAsync(_httpContext);
 
-            // Assert
-            Assert.Equal(500, _httpContext.Response.StatusCode);
+            // Assert: an unattributed provider failure is an upstream fault (502), not a Conduit 500.
+            Assert.Equal(502, _httpContext.Response.StatusCode);
 
             var errorResponse = GetErrorResponse(_httpContext);
 

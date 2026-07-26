@@ -154,23 +154,45 @@ public static class ExceptionToResponseMapper
     /// <summary>
     /// Maps an LLMCommunicationException, deriving status code and error type from the provider's response.
     /// </summary>
-    private static ExceptionMappingResult MapLLMCommunicationException(LLMCommunicationException commEx)
-    {
-        if (commEx.StatusCode.HasValue)
-        {
-            var statusCode = (int)commEx.StatusCode.Value;
-            var isServerError = statusCode >= 500;
-            return new(
-                statusCode,
-                commEx.Message,
-                "provider_communication_error",
-                isServerError ? LogLevel.Error : LogLevel.Warning,
-                "Provider communication error",
-                true,
-                isServerError ? "server_error" : "invalid_request_error");
-        }
+    private static ExceptionMappingResult MapLLMCommunicationException(LLMCommunicationException commEx) =>
+        MapProviderCommunicationStatus(commEx.StatusCode, commEx.Message);
 
-        return new(500, commEx.Message, "provider_communication_error", LogLevel.Error,
-            "Provider communication error", true, "server_error");
+    /// <summary>
+    /// Maps an upstream provider HTTP status to the client-visible response. Provider-side faults
+    /// (auth failures, timeouts, 5xx) surface as gateway errors (502/503/504) so OpenAI-compatible
+    /// clients do not mistake a provider credential failure for their own key being invalid (#1191);
+    /// other provider 4xx statuses are forwarded as request errors.
+    /// </summary>
+    public static ExceptionMappingResult MapProviderCommunicationStatus(
+        System.Net.HttpStatusCode? upstreamStatus,
+        string message)
+    {
+        return upstreamStatus switch
+        {
+            System.Net.HttpStatusCode.TooManyRequests
+                => new(429, message, "rate_limit_exceeded", LogLevel.Warning,
+                    "Provider rate limited", true, "rate_limit_error"),
+            System.Net.HttpStatusCode.Unauthorized or System.Net.HttpStatusCode.Forbidden
+                => new(502, message, "provider_authentication_error", LogLevel.Error,
+                    "Provider authentication error", true, "server_error"),
+            System.Net.HttpStatusCode.RequestTimeout
+                => new(503, message, "provider_timeout", LogLevel.Error,
+                    "Provider timeout", true, "server_error"),
+            System.Net.HttpStatusCode.BadGateway
+                => new(502, message, "provider_bad_gateway", LogLevel.Error,
+                    "Provider bad gateway", true, "server_error"),
+            System.Net.HttpStatusCode.ServiceUnavailable
+                => new(503, message, "provider_unavailable", LogLevel.Error,
+                    "Provider unavailable", true, "server_error"),
+            System.Net.HttpStatusCode.GatewayTimeout
+                => new(504, message, "provider_timeout", LogLevel.Error,
+                    "Provider gateway timeout", true, "server_error"),
+            { } status when (int)status >= 400 && (int)status < 500
+                => new((int)status, message, "provider_request_error", LogLevel.Warning,
+                    "Provider rejected request", true, "invalid_request_error"),
+            _
+                => new(502, message, "provider_communication_error", LogLevel.Error,
+                    "Provider communication error", true, "server_error")
+        };
     }
 }
