@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -86,6 +87,112 @@ public class ImageUrl
             return Url.Substring(startIndex + 7);
         }
     }
+}
+
+/// <summary>
+/// Represents an audio input content part in a multimodal message.
+/// </summary>
+public class InputAudioContentPart
+{
+    [JsonPropertyName("type")]
+    public string Type => "input_audio";
+
+    [JsonPropertyName("input_audio")]
+    public required InputAudio InputAudio { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Base64-encoded audio and its container/sample format.</summary>
+public class InputAudio
+{
+    [JsonPropertyName("data")]
+    public required string Data { get; set; }
+
+    [JsonPropertyName("format")]
+    public required string Format { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Represents a document/file content part in a multimodal message.</summary>
+public class FileContentPart
+{
+    [JsonPropertyName("type")]
+    public string Type => "file";
+
+    [JsonPropertyName("file")]
+    public required FileContent File { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>
+/// A file supplied by URL/data URL or by a provider-bound uploaded file identifier.
+/// Exactly one of <see cref="FileData"/> and <see cref="FileId"/> must be set.
+/// </summary>
+public class FileContent
+{
+    [JsonPropertyName("filename")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Filename { get; set; }
+
+    [JsonPropertyName("file_data")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FileData { get; set; }
+
+    [JsonPropertyName("file_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FileId { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>
+/// Extensible provider content part for forward-compatible content types.
+/// Known providers may pass these through without Conduit discarding their fields.
+/// </summary>
+public class ProviderContentPart
+{
+    [JsonPropertyName("type")]
+    public required string Type { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>An OpenRouter-compatible parsed-file annotation.</summary>
+public class FileAnnotation
+{
+    [JsonPropertyName("type")]
+    public string Type => "file";
+
+    [JsonPropertyName("file")]
+    public required ParsedFileAnnotation File { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Parsed file content that can be sent back to avoid parsing the same file again.</summary>
+public class ParsedFileAnnotation
+{
+    [JsonPropertyName("hash")]
+    public required string Hash { get; set; }
+
+    [JsonPropertyName("name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("content")]
+    public required List<JsonElement> Content { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 /// <summary>

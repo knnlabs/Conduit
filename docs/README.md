@@ -14,6 +14,8 @@ These four cover the system end to end:
   Admin UI) and the shape of each area.
 - **[Model routing](./routing.md)** — how a chat request's provider is chosen, and how failover,
   session affinity, and the kill switch behave.
+- **[Multimodal chat](./api-guides/multimodal-chat.md)** — the ordered image, PDF, audio, and video
+  request contract, PDF parsing, limits, and capability discovery.
 - **[Monitoring](./monitoring.md)** — health checks, metrics, real-time streams, and alerting.
 
 Deeper operational runbooks stand on their own and are linked from Monitoring:

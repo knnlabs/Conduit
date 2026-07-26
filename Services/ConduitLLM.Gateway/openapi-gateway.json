@@ -5479,6 +5479,48 @@
               "null",
               "string"
             ]
+          },
+          "annotations": {
+            "type": [
+              "null",
+              "array"
+            ]
+          },
+          "audio": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "images": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "reasoning_details": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "reasoning": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -5576,6 +5618,10 @@
               "string"
             ],
             "format": "int32"
+          },
+          "pdf_input": {
+            "type": "boolean",
+            "default": false
           }
         },
         "description": "Capabilities advertised for a model."
@@ -5853,7 +5899,8 @@
                   "null",
                   "string"
                 ]
-              }
+              },
+              "metadata": { }
             }
           }
         }

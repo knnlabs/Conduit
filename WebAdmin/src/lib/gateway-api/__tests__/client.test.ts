@@ -1,4 +1,10 @@
-import { GatewayClient, ModelCapability, RateLimitError } from "..";
+import {
+  buildMessageContent,
+  GatewayClient,
+  ModelCapability,
+  RateLimitError,
+  type ChatAttachment,
+} from "..";
 
 describe("GatewayClient", () => {
   beforeEach(() => jest.clearAllMocks());
@@ -126,6 +132,81 @@ describe("GatewayClient", () => {
     );
     await expect(client.discovery.getModels()).rejects.toBeInstanceOf(
       RateLimitError,
+    );
+  });
+
+  it("builds ordered mixed-modality content without rewriting remote URLs", () => {
+    const attachments: ChatAttachment[] = [
+      {
+        kind: "image",
+        url: "https://cdn.example/image.png?signature=unchanged",
+        mimeType: "image/png",
+        size: 1,
+        name: "image.png",
+        detail: "high",
+      },
+      {
+        kind: "pdf",
+        url: "https://cdn.example/report.pdf",
+        mimeType: "application/pdf",
+        size: 2,
+        name: "report.pdf",
+      },
+      {
+        kind: "audio",
+        url: "blob:audio-preview",
+        base64: "UklGRg==",
+        mimeType: "audio/mpeg",
+        size: 3,
+        name: "recording.mp3",
+      },
+      {
+        kind: "video",
+        url: "https://cdn.example/demo.mp4",
+        mimeType: "video/mp4",
+        size: 4,
+        name: "demo.mp4",
+      },
+    ];
+
+    expect(buildMessageContent("Describe everything.", attachments)).toEqual([
+      { type: "text", text: "Describe everything." },
+      {
+        type: "image_url",
+        image_url: {
+          url: "https://cdn.example/image.png?signature=unchanged",
+          detail: "high",
+        },
+      },
+      {
+        type: "file",
+        file: {
+          filename: "report.pdf",
+          file_data: "https://cdn.example/report.pdf",
+        },
+      },
+      {
+        type: "input_audio",
+        input_audio: { data: "UklGRg==", format: "mp3" },
+      },
+      {
+        type: "video_url",
+        video_url: { url: "https://cdn.example/demo.mp4" },
+      },
+    ]);
+  });
+
+  it("rejects an audio attachment without inline base64 data", () => {
+    const attachment: ChatAttachment = {
+      kind: "audio",
+      url: "https://cdn.example/recording.mp3",
+      mimeType: "audio/mpeg",
+      size: 3,
+      name: "recording.mp3",
+    };
+
+    expect(() => buildMessageContent("", [attachment])).toThrow(
+      "Audio attachments must contain base64 data.",
     );
   });
 });

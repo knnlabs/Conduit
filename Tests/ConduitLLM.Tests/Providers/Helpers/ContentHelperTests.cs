@@ -44,7 +44,7 @@ public class ContentHelperTests
     }
 
     [Fact]
-    public void ShouldPreserveAsArray_TextOnlyArray_ReturnsFalse()
+    public void ShouldPreserveAsArray_TextOnlyArray_ReturnsTrue()
     {
         // Arrange — content array with only type/text, no cache_control
         var json = """
@@ -59,11 +59,11 @@ public class ContentHelperTests
         var result = ContentHelper.ShouldPreserveAsArray(content);
 
         // Assert
-        result.Should().BeFalse();
+        result.Should().BeTrue();
     }
 
     [Fact]
-    public void ShouldPreserveAsArray_ImageOnly_ReturnsFalse()
+    public void ShouldPreserveAsArray_ImageOnly_ReturnsTrue()
     {
         // Arrange — content array with image but no cache_control
         var json = """
@@ -78,7 +78,7 @@ public class ContentHelperTests
         var result = ContentHelper.ShouldPreserveAsArray(content);
 
         // Assert
-        result.Should().BeFalse();
+        result.Should().BeTrue();
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class ContentHelperTests
     }
 
     [Fact]
-    public void ShouldPreserveAsArray_ListOfDictsWithoutCacheControl_ReturnsFalse()
+    public void ShouldPreserveAsArray_ListOfDictsWithoutCacheControl_ReturnsTrue()
     {
         // Arrange — List<Dictionary> without cache_control
         var content = new List<object>
@@ -167,7 +167,7 @@ public class ContentHelperTests
         var result = ContentHelper.ShouldPreserveAsArray(content);
 
         // Assert
-        result.Should().BeFalse();
+        result.Should().BeTrue();
     }
 
     [Fact]

@@ -290,8 +290,8 @@ namespace ConduitLLM.Providers.Helpers
 
         /// <summary>
         /// Determines if the content should be preserved as a JSON array rather than collapsed to a string.
-        /// Returns true if any content block has structured metadata like <c>cache_control</c>,
-        /// even if the content is otherwise text-only.
+        /// Every structured content array is ordered and may contain provider extensions, so collapsing or
+        /// reconstructing it is never safe.
         /// </summary>
         /// <param name="content">The message content</param>
         /// <returns>True if the content has structured metadata that would be lost by collapsing to a string</returns>
@@ -300,60 +300,27 @@ namespace ConduitLLM.Providers.Helpers
             if (content == null || content is string)
                 return false;
 
-            // Handle JSON Element
+            // Raw API requests deserialize object-typed message content as JsonElement.
             if (content is JsonElement jsonElement)
             {
-                if (jsonElement.ValueKind != JsonValueKind.Array)
-                    return false;
-
-                foreach (var element in jsonElement.EnumerateArray())
-                {
-                    if (element.ValueKind != JsonValueKind.Object)
-                        continue;
-
-                    // Check for cache_control or other structured metadata beyond type/text/image_url
-                    if (element.TryGetProperty("cache_control", out _))
-                        return true;
-                }
-
-                return false;
+                return jsonElement.ValueKind == JsonValueKind.Array;
             }
 
-            // Handle IEnumerable<object> of dictionaries (from PromptCacheInjectionService)
-            if (content is IEnumerable<object> contentList)
-            {
-                foreach (var part in contentList)
-                {
-                    if (part is IDictionary<string, object?> dict && dict.ContainsKey("cache_control"))
-                        return true;
-                    if (part is IDictionary<string, object> dictNonNull && dictNonNull.ContainsKey("cache_control"))
-                        return true;
-                }
-                return false;
-            }
+            // Typed callers and prompt-cache injection both use enumerable content parts.
+            if (content is IEnumerable<object>)
+                return true;
 
-            // Try to serialize and check
+            // Handle other generic collection implementations without treating dictionaries as parts.
             try
             {
                 var json = JsonSerializer.Serialize(content);
                 using var doc = JsonDocument.Parse(json);
-                var root = doc.RootElement;
-
-                if (root.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var element in root.EnumerateArray())
-                    {
-                        if (element.TryGetProperty("cache_control", out _))
-                            return true;
-                    }
-                }
+                return doc.RootElement.ValueKind == JsonValueKind.Array;
             }
             catch
             {
-                // If we can't process it, no structured metadata
+                return false;
             }
-
-            return false;
         }
 
         /// <summary>

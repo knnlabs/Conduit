@@ -1051,6 +1051,11 @@ export interface components {
       name?: null | string;
       tool_calls?: null | components["schemas"]["ToolCall"][];
       tool_call_id?: null | string;
+      annotations?: null | unknown[];
+      audio?: null | components["schemas"]["JsonElement"];
+      images?: null | components["schemas"]["JsonElement"];
+      reasoning_details?: null | components["schemas"]["JsonElement"];
+      reasoning?: null | string;
     };
     /** @description Capabilities advertised for a model. */
     ModelCapabilitiesDto: {
@@ -1075,6 +1080,8 @@ export interface components {
       max_tokens?: null | number | string;
       /** Format: int32 */
       max_output_tokens?: null | number | string;
+      /** @default false */
+      pdf_input: boolean;
     };
     /** @description An OpenAI-compatible model entry. */
     ModelListItemDto: {
@@ -1145,6 +1152,7 @@ export interface components {
         type: string;
         param?: null | string;
         code?: null | string;
+        metadata?: unknown;
       };
     };
     PromptCacheOptions: {

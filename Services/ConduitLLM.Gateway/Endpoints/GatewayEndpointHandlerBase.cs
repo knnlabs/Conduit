@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Security.Claims;
+using System.Text.Json;
 
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Metrics;
@@ -63,8 +64,13 @@ public abstract class GatewayEndpointHandlerBase
         Results.File(contents, contentType, fileDownloadName, enableRangeProcessing: enableRangeProcessing);
     protected static IResult Content(string content, string contentType) => Results.Text(content, contentType);
     protected static IResult StatusCode<T>(int statusCode, T value) => Results.Json(value, statusCode: statusCode);
-    protected static IResult OpenAIError(int statusCode, string message, string code, string type = "invalid_request_error") =>
-        GatewayResults.OpenAIError(statusCode, message, code, type);
+    protected static IResult OpenAIError(
+        int statusCode,
+        string message,
+        string code,
+        string type = "invalid_request_error",
+        JsonElement? metadata = null) =>
+        GatewayResults.OpenAIError(statusCode, message, code, type, metadata: metadata);
 
     protected void PublishEventFireAndForget<TEvent>(TEvent domainEvent, string operationName, object? contextData = null)
         where TEvent : class

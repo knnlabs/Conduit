@@ -68,7 +68,15 @@ namespace ConduitLLM.Providers.OpenAICompatible
                             arguments = tc.Function?.Arguments
                         }
                     }).Cast<object>().ToList(),
-                    ToolCallId = m.ToolCallId
+                    ToolCallId = m.ToolCallId,
+                    Annotations = m.Annotations is null
+                        ? null
+                        : System.Text.Json.JsonSerializer.SerializeToElement(m.Annotations, DefaultJsonOptions),
+                    Audio = m.Audio,
+                    Images = m.Images,
+                    ReasoningDetails = m.ReasoningDetails,
+                    Reasoning = m.Reasoning,
+                    ExtensionData = m.ExtensionData
                 };
             }).ToList();
 
@@ -371,7 +379,15 @@ namespace ConduitLLM.Providers.OpenAICompatible
                                 ? System.Text.Json.JsonSerializer.Deserialize<List<CoreModels.ToolCall>>(
                                     System.Text.Json.JsonSerializer.Serialize(c.Message.ToolCalls))
                                 : null,
-                            ToolCallId = c.Message.ToolCallId
+                            ToolCallId = c.Message.ToolCallId,
+                            Annotations = c.Message.Annotations is { ValueKind: System.Text.Json.JsonValueKind.Array } annotations
+                                ? annotations.EnumerateArray().Select(annotation => annotation.Clone()).ToList()
+                                : null,
+                            Audio = c.Message.Audio,
+                            Images = c.Message.Images,
+                            ReasoningDetails = c.Message.ReasoningDetails,
+                            Reasoning = c.Message.Reasoning,
+                            ExtensionData = c.Message.ExtensionData
                         } : new CoreModels.Message
                         {
                             Role = "assistant",
@@ -383,7 +399,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     ServiceTier = response.ServiceTier,
                     Moderation = response.Moderation,
                     Seed = response.Seed,
-                    OriginalModelAlias = originalModelAlias
+                    OriginalModelAlias = originalModelAlias,
+                    ExtensionData = response.ExtensionData
                 };
                 mapped.ProviderToolUsage = MapGroqHostedToolUsage(response.GroqExtension);
                 return mapped;

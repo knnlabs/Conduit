@@ -4,6 +4,7 @@ using System.Text.Json;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Rerank;
@@ -36,7 +37,7 @@ namespace ConduitLLM.Tests.Providers
         private string _videoStatusJson = "{\"status\":\"completed\",\"unsigned_urls\":[\"https://openrouter.ai/videos/vid_1.mp4\"]}";
         private string _transcriptionJson = "{\"text\":\"hello\"}";
         private string _rerankJson = "{\"results\":[]}";
-        private const string ChatJson = "{\"id\":\"c\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"openai/gpt-4o\"," +
+        private string _chatJson = "{\"id\":\"c\",\"object\":\"chat.completion\",\"created\":1,\"model\":\"openai/gpt-4o\"," +
             "\"choices\":[{\"index\":0,\"message\":{\"role\":\"assistant\",\"content\":\"hi\"},\"finish_reason\":\"stop\"}]," +
             "\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":1,\"total_tokens\":2}}";
 
@@ -72,7 +73,7 @@ namespace ConduitLLM.Tests.Providers
                     }
 
                     string responseBody;
-                    if (path.EndsWith("/chat/completions")) responseBody = ChatJson;
+                    if (path.EndsWith("/chat/completions")) responseBody = _chatJson;
                     else if (path.EndsWith("/key")) responseBody = "{\"data\":{}}";
                     else if (path.EndsWith("/images")) responseBody = _imagesJson;
                     else if (path.EndsWith("/audio/transcriptions")) responseBody = _transcriptionJson;
@@ -100,6 +101,143 @@ namespace ConduitLLM.Tests.Providers
                 logger.Object,
                 _httpClientFactoryMock.Object,
                 providerOptionsJson: providerOptionsJson);
+        }
+
+        [Fact]
+        public async Task Chat_MixedMultimodalContent_PreservesOrderPayloadsAndPlugins()
+        {
+            var content = JsonSerializer.Deserialize<JsonElement>(
+                """
+                [
+                  { "type": "text", "text": "first", "vendor_hint": "keep" },
+                  { "type": "image_url", "image_url": { "url": "https://example.com/image.png?sig=secret" } },
+                  { "type": "file", "file": { "filename": "sample.pdf", "file_data": "data:application/pdf;base64,JVBERg==" } },
+                  { "type": "input_audio", "input_audio": { "data": "AQID", "format": "wav" } },
+                  { "type": "video_url", "video_url": { "url": "data:video/mp4;base64,AAAA" } }
+                ]
+                """);
+            var request = new ChatCompletionRequest
+            {
+                Model = "alias",
+                Messages = [new Message { Role = "user", Content = content }],
+                ExtensionData = new Dictionary<string, JsonElement>
+                {
+                    ["plugins"] = JsonSerializer.SerializeToElement(new[]
+                    {
+                        new { id = "file-parser", pdf = new { engine = "cloudflare-ai" } }
+                    })
+                }
+            };
+
+            await CreateClient().CreateChatCompletionAsync(request);
+
+            using var json = JsonDocument.Parse(
+                _capturedRequests.Single(r => r.Path.EndsWith("/chat/completions")).Body);
+            var parts = json.RootElement.GetProperty("messages")[0].GetProperty("content");
+            parts.EnumerateArray().Select(part => part.GetProperty("type").GetString())
+                .Should().Equal("text", "image_url", "file", "input_audio", "video_url");
+            parts[0].GetProperty("vendor_hint").GetString().Should().Be("keep");
+            parts[1].GetProperty("image_url").GetProperty("url").GetString()
+                .Should().Be("https://example.com/image.png?sig=secret");
+            parts[2].GetProperty("file").GetProperty("file_data").GetString()
+                .Should().Be("data:application/pdf;base64,JVBERg==");
+            json.RootElement.GetProperty("plugins")[0].GetProperty("pdf")
+                .GetProperty("engine").GetString().Should().Be("cloudflare-ai");
+        }
+
+        [Fact]
+        public async Task Chat_FileWithFileDataAndFileId_IsRejectedBeforeProviderCall()
+        {
+            var request = new ChatCompletionRequest
+            {
+                Model = "alias",
+                Messages =
+                [
+                    new Message
+                    {
+                        Role = "user",
+                        Content = JsonSerializer.Deserialize<JsonElement>(
+                            """[{"type":"file","file":{"file_data":"https://example.com/a.pdf","file_id":"file-1"}}]""")
+                    }
+                ]
+            };
+
+            var action = () => CreateClient().CreateChatCompletionAsync(request);
+
+            await action.Should().ThrowAsync<ValidationException>()
+                .WithMessage("*exactly one of file_data or file_id*");
+            _capturedRequests.Should().BeEmpty();
+        }
+
+        [Theory]
+        [InlineData("""[{"type":"input_audio","input_audio":{"data":"https://example.com/a.wav","format":"wav"}}]""")]
+        [InlineData("""[{"type":"image_url","image_url":{"url":"http://example.com/a.png"}}]""")]
+        [InlineData("""[{"type":"future_media","future_media":{"value":1}}]""")]
+        public async Task Chat_InvalidOrUnsupportedContent_IsRejected(string contentJson)
+        {
+            var request = new ChatCompletionRequest
+            {
+                Model = "alias",
+                Messages =
+                [
+                    new Message
+                    {
+                        Role = "user",
+                        Content = JsonSerializer.Deserialize<JsonElement>(contentJson)
+                    }
+                ]
+            };
+
+            var action = () => CreateClient().CreateChatCompletionAsync(request);
+
+            await action.Should().ThrowAsync<ValidationException>();
+            _capturedRequests.Should().BeEmpty();
+        }
+
+        [Fact]
+        public async Task Chat_ResponsePreservesAnnotationsAndAssistantExtensions()
+        {
+            _chatJson = """
+            {
+              "id":"c",
+              "object":"chat.completion",
+              "created":1,
+              "model":"openai/gpt-4o",
+              "provider":"ExampleProvider",
+              "choices":[{
+                "index":0,
+                "message":{
+                  "role":"assistant",
+                  "content":"done",
+                  "annotations":[{
+                    "type":"file",
+                    "file":{"hash":"hash-1","name":"sample.pdf","content":[{"type":"text","text":"parsed"}]}
+                  }],
+                  "audio":{"id":"audio-1"},
+                  "images":[{"image_url":{"url":"https://example.com/generated.png"}}],
+                  "reasoning_details":[{"type":"summary","text":"reasoned"}],
+                  "provider_message_field":{"kept":true}
+                },
+                "finish_reason":"stop"
+              }],
+              "usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}
+            }
+            """;
+
+            var response = await CreateClient().CreateChatCompletionAsync(new ChatCompletionRequest
+            {
+                Model = "alias",
+                Messages = [new Message { Role = "user", Content = "hello" }]
+            });
+
+            var message = response.Choices.Single().Message;
+            message.Annotations.Should().ContainSingle();
+            message.Annotations![0].GetProperty("file").GetProperty("hash").GetString().Should().Be("hash-1");
+            message.Audio.Should().NotBeNull();
+            message.Images.Should().NotBeNull();
+            message.ReasoningDetails.Should().NotBeNull();
+            message.ExtensionData.Should().ContainKey("provider_message_field");
+            response.ExtensionData.Should().ContainKey("provider");
         }
 
         [Fact]

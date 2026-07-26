@@ -38,4 +38,30 @@ public class ChatProviderCommunicationErrorTests
         Assert.Equal(502, result.StatusCode);
         Assert.Equal("provider_communication_error", result.Code);
     }
+
+    [Fact]
+    public void TryExtractFileAnnotationMetadata_ReturnsOnlyReusableAnnotations()
+    {
+        const string providerError = """
+        {
+          "error": {
+            "message": "failed",
+            "metadata": {
+              "file_annotations": [{
+                "type": "file",
+                "file": { "hash": "abc", "content": [{ "type": "text", "text": "parsed" }] }
+              }],
+              "provider_secret": "do-not-forward"
+            }
+          }
+        }
+        """;
+
+        var metadata = ChatEndpoints.TryExtractFileAnnotationMetadata(providerError);
+
+        Assert.NotNull(metadata);
+        Assert.Equal("abc", metadata.Value.GetProperty("file_annotations")[0]
+            .GetProperty("file").GetProperty("hash").GetString());
+        Assert.False(metadata.Value.TryGetProperty("provider_secret", out _));
+    }
 }

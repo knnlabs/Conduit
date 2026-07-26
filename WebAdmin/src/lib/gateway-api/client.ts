@@ -24,7 +24,7 @@ import type {
   DiscoveryResponse,
   FunctionExecutionResponse,
   GatewayClientConfig,
-  ImageAttachment,
+  ChatAttachment,
   MediaUploadOptions,
   MediaUploadResponse,
   MessageContent,
@@ -488,21 +488,63 @@ export class GatewayClient {
 export const ConduitGatewayClient = GatewayClient;
 export const ConduitCoreClient = GatewayClient;
 
+function inferAttachmentKind(attachment: ChatAttachment): NonNullable<ChatAttachment["kind"]> {
+  if (attachment.kind) return attachment.kind;
+  if (attachment.mimeType === "application/pdf") return "pdf";
+  if (attachment.mimeType.startsWith("audio/")) return "audio";
+  if (attachment.mimeType.startsWith("video/")) return "video";
+  return "image";
+}
+
+function normalizeAudioFormat(candidate?: string): string {
+  if (candidate === "wave") return "wav";
+  if (candidate === "mpeg") return "mp3";
+  if (candidate === "x-aiff" || candidate === "aif") return "aiff";
+  return candidate ?? "wav";
+}
+
 export function buildMessageContent(
   text: string,
-  images?: ImageAttachment[],
+  attachments?: ChatAttachment[],
 ): MessageContent {
-  if (!images?.length) return text;
+  if (!attachments?.length) return text;
   return [
     ...(text ? [{ type: "text" as const, text }] : []),
-    ...images.map((image) => ({
-      type: "image_url" as const,
-      image_url: {
-        url: image.base64
-          ? `data:${image.mimeType};base64,${image.base64}`
-          : image.url,
-        detail: image.detail ?? "auto",
-      },
-    })),
+    ...attachments.map((attachment) => {
+      const kind = inferAttachmentKind(attachment);
+      const value = attachment.base64
+        ? `data:${attachment.mimeType};base64,${attachment.base64}`
+        : attachment.url;
+
+      if (kind === "pdf") {
+        return {
+          type: "file" as const,
+          file: { filename: attachment.name, file_data: value },
+        };
+      }
+      if (kind === "audio") {
+        if (!attachment.base64) {
+          throw new Error("Audio attachments must contain base64 data.");
+        }
+        const extension = attachment.name.split(".").pop()?.toLowerCase();
+        const mimeSubtype = attachment.mimeType.split("/")[1]?.toLowerCase();
+        let candidate = mimeSubtype;
+        if (extension !== undefined && extension !== attachment.name.toLowerCase()) {
+          candidate = extension;
+        }
+        const format = normalizeAudioFormat(candidate);
+        return {
+          type: "input_audio" as const,
+          input_audio: { data: attachment.base64, format },
+        };
+      }
+      if (kind === "video") {
+        return { type: "video_url" as const, video_url: { url: value } };
+      }
+      return {
+        type: "image_url" as const,
+        image_url: { url: value, detail: attachment.detail ?? "auto" },
+      };
+    }),
   ];
 }

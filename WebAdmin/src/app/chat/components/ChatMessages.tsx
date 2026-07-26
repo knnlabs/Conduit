@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import { ImagePreview } from './ImagePreview';
+import { AttachmentPreview } from './AttachmentUpload';
 import { processStructuredContent } from '@/lib/gateway-api';
 import { MessageErrorCard } from './MessageErrorCard';
 import { ToolExecutionDisplay } from './ToolExecutionDisplay';
@@ -64,6 +64,8 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
     const copyLabel = isRawView ? 'Copy JSON' : 'Copy message';
     const hasReasoning = !isUser && message.metadata?.hasReasoning && message.metadata?.reasoning;
     const reasoningText = hasReasoning ? message.metadata?.reasoning : null;
+    const attachments = message.attachments ?? message.images ?? [];
+    const hasAttachments = attachments.length > 0;
 
     // Error messages get a dedicated card
     if (hasError && message.error) {
@@ -210,9 +212,9 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
             )}
           </Group>
 
-          {/* Images */}
-          {message.images && message.images.length > 0 && (
-            <ImagePreview images={message.images} compact />
+          {/* Attachments */}
+          {hasAttachments && (
+            <AttachmentPreview attachments={attachments} />
           )}
 
           {/* Function calls */}
@@ -292,7 +294,9 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                       <SyntaxHighlighter language="json" style={vscDarkPlus} customStyle={{ margin: 0, fontSize: '0.85rem', borderRadius: '4px' }}>
                         {JSON.stringify({
                           id: message.id, role: message.role, timestamp: message.timestamp, content: message.content,
-                          ...(message.images && message.images.length > 0 && { images: message.images }),
+                          ...(hasAttachments && {
+                            attachments
+                          }),
                           ...(message.metadata?.functionIds && { function_ids: message.metadata.functionIds }),
                           ...(message.metadata?.functionNames && { function_names: message.metadata.functionNames })
                         }, null, 2)}
@@ -336,7 +340,9 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                       } : undefined,
                       ...(message.functionCall && { function_call: message.functionCall }),
                       ...(message.toolCalls && { tool_calls: message.toolCalls }),
-                      ...(message.images && message.images.length > 0 && { images: message.images })
+                      ...(hasAttachments && {
+                        attachments
+                      })
                     }, null, 2)}
                   </SyntaxHighlighter>
                 </div>
@@ -364,14 +370,14 @@ export function ChatMessages({ messages, isLoading, streamingContent, streamingC
                 if (!isRawView) return content;
                 if (isUser) {
                   return JSON.stringify({
-                    message_data: { id: message.id, role: message.role, timestamp: message.timestamp, content: message.content, images: message.images, function_ids: message.metadata?.functionIds, function_names: message.metadata?.functionNames },
+                    message_data: { id: message.id, role: message.role, timestamp: message.timestamp, content: message.content, attachments: message.attachments ?? message.images, function_ids: message.metadata?.functionIds, function_names: message.metadata?.functionNames },
                     api_request: message.metadata?.apiRequest
                   }, null, 2);
                 }
                 return JSON.stringify({
                   id: message.id, timestamp: message.timestamp, model: message.model ?? message.metadata?.model,
                   content: message.content, metadata: message.metadata, function_call: message.functionCall,
-                  tool_calls: message.toolCalls, images: message.images
+                  tool_calls: message.toolCalls, attachments: message.attachments ?? message.images
                 }, null, 2);
               })()} timeout={2000}>
                 {({ copied, copy }) => (

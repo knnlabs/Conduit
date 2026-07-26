@@ -156,6 +156,8 @@ namespace ConduitLLM.Gateway.Endpoints
                         "video_input" => caps.SupportsVideoInput,
                         "audio_input" => caps.SupportsAudioInput,
                         "file_input" => caps.SupportsFileInput,
+                        "pdf_input" => caps.SupportsFileInput ||
+                                       mapping.Provider?.ProviderType == ProviderType.OpenRouter,
                         "video_understanding" => caps.SupportsVideoUnderstanding,
                         "video_generation" => caps.SupportsVideoGeneration,
                         "image_generation" => caps.SupportsImageGeneration,
@@ -215,7 +217,8 @@ namespace ConduitLLM.Gateway.Endpoints
                         caps.SupportsFunctionCalling,
                         null, // json_mode support is not tracked — null, not a confident false
                         maxInputTokens + maxOutputTokens,
-                        maxOutputTokens),
+                        maxOutputTokens,
+                        caps.SupportsFileInput || mapping.Provider?.ProviderType == ProviderType.OpenRouter),
                     pricing));
             }
 

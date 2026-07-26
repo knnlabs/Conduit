@@ -67,6 +67,7 @@ namespace ConduitLLM.Core.Services
             "video_input",
             "audio_input",
             "file_input",
+            "pdf_input",
             "image_generation",
             "video_generation"
         };

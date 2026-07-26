@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -93,4 +94,8 @@ public class ChatCompletionResponse
     /// <summary>Server-only evidence for provider-hosted tools such as browser search.</summary>
     [JsonIgnore]
     public ProviderToolUsage? ProviderToolUsage { get; set; }
+
+    /// <summary>Unknown provider response fields preserved for forward compatibility.</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

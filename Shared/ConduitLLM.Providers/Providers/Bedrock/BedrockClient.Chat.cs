@@ -55,6 +55,11 @@ namespace ConduitLLM.Providers.Bedrock
 
             foreach (var message in request.Messages)
             {
+                if (!string.Equals(message.Role, MessageRole.Tool, StringComparison.OrdinalIgnoreCase))
+                {
+                    EnsureSupportedContentParts(message.Content);
+                }
+
                 if (string.Equals(message.Role, MessageRole.System, StringComparison.OrdinalIgnoreCase))
                 {
                     var text = ContentHelper.GetContentAsString(message.Content);
@@ -160,6 +165,43 @@ namespace ConduitLLM.Providers.Bedrock
             }
 
             return new BedrockMessage { Role = role, Content = blocks };
+        }
+
+        private static void EnsureSupportedContentParts(object? content)
+        {
+            if (content is null or string)
+                return;
+
+            JsonElement root;
+            try
+            {
+                root = content is JsonElement element
+                    ? element
+                    : JsonSerializer.SerializeToElement(content);
+            }
+            catch (Exception exception) when (exception is JsonException or NotSupportedException)
+            {
+                throw new ValidationException("Bedrock message content could not be serialized.", exception);
+            }
+
+            if (root.ValueKind != JsonValueKind.Array)
+                return;
+
+            foreach (var part in root.EnumerateArray())
+            {
+                if (!part.TryGetProperty("type", out var typeElement) ||
+                    typeElement.ValueKind != JsonValueKind.String)
+                {
+                    throw new ValidationException("Bedrock content parts must include a string type.");
+                }
+
+                var type = typeElement.GetString();
+                if (type is not ("text" or "image_url"))
+                {
+                    throw new ValidationException(
+                        $"Bedrock does not support content part type '{type}'. Supported types are text and image_url.");
+                }
+            }
         }
 
         private static BedrockContentBlock MapToolResultContent(object? content)

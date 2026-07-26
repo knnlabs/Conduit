@@ -71,7 +71,9 @@ public sealed class ModelMetadataService : IModelMetadataService
                 capabilities.SupportsFunctionCalling,
                 capabilities.SupportsSpeechToText,
                 capabilities.SupportsTextToSpeech,
-                capabilities.SupportsRerank),
+                capabilities.SupportsRerank,
+                PdfInput: capabilities.SupportsFileInput ||
+                          mapping.Provider?.ProviderType == ConduitLLM.Configuration.ProviderType.OpenRouter),
             association.MaxInputTokens ?? model.MaxInputTokens,
             association.MaxOutputTokens ?? model.MaxOutputTokens);
     }

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
@@ -207,6 +208,27 @@ public class BedrockClientTests
         converse.Messages[2].Content[0].ToolResult!.ToolUseId.Should().Be("tool-1");
         converse.Messages[2].Content[0].ToolResult!.Content[0].Json.Should().NotBeNull();
         converse.Messages[2].Content[1].ToolResult!.Content[0].Text.Should().Be("plain text result");
+    }
+
+    [Fact]
+    public void MapToConverseRequest_Rejects_Unsupported_Content_Instead_Of_Dropping_It()
+    {
+        var client = CreateClient(CreateHandler(HttpStatusCode.OK, "{}"));
+        var request = ChatRequest();
+        request.Messages =
+        [
+            new Message
+            {
+                Role = "user",
+                Content = JsonSerializer.Deserialize<JsonElement>(
+                    """[{"type":"text","text":"Listen"},{"type":"input_audio","input_audio":{"data":"AAAA","format":"wav"}}]""")
+            }
+        ];
+
+        var act = () => client.MapToConverseRequest(request);
+
+        act.Should().Throw<ValidationException>()
+            .WithMessage("*input_audio*");
     }
 
     [Fact]

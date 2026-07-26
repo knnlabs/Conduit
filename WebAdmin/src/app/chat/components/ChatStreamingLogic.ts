@@ -2,7 +2,7 @@ import { useCallback, useRef, useMemo } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   createToastErrorHandler,
-  type ImageAttachment,
+  type ChatAttachment,
   type StreamingCallbacks,
   type StreamMessageOptions,
   type RetryInfo
@@ -83,8 +83,8 @@ export function useChatStreamingLogic({
     streamingAdapterRef.current = streamingAdapter;
   }
 
-  const sendMessage = useCallback(async (inputMessage: string, images?: ImageAttachment[]) => {
-    if (!inputMessage.trim() && (!images || images.length === 0)) return;
+  const sendMessage = useCallback(async (inputMessage: string, attachments?: ChatAttachment[]) => {
+    if (!inputMessage.trim() && (!attachments || attachments.length === 0)) return;
     if (!selectedModel || isLoading) return;
 
     // Get session parameters early (needed for both metadata and streaming options)
@@ -96,7 +96,7 @@ export function useChatStreamingLogic({
       id: uuidv4(),
       role: 'user' as const,
       content: inputMessage.trim(),
-      images,
+      attachments,
       timestamp: new Date()
     }];
     const conversationHistory = allMessages
@@ -104,7 +104,7 @@ export function useChatStreamingLogic({
       .map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
-        images: m.images
+        attachments: m.attachments ?? m.images
       }));
 
     // Build the API request object that will be sent
@@ -115,7 +115,7 @@ export function useChatStreamingLogic({
         {
           role: 'user' as const,
           content: inputMessage.trim(),
-          images: images
+          attachments
         }
       ],
       model: selectedModel,
@@ -144,7 +144,7 @@ export function useChatStreamingLogic({
       id: uuidv4(),
       role: 'user',
       content: inputMessage.trim(),
-      images,
+      attachments,
       timestamp: new Date(),
       metadata: {
         ...functionMetadata,
@@ -177,7 +177,7 @@ export function useChatStreamingLogic({
         model: selectedModel,
         stream: true,
         messages: sendHistoryEnabled ? conversationHistory.slice(0, -1) : [], // Include history or send empty array
-        images: images,
+        attachments,
         systemPrompt: sessionParams.systemPrompt,
         temperature: sessionParams.temperature,
         maxTokens: sessionParams.maxTokens,

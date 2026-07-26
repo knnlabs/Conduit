@@ -24,12 +24,12 @@ import {
   IconHistory
 } from '@tabler/icons-react';
 import { useState, useRef, KeyboardEvent, useEffect } from 'react';
-import { ModelWithCapabilities, FunctionDefinition, ImageAttachment } from '../types';
+import { ModelWithCapabilities, FunctionDefinition, ChatAttachment } from '../types';
 import { useDisclosure } from '@mantine/hooks';
-import { ImageUpload } from './ImageUpload';
+import { AttachmentUpload } from './AttachmentUpload';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, images?: ImageAttachment[]) => void;
+  onSendMessage: (message: string, attachments?: ChatAttachment[]) => void;
   isStreaming: boolean;
   onStopStreaming: () => void;
   disabled?: boolean;
@@ -54,7 +54,7 @@ export function ChatInput({
   onToggleSendHistory
 }: ChatInputProps) {
   const [message, setMessage] = useState('');
-  const [images, setImages] = useState<ImageAttachment[]>([]);
+  const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [functions, setFunctions] = useState<FunctionDefinition[]>([]);
   const [functionsEnabled, setFunctionsEnabled] = useState(false);
   const [functionModalOpened, { open: openFunctionModal, close: closeFunctionModal }] = useDisclosure(false);
@@ -65,17 +65,17 @@ export function ChatInput({
     onInputChange?.(message);
   }, [message, onInputChange]);
 
-  // Notify parent component of image changes
+  // Notify parent component of attachment changes.
   useEffect(() => {
-    onImagesChange?.(images.length);
-  }, [images.length, onImagesChange]);
+    onImagesChange?.(attachments.length);
+  }, [attachments.length, onImagesChange]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = () => {
-    if (message.trim() || images.length > 0) {
-      onSendMessage(message.trim(), images);
+    if (message.trim() || attachments.length > 0) {
+      onSendMessage(message.trim(), attachments);
       setMessage('');
-      setImages([]);
+      setAttachments([]);
     }
   };
 
@@ -104,7 +104,12 @@ export function ChatInput({
   };
 
   const supportsFunctions = model?.supportsFunctionCalling ?? model?.supportsToolUsage;
-  const supportsVision = model?.supportsVision;
+  const supportsAttachments = [
+    model?.supportsVision,
+    model?.supportsPdfInput,
+    model?.supportsAudioInput,
+    model?.supportsVideoInput,
+  ].some((supported) => supported === true);
 
   return (
     <Stack gap="xs">
@@ -145,14 +150,18 @@ export function ChatInput({
         </Collapse>
       )}
       
-      {supportsVision && (
+      {supportsAttachments && (
         <>
-          <ImageUpload
-            images={images}
-            onImagesChange={setImages}
+          <AttachmentUpload
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
             disabled={disabled ?? isStreaming}
+            supportsImage={model?.supportsVision === true}
+            supportsPdf={model?.supportsPdfInput === true || model?.supportsFileInput === true}
+            supportsAudio={model?.supportsAudioInput === true}
+            supportsVideo={model?.supportsVideoInput === true}
           />
-          {images.length > 0 && <Divider />}
+          {attachments.length > 0 && <Divider />}
         </>
       )}
       
@@ -224,7 +233,7 @@ export function ChatInput({
             <Button
               size="md"
               onClick={handleSend}
-              disabled={disabled ?? (!message.trim() && images.length === 0)}
+              disabled={disabled ?? (!message.trim() && attachments.length === 0)}
               leftSection={<IconSend size={20} />}
             >
               Send

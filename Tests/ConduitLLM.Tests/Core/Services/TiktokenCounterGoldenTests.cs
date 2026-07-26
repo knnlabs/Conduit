@@ -345,7 +345,7 @@ namespace ConduitLLM.Tests.Core.Services
                 ["json-text-missing-text"] = 8,
                 ["json-text-part"] = 10,
                 ["json-three-images"] = 2558,
-                ["json-unknown-part"] = 8,
+                ["json-unknown-part"] = 8_200,
             };
 
         public static TheoryData<string> TokenizerTypes()

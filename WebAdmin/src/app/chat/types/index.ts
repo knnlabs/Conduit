@@ -1,6 +1,6 @@
 // ImageAttachment moved to SDK - import from the local Gateway API boundary
-import type { ImageAttachment } from '@/lib/gateway-api';
-export type { ImageAttachment };
+import type { ChatAttachment, ImageAttachment } from '@/lib/gateway-api';
+export type { ChatAttachment, ImageAttachment };
 
 // Content types for chat messages (similar to SDK types)
 export interface TextContent {
@@ -16,7 +16,22 @@ export interface ImageContent {
   };
 }
 
-export type MessageContent = string | Array<TextContent | ImageContent>;
+export interface VideoContent {
+  type: 'video_url';
+  video_url: { url: string };
+}
+
+export interface AudioContent {
+  type: 'input_audio';
+  input_audio: { data: string; format: string };
+}
+
+export interface FileContent {
+  type: 'file';
+  file: { filename?: string; file_data?: string; file_id?: string };
+}
+
+export type MessageContent = string | Array<TextContent | ImageContent | VideoContent | AudioContent | FileContent>;
 
 // Content helpers
 export const ContentHelpers = {
@@ -48,6 +63,8 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'function';
   content: string;
+  attachments?: ChatAttachment[];
+  /** @deprecated Use attachments. */
   images?: ImageAttachment[];
   timestamp: Date;
   model?: string;
@@ -94,6 +111,7 @@ export interface ChatMessage {
       messages: Array<{
         role: 'system' | 'user' | 'assistant';
         content: string;
+        attachments?: ChatAttachment[];
         images?: ImageAttachment[];
       }>;
       model: string;
@@ -180,6 +198,9 @@ export interface ModelWithCapabilities {
   maxContextTokens?: number;
   supportsVision?: boolean;
   supportsVideoInput?: boolean;
+  supportsAudioInput?: boolean;
+  supportsFileInput?: boolean;
+  supportsPdfInput?: boolean;
   supportsFunctionCalling?: boolean;
   supportsToolUsage?: boolean;
   supportsJsonMode?: boolean;

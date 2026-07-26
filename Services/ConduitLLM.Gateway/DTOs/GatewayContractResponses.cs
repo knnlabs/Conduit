@@ -36,7 +36,8 @@ public sealed record ModelCapabilitiesDto(
     [property: JsonPropertyName("tool_use")] bool? ToolUse = null,
     [property: JsonPropertyName("json_mode")] bool? JsonMode = null,
     [property: JsonPropertyName("max_tokens")] int? MaxTokens = null,
-    [property: JsonPropertyName("max_output_tokens")] int? MaxOutputTokens = null);
+    [property: JsonPropertyName("max_output_tokens")] int? MaxOutputTokens = null,
+    [property: JsonPropertyName("pdf_input")] bool PdfInput = false);
 
 /// <summary>Effective metadata for an enabled model mapping.</summary>
 public sealed record ModelMetadataDto(

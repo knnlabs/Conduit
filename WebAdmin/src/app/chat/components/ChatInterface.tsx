@@ -154,7 +154,7 @@ export function ChatInterface() {
         // Remove the error message before retrying
         setMessages(prev => prev.filter(m => m.id !== errorMessageId));
         // Resend the user message
-        void sendMessage(userMessage.content, userMessage.images);
+        void sendMessage(userMessage.content, userMessage.attachments ?? userMessage.images);
         return;
       }
     }
@@ -309,11 +309,11 @@ export function ChatInterface() {
         {/* Input Section */}
         <Paper p="md" withBorder>
           <ChatInput
-            onSendMessage={(message, images) => {
+            onSendMessage={(message, attachments) => {
               // Clear input state when message is sent
               setCurrentInputText('');
               setCurrentInputImages(0);
-              void sendMessage(message, images);
+              void sendMessage(message, attachments);
             }}
             isStreaming={isLoading}
             onStopStreaming={() => {}}
@@ -324,7 +324,10 @@ export function ChatInterface() {
               displayName: currentDiscoveryModel.display_name ?? currentDiscoveryModel.id,
               supportsVision: currentDiscoveryModel.capabilities?.image_input === true
                 || currentDiscoveryModel.capabilities?.vision === true,
-              supportsVideoInput: currentDiscoveryModel.capabilities?.video_input === true
+              supportsVideoInput: currentDiscoveryModel.capabilities?.video_input === true,
+              supportsAudioInput: currentDiscoveryModel.capabilities?.audio_input === true,
+              supportsFileInput: currentDiscoveryModel.capabilities?.file_input === true,
+              supportsPdfInput: currentDiscoveryModel.capabilities?.pdf_input === true
             } : undefined}
             onInputChange={setCurrentInputText}
             onImagesChange={setCurrentInputImages}

@@ -47,12 +47,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
                 var endpoint = GetChatCompletionEndpoint();
 
-                if (Logger.IsEnabled(LogLevel.Debug))
-                {
-                    var requestJson = System.Text.Json.JsonSerializer.Serialize(openAiRequest, DefaultJsonOptions);
-                    Logger.LogDebug("Sending chat completion request to {Provider} at {Endpoint}: {Json}",
-                        ProviderName, endpoint, requestJson);
-                }
+                Logger.LogDebug("Sending chat completion request to {Provider} at {Endpoint}",
+                    ProviderName, endpoint);
 
                 // Use our common HTTP client helper to send the request
                 var openAiResponse = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<object, OpenAIChatCompletionResponse>(

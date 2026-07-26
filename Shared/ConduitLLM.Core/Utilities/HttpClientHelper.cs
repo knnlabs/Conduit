@@ -187,7 +187,7 @@ namespace ConduitLLM.Core.Utilities
             if (requestData != null)
             {
                 var requestJson = JsonSerializer.Serialize(requestData, options);
-                logger?.LogDebug("Sending JSON request: {Json}", requestJson);
+                logger?.LogDebug("Prepared JSON request body ({BodyLength} bytes)", Encoding.UTF8.GetByteCount(requestJson));
                 request.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
             }
 
@@ -244,7 +244,7 @@ namespace ConduitLLM.Core.Utilities
                 {
                     logger?.LogWarning("Detected possible OpenAI quota/billing issue - image generation errors with null messages often indicate insufficient quota");
                     throw new LLMCommunicationException(
-                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your OpenAI account status. Raw error: {errorContent}",
+                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your provider account status.",
                         response.StatusCode,
                         errorContent,
                         null);
@@ -257,7 +257,7 @@ namespace ConduitLLM.Core.Utilities
                 }
 
                 throw new LLMCommunicationException(
-                    $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",
+                    $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {SensitiveDataRedactor.Redact(errorContent)}",
                     response.StatusCode,
                     errorContent,
                     null);
@@ -271,7 +271,8 @@ namespace ConduitLLM.Core.Utilities
             // Log the first 500 chars of the response for debugging
             if (logger?.IsEnabled(LogLevel.Debug) == true)
             {
-                var preview = responseContent.Length > 500 ? responseContent.Substring(0, 500) + "..." : responseContent;
+                var safeContent = SensitiveDataRedactor.Redact(responseContent);
+                var preview = safeContent.Length > 500 ? safeContent.Substring(0, 500) + "..." : safeContent;
                 logger.LogDebug("Response content preview: {Content}", preview);
             }
             
@@ -284,7 +285,8 @@ namespace ConduitLLM.Core.Utilities
             catch (JsonException ex)
             {
                 // Log the full response on error for debugging
-                logger?.LogError(ex, "Failed to deserialize response. Full content: {Content}", responseContent);
+                logger?.LogError(ex, "Failed to deserialize response. Redacted content: {Content}",
+                    SensitiveDataRedactor.Redact(responseContent));
                 throw;
             }
         }
@@ -354,7 +356,8 @@ namespace ConduitLLM.Core.Utilities
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await ReadErrorContentAsync(response, cancellationToken);
-                    logger?.LogError("API streaming error: {StatusCode} - {Content}", response.StatusCode, errorContent);
+                    logger?.LogError("API streaming error: {StatusCode} - {Content}", response.StatusCode,
+                        SensitiveDataRedactor.Redact(errorContent));
 
                     var translatedError = errorTranslator?.Invoke(response, errorContent);
                     if (translatedError != null)
@@ -363,7 +366,7 @@ namespace ConduitLLM.Core.Utilities
                     }
 
                     throw new LLMCommunicationException(
-                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",
+                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {SensitiveDataRedactor.Redact(errorContent)}",
                         response.StatusCode,
                         errorContent,
                         null);

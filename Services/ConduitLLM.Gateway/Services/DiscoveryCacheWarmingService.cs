@@ -193,6 +193,8 @@ namespace ConduitLLM.Gateway.Services
                             "video_input" => caps.SupportsVideoInput,
                             "audio_input" => caps.SupportsAudioInput,
                             "file_input" => caps.SupportsFileInput,
+                            "pdf_input" => caps.SupportsFileInput ||
+                                           mapping.Provider?.ProviderType == ProviderType.OpenRouter,
                             "video_understanding" => caps.SupportsVideoUnderstanding,
                             "video_generation" => caps.SupportsVideoGeneration,
                             "image_generation" => caps.SupportsImageGeneration,
@@ -247,6 +249,8 @@ namespace ConduitLLM.Gateway.Services
                             video_input = caps.SupportsVideoInput,
                             audio_input = caps.SupportsAudioInput,
                             file_input = caps.SupportsFileInput,
+                            pdf_input = caps.SupportsFileInput ||
+                                        mapping.Provider?.ProviderType == ProviderType.OpenRouter,
                             video_understanding = caps.SupportsVideoUnderstanding,
                             function_calling = caps.SupportsFunctionCalling,
                             tool_use = caps.SupportsFunctionCalling, // Same as function calling for now

@@ -463,7 +463,8 @@ namespace ConduitLLM.Core.Services
         /// Estimates tokens for one content part. Text parts are tokenized; image parts are
         /// priced through <see cref="ImageTokenCalculator.EstimateImageTokens"/> — the real
         /// detail/resolution vision formula, replacing the flat 65 that under-counted
-        /// high-detail images roughly 10-17x (#1231). Unknown part types contribute zero.
+        /// high-detail images roughly 10-17x (#1231). Media whose duration/page count cannot
+        /// be known locally receives a conservative prompt-token reservation.
         /// </summary>
         /// <remarks>
         /// An image whose geometry cannot be determined locally is charged the conservative
@@ -525,8 +526,19 @@ namespace ConduitLLM.Core.Services
                     }
                     return imageTokens;
 
+                case "input_audio":
+                    fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    return 8_192;
+
+                case "video_url":
+                case "file":
+                    fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    return 16_384;
+
                 default:
-                    return 0;
+                    // Unknown provider extensions must not be treated as free input.
+                    fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    return 1_024;
             }
         }
 

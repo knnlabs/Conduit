@@ -84,4 +84,86 @@ public sealed class OpenAIRequestContractTests
         root.GetProperty("tool_choice").GetString().Should().Be("required");
         root.TryGetProperty("system_fingerprint", out _).Should().BeFalse();
     }
+
+    [Fact]
+    public void ChatMessage_SerializesTypedAudioFileAndUnknownContentPartsInOrder()
+    {
+        var message = new Message
+        {
+            Role = "user",
+            Content = new object[]
+            {
+                new TextContentPart { Text = "first" },
+                new InputAudioContentPart
+                {
+                    InputAudio = new InputAudio { Data = "AAAA", Format = "wav" }
+                },
+                new FileContentPart
+                {
+                    File = new FileContent
+                    {
+                        Filename = "sample.pdf",
+                        FileData = "https://example.com/sample.pdf"
+                    }
+                },
+                new ProviderContentPart
+                {
+                    Type = "future_part",
+                    ExtensionData = new Dictionary<string, JsonElement>
+                    {
+                        ["future_value"] = JsonSerializer.SerializeToElement(42)
+                    }
+                }
+            }
+        };
+
+        using var json = JsonDocument.Parse(JsonSerializer.Serialize(message));
+        var content = json.RootElement.GetProperty("content");
+        content[0].GetProperty("type").GetString().Should().Be("text");
+        content[1].GetProperty("type").GetString().Should().Be("input_audio");
+        content[2].GetProperty("file").GetProperty("filename").GetString().Should().Be("sample.pdf");
+        content[3].GetProperty("future_value").GetInt32().Should().Be(42);
+    }
+
+    [Fact]
+    public void ChatMessage_RoundTripsFileAnnotationsAndAssistantExtensions()
+    {
+        const string json = """
+        {
+          "role": "assistant",
+          "content": "done",
+          "annotations": [
+            {
+              "type": "file",
+              "file": {
+                "hash": "abc",
+                "name": "sample.pdf",
+                "content": [{ "type": "text", "text": "parsed" }]
+              }
+            },
+            {
+              "type": "provider_annotation",
+              "provider_value": 7
+            }
+          ],
+          "audio": { "id": "audio-1" },
+          "reasoning_details": [{ "type": "summary", "text": "reasoned" }],
+          "provider_field": { "kept": true }
+        }
+        """;
+
+        var message = JsonSerializer.Deserialize<Message>(json)!;
+        message.Annotations.Should().HaveCount(2);
+        message.Annotations![0].GetProperty("file").GetProperty("hash").GetString().Should().Be("abc");
+        message.Annotations[1].GetProperty("provider_value").GetInt32().Should().Be(7);
+        message.Audio.Should().NotBeNull();
+        message.ReasoningDetails.Should().NotBeNull();
+        message.ExtensionData.Should().ContainKey("provider_field");
+
+        using var roundTrip = JsonDocument.Parse(JsonSerializer.Serialize(message));
+        roundTrip.RootElement.GetProperty("annotations")[0].GetProperty("file")
+            .GetProperty("hash").GetString().Should().Be("abc");
+        roundTrip.RootElement.GetProperty("annotations")[1].GetProperty("provider_value").GetInt32().Should().Be(7);
+        roundTrip.RootElement.GetProperty("provider_field").GetProperty("kept").GetBoolean().Should().BeTrue();
+    }
 }

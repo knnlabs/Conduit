@@ -62,13 +62,27 @@ export class GatewayChatStreamingAdapter {
       this.abortController = new AbortController();
       
       // Prepare the chat request
+      const attachments = options.attachments ?? options.images;
+      const historyAttachments = (options.messages ?? []).flatMap(
+        (historyMessage) => historyMessage.attachments ?? historyMessage.images ?? []
+      );
+      const parser = [...historyAttachments, ...(attachments ?? [])].find(
+        (attachment) => attachment.kind === 'pdf' && attachment.parser && attachment.parser !== 'auto'
+      )?.parser;
+      const dynamicParameters = options.dynamicParameters ?? {};
       const chatRequest = {
         messages: [
           ...(options.systemPrompt ? [{ role: 'system' as const, content: options.systemPrompt }] : []),
-          ...(options.messages ?? []),
+          ...(options.messages ?? []).map((historyMessage) => ({
+            role: historyMessage.role,
+            content: buildMessageContent(
+              historyMessage.content,
+              historyMessage.attachments ?? historyMessage.images
+            )
+          })),
           {
             role: 'user' as const,
-            content: buildMessageContent(message, options.images)
+            content: buildMessageContent(message, attachments)
           }
         ],
         model: options.model,
@@ -83,7 +97,10 @@ export class GatewayChatStreamingAdapter {
         stream: true as const,
         function_configuration_ids: options.functionConfigurationIds,
         // Include dynamic parameters
-        ...(options.dynamicParameters ?? {})
+        ...dynamicParameters,
+        ...(parser && !('plugins' in dynamicParameters)
+          ? { plugins: [{ id: 'file-parser', pdf: { engine: parser } }] }
+          : {})
       };
 
       // Start callback

@@ -1,5 +1,6 @@
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace ConduitLLM.Providers.OpenAI
 {
@@ -94,6 +95,29 @@ namespace ConduitLLM.Providers.OpenAI
         [JsonPropertyName("tool_call_id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ToolCallId { get; init; }
+
+        [JsonPropertyName("annotations")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? Annotations { get; init; }
+
+        [JsonPropertyName("audio")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? Audio { get; init; }
+
+        [JsonPropertyName("images")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? Images { get; init; }
+
+        [JsonPropertyName("reasoning_details")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? ReasoningDetails { get; init; }
+
+        [JsonPropertyName("reasoning")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Reasoning { get; init; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? ExtensionData { get; init; }
     }
 
     internal record OpenAIChatCompletionResponse
@@ -131,6 +155,9 @@ namespace ConduitLLM.Providers.OpenAI
 
         [JsonPropertyName("x_groq")]
         public System.Text.Json.JsonElement? GroqExtension { get; init; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? ExtensionData { get; init; }
     }
 
     internal record OpenAIChoice

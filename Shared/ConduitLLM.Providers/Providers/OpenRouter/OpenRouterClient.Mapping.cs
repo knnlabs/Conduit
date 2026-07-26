@@ -10,6 +10,15 @@ namespace ConduitLLM.Providers.OpenRouter
 {
     public partial class OpenRouterClient
     {
+        protected override void ValidateRequest<TRequest>(TRequest request, string operationName)
+        {
+            base.ValidateRequest(request, operationName);
+            if (request is CoreModels.ChatCompletionRequest chatRequest)
+            {
+                OpenRouterMultimodalValidator.Validate(chatRequest);
+            }
+        }
+
         /// <summary>
         /// Per-mapping provider options (provider/plugins/transforms/models/route), parsed once from
         /// <c>ModelProviderMapping.ProviderOptions</c>. Null when none configured or the JSON is invalid.

@@ -44,7 +44,10 @@ export interface ImageAttachment {
   size: number;
   name: string;
   detail?: "auto" | "low" | "high";
+  kind?: "image" | "pdf" | "audio" | "video";
+  parser?: "auto" | "native" | "cloudflare-ai" | "mistral-ocr";
 }
+export type ChatAttachment = ImageAttachment;
 
 export enum ProviderType {
   OpenAI = 1,
@@ -73,7 +76,30 @@ export interface ImageContent {
   type: "image_url";
   image_url: { url: string; detail?: "auto" | "low" | "high" };
 }
-export type MessageContent = string | null | Array<TextContent | ImageContent>;
+export interface VideoContent {
+  type: "video_url";
+  video_url: { url: string };
+}
+export interface AudioContent {
+  type: "input_audio";
+  input_audio: { data: string; format: string };
+}
+export interface FileContent {
+  type: "file";
+  file: { filename?: string; file_data?: string; file_id?: string };
+}
+export interface ProviderContent {
+  type: string;
+  [key: string]: unknown;
+}
+export type MessageContentPart =
+  | TextContent
+  | ImageContent
+  | VideoContent
+  | AudioContent
+  | FileContent
+  | ProviderContent;
+export type MessageContent = string | null | MessageContentPart[];
 
 export interface ChatCompletionChunk {
   id: string;
@@ -172,8 +198,10 @@ export interface StreamMessageOptions {
   messages?: Array<{
     role: "system" | "user" | "assistant";
     content: string;
+    attachments?: ChatAttachment[];
     images?: ImageAttachment[];
   }>;
+  attachments?: ChatAttachment[];
   images?: ImageAttachment[];
   systemPrompt?: string;
   temperature?: number;

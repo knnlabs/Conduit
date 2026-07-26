@@ -86,6 +86,18 @@ namespace ConduitLLM.Gateway.Endpoints
 
             await PopulateProviderMetadataAsync(request, activity);
 
+            var modalitySummary = ConduitLLM.Core.Utilities.MultimodalContentInspector.Inspect(request.Messages);
+            _logger.LogDebug(
+                "Chat input modalities: text={TextParts}, images={ImageParts}, files={FileParts}, audio={AudioParts}, videos={VideoParts}, remote={RemoteParts}, inline={InlineParts}, provider_file_ids={ProviderFileIds}",
+                modalitySummary.TextParts,
+                modalitySummary.ImageParts,
+                modalitySummary.FileParts,
+                modalitySummary.AudioParts,
+                modalitySummary.VideoParts,
+                modalitySummary.RemoteParts,
+                modalitySummary.InlineParts,
+                modalitySummary.ProviderFileIdParts);
+
             if (request.FunctionConfigurationIds != null && request.FunctionConfigurationIds.Count > 0)
             {
                 var validationError = await ValidateFunctionCallRequestAsync(request, cancellationToken);
@@ -156,7 +168,12 @@ namespace ConduitLLM.Gateway.Endpoints
                     request.Model,
                     error.MetricOutcome,
                     operationStopwatch.Elapsed.TotalSeconds);
-                return OpenAIError(error.StatusCode, ex.Message, error.Code, error.Type);
+                return OpenAIError(
+                    error.StatusCode,
+                    ConduitLLM.Core.Utilities.SensitiveDataRedactor.Redact(ex.Message),
+                    error.Code,
+                    error.Type,
+                    TryExtractFileAnnotationMetadata(ex.ResponseBody));
             }
             catch (Exception ex)
             {
@@ -222,6 +239,33 @@ namespace ConduitLLM.Gateway.Endpoints
             string Code,
             string Type,
             string MetricOutcome);
+
+        internal static JsonElement? TryExtractFileAnnotationMetadata(string? responseBody)
+        {
+            if (string.IsNullOrWhiteSpace(responseBody))
+                return null;
+
+            try
+            {
+                using var document = JsonDocument.Parse(responseBody);
+                if (!document.RootElement.TryGetProperty("error", out var error) ||
+                    !error.TryGetProperty("metadata", out var metadata) ||
+                    !metadata.TryGetProperty("file_annotations", out var annotations) ||
+                    annotations.ValueKind != JsonValueKind.Array)
+                {
+                    return null;
+                }
+
+                return JsonSerializer.SerializeToElement(new Dictionary<string, JsonElement>
+                {
+                    ["file_annotations"] = annotations.Clone()
+                });
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
 
         private void ApplySessionAffinity(ChatCompletionRequest request)
         {
