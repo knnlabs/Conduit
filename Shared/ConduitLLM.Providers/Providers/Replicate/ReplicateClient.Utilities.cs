@@ -149,17 +149,6 @@ namespace ConduitLLM.Providers.Replicate
             return urls;
         }
 
-        private int EstimateTokenCount(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return 0;
-            }
-
-            // Very rough estimate: 4 characters per token (English text)
-            return text.Length / 4;
-        }
-
         private static object? ConvertJsonElement(JsonElement element) =>
             JsonElementConverter.ConvertJsonElement(element);
     }

@@ -216,7 +216,6 @@ namespace ConduitLLM.Providers.MiniMax
                 }
 
                 var videoDuration = statusResult.Video?.Duration ?? request.Duration ?? 6;
-                var estimatedCost = EstimateVideoGenerationCost((int)videoDuration, request.Size ?? "1280x720");
 
                 return new VideoGenerationResponse
                 {
@@ -227,7 +226,10 @@ namespace ConduitLLM.Providers.MiniMax
                     {
                         VideosGenerated = 1,
                         TotalDurationSeconds = videoDuration,
-                        EstimatedCost = estimatedCost,
+                        // MiniMax does not report cost; billing resolves it from the
+                        // ModelCost configuration using duration/resolution, so no
+                        // fabricated figure is surfaced here.
+                        EstimatedCost = null,
                     },
                 };
             }, "CreateVideo", cancellationToken);
@@ -354,32 +356,6 @@ namespace ConduitLLM.Providers.MiniMax
                 var baseProgress = minProgress + (int)((maxProgress - minProgress) * 0.7);
                 return baseProgress + (int)((maxProgress - baseProgress) * logProgress);
             }
-        }
-
-        /// <summary>
-        /// Estimates the cost for a video generation request.
-        /// MiniMax charges per second of video generation with potential resolution-based multipliers.
-        /// </summary>
-        /// <param name="duration">Duration in seconds</param>
-        /// <param name="resolution">Video resolution</param>
-        /// <returns>Estimated cost in USD</returns>
-        public static decimal EstimateVideoGenerationCost(int duration, string resolution)
-        {
-            // Base costs per second for MiniMax video generation (example pricing)
-            const decimal baseCostPerSecond = 0.15m; // $0.15 per second
-            
-            // Resolution multipliers
-            var resolutionMultipliers = new Dictionary<string, decimal>
-            {
-                { "720x480", 0.8m },    // SD - 80% of base cost
-                { "1280x720", 1.0m },   // HD - base cost
-                { "1920x1080", 1.5m },  // Full HD - 150% of base cost
-                { "720x1280", 1.0m },   // Portrait HD - base cost
-                { "1080x1920", 1.5m }   // Portrait Full HD - 150% of base cost
-            };
-            
-            var multiplier = resolutionMultipliers.GetValueOrDefault(resolution, 1.0m);
-            return duration * baseCostPerSecond * multiplier;
         }
 
         /// <summary>

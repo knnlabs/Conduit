@@ -35,6 +35,12 @@ namespace ConduitLLM.Gateway.Endpoints
                     response.Model ?? request.Model,
                     UsageEvidenceSource.Provider);
             }
+            else
+            {
+                // Provider returned no usage (e.g. Replicate) — estimate from the actual
+                // content so the request is billed, recorded as estimated evidence.
+                await EstimateNonStreamingUsageAsync(request, response, cancellationToken);
+            }
             var responseToolCalls = response.Choices
                 .SelectMany(choice => choice.Message?.ToolCalls ?? [])
                 .ToList();
@@ -490,6 +496,45 @@ namespace ConduitLLM.Gateway.Endpoints
 
             await sseWriter.WriteFinalMetricsEventAsync(finalMetrics, cancellationToken);
             await sseWriter.WriteDoneEventAsync(cancellationToken);
+        }
+
+        private async Task EstimateNonStreamingUsageAsync(
+            ChatCompletionRequest request,
+            ChatCompletionResponse response,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var completionOutput = string.Concat(
+                    response.Choices.Select(choice => choice.Message?.Content?.ToString() ?? string.Empty));
+                var responseToolCalls = response.Choices
+                    .SelectMany(choice => choice.Message?.ToolCalls ?? [])
+                    .ToList();
+                if (responseToolCalls.Count > 0)
+                {
+                    completionOutput += JsonSerializer.Serialize(responseToolCalls, _jsonSerializerOptions);
+                }
+
+                var estimatedUsage = await _usageEstimationService.EstimateUsageFromStreamingResponseAsync(
+                    response.Model ?? request.Model,
+                    request.Messages,
+                    completionOutput,
+                    request.Tools,
+                    cancellationToken);
+
+                HttpContext.GetOrCreateRequestAccountingContext().RecordProviderUsage(
+                    estimatedUsage,
+                    response.Model ?? request.Model,
+                    UsageEvidenceSource.Estimated);
+
+                _logger.LogInformation(
+                    "Provider returned no usage for non-streaming response; estimated Prompt={PromptTokens}, Completion={CompletionTokens}, Total={TotalTokens}",
+                    estimatedUsage.PromptTokens, estimatedUsage.CompletionTokens, estimatedUsage.TotalTokens);
+            }
+            catch (Exception estEx)
+            {
+                _logger.LogError(estEx, "Failed to estimate usage for non-streaming response");
+            }
         }
 
         private async Task EstimateStreamingUsageAsync(

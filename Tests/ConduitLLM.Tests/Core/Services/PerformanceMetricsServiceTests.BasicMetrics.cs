@@ -82,8 +82,9 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.True(metrics.Streaming);
             Assert.NotNull(metrics.TokensPerSecond);
             Assert.Equal(40, metrics.TokensPerSecond); // 200 completion tokens / 5 seconds
-            Assert.NotNull(metrics.CompletionTokensPerSecond);
-            Assert.True(metrics.CompletionTokensPerSecond > metrics.TokensPerSecond); // Should be higher due to 90% time allocation
+            // The prompt/generation split cannot be measured without a streaming tracker,
+            // so it must not be fabricated here
+            Assert.Null(metrics.CompletionTokensPerSecond);
         }
 
         [Fact]
@@ -108,7 +109,7 @@ namespace ConduitLLM.Tests.Core.Services
 
         [Fact]
         [Trait("Category", "TimingSensitive")]
-        public void CalculateMetrics_PromptTokensPerSecond_CalculatesCorrectly()
+        public void CalculateMetrics_UnmeasurableSplitMetrics_RemainNull()
         {
             // Arrange
             var response = CreateTestResponse(usage: new Usage
@@ -123,11 +124,11 @@ namespace ConduitLLM.Tests.Core.Services
             var metricsNonStreaming = _service.CalculateMetrics(response, elapsedTime, "OpenAI", "gpt-4", false, 0);
             var metricsStreaming = _service.CalculateMetrics(response, elapsedTime, "OpenAI", "gpt-4", true, 0);
 
-            // Assert
-            Assert.NotNull(metricsNonStreaming.PromptTokensPerSecond);
-            Assert.NotNull(metricsStreaming.PromptTokensPerSecond);
-            // Streaming should have higher prompt tokens/sec due to different time allocation
-            Assert.True(metricsStreaming.PromptTokensPerSecond > metricsNonStreaming.PromptTokensPerSecond);
+            // Assert — without a measured prompt/generation time split these must not be invented
+            Assert.Null(metricsNonStreaming.PromptTokensPerSecond);
+            Assert.Null(metricsNonStreaming.CompletionTokensPerSecond);
+            Assert.Null(metricsStreaming.PromptTokensPerSecond);
+            Assert.Null(metricsStreaming.CompletionTokensPerSecond);
         }
 
         [Fact]

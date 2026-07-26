@@ -117,18 +117,8 @@ namespace ConduitLLM.Providers.Replicate
                     var content = ExtractTextFromPredictionOutput(finalPrediction.Output);
                     if (!string.IsNullOrEmpty(content))
                     {
-                        // Replicate doesn't report token usage; estimate from output size.
-                        var promptTokens = finalPrediction.Input != null
-                            ? EstimateTokenCount(JsonSerializer.Serialize(finalPrediction.Input))
-                            : 0;
-                        var completionTokens = EstimateTokenCount(content);
-                        RecordUsage(new Usage
-                        {
-                            PromptTokens = promptTokens,
-                            CompletionTokens = completionTokens,
-                            TotalTokens = promptTokens + completionTokens
-                        }, "StreamChatCompletion");
-
+                        // Replicate doesn't report token usage; the Gateway's streaming
+                        // accumulator estimates and bills it as estimated usage.
                         instrumentation.RecordChunk();
                         yield return CreateChatCompletionChunk(
                             content, ProviderModelId, isFirst: false, finishReason: "stop");
@@ -271,11 +261,6 @@ namespace ConduitLLM.Providers.Replicate
             // Extract content from the prediction output - format depends on the model
             var content = ExtractTextFromPredictionOutput(prediction.Output);
 
-            // Estimate token usage (not precise, just a rough estimate)
-            var inputStr = prediction.Input != null ? JsonSerializer.Serialize(prediction.Input) : string.Empty;
-            var promptTokens = EstimateTokenCount(inputStr);
-            var completionTokens = EstimateTokenCount(content);
-
             return new ChatCompletionResponse
             {
                 Id = prediction.Id,
@@ -295,12 +280,10 @@ namespace ConduitLLM.Providers.Replicate
                         FinishReason = "stop"
                     }
                 },
-                Usage = new Usage
-                {
-                    PromptTokens = promptTokens,
-                    CompletionTokens = completionTokens,
-                    TotalTokens = promptTokens + completionTokens
-                },
+                // Replicate does not report token usage. Leaving Usage null lets the
+                // Gateway bill via UsageEstimationService, which records the request as
+                // estimated instead of passing invented counts off as provider-reported.
+                Usage = null,
                 OriginalModelAlias = originalModelAlias
             };
         }
