@@ -1,21 +1,14 @@
-using ConduitLLM.Core.Interfaces;
-
 namespace ConduitLLM.Core.Models
 {
     /// <summary>
     /// Represents a cache entry with metadata for management and monitoring.
     /// </summary>
-    public class CacheEntry<T> : ICacheEntry
+    public class CacheEntry<T>
     {
         /// <summary>
         /// The cached value.
         /// </summary>
         public T Value { get; set; } = default!;
-
-        /// <summary>
-        /// Gets the value as an object for the interface.
-        /// </summary>
-        object? ICacheEntry.Value => Value;
 
         /// <summary>
         /// The cache key used to store this entry.
