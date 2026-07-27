@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Middleware;
 using ConduitLLM.Core.Exceptions;
 
@@ -58,7 +59,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Contains(modelName, error);
-            Assert.Equal("model_not_found", code);
+            Assert.Equal(AdminErrorCodes.NotFound, code);
         }
 
         [Fact]
@@ -78,7 +79,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Equal("Invalid parameter", error);
-            Assert.Equal("invalid_param", code);
+            Assert.Equal(AdminErrorCodes.ValidationError, code);
         }
 
         [Fact]
@@ -97,7 +98,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Equal("Access denied", error);
-            Assert.Equal("forbidden", code);
+            Assert.Equal(AdminErrorCodes.Forbidden, code);
         }
 
         [Fact]
@@ -116,7 +117,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Equal("Request timed out", error);
-            Assert.Equal("request_timeout", code);
+            Assert.Equal(AdminErrorCodes.RequestTimeout, code);
         }
 
         [Fact]
@@ -136,7 +137,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Equal("Rate limit exceeded", error);
-            Assert.Equal("rate_limit_exceeded", code);
+            Assert.Equal(AdminErrorCodes.RateLimitExceeded, code);
         }
 
         [Fact]
@@ -155,7 +156,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Equal("Service unavailable", error);
-            Assert.Equal("service_unavailable", code);
+            Assert.Equal(AdminErrorCodes.ServiceUnavailable, code);
         }
 
         [Fact]
@@ -174,7 +175,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Equal("Required parameter is missing", error);
-            Assert.Equal("missing_parameter", code);
+            Assert.Equal(AdminErrorCodes.ValidationError, code);
         }
 
         [Fact]
@@ -193,7 +194,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
             var (error, code) = GetErrorResponse(_httpContext);
 
             Assert.Equal("The requested resource was not found", error);
-            Assert.Equal("not_found", code);
+            Assert.Equal(AdminErrorCodes.NotFound, code);
         }
 
         [Fact]
@@ -213,7 +214,7 @@ namespace ConduitLLM.Tests.Admin.Middleware
 
             // In production, should not expose internal details
             Assert.Equal("An unexpected error occurred", error);
-            Assert.Equal("internal_error", code);
+            Assert.Equal(AdminErrorCodes.InternalError, code);
         }
 
         [Fact]
