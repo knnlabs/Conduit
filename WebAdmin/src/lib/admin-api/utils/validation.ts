@@ -62,41 +62,6 @@ export function validateDateRange(range: { startDate?: string; endDate?: string 
 }
 
 /**
- * Validates an email address format
- *
- * @param email - The email address to validate
- * @throws {ValidationError} If email format is invalid
- *
- * @example
- * ```typescript
- * validateEmail('user@example.com');
- * ```
- */
-export function validateEmail(email: string): void {
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new ValidationError('Invalid email format');
-  }
-}
-
-/**
- * Validates that a string is not empty after trimming
- *
- * @param value - The string to validate
- * @param fieldName - Name of the field for error messages
- * @throws {ValidationError} If string is empty
- *
- * @example
- * ```typescript
- * validateNonEmptyString(name, 'name');
- * ```
- */
-export function validateNonEmptyString(value: string, fieldName: string): void {
-  if (!value || value.trim().length === 0) {
-    throw new ValidationError(`${fieldName} cannot be empty`);
-  }
-}
-
-/**
  * Validates that a number is within a specified range
  *
  * @param value - The number to validate

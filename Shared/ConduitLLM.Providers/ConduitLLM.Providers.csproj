@@ -13,9 +13,6 @@
     <PackageReference Include="Polly" />
     <PackageReference Include="Polly.Contrib.WaitAndRetry" />
     <!-- AWS SDK for Bedrock removed - using direct HTTP calls with AWS Signature V4 -->
-    <!-- AWS SDK still needed for Transcribe and Polly -->
-    <PackageReference Include="AWSSDK.TranscribeService" />
-    <PackageReference Include="AWSSDK.Polly" />
   </ItemGroup>
 
 </Project>

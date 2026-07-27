@@ -418,20 +418,6 @@ export function getErrorStatusCode(error: unknown): number {
   return 500;
 }
 
-// User-friendly error message mapping
-export {
-  ERROR_MESSAGES,
-  getDefaultErrorConfig,
-  getErrorConfig,
-  getErrorSeverity,
-  extractRetryAfter,
-} from "./error-messages";
-export type {
-  OpenAIError,
-  OpenAIErrorResponse,
-  ErrorMessageConfig,
-} from "./error-messages";
-
 /**
  * Handle API errors and convert them to appropriate ConduitError types
  * This function is primarily used by the Admin SDK

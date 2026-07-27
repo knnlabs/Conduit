@@ -77,7 +77,7 @@ namespace ConduitLLM.Gateway.Middleware
                     functionName = tc.FunctionName,
                     hasArguments = tc.HasArguments
                 })
-            }, new JsonSerializerOptions { WriteIndented = false });
+            });
         }
     }
 

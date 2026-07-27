@@ -87,7 +87,6 @@ try {
             Write-Host "  - Start PostgreSQL and Redis containers"
             Write-Host "  - Build .NET solution"
             Write-Host "  - Run tests"
-            Write-Host "  - Build Node.js SDKs"
             Write-Host "  - Type-check WebAdmin"
             Write-Host ""
             $confirm = Read-Host "Continue? [y/N]"

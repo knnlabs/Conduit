@@ -1,6 +1,5 @@
 // Main clients - export only fetch-based client
 export { FetchConduitAdminClient as ConduitAdminClient } from './FetchConduitAdminClient';
-export { FetchConduitAdminClient } from './FetchConduitAdminClient';
 
 // Export generated types
 export type { paths, components } from './generated/admin-api';
@@ -63,65 +62,8 @@ export type {
 } from './models/modelCost';
 // Re-export analytics types (includes the main ExportParams/ExportResult we'll use)
 export * from './models/analytics';
-// Re-export analyticsExport types except ExportParams and ExportResult (conflicts with analytics)
-export type {
-  ExportUsageParams,
-  ExportCostParams,
-  ExportVirtualKeyParams,
-  ExportProviderParams,
-  ExportSecurityParams,
-  CreateExportScheduleDto,
-  ExportSchedule,
-  ExportHistory,
-  ExportRequestLogsParams,
-  RequestLogStatistics,
-  RequestLogSummaryParams,
-  RequestLogSummary,
-  RequestLog,
-  ExportStatus,
-} from './models/analyticsExport';
 export * from './models/system';
-export * from './models/databaseBackup';
-export * from './models/signalr';
 // notifications/metrics/monitoring models removed - observability is served by Grafana
-export * from './models/configuration';
-// Re-export configurationExtended types except RoutingRule and UpdateRoutingConfigDto (conflicts with configuration)
-export type {
-  RoutingConfigDto,
-  RetryPolicy,
-  // UpdateRoutingConfigDto, // conflicts with configuration
-  // RoutingRule, // conflicts with configuration
-  RuleCondition,
-  RuleAction,
-  CreateRoutingRuleDto,
-  UpdateRoutingRuleDto,
-  CacheConfigDto,
-  UpdateCacheConfigDto,
-  CacheRule,
-  CacheCondition,
-  CacheClearParams,
-  CacheClearResult,
-  CacheStatsDto,
-  CacheKeyStats,
-  LoadBalancerConfigDto,
-  UpdateLoadBalancerConfigDto,
-  LoadBalancerHealthDto,
-  LoadBalancerNode,
-  PerformanceConfigDto,
-  UpdatePerformanceConfigDto,
-  PerformanceTestParams,
-  PerformanceTestResult,
-  PerformanceDataPoint,
-  ErrorSummary,
-  FeatureFlag,
-  FeatureFlagCondition,
-  UpdateFeatureFlagDto,
-} from './models/configurationExtended';
-// Re-export the extended versions of conflicting types
-export type {
-  RoutingRule as ExtendedRoutingRule,
-  UpdateRoutingConfigDto as ExtendedUpdateRoutingConfigDto
-} from './models/configurationExtended';
 
 // Export modelMapping types with explicit re-exports to avoid conflicts
 export type {
@@ -198,7 +140,3 @@ export type {
   operations as AdminOperations,
   paths as AdminPaths
 } from './generated/admin-api';
-
-// Default export - using FetchConduitAdminClient as the recommended client
-import { FetchConduitAdminClient } from './FetchConduitAdminClient';
-export default FetchConduitAdminClient;

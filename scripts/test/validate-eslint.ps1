@@ -184,7 +184,7 @@ if ($script:failed -eq 0) {
         Write-Host "Your push/build WILL FAIL if you don't fix these errors."
         Write-Host ""
         Write-Host "To fix:"
-        Write-Host "1. Run './scripts/dev/fix-sdk-errors.ps1' or './scripts/dev/fix-webadmin-errors.ps1' as appropriate"
+        Write-Host "1. Run './scripts/dev/fix-webadmin-errors.ps1'"
         Write-Host "2. Manually fix any remaining errors"
         Write-Host "3. Re-run this script to verify"
     } else {

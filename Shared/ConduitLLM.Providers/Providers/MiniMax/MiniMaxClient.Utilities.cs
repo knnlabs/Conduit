@@ -234,29 +234,5 @@ namespace ConduitLLM.Providers.MiniMax
                 _ => "768P" // Default to 768P (HD)
             };
         }
-
-        private static int ParseResolutionWidth(string? size)
-        {
-            if (string.IsNullOrEmpty(size))
-                return 1280;
-            
-            var parts = size.Split('x');
-            if (parts.Length == 2 && int.TryParse(parts[0], out var width))
-                return width;
-                
-            return 1280;
-        }
-
-        private static int ParseResolutionHeight(string? size)
-        {
-            if (string.IsNullOrEmpty(size))
-                return 720;
-            
-            var parts = size.Split('x');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
-                return height;
-                
-            return 720;
-        }
     }
 }

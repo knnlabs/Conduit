@@ -64,20 +64,4 @@ namespace ConduitLLM.Core.Events
     public class AsyncTaskDeleted : AsyncTaskEvent
     {
     }
-
-    /// <summary>
-    /// Event published when async tasks are archived.
-    /// </summary>
-    public class AsyncTasksArchived : AsyncTaskEvent
-    {
-        /// <summary>
-        /// Gets or sets the number of tasks archived.
-        /// </summary>
-        public int TaskCount { get; set; }
-
-        /// <summary>
-        /// Gets or sets the age threshold used for archival.
-        /// </summary>
-        public TimeSpan OlderThan { get; set; }
-    }
 }

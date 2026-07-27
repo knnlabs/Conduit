@@ -16,7 +16,7 @@ namespace ConduitLLM.Configuration.EntityConfigurations
     /// </summary>
     public class ProviderEntityConfiguration : IEntityTypeConfiguration<Provider>
     {
-        private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+        internal static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
 
         /// <inheritdoc />
         public void Configure(EntityTypeBuilder<Provider> builder)
@@ -47,7 +47,7 @@ namespace ConduitLLM.Configuration.EntityConfigurations
     /// </summary>
     public class ProviderKeyCredentialEntityConfiguration : IEntityTypeConfiguration<ProviderKeyCredential>
     {
-        private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
+        private static readonly JsonSerializerOptions SerializerOptions = ProviderEntityConfiguration.SerializerOptions;
 
         /// <inheritdoc />
         public void Configure(EntityTypeBuilder<ProviderKeyCredential> builder)

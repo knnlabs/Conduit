@@ -101,16 +101,6 @@ describe('contract-native top-level model mappings', () => {
     expect(body(request)).toEqual(requestBody);
   });
 
-  it('fans bulkUpdate out through the migrated update operation', async () => {
-    mockFetch.mockResolvedValue(response(mapping));
-    await expect(client().modelMappings.bulkUpdate([
-      { id: 7, data: updateRequest }, { id: 8, data: { ...updateRequest, modelAlias: 'nova-2' } },
-    ])).resolves.toBeUndefined();
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect((mockFetch.mock.calls[0]?.[0] as Request).url).toBe('https://admin.test/v1/admin/model-provider-mappings/7');
-    expect((mockFetch.mock.calls[1]?.[0] as Request).url).toBe('https://admin.test/v1/admin/model-provider-mappings/8');
-  });
-
   it('preserves headers, callbacks, request payloads, and retries', async () => {
     const onRequest = jest.fn<void, [RequestConfigInfo]>();
     const onResponse = jest.fn<void, [ResponseInfo]>();

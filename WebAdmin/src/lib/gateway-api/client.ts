@@ -486,7 +486,6 @@ export class GatewayClient {
 }
 
 export const ConduitGatewayClient = GatewayClient;
-export const ConduitCoreClient = GatewayClient;
 
 function inferAttachmentKind(attachment: ChatAttachment): NonNullable<ChatAttachment["kind"]> {
   if (attachment.kind) return attachment.kind;

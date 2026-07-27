@@ -36,10 +36,6 @@ public partial class Program
         app.MapHub<ConduitLLM.Gateway.Hubs.VirtualKeyManagementHub>("/hubs/virtual-key-management")
             .RequireAuthorization();
 
-        // Enhanced video generation hub with acknowledgment support
-        app.MapHub<ConduitLLM.Gateway.Hubs.EnhancedVideoGenerationHub>("/hubs/enhanced-video-generation")
-            .RequireAuthorization();
-
         // Map health check endpoints
         app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
         {

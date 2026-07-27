@@ -22,14 +22,8 @@ interface ModelCostListParams {
   modelType?: string;
 }
 
-interface ModelCostOverviewParams {
-  startDate: string;
-  endDate: string;
-}
-
 type ContractPagedModelCosts = components['schemas']['PagedResultOfModelCostDto'];
 type ContractBulkImportResult = components['schemas']['BulkImportResult'];
-type ContractModelCostOverview = components['schemas']['ModelCostOverviewDto'];
 type ContractModelCost = components['schemas']['ModelCostDto'];
 type ContractCreateModelCost = components['schemas']['CreateModelCostDto'];
 type ContractUpdateModelCost = components['schemas']['UpdateModelCostDto'];
@@ -193,41 +187,5 @@ export class FetchModelCostService {
   async bulkUpdate(): Promise<ModelCostDto[]> {
     throw new Error('Bulk update endpoint no longer exists. Update model costs individually.');
   }
-
-  /**
-   * Get model cost overview with aggregation
-   */
-  async getOverview(
-    params: ModelCostOverviewParams,
-    config?: RequestConfig
-  ): Promise<ContractModelCostOverview[]> {
-    const query = { startDate: params.startDate, endDate: params.endDate };
-    const queryString = new URLSearchParams(query).toString();
-    const result = await this.client['executeContractRead'](`/v1/admin/model-costs/overview?${queryString}`,
-      (contractClient, options) => contractClient.GET('/v1/admin/model-costs/overview', { ...options, params: { query } }), config);
-    return result.data;
-  }
-
-
-
-  /**
-   * Helper method to calculate cost for given token usage
-   */
-  calculateTokenCost(
-    cost: ModelCostDto,
-    inputTokens: number,
-    outputTokens: number
-  ): { inputCost: number; outputCost: number; totalCost: number } {
-    // Costs are now stored as cost per million tokens
-    const inputCost = (inputTokens / 1_000_000) * cost.inputCostPerMillionTokens;
-    const outputCost = (outputTokens / 1_000_000) * cost.outputCostPerMillionTokens;
-
-    return {
-      inputCost,
-      outputCost,
-      totalCost: inputCost + outputCost,
-    };
-  }
-
 
 }

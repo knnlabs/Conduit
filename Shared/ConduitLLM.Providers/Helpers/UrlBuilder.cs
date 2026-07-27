@@ -103,37 +103,6 @@ namespace ConduitLLM.Providers.Helpers
         }
 
         /// <summary>
-        /// Ensures a URL has a specific path segment (like "/v1") if not already present.
-        /// </summary>
-        /// <param name="url">The URL to check</param>
-        /// <param name="requiredSegment">The required segment (e.g., "/v1")</param>
-        /// <returns>URL with the required segment</returns>
-        public static string EnsureSegment(string url, string requiredSegment)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new ArgumentException("URL cannot be null or whitespace", nameof(url));
-            }
-
-            if (string.IsNullOrWhiteSpace(requiredSegment))
-            {
-                return url;
-            }
-
-            // Normalize the segment
-            requiredSegment = requiredSegment.Trim('/');
-            
-            // Check if URL already contains the segment
-            if (url.Contains($"/{requiredSegment}", StringComparison.OrdinalIgnoreCase))
-            {
-                return url;
-            }
-
-            // Append the segment
-            return Combine(url, requiredSegment);
-        }
-
-        /// <summary>
         /// Validates that a URL is well-formed.
         /// </summary>
         /// <param name="url">The URL to validate</param>
@@ -147,41 +116,6 @@ namespace ConduitLLM.Providers.Helpers
 
             return Uri.TryCreate(url, UriKind.Absolute, out var result) &&
                    (result.Scheme == Uri.UriSchemeHttp || result.Scheme == Uri.UriSchemeHttps);
-        }
-
-        /// <summary>
-        /// Converts HTTP URLs to WebSocket URLs (http:// to ws://, https:// to wss://).
-        /// </summary>
-        /// <param name="url">The HTTP URL to convert</param>
-        /// <returns>The WebSocket URL</returns>
-        /// <exception cref="ArgumentException">Thrown when URL is invalid</exception>
-        public static string ToWebSocketUrl(string url)
-        {
-            if (string.IsNullOrWhiteSpace(url))
-            {
-                throw new ArgumentException("URL cannot be null or whitespace", nameof(url));
-            }
-
-            ReadOnlySpan<char> urlSpan = url.AsSpan();
-
-            if (urlSpan.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
-            {
-                return string.Concat("wss://", urlSpan.Slice(8));
-            }
-            else if (urlSpan.StartsWith("http://", StringComparison.OrdinalIgnoreCase))
-            {
-                return string.Concat("ws://", urlSpan.Slice(7));
-            }
-            else if (urlSpan.StartsWith("wss://", StringComparison.OrdinalIgnoreCase) ||
-                     urlSpan.StartsWith("ws://", StringComparison.OrdinalIgnoreCase))
-            {
-                // Already a WebSocket URL
-                return url;
-            }
-            else
-            {
-                throw new ArgumentException($"Invalid URL format: {url}. Expected http://, https://, ws://, or wss://", nameof(url));
-            }
         }
     }
 }

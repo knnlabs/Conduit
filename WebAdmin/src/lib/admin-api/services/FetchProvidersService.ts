@@ -14,8 +14,7 @@ import {
   cacheProviderConfigurations,
   type ProviderConfigurationDefinition,
   type ProviderConfigurationSchema,
-  type ProviderSettingField,
-  type ProviderSettingsSchema
+  type ProviderSettingField
 } from '../models/providerConfiguration';
 import {
   normalizeApiKeyTestResponse,
@@ -115,18 +114,6 @@ export class FetchProvidersService {
     return schema;
   }
 
-  /** Get only the structured setting fields, for credential forms that need no presentation data. */
-  async getSettingsSchema(config?: RequestConfig): Promise<ProviderSettingsSchema> {
-    const configurations = await this.getConfigurationSchema(config);
-    const schema: ProviderSettingsSchema = {};
-    for (const configuration of Object.values(configurations)) {
-      if (configuration) {
-        schema[configuration.providerType] = configuration.settings;
-      }
-    }
-    return schema;
-  }
-
   /**
    * Get a specific provider by ID
    */
@@ -209,41 +196,9 @@ export class FetchProvidersService {
     }
   }
 
-  /**
-   * Helper method to check if provider is enabled
-   */
-  isProviderEnabled(provider: ProviderDto): boolean {
-    return provider.isEnabled === true;
-  }
-
-
-  /**
-   * Helper method to format provider display name
-   */
-  formatProviderName(provider: ProviderDto): string {
-    // Use the user-friendly provider name instead of type
-    return provider.providerName || provider.providerType?.toString() || 'Unknown';
-  }
-
-  /**
-   * Helper method to get provider status
-   */
-  getProviderStatus(provider: ProviderDto): 'active' | 'inactive' | 'unconfigured' {
-    // Check if provider is enabled instead of checking for API key
-    if (!provider.isEnabled) {
-      return 'inactive';
-    }
-    return 'active';
-  }
-
-
   // Key credential methods are delegated to the keys service
   async listKeys(...args: Parameters<FetchProvidersServiceKeys['listKeys']>) {
     return this.keysService.listKeys(...args);
-  }
-
-  async getKeyById(...args: Parameters<FetchProvidersServiceKeys['getKeyById']>) {
-    return this.keysService.getKeyById(...args);
   }
 
   async createKey(...args: Parameters<FetchProvidersServiceKeys['createKey']>) {
@@ -262,27 +217,7 @@ export class FetchProvidersService {
     return this.keysService.setPrimaryKey(...args);
   }
 
-  async getPrimaryKey(...args: Parameters<FetchProvidersServiceKeys['getPrimaryKey']>) {
-    return this.keysService.getPrimaryKey(...args);
-  }
-
   async testKey(...args: Parameters<FetchProvidersServiceKeys['testKey']>) {
     return this.keysService.testKey(...args);
-  }
-
-  /**
-   * Get all available provider types.
-   * This method returns all provider types, allowing multiple providers of the same type
-   * (e.g., "Production OpenAI", "Dev OpenAI").
-   *
-   * @param config - Optional request configuration for timeout, signal, headers
-   * @returns Promise<ProviderType[]> - Array of all available provider types
-   * @throws {Error} When provider types cannot be retrieved
-   */
-  async getAvailableProviderTypes(config?: RequestConfig): Promise<ProviderType[]> {
-    const schema = await this.getConfigurationSchema(config);
-    return Object.values(schema)
-      .filter((entry): entry is ProviderConfigurationDefinition => entry !== undefined)
-      .map(entry => entry.providerType);
   }
 }

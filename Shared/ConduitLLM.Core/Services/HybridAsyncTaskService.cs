@@ -15,7 +15,7 @@ namespace ConduitLLM.Core.Services
         private readonly IDistributedCache _cache;
         private readonly IEventBus? _eventBus;
         private readonly ILogger<HybridAsyncTaskService> _logger;
-        private const string TASK_KEY_PREFIX = "async:task:";
+        private const string TASK_KEY_PREFIX = Constants.RedisKeys.AsyncTask.Prefix;
         private const int CACHE_EXPIRY_HOURS = 2; // Shorter expiry for completed tasks
 
         /// <summary>

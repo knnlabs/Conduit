@@ -8,7 +8,6 @@ import type {
   GlobalSettingCacheStats,
   GlobalSettingDefinitionDto,
   GlobalSettingsReloadAcceptedResponse,
-  SettingCategory,
 } from '../models/settings';
 
 // Define the batch update types that match the issue requirements
@@ -152,40 +151,6 @@ export class FetchSettingsService {
 
 
   /**
-   * Get settings grouped by category
-   */
-  async getSettingsByCategory(config?: RequestConfig): Promise<SettingCategory[]> {
-    const allSettings = await this.getGlobalSettings(config);
-
-    // Group settings by category
-    const categoryMap = new Map<string, GlobalSettingDto[]>();
-
-    for (const setting of allSettings.settings) {
-      // The API does not return category metadata, so all settings are ungrouped.
-      const category = 'General';
-      if (!categoryMap.has(category)) {
-        categoryMap.set(category, []);
-      }
-      const categorySettings = categoryMap.get(category);
-      if (categorySettings) {
-        categorySettings.push(setting);
-      }
-    }
-
-    // Convert to array of SettingCategory
-    const categories: SettingCategory[] = [];
-    for (const [name, settings] of categoryMap) {
-      categories.push({
-        name,
-        description: `${name} settings`,
-        settings,
-      });
-    }
-
-    return categories;
-  }
-
-  /**
    * Helper method to check if a setting exists
    */
   async settingExists(key: string, config?: RequestConfig): Promise<boolean> {
@@ -198,88 +163,6 @@ export class FetchSettingsService {
       }
       throw error;
     }
-  }
-
-  /**
-   * Helper method to get typed setting value
-   */
-  async getTypedSettingValue<T = unknown>(key: string, config?: RequestConfig): Promise<T> {
-    const setting = await this.getGlobalSetting(key, config);
-
-    // The API stores values as opaque strings with no data-type metadata. Callers that
-    // know the expected shape should parse the returned string themselves.
-    return setting.value as T;
-  }
-
-  /**
-   * Helper method to update setting with type conversion
-   */
-  async updateTypedSetting<T>(
-    key: string,
-    value: T,
-    description?: string,
-    config?: RequestConfig
-  ): Promise<void> {
-    let stringValue: string;
-
-    if (typeof value === 'object') {
-      stringValue = JSON.stringify(value);
-    } else {
-      stringValue = String(value);
-    }
-
-    await this.updateGlobalSetting(
-      key,
-      stringValue,
-      description,
-      config
-    );
-  }
-
-  /**
-   * Helper method to get all secret settings (with values hidden)
-   */
-  async getSecretSettings(config?: RequestConfig): Promise<GlobalSettingDto[]> {
-    void config;
-    // The API does not flag settings as secret, so none can be identified as such.
-    return Promise.resolve([]);
-  }
-
-  /**
-   * Helper method to validate setting value based on data type
-   */
-  validateSettingValue(value: string, dataType: string): boolean {
-    switch (dataType) {
-      case 'number':
-        return !isNaN(parseFloat(value));
-      case 'boolean':
-        return value.toLowerCase() === 'true' || value.toLowerCase() === 'false';
-      case 'json':
-        try {
-          JSON.parse(value);
-          return true;
-        } catch {
-          return false;
-        }
-      default:
-        return true;
-    }
-  }
-
-  /**
-   * Helper method to format setting value for display
-   */
-  formatSettingValue(setting: GlobalSettingDto): string {
-    // The API provides no data-type metadata; pretty-print values that happen to be JSON.
-    const trimmed = setting.value.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      try {
-        return JSON.stringify(JSON.parse(setting.value), null, 2);
-      } catch {
-        return setting.value;
-      }
-    }
-    return setting.value;
   }
 
   /**

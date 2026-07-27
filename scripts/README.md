@@ -32,8 +32,7 @@ the embedded snapshot again after rebuilding with catalog changes.
 
 - `dev/create-test-virtual-key.ps1` creates a test key using a locally running
   Admin API and `CONDUIT_MASTER_KEY`.
-- `dev/fix-sdk-errors.ps1` and `dev/fix-webadmin-errors.ps1` run focused local
-  lint/build remediation.
+- `dev/fix-webadmin-errors.ps1` runs focused local lint/build remediation.
 - `dev/setup-r2-dev.ps1` validates local R2 configuration before starting the
   normal development stack.
 - `setup/wait-for-services.ps1` waits for the Compose services started by the

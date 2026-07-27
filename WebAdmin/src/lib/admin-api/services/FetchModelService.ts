@@ -4,15 +4,12 @@ import type { RequestConfig } from '../client/types';
 import { HttpMethod } from '../client/HttpMethod';
 import {
   ProviderTypeAssociationInput,
-  NormalizedProviderTypeAssociation,
-  ValidationResult
+  NormalizedProviderTypeAssociation
 } from '../types/models';
 import {
   normalizeProviderType,
-  getProviderConstraints,
   getProviderTypeName,
-  providerTypeToOrdinal,
-  ProviderConstraints
+  providerTypeToOrdinal
 } from '../types/providers';
 import { ProviderType } from '../models/providerType';
 import {
@@ -44,20 +41,6 @@ export type BundledModelCatalogImportResult = components['schemas']['BundledMode
  */
 export class FetchModelService {
   constructor(private readonly client: FetchBaseApiClient) {}
-
-  /**
-   * Get provider validation constraints
-   */
-  getProviderConstraints(): ProviderConstraints {
-    return getProviderConstraints();
-  }
-
-  /**
-   * Normalize a provider type string
-   */
-  normalizeProviderType(provider: string): ProviderType | undefined {
-    return normalizeProviderType(provider);
-  }
 
   /**
    * Get all models with their capabilities
@@ -93,13 +76,6 @@ export class FetchModelService {
       }),
       config,
     );
-  }
-
-  /**
-   * Validate a provider type association without saving
-   */
-  validateIdentifier(data: Partial<ProviderTypeAssociationInput>): ValidationResult<ProviderTypeAssociationInput> {
-    return validateProviderTypeAssociation(data);
   }
 
   /**

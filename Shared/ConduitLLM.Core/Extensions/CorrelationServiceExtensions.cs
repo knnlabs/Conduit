@@ -29,38 +29,5 @@ namespace ConduitLLM.Core.Extensions
 
             return services;
         }
-
-        /// <summary>
-        /// Adds correlation propagation to an HTTP client.
-        /// </summary>
-        /// <param name="builder">The HTTP client builder.</param>
-        /// <returns>The HTTP client builder.</returns>
-        public static IHttpClientBuilder AddCorrelationPropagation(this IHttpClientBuilder builder)
-        {
-            return builder.AddHttpMessageHandler<CorrelationPropagationHandler>();
-        }
-
-        /// <summary>
-        /// Configures all HTTP clients to use correlation propagation.
-        /// </summary>
-        /// <param name="services">The service collection.</param>
-        /// <returns>The service collection.</returns>
-        public static IServiceCollection ConfigureHttpClientsWithCorrelation(this IServiceCollection services)
-        {
-            // Configure the default HttpClient factory to use correlation propagation
-            services.ConfigureAll<Microsoft.Extensions.Http.HttpClientFactoryOptions>(options =>
-            {
-                options.HttpMessageHandlerBuilderActions.Add(builder =>
-                {
-                    var correlationHandler = builder.Services.GetService<CorrelationPropagationHandler>();
-                    if (correlationHandler != null)
-                    {
-                        builder.AdditionalHandlers.Add(correlationHandler);
-                    }
-                });
-            });
-
-            return services;
-        }
     }
 }

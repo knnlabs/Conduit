@@ -14,45 +14,11 @@ export * from "./errors";
 // HTTP types and utilities
 export * from "./http";
 
-// SignalR types and base classes
-export * from "./signalr";
-
 // Client configuration types
 export * from "./client";
 
-// Explicit exports for types that might get tree-shaken
-export type {
-  Logger,
-  CacheProvider,
-  RequestConfigInfo,
-  ResponseInfo,
-} from "./client/types";
+// Value-level export of the HttpError class (the client barrel re-exports it type-only)
 export { HttpError } from "./client/types";
-export type { SignalRConfig } from "./client/signalr-config";
-export type { SignalRConnectionOptions } from "./signalr/types";
-
-// Explicit exports for BaseApiClient (may get tree-shaken)
-export { BaseApiClient } from "./client/BaseApiClient";
-export type { BaseRequestOptions } from "./client/BaseApiClient";
-export type {
-  BaseApiClientConfig,
-  CacheableClientConfig,
-  LoggableClientConfig,
-  FullFeaturedClientConfig,
-} from "./client/base-client-config";
-export {
-  RetryStrategyType,
-  calculateRetryDelay,
-  getMaxRetries,
-  shouldRetryWithStrategy,
-  DEFAULT_RETRY_STRATEGIES,
-} from "./client/retry-strategy";
-export type {
-  RetryStrategy,
-  FixedDelayConfig,
-  ExponentialBackoffConfig,
-  CustomDelaysConfig,
-} from "./client/retry-strategy";
 
 // Formatting utilities
 export * from "./formatting";

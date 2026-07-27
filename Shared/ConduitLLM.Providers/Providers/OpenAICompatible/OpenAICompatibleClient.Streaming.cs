@@ -190,12 +190,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
             var openAiRequest = MapToOpenAIRequest(request);
 
-            // Force stream parameter to true based on the request's type
-            if (openAiRequest is JsonElement jsonElement)
-            {
-                return ForceStreamParametersInJsonElement(jsonElement);
-            }
-            else if (openAiRequest is Dictionary<string, object> dictObj)
+            // Force stream parameter to true (all MapToOpenAIRequest overrides return a dictionary)
+            if (openAiRequest is Dictionary<string, object> dictObj)
             {
                 dictObj["stream"] = true;
                 // Ensure stream_options is present
@@ -205,38 +201,9 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 }
                 return dictObj;
             }
-            else if (openAiRequest is OpenAIChatCompletionRequest reqObj)
-            {
-                reqObj = reqObj with { Stream = true };
-                return reqObj;
-            }
 
             // If we can't determine the type, return the original request
             return openAiRequest;
-        }
-
-        /// <summary>
-        /// Forces the stream parameter to true and ensures stream_options is set in a JsonElement
-        /// </summary>
-        /// <param name="jsonElement">The JsonElement to modify</param>
-        /// <returns>An object with stream=true and stream_options configured</returns>
-        private object ForceStreamParametersInJsonElement(JsonElement jsonElement)
-        {
-            var jsonObject = jsonElement.GetRawText();
-            var tempObj = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonObject, DefaultJsonOptions);
-            if (tempObj != null)
-            {
-                tempObj["stream"] = true;
-                // Ensure stream_options is present for usage data
-                if (!tempObj.ContainsKey("stream_options"))
-                {
-                    tempObj["stream_options"] = new { include_usage = true };
-                }
-                return tempObj;
-            }
-
-            // If deserialization fails, return the original element
-            return jsonElement;
         }
 
         /// <summary>

@@ -232,36 +232,6 @@ public static class CacheKeys
 
     #endregion
 
-    #region Embedding Cache
-
-    /// <summary>
-    /// Cache keys for embedding vector caching.
-    /// Used by RedisEmbeddingCache for cost optimization.
-    /// </summary>
-    public static class Embedding
-    {
-        /// <summary>Prefix for embedding cache entries</summary>
-        public const string Prefix = "emb:";
-
-        /// <summary>Key for embedding cache statistics</summary>
-        public const string StatsKey = "emb:stats";
-
-        /// <summary>Prefix for model-based embedding index</summary>
-        public const string IndexPrefix = "emb:idx:";
-
-        /// <summary>Builds a cache key for an embedding by its hash</summary>
-        /// <param name="cacheKey">The computed cache key hash</param>
-        /// <returns>Full cache key like "emb:abc123def456"</returns>
-        public static string ByHash(string cacheKey) => $"{Prefix}{cacheKey}";
-
-        /// <summary>Builds an index key for model-based invalidation</summary>
-        /// <param name="modelName">The model name</param>
-        /// <returns>Full index key like "emb:idx:text-embedding-ada-002"</returns>
-        public static string ModelIndex(string modelName) => $"{IndexPrefix}{modelName}";
-    }
-
-    #endregion
-
     #region Provider Error Cache
 
     /// <summary>

@@ -70,7 +70,7 @@ try {
     Write-Host ""
     Write-Host "Step 2: Cleaning build artifacts..." -ForegroundColor Yellow
     Get-ChildItem -Path $projectRoot -Include 'bin', 'obj' -Directory -Recurse -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -match '(ConduitLLM\.|SDKs[/\\])' } |
+        Where-Object { $_.FullName -match 'ConduitLLM\.' } |
         Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
     # Step 3: Clear NuGet cache for local packages

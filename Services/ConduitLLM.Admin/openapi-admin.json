@@ -24696,6 +24696,25 @@
               }
             ]
           },
+          "toolUsage": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "description": "Tool usage entries recorded for this request. The stored JSON is service-serialized\r\nwith a provider-dependent shape, so it is surfaced verbatim rather than re-typed.",
+                "$ref": "#/components/schemas/JsonElement"
+              }
+            ]
+          },
+          "toolUsageCost": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Total cost from tool usage (separate from token costs)",
+            "format": "double"
+          },
           "metadata": {
             "type": [
               "null",
@@ -28203,6 +28222,7 @@
           }
         }
       },
+      "JsonElement": { },
       "KeyErrorDetailsDto": {
         "required": [
           "keyId",

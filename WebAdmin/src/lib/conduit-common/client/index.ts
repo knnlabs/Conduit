@@ -10,12 +10,6 @@ export type {
   BaseClientOptions,
 } from "./types";
 
-// SignalR configuration
-export type { SignalRConfig } from "./signalr-config";
-
-// Re-export SignalR connection options from the main SignalR module
-export type { SignalRConnectionOptions } from "../signalr/types";
-
 // Base API client
 export { BaseApiClient, type BaseRequestOptions } from "./BaseApiClient";
 
