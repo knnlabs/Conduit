@@ -177,18 +177,9 @@ namespace ConduitLLM.Core.Services
             ImageGenerationRequested request,
             GenerationModelInfo modelInfo)
         {
-            return Task.FromResult(new ConduitLLM.Core.Models.ImageGenerationRequest
-            {
-                Prompt = request.Request.Prompt,
-                Model = modelInfo.ModelId,
-                N = request.Request.N,
-                Size = request.Request.Size,
-                Quality = request.Request.Quality,
-                Style = request.Request.Style,
-                ResponseFormat = request.Request.ResponseFormat ?? "url",
-                User = request.Request.User,
-                ExtensionData = request.Request.ExtensionData
-            });
+            request.Request.Model = modelInfo.ModelId;
+            request.Request.ResponseFormat ??= "url";
+            return Task.FromResult(request.Request);
         }
 
         protected override void ValidateModelSupport(GenerationModelInfo modelInfo, ImageGenerationRequested request)

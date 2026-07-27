@@ -23,6 +23,8 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         ConduitLLM.Core.Models.ImageGenerationResponse,
         ImageGenerationRequested>
     {
+        private Mock<ILLMClient>? _imageClientMock;
+
         protected override string GetRequestId(ImageGenerationRequested request) => request.TaskId;
         protected override string? GetWebhookUrl(ImageGenerationRequested request) => request.WebhookUrl;
 
@@ -55,7 +57,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             {
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
-                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
                 {
                     Model = "test-model",
                     Prompt = "Generate a test image",
@@ -92,15 +94,15 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected override void SetupSuccessfulGeneration(ConduitLLM.Core.Models.ImageGenerationResponse response)
         {
             // Mock client for image generation
-            var mockClient = new Mock<ILLMClient>();
-            mockClient.Setup(x => x.CreateImageAsync(
+            _imageClientMock = new Mock<ILLMClient>();
+            _imageClientMock.Setup(x => x.CreateImageAsync(
                 It.IsAny<ConduitLLM.Core.Models.ImageGenerationRequest>(),
                 It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(response);
             
             ClientFactoryMock.Setup(x => x.GetClientByProviderIdAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(mockClient.Object);
+                .ReturnsAsync(_imageClientMock.Object);
             
             StorageServiceMock.Setup(x => x.StoreAsync(
                 It.IsAny<Stream>(),
@@ -112,6 +114,31 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                     Url = "https://storage.example.com/image.png",
                     SizeBytes = 1024
                 });
+        }
+
+        [Fact]
+        public async Task HandleAsync_PreservesImageEditAndNewRequestFields()
+        {
+            var request = CreateTestEventRequest();
+            request.Request.Image = "base64-image";
+            request.Request.Mask = "base64-mask";
+            request.Request.Operation = "edit";
+            request.Request.Background = "transparent";
+            request.Request.OutputFormat = "webp";
+            var response = CreateTestResponse();
+            SetupSuccessfulGeneration(response);
+
+            await Orchestrator.HandleAsync(request, CreateEventContext());
+
+            _imageClientMock!.Verify(client => client.CreateImageAsync(
+                It.Is<ConduitLLM.Core.Models.ImageGenerationRequest>(providerRequest =>
+                    providerRequest.Image == "base64-image" &&
+                    providerRequest.Mask == "base64-mask" &&
+                    providerRequest.Operation == "edit" &&
+                    providerRequest.Background == "transparent" &&
+                    providerRequest.OutputFormat == "webp"),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
         }
 
         protected override void SetupFailedGeneration(Exception exception)

@@ -128,7 +128,7 @@ public sealed class MediaCancellationFaultTests(BillingFaultFixture fixture)
         {
             TaskId = "media-fault-task",
             VirtualKeyId = account.KeyId,
-            Request = new ConduitLLM.Core.Events.ImageGenerationRequest
+            Request = new ConduitLLM.Core.Models.ImageGenerationRequest
             {
                 Model = "fault-image-model",
                 Prompt = "fault injection",
