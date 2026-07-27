@@ -84,6 +84,29 @@ namespace ConduitLLM.Security.Middleware
             // Allow derived classes to record events or perform additional actions
             await OnSecurityViolationAsync(context, result, clientIp);
 
+            if (result.RateLimit is { } rateLimit)
+            {
+                RateLimitResponseContract.SetHeaders(
+                    context,
+                    rateLimit.Limit,
+                    rateLimit.Remaining,
+                    rateLimit.ResetsAt,
+                    rateLimit.Scope);
+
+                foreach (var header in result.Headers)
+                {
+                    context.Response.Headers[header.Key] = header.Value;
+                }
+
+                await RateLimitResponseContract.WriteAsync(
+                    context,
+                    rateLimit.Scope,
+                    rateLimit.Limit,
+                    rateLimit.ResetsAt,
+                    result.Reason);
+                return;
+            }
+
             context.Response.StatusCode = result.StatusCode ?? 403;
 
             // Add response headers (e.g., rate limit headers)

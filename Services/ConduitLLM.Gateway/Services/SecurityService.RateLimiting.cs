@@ -51,19 +51,15 @@ namespace ConduitLLM.Gateway.Services
                 Logger.LogWarning("Discovery rate limit exceeded for {IpAddress}: {Count} requests in {Window} seconds for path {Path}",
                     ipAddress, discoveryCount, _options.RateLimiting.Discovery.WindowSeconds, path);
 
-                return new SecurityCheckResult
-                {
-                    IsAllowed = false,
-                    Reason = $"Discovery rate limit exceeded for path {path}",
-                    StatusCode = 429,
-                    Headers = new Dictionary<string, string>
-                    {
-                        ["Retry-After"] = _options.RateLimiting.Discovery.WindowSeconds.ToString(),
-                        ["X-RateLimit-Limit"] = _options.RateLimiting.Discovery.MaxRequests.ToString(),
-                        ["X-RateLimit-Scope"] = "discovery",
-                        ["X-RateLimit-Remaining"] = Math.Max(0, _options.RateLimiting.Discovery.MaxRequests - discoveryCount).ToString()
-                    }
-                };
+                var resetsAt = await RateLimitCounter.GetResetAsync(discoveryKey)
+                    ?? DateTime.UtcNow.AddSeconds(_options.RateLimiting.Discovery.WindowSeconds);
+
+                return SecurityCheckResult.RateLimited(
+                    $"Discovery rate limit exceeded for path {path}",
+                    resetsAt,
+                    _options.RateLimiting.Discovery.MaxRequests,
+                    Math.Max(0, _options.RateLimiting.Discovery.MaxRequests - discoveryCount),
+                    "discovery");
             }
 
             // Check per-model capability rate limiting
@@ -95,19 +91,19 @@ namespace ConduitLLM.Gateway.Services
                 Logger.LogWarning("Model capability rate limit exceeded for {IpAddress} and model {Model}: {Count} requests in {Window} seconds",
                     ipAddress, modelName, capabilityCount, _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
 
-                return new SecurityCheckResult
-                {
-                    IsAllowed = false,
-                    Reason = $"Capability check rate limit exceeded for model {modelName}",
-                    StatusCode = 429,
-                    Headers = new Dictionary<string, string>
+                var resetsAt = await RateLimitCounter.GetResetAsync(capabilityKey)
+                    ?? DateTime.UtcNow.AddSeconds(_options.RateLimiting.Discovery.CapabilityCheckWindowSeconds);
+
+                return SecurityCheckResult.RateLimited(
+                    $"Capability check rate limit exceeded for model {modelName}",
+                    resetsAt,
+                    _options.RateLimiting.Discovery.MaxCapabilityChecksPerModel,
+                    Math.Max(0, _options.RateLimiting.Discovery.MaxCapabilityChecksPerModel - capabilityCount),
+                    "model-capability",
+                    new Dictionary<string, string>
                     {
-                        ["Retry-After"] = _options.RateLimiting.Discovery.CapabilityCheckWindowSeconds.ToString(),
-                        ["X-RateLimit-Limit"] = _options.RateLimiting.Discovery.MaxCapabilityChecksPerModel.ToString(),
-                        ["X-RateLimit-Scope"] = "model-capability",
                         ["X-RateLimit-Model"] = modelName
-                    }
-                };
+                    });
             }
 
             return SecurityCheckResult.Allowed();

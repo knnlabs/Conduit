@@ -25,6 +25,9 @@ namespace ConduitLLM.Security.Services
 
         /// <summary>Reads the current total without touching it.</summary>
         Task<long> ReadAsync(string key);
+
+        /// <summary>Gets the current fixed window's reset instant without extending it.</summary>
+        Task<DateTime?> GetResetAsync(string key);
     }
 
     /// <summary>
@@ -85,6 +88,20 @@ namespace ConduitLLM.Security.Services
                 return 0;
             }
         }
+
+        public async Task<DateTime?> GetResetAsync(string key)
+        {
+            try
+            {
+                var remaining = await _redis.GetDatabase().KeyTimeToLiveAsync(key);
+                return remaining is null ? null : DateTime.UtcNow.Add(remaining.Value);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Rate limit window expiry unavailable for {Key}", key);
+                return null;
+            }
+        }
     }
 
     /// <summary>
@@ -138,6 +155,9 @@ namespace ConduitLLM.Security.Services
         }
 
         public Task<long> ReadAsync(string key) => Task.FromResult(_cache.Get<long?>(key) ?? 0);
+
+        public Task<DateTime?> GetResetAsync(string key) =>
+            Task.FromResult(_cache.Get<DateTimeOffset?>(ExpiryKey(key))?.UtcDateTime);
 
         private static string ExpiryKey(string key) => $"{key}:expires";
     }
