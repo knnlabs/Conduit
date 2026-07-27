@@ -6,10 +6,10 @@ import {
   MediaGenerationStatus
 } from '@/app/types/media';
 import type { MediaTask, MediaSettings } from '@/app/hooks/createMediaStore';
-import { VIDEO_POLLING_CONFIG, RETRY_CONFIG } from '@/app/config/mediaGeneration';
-
-// Re-export for components that use ErrorResponse
-export type { ErrorResponse } from '@/app/types/media';
+import {
+  MEDIA_RETRY_CONFIG,
+  VIDEO_POLLING_CONFIG,
+} from '@/app/config/mediaGeneration';
 
 // Same shape as the shared MediaSettings
 export type VideoSettings = MediaSettings;
@@ -45,8 +45,6 @@ export interface AsyncVideoGenerationResponse {
   result?: VideoGenerationResult;
   error?: string;
 }
-
-// ErrorResponse is now imported from shared media types
 
 export interface AsyncVideoGenerationRequest {
   prompt: string;
@@ -105,22 +103,13 @@ export const VideoDefaults = {
   POLLING_INTERVAL_MS: VIDEO_POLLING_CONFIG.INTERVAL_MS,
   POLLING_TIMEOUT_MS: VIDEO_POLLING_CONFIG.TIMEOUT_MS,
   MAX_POLLING_INTERVAL_MS: VIDEO_POLLING_CONFIG.MAX_INTERVAL_MS,
-  MAX_RETRY_COUNT: RETRY_CONFIG.MAX_COUNT,
-  MIN_RETRY_DELAY_MS: RETRY_CONFIG.MIN_DELAY_MS,
-  MAX_RETRY_DELAY_MS: RETRY_CONFIG.MAX_DELAY_MS
+  MAX_RETRY_COUNT: MEDIA_RETRY_CONFIG.MAX_COUNT,
+  MIN_RETRY_DELAY_MS: MEDIA_RETRY_CONFIG.MIN_DELAY_MS,
+  MAX_RETRY_DELAY_MS: MEDIA_RETRY_CONFIG.MAX_DELAY_MS
 } as const;
 
-// Helper functions for retry logic
-export const calculateRetryDelay = (retryCount: number): number => {
-  // Exponential backoff: 1s, 2s, 4s (capped at 10s)
-  return Math.min(
-    RETRY_CONFIG.MIN_DELAY_MS * Math.pow(RETRY_CONFIG.BACKOFF_MULTIPLIER, retryCount), 
-    RETRY_CONFIG.MAX_DELAY_MS
-  );
-};
-
 export const canRetry = (task: VideoTask): boolean => {
-  return task.retryCount < RETRY_CONFIG.MAX_COUNT && 
+  return task.retryCount < MEDIA_RETRY_CONFIG.MAX_COUNT &&
          task.status === MediaGenerationStatus.Failed;
 };
 

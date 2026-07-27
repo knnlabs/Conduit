@@ -6,7 +6,7 @@ import {
   ModelCostDto,
   CreateModelCostDto,
   UpdateModelCostDto,
-  ImportResult,
+  ModelCostImportResult,
 } from '../models/modelCost';
 import { PagedResult } from '../models/common-types';
 import { ValidationError } from '../utils/errors';
@@ -174,7 +174,7 @@ export class FetchModelCostService {
   async import(
     modelCosts: CreateModelCostDto[],
     config?: RequestConfig
-  ): Promise<ImportResult> {
+  ): Promise<ModelCostImportResult> {
     const result: ContractBulkImportResult = await this.client['executeContractOperation']('/v1/admin/model-costs/import', HttpMethod.POST,
       (contractClient, options) => contractClient.POST('/v1/admin/model-costs/import', { ...options, body: modelCosts as ContractCreateModelCost[] }), config, modelCosts);
     return { success: result.successCount ?? 0, failed: result.failureCount ?? 0,

@@ -3153,6 +3153,39 @@ export interface components {
       topHitKeys: components["schemas"]["MetricKeyCountDto"][];
       topMissKeys: components["schemas"]["MetricKeyCountDto"][];
     };
+    /** @description Period comparison for trend analysis */
+    AnalyticsPeriodComparison: {
+      /**
+       * Format: double
+       * @description Absolute change in cost compared to previous period
+       */
+      costChange?: number;
+      /**
+       * Format: double
+       * @description Percentage change in cost compared to previous period
+       */
+      costChangePercentage?: number;
+      /**
+       * Format: int32
+       * @description Absolute change in request count compared to previous period
+       */
+      requestChange?: number;
+      /**
+       * Format: double
+       * @description Percentage change in request count compared to previous period
+       */
+      requestChangePercentage?: number;
+      /**
+       * Format: double
+       * @description Change in average response time compared to previous period
+       */
+      responseTimeChange?: number;
+      /**
+       * Format: double
+       * @description Change in error rate compared to previous period
+       */
+      errorRateChange?: number;
+    };
     /** @description Combined analytics summary DTO */
     AnalyticsSummaryDto: {
       /**
@@ -3201,7 +3234,7 @@ export interface components {
       topVirtualKeys?: components["schemas"]["VirtualKeyUsageSummary"][];
       /** @description Daily statistics for the period */
       dailyStats?: components["schemas"]["DailyStatistics"][];
-      comparison?: null | components["schemas"]["PeriodComparison"];
+      comparison?: null | components["schemas"]["AnalyticsPeriodComparison"];
     };
     ApiKeyTestDetails: {
       /** Format: double */
@@ -4096,6 +4129,16 @@ export interface components {
        */
       outputTokens?: number;
       /**
+       * Format: int64
+       * @description Total cached input tokens for this date
+       */
+      cachedInputTokens?: number;
+      /**
+       * Format: int64
+       * @description Total cached write tokens for this date
+       */
+      cachedWriteTokens?: number;
+      /**
        * Format: double
        * @description Average response time for this date
        */
@@ -4251,15 +4294,9 @@ export interface components {
     EphemeralMasterKeyResponse: {
       /** @description The generated ephemeral master key token */
       ephemeralMasterKey?: string;
-      /**
-       * Format: date-time
-       * @description When the key expires
-       */
+      /** Format: date-time */
       expiresAt?: string;
-      /**
-       * Format: int32
-       * @description Number of seconds until the key expires
-       */
+      /** Format: int32 */
       expiresInSeconds?: number;
     };
     /** @description DTO for error statistics */
@@ -5949,39 +5986,6 @@ export interface components {
       totalItems?: number;
       /** Format: int32 */
       totalPages?: number;
-    };
-    /** @description Period comparison for trend analysis */
-    PeriodComparison: {
-      /**
-       * Format: double
-       * @description Absolute change in cost compared to previous period
-       */
-      costChange?: number;
-      /**
-       * Format: double
-       * @description Percentage change in cost compared to previous period
-       */
-      costChangePercentage?: number;
-      /**
-       * Format: int32
-       * @description Absolute change in request count compared to previous period
-       */
-      requestChange?: number;
-      /**
-       * Format: double
-       * @description Percentage change in request count compared to previous period
-       */
-      requestChangePercentage?: number;
-      /**
-       * Format: double
-       * @description Change in average response time compared to previous period
-       */
-      responseTimeChange?: number;
-      /**
-       * Format: double
-       * @description Change in error rate compared to previous period
-       */
-      errorRateChange?: number;
     };
     /** @description Pricing audit event DTO */
     PricingAuditEventDto: {

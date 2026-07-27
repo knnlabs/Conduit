@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server';
 import { logger } from '@/lib/utils/logging';
-import { 
-  HttpError,
-  ConduitError as SdkConduitError
-} from '@/lib/admin-api';
+import { ConduitError } from '@/lib/conduit-common';
 import { 
   getErrorStatusCode, 
   getErrorMessage, 
@@ -27,7 +24,7 @@ export function toApiErrorResponse(error: unknown): NextResponse {
 
   // The SDK represents every backend response as a ConduitError. Preserve its
   // status instead of maintaining an incomplete list of subclasses here.
-  if (error instanceof SdkConduitError) {
+  if (error instanceof ConduitError) {
     const responseStatusCode = statusCode && statusCode >= 100 && statusCode <= 599
       ? statusCode
       : 500;
@@ -80,11 +77,3 @@ export function toApiErrorResponse(error: unknown): NextResponse {
     { status: 500 }
   );
 }
-
-// Legacy alias for backward compatibility
-export const mapApiErrorToResponse = toApiErrorResponse;
-
-// Re-export HttpError for convenience
-export { HttpError };
-// For backward compatibility with code expecting ConduitError
-export { HttpError as ConduitError };

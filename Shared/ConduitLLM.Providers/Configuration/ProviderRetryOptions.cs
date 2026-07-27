@@ -3,7 +3,7 @@ namespace ConduitLLM.Providers.Configuration;
 /// <summary>
 /// Configuration options for HTTP retry policies used by LLM provider clients.
 /// </summary>
-public class RetryOptions
+public class ProviderRetryOptions
 {
     /// <summary>
     /// Section name in the configuration file.

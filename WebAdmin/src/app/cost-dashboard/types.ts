@@ -16,7 +16,7 @@ export interface ProviderCost {
   usage: number;
 }
 
-export interface ModelUsage {
+export interface ModelSpendUsage {
   model: string;
   requests: number;
   cost: number;

@@ -1,13 +1,18 @@
 import {
   AuthError,
   ConduitError,
+  ConflictError,
   InsufficientBalanceError,
   NetworkError,
+  NotFoundError,
   RateLimitError,
   ServerError,
   ValidationError,
+  throwApiError,
   isAuthError,
   isInsufficientBalanceError,
+  isConflictError,
+  isNotFoundError,
   isRateLimitError,
   isValidationError,
 } from "@/lib/conduit-common";
@@ -15,31 +20,20 @@ import {
 export {
   AuthError,
   ConduitError,
+  ConflictError,
   InsufficientBalanceError,
   NetworkError,
+  NotFoundError,
   RateLimitError,
   ServerError,
   ValidationError,
   isAuthError,
   isInsufficientBalanceError,
+  isConflictError,
+  isNotFoundError,
   isRateLimitError,
   isValidationError,
 };
-
-function extractMessage(payload: unknown, fallback: string): string {
-  if (!payload || typeof payload !== "object") return fallback;
-  const record = payload as Record<string, unknown>;
-  const nested = record.error;
-  if (typeof nested === "string") return nested;
-  if (
-    nested &&
-    typeof nested === "object" &&
-    typeof (nested as Record<string, unknown>).message === "string"
-  ) {
-    return (nested as Record<string, unknown>).message as string;
-  }
-  return typeof record.message === "string" ? record.message : fallback;
-}
 
 export async function createGatewayError(
   response: Response,
@@ -51,29 +45,27 @@ export async function createGatewayError(
   } catch {
     payload = undefined;
   }
-  const message = extractMessage(
-    payload,
-    response.statusText || `Gateway request failed (${response.status})`,
-  );
-  const context = { details: payload };
-  switch (response.status) {
-    case 400:
-      return new ValidationError(message, context);
-    case 401:
-    case 403:
-      return new AuthError(message, context);
-    case 402:
-      return new InsufficientBalanceError(message, context);
-    case 429:
-      return new RateLimitError(
-        message,
-        Number(response.headers.get("retry-after") ?? undefined),
-        context,
-      );
-    default:
-      return response.status >= 500
-        ? new ServerError(message, context)
-        : new ConduitError(message, response.status, "GATEWAY_ERROR", context);
+  const headers = Object.fromEntries(response.headers.entries());
+  try {
+    throwApiError({
+      response: {
+        status: response.status,
+        data: payload,
+        headers,
+      },
+      message:
+        response.statusText ||
+        `Gateway request failed (${response.status})`,
+    }, response.url, "unknown");
+  } catch (error) {
+    return error instanceof ConduitError
+      ? error
+      : new ConduitError(
+          error instanceof Error ? error.message : String(error),
+          response.status,
+          "GATEWAY_ERROR",
+          { details: payload },
+        );
   }
 }
 

@@ -14,6 +14,11 @@ import {
 } from '@/lib/gateway-api';
 // Needs raw notifications API: .show is passed as callback to SDK's createToastErrorHandler
 import { notifications } from '@mantine/notifications';
+import {
+  ConduitError,
+  InsufficientBalanceError,
+  ValidationError,
+} from '@/lib/conduit-common';
 
 const LOCAL_STORAGE_KEY = 'conduit-image-generation';
 
@@ -70,12 +75,18 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
     const { prompt, settings } = state;
     
     if (!prompt.trim()) {
-      set({ error: 'Please enter a prompt for image generation', status: MediaGenerationStatus.Failed });
+      set({
+        error: new ValidationError('Please enter a prompt for image generation'),
+        status: MediaGenerationStatus.Failed,
+      });
       return;
     }
 
     if (!settings.model) {
-      set({ error: 'Please select a model for image generation', status: MediaGenerationStatus.Failed });
+      set({
+        error: new ValidationError('Please select a model for image generation'),
+        status: MediaGenerationStatus.Failed,
+      });
       return;
     }
 
@@ -137,16 +148,21 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
         error: errorMessage,
       });
       
-      set({ 
+      const displayError = error instanceof Error
+        ? error
+        : new ConduitError(errorMessage, 500, 'IMAGE_GENERATION_ERROR');
+      set({
         status: MediaGenerationStatus.Failed, 
-        error: errorMessage,
+        error: displayError,
         currentResults: []
       });
       
       // Special handling for balance errors
       if (shouldShowBalanceWarning(error)) {
         set({ 
-          error: 'Please add credits to your account to generate images.'
+          error: new InsufficientBalanceError(
+            'Please add credits to your account to generate images.',
+          ),
         });
       }
     }

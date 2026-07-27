@@ -24155,6 +24155,42 @@
           }
         }
       },
+      "AnalyticsPeriodComparison": {
+        "type": "object",
+        "properties": {
+          "costChange": {
+            "type": "number",
+            "description": "Absolute change in cost compared to previous period",
+            "format": "double"
+          },
+          "costChangePercentage": {
+            "type": "number",
+            "description": "Percentage change in cost compared to previous period",
+            "format": "double"
+          },
+          "requestChange": {
+            "type": "integer",
+            "description": "Absolute change in request count compared to previous period",
+            "format": "int32"
+          },
+          "requestChangePercentage": {
+            "type": "number",
+            "description": "Percentage change in request count compared to previous period",
+            "format": "double"
+          },
+          "responseTimeChange": {
+            "type": "number",
+            "description": "Change in average response time compared to previous period",
+            "format": "double"
+          },
+          "errorRateChange": {
+            "type": "number",
+            "description": "Change in error rate compared to previous period",
+            "format": "double"
+          }
+        },
+        "description": "Period comparison for trend analysis"
+      },
       "AnalyticsSummaryDto": {
         "type": "object",
         "properties": {
@@ -24226,7 +24262,7 @@
               },
               {
                 "description": "Comparison with previous period",
-                "$ref": "#/components/schemas/PeriodComparison"
+                "$ref": "#/components/schemas/AnalyticsPeriodComparison"
               }
             ]
           }
@@ -26726,6 +26762,16 @@
             "description": "Total output tokens for this date",
             "format": "int64"
           },
+          "cachedInputTokens": {
+            "type": "integer",
+            "description": "Total cached input tokens for this date",
+            "format": "int64"
+          },
+          "cachedWriteTokens": {
+            "type": "integer",
+            "description": "Total cached write tokens for this date",
+            "format": "int64"
+          },
           "averageResponseTime": {
             "type": "number",
             "description": "Average response time for this date",
@@ -27055,12 +27101,10 @@
           },
           "expiresAt": {
             "type": "string",
-            "description": "When the key expires",
             "format": "date-time"
           },
           "expiresInSeconds": {
             "type": "integer",
-            "description": "Number of seconds until the key expires",
             "format": "int32"
           }
         },
@@ -30920,42 +30964,6 @@
             "format": "int32"
           }
         }
-      },
-      "PeriodComparison": {
-        "type": "object",
-        "properties": {
-          "costChange": {
-            "type": "number",
-            "description": "Absolute change in cost compared to previous period",
-            "format": "double"
-          },
-          "costChangePercentage": {
-            "type": "number",
-            "description": "Percentage change in cost compared to previous period",
-            "format": "double"
-          },
-          "requestChange": {
-            "type": "integer",
-            "description": "Absolute change in request count compared to previous period",
-            "format": "int32"
-          },
-          "requestChangePercentage": {
-            "type": "number",
-            "description": "Percentage change in request count compared to previous period",
-            "format": "double"
-          },
-          "responseTimeChange": {
-            "type": "number",
-            "description": "Change in average response time compared to previous period",
-            "format": "double"
-          },
-          "errorRateChange": {
-            "type": "number",
-            "description": "Change in error rate compared to previous period",
-            "format": "double"
-          }
-        },
-        "description": "Period comparison for trend analysis"
       },
       "PricingAuditEventDto": {
         "type": "object",

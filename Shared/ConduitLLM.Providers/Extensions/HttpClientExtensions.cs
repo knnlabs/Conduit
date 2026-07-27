@@ -30,8 +30,8 @@ public static class HttpClientExtensions
     public static IServiceCollection AddLLMProviderHttpClients(this IServiceCollection services)
     {
         // Configure retry options from configuration
-        services.AddOptions<RetryOptions>()
-            .BindConfiguration(RetryOptions.SectionName);
+        services.AddOptions<ProviderRetryOptions>()
+            .BindConfiguration(ProviderRetryOptions.SectionName);
 
         foreach (var providerType in ProviderHttpClientNames.RegisteredTypes)
         {
@@ -44,7 +44,7 @@ public static class HttpClientExtensions
 
     /// <summary>
     /// Adds the retry resilience policy (with error tracking when available) to an HttpClient.
-    /// Uses configuration from RetryOptions.
+    /// Uses configuration from ProviderRetryOptions.
     /// </summary>
     /// <remarks>
     /// Deliberately does not attach a Polly timeout policy: provider clients set
@@ -59,8 +59,8 @@ public static class HttpClientExtensions
             .AddPolicyHandler((provider, _) =>
             {
                 var logger = provider.GetService<ILogger<ILLMClient>>();
-                var retryOptions = provider.GetService<IOptions<RetryOptions>>()?.Value
-                    ?? new RetryOptions();
+                var retryOptions = provider.GetService<IOptions<ProviderRetryOptions>>()?.Value
+                    ?? new ProviderRetryOptions();
 
                 // Use error tracking retry policy if error tracking service is available
                 var errorTracker = provider.GetService<IProviderErrorTrackingService>();

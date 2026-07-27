@@ -71,7 +71,7 @@ export function setupGlobalErrorHandler(): () => void {
 /**
  * Error serializer for logging
  */
-export function serializeError(error: unknown): Record<string, unknown> { // Generic error serializer for any error type
+export function serializeErrorForLogging(error: unknown): Record<string, unknown> { // Generic error serializer for any error type
   if (error instanceof Error) {
     const { name, message, stack, ...rest } = error as Error & Record<string, unknown>; // Capture custom error properties
     return {

@@ -8,11 +8,15 @@ import type {
   VideoGenerationResult
 } from '../types';
 import { MediaGenerationStatus, mapLegacyStatus } from '@/app/types/media';
-import { 
+import {
   createToastErrorHandler, 
   shouldShowBalanceWarning,
   type VideoProgressCallbacks
 } from '@/lib/gateway-api';
+import {
+  ConduitError,
+  InsufficientBalanceError,
+} from '@/lib/conduit-common';
 import { notify } from '@/lib/notifications';
 import { notifications } from '@mantine/notifications'; // Required by createToastErrorHandler SDK callback
 
@@ -104,7 +108,11 @@ export function useEnhancedVideoGeneration() {
 
           // Use SDK error handler for consistent error extraction and toast display
           const errorMessage = handleError(error, 'video generation');
-          setError(errorMessage);
+          setError(new ConduitError(
+            errorMessage,
+            500,
+            'VIDEO_GENERATION_ERROR',
+          ));
 
           // Update task status
           updateTask(currentTaskId, {
@@ -129,12 +137,18 @@ export function useEnhancedVideoGeneration() {
     } catch (error) {
       // Use enhanced error handler with toast notifications
       const errorMessage = handleError(error, 'generate video');
-      setError(errorMessage);
+      setError(
+        error instanceof Error
+          ? error
+          : new ConduitError(errorMessage, 500, 'VIDEO_GENERATION_ERROR'),
+      );
       setIsGenerating(false);
       
       // Special handling for balance errors
       if (shouldShowBalanceWarning(error)) {
-        setError('Please add credits to your account to generate videos.');
+        setError(new InsufficientBalanceError(
+          'Please add credits to your account to generate videos.',
+        ));
       }
     } finally {
       setIsGenerating(false);
@@ -162,7 +176,15 @@ export function useEnhancedVideoGeneration() {
       setIsGenerating(false);
     } catch (error) {
       console.error('Error cancelling task:', error);
-      setError(error instanceof Error ? error.message : 'Failed to cancel task');
+      setError(
+        error instanceof Error
+          ? error
+          : new ConduitError(
+              'Failed to cancel task',
+              500,
+              'VIDEO_CANCELLATION_ERROR',
+            ),
+      );
     }
   }, [updateTask, setError]);
 
@@ -203,7 +225,11 @@ export function useEnhancedVideoGeneration() {
         updatedAt: new Date().toISOString(),
       });
       
-      setError(errorMessage);
+      setError(
+        error instanceof Error
+          ? error
+          : new ConduitError(errorMessage, 500, 'VIDEO_RETRY_ERROR'),
+      );
     }
   }, [generateVideo, updateTask, setError]);
 

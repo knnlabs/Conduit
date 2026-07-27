@@ -136,7 +136,7 @@ namespace ConduitLLM.Configuration.Utilities
         /// <summary>
         /// Generates a masked key prefix for display purposes using the hash
         /// </summary>
-        private static string GenerateKeyPrefix(string keyHash)
+        public static string GenerateKeyPrefix(string? keyHash)
         {
             if (string.IsNullOrEmpty(keyHash))
             {

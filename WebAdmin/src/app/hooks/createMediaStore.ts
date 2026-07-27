@@ -39,7 +39,7 @@ export interface MediaSettings {
  */
 export interface BaseMediaState<TTask extends MediaTask, TSettings extends MediaSettings> {
   // UI State
-  error: string | null;
+  error: Error | string | null;
   
   // Settings
   settings: TSettings;
@@ -61,7 +61,7 @@ export interface BaseMediaActions<TTask extends MediaTask, TSettings extends Med
   updateSettings: (updates: Partial<TSettings>) => void;
   
   // Error handling
-  setError: (error: string | null) => void;
+  setError: (error: Error | string | null) => void;
   
   // Task management
   addTask: (task: TTask) => void;
@@ -132,7 +132,7 @@ export function createMediaStore<
       })),
 
     // Error handling
-    setError: (error: string | null) => set({ error }),
+    setError: (error: Error | string | null) => set({ error }),
 
     // Task management
     addTask: (task: TTask) =>

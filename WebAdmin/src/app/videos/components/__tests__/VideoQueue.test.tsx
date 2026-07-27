@@ -40,7 +40,7 @@ jest.mock('@/app/config/mediaGeneration', () => ({
     TIMEOUT_MS: 300000,
     MAX_INTERVAL_MS: 5000
   },
-  RETRY_CONFIG: {
+  MEDIA_RETRY_CONFIG: {
     MAX_COUNT: 3,
     MIN_DELAY_MS: 1000,
     MAX_DELAY_MS: 10000

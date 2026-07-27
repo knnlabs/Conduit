@@ -233,10 +233,8 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
     {
         ArgumentNullException.ThrowIfNull(execution);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-
             if (execution.Id == Guid.Empty)
             {
                 execution.Id = Guid.NewGuid();
@@ -246,17 +244,7 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
             await context.SaveChangesAsync(cancellationToken);
 
             return execution.Id;
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(ex, "Database error creating {EntityType}", EntityTypeName);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating {EntityType}", EntityTypeName);
-            throw;
-        }
+        }, "creating", cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -264,10 +252,8 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
     {
         ArgumentNullException.ThrowIfNull(execution);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-
             try
             {
                 // Increment version for optimistic concurrency
@@ -290,13 +276,7 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
                 Logger.LogWarning(ex, "Concurrency conflict updating execution {ExecutionId}", execution.Id);
                 return false;
             }
-        }
-        catch (Exception ex) when (ex is not DbUpdateConcurrencyException)
-        {
-            Logger.LogError(ex, "Error updating {EntityType} {ExecutionId}",
-                EntityTypeName, LoggingSanitizer.S(execution.Id));
-            throw;
-        }
+        }, $"updating ID {execution.Id}", cancellationToken);
     }
 
     /// <inheritdoc/>

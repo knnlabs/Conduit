@@ -2,7 +2,7 @@
  * Base response types shared across all Conduit SDK clients
  */
 
-export interface ErrorResponse {
+export interface ApiErrorEnvelope {
   error: string;
   message?: string;
   details?: Record<string, unknown>;
@@ -57,7 +57,7 @@ export interface Usage {
 /**
  * Performance metrics for API calls
  */
-export interface PerformanceMetrics {
+export interface ProviderRequestPerformanceMetrics {
   provider_name: string;
   provider_response_time_ms: number;
   total_response_time_ms: number;

@@ -325,26 +325,13 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                OnBeforeCreate(model);
-                GetDbSet(context).Add(model);
-                await context.SaveChangesAsync(cancellationToken);
-                return model;
-            }, cancellationToken);
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(ex, "Database error creating {EntityType}", EntityTypeName);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating {EntityType}", EntityTypeName);
-            throw;
-        }
+            OnBeforeCreate(model);
+            GetDbSet(context).Add(model);
+            await context.SaveChangesAsync(cancellationToken);
+            return model;
+        }, "creating", cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -352,25 +339,12 @@ public class ModelRepository : RepositoryBase<Model, int>, IModelRepository
     {
         ArgumentNullException.ThrowIfNull(model);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                OnBeforeUpdate(model);
-                GetDbSet(context).Update(model);
-                await context.SaveChangesAsync(cancellationToken);
-                return model;
-            }, cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            Logger.LogError(ex, "Concurrency error updating {EntityType} with ID {Id}", EntityTypeName, model.Id);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error updating {EntityType} with ID {Id}", EntityTypeName, model.Id);
-            throw;
-        }
+            OnBeforeUpdate(model);
+            GetDbSet(context).Update(model);
+            await context.SaveChangesAsync(cancellationToken);
+            return model;
+        }, $"updating ID {model.Id}", cancellationToken);
     }
 }

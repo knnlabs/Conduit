@@ -6,12 +6,12 @@ import {
   gatewayVideoTaskSchema,
   parseCriticalResponse,
   virtualKeyIssueSchema,
-  webAdminEphemeralKeySchema,
+  webAdminEphemeralMasterKeySchema,
 } from '../critical-response-validation';
 
 describe('critical API response validation', () => {
   it('accepts a complete WebAdmin ephemeral credential', () => {
-    expect(parseCriticalResponse(webAdminEphemeralKeySchema, {
+    expect(parseCriticalResponse(webAdminEphemeralMasterKeySchema, {
       ephemeralMasterKey: 'master_ephemeral',
       expiresAt: '2026-07-20T00:00:00Z',
       expiresInSeconds: 60,

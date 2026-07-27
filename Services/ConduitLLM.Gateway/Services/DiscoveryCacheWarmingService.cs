@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -44,48 +45,43 @@ namespace ConduitLLM.Gateway.Services
             _logger.LogDebug("Waiting {Seconds} seconds before starting cache warming", _options.WarmupStartupDelaySeconds);
             await Task.Delay(startupDelay, stoppingToken);
 
-            // Try to acquire distributed lock if enabled
-            IDistributedLock? distributedLock = null;
-            if (_options.UseDistributedLockForWarming)
+            if (!_options.UseDistributedLockForWarming)
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var lockService = scope.ServiceProvider.GetService<IDistributedLockService>();
-                    
-                    if (lockService != null)
-                    {
-                        _logger.LogDebug("Attempting to acquire distributed lock for cache warming");
-                        
-                        var lockTimeout = TimeSpan.FromSeconds(_options.DistributedLockTimeoutSeconds);
-                        distributedLock = await lockService.AcquireLockWithRetryAsync(
-                            "discovery:cache:warming",
-                            TimeSpan.FromMinutes(5), // Lock expiry time
-                            lockTimeout,
-                            TimeSpan.FromSeconds(1), // Retry delay
-                            stoppingToken);
-                        
-                        if (distributedLock != null)
-                        {
-                            _logger.LogDebug("Acquired distributed lock for cache warming");
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Distributed lock service not available, proceeding without coordination");
-                    }
-                }
-                catch (TimeoutException)
-                {
-                    _logger.LogInformation("Another instance is performing cache warming, skipping");
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to acquire distributed lock, proceeding without coordination");
-                }
+                await WarmCachesAsync(stoppingToken);
+                return;
             }
 
+            using var lockScope = _serviceProvider.CreateScope();
+            var lockService = lockScope.ServiceProvider.GetService<IDistributedLockService>();
+            _logger.LogDebug("Attempting to acquire distributed lock for cache warming");
+
+            var result = await lockService.RunWithOptionalLockAsync(
+                "discovery:cache:warming",
+                TimeSpan.FromMinutes(5),
+                TimeSpan.FromSeconds(_options.DistributedLockTimeoutSeconds),
+                TimeSpan.FromSeconds(1),
+                async lockAcquired =>
+                {
+                    if (lockAcquired)
+                    {
+                        _logger.LogDebug("Acquired distributed lock for cache warming");
+                    }
+
+                    await WarmCachesAsync(stoppingToken);
+                    return true;
+                },
+                _logger,
+                stoppingToken,
+                skipOnTimeout: true);
+
+            if (!result.Executed)
+            {
+                _logger.LogInformation("Another instance is performing cache warming, skipping");
+            }
+        }
+
+        private async Task WarmCachesAsync(CancellationToken stoppingToken)
+        {
             try
             {
                 _logger.LogInformation("Starting discovery cache warming");
@@ -130,22 +126,6 @@ namespace ConduitLLM.Gateway.Services
             {
                 // Log error but don't throw - we don't want cache warming failures to prevent startup
                 _logger.LogError(ex, "Error during discovery cache warming - application will continue without warmed cache");
-            }
-            finally
-            {
-                // Release the distributed lock if we acquired one
-                if (distributedLock != null)
-                {
-                    try
-                    {
-                        await distributedLock.ReleaseAsync();
-                        _logger.LogDebug("Released distributed lock for cache warming");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error releasing distributed lock");
-                    }
-                }
             }
         }
 

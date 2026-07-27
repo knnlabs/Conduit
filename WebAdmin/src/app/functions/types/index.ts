@@ -146,18 +146,6 @@ export function getExecutionStateBadgeColor(state: string): string {
     : 'gray';
 }
 
-export function formatExecutionDuration(ms: number | null | undefined): string {
-  if (ms === null || ms === undefined || !Number.isFinite(ms)) return '-';
-  if (ms < 1000) return `${Math.round(ms)}ms`;
-  return `${(ms / 1000).toFixed(2)}s`;
-}
-
-export function formatExecutionCost(cost: number | null | undefined): string {
-  return cost === null || cost === undefined || !Number.isFinite(cost)
-    ? '-'
-    : `$${cost.toFixed(6)}`;
-}
-
 function normalizeExecutionState(state: string): ExecutionState | undefined {
   const normalized = state.toLowerCase().replace(/[_\s-]/g, '');
   return Object.values(ExecutionState).find(

@@ -4767,7 +4767,6 @@
           },
           "expires_at": {
             "type": "string",
-            "description": "When the ephemeral key expires",
             "format": "date-time"
           },
           "expires_in_seconds": {
@@ -4776,7 +4775,6 @@
               "integer",
               "string"
             ],
-            "description": "The TTL in seconds",
             "format": "int32"
           }
         },
@@ -4854,7 +4852,7 @@
             }
           }
         },
-        "description": "Public file metadata."
+        "description": "Public file metadata contract. Kept separate from the Core storage model so\r\nAPI requiredness and wire names remain stable as the internal model evolves."
       },
       "FunctionCall": {
         "required": [

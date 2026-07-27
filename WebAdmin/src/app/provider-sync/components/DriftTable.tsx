@@ -40,11 +40,14 @@ import {
 } from '../utils/driftHelpers';
 import { DriftDiffView } from './DriftDiffView';
 import { DriftFilters } from './DriftFilters';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
+
+const getDriftId = (item: DriftItemDto) => item.id;
+const isPendingDrift = (item: DriftItemDto) => item.status === 'Pending';
 
 export function DriftTable() {
   const [status, setStatus] = useState<string | null>('Pending');
   const [driftType, setDriftType] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [viewingItem, setViewingItem] = useState<DriftItemDto | null>(null);
 
   const filter: DriftItemFilter = useMemo(
@@ -61,7 +64,7 @@ export function DriftTable() {
     queryFn: () => fetchDrift(filter),
   });
 
-  const items = data ?? [];
+  const items = useMemo(() => data ?? [], [data]);
 
   const applyMutation = useApplyDrift();
   const dismissMutation = useDismissDrift();
@@ -69,45 +72,27 @@ export function DriftTable() {
   const bulkDismissMutation = useBulkDismissDrift();
 
   // Only Pending items are actionable (apply/dismiss).
-  const actionableItems = items.filter((i) => i.status === 'Pending');
-  const allSelected =
-    actionableItems.length > 0 && actionableItems.every((i) => selectedIds.has(i.id));
-  const someSelected = selectedIds.size > 0 && !allSelected;
+  const actionableItems = useMemo(
+    () => items.filter(isPendingDrift),
+    [items],
+  );
+  const {
+    selectedKeys: selectedIds,
+    isAllSelected: allSelected,
+    isIndeterminate: someSelected,
+    toggleOne,
+    toggleAll,
+    clearSelection,
+    deselect,
+  } = useBulkSelection({
+    items: actionableItems,
+    getKey: getDriftId,
+  });
   const busy =
     applyMutation.isPending ||
     dismissMutation.isPending ||
     bulkApplyMutation.isPending ||
     bulkDismissMutation.isPending;
-
-  const toggleOne = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const toggleAll = () => {
-    setSelectedIds((prev) =>
-      prev.size === actionableItems.length && actionableItems.length > 0
-        ? new Set()
-        : new Set(actionableItems.map((i) => i.id))
-    );
-  };
-
-  const clearSelection = () => setSelectedIds(new Set());
-
-  const deselect = (id: number) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
 
   const applyItem = (item: DriftItemDto) => {
     const warnings = driftWarnings(item);

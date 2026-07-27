@@ -58,7 +58,7 @@ export type {
   CostEstimate,
   ModelCostComparison,
   ModelCostOverview,
-  ImportResult,
+  ModelCostImportResult,
 } from './models/modelCost';
 // Re-export analytics types (includes the main ExportParams/ExportResult we'll use)
 export * from './models/analytics';
@@ -107,8 +107,8 @@ export type {
   ProviderTool,
   CreateProviderTool,
   UpdateProviderTool,
-  ImportResult as ProviderToolImportResult,
-  ProviderOption as ToolProviderOption
+  ProviderToolImportResult,
+  ToolProviderOption
 } from './services/ProviderToolsService';
 // SignalR services removed - WebAdmin uses React Query instead of SignalR for data fetching
 export {

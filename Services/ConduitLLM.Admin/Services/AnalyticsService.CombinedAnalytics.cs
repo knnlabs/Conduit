@@ -132,7 +132,7 @@ namespace ConduitLLM.Admin.Services
                 DailyStats = new List<DailyStatistics>(),
                 TopModels = new List<ModelUsageSummary>(),
                 TopVirtualKeys = new List<VirtualKeyUsageSummary>(),
-                Comparison = new PeriodComparison()
+                Comparison = new AnalyticsPeriodComparison()
             };
         }
 

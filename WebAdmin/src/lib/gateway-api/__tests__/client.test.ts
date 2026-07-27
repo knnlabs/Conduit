@@ -2,9 +2,12 @@ import {
   buildMessageContent,
   GatewayClient,
   ModelCapability,
+  ConflictError,
+  NotFoundError,
   RateLimitError,
   type ChatAttachment,
 } from "..";
+import { RetryStrategyType } from "@/lib/conduit-common";
 
 describe("GatewayClient", () => {
   beforeEach(() => jest.clearAllMocks());
@@ -104,6 +107,7 @@ describe("GatewayClient", () => {
     const client = new GatewayClient({
       apiKey: "key",
       baseURL: "https://gateway.test",
+      retries: 0,
     });
     const oversized = { size: 101 * 1024 * 1024, type: "image/png" } as Blob;
     expect(client.media.validateFileSize(oversized, "Image")).toEqual(
@@ -122,6 +126,7 @@ describe("GatewayClient", () => {
     const client = new GatewayClient({
       apiKey: "key",
       baseURL: "https://gateway.test",
+      retries: 0,
     });
 
     await expect(client.discovery.getModels()).rejects.toEqual(
@@ -132,6 +137,66 @@ describe("GatewayClient", () => {
     );
     await expect(client.discovery.getModels()).rejects.toBeInstanceOf(
       RateLimitError,
+    );
+  });
+
+  it("retries retryable HTTP responses through the shared contract pipeline", async () => {
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(jsonResponse({ error: "Unavailable" }, 503))
+      .mockResolvedValueOnce(jsonResponse({ data: [], count: 0 }));
+    const client = new GatewayClient({
+      apiKey: "key",
+      baseURL: "https://gateway.test",
+      retryStrategy: {
+        type: RetryStrategyType.FIXED_DELAY,
+        maxRetries: 1,
+        delayMs: 0,
+      },
+    });
+
+    await expect(client.discovery.getModels()).resolves.toEqual({
+      data: [],
+      count: 0,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [404, NotFoundError],
+    [409, ConflictError],
+  ])("maps Gateway status %i through the common hierarchy", async (status, ErrorType) => {
+    jest.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse({ error: { message: "Mapped error" } }, status),
+    );
+    const client = new GatewayClient({
+      apiKey: "key",
+      baseURL: "https://gateway.test",
+      retries: 0,
+    });
+
+    await expect(client.discovery.getModels()).rejects.toBeInstanceOf(ErrorType);
+  });
+
+  it("preserves rate-limit scope from Gateway responses", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValue({
+      ...jsonResponse({ error: { message: "Busy model" } }, 429),
+      headers: new Headers([
+        ["retry-after", "3"],
+        ["x-ratelimit-scope", "model:sora-2:rpm"],
+      ]),
+    } as Response);
+    const client = new GatewayClient({
+      apiKey: "key",
+      baseURL: "https://gateway.test",
+      retries: 0,
+    });
+
+    await expect(client.discovery.getModels()).rejects.toEqual(
+      expect.objectContaining({
+        retryAfter: 3,
+        scope: "model:sora-2:rpm",
+      }),
     );
   });
 

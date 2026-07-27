@@ -369,7 +369,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 Id = k.Id,
                 KeyName = k.KeyName,
-                KeyPrefix = k.KeyHash?.Length > 10 ? k.KeyHash.Substring(0, 10) + "..." : k.KeyHash,
+                KeyPrefix = VirtualKeyUtilities.GenerateKeyPrefix(k.KeyHash),
                 AllowedModels = VirtualKeyUtilities.ParseAllowedModels(k.AllowedModels),
                 VirtualKeyGroupId = k.VirtualKeyGroupId,
                 IsEnabled = k.IsEnabled,

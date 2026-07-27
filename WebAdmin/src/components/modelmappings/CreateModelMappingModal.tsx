@@ -24,6 +24,7 @@ import { useModelAssociations } from '@/hooks/useModelAssociations';
 import { AssociationProviderSelect } from './AssociationProviderSelect';
 import { notify } from '@/lib/notifications';
 import type { CreateModelProviderMappingDto } from '@/lib/admin-api';
+import { createMappingFormValidation } from './mappingFormValidation';
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -57,26 +58,9 @@ export function CreateModelMappingModal({
       isEnabled: true,
     },
     validate: {
-      modelAlias: (value, values) => {
-        if (!value?.trim()) return 'Model alias is required';
-
-        const selectedProviderId = values.associationProviderId
-          ? Number(values.associationProviderId.split(':')[1])
-          : null;
-        const duplicate = selectedProviderId === null ? undefined : mappings.find(m =>
-          m.modelAlias.toLowerCase() === value.trim().toLowerCase() &&
-          m.providerId === selectedProviderId
-        );
-        
-        if (duplicate) {
-          return `Model alias '${value}' already exists for this provider`;
-        }
-        
-        return null;
-      },
+      ...createMappingFormValidation(mappings),
       modelId: (value) => !value ? 'Model selection is required' : null,
       associationProviderId: (value) => !value ? 'Provider configuration is required' : null,
-      priority: (value) => value < 0 || value > 1000 ? 'Priority must be between 0 and 1000' : null,
     },
   });
 

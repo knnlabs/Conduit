@@ -836,15 +836,9 @@ export interface components {
     EphemeralKeyResponse: {
       /** @description The ephemeral key token to use for authentication */
       ephemeral_key?: string;
-      /**
-       * Format: date-time
-       * @description When the ephemeral key expires
-       */
+      /** Format: date-time */
       expires_at?: string;
-      /**
-       * Format: int32
-       * @description The TTL in seconds
-       */
+      /** Format: int32 */
       expires_in_seconds?: number | string;
     };
     /** @enum {unknown} */
@@ -855,7 +849,8 @@ export interface components {
       | "failed"
       | "cancelled"
       | "timed_out";
-    /** @description Public file metadata. */
+    /** @description Public file metadata contract. Kept separate from the Core storage model so
+     *     API requiredness and wire names remain stable as the internal model evolves. */
     FileMetadataResponse: {
       file_name: null | string;
       content_type: string;

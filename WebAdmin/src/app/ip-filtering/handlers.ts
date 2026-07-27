@@ -6,7 +6,8 @@ import type { IpFilterTemplate, IpTemplateRule } from '@/components/ip-filtering
 
 export function useIpFilteringHandlers(
   fetchIpRules: () => Promise<void>,
-  setSelectedRules: React.Dispatch<React.SetStateAction<string[]>>
+  clearSelection: () => void,
+  deselectRule: (ruleId: string) => void,
 ) {
   const { updateIpRule, deleteIpRule, createIpRule } = useSecurityApi();
 
@@ -46,7 +47,7 @@ export function useIpFilteringHandlers(
       notify.success(`Successfully ${operation}d ${selectedRules.length} rule(s)`);
 
       await fetchIpRules();
-      setSelectedRules([]);
+      clearSelection();
     } catch (error) {
       notify.error(error, `Failed to ${operation} rules`);
     }
@@ -179,7 +180,7 @@ export function useIpFilteringHandlers(
     try {
       await deleteIpRule(ruleId);
       await fetchIpRules();
-      setSelectedRules(prev => prev.filter(id => id !== ruleId));
+      deselectRule(ruleId);
     } catch (error) {
       console.error('Failed to delete IP rule:', error);
     }

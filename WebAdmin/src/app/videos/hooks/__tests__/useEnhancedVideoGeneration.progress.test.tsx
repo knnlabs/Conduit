@@ -162,7 +162,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
       });
 
       expect(hook.result.current.isGenerating).toBe(false);
-      expect(storeMocks.mockSetError).toHaveBeenCalledWith(expect.any(String));
+      expect(storeMocks.mockSetError).toHaveBeenLastCalledWith(expect.any(Error));
     });
 
     it('should handle progress callbacks correctly', async () => {

@@ -32,11 +32,11 @@ export {
   isErrorLike,
 
   // Utility functions
-  serializeError,
+  serializeConduitError,
   deserializeError,
   getErrorMessage,
   getErrorStatusCode,
-  handleApiError,
+  throwApiError,
   createErrorFromResponse,
 
   // Types

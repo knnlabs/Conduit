@@ -33,9 +33,8 @@ import {
   ExecutionState,
   getExecutionStateName,
   getExecutionStateBadgeColor,
-  formatExecutionDuration,
-  formatExecutionCost,
 } from '../types';
+import { formatCost, formatDuration } from '@/lib/utils/formatters';
 
 export default function FunctionExecutionsPage() {
   const { executeWithAdmin } = useAdminClient();
@@ -274,13 +273,13 @@ export default function FunctionExecutionsPage() {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatExecutionDuration(execution.durationMs)}</Text>
+                      <Text size="sm">{formatDuration(execution.durationMs)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatExecutionCost(execution.cost.estimated)}</Text>
+                      <Text size="sm">{formatCost(execution.cost.estimated)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatExecutionCost(execution.cost.actual)}</Text>
+                      <Text size="sm">{formatCost(execution.cost.actual)}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm" c="dimmed">
@@ -333,13 +332,13 @@ export default function FunctionExecutionsPage() {
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Duration</Text>
-                <Text size="sm">{formatExecutionDuration(selectedExecution.durationMs)}</Text>
+                <Text size="sm">{formatDuration(selectedExecution.durationMs)}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Costs</Text>
                 <Text size="sm">
-                  Estimated: {formatExecutionCost(selectedExecution.cost.estimated)}<br />
-                  Actual: {formatExecutionCost(selectedExecution.cost.actual)}
+                  Estimated: {formatCost(selectedExecution.cost.estimated)}<br />
+                  Actual: {formatCost(selectedExecution.cost.actual)}
                 </Text>
               </Grid.Col>
               <Grid.Col span={6}>

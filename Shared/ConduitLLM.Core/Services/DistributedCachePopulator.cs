@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Extensions;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services
@@ -91,31 +92,16 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Step 4: Acquire distributed lock to prevent cross-instance stampede
-                IDistributedLock? distributedLock = null;
-                try
-                {
-                    distributedLock = await _lockService.AcquireLockWithRetryAsync(
-                        lockKey,
-                        LockExpiry,
-                        LockTimeout,
-                        RetryDelay,
-                        cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to acquire distributed lock for {LockKey}, proceeding without it", lockKey);
-                    // Proceed without distributed lock - local lock still provides some protection
-                }
-
-                try
+                var result = await _lockService.RunWithOptionalLockAsync(
+                    lockKey,
+                    LockExpiry,
+                    LockTimeout,
+                    RetryDelay,
+                    async lockAcquired =>
                 {
                     // Step 5: Triple-check cache after acquiring distributed lock
                     // Another instance may have populated it while we were waiting
-                    if (distributedLock != null)
+                    if (lockAcquired)
                     {
                         try
                         {
@@ -135,22 +121,10 @@ namespace ConduitLLM.Core.Services
                     // Step 6: Call factory (database fallback)
                     _logger.LogDebug("Executing factory for {LockKey}", lockKey);
                     return await factory();
-                }
-                finally
-                {
-                    // Step 7: Release distributed lock
-                    if (distributedLock != null)
-                    {
-                        try
-                        {
-                            await distributedLock.ReleaseAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Error releasing distributed lock for {LockKey}", lockKey);
-                        }
-                    }
-                }
+                },
+                    _logger,
+                    cancellationToken);
+                return result.Value;
             }
             finally
             {

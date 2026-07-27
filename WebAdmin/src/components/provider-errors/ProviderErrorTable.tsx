@@ -2,6 +2,7 @@ import { Table, Badge, Group, Text, Button, ActionIcon, Tooltip } from '@mantine
 import { IconRefresh, IconKey } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import type { components } from '@/lib/admin-api';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 type ProviderErrorSummaryDto = components['schemas']['ProviderErrorSummaryDto'];
 
@@ -40,21 +41,6 @@ export function ProviderErrorTable({ summaries, onClearErrors }: ProviderErrorTa
         </div>
       ),
     });
-  };
-
-  const formatLastError = (lastError: string | undefined | null) => {
-    if (!lastError) return 'N/A';
-    const date = new Date(lastError);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const minutes = Math.floor(diff / 60000);
-    
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes} min ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-    const days = Math.floor(hours / 24);
-    return `${days} day${days > 1 ? 's' : ''} ago`;
   };
 
   if (summaries.length === 0) {
@@ -129,7 +115,9 @@ export function ProviderErrorTable({ summaries, onClearErrors }: ProviderErrorTa
             </Table.Td>
             <Table.Td>
               <Text size="sm" c="dimmed">
-                {formatLastError(summary.lastError)}
+                {summary.lastError
+                  ? <TimeDisplay date={summary.lastError} format="relative" />
+                  : 'N/A'}
               </Text>
             </Table.Td>
             <Table.Td>

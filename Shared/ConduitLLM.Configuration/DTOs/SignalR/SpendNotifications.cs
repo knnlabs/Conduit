@@ -56,7 +56,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// <summary>
         /// Gets or sets the request metadata.
         /// </summary>
-        public RequestMetadata? Metadata { get; set; }
+        public SpendRequestMetadata? Metadata { get; set; }
     }
 
     /// <summary>
@@ -159,7 +159,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// <summary>
         /// Gets or sets the period comparison.
         /// </summary>
-        public PeriodComparison? Comparison { get; set; }
+        public SpendPeriodComparison? Comparison { get; set; }
     }
 
     /// <summary>
@@ -217,7 +217,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     /// <summary>
     /// Metadata for a request.
     /// </summary>
-    public class RequestMetadata
+    public class SpendRequestMetadata
     {
         /// <summary>
         /// Gets or sets the request ID.
@@ -305,7 +305,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     /// <summary>
     /// Period comparison data.
     /// </summary>
-    public class PeriodComparison
+    public class SpendPeriodComparison
     {
         /// <summary>
         /// Gets or sets the previous period spend.

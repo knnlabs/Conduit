@@ -112,7 +112,7 @@ export interface RequestLogPageResult {
 /**
  * Filter options for request logs
  */
-export interface RequestLogFilters {
+export interface RequestLogFormFilters {
   startDate?: Date;
   endDate?: Date;
   model?: string;
@@ -135,7 +135,7 @@ export interface RequestLogStats {
 interface UseRequestLogsOptions {
   page: number;
   pageSize: number;
-  filters?: RequestLogFilters;
+  filters?: RequestLogFormFilters;
   autoRefresh?: boolean;
   refreshInterval?: number;
 }
@@ -149,6 +149,22 @@ interface UseRequestLogsResult {
   error: Error | null;
   stats: RequestLogStats | null;
   refetch: () => Promise<void>;
+}
+
+export function requestLogFiltersToApiParams(
+  filters: RequestLogFormFilters | undefined,
+  page: number,
+  pageSize: number,
+) {
+  return {
+    page,
+    pageSize,
+    startDate: filters?.startDate?.toISOString(),
+    endDate: filters?.endDate?.toISOString(),
+    model: filters?.model,
+    virtualKeyId: filters?.virtualKeyId?.toString(),
+    statusCode: filters?.status,
+  };
 }
 
 /**
@@ -174,15 +190,9 @@ export function useRequestLogs({
     ],
     queryFn: async () => {
       const result = await withAdminClient(async (client) => {
-        return client.analytics.getRequestLogs({
-          page,
-          pageSize,
-          startDate: filters?.startDate?.toISOString(),
-          endDate: filters?.endDate?.toISOString(),
-          model: filters?.model,
-          virtualKeyId: filters?.virtualKeyId?.toString(),
-          statusCode: filters?.status,
-        });
+        return client.analytics.getRequestLogs(
+          requestLogFiltersToApiParams(filters, page, pageSize),
+        );
       });
 
       const items = result.items ?? [];

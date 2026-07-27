@@ -67,7 +67,8 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
     }
 
     /// <summary>
-    /// Data transfer object for refund breakdown by component
+    /// Data transfer object for refund breakdown by component.
+    /// Kept as a transport-owned type so Configuration does not depend on Core.
     /// </summary>
     public class RefundBreakdownDto
     {

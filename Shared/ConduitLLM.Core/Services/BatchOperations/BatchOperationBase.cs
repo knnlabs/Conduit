@@ -23,7 +23,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
         /// <summary>
         /// Options for retry behavior
         /// </summary>
-        protected virtual RetryOptions RetryOptions => new()
+        protected virtual BatchRetryOptions RetryOptions => new()
         {
             MaxRetries = 3,
             InitialDelay = TimeSpan.FromSeconds(1),
@@ -348,7 +348,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
     /// <summary>
     /// Options for retry behavior in batch operations
     /// </summary>
-    public class RetryOptions
+    public class BatchRetryOptions
     {
         /// <summary>
         /// Maximum number of retry attempts

@@ -81,7 +81,7 @@ describe('RequestLogsTable', () => {
     const onViewVirtualKey = renderTable();
 
     expect(screen.getByText('Duration')).toBeInTheDocument();
-    expect(screen.getByText('6.73 s')).toBeInTheDocument();
+    expect(screen.getByText('6.7s')).toBeInTheDocument();
 
     const keyButton = screen.getByRole('button', { name: 'View virtual key Customer API' });
     fireEvent.focus(keyButton);

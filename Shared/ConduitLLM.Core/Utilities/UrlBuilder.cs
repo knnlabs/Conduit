@@ -1,7 +1,5 @@
 using System.Text;
-using ConduitLLM.Core.Utilities;
-
-namespace ConduitLLM.Providers.Helpers
+namespace ConduitLLM.Core.Utilities
 {
     /// <summary>
     /// Provides standardized URL construction methods for all providers.

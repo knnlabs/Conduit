@@ -24,16 +24,6 @@ export type BulkDeleteResult = components['schemas']['BulkDeleteResult'];
 // For bulk update operations
 export type BulkUpdateResult = components['schemas']['BulkUpdateResult'];
 
-// For discovered models
-export interface DiscoveredModel {
-  id: string;
-  name: string;
-  description?: string;
-  capabilities?: string[];
-  maxTokens?: number;
-}
-
-
 // For model routing information
 export interface ModelRoutingInfo {
   modelAlias: string;

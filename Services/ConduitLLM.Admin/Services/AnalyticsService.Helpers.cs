@@ -156,6 +156,8 @@ namespace ConduitLLM.Admin.Services
                         Cost = d.Cost,
                         InputTokens = d.InputTokens,
                         OutputTokens = d.OutputTokens,
+                        CachedInputTokens = d.CachedInputTokens,
+                        CachedWriteTokens = d.CachedWriteTokens,
                         AverageResponseTime = d.AverageResponseTime,
                         ErrorCount = d.ErrorCount
                     })
@@ -180,6 +182,8 @@ namespace ConduitLLM.Admin.Services
                         Cost = g.Sum(d => d.Cost),
                         InputTokens = g.Sum(d => d.InputTokens),
                         OutputTokens = g.Sum(d => d.OutputTokens),
+                        CachedInputTokens = g.Sum(d => d.CachedInputTokens),
+                        CachedWriteTokens = g.Sum(d => d.CachedWriteTokens),
                         AverageResponseTime = totalRequests > 0
                             ? g.Sum(d => d.AverageResponseTime * d.RequestCount) / totalRequests
                             : 0,
@@ -284,7 +288,7 @@ namespace ConduitLLM.Admin.Services
         /// Compares current period with previous period using database-level summaries.
         /// Each period is a single aggregate query instead of loading all rows.
         /// </summary>
-        private async Task<PeriodComparison> CalculatePreviousPeriodComparison(DateTime startDate, DateTime endDate)
+        private async Task<AnalyticsPeriodComparison> CalculatePreviousPeriodComparison(DateTime startDate, DateTime endDate)
         {
             var periodLength = endDate - startDate;
             var previousStart = startDate - periodLength;
@@ -305,7 +309,7 @@ namespace ConduitLLM.Admin.Services
                 ? previous.ErrorCount * 100.0 / previous.TotalRequests
                 : 0;
 
-            return new PeriodComparison
+            return new AnalyticsPeriodComparison
             {
                 CostChange = current.TotalCost - previous.TotalCost,
                 CostChangePercentage = previous.TotalCost > 0

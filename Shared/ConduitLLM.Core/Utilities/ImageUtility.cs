@@ -123,13 +123,10 @@ namespace ConduitLLM.Core.Utilities
             if (url.StartsWith("data:image/"))
                 return true;
 
-            // Check if it's a valid URI
-            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
+            if (!UrlBuilder.IsValidUrl(url))
                 return false;
 
-            // Only allow HTTP and HTTPS
-            if (uri.Scheme != "http" && uri.Scheme != "https")
-                return false;
+            var uri = new Uri(url, UriKind.Absolute);
 
             // If allowed domains are specified, check against them
             if (allowedDomains != null)

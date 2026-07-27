@@ -15,11 +15,16 @@ import {
   UnstyledButton,
 } from '@mantine/core';
 import { IconEye, IconInfoCircle } from '@tabler/icons-react';
-import { formatters } from '@/lib/utils/formatters';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
 import type { RequestLogEntry } from '@/hooks/useRequestLogs';
 import { RequestLogDetailsDrawer } from './RequestLogDetailsDrawer';
-import { formatCost, formatDuration, getHttpStatusColor } from './formatters';
+import {
+  formatCost,
+  formatDuration,
+  formatters,
+  getHttpStatusColor,
+} from './formatters';
+import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 interface RequestLogsTableProps {
   data: RequestLogEntry[];
@@ -49,21 +54,6 @@ function getRequestTypeColor(requestType: string): string {
     case 'function': return 'teal';
     default: return 'gray';
   }
-}
-
-function formatRelativeTime(timestamp: string): string {
-  const date = new Date(timestamp);
-  const diffMs = Date.now() - date.getTime();
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffSec < 60) return 'Just now';
-  if (diffMin < 60) return `${diffMin} min ago`;
-  if (diffHour < 24) return `${diffHour} hr ago`;
-  if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-  return formatters.date(timestamp);
 }
 
 function getVirtualKeyStatus(virtualKey?: VirtualKeyDto): string {
@@ -200,7 +190,9 @@ export function RequestLogsTable({
       <Table.Tr key={log.id}>
         <Table.Td>
           <Tooltip label={formatters.date(log.timestamp, { includeTime: true, includeSeconds: true, relativeDays: 0 })} position="top-start">
-            <Text size="sm">{formatRelativeTime(log.timestamp)}</Text>
+            <Text size="sm">
+              <TimeDisplay date={log.timestamp} format="relative" />
+            </Text>
           </Tooltip>
         </Table.Td>
         <Table.Td>

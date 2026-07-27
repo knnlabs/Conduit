@@ -28,8 +28,11 @@ import type { IpRule } from '@/hooks/useSecurityApi';
 
 interface IpRulesTableProps {
   data?: IpRule[];
-  selectedRules: string[];
-  onSelectionChange: (ruleIds: string[]) => void;
+  selectedRules: ReadonlySet<string>;
+  allSelected: boolean;
+  someSelected: boolean;
+  onSelectAll: () => void;
+  onSelectRule: (ruleId: string) => void;
   onEdit?: (rule: IpRule) => void;
   onDelete?: (ruleId: string) => void;
   onToggle?: (ruleId: string, enabled: boolean) => void;
@@ -38,7 +41,10 @@ interface IpRulesTableProps {
 export function IpRulesTable({ 
   data = [], 
   selectedRules,
-  onSelectionChange,
+  allSelected,
+  someSelected,
+  onSelectAll,
+  onSelectRule,
   onEdit, 
   onDelete,
   onToggle 
@@ -70,25 +76,6 @@ export function IpRulesTable({
     }
   };
 
-  const allSelected = data.length > 0 && selectedRules.length === data.length;
-  const someSelected = selectedRules.length > 0 && selectedRules.length < data.length;
-
-  const handleSelectAll = () => {
-    if (allSelected) {
-      onSelectionChange([]);
-    } else {
-      onSelectionChange(data.filter(r => r.id).map(r => r.id).filter((id): id is string => id !== undefined));
-    }
-  };
-
-  const handleSelectRule = (ruleId: string) => {
-    if (selectedRules.includes(ruleId)) {
-      onSelectionChange(selectedRules.filter(id => id !== ruleId));
-    } else {
-      onSelectionChange([...selectedRules, ruleId]);
-    }
-  };
-
   const getActionBadgeColor = (action: 'allow' | 'block') => {
     return action === 'allow' ? 'green' : 'red';
   };
@@ -99,14 +86,14 @@ export function IpRulesTable({
 
   const rows = data.map((rule) => {
     const isEnabled = rule.isEnabled ?? true;
-    const isSelected = rule.id ? selectedRules.includes(rule.id) : false;
+    const isSelected = rule.id ? selectedRules.has(rule.id) : false;
 
     return (
       <Table.Tr key={rule.id} bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}>
         <Table.Td>
           <Checkbox
             checked={isSelected}
-            onChange={() => rule.id && handleSelectRule(rule.id)}
+            onChange={() => rule.id && onSelectRule(rule.id)}
             disabled={!rule.id}
           />
         </Table.Td>
@@ -234,7 +221,7 @@ export function IpRulesTable({
               <Checkbox
                 checked={allSelected}
                 indeterminate={someSelected}
-                onChange={handleSelectAll}
+                onChange={onSelectAll}
               />
             </Table.Th>
             <Table.Th>IP Address / CIDR</Table.Th>

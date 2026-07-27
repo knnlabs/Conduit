@@ -8,7 +8,6 @@ import {
   Group,
   Button,
   Card,
-  SimpleGrid,
   ThemeIcon,
   LoadingOverlay,
   Alert,
@@ -26,12 +25,13 @@ import {
   IconClock,
   IconCheck,
 } from '@tabler/icons-react';
+import { StatCardGrid } from '@/components/common/StatCardGrid';
 import { notify } from '@/lib/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { RequestLogsTable } from '@/components/analytics/RequestLogsTable';
 import { RequestLogsFilters } from '@/components/analytics/RequestLogsFilters';
 import { ViewVirtualKeyModal } from '@/components/virtualkeys/ViewVirtualKeyModal';
-import { useRequestLogs, useDistinctModels, type RequestLogFilters } from '@/hooks/useRequestLogs';
+import { useRequestLogs, useDistinctModels, type RequestLogFormFilters } from '@/hooks/useRequestLogs';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
@@ -48,7 +48,7 @@ export default function RequestLogsPage() {
   const [pageSize, setPageSize] = useState(50);
 
   // Filter state
-  const [filters, setFilters] = useState<RequestLogFilters>({});
+  const [filters, setFilters] = useState<RequestLogFormFilters>({});
 
   // Virtual keys for filter dropdown
   const [virtualKeys, setVirtualKeys] = useState<VirtualKeyDto[]>([]);
@@ -165,7 +165,7 @@ export default function RequestLogsPage() {
   }, []);
 
   // Handle filter changes
-  const handleFiltersChange = useCallback((newFilters: RequestLogFilters) => {
+  const handleFiltersChange = useCallback((newFilters: RequestLogFormFilters) => {
     setFilters(newFilters);
     setPage(1); // Reset to first page when changing filters
   }, []);
@@ -312,25 +312,7 @@ export default function RequestLogsPage() {
       </Group>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-        {statCards.map((stat) => (
-          <Card key={stat.title} p="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value}
-                </Text>
-              </div>
-              <ThemeIcon size="lg" variant="light" color={stat.color}>
-                <stat.icon size={20} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <StatCardGrid items={statCards} />
 
       {/* Filters */}
       <Card>

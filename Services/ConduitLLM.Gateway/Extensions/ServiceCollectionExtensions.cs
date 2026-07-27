@@ -15,7 +15,7 @@ namespace ConduitLLM.Gateway.Extensions
         public static IServiceCollection AddCoreApiSecurity(this IServiceCollection services, IConfiguration configuration)
         {
             // Configure security options from environment variables
-            services.ConfigureCoreApiSecurityOptions(configuration);
+            services.ConfigureGatewaySecurityOptions(configuration);
 
             // Note: Distributed cache should be registered in Program.cs before calling this method
             // to ensure proper Redis configuration for production environments

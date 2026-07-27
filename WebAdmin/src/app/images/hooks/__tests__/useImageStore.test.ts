@@ -2,6 +2,10 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useImageStore } from '../useImageStore';
 import { MediaGenerationStatus } from '@/app/types/media';
 import type { ImageTask } from '../../types';
+import {
+  InsufficientBalanceError,
+  ValidationError,
+} from '@/lib/conduit-common';
 
 // Mock the browser client
 jest.mock('@/lib/client/browserCoreClient', () => ({
@@ -21,7 +25,7 @@ jest.mock('@mantine/notifications', () => ({
 
 // Mock the createMediaStore
 type MockState = {
-  error: string | null;
+  error: Error | string | null;
   settings: Record<string, unknown>;
   currentTask: unknown;
   taskHistory: Array<{ id: string; [key: string]: unknown }>;
@@ -45,7 +49,7 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
       settings: { ...state.settings, ...updates }
     })),
 
-    setError: (error: string | null) => set((state: MockState) => ({ ...state, error })),
+    setError: (error: Error | string | null) => set((state: MockState) => ({ ...state, error })),
 
     addTask: (task: unknown) => set((state: MockState) => ({
       ...state,
@@ -162,7 +166,10 @@ describe('useImageStore', () => {
         await result.current.generateImages();
       });
 
-      expect(result.current.error).toBe('Please enter a prompt for image generation');
+      expect(result.current.error).toBeInstanceOf(ValidationError);
+      expect(result.current.error).toMatchObject({
+        message: 'Please enter a prompt for image generation',
+      });
       expect(result.current.status).toBe(MediaGenerationStatus.Failed);
     });
 
@@ -177,7 +184,10 @@ describe('useImageStore', () => {
         await result.current.generateImages();
       });
 
-      expect(result.current.error).toBe('Please select a model for image generation');
+      expect(result.current.error).toBeInstanceOf(ValidationError);
+      expect(result.current.error).toMatchObject({
+        message: 'Please select a model for image generation',
+      });
       expect(result.current.status).toBe(MediaGenerationStatus.Failed);
     });
 
@@ -254,7 +264,8 @@ describe('useImageStore', () => {
 
       await waitFor(() => {
         expect(result.current.status).toBe(MediaGenerationStatus.Failed);
-        expect(result.current.error).toBe('API Error');
+        expect(result.current.error).toBeInstanceOf(Error);
+        expect(result.current.error).toMatchObject({ message: 'API Error' });
         expect(result.current.currentResults).toEqual([]);
       });
     });
@@ -286,7 +297,10 @@ describe('useImageStore', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Please add credits to your account to generate images.');
+        expect(result.current.error).toBeInstanceOf(InsufficientBalanceError);
+        expect(result.current.error).toMatchObject({
+          message: 'Please add credits to your account to generate images.',
+        });
       });
     });
 

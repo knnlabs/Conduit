@@ -107,60 +107,47 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            OnBeforeCreate(entity);
+
+            if (entity.IsEnabled && entity.IsPrimary)
             {
-                OnBeforeCreate(entity);
+                // Demote existing primary key so the new one can take over
+                var existingPrimary = await GetDbSet(context)
+                    .FirstOrDefaultAsync(k => k.ProviderId == entity.ProviderId && k.IsPrimary, cancellationToken);
 
-                if (entity.IsEnabled && entity.IsPrimary)
+                if (existingPrimary != null)
                 {
-                    // Demote existing primary key so the new one can take over
-                    var existingPrimary = await GetDbSet(context)
-                        .FirstOrDefaultAsync(k => k.ProviderId == entity.ProviderId && k.IsPrimary, cancellationToken);
-
-                    if (existingPrimary != null)
-                    {
-                        existingPrimary.IsPrimary = false;
-                        existingPrimary.UpdatedAt = DateTime.UtcNow;
-                        Logger.LogInformation("Demoted existing primary key {KeyId} for provider {ProviderId}",
-                            existingPrimary.Id, entity.ProviderId);
-                    }
+                    existingPrimary.IsPrimary = false;
+                    existingPrimary.UpdatedAt = DateTime.UtcNow;
+                    Logger.LogInformation("Demoted existing primary key {KeyId} for provider {ProviderId}",
+                        existingPrimary.Id, entity.ProviderId);
                 }
-                else if (entity.IsEnabled && !entity.IsPrimary)
+            }
+            else if (entity.IsEnabled && !entity.IsPrimary)
+            {
+                // Check if this should be automatically set as primary
+                var enabledKeysCount = await GetDbSet(context)
+                    .CountAsync(k => k.ProviderId == entity.ProviderId && k.IsEnabled, cancellationToken);
+
+                // If this will be the only enabled key, set it as primary
+                if (enabledKeysCount == 0)
                 {
-                    // Check if this should be automatically set as primary
-                    var enabledKeysCount = await GetDbSet(context)
-                        .CountAsync(k => k.ProviderId == entity.ProviderId && k.IsEnabled, cancellationToken);
-
-                    // If this will be the only enabled key, set it as primary
-                    if (enabledKeysCount == 0)
-                    {
-                        entity.IsPrimary = true;
-                        Logger.LogInformation("Automatically setting key as primary since it's the only enabled key for provider {ProviderId}",
-                            entity.ProviderId);
-                    }
+                    entity.IsPrimary = true;
+                    Logger.LogInformation("Automatically setting key as primary since it's the only enabled key for provider {ProviderId}",
+                        entity.ProviderId);
                 }
+            }
 
-                GetDbSet(context).Add(entity);
-                await context.SaveChangesAsync(cancellationToken);
+            GetDbSet(context).Add(entity);
+            await context.SaveChangesAsync(cancellationToken);
 
-                Logger.LogInformation("Created key credential {KeyId} for provider {ProviderId} (IsPrimary: {IsPrimary})",
-                    entity.Id, entity.ProviderId, entity.IsPrimary);
+            Logger.LogInformation("Created key credential {KeyId} for provider {ProviderId} (IsPrimary: {IsPrimary})",
+                entity.Id, entity.ProviderId, entity.IsPrimary);
 
-                return entity.Id;
-            }, cancellationToken);
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(ex, "Database error creating key credential for provider {ProviderId}", entity.ProviderId);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating key credential for provider {ProviderId}", entity.ProviderId);
-            throw;
-        }
+            return entity.Id;
+        }, $"creating for provider {entity.ProviderId}", cancellationToken);
     }
 
     /// <summary>
@@ -171,74 +158,61 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            var existingKey = await GetDbSet(context)
+                .FirstOrDefaultAsync(k => k.Id == entity.Id, cancellationToken);
+
+            if (existingKey == null)
+                return false;
+
+            bool wasEnabled = existingKey.IsEnabled;
+            bool willBeEnabled = entity.IsEnabled;
+
+            // Update properties
+            existingKey.ProviderAccountGroup = entity.ProviderAccountGroup;
+            existingKey.ApiKey = entity.ApiKey;
+            existingKey.BaseUrl = entity.BaseUrl;
+            existingKey.IsPrimary = entity.IsPrimary;
+            existingKey.IsEnabled = entity.IsEnabled;
+            existingKey.UpdatedAt = DateTime.UtcNow;
+
+            if (entity.IsPrimary && entity.IsEnabled)
             {
-                var existingKey = await GetDbSet(context)
-                    .FirstOrDefaultAsync(k => k.Id == entity.Id, cancellationToken);
+                // Demote existing primary key so this one can become primary
+                var otherPrimary = await GetDbSet(context)
+                    .FirstOrDefaultAsync(k => k.ProviderId == existingKey.ProviderId && k.IsPrimary && k.Id != existingKey.Id, cancellationToken);
 
-                if (existingKey == null)
-                    return false;
-
-                bool wasEnabled = existingKey.IsEnabled;
-                bool willBeEnabled = entity.IsEnabled;
-
-                // Update properties
-                existingKey.ProviderAccountGroup = entity.ProviderAccountGroup;
-                existingKey.ApiKey = entity.ApiKey;
-                existingKey.BaseUrl = entity.BaseUrl;
-                existingKey.IsPrimary = entity.IsPrimary;
-                existingKey.IsEnabled = entity.IsEnabled;
-                existingKey.UpdatedAt = DateTime.UtcNow;
-
-                if (entity.IsPrimary && entity.IsEnabled)
+                if (otherPrimary != null)
                 {
-                    // Demote existing primary key so this one can become primary
-                    var otherPrimary = await GetDbSet(context)
-                        .FirstOrDefaultAsync(k => k.ProviderId == existingKey.ProviderId && k.IsPrimary && k.Id != existingKey.Id, cancellationToken);
-
-                    if (otherPrimary != null)
-                    {
-                        otherPrimary.IsPrimary = false;
-                        otherPrimary.UpdatedAt = DateTime.UtcNow;
-                        Logger.LogInformation("Demoted existing primary key {KeyId} for provider {ProviderId}",
-                            otherPrimary.Id, existingKey.ProviderId);
-                    }
+                    otherPrimary.IsPrimary = false;
+                    otherPrimary.UpdatedAt = DateTime.UtcNow;
+                    Logger.LogInformation("Demoted existing primary key {KeyId} for provider {ProviderId}",
+                        otherPrimary.Id, existingKey.ProviderId);
                 }
-                else if (!wasEnabled && willBeEnabled && !entity.IsPrimary)
+            }
+            else if (!wasEnabled && willBeEnabled && !entity.IsPrimary)
+            {
+                // Check if this should be automatically set as primary when being enabled
+                var enabledKeysCount = await GetDbSet(context)
+                    .CountAsync(k => k.ProviderId == existingKey.ProviderId && k.IsEnabled && k.Id != existingKey.Id, cancellationToken);
+
+                // If this will be the only enabled key, set it as primary
+                if (enabledKeysCount == 0)
                 {
-                    // Check if this should be automatically set as primary when being enabled
-                    var enabledKeysCount = await GetDbSet(context)
-                        .CountAsync(k => k.ProviderId == existingKey.ProviderId && k.IsEnabled && k.Id != existingKey.Id, cancellationToken);
-
-                    // If this will be the only enabled key, set it as primary
-                    if (enabledKeysCount == 0)
-                    {
-                        existingKey.IsPrimary = true;
-                        Logger.LogInformation("Automatically setting key {KeyId} as primary since it's the only enabled key for provider {ProviderId}",
-                            existingKey.Id, existingKey.ProviderId);
-                    }
+                    existingKey.IsPrimary = true;
+                    Logger.LogInformation("Automatically setting key {KeyId} as primary since it's the only enabled key for provider {ProviderId}",
+                        existingKey.Id, existingKey.ProviderId);
                 }
+            }
 
-                await context.SaveChangesAsync(cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
 
-                Logger.LogInformation("Updated key credential {KeyId} for provider {ProviderId} (IsPrimary: {IsPrimary})",
-                    entity.Id, entity.ProviderId, existingKey.IsPrimary);
+            Logger.LogInformation("Updated key credential {KeyId} for provider {ProviderId} (IsPrimary: {IsPrimary})",
+                entity.Id, entity.ProviderId, existingKey.IsPrimary);
 
-                return true;
-            }, cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            Logger.LogError(ex, "Concurrency error updating key credential {KeyId}", entity.Id);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error updating key credential {KeyId}", entity.Id);
-            throw;
-        }
+            return true;
+        }, $"updating ID {entity.Id}", cancellationToken);
     }
 
     /// <summary>

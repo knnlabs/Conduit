@@ -10,6 +10,7 @@ using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Options;
+using ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -179,8 +180,12 @@ namespace ConduitLLM.Core.Services
             {
                 // For streaming, we can't compute hash beforehand, so generate a unique key
                 var temporaryKey = Guid.NewGuid().ToString();
-                var extension = GetExtensionFromContentType(metadata.ContentType);
-                var storageKey = GenerateStorageKey(temporaryKey, metadata.MediaType, extension);
+                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+                var storageKey = MediaStorageKeys.GenerateDatePartitioned(
+                    temporaryKey,
+                    metadata.MediaType,
+                    extension,
+                    DateTime.UtcNow);
 
                 // If the stream doesn't support seeking, we need to buffer it
                 Stream uploadStream = content;
@@ -739,16 +744,5 @@ namespace ConduitLLM.Core.Services
             return await Sha256Hash.LegacyStorageBase64UrlAsync(stream);
         }
 
-        private static string GenerateStorageKey(string contentHash, MediaType mediaType, string extension)
-        {
-            var typeFolder = mediaType.ToString().ToLower();
-            var dateFolder = DateTime.UtcNow.ToString("yyyy/MM/dd");
-            return $"{typeFolder}/{dateFolder}/{contentHash}{extension}";
-        }
-
-        private static string GetExtensionFromContentType(string contentType)
-        {
-            return Utilities.MediaContentTypes.GetExtension(contentType) ?? "";
-        }
     }
 }

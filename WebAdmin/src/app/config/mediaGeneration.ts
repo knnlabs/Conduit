@@ -20,7 +20,7 @@ export const VIDEO_POLLING_CONFIG = {
 /**
  * Retry configuration for failed requests
  */
-export const RETRY_CONFIG = {
+export const MEDIA_RETRY_CONFIG = {
   /** Maximum number of retry attempts */
   MAX_COUNT: Number(process.env.NEXT_PUBLIC_MAX_RETRY_COUNT ?? 3),
   
@@ -168,11 +168,11 @@ export const validateConfig = (): void => {
   }
   
   // Validate retry configuration
-  if (RETRY_CONFIG.MAX_COUNT < 0) {
+  if (MEDIA_RETRY_CONFIG.MAX_COUNT < 0) {
     console.error('Invalid MAX_RETRY_COUNT: must be non-negative');
   }
   
-  if (RETRY_CONFIG.MIN_DELAY_MS > RETRY_CONFIG.MAX_DELAY_MS) {
+  if (MEDIA_RETRY_CONFIG.MIN_DELAY_MS > MEDIA_RETRY_CONFIG.MAX_DELAY_MS) {
     console.error('Invalid retry delays: MIN_DELAY_MS must be less than MAX_DELAY_MS');
   }
   
@@ -190,7 +190,7 @@ export const validateConfig = (): void => {
   if (DEV_CONFIG.DEBUG_ENABLED) {
     console.warn('Media Generation Configuration:', {
       VIDEO_POLLING_CONFIG,
-      RETRY_CONFIG,
+      MEDIA_RETRY_CONFIG,
       STORAGE_CONFIG,
       REALTIME_CONFIG,
       UI_CONFIG,
@@ -213,7 +213,7 @@ export const MEDIA_GENERATION_CONFIG = {
   video: VIDEO_CONFIG,
   image: IMAGE_CONFIG,
   polling: VIDEO_POLLING_CONFIG,
-  retry: RETRY_CONFIG,
+  retry: MEDIA_RETRY_CONFIG,
   storage: STORAGE_CONFIG,
   realtime: REALTIME_CONFIG,
   ui: UI_CONFIG,

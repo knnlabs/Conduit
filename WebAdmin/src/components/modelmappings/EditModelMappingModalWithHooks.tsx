@@ -17,6 +17,7 @@ import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMapping
 import { useProviders } from '@/hooks/useProviderApi';
 import { ProviderType, type ProviderDto, type ModelProviderMappingDto, type UpdateModelProviderMappingDto } from '@/lib/admin-api';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
+import { createMappingFormValidation } from './mappingFormValidation';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
@@ -55,23 +56,7 @@ export function EditModelMappingModal({
       isEnabled: true,
       providerOptions: undefined,
     },
-    validate: {
-      modelAlias: (value, values) => {
-        if (!value?.trim()) return 'Model alias is required';
-        
-        const duplicate = mappings.find(m => 
-          m.modelAlias.toLowerCase() === value.trim().toLowerCase() &&
-          m.providerId === Number(values.providerId) &&
-          m.id !== (mapping?.id ?? 0)
-        );
-        
-        if (duplicate) {
-          return 'Model alias already exists for this provider';
-        }
-        
-        return null;
-      },
-    },
+    validate: createMappingFormValidation(mappings, mapping?.id),
   });
 
   // Update form when mapping changes
