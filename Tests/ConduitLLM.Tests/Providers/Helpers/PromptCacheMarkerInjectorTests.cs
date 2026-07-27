@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Helpers;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Providers.Helpers;
 
