@@ -65,6 +65,18 @@ public class ProviderSettingsSchemaEndpointTests
     }
 
     [Fact]
+    public void Schema_Should_Publish_Registry_Defaults_For_Azure()
+    {
+        var azure = GetSchema()
+            .Should().ContainSingle(entry => entry.ProviderType == ProviderType.Azure).Subject;
+
+        var apiVersion = azure.Settings
+            .Should().ContainSingle(setting => setting.Key == "api_version").Subject;
+
+        apiVersion.DefaultValue.Should().Be(ProviderConfigurationRegistry.AzureDefaultApiVersion);
+    }
+
+    [Fact]
     public void Schema_Should_Publish_The_Cloudflare_AccountId_Field_With_Its_Label_And_Validation()
     {
         var cloudflare = GetSchema()
