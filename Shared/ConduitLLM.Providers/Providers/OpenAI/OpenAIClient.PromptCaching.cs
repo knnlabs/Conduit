@@ -1,7 +1,6 @@
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Providers.Helpers;
 
 namespace ConduitLLM.Providers.OpenAI;
 
@@ -36,12 +35,17 @@ public partial class OpenAIClient
             dict.TryGetValue("messages", out var messagesObject) &&
             messagesObject is List<OpenAIMessage> messages)
         {
-            var targets = ResolveTargets(request.Messages, intent.InjectionPoints);
-            var added = messages.Sum(message => CountBreakpoints(message.Content));
+            var targets = PromptCacheMarkerInjector.ResolveTargets(request.Messages, intent.InjectionPoints);
+            var added = messages.Sum(message =>
+                PromptCacheMarkerInjector.CountMarkers(message.Content, "prompt_cache_breakpoint"));
             foreach (var index in targets)
             {
                 if (added >= PromptCachingConstants.MaxExplicitBreakpoints) break;
-                if (TryAddBreakpoint(messages[index].Content, out var content))
+                if (PromptCacheMarkerInjector.TryAddMarker(
+                    messages[index].Content,
+                    "prompt_cache_breakpoint",
+                    new Dictionary<string, object?> { ["mode"] = "explicit" },
+                    out var content))
                 {
                     messages[index] = messages[index] with { Content = content };
                     added++;
@@ -49,55 +53,5 @@ public partial class OpenAIClient
             }
         }
         return mapped;
-    }
-
-    private static IReadOnlyList<int> ResolveTargets(IReadOnlyList<Message> messages, IReadOnlyList<CacheInjectionPoint> points)
-    {
-        var result = new List<int>();
-        var seen = new HashSet<int>();
-        foreach (var point in points)
-        {
-            var candidates = Enumerable.Range(0, messages.Count)
-                .Where(i => point.Role is null || messages[i].Role.Equals(point.Role, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (point.Index is int requested)
-            {
-                var index = requested < 0 ? candidates.Count + requested : requested;
-                if (index >= 0 && index < candidates.Count && seen.Add(candidates[index])) result.Add(candidates[index]);
-            }
-            else foreach (var candidate in candidates) if (seen.Add(candidate)) result.Add(candidate);
-        }
-        return result;
-    }
-
-    private static bool TryAddBreakpoint(object? content, out object? updated)
-    {
-        updated = content;
-        JsonArray blocks;
-        if (content is string text)
-        {
-            if (string.IsNullOrWhiteSpace(text)) return false;
-            blocks = new JsonArray(new JsonObject { ["type"] = "text", ["text"] = text });
-        }
-        else
-        {
-            try { blocks = JsonNode.Parse(JsonSerializer.Serialize(content)) as JsonArray ?? new JsonArray(); }
-            catch (Exception ex) when (ex is JsonException or NotSupportedException) { return false; }
-        }
-        var last = blocks.LastOrDefault() as JsonObject;
-        if (last is null || last.ContainsKey("prompt_cache_breakpoint")) return false;
-        last["prompt_cache_breakpoint"] = new JsonObject { ["mode"] = "explicit" };
-        updated = blocks;
-        return true;
-    }
-
-    private static int CountBreakpoints(object? content)
-    {
-        if (content is null || content is string) return 0;
-        try
-        {
-            return (JsonNode.Parse(JsonSerializer.Serialize(content)) as JsonArray)?
-                .Count(node => node is JsonObject block && block.ContainsKey("prompt_cache_breakpoint")) ?? 0;
-        }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException) { return 0; }
     }
 }
