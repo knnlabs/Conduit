@@ -271,12 +271,9 @@ public partial class Program
             app.Environment.EnvironmentName,
             string.Join(", ", serverAddresses ?? Array.Empty<string>()));
 
-        // JasperFx command-line integration (#961): with no arguments this runs the web
-        // host exactly like app.Run(); with a command verb (e.g. `dotnet run -- codegen
-        // preview`) it executes the JasperFx command instead — CI uses `codegen preview`
-        // to compile every Wolverine handler chain build-ahead, so codegen/service-
-        // location defects (the class that hid W2, #929) fail at build time rather than
-        // first delivery.
+        // JasperFx command-line integration: with no arguments this runs the web host
+        // exactly like app.Run(); the committed Wolverine adapters are regenerated with
+        // `./scripts/generate-wolverine-code.ps1` and verified for drift in CI.
         return await app.RunJasperFxCommands(args);
     }
 

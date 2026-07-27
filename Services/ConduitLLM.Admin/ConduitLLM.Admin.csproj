@@ -50,6 +50,16 @@
     <!-- WebAdmin reference removed, now using API client -->
   </ItemGroup>
 
+  <!-- Roslyn is a generation-time tool only. Normal restores and production
+       publishes compile the committed adapters without this dependency. -->
+  <ItemGroup Condition="'$(ConduitWolverineCodegen)' == 'true'">
+    <PackageReference Include="WolverineFx.RuntimeCompilation" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Internal\Generated\**\*.cs" Watch="false" />
+  </ItemGroup>
+
   <!-- Exclude appsettings.json from being copied when referenced as a project dependency -->
   <ItemGroup>
     <Content Update="appsettings.json" CopyToPublishDirectory="Never" />

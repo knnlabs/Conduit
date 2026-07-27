@@ -7,9 +7,13 @@ using ConduitLLM.Configuration.Messaging.Wolverine;
 
 using AwesomeAssertions;
 
+using JasperFx.CodeGeneration;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+
+using Wolverine;
 
 using Xunit;
 
@@ -96,6 +100,10 @@ namespace ConduitLLM.Tests.Messaging
             using var host = await Host.CreateDefaultBuilder()
                 .AddConduitWolverine(configuration, "Host=unreachable;Database=none", "conduit-test", opts =>
                 {
+                    // This isolated test declares a test-only bridge that is not part of
+                    // either production host's committed adapter registry.
+                    opts.CodeGeneration.TypeLoadMode = TypeLoadMode.Dynamic;
+                    opts.UseRuntimeCompilation();
                     opts.AddEventBridge<InMemoryPilotEvent>();
                     opts.Services.AddSingleton(sink);
                     opts.Services.AddScoped<IEventHandler<InMemoryPilotEvent>, RecordingPilotHandler>();

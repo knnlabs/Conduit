@@ -19,7 +19,10 @@
       4. The Gateway starts message listening on all five queues (gateway-events,
          webhook-delivery, video-generation-events, spend-update-events,
          image-generation-events).
-      5. Neither host logs InvalidAgentException / InvalidServiceLocationException.
+      5. Representative spend, batch, image, and video messages are delivered through
+         the real PostgreSQL queues to the committed static handler adapters.
+      6. Neither host logs agent-assignment, service-location, or static-code-loading
+         failures (including a fallback handler scan).
 
     The Admin host is started FIRST deliberately — that recreates the W1 leadership
     scenario (the Admin winning the election) which is only dangerous if the durability
@@ -78,6 +81,7 @@ if (-not $PsqlCommand) { $PsqlCommand = "psql $DatabaseUrl" }
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
 $adminProject = Join-Path $repoRoot 'Services' 'ConduitLLM.Admin'
 $gatewayProject = Join-Path $repoRoot 'Services' 'ConduitLLM.Gateway'
+$publisherProject = Join-Path $repoRoot 'tools' 'WolverineSmokePublisher'
 $logDir = Join-Path ([System.IO.Path]::GetTempPath()) "wolverine-two-host-$PID"
 New-Item -ItemType Directory -Force $logDir | Out-Null
 
@@ -114,16 +118,42 @@ function Wait-ForSql([string]$Sql, [string]$Expected, [string]$What) {
     return $false
 }
 
+function Wait-ForDeliveryProbes([string]$Name, [System.Collections.IDictionary]$Patterns) {
+    $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+    while ([DateTime]::UtcNow -lt $deadline) {
+        $log = Get-HostLog $Name
+        $missing = @($Patterns.GetEnumerator() | Where-Object { $log -notmatch $_.Value })
+        if ($missing.Count -eq 0) { return $log }
+        Start-Sleep -Milliseconds 500
+    }
+
+    $missingNames = @($Patterns.GetEnumerator() |
+        Where-Object { $log -notmatch $_.Value } |
+        ForEach-Object Key)
+    Write-Host "  timed out waiting for delivery probes: $($missingNames -join ', ')" -ForegroundColor Yellow
+    return $log
+}
+
 function Start-ServiceHost([string]$Project, [string]$Name, [int]$Port) {
     $dll = Join-Path $Project 'bin' $Configuration 'net10.0' "$Name.dll"
     if (-not (Test-Path $dll)) { throw "Build output not found: $dll (build first or drop -NoBuild)" }
     $out = Join-Path $logDir "$Name.out.log"
     $err = Join-Path $logDir "$Name.err.log"
     $env:ASPNETCORE_URLS = "http://localhost:$Port"
-    $proc = Start-Process dotnet -ArgumentList @($dll) `
-        -WorkingDirectory (Split-Path $dll) `
-        -RedirectStandardOutput $out -RedirectStandardError $err `
-        -PassThru -NoNewWindow
+    $startArgs = @{
+        FilePath = 'dotnet'
+        ArgumentList = @($dll)
+        WorkingDirectory = (Split-Path $dll)
+        RedirectStandardOutput = $out
+        RedirectStandardError = $err
+        PassThru = $true
+    }
+    if ($IsWindows) {
+        $startArgs.WindowStyle = 'Hidden'
+    } else {
+        $startArgs.NoNewWindow = $true
+    }
+    $proc = Start-Process @startArgs
     Write-Host "Started $Name (pid $($proc.Id)) on port $Port; logs: $out"
     return $proc
 }
@@ -151,6 +181,8 @@ if (-not $NoBuild) {
     if ($LASTEXITCODE -ne 0) { exit 1 }
     dotnet build $adminProject -c $Configuration
     if ($LASTEXITCODE -ne 0) { exit 1 }
+    dotnet build $publisherProject -c $Configuration
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
 Write-Host '== Applying EF migrations (migrate verb) =='
@@ -175,6 +207,23 @@ SELECT count(*) FROM wolverine_conduit_gateway.wolverine_node_assignments
    AND started IS NOT NULL
 '@ '2' 'Gateway exclusive listener assignments'
 
+    Write-Host '== Publishing representative delivery probes =='
+    $probeId = [Guid]::NewGuid().ToString('N')
+    dotnet (Join-Path $publisherProject 'bin' $Configuration 'net10.0' 'WolverineSmokePublisher.dll') $probeId
+    if ($LASTEXITCODE -ne 0) { Write-Error 'Wolverine delivery-probe publisher failed' }
+
+    $deliveryPatterns = [ordered]@{
+        Spend = 'Spend update request for non-existent virtual key 2147483647'
+        Batch = "Processing batch spend flush request static-codegen-batch-$probeId"
+        Image = "Received cancellation request for image generation task static-codegen-image-$probeId"
+        Video = "Received cancellation request for video generation task static-codegen-video-$probeId"
+    }
+    $deliveryLog = Wait-ForDeliveryProbes 'ConduitLLM.Gateway' $deliveryPatterns
+    $spendDelivered = $deliveryLog -match $deliveryPatterns.Spend
+    $batchDelivered = $deliveryLog -match $deliveryPatterns.Batch
+    $imageDelivered = $deliveryLog -match $deliveryPatterns.Image
+    $videoDelivered = $deliveryLog -match $deliveryPatterns.Video
+
     Write-Host '== Assertions =='
     Assert $adminUp 'Admin registers a Wolverine node'
     Assert $gatewayUp 'Gateway exclusive listeners (spend-update-events, image-generation-events) assigned and started'
@@ -196,9 +245,18 @@ SELECT count(*) FROM wolverine_conduit_gateway.wolverine_node_assignments
             "Gateway listening on $queue"
     }
 
-    # (5) No agent-assignment or codegen service-location failures on either host.
+    # (5) Representative messages traverse each generated handler path.
+    Assert $spendDelivered 'SpendUpdateRequested delivered through its static handler adapter'
+    Assert $batchDelivered 'BatchSpendFlushRequestedEvent delivered through its static handler adapter'
+    Assert $imageDelivered 'ImageGenerationCancelled delivered through its static handler adapter'
+    Assert $videoDelivered 'VideoGenerationCancelled delivered through its static handler adapter'
+
+    # (6) No agent-assignment, service-location, or static-code-loading failures.
     $adminLog = Get-HostLog 'ConduitLLM.Admin'
-    foreach ($bad in 'InvalidAgentException', 'InvalidServiceLocationException') {
+    foreach ($bad in 'InvalidAgentException',
+                      'InvalidServiceLocationException',
+                      'ExpectedTypeMissingException',
+                      'falling back to a runtime assembly scan') {
         Assert (-not ($gatewayLog -match $bad)) "Gateway log free of $bad"
         Assert (-not ($adminLog -match $bad)) "Admin log free of $bad"
     }

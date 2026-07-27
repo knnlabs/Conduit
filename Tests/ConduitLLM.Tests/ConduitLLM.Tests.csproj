@@ -22,6 +22,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Moq" />
     <PackageReference Include="Moq.Contrib.HttpClient" />
+    <!-- Test-only hosts exercise dynamic Wolverine configurations independently
+         of the production services' committed static adapters. -->
+    <PackageReference Include="WolverineFx.RuntimeCompilation" PrivateAssets="all" />
     <PackageReference Include="bunit" />
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="AwesomeAssertions" />

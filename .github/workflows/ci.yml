@@ -138,24 +138,11 @@ jobs:
         shell: pwsh
         run: ./scripts/test/verify-admin-media-rdg.ps1 -NoRestore
 
-      # Wolverine build-ahead codegen check (#961): compiles the handler chain for EVERY
-      # registered event type up front via JasperFx's `codegen preview`, so codegen /
-      # service-location incompatibilities (the class of defect behind W2 in the #929 S1
-      # smoke, which only surfaced at first message delivery) fail the build instead.
-      - name: Wolverine codegen check
-        run: |
-          check_codegen() {
-            local log="/tmp/codegen-$2.log"
-            if dotnet run --project "$1" --no-build -- codegen preview > "$log" 2>&1; then
-              echo "$2 codegen OK ($(grep -c '// START:' "$log") generated types)"
-            else
-              echo "$2 codegen FAILED:"
-              cat "$log"
-              return 1
-            fi
-          }
-          check_codegen Services/ConduitLLM.Gateway gateway
-          check_codegen Services/ConduitLLM.Admin admin
+      # Regenerate every registered handler adapter and fail on tracked, deleted,
+      # or newly untracked output. The compiler dependency is generation-only.
+      - name: Wolverine static codegen drift check
+        shell: pwsh
+        run: ./scripts/generate-wolverine-code.ps1 -Verify
         env:
           ConduitLLM__Messaging__Backend: Wolverine
           ConduitLLM__Messaging__Wolverine__Transport: Postgresql
@@ -163,6 +150,31 @@ jobs:
           ASPNETCORE_ENVIRONMENT: Production
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
           REDIS_URL: redis://localhost:6379
+
+      - name: Wolverine production dependency guard
+        shell: bash
+        run: |
+          publish_root="$RUNNER_TEMP/wolverine-static-publish"
+          for service in Gateway Admin; do
+            project="Services/ConduitLLM.$service/ConduitLLM.$service.csproj"
+            output="$publish_root/$service"
+
+            dotnet publish "$project" --configuration Release --output "$output"
+
+            forbidden="$(
+              find "$output" -maxdepth 1 -type f \
+                \( -iname 'Wolverine.RuntimeCompilation*' \
+                   -o -iname 'JasperFx.RuntimeCompiler*' \
+                   -o -iname 'Microsoft.CodeAnalysis*' \) \
+                -printf '%f\n'
+            )"
+
+            if [[ -n "$forbidden" ]]; then
+              echo "::error::$service publish contains runtime compiler artifacts:"
+              echo "$forbidden"
+              exit 1
+            fi
+          done
 
       - name: OpenAPI contract validation and drift check
         # Export both contracts without infrastructure, prove generation is byte-stable,
@@ -240,6 +252,7 @@ jobs:
         run: |
           dotnet build Services/ConduitLLM.Gateway
           dotnet build Services/ConduitLLM.Admin
+          dotnet build tools/WolverineSmokePublisher
 
       - name: Two-host listener assertion
         run: pwsh ./scripts/test/wolverine-two-host-smoke.ps1 -NoBuild

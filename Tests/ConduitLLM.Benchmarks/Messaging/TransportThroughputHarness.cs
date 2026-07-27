@@ -6,6 +6,8 @@ using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Messaging;
 
+using JasperFx.CodeGeneration;
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -334,6 +336,11 @@ namespace ConduitLLM.Benchmarks.Messaging
                     "conduit-bench",
                     opts =>
                     {
+                        // Benchmark-only event sets are selected at runtime and therefore
+                        // cannot use either production host's committed adapter registry.
+                        opts.CodeGeneration.TypeLoadMode = TypeLoadMode.Dynamic;
+                        opts.UseRuntimeCompilation();
+
                         foreach (var eventType in target.EventTypes)
                         {
                             opts.AddEventBridge(eventType);
