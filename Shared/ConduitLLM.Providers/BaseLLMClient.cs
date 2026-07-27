@@ -581,6 +581,13 @@ namespace ConduitLLM.Providers
 
                 // Handle specific error cases
                 var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                var translatedFailure = TranslateAuthenticationFailure(
+                    response.StatusCode,
+                    responseContent);
+                if (translatedFailure is not null)
+                {
+                    return translatedFailure;
+                }
 
                 if (response.StatusCode == HttpStatusCode.Unauthorized)
                 {
@@ -628,6 +635,15 @@ namespace ConduitLLM.Providers
                     ex.ToString());
             }
         }
+
+        /// <summary>
+        /// Allows a provider to customize an authentication failure without replacing the
+        /// no-retry verification transport and cancellation behavior.
+        /// </summary>
+        protected virtual Core.Interfaces.AuthenticationResult? TranslateAuthenticationFailure(
+            HttpStatusCode statusCode,
+            string responseContent) =>
+            null;
 
         /// <summary>
         /// Gets the health check URL for this provider.
