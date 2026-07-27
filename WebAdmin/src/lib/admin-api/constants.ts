@@ -18,16 +18,6 @@ export const ENDPOINTS = {
   SYSTEM: {
     INFO: '/v1/admin/system-metadata/info',
     HEALTH: '/v1/admin/system-metadata/health',
-    SERVICES: '/v1/admin/health-status/services',
-    NOTIFICATIONS: '/v1/admin/notifications',
-    NOTIFICATION_BY_ID: (id: number) => `/v1/admin/notifications/${id}`,
-    HEALTH_INCIDENTS: '/v1/admin/health-status/incidents',
-    HEALTH_HISTORY: '/v1/admin/health-status/history',
-  },
-
-  // Comprehensive Metrics
-  METRICS: {
-    BASE: '/metrics',
   },
 } as const;
 
