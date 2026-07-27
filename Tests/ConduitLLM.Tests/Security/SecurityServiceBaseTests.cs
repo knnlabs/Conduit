@@ -42,8 +42,13 @@ public sealed class SecurityServiceBaseTests
 
         Assert.False(result.IsAllowed);
         Assert.Equal(StatusCodes.Status429TooManyRequests, result.StatusCode);
-        Assert.Equal("60", result.Headers["Retry-After"]);
-        Assert.Equal("2", result.Headers["X-RateLimit-Limit"]);
+        Assert.NotNull(result.RateLimit);
+        Assert.Equal(2, result.RateLimit.Limit);
+        Assert.Equal("ip", result.RateLimit.Scope);
+        Assert.InRange(
+            (result.RateLimit.ResetsAt - DateTime.UtcNow).TotalSeconds,
+            55,
+            60);
     }
 
     private static TestSecurityService CreateService(

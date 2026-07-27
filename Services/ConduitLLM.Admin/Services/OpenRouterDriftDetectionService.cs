@@ -9,6 +9,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Models;
+using ConduitLLM.Providers.OpenRouter;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

@@ -216,22 +216,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 return OpenAIError(404, "Operation not found", "not_found", "not_found_error");
             }
 
-            return Ok(new BatchOperationStatusResponse
-            {
-                OperationId = status.OperationId,
-                OperationType = status.OperationType,
-                Status = status.Status.ToString(),
-                TotalItems = status.TotalItems,
-                ProcessedCount = status.ProcessedCount,
-                SuccessCount = status.SuccessCount,
-                FailedCount = status.FailedCount,
-                ProgressPercentage = status.ProgressPercentage,
-                ElapsedTime = status.ElapsedTime,
-                EstimatedTimeRemaining = status.EstimatedTimeRemaining,
-                ItemsPerSecond = status.ItemsPerSecond,
-                CurrentItem = status.CurrentItem,
-                CanCancel = status.CanCancel
-            });
+            return Ok(status);
         }
 
         /// <summary>

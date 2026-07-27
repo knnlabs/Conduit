@@ -166,6 +166,7 @@ namespace ConduitLLM.Admin.Endpoints
                                 Label = definition.Label,
                                 HelpText = definition.HelpText,
                                 Placeholder = definition.Placeholder,
+                                DefaultValue = definition.DefaultValue,
                                 Required = definition.Required,
                                 Secret = definition.Secret,
                                 ValidationRegex = definition.ValidationRegex

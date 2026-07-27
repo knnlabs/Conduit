@@ -54,6 +54,9 @@ public sealed class ProviderSettingFieldDto
     /// <summary>Optional example value shown as the input placeholder.</summary>
     public string? Placeholder { get; init; }
 
+    /// <summary>Optional registry-defined value used when the operator supplies none.</summary>
+    public string? DefaultValue { get; init; }
+
     /// <summary>Whether the operator must supply this setting.</summary>
     public bool Required { get; init; }
 

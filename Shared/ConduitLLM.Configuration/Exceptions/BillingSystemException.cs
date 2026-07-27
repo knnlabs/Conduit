@@ -24,7 +24,7 @@ namespace ConduitLLM.Configuration.Exceptions
         public BillingSystemException(string message)
             : base(message)
         {
-            ErrorCode = "BILLING_SYSTEM_ERROR";
+            ErrorCode = "billing_system_error";
         }
 
         /// <summary>
@@ -35,7 +35,7 @@ namespace ConduitLLM.Configuration.Exceptions
         public BillingSystemException(string message, Exception innerException)
             : base(message, innerException)
         {
-            ErrorCode = "BILLING_SYSTEM_ERROR";
+            ErrorCode = "billing_system_error";
         }
 
         /// <summary>
@@ -50,19 +50,6 @@ namespace ConduitLLM.Configuration.Exceptions
         {
             VirtualKeyId = virtualKeyId;
             ErrorCode = errorCode;
-        }
-
-        /// <summary>
-        /// Common error codes for billing system failures
-        /// </summary>
-        public static class ErrorCodes
-        {
-            public const string RedisConnectionFailed = "REDIS_CONNECTION_FAILED";
-            public const string RedisUpdateFailed = "REDIS_UPDATE_FAILED";
-            public const string DatabaseUpdateFailed = "DATABASE_UPDATE_FAILED";
-            public const string InvalidConfiguration = "INVALID_CONFIGURATION";
-            public const string RateLimitExceeded = "RATE_LIMIT_EXCEEDED";
-            public const string ServiceUnavailable = "SERVICE_UNAVAILABLE";
         }
     }
 }

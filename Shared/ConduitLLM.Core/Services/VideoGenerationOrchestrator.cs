@@ -559,7 +559,9 @@ namespace ConduitLLM.Core.Services
                 eventRequest.Prompt.Length);
         }
 
-        protected override bool IsRetryableError(Exception ex)
+        protected override bool IsRetryableError(
+            Exception ex,
+            CancellationToken callerToken)
         {
             // Use retry configuration settings
             if (!_retryConfiguration.EnableRetries)
@@ -567,7 +569,7 @@ namespace ConduitLLM.Core.Services
                 return false;
             }
 
-            return base.IsRetryableError(ex);
+            return base.IsRetryableError(ex, callerToken);
         }
 
         /// <summary>

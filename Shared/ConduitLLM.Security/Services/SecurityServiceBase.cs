@@ -165,10 +165,15 @@ namespace ConduitLLM.Security.Services
                 Logger.LogWarning("Rate limit exceeded for IP {IpAddress}: {Count} requests in {Window} seconds",
                     ipAddress, requestCount, Options.RateLimiting.WindowSeconds);
 
+                var resetsAt = await RateLimitCounter.GetResetAsync(key)
+                    ?? DateTime.UtcNow.AddSeconds(Options.RateLimiting.WindowSeconds);
+
                 return SecurityCheckResult.RateLimited(
                     "Rate limit exceeded",
-                    Options.RateLimiting.WindowSeconds,
-                    Options.RateLimiting.MaxRequests);
+                    resetsAt,
+                    Options.RateLimiting.MaxRequests,
+                    remaining: 0,
+                    scope: "ip");
             }
 
             return SecurityCheckResult.Allowed();

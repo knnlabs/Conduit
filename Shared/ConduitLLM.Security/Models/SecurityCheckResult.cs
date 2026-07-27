@@ -26,6 +26,11 @@ namespace ConduitLLM.Security.Models
         public Dictionary<string, string> Headers { get; set; } = new();
 
         /// <summary>
+        /// Canonical rate-limit response data when <see cref="StatusCode"/> is 429.
+        /// </summary>
+        public SecurityRateLimitDetails? RateLimit { get; set; }
+
+        /// <summary>
         /// Creates an allowed result
         /// </summary>
         public static SecurityCheckResult Allowed() => new() { IsAllowed = true };
@@ -41,26 +46,26 @@ namespace ConduitLLM.Security.Models
         /// </summary>
         public static SecurityCheckResult RateLimited(
             string reason,
-            int retryAfterSeconds,
-            int? limit = null,
-            int? remaining = null)
-        {
-            var result = new SecurityCheckResult
+            DateTime resetsAt,
+            int limit,
+            long remaining,
+            string scope,
+            IReadOnlyDictionary<string, string>? headers = null) =>
+            new()
             {
                 IsAllowed = false,
                 Reason = reason,
                 StatusCode = 429,
-                Headers = new Dictionary<string, string>
-                {
-                    ["Retry-After"] = retryAfterSeconds.ToString()
-                }
+                RateLimit = new SecurityRateLimitDetails(limit, remaining, resetsAt, scope),
+                Headers = headers is null
+                    ? new Dictionary<string, string>()
+                    : new Dictionary<string, string>(headers)
             };
-
-            if (limit.HasValue)
-                result.Headers["X-RateLimit-Limit"] = limit.Value.ToString();
-            if (remaining.HasValue)
-                result.Headers["X-RateLimit-Remaining"] = remaining.Value.ToString();
-            return result;
-        }
     }
+
+    public sealed record SecurityRateLimitDetails(
+        long Limit,
+        long Remaining,
+        DateTime ResetsAt,
+        string Scope);
 }

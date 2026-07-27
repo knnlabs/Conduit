@@ -47,7 +47,10 @@ namespace ConduitLLM.Providers.Meta
                         responseContent,
                         requestId),
                 System.Net.HttpStatusCode.NotFound =>
-                    new ModelUnavailableException(MetaErrorMessages.ModelNotFound, communicationError),
+                    new ModelNotFoundException(
+                        ProviderModelId,
+                        MetaErrorMessages.ModelNotFound,
+                        communicationError),
                 System.Net.HttpStatusCode.PaymentRequired =>
                     CreateCommunicationError(
                         MetaErrorMessages.QuotaExceeded,
@@ -113,7 +116,8 @@ namespace ConduitLLM.Providers.Meta
                         // Check for specific error patterns
                         if (errorMessage?.Contains("model", StringComparison.OrdinalIgnoreCase) == true)
                         {
-                            return new ModelUnavailableException(
+                            return new ModelNotFoundException(
+                                ProviderModelId,
                                 $"Model error: {errorMessage}",
                                 communicationError);
                         }

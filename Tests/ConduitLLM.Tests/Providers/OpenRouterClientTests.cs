@@ -350,6 +350,39 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
+        public void CatalogContract_ParsesTheUnionOfRuntimeAndAdminFields()
+        {
+            var catalog = JsonSerializer.Deserialize<OpenRouterCatalogResponse>(
+                """
+                {
+                    "data": [{
+                        "id": "provider/model",
+                        "canonical_slug": "provider/model-v1",
+                        "description": "A model",
+                        "expiration_date": "2027-01-01",
+                        "architecture": { "tokenizer": "Tokenizer" },
+                        "pricing": {
+                            "request": "0.01",
+                            "image": "0.02",
+                            "web_search": "0.03",
+                            "internal_reasoning": "0.04"
+                        }
+                    }]
+                }
+                """);
+
+            var model = catalog!.Data.Should().ContainSingle().Subject;
+            model.CanonicalSlug.Should().Be("provider/model-v1");
+            model.Description.Should().Be("A model");
+            model.ExpirationDate.Should().Be("2027-01-01");
+            model.Architecture!.Tokenizer.Should().Be("Tokenizer");
+            model.Pricing!.Request.Should().Be("0.01");
+            model.Pricing.Image.Should().Be("0.02");
+            model.Pricing.WebSearch.Should().Be("0.03");
+            model.Pricing.InternalReasoning.Should().Be("0.04");
+        }
+
+        [Fact]
         public async Task GetModelsAsync_MinimalModel_StillParses()
         {
             // Arrange — only the required id field present (schema-drift tolerance)

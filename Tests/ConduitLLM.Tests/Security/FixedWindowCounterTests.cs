@@ -108,6 +108,20 @@ public class FixedWindowCounterTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task MemoryCounter_ReportsOriginalWindowReset()
+    {
+        var counter = new MemoryFixedWindowCounter(new MemoryCache(new MemoryCacheOptions()));
+
+        await counter.IncrementAsync("k", 60);
+        var initialReset = await counter.GetResetAsync("k");
+        await counter.IncrementAsync("k", 60);
+        var laterReset = await counter.GetResetAsync("k");
+
+        initialReset.Should().NotBeNull();
+        laterReset.Should().Be(initialReset);
+    }
+
+    [Fact]
     public async Task MemoryCounter_ConcurrentIncrements_LoseNothing()
     {
         var counter = new MemoryFixedWindowCounter(new MemoryCache(new MemoryCacheOptions()));

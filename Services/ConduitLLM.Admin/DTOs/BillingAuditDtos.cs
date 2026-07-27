@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Admin.DTOs
@@ -38,40 +39,9 @@ namespace ConduitLLM.Admin.DTOs
         public int PageNumber { get; set; } = 1;
 
         /// <summary>
-        /// Page size (max 1000)
+        /// Page size (max 100)
         /// </summary>
-        public int PageSize { get; set; } = 100;
-    }
-
-    /// <summary>
-    /// Response DTO for billing audit event queries
-    /// </summary>
-    public class BillingAuditResponse
-    {
-        /// <summary>
-        /// List of audit events
-        /// </summary>
-        public List<BillingAuditEventDto> Events { get; set; } = new();
-
-        /// <summary>
-        /// Total count of matching events
-        /// </summary>
-        public int TotalCount { get; set; }
-
-        /// <summary>
-        /// Current page number
-        /// </summary>
-        public int PageNumber { get; set; }
-
-        /// <summary>
-        /// Page size
-        /// </summary>
-        public int PageSize { get; set; }
-
-        /// <summary>
-        /// Total pages available
-        /// </summary>
-        public int TotalPages => PageSize > 0 ? (int)Math.Ceiling((double)TotalCount / PageSize) : 0;
+        public int PageSize { get; set; } = Pagination.DefaultPageSize;
     }
 
     /// <summary>

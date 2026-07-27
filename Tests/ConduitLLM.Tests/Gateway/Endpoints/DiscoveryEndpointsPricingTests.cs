@@ -8,6 +8,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Options;
+using ConduitLLM.Gateway.Services;
 using ConduitLLM.Tests.Helpers;
 using ConduitLLM.Tests.TestInfrastructure;
 using Microsoft.AspNetCore.Http;
@@ -147,11 +148,55 @@ public sealed class DiscoveryEndpointsPricingTests : IDisposable
             "all:with_pricing", It.IsAny<DiscoveryModelsResult>(), It.IsAny<CancellationToken>()));
     }
 
+    [Theory]
+    [InlineData("speech_to_text")]
+    [InlineData("audio_transcription")]
+    [InlineData("text_to_speech")]
+    [InlineData("rerank")]
+    public async Task GetModels_SharedProjectorSupportsExtendedCapabilities(string capability)
+    {
+        SeedMapping(cost: null);
+
+        await GetSingleModelAsync(CreateEndpoints(), capability);
+    }
+
+    [Fact]
+    public async Task CacheWarmer_UsesPricedKeyAndTheSameWireProjection()
+    {
+        SeedMapping(new ModelCost
+        {
+            CostName = "warmed price",
+            InputCostPerMillionTokens = 1m,
+            OutputCostPerMillionTokens = 2m,
+            IsActive = true,
+            EffectiveDate = DateTime.UtcNow.AddDays(-1)
+        });
+        var warmer = new DiscoveryCacheWarmingService(
+            Mock.Of<IServiceProvider>(),
+            _cache.Object,
+            Options.Create(new DiscoveryCacheOptions { ExposePricing = true }),
+            GatewayJsonOptions.Create(),
+            Mock.Of<ILogger<DiscoveryCacheWarmingService>>());
+
+        await warmer.WarmCacheForCapability(
+            _database.CreateDbContextFactory(),
+            "speech_to_text",
+            CancellationToken.None);
+
+        _cache.Verify(cache => cache.SetDiscoveryResultsAsync(
+            "capability:speech_to_text:with_pricing",
+            It.Is<DiscoveryModelsResult>(result => HasSinglePricedModel(result)),
+            It.IsAny<CancellationToken>()));
+    }
+
     private void SeedMapping(ModelCost? cost)
     {
         _database.Seed(context =>
         {
             var model = ModelTestHelper.CreateCompleteTestModel(Alias);
+            model.SupportsSpeechToText = true;
+            model.SupportsTextToSpeech = true;
+            model.SupportsRerank = true;
             var provider = new Provider
             {
                 ProviderName = "OpenAI primary",
@@ -215,13 +260,19 @@ public sealed class DiscoveryEndpointsPricingTests : IDisposable
             Mock.Of<ILogger<DiscoveryEndpoints>>());
     }
 
-    private static async Task<JsonElement> GetSingleModelAsync(DiscoveryEndpoints endpoints)
+    private static async Task<JsonElement> GetSingleModelAsync(
+        DiscoveryEndpoints endpoints,
+        string? capability = null)
     {
-        var json = await RenderAsync(await endpoints.GetModels());
+        var json = await RenderAsync(await endpoints.GetModels(capability));
         using var document = JsonDocument.Parse(json);
         Assert.Equal(1, document.RootElement.GetProperty("count").GetInt32());
         return document.RootElement.GetProperty("data")[0].Clone();
     }
+
+    private static bool HasSinglePricedModel(DiscoveryModelsResult result) =>
+        result.Count == 1 &&
+        result.Data[0].TryGetProperty("pricing", out _);
 
     /// <summary>
     /// Executes the result with the Gateway's canonical wire serializer and

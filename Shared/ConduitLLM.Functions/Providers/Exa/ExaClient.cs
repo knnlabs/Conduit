@@ -143,23 +143,4 @@ public partial class ExaClient : FunctionClientBase, IFunctionClient
         }
     }
 
-    /// <summary>
-    /// Handles HTTP errors and creates appropriate exception messages.
-    /// </summary>
-    protected Exception HandleHttpError(HttpStatusCode statusCode, string? responseBody)
-    {
-        var message = statusCode switch
-        {
-            HttpStatusCode.Unauthorized => "Invalid API key for Exa",
-            HttpStatusCode.Forbidden => "Access forbidden - check API key permissions",
-            HttpStatusCode.TooManyRequests => "Rate limit exceeded for Exa API",
-            HttpStatusCode.BadRequest => $"Bad request to Exa API: {responseBody}",
-            HttpStatusCode.ServiceUnavailable => "Exa API is temporarily unavailable",
-            HttpStatusCode.GatewayTimeout => "Exa API request timed out",
-            _ => $"Exa API error: {(int)statusCode} {statusCode}"
-        };
-
-        _logger.LogError("Exa API error: {StatusCode} - {Message}", statusCode, message);
-        return new InvalidOperationException(message);
-    }
 }

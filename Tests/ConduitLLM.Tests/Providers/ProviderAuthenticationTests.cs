@@ -6,6 +6,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.Replicate;
 
 using Moq;
 using Moq.Protected;
@@ -90,6 +91,36 @@ namespace ConduitLLM.Tests.Providers
             // Assert
             Assert.True(result.IsSuccess);
             Assert.Contains("successfully", result.Message, StringComparison.OrdinalIgnoreCase);
+            _httpClientFactoryMock.Verify(
+                factory => factory.CreateClient("OpenAIAuthVerification"),
+                Times.Once);
+        }
+
+        [Fact]
+        public async Task OpenAI_VerifyAuthentication_PropagatesCallerCancellation()
+        {
+            var mockHandler = new Mock<HttpMessageHandler>();
+            var httpClient = new HttpClient(mockHandler.Object);
+            _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .Returns<HttpRequestMessage, CancellationToken>(
+                    (_, token) => Task.FromCanceled<HttpResponseMessage>(token));
+            var client = new OpenAIClient(
+                new Provider { Id = 1, ProviderType = ProviderType.OpenAI },
+                new ProviderKeyCredential { Id = 1, ProviderId = 1, ApiKey = "sk-test" },
+                "gpt-4",
+                CreateLogger<OpenAIClient>().Object,
+                _httpClientFactoryMock.Object,
+                _capabilityServiceMock.Object);
+            using var source = new CancellationTokenSource();
+            source.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+                client.VerifyAuthenticationAsync(cancellationToken: source.Token));
         }
 
         [Fact]
@@ -247,6 +278,37 @@ namespace ConduitLLM.Tests.Providers
         }
 
         #endregion
+
+        [Fact]
+        public async Task Replicate_VerifyAuthentication_UsesBaseTransportAndProviderMessage()
+        {
+            var mockHandler = new Mock<HttpMessageHandler>();
+            var httpClient = new HttpClient(mockHandler.Object);
+            _httpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>())).Returns(httpClient);
+            mockHandler.Protected()
+                .Setup<Task<HttpResponseMessage>>(
+                    "SendAsync",
+                    ItExpr.IsAny<HttpRequestMessage>(),
+                    ItExpr.IsAny<CancellationToken>())
+                .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+                {
+                    Content = new StringContent("""{"detail":"bad token"}""")
+                });
+            var client = new ReplicateClient(
+                new Provider { Id = 2, ProviderType = ProviderType.Replicate },
+                new ProviderKeyCredential { Id = 2, ProviderId = 2, ApiKey = "r8-test" },
+                "owner/model",
+                CreateLogger<ReplicateClient>().Object,
+                _httpClientFactoryMock.Object);
+
+            var result = await client.VerifyAuthenticationAsync();
+
+            Assert.False(result.IsSuccess);
+            Assert.Contains("token", result.ErrorDetails, StringComparison.OrdinalIgnoreCase);
+            _httpClientFactoryMock.Verify(
+                factory => factory.CreateClient("ReplicateAuthVerification"),
+                Times.Once);
+        }
 
         #region HttpClient Configuration Tests
 

@@ -1,5 +1,7 @@
 using System.Text.Json;
 
+using ConduitLLM.Configuration.DTOs.BatchOperations;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Options;
 
 using Microsoft.AspNetCore.Builder;
@@ -47,6 +49,61 @@ public sealed class GatewayJsonOptionsTests
 
         Assert.Same(http, shared);
         Assert.Same(JsonNamingPolicy.SnakeCaseLower, shared.PropertyNamingPolicy);
+    }
+
+    [Fact]
+    public void AsyncTaskStatusSerializesTheSharedCompletionTimestamp()
+    {
+        var completedAt = new DateTime(2026, 7, 26, 12, 30, 0, DateTimeKind.Utc);
+        var json = JsonSerializer.Serialize(
+            new AsyncTaskStatusResponse
+            {
+                TaskId = "task-1",
+                Status = "completed",
+                CompletedAt = completedAt
+            },
+            GatewayJsonOptions.Create());
+
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(
+            "2026-07-26T12:30:00Z",
+            document.RootElement.GetProperty("completed_at").GetString());
+    }
+
+    [Fact]
+    public void VirtualKeyBatchUpdateRejectsTheRemovedPerKeyBudget()
+    {
+        var deserialize = () => JsonSerializer.Deserialize<VirtualKeyUpdateDto>(
+            """{"virtual_key_id":42,"max_budget":100}""",
+            GatewayJsonOptions.Create());
+
+        Assert.Throws<JsonException>(deserialize);
+    }
+
+    [Fact]
+    public void BatchStatusUsesTheCoreContractAndErrorsHideStackTraces()
+    {
+        var statusJson = JsonSerializer.Serialize(
+            new BatchOperationStatus
+            {
+                OperationId = "batch-1",
+                OperationType = "virtual_key_update",
+                Status = BatchOperationStatusEnum.Running,
+                CanResume = true
+            },
+            GatewayJsonOptions.Create());
+        var errorJson = JsonSerializer.Serialize(
+            new BatchItemError
+            {
+                Error = "failed",
+                StackTrace = "server-only"
+            },
+            GatewayJsonOptions.Create());
+
+        using var statusDocument = JsonDocument.Parse(statusJson);
+        Assert.Equal("running", statusDocument.RootElement.GetProperty("status").GetString());
+        Assert.True(statusDocument.RootElement.GetProperty("can_resume").GetBoolean());
+        Assert.DoesNotContain("stack_trace", errorJson, StringComparison.Ordinal);
     }
 
     private sealed record WireSample(string RequestId, WireState State);

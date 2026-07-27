@@ -33,8 +33,15 @@ public static class AdminResults
         string detail,
         string? code = null,
         IReadOnlyDictionary<string, string[]>? errors = null,
-        string? traceId = null) =>
-        new AdminProblemResult(status, detail, code ?? AdminErrorCodes.ForStatus(status), errors, traceId);
+        string? traceId = null,
+        IReadOnlyDictionary<string, object?>? extensions = null) =>
+        new AdminProblemResult(
+            status,
+            detail,
+            code ?? AdminErrorCodes.ForStatus(status),
+            errors,
+            traceId,
+            extensions);
 
     /// <summary>
     /// Writes an <see cref="AdminProblemDetails"/> body whose TraceId matches the
@@ -50,19 +57,22 @@ public static class AdminResults
         private readonly string? _code;
         private readonly IReadOnlyDictionary<string, string[]>? _errors;
         private readonly string? _traceId;
+        private readonly IReadOnlyDictionary<string, object?>? _extensions;
 
         public AdminProblemResult(
             int status,
             string detail,
             string? code,
             IReadOnlyDictionary<string, string[]>? errors,
-            string? traceId)
+            string? traceId,
+            IReadOnlyDictionary<string, object?>? extensions)
         {
             _status = status;
             _detail = detail;
             _code = code;
             _errors = errors;
             _traceId = traceId;
+            _extensions = extensions;
         }
 
         public int? StatusCode => _status;
@@ -80,7 +90,10 @@ public static class AdminResults
                     Detail = _detail,
                     Code = _code,
                     TraceId = traceId,
-                    Errors = _errors
+                    Errors = _errors,
+                    Extensions = _extensions is null
+                        ? new Dictionary<string, object?>()
+                        : new Dictionary<string, object?>(_extensions)
                 },
                 statusCode: _status,
                 contentType: "application/problem+json").ExecuteAsync(httpContext);

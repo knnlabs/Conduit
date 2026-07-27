@@ -24,6 +24,7 @@ public static class ProviderErrorClassifier
             HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
             HttpStatusCode.RequestTimeout => ProviderErrorType.Timeout,
             HttpStatusCode.InternalServerError => ProviderErrorType.ServiceUnavailable,
+            { } status when (int)status >= 500 => ProviderErrorType.ServiceUnavailable,
             _ => ProviderErrorType.Unknown
         };
 

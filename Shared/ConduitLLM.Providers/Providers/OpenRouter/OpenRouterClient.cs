@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
@@ -125,7 +124,7 @@ namespace ConduitLLM.Providers.OpenRouter
 
                     Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenRouterModelsResponse>(
+                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenRouterCatalogResponse>(
                         client,
                         endpoint,
                         headers,
@@ -151,7 +150,7 @@ namespace ConduitLLM.Providers.OpenRouter
         /// token limits from <c>context_length</c> + <c>top_provider.max_completion_tokens</c>. All
         /// fields are nullable-tolerant so schema drift cannot break model listing.
         /// </summary>
-        private InternalModels.ExtendedModelInfo MapModelInfo(OpenRouterModelData m)
+        private InternalModels.ExtendedModelInfo MapModelInfo(OpenRouterCatalogModel m)
         {
             var info = InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id);
 
@@ -338,99 +337,4 @@ namespace ConduitLLM.Providers.OpenRouter
         }
     }
 
-    /// <summary>
-    /// OpenRouter-specific models list response.
-    /// Unlike OpenAI, OpenRouter does not include 'owned_by' in model data.
-    /// </summary>
-    internal record OpenRouterModelsResponse
-    {
-        [JsonPropertyName("data")]
-        public required List<OpenRouterModelData> Data { get; init; }
-    }
-
-    /// <summary>
-    /// Minimal model data from OpenRouter's /models endpoint.
-    /// Only requires 'id' — OpenRouter includes many extra fields (pricing, context_length, etc.)
-    /// that are safely ignored during deserialization.
-    /// </summary>
-    internal record OpenRouterModelData
-    {
-        [JsonPropertyName("id")]
-        public required string Id { get; init; }
-
-        [JsonPropertyName("name")]
-        public string? Name { get; init; }
-
-        [JsonPropertyName("description")]
-        public string? Description { get; init; }
-
-        [JsonPropertyName("context_length")]
-        public int? ContextLength { get; init; }
-
-        [JsonPropertyName("architecture")]
-        public OpenRouterArchitecture? Architecture { get; init; }
-
-        [JsonPropertyName("pricing")]
-        public OpenRouterPricing? Pricing { get; init; }
-
-        [JsonPropertyName("top_provider")]
-        public OpenRouterTopProvider? TopProvider { get; init; }
-
-        [JsonPropertyName("supported_parameters")]
-        public List<string>? SupportedParameters { get; init; }
-    }
-
-    /// <summary>Architecture block from OpenRouter's /models: modalities + tokenizer.</summary>
-    internal record OpenRouterArchitecture
-    {
-        [JsonPropertyName("input_modalities")]
-        public List<string>? InputModalities { get; init; }
-
-        [JsonPropertyName("output_modalities")]
-        public List<string>? OutputModalities { get; init; }
-
-        [JsonPropertyName("tokenizer")]
-        public string? Tokenizer { get; init; }
-    }
-
-    /// <summary>
-    /// Per-model pricing from OpenRouter's /models. Values are USD-per-unit strings (per docs) and are
-    /// carried through for the admin-reviewed pricing sync; not consumed at request time.
-    /// </summary>
-    internal record OpenRouterPricing
-    {
-        [JsonPropertyName("prompt")]
-        public string? Prompt { get; init; }
-
-        [JsonPropertyName("completion")]
-        public string? Completion { get; init; }
-
-        [JsonPropertyName("request")]
-        public string? Request { get; init; }
-
-        [JsonPropertyName("image")]
-        public string? Image { get; init; }
-
-        [JsonPropertyName("web_search")]
-        public string? WebSearch { get; init; }
-
-        [JsonPropertyName("internal_reasoning")]
-        public string? InternalReasoning { get; init; }
-
-        [JsonPropertyName("input_cache_read")]
-        public string? InputCacheRead { get; init; }
-
-        [JsonPropertyName("input_cache_write")]
-        public string? InputCacheWrite { get; init; }
-    }
-
-    /// <summary>Top-provider metadata from OpenRouter's /models (max completion + context length).</summary>
-    internal record OpenRouterTopProvider
-    {
-        [JsonPropertyName("max_completion_tokens")]
-        public int? MaxCompletionTokens { get; init; }
-
-        [JsonPropertyName("context_length")]
-        public int? ContextLength { get; init; }
-    }
 }

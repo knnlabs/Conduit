@@ -125,11 +125,10 @@ namespace ConduitLLM.Admin.Services
                 var id = await _globalSettingRepository.CreateAsync(entity);
 
                 // Get the created setting
-                var createdSetting = await _globalSettingRepository.GetByIdAsync(id);
-                if (createdSetting == null)
-                {
-                    throw new InvalidOperationException($"Failed to retrieve newly created global setting with ID {id}");
-                }
+                var createdSetting = ConduitLLM.Core.Utilities.ReadBackGuard.RequireCreated(
+                    await _globalSettingRepository.GetByIdAsync(id),
+                    "global setting",
+                    id);
 
                 // Publish GlobalSettingChanged event for cache synchronization
                 await PublishEventAsync(

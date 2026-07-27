@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Policies;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Providers.Extensions;
 using Microsoft.AspNetCore.Http;
@@ -49,20 +50,13 @@ namespace ConduitLLM.Providers
             // background workers). Correlation falls back to Activity.Current in that case.
             var httpContextAccessor = serviceProvider.GetService<IHttpContextAccessor>();
 
-            // Use existing retry policy setup
-            initialDelay ??= TimeSpan.FromSeconds(1);
-            maxDelay ??= TimeSpan.FromSeconds(30);
-
-            var delay = Polly.Contrib.WaitAndRetry.Backoff.DecorrelatedJitterBackoffV2(
-                medianFirstRetryDelay: initialDelay.Value,
-                retryCount: maxRetries,
-                fastFirst: false);
-
-            return HttpPolicyExtensions
-                .HandleTransientHttpError()
-                .OrResult(msg => msg.StatusCode == HttpStatusCode.TooManyRequests)
+            return HttpRetryPolicies
+                .HandleTransientHttpErrors()
                 .WaitAndRetryAsync(
-                    delay,
+                    HttpRetryPolicies.GetDecorrelatedJitterDelays(
+                        maxRetries,
+                        initialDelay,
+                        maxDelay),
                     onRetry: async (outcome, timespan, retryAttempt, context) =>
                     {
                         // Existing logging

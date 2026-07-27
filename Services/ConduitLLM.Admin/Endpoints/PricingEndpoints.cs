@@ -72,7 +72,7 @@ namespace ConduitLLM.Admin.Endpoints
             var group = app.MapGroup("/v1/admin/pricing-tools").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Pricing");
             group.MapGet("/types", ([FromServices] PricingEndpoints e) => e.GetPricingTypes()).WithName("Pricing_GetTypes").Produces<IEnumerable<PricingTypeInfo>>();
             group.MapGet("/operators", ([FromServices] PricingEndpoints e) => e.GetConditionOperators()).WithName("Pricing_GetOperators").Produces<IEnumerable<OperatorInfo>>();
-            group.MapGet("/template", ([FromServices] PricingEndpoints e, string? pricingType = "per_second") => e.GetPricingTemplate(pricingType)).WithName("Pricing_GetTemplate").Produces<PricingTemplateResponse>();
+            group.MapGet("/template", ([FromServices] PricingEndpoints e, string? pricingType = "per_second") => e.GetPricingTemplate(pricingType)).WithName("Pricing_GetTemplate").Produces<PricingRulesConfig>();
             group.MapPost("/validate", ([FromServices] PricingEndpoints e, PricingValidationRequest request) => e.ValidatePricingConfiguration(request)).WithName("Pricing_Validate").Produces<PricingValidationResponse>().Produces(StatusCodes.Status400BadRequest);
             group.MapPost("/simulate", ([FromServices] PricingEndpoints e, PricingSimulationRequest request) => e.SimulatePricing(request)).WithName("Pricing_Simulate").Produces<PricingSimulationResponse>().Produces(StatusCodes.Status400BadRequest);
             group.MapGet("/audit/events", ([FromServices] PricingEndpoints e, DateTime from, DateTime to, int? virtualKeyId = null, string? modelId = null, string? pricingType = null, int page = 1, int pageSize = 50) =>
@@ -174,42 +174,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <returns>JSON template for the pricing configuration</returns>
         public IResult GetPricingTemplate(string? pricingType = "per_second")
         {
-            var template = pricingType?.ToLowerInvariant() switch
-            {
-                "per_unit" => new PricingTemplateResponse(
-                    "per_unit",
-                    0.05m,
-                    "ImageCount",
-                    [
-                        new(1, "HD quality", new(Quality: "hd"), 0.08m),
-                        new(2, "Standard quality", new(Quality: "standard"), 0.05m)
-                    ]),
-                "per_second" => new PricingTemplateResponse(
-                    "per_second",
-                    0.025m,
-                    "VideoDurationSeconds",
-                    [
-                        new(1, "1080p video with audio", new(Resolution: "1080p", WithAudio: true), 0.15m),
-                        new(2, "1080p video without audio", new(Resolution: "1080p"), 0.06m),
-                        new(3, "720p video", new(Resolution: "720p"), 0.025m),
-                        new(4, "480p video", new(Resolution: "480p"), 0.015m)
-                    ]),
-                "per_step" => new PricingTemplateResponse(
-                    "per_step",
-                    0.00013m,
-                    "InferenceSteps",
-                    [
-                        new(1, "High quality (50+ steps)", new(InferenceStepsGte: 50), 0.00015m),
-                        new(2, "Standard quality", new(), 0.00013m)
-                    ]),
-                _ => new PricingTemplateResponse(
-                    "per_second",
-                    0.025m,
-                    "VideoDurationSeconds",
-                    [])
-            };
-
-            return Results.Ok(template);
+            return Results.Ok(PricingRuleTemplates.Create(pricingType));
         }
 
         private void LogAdminAudit(string operation, string entityType, object? entityId = null, string? detail = null) => AdminAudit.Log(_httpContextAccessor.HttpContext!, _logger, operation, entityType, entityId, detail);

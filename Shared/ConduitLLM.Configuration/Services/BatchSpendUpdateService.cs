@@ -134,7 +134,7 @@ namespace ConduitLLM.Configuration.Services
                 throw new BillingSystemException(
                     $"Virtual Key {virtualKeyId} was not found while queueing spend",
                     virtualKeyId,
-                    BillingSystemException.ErrorCodes.DatabaseUpdateFailed);
+                    "database_update_failed");
             }
 
             // Execute Redis operations through circuit breaker if available

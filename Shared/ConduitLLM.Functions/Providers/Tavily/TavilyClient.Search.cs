@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Exceptions;
 using ConduitLLM.Functions.Providers.Tavily.Models;
 
 namespace ConduitLLM.Functions.Providers.Tavily;
@@ -81,6 +82,14 @@ public partial class TavilyClient
                     ["responseTime"] = tavilyResponse.ResponseTime ?? 0
                 }
             };
+        }
+        catch (FunctionCommunicationException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Polly;
+using Polly.Contrib.WaitAndRetry;
 using Polly.Extensions.Http;
 
 namespace ConduitLLM.Core.Policies;
@@ -14,17 +15,45 @@ public static class HttpRetryPolicies
     /// Standard retry policy for HTTP requests with exponential backoff and jitter.
     /// Handles transient HTTP errors (5xx, connection failures) and 429 Too Many Requests.
     /// </summary>
-    public static IAsyncPolicy<HttpResponseMessage> GetStandardRetryPolicy()
+    public static IAsyncPolicy<HttpResponseMessage> GetStandardRetryPolicy(
+        int maxRetries = 3,
+        TimeSpan? initialDelay = null,
+        TimeSpan? maxDelay = null,
+        ILogger? logger = null,
+        string policyKey = "HttpRetryPolicy")
     {
-        return HttpPolicyExtensions
-            .HandleTransientHttpError()
-            .OrResult(msg => msg.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+        return HandleTransientHttpErrors()
             .WaitAndRetryAsync(
-                retryCount: 3,
-                sleepDurationProvider: retryAttempt =>
-                    TimeSpan.FromSeconds(Math.Pow(2, retryAttempt)) +
-                    TimeSpan.FromMilliseconds(Random.Shared.Next(0, 1000))
-            );
+                GetDecorrelatedJitterDelays(maxRetries, initialDelay, maxDelay),
+                onRetry: (outcome, timespan, retryAttempt, _) =>
+                {
+                    logger?.LogWarning(
+                        "Retry {RetryAttempt} after {DelayMs}ms delay due to {StatusCode}. Error: {Error}",
+                        retryAttempt,
+                        timespan.TotalMilliseconds,
+                        outcome.Result?.StatusCode,
+                        outcome.Exception?.Message);
+                })
+            .WithPolicyKey(policyKey);
+    }
+
+    /// <summary>Shared transient HTTP handle set used by policies that add custom retry callbacks.</summary>
+    public static PolicyBuilder<HttpResponseMessage> HandleTransientHttpErrors() =>
+        HttpPolicyExtensions
+            .HandleTransientHttpError()
+            .OrResult(message => message.StatusCode == System.Net.HttpStatusCode.TooManyRequests);
+
+    /// <summary>Creates capped decorrelated-jitter delays to avoid synchronized retry storms.</summary>
+    public static IEnumerable<TimeSpan> GetDecorrelatedJitterDelays(
+        int retryCount,
+        TimeSpan? initialDelay = null,
+        TimeSpan? maxDelay = null)
+    {
+        var firstDelay = initialDelay ?? TimeSpan.FromSeconds(1);
+        var delayCap = maxDelay ?? TimeSpan.FromSeconds(30);
+
+        return Backoff.DecorrelatedJitterBackoffV2(firstDelay, retryCount)
+            .Select(delay => delay > delayCap ? delayCap : delay);
     }
 
     /// <summary>

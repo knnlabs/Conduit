@@ -86,4 +86,23 @@ public class AdminResultsTests
     {
         AdminErrorCodes.ForStatus(statusCode).Should().Be(expectedCode);
     }
+
+    [Fact]
+    public async Task Problem_WritesStructuredExtensionData()
+    {
+        var (_, body) = await ExecuteAsync(AdminResults.Problem(
+            StatusCodes.Status400BadRequest,
+            "Import failed",
+            "import_failed",
+            extensions: new Dictionary<string, object?>
+            {
+                ["import_errors"] = new[] { "row 1" },
+                ["failure_count"] = 1
+            }));
+
+        body.Extensions["failure_count"].Should().BeOfType<JsonElement>()
+            .Which.GetInt32().Should().Be(1);
+        body.Extensions["import_errors"].Should().BeOfType<JsonElement>()
+            .Which[0].GetString().Should().Be("row 1");
+    }
 }

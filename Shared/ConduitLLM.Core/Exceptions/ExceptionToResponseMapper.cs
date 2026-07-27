@@ -66,12 +66,6 @@ public static class ExceptionToResponseMapper
                 => new(400, validationEx.Message, "validation_error", LogLevel.Warning,
                     "Validation error", true, "invalid_request_error"),
 
-            // The provider reported the model as missing (e.g. an upstream 404).
-            // Note: derives from Exception, not ConduitException.
-            ModelUnavailableException modelUnavailableEx
-                => new(404, modelUnavailableEx.Message, "model_not_found", LogLevel.Warning,
-                    "Model unavailable", true, "invalid_request_error", "model"),
-
             // A provider was requested that is not configured or not supported — a client
             // mistake, not a server fault.
             UnsupportedProviderException unsupportedEx
@@ -93,9 +87,26 @@ public static class ExceptionToResponseMapper
             LLMCommunicationException commEx
                 => MapLLMCommunicationException(commEx),
 
+            ConduitLLM.Functions.Exceptions.FunctionCommunicationException functionEx
+                => MapProviderCommunicationStatus(functionEx.StatusCode, functionEx.Message),
+
             ConfigurationException
                 => new(500, "A configuration error occurred", "configuration_error", LogLevel.Error,
                     "Configuration error", false, "server_error"),
+
+            ResourceConsistencyException
+                => new(500, "A newly created resource could not be reloaded",
+                    "resource_consistency_error", LogLevel.Error,
+                    "Resource consistency error", false, "server_error"),
+
+            ConduitLLM.Configuration.Exceptions.BillingSystemException billingEx
+                => new(503, "The billing service is temporarily unavailable",
+                    billingEx.ErrorCode, LogLevel.Error,
+                    "Billing system unavailable", false, "service_unavailable"),
+
+            ConduitLLM.Configuration.Interfaces.RedisCircuitBreakerOpenException circuitEx
+                => new(503, circuitEx.Message, "redis_circuit_open", LogLevel.Warning,
+                    "Redis circuit open", true, "service_unavailable"),
 
             // Standard .NET exceptions — use safe generic messages
             ArgumentNullException argNullEx

@@ -1,6 +1,9 @@
 using System.Net;
 
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Configuration.Exceptions;
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Functions.Exceptions;
 
 using FluentAssertions;
 
@@ -501,23 +504,61 @@ public class ExceptionToResponseMapperTests
     }
 
     [Fact]
-    public void Map_ModelUnavailableException_Returns404WithModelNotFound()
+    public void Map_ResourceConsistencyException_Returns500()
     {
-        // Arrange
-        var exception = new ModelUnavailableException("Model 'llama-4' not found for provider Groq");
+        var result = ExceptionToResponseMapper.Map(
+            new ResourceConsistencyException("model cost", 42));
 
-        // Act
-        var result = ExceptionToResponseMapper.Map(exception);
+        result.StatusCode.Should().Be(500);
+        result.ErrorCode.Should().Be("resource_consistency_error");
+        result.OpenAIErrorType.Should().Be("server_error");
+        result.ResponseMessage.Should().NotContain("42");
+    }
 
-        // Assert
-        result.StatusCode.Should().Be(404);
-        result.ErrorCode.Should().Be("model_not_found");
-        result.ResponseMessage.Should().Contain("llama-4");
-        result.LogLevel.Should().Be(LogLevel.Warning);
-        result.LogPrefix.Should().Be("Model unavailable");
-        result.IncludeExceptionMessageInLog.Should().BeTrue();
-        result.OpenAIErrorType.Should().Be("invalid_request_error");
-        result.Param.Should().Be("model");
+    [Fact]
+    public void Map_BillingSystemException_Returns503AndPreservesErrorCode()
+    {
+        var result = ExceptionToResponseMapper.Map(
+            new BillingSystemException(
+                "Spend could not be persisted",
+                virtualKeyId: 42,
+                errorCode: "database_update_failed"));
+
+        result.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        result.ErrorCode.Should().Be("database_update_failed");
+        result.OpenAIErrorType.Should().Be("service_unavailable");
+        result.ResponseMessage.Should().NotContain("42");
+    }
+
+    [Fact]
+    public void Map_RedisCircuitBreakerOpenException_Returns503()
+    {
+        var result = ExceptionToResponseMapper.Map(
+            new RedisCircuitBreakerOpenException(
+                CircuitState.Open,
+                TimeSpan.FromSeconds(12)));
+
+        result.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        result.ErrorCode.Should().Be("redis_circuit_open");
+        result.OpenAIErrorType.Should().Be("service_unavailable");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests, 429, "rate_limit_exceeded")]
+    [InlineData(HttpStatusCode.ServiceUnavailable, 503, "provider_unavailable")]
+    public void Map_FunctionCommunicationException_UsesProviderStatusTable(
+        HttpStatusCode providerStatus,
+        int expectedStatus,
+        string expectedCode)
+    {
+        var result = ExceptionToResponseMapper.Map(
+            new FunctionCommunicationException(
+                "Tavily",
+                "Provider failed",
+                providerStatus));
+
+        result.StatusCode.Should().Be(expectedStatus);
+        result.ErrorCode.Should().Be(expectedCode);
     }
 
     [Fact]

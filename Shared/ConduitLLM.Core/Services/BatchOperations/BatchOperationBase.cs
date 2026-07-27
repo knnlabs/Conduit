@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Policies;
 
 namespace ConduitLLM.Core.Services.BatchOperations
 {
@@ -176,7 +177,8 @@ namespace ConduitLLM.Core.Services.BatchOperations
 
                     return result;
                 }
-                catch (Exception ex) when (attempt < RetryOptions.MaxRetries && IsRetryableException(ex))
+                catch (Exception ex) when (attempt < RetryOptions.MaxRetries &&
+                                           IsRetryableException(ex, cancellationToken))
                 {
                     lastException = ex;
                     var delay = CalculateRetryDelay(attempt);
@@ -326,14 +328,10 @@ namespace ConduitLLM.Core.Services.BatchOperations
         /// Determines if an exception is retryable.
         /// Override to customize retry logic for specific exception types.
         /// </summary>
-        protected virtual bool IsRetryableException(Exception exception)
-        {
-            // By default, retry on transient failures
-            return exception is TimeoutException
-                || exception is TaskCanceledException
-                || exception is HttpRequestException
-                || (exception.InnerException != null && IsRetryableException(exception.InnerException));
-        }
+        protected virtual bool IsRetryableException(
+            Exception exception,
+            CancellationToken callerToken) =>
+            TransientErrorPolicy.IsTransient(exception, callerToken);
 
         /// <summary>
         /// Gets the TTL for idempotency token storage.

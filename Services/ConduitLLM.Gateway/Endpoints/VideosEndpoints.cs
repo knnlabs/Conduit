@@ -140,7 +140,7 @@ namespace ConduitLLM.Gateway.Endpoints
                 WebhookHeaders = request.WebhookHeaders
             }, "create async video generation", new { TaskId = taskId, Model = request.Model });
 
-            var taskResponse = new VideoGenerationTaskResponse
+            var taskResponse = new AsyncTaskResponse
             {
                 TaskId = taskId,
                 Status = TaskStateConstants.Pending,
@@ -442,33 +442,10 @@ namespace ConduitLLM.Gateway.Endpoints
     }
 
     /// <summary>
-    /// Response for async video generation task creation.
-    /// </summary>
-    public class VideoGenerationTaskResponse
-    {
-        public string TaskId { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        // DateTime (not DateTimeOffset) so GatewayJsonOptions' UtcDateTimeConverter normalizes
-        // these to Z-suffixed UTC like the image endpoints; task-store timestamps arrive with
-        // DateTimeKind.Unspecified and must not pick up the host's local offset (#1258).
-        public DateTime CreatedAt { get; set; }
-        public DateTime? EstimatedCompletionTime { get; set; }
-        public string CheckStatusUrl { get; set; } = string.Empty;
-    }
-
-    /// <summary>
     /// Status information for a video generation task.
     /// </summary>
-    public class VideoGenerationTaskStatus
+    public class VideoGenerationTaskStatus : AsyncTaskStatusResponse<VideoGenerationResponse>
     {
-        public string TaskId { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public int? Progress { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public DateTime? CompletedAt { get; set; }
-        public string? Error { get; set; }
         public string? ResultRaw { get; set; }
-        public VideoGenerationResponse? Result { get; set; }
     }
 }

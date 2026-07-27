@@ -174,11 +174,10 @@ namespace ConduitLLM.Admin.Services
                 var id = await _notificationRepository.CreateAsync(entity);
 
                 // Get the created notification
-                var createdNotification = await _notificationRepository.GetByIdAsync(id);
-                if (createdNotification == null)
-                {
-                    throw new InvalidOperationException($"Failed to retrieve newly created notification with ID {id}");
-                }
+                var createdNotification = ConduitLLM.Core.Utilities.ReadBackGuard.RequireCreated(
+                    await _notificationRepository.GetByIdAsync(id),
+                    "notification",
+                    id);
 
                 // Get virtual key name if applicable
                 string? keyName = null;

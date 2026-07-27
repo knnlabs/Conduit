@@ -14465,7 +14465,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VirtualKeyDiscoveryPreviewDto"
+                  "$ref": "#/components/schemas/DiscoveryModelsResponse"
                 }
               }
             }
@@ -21086,7 +21086,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PricingTemplateResponse"
+                  "$ref": "#/components/schemas/PricingRulesConfig"
                 }
               }
             }
@@ -26807,26 +26807,252 @@
         "description": "DTO for the result of manually disabling a key"
       },
       "DiscoveredModelDto": {
+        "required": [
+          "id",
+          "provider",
+          "display_name",
+          "description",
+          "model_card_url",
+          "max_tokens",
+          "max_input_tokens",
+          "max_output_tokens",
+          "tokenizer_type",
+          "input_modalities",
+          "output_modalities",
+          "capability_source",
+          "capabilities_last_verified_at",
+          "parameters",
+          "capabilities"
+        ],
         "type": "object",
         "properties": {
           "id": {
             "type": "string"
           },
-          "providerType": {
+          "provider": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "model_card_url": {
+            "type": "string"
+          },
+          "max_tokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "max_input_tokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "max_output_tokens": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "tokenizer_type": {
+            "type": "string"
+          },
+          "input_modalities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "output_modalities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capability_source": {
+            "type": "string"
+          },
+          "capabilities_last_verified_at": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "parameters": {
+            "type": "string"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/DiscoveryModelCapabilitiesDto"
+          },
+          "pricing": {
             "oneOf": [
               {
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/ProviderType"
+                "$ref": "#/components/schemas/DiscoveryModelPricingDto"
               }
             ]
+          }
+        }
+      },
+      "DiscoveryModelCapabilitiesDto": {
+        "required": [
+          "chat",
+          "chat_stream",
+          "image_input",
+          "video_input",
+          "audio_input",
+          "file_input",
+          "vision",
+          "video_understanding",
+          "image_generation",
+          "video_generation",
+          "embeddings",
+          "function_calling",
+          "speech_to_text",
+          "text_to_speech",
+          "rerank"
+        ],
+        "type": "object",
+        "properties": {
+          "chat": {
+            "type": "boolean"
           },
-          "displayName": {
+          "chat_stream": {
+            "type": "boolean"
+          },
+          "image_input": {
+            "type": "boolean"
+          },
+          "video_input": {
+            "type": "boolean"
+          },
+          "audio_input": {
+            "type": "boolean"
+          },
+          "file_input": {
+            "type": "boolean"
+          },
+          "vision": {
+            "type": "boolean"
+          },
+          "video_understanding": {
+            "type": "boolean"
+          },
+          "image_generation": {
+            "type": "boolean"
+          },
+          "video_generation": {
+            "type": "boolean"
+          },
+          "embeddings": {
+            "type": "boolean"
+          },
+          "function_calling": {
+            "type": "boolean"
+          },
+          "speech_to_text": {
+            "type": "boolean"
+          },
+          "text_to_speech": {
+            "type": "boolean"
+          },
+          "rerank": {
+            "type": "boolean"
+          },
+          "tool_use": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "json_mode": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "max_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "max_output_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "pdf_input": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "DiscoveryModelPricingDto": {
+        "required": [
+          "pricing_model",
+          "input_cost_per_million_tokens",
+          "output_cost_per_million_tokens",
+          "cached_input_cost_per_million_tokens",
+          "embedding_cost_per_million_tokens",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "pricing_model": {
             "type": "string"
           },
-          "capabilities": {
-            "type": "object"
+          "input_cost_per_million_tokens": {
+            "type": "number",
+            "format": "double"
+          },
+          "output_cost_per_million_tokens": {
+            "type": "number",
+            "format": "double"
+          },
+          "cached_input_cost_per_million_tokens": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "embedding_cost_per_million_tokens": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "DiscoveryModelsResponse": {
+        "required": [
+          "data",
+          "count"
+        ],
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveredModelDto"
+            }
+          },
+          "count": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -31222,88 +31448,6 @@
         },
         "description": "Response from pricing simulation"
       },
-      "PricingTemplateConditionsDto": {
-        "type": "object",
-        "properties": {
-          "quality": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "resolution": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "with_audio": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "inference_steps_gte": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          }
-        }
-      },
-      "PricingTemplateResponse": {
-        "required": [
-          "pricingType",
-          "defaultRate",
-          "unitField",
-          "rules"
-        ],
-        "type": "object",
-        "properties": {
-          "pricingType": {
-            "type": "string"
-          },
-          "defaultRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "unitField": {
-            "type": "string"
-          },
-          "rules": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PricingTemplateRuleDto"
-            }
-          }
-        }
-      },
-      "PricingTemplateRuleDto": {
-        "required": [
-          "priority",
-          "description",
-          "conditions",
-          "rate"
-        ],
-        "type": "object",
-        "properties": {
-          "priority": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "description": {
-            "type": "string"
-          },
-          "conditions": {
-            "$ref": "#/components/schemas/PricingTemplateConditionsDto"
-          },
-          "rate": {
-            "type": "number",
-            "format": "double"
-          }
-        }
-      },
       "PricingTypeInfo": {
         "type": "object",
         "properties": {
@@ -32077,6 +32221,13 @@
               "string"
             ],
             "description": "Optional example value shown as the input placeholder."
+          },
+          "defaultValue": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Optional registry-defined value used when the operator supplies none."
           },
           "required": {
             "type": "boolean",
@@ -34834,21 +34985,6 @@
             "format": "date-time"
           },
           "uniqueModels": {
-            "type": "integer",
-            "format": "int32"
-          }
-        }
-      },
-      "VirtualKeyDiscoveryPreviewDto": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DiscoveredModelDto"
-            }
-          },
-          "count": {
             "type": "integer",
             "format": "int32"
           }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Admin.Endpoints
 {
@@ -217,33 +218,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <summary>
         /// Page size
         /// </summary>
-        public int PageSize { get; set; } = 50;
-    }
-
-    /// <summary>
-    /// Response from pricing audit query
-    /// </summary>
-    public class PricingAuditQueryResponse
-    {
-        /// <summary>
-        /// The audit events
-        /// </summary>
-        public List<PricingAuditEventDto> Events { get; set; } = new();
-
-        /// <summary>
-        /// Total count of matching events
-        /// </summary>
-        public int TotalCount { get; set; }
-
-        /// <summary>
-        /// Current page number
-        /// </summary>
-        public int PageNumber { get; set; }
-
-        /// <summary>
-        /// Page size
-        /// </summary>
-        public int PageSize { get; set; }
+        public int PageSize { get; set; } = Pagination.DefaultPageSize;
     }
 
     /// <summary>

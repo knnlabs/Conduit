@@ -207,7 +207,7 @@ namespace ConduitLLM.Tests.Providers
             {
                 HttpStatusCode.NotFound,
                 """{"error":{"message":"model not found"}}""",
-                typeof(ModelUnavailableException),
+                typeof(ModelNotFoundException),
                 "specified model is not available"
             };
             yield return new object[]

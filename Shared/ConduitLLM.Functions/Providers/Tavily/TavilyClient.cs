@@ -122,25 +122,14 @@ public partial class TavilyClient : FunctionClientBase, IFunctionClient
         return request;
     }
 
-    /// <summary>
-    /// Handles HTTP errors and creates appropriate exception messages.
-    /// </summary>
-    protected Exception HandleHttpError(HttpStatusCode statusCode, string? responseBody)
-    {
-        var message = statusCode switch
+    protected override string GetHttpErrorMessage(
+        HttpStatusCode statusCode,
+        string? responseBody) =>
+        statusCode switch
         {
-            HttpStatusCode.Unauthorized => "Invalid API key for Tavily",
-            HttpStatusCode.Forbidden => "Access forbidden - check API key permissions",
             HttpStatusCode.TooManyRequests => "Rate limit exceeded for Tavily API (100 RPM dev, 1000 RPM production)",
-            HttpStatusCode.BadRequest => $"Bad request to Tavily API: {responseBody}",
-            HttpStatusCode.ServiceUnavailable => "Tavily API is temporarily unavailable",
-            HttpStatusCode.GatewayTimeout => "Tavily API request timed out",
             (HttpStatusCode)432 => "Plan usage limit exceeded - monthly API credit limit reached",
             (HttpStatusCode)433 => "Pay-as-you-go limit exceeded - PAYGO spending limit reached",
-            _ => $"Tavily API error: {(int)statusCode} {statusCode}"
+            _ => base.GetHttpErrorMessage(statusCode, responseBody)
         };
-
-        _logger.LogError("Tavily API error: {StatusCode} - {Message}", statusCode, message);
-        return new InvalidOperationException(message);
-    }
 }

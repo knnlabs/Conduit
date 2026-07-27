@@ -7,8 +7,6 @@ namespace ConduitLLM.Core.Utilities;
 /// </summary>
 public static class AuthenticationVerificationDelegator
 {
-    private const string DefaultHealthCheckUrl = "https://api.provider.com/health";
-
     /// <summary>
     /// Delegates verification when the wrapped client supports it.
     /// </summary>
@@ -34,8 +32,12 @@ public static class AuthenticationVerificationDelegator
     /// </summary>
     public static string GetHealthCheckUrl(ILLMClient innerClient, string? baseUrl)
     {
-        return innerClient is IAuthenticationVerifiable authenticationVerifiable
-            ? authenticationVerifiable.GetHealthCheckUrl(baseUrl)
-            : baseUrl ?? DefaultHealthCheckUrl;
+        if (innerClient is IAuthenticationVerifiable authenticationVerifiable)
+        {
+            return authenticationVerifiable.GetHealthCheckUrl(baseUrl);
+        }
+
+        throw new NotSupportedException(
+            $"The {innerClient.GetType().Name} client does not support authentication verification.");
     }
 }

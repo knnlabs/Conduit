@@ -1,5 +1,4 @@
 using ConduitLLM.Configuration.Entities;
-using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Admin.DTOs;
 
@@ -18,30 +17,6 @@ public sealed record AnalyticsCacheInvalidationResponse(
     string Message,
     string Reason,
     int KeysInvalidated);
-
-public sealed record PricingTemplateConditionsDto(
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? Quality = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? Resolution = null,
-    [property: JsonPropertyName("with_audio")]
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    bool? WithAudio = null,
-    [property: JsonPropertyName("inference_steps_gte")]
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    int? InferenceStepsGte = null);
-
-public sealed record PricingTemplateRuleDto(
-    int Priority,
-    string Description,
-    PricingTemplateConditionsDto Conditions,
-    decimal Rate);
-
-public sealed record PricingTemplateResponse(
-    string PricingType,
-    decimal DefaultRate,
-    string UnitField,
-    IReadOnlyList<PricingTemplateRuleDto> Rules);
 
 public sealed record BillingRevenueLossResponse(decimal PotentialRevenueLoss, string Currency);
 

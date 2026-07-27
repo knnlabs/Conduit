@@ -1,10 +1,12 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Configuration.DTOs.BatchOperations
 {
     /// <summary>
     /// Individual virtual key update
     /// </summary>
+    [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
     public class VirtualKeyUpdateDto
     {
         /// <summary>
@@ -12,12 +14,6 @@ namespace ConduitLLM.Configuration.DTOs.BatchOperations
         /// </summary>
         [Required]
         public int VirtualKeyId { get; set; }
-
-        /// <summary>
-        /// New budget limit (optional)
-        /// </summary>
-        [Range(0, 1000000)]
-        public decimal? MaxBudget { get; set; }
 
         /// <summary>
         /// New allowed models list (optional)
