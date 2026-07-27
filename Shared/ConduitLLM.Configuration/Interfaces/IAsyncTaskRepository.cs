@@ -30,7 +30,10 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="olderThan">The age threshold for archiving.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The number of tasks archived.</returns>
-        Task<int> ArchiveOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default);
+        Task<int> ArchiveOldTasksAsync(
+            TimeSpan completedOlderThan,
+            TimeSpan? staleActiveOlderThan = null,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets tasks that need to be cleaned up (archived and older than specified timespan).

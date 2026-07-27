@@ -73,13 +73,10 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         Task DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Cleans up old completed or failed tasks.
-        /// </summary>
-        /// <param name="olderThan">Remove tasks older than this timespan</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Number of tasks cleaned up</returns>
-        Task<int> CleanupOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default);
+        /// <summary>Archives and deletes tasks according to the supplied retention policy.</summary>
+        Task<AsyncTaskCleanupResult> CleanupOldTasksAsync(
+            AsyncTaskRetentionPolicy policy,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all pending tasks that need to be processed.
@@ -246,5 +243,18 @@ namespace ConduitLLM.Core.Interfaces
         SafeToRetry,
         Failed,
         Completed
+    }
+
+    /// <summary>Thresholds used for one async-task retention pass.</summary>
+    public sealed record AsyncTaskRetentionPolicy(
+        TimeSpan ArchiveCompletedAfter,
+        TimeSpan DeleteArchivedAfter,
+        TimeSpan ArchiveStaleAfter,
+        int BatchSize = 500);
+
+    /// <summary>Counts produced by one async-task retention pass.</summary>
+    public sealed record AsyncTaskCleanupResult(int Archived, int Deleted)
+    {
+        public int Total => Archived + Deleted;
     }
 }

@@ -3,7 +3,7 @@ using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Extensions;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Enums;
-using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.UsageTracking;
 
 namespace ConduitLLM.Gateway.Endpoints;
@@ -25,10 +25,10 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
         IFunctionExecutionService executionService,
         IFunctionConfigurationRepository configurationRepository,
         ConduitLLM.Functions.Services.FunctionParameterValidationService validationService,
-        IEventBus eventBus,
+        IEventPublisher eventPublisher,
         IHttpContextAccessor httpContextAccessor,
         ILogger<FunctionsEndpoints> logger)
-        : base(eventBus, httpContextAccessor, logger)
+        : base(eventPublisher, httpContextAccessor, logger)
     {
         _executionService = executionService ?? throw new ArgumentNullException(nameof(executionService));
         _configurationRepository = configurationRepository ?? throw new ArgumentNullException(nameof(configurationRepository));

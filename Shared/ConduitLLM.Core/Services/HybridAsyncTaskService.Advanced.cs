@@ -108,27 +108,51 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<int> CleanupOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default)
+        public async Task<AsyncTaskCleanupResult> CleanupOldTasksAsync(
+            AsyncTaskRetentionPolicy policy,
+            CancellationToken cancellationToken = default)
         {
-            // First, archive old tasks in the database
-            var archivedCount = await _repository.ArchiveOldTasksAsync(olderThan, cancellationToken);
-            
-            _logger.LogInformation("Archived {Count} old tasks (older than {OlderThan})", archivedCount, olderThan);
+            ArgumentNullException.ThrowIfNull(policy);
+            if (policy.ArchiveCompletedAfter <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(policy.ArchiveCompletedAfter));
+            if (policy.DeleteArchivedAfter <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(policy.DeleteArchivedAfter));
+            if (policy.ArchiveStaleAfter <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(policy.ArchiveStaleAfter));
 
-            // Optionally, clean up very old archived tasks
-            var cleanupThreshold = TimeSpan.FromDays(30); // Keep archived tasks for 30 days
-            var tasksToDelete = await _repository.GetTasksForCleanupAsync(cleanupThreshold, 100, cancellationToken);
-            
-            if (tasksToDelete.Any())
+            var batchSize = Math.Clamp(policy.BatchSize, 1, 10_000);
+            var archivedCount = await _repository.ArchiveOldTasksAsync(
+                policy.ArchiveCompletedAfter,
+                policy.ArchiveStaleAfter,
+                cancellationToken);
+
+            var deletedTotal = 0;
+            while (true)
             {
-                var taskIds = tasksToDelete.Select(t => t.Id);
+                var tasksToDelete = await _repository.GetTasksForCleanupAsync(
+                    policy.DeleteArchivedAfter,
+                    batchSize,
+                    cancellationToken);
+                if (tasksToDelete.Count == 0)
+                    break;
+
+                var taskIds = tasksToDelete.Select(task => task.Id).ToArray();
                 var deletedCount = await _repository.BulkDeleteAsync(taskIds, cancellationToken);
-                
-                _logger.LogInformation("Deleted {Count} archived tasks older than {Days} days", 
-                    deletedCount, cleanupThreshold.TotalDays);
+                if (deletedCount == 0)
+                    break;
+
+                deletedTotal += deletedCount;
+                foreach (var taskId in taskIds)
+                {
+                    await _cache.RemoveAsync(GetTaskKey(taskId), cancellationToken);
+                }
             }
 
-            return archivedCount;
+            _logger.LogInformation(
+                "Async task retention archived {ArchivedCount} and deleted {DeletedCount} tasks",
+                archivedCount,
+                deletedTotal);
+            return new AsyncTaskCleanupResult(archivedCount, deletedTotal);
         }
 
         /// <inheritdoc/>

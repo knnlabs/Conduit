@@ -4,7 +4,6 @@ using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Gateway.Authentication
@@ -17,7 +16,7 @@ namespace ConduitLLM.Gateway.Authentication
     {
         private readonly ISignalRRateLimitService _signalRRateLimitService;
         private readonly ILogger<VirtualKeySignalRRateLimitFilter> _logger;
-        private readonly IServiceProvider _serviceProvider;
+        private readonly IEventPublisher _eventPublisher;
         private readonly SignalRConnectionOptions _connectionOptions;
 
         /// <summary>
@@ -26,12 +25,12 @@ namespace ConduitLLM.Gateway.Authentication
         public VirtualKeySignalRRateLimitFilter(
             ISignalRRateLimitService signalRRateLimitService,
             ILogger<VirtualKeySignalRRateLimitFilter> logger,
-            IServiceProvider serviceProvider,
+            IEventPublisher eventPublisher,
             IOptions<SignalRConnectionOptions> connectionOptions)
         {
             _signalRRateLimitService = signalRRateLimitService ?? throw new ArgumentNullException(nameof(signalRRateLimitService));
             _logger = logger;
-            _serviceProvider = serviceProvider;
+            _eventPublisher = eventPublisher;
             _connectionOptions = connectionOptions?.Value ?? new SignalRConnectionOptions();
         }
 
@@ -207,36 +206,22 @@ namespace ConduitLLM.Gateway.Authentication
             // Get IP address if available
             var ipAddress = context.Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString();
             
-            // Fire and forget - don't block the request
-            _ = Task.Run(async () =>
-            {
-                try
+            _eventPublisher.PublishFireAndForget(
+                new RateLimitExceeded
                 {
-                    using var scope = _serviceProvider.CreateScope();
-                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
-                    
-                    if (eventBus != null)
-                    {
-                        await eventBus.PublishAsync(new RateLimitExceeded
-                        {
-                            VirtualKeyId = virtualKeyId,
-                            VirtualKeyHash = virtualKeyHash,
-                            LimitType = limitType,
-                            LimitValue = limitValue,
-                            CurrentUsage = currentUsage,
-                            TimeWindow = timeWindow,
-                            ResetsAt = resetsAt,
-                            IpAddress = ipAddress,
-                            RequestedModel = null, // Not applicable for SignalR
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to publish RateLimitExceeded event for key {KeyHash}", LoggingSanitizer.S(virtualKeyHash));
-                }
-            });
+                    VirtualKeyId = virtualKeyId,
+                    VirtualKeyHash = virtualKeyHash,
+                    LimitType = limitType,
+                    LimitValue = limitValue,
+                    CurrentUsage = currentUsage,
+                    TimeWindow = timeWindow,
+                    ResetsAt = resetsAt,
+                    IpAddress = ipAddress,
+                    RequestedModel = null,
+                    CorrelationId = Guid.NewGuid().ToString()
+                },
+                "SignalR rate limit exceeded",
+                new { VirtualKeyHash = LoggingSanitizer.S(virtualKeyHash), LimitType = limitType });
         }
 
         /// <summary>
@@ -256,33 +241,19 @@ namespace ConduitLLM.Gateway.Authentication
             var ipAddress = context.Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString();
             var hubName = context.Hub?.GetType().Name;
 
-            // Fire and forget - don't block the connection rejection
-            _ = Task.Run(async () =>
-            {
-                try
+            _eventPublisher.PublishFireAndForget(
+                new ConnectionLimitExceeded
                 {
-                    using var scope = _serviceProvider.CreateScope();
-                    var eventBus = scope.ServiceProvider.GetService<IEventBus>();
-
-                    if (eventBus != null)
-                    {
-                        await eventBus.PublishAsync(new ConnectionLimitExceeded
-                        {
-                            VirtualKeyId = virtualKeyId,
-                            VirtualKeyHash = virtualKeyHash,
-                            CurrentConnections = limitResult.CurrentConnections,
-                            MaxConnections = limitResult.MaxConnections,
-                            HubName = hubName,
-                            IpAddress = ipAddress,
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to publish ConnectionLimitExceeded event for key {KeyHash}", LoggingSanitizer.S(virtualKeyHash));
-                }
-            });
+                    VirtualKeyId = virtualKeyId,
+                    VirtualKeyHash = virtualKeyHash,
+                    CurrentConnections = limitResult.CurrentConnections,
+                    MaxConnections = limitResult.MaxConnections,
+                    HubName = hubName,
+                    IpAddress = ipAddress,
+                    CorrelationId = Guid.NewGuid().ToString()
+                },
+                "SignalR connection limit exceeded",
+                new { VirtualKeyHash = LoggingSanitizer.S(virtualKeyHash), HubName = hubName });
         }
     }
 }

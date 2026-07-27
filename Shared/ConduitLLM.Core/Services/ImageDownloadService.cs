@@ -55,9 +55,15 @@ public class ImageDownloadService : IImageDownloadService
             throw new ArgumentException("URL cannot be null or empty", nameof(url));
         }
 
-        // If already a data URL, just return it wrapped
-        if (url.StartsWith("data:"))
+        // If already a valid image data URL, just return it wrapped.
+        if (DataUrl.IsDataUrl(url))
         {
+            if (!DataUrl.TryParse(url, out var parsedDataUrl) ||
+                !parsedDataUrl.IsBase64 ||
+                !parsedDataUrl.MediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("Invalid image data URL format", nameof(url));
+            }
             return new ImageUrl { Url = url, Detail = detail };
         }
 

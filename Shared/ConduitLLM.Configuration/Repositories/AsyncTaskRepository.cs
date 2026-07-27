@@ -177,36 +177,57 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<int> ArchiveOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default)
+        public async Task<int> ArchiveOldTasksAsync(
+            TimeSpan completedOlderThan,
+            TimeSpan? staleActiveOlderThan = null,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 return await ExecuteAsync(async context =>
                 {
-                    var cutoffDate = DateTime.UtcNow.Subtract(olderThan);
-
+                    var now = DateTime.UtcNow;
+                    var completedCutoff = now.Subtract(completedOlderThan);
+                    var staleCutoff = staleActiveOlderThan.HasValue
+                        ? now.Subtract(staleActiveOlderThan.Value)
+                        : (DateTime?)null;
                     var completedStates = new[] { 2, 3, 4, 5 }; // Completed, Failed, Cancelled, TimedOut
 
                     var tasksToArchive = await context.AsyncTasks
                         .Where(t => !t.IsArchived &&
-                                   t.CompletedAt.HasValue &&
-                                   t.CompletedAt.Value < cutoffDate &&
-                                   completedStates.Contains(t.State))
+                                   ((t.CompletedAt.HasValue &&
+                                     t.CompletedAt.Value < completedCutoff &&
+                                     completedStates.Contains(t.State)) ||
+                                    (staleCutoff.HasValue &&
+                                     (t.State == 0 || t.State == 1) &&
+                                     t.UpdatedAt < staleCutoff.Value &&
+                                     (!t.LeaseExpiryTime.HasValue || t.LeaseExpiryTime < now) &&
+                                     (!t.ProviderInvocationStartedAt.HasValue ||
+                                      t.ProviderInvocationCompletedAt.HasValue))))
                         .ToListAsync(cancellationToken);
 
                     foreach (var task in tasksToArchive)
                     {
+                        if (task.State is 0 or 1)
+                        {
+                            task.State = 5; // TimedOut
+                            task.CompletedAt = now;
+                            task.Error ??= "Task expired during retention cleanup.";
+                            task.LeasedBy = null;
+                            task.LeaseExpiryTime = null;
+                        }
                         task.IsArchived = true;
-                        task.ArchivedAt = DateTime.UtcNow;
-                        task.UpdatedAt = DateTime.UtcNow;
+                        task.ArchivedAt = now;
+                        task.UpdatedAt = now;
                     }
 
                     var affected = await context.SaveChangesAsync(cancellationToken);
 
                     if (affected > 0)
                     {
-                        Logger.LogInformation("Archived {Count} completed tasks older than {OlderThan}",
-                            affected, olderThan);
+                        Logger.LogInformation(
+                            "Archived {Count} completed or stale tasks older than configured thresholds",
+                            affected);
                     }
 
                     return affected;

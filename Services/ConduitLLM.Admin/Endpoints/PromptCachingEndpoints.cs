@@ -5,7 +5,6 @@ using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.DTOs.PromptCaching;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
@@ -18,11 +17,6 @@ namespace ConduitLLM.Admin.Endpoints;
 public static class PromptCachingEndpoints
 {
     private const string SettingKey = PromptCachingConstants.SettingsKey;
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-    };
-
     public static IEndpointRouteBuilder MapPromptCachingEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/v1/admin/prompt-cache-settings")
@@ -34,7 +28,7 @@ public static class PromptCachingEndpoints
         group.MapPut("/config", UpdateConfig).WithName("PromptCaching_UpdateConfig")
             .Produces<PromptCachingConfigDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json");
         group.MapGet("/capabilities", GetCapabilities).WithName("PromptCaching_GetCapabilities")
-            .Produces<IReadOnlyList<PromptCachingCapabilityDto>>();
+            .Produces<IReadOnlyList<PromptCachingCapability>>();
         group.MapGet("/analytics", GetAnalytics).WithName("PromptCaching_GetAnalytics")
             .Produces<PromptCachingAnalyticsDto>().Produces<AdminProblemDetails>(StatusCodes.Status400BadRequest, "application/problem+json")
             .Produces<AdminProblemDetails>(StatusCodes.Status503ServiceUnavailable, "application/problem+json");
@@ -56,7 +50,8 @@ public static class PromptCachingEndpoints
         PromptCachingConfig? config;
         try
         {
-            config = JsonSerializer.Deserialize<PromptCachingConfig>(json, JsonOptions);
+            config = JsonSerializer.Deserialize<PromptCachingConfig>(
+                json, PromptCachingSerialization.Options);
         }
         catch (JsonException)
         {
@@ -88,26 +83,12 @@ public static class PromptCachingEndpoints
         {
             SchemaVersion = dto.SchemaVersion,
             Enabled = dto.Enabled,
-            Rules = dto.Rules.Select(rule => new PromptCachingRule
-            {
-                Name = rule.Name,
-                Enabled = rule.Enabled,
-                Provider = rule.Provider,
-                ModelPattern = rule.ModelPattern,
-                Strategy = Enum.TryParse<PromptCachingStrategy>(rule.Strategy, true, out var strategy)
-                    ? strategy : (PromptCachingStrategy)(-1),
-                Ttl = rule.Ttl,
-                InjectionPoints = rule.InjectionPoints.Select(point => new CacheInjectionPoint
-                {
-                    Role = point.Role,
-                    Index = point.Index
-                }).ToList()
-            }).ToList()
+            Rules = dto.Rules
         };
         var validationErrors = PromptCachingPolicyResolver.Validate(config).ToList();
         for (var index = 0; index < dto.Rules.Count; index++)
         {
-            if (!Enum.TryParse<PromptCachingStrategy>(dto.Rules[index].Strategy, true, out _))
+            if (!Enum.IsDefined(dto.Rules[index].Strategy))
             {
                 validationErrors.Add($"rules[{index}].strategy is not supported.");
             }
@@ -120,7 +101,7 @@ public static class PromptCachingEndpoints
             });
         }
 
-        var json = JsonSerializer.Serialize(config, JsonOptions);
+        var json = JsonSerializer.Serialize(config, PromptCachingSerialization.Options);
         if (await globalSettingService.GetSettingByKeyAsync(SettingKey) is not null)
         {
             await globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
@@ -146,17 +127,8 @@ public static class PromptCachingEndpoints
         return Results.Ok(ToDto(config));
     }
 
-    private static IResult GetCapabilities() => Results.Ok(
-        PromptCachingProviderAdapters.Capabilities.Select(capability => new PromptCachingCapabilityDto
-        {
-            Provider = capability.Provider,
-            ModelPattern = capability.ModelPattern,
-            Strategies = capability.Strategies.Select(strategy => strategy.ToString()).ToList(),
-            Ttls = capability.Ttls.ToList(),
-            MinimumTokens = capability.MinimumTokens,
-            MaxBreakpoints = capability.MaxBreakpoints,
-            ProviderManaged = capability.ProviderManaged
-        }).ToList());
+    private static IResult GetCapabilities() =>
+        Results.Ok(PromptCachingProviderAdapters.Capabilities);
 
     private static async Task<IResult> GetAnalytics(
         [FromServices] IServiceProvider services,
@@ -233,19 +205,6 @@ public static class PromptCachingEndpoints
     {
         SchemaVersion = config.SchemaVersion,
         Enabled = config.Enabled,
-        Rules = config.Rules.Select(rule => new PromptCachingRuleDto
-        {
-            Name = rule.Name,
-            Enabled = rule.Enabled,
-            Provider = rule.Provider,
-            ModelPattern = rule.ModelPattern,
-            Strategy = rule.Strategy.ToString(),
-            Ttl = rule.Ttl,
-            InjectionPoints = rule.InjectionPoints.Select(point => new CacheInjectionPointDto
-            {
-                Role = point.Role,
-                Index = point.Index
-            }).ToList()
-        }).ToList()
+        Rules = config.Rules
     };
 }

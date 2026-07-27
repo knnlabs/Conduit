@@ -189,6 +189,7 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        return JsonSerializer.Deserialize<PromptCachingConfig>(json);
+        return JsonSerializer.Deserialize<PromptCachingConfig>(
+            json, PromptCachingSerialization.Options);
     }
 }

@@ -12,7 +12,7 @@ public partial class Program
     /// <summary>
     /// Configures core application services: DI registrations, Redis, SignalR, distributed cache.
     /// </summary>
-    private static void ConfigureCoreServices(WebApplicationBuilder builder, ILogger startupLogger)
+    internal static void ConfigureCoreServices(WebApplicationBuilder builder, ILogger startupLogger)
     {
         // Add leader election service for distributed background service coordination
         builder.Services.AddLeaderElection();
@@ -20,7 +20,8 @@ public partial class Program
 
         // Add Core services
         builder.Services.AddCoreServices(builder.Configuration, startupLogger);
-        builder.Services.AddScoped<IEventPublisher, EventPublisher>();
+        builder.Services.AddAsyncTaskServices();
+        builder.Services.AddSingleton<IEventPublisher, EventPublisher>();
 
         // Add Configuration services
         builder.Services.AddConfigurationServices(builder.Configuration);

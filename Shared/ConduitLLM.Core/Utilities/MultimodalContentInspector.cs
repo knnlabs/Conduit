@@ -100,7 +100,7 @@ public static class MultimodalContentInspector
 
     private static void CountTransport(string? value, ref int remote, ref int inline)
     {
-        if (value?.StartsWith("data:", StringComparison.OrdinalIgnoreCase) == true)
+        if (DataUrl.TryParse(value, out _))
             inline++;
         else if (value?.StartsWith("https://", StringComparison.OrdinalIgnoreCase) == true)
             remote++;

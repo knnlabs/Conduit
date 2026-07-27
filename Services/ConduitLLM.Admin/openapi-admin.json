@@ -5371,7 +5371,7 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/PromptCachingCapabilityDto"
+                        "$ref": "#/components/schemas/PromptCachingCapability"
                       }
                     },
                     "pagination": {
@@ -25342,7 +25342,7 @@
           }
         }
       },
-      "CacheInjectionPointDto": {
+      "CacheInjectionPoint": {
         "type": "object",
         "properties": {
           "role": {
@@ -31600,7 +31600,16 @@
           }
         }
       },
-      "PromptCachingCapabilityDto": {
+      "PromptCachingCapability": {
+        "required": [
+          "provider",
+          "modelPattern",
+          "strategies",
+          "ttls",
+          "minimumTokens",
+          "maxBreakpoints",
+          "providerManaged"
+        ],
         "type": "object",
         "properties": {
           "provider": {
@@ -31612,7 +31621,7 @@
           "strategies": {
             "type": "array",
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/PromptCachingStrategy"
             }
           },
           "ttls": {
@@ -31650,7 +31659,7 @@
           "rules": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PromptCachingRuleDto"
+              "$ref": "#/components/schemas/PromptCachingRule"
             }
           }
         }
@@ -31674,7 +31683,7 @@
           }
         }
       },
-      "PromptCachingRuleDto": {
+      "PromptCachingRule": {
         "required": [
           "name",
           "provider",
@@ -31698,7 +31707,7 @@
             "type": "string"
           },
           "strategy": {
-            "type": "string"
+            "$ref": "#/components/schemas/PromptCachingStrategy"
           },
           "ttl": {
             "type": [
@@ -31710,10 +31719,18 @@
             "maxItems": 4,
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/CacheInjectionPointDto"
+              "$ref": "#/components/schemas/CacheInjectionPoint"
             }
           }
         }
+      },
+      "PromptCachingStrategy": {
+        "enum": [
+          "Automatic",
+          "OpenRouterAutomatic",
+          "Explicit",
+          "OpenRouterExplicit"
+        ]
       },
       "ProviderCatalogImportResult": {
         "required": [
@@ -33226,6 +33243,14 @@
             "description": "Number of tasks that were cleaned up.",
             "format": "int32"
           },
+          "archived": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "deleted": {
+            "type": "integer",
+            "format": "int32"
+          },
           "older_than_hours": {
             "type": "integer",
             "description": "The age threshold, in hours, used for the cleanup.",
@@ -34376,7 +34401,7 @@
           "rules": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/PromptCachingRuleDto"
+              "$ref": "#/components/schemas/PromptCachingRule"
             }
           }
         }

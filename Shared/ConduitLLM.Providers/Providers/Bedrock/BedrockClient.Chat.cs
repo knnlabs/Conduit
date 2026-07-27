@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
@@ -228,25 +229,25 @@ namespace ConduitLLM.Providers.Bedrock
             // Converse only accepts inline bytes. Data URLs carry them directly; remote URLs would
             // require Conduit to fetch arbitrary content server-side, which this adapter does not do.
             var url = image.Url;
-            if (!url.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            if (!DataUrl.IsDataUrl(url))
             {
                 throw new ValidationException(
                     "Bedrock requires image content to be supplied inline as a data URL; remote image URLs are not supported.");
             }
 
-            var separator = url.IndexOf(',');
-            if (separator < 0)
+            if (!DataUrl.TryParse(url, out var dataUrl) || !dataUrl.IsBase64)
             {
-                throw new ValidationException("Malformed data URL in image content.");
+                throw new ValidationException("Bedrock image content must be a valid base64 data URL.");
             }
 
-            var header = url[..separator];
-            var format = header switch
+            var format = dataUrl.MediaType.ToLowerInvariant() switch
             {
-                _ when header.Contains("image/jpeg", StringComparison.OrdinalIgnoreCase) => "jpeg",
-                _ when header.Contains("image/gif", StringComparison.OrdinalIgnoreCase) => "gif",
-                _ when header.Contains("image/webp", StringComparison.OrdinalIgnoreCase) => "webp",
-                _ => "png"
+                "image/jpeg" => "jpeg",
+                "image/png" => "png",
+                "image/gif" => "gif",
+                "image/webp" => "webp",
+                _ => throw new ValidationException(
+                    $"Bedrock does not support image data URL MIME type '{dataUrl.MediaType}'.")
             };
 
             return new BedrockContentBlock
@@ -254,7 +255,7 @@ namespace ConduitLLM.Providers.Bedrock
                 Image = new BedrockImageBlock
                 {
                     Format = format,
-                    Source = new BedrockImageSource { Bytes = url[(separator + 1)..] }
+                    Source = new BedrockImageSource { Bytes = dataUrl.Data }
                 }
             };
         }

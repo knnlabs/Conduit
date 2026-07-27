@@ -3,6 +3,7 @@ using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Providers.OpenRouter;
 
@@ -122,7 +123,7 @@ internal static class OpenRouterMultimodalValidator
         var format = RequireString(audio, "format", $"{path}.input_audio");
         if (!AudioFormats.Contains(format))
             throw Invalid($"Unsupported audio format '{format}' at {path}.input_audio.format.");
-        if (data.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        if (DataUrl.IsDataUrl(data))
             throw Invalid($"{path}.input_audio.data must contain raw base64, not a data URL.");
 
         AddBase64Size(data, $"{path}.input_audio.data", ref totalDecodedBytes);
@@ -140,23 +141,18 @@ internal static class OpenRouterMultimodalValidator
             return;
         }
 
-        if (!value.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        if (!DataUrl.IsDataUrl(value))
             throw Invalid($"{path} must use HTTPS or a supported base64 data URL.");
 
-        var separator = value.IndexOf(',');
-        if (separator <= 5)
+        if (!DataUrl.TryParse(value, out var dataUrl))
             throw Invalid($"{path} is not a valid data URL.");
 
-        var metadata = value.AsSpan(5, separator - 5);
-        var semicolon = metadata.IndexOf(';');
-        var mimeType = (semicolon >= 0 ? metadata[..semicolon] : metadata).ToString();
-        if (!allowedDataMimeTypes.Contains(mimeType) ||
-            !metadata.EndsWith(";base64".AsSpan(), StringComparison.OrdinalIgnoreCase))
+        if (!allowedDataMimeTypes.Contains(dataUrl.MediaType) || !dataUrl.IsBase64)
         {
             throw Invalid($"{path} has an unsupported MIME type or encoding.");
         }
 
-        AddBase64Size(value[(separator + 1)..], path, ref totalDecodedBytes);
+        AddBase64Size(dataUrl.Data, path, ref totalDecodedBytes);
     }
 
     private static void AddBase64Size(string data, string path, ref long totalDecodedBytes)

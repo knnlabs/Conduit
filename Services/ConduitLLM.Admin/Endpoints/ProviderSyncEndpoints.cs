@@ -42,9 +42,12 @@ public static class ProviderSyncEndpoints
         [FromQuery] string? driftType,
         [FromQuery] int? providerId,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50) =>
-        Results.Ok(await service.GetDriftItemsAsync(status, driftType, providerId,
-            Math.Max(1, page), Math.Clamp(pageSize, 1, 200)));
+        [FromQuery] int pageSize = 50)
+    {
+        (page, pageSize) = Pagination.Normalize(page, pageSize, maxPageSize: 200);
+        return Results.Ok(await service.GetDriftItemsAsync(
+            status, driftType, providerId, page, pageSize));
+    }
 
     private static async Task<IResult> GetDrift(int id, [FromServices] IAdminProviderSyncService service)
     {
@@ -127,8 +130,11 @@ public static class ProviderSyncEndpoints
     private static async Task<IResult> ListRuns(
         [FromServices] IAdminProviderSyncService service,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 25) =>
-        Results.Ok(await service.GetSyncRunsAsync(Math.Max(1, page), Math.Clamp(pageSize, 1, 100)));
+        [FromQuery] int pageSize = 25)
+    {
+        (page, pageSize) = Pagination.Normalize(page, pageSize, defaultPageSize: 25);
+        return Results.Ok(await service.GetSyncRunsAsync(page, pageSize));
+    }
 
     private static string CurrentActor(HttpContext context) => context.User.Identity?.Name ?? "admin";
     private static ILogger Logger(ILoggerFactory factory) =>

@@ -108,37 +108,9 @@ namespace ConduitLLM.Providers.Replicate
             {
                 foreach (var kvp in request.ExtensionData)
                 {
-                    // Convert JsonElement to appropriate type
-                    object value;
-                    switch (kvp.Value.ValueKind)
-                    {
-                        case System.Text.Json.JsonValueKind.String:
-                            value = kvp.Value.GetString()!;
-                            break;
-                        case System.Text.Json.JsonValueKind.Number:
-                            if (kvp.Value.TryGetInt32(out var intValue))
-                                value = intValue;
-                            else if (kvp.Value.TryGetDouble(out var doubleValue))
-                                value = doubleValue;
-                            else
-                                value = kvp.Value.GetDecimal();
-                            break;
-                        case System.Text.Json.JsonValueKind.True:
-                            value = true;
-                            break;
-                        case System.Text.Json.JsonValueKind.False:
-                            value = false;
-                            break;
-                        case System.Text.Json.JsonValueKind.Null:
-                            continue; // Skip null values
-                        default:
-                            // For arrays and objects, use the raw JSON string
-                            value = kvp.Value.ToString();
-                            break;
-                    }
-                    
                     // Don't override values that were already set from explicit properties
-                    if (!input.ContainsKey(kvp.Key))
+                    var value = ConvertJsonElement(kvp.Value);
+                    if (value is not null && !input.ContainsKey(kvp.Key))
                     {
                         input[kvp.Key] = value;
                     }
@@ -231,37 +203,9 @@ namespace ConduitLLM.Providers.Replicate
             {
                 foreach (var kvp in request.ExtensionData)
                 {
-                    // Convert JsonElement to appropriate type
-                    object value;
-                    switch (kvp.Value.ValueKind)
-                    {
-                        case System.Text.Json.JsonValueKind.String:
-                            value = kvp.Value.GetString()!;
-                            break;
-                        case System.Text.Json.JsonValueKind.Number:
-                            if (kvp.Value.TryGetInt32(out var intValue))
-                                value = intValue;
-                            else if (kvp.Value.TryGetDouble(out var doubleValue))
-                                value = doubleValue;
-                            else
-                                value = kvp.Value.GetDecimal();
-                            break;
-                        case System.Text.Json.JsonValueKind.True:
-                            value = true;
-                            break;
-                        case System.Text.Json.JsonValueKind.False:
-                            value = false;
-                            break;
-                        case System.Text.Json.JsonValueKind.Null:
-                            continue; // Skip null values
-                        default:
-                            // For arrays and objects, use the raw JSON string
-                            value = kvp.Value.ToString();
-                            break;
-                    }
-                    
                     // Don't override values that were already set from explicit properties
-                    if (!input.ContainsKey(kvp.Key))
+                    var value = ConvertJsonElement(kvp.Value);
+                    if (value is not null && !input.ContainsKey(kvp.Key))
                     {
                         input[kvp.Key] = value;
                     }

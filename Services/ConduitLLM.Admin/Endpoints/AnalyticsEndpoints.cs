@@ -96,16 +96,7 @@ public class AnalyticsEndpoints
         [FromQuery] int? virtualKeyId = null,
         [FromQuery] int? status = null)
     {
-        // Validate parameters
-        if (page < 1)
-        {
-            return AdminResults.BadRequest("Page must be greater than or equal to 1");
-        }
-
-        if (pageSize < 1 || pageSize > 100)
-        {
-            return AdminResults.BadRequest("Page size must be between 1 and 100");
-        }
+        (page, pageSize) = Pagination.Normalize(page, pageSize);
 
         var result = await _analyticsService.GetLogsAsync(
             page, pageSize, startDate, endDate, model, virtualKeyId, status);

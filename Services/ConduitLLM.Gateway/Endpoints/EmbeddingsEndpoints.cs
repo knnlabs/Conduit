@@ -2,10 +2,9 @@ using System.Diagnostics;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
-
-using ConduitLLM.Configuration.Messaging;
 
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.UsageTracking;
@@ -24,8 +23,8 @@ namespace ConduitLLM.Gateway.Endpoints
             Conduit conduit,
             ILogger<EmbeddingsEndpoints> logger,
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
-            IEventBus eventBus,
-            IHttpContextAccessor httpContextAccessor) : base(eventBus, httpContextAccessor, logger)
+            IEventPublisher eventPublisher,
+            IHttpContextAccessor httpContextAccessor) : base(eventPublisher, httpContextAccessor, logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _modelMappingService = modelMappingService ?? throw new ArgumentNullException(nameof(modelMappingService));

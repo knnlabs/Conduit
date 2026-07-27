@@ -49,4 +49,27 @@ namespace ConduitLLM.Configuration.DTOs
             TotalPages = pageSize > 0 ? (int)Math.Ceiling(totalItems / (double)pageSize) : 0
         };
     }
+
+    /// <summary>Canonical normalization for one-based Admin API pagination.</summary>
+    public static class Pagination
+    {
+        public const int DefaultPageSize = 50;
+        public const int DefaultMaxPageSize = 100;
+
+        public static (int Page, int PageSize) Normalize(
+            int page,
+            int pageSize,
+            int maxPageSize = DefaultMaxPageSize,
+            int defaultPageSize = DefaultPageSize)
+        {
+            if (maxPageSize < 1)
+                throw new ArgumentOutOfRangeException(nameof(maxPageSize));
+            if (defaultPageSize < 1 || defaultPageSize > maxPageSize)
+                throw new ArgumentOutOfRangeException(nameof(defaultPageSize));
+
+            return (
+                Math.Max(1, page),
+                pageSize < 1 ? defaultPageSize : Math.Min(pageSize, maxPageSize));
+        }
+    }
 }

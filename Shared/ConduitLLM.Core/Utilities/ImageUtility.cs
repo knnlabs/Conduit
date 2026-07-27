@@ -119,9 +119,12 @@ namespace ConduitLLM.Core.Utilities
             if (string.IsNullOrEmpty(url))
                 return false;
 
-            // Data URLs are always valid
-            if (url.StartsWith("data:image/"))
-                return true;
+            if (DataUrl.IsDataUrl(url))
+            {
+                return DataUrl.TryParse(url, out var dataUrl) &&
+                       dataUrl.IsBase64 &&
+                       dataUrl.MediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+            }
 
             if (!UrlBuilder.IsValidUrl(url))
                 return false;
@@ -158,29 +161,18 @@ namespace ConduitLLM.Core.Utilities
         {
             mimeType = null;
 
-            if (!dataUrl.StartsWith("data:"))
+            if (!DataUrl.TryParse(dataUrl, out var parsed) ||
+                !parsed.IsBase64 ||
+                !parsed.MediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
                 return null;
-
-            int mimeTypeStart = dataUrl.IndexOf(':') + 1;
-            int mimeTypeEnd = dataUrl.IndexOf(';', mimeTypeStart);
-
-            if (mimeTypeEnd < 0)
-                return null;
-
-            mimeType = dataUrl.Substring(mimeTypeStart, mimeTypeEnd - mimeTypeStart);
-
-            if (!mimeType.StartsWith("image/"))
-                return null;
-
-            if (!dataUrl.Substring(mimeTypeEnd + 1).StartsWith("base64,"))
-                return null;
-
-            int dataStart = dataUrl.IndexOf("base64,") + 7;
-            string base64Data = dataUrl.Substring(dataStart);
+            }
 
             try
             {
-                return Convert.FromBase64String(base64Data);
+                var imageData = Convert.FromBase64String(parsed.Data);
+                mimeType = parsed.MediaType;
+                return imageData;
             }
             catch (FormatException)
             {
@@ -203,7 +195,7 @@ namespace ConduitLLM.Core.Utilities
             if (httpClient == null)
                 throw new ArgumentNullException(nameof(httpClient));
 
-            if (url.StartsWith("data:"))
+            if (DataUrl.IsDataUrl(url))
             {
                 byte[]? imageData = ExtractImageDataFromDataUrl(url, out _);
                 if (imageData == null)

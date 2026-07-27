@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Middleware;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
@@ -46,6 +47,7 @@ internal sealed class GatewayEndpointTestHost : IAsyncDisposable
                     services.AddGatewayEndpointHandlers();
                     services.AddSingleton(Mock.Of<IMediaStorageService>());
                     services.AddSingleton(Mock.Of<IMediaRecordRepository>());
+                    services.AddSingleton(Mock.Of<IEventPublisher>());
                     AddRateLimitingFilterDependencies(services);
                     services.AddAuthentication("VirtualKey")
                         .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>("VirtualKey", null);
