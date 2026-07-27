@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Options;
 
 using Microsoft.AspNetCore.Builder;
@@ -47,6 +48,25 @@ public sealed class GatewayJsonOptionsTests
 
         Assert.Same(http, shared);
         Assert.Same(JsonNamingPolicy.SnakeCaseLower, shared.PropertyNamingPolicy);
+    }
+
+    [Fact]
+    public void AsyncTaskStatusSerializesTheSharedCompletionTimestamp()
+    {
+        var completedAt = new DateTime(2026, 7, 26, 12, 30, 0, DateTimeKind.Utc);
+        var json = JsonSerializer.Serialize(
+            new AsyncTaskStatusResponse
+            {
+                TaskId = "task-1",
+                Status = "completed",
+                CompletedAt = completedAt
+            },
+            GatewayJsonOptions.Create());
+
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(
+            "2026-07-26T12:30:00Z",
+            document.RootElement.GetProperty("completed_at").GetString());
     }
 
     private sealed record WireSample(string RequestId, WireState State);

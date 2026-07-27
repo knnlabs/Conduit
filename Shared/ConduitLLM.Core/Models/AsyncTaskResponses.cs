@@ -41,7 +41,15 @@ namespace ConduitLLM.Core.Models
     /// <summary>
     /// Response for async task status endpoints.
     /// </summary>
-    public class AsyncTaskStatusResponse
+    public class AsyncTaskStatusResponse : AsyncTaskStatusResponse<object>
+    {
+    }
+
+    /// <summary>
+    /// Response for async task status endpoints with a typed result payload.
+    /// </summary>
+    /// <typeparam name="TResult">The result type produced by the task.</typeparam>
+    public class AsyncTaskStatusResponse<TResult>
     {
         /// <summary>
         /// Unique identifier for the task.
@@ -74,10 +82,16 @@ namespace ConduitLLM.Core.Models
         public DateTime UpdatedAt { get; set; }
 
         /// <summary>
+        /// When the task completed, if it has reached a terminal state.
+        /// </summary>
+        [JsonPropertyName("completed_at")]
+        public DateTime? CompletedAt { get; set; }
+
+        /// <summary>
         /// Result data if the task is completed.
         /// </summary>
         [JsonPropertyName("result")]
-        public object? Result { get; set; }
+        public TResult? Result { get; set; }
 
         /// <summary>
         /// Error message if the task failed.

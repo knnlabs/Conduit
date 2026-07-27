@@ -211,6 +211,7 @@ namespace ConduitLLM.Gateway.Endpoints
                     Status = TaskStateConstants.FromTaskState(task.State),
                     CreatedAt = task.CreatedAt,
                     UpdatedAt = task.UpdatedAt,
+                    CompletedAt = task.CompletedAt,
                     Progress = task.Progress,
                     Result = task.State == TaskState.Completed ? task.Result : null,
                     Error = task.State == TaskState.Failed ? task.Error : null

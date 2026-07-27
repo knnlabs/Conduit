@@ -179,7 +179,7 @@ public static class GatewayApiEndpoints
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Videos");
         videos.MapPost("/generations/async", ([FromServices] VideosEndpoints endpoints, VideoGenerationRequest request, CancellationToken cancellationToken) => endpoints.GenerateVideoAsync(request, cancellationToken))
-            .WithName("Videos_GenerateAsync").Produces<VideoGenerationTaskResponse>(202).Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(401).Produces<OpenAIErrorResponse>(403).Produces<OpenAIErrorResponse>(429).Produces<OpenAIErrorResponse>(500);
+            .WithName("Videos_GenerateAsync").Produces<AsyncTaskResponse>(202).Produces<OpenAIErrorResponse>(400).Produces<OpenAIErrorResponse>(401).Produces<OpenAIErrorResponse>(403).Produces<OpenAIErrorResponse>(429).Produces<OpenAIErrorResponse>(500);
         videos.MapGet("/generations/tasks/{taskId}", ([FromServices] VideosEndpoints endpoints, string taskId, CancellationToken cancellationToken) => endpoints.GetTaskStatus(taskId, cancellationToken))
             .WithName("Videos_GetTaskStatus").Produces<VideoGenerationTaskStatus>().Produces<OpenAIErrorResponse>(401).Produces<OpenAIErrorResponse>(404).Produces<OpenAIErrorResponse>(500);
         videos.MapPost("/generations/tasks/{taskId}/retry", ([FromServices] VideosEndpoints endpoints, string taskId, CancellationToken cancellationToken) => endpoints.RetryTask(taskId, cancellationToken))
