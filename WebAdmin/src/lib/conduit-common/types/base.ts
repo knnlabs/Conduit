@@ -2,23 +2,6 @@
  * Base response types shared across all Conduit SDK clients
  */
 
-export interface PaginatedResponse<T> {
-  items: T[];
-  totalCount: number;
-  pageNumber: number;
-  pageSize: number;
-  totalPages: number;
-}
-
-export interface PagedResponse<T> {
-  data: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
-
 export interface ErrorResponse {
   error: string;
   message?: string;

@@ -3,10 +3,9 @@
 import {
   MediaData,
   Quality,
-  Style,
-  MediaGenerationStatus,
-  RetryHistoryEntry
+  Style
 } from '@/app/types/media';
+import type { MediaTask, MediaSettings } from '@/app/hooks/createMediaStore';
 
 // Re-export for components that use ErrorResponse
 export type { ErrorResponse } from '@/app/types/media';
@@ -31,12 +30,9 @@ export interface ImageGenerationResponse {
 
 // ErrorResponse is now imported from shared media types
 
-// UI-specific interface
-export interface ImageGenerationSettings {
-  model: string;
-  // Size, N, and ResponseFormat removed - now handled by custom parameters
-  [key: string]: unknown; // Allow additional properties
-}
+// UI-specific interface — same shape as the shared MediaSettings
+// (Size, N, and ResponseFormat removed - now handled by custom parameters)
+export type ImageGenerationSettings = MediaSettings;
 
 // UI-specific status type
 export type ImageGenerationStatus = 'idle' | 'generating' | 'completed' | 'error';
@@ -50,21 +46,9 @@ export interface GeneratedImage extends ImageData {
   format?: string; // Image format (png, jpeg, etc.)
 }
 
-// Image task for history tracking
-export interface ImageTask {
-  id: string;
-  prompt: string;
-  status: MediaGenerationStatus;
-  progress: number;
-  message?: string;
-  estimatedTimeToCompletion?: number;
-  createdAt: string;
-  updatedAt: string;
-  result?: ImageGenerationResponse;
-  error?: string;
+// Image task for history tracking — shared media task shape plus image settings
+export interface ImageTask extends MediaTask<ImageGenerationResponse> {
   settings: ImageGenerationSettings;
-  retryCount: number;
-  retryHistory: RetryHistoryEntry[];
 }
 
 

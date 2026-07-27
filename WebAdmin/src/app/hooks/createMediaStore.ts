@@ -4,7 +4,7 @@
 
 import { StateCreator } from 'zustand';
 import { persist, PersistOptions } from 'zustand/middleware';
-import { MediaGenerationStatus } from '@/app/types/media';
+import { MediaGenerationStatus, RetryHistoryEntry } from '@/app/types/media';
 import { STORAGE_CONFIG } from '@/app/config/mediaGeneration';
 
 /**
@@ -22,11 +22,8 @@ export interface MediaTask<TResult = unknown> {
   result?: TResult;
   error?: string;
   retryCount: number;
-  retryHistory: Array<{
-    attemptNumber: number;
-    timestamp: string;
-    error: string;
-  }>;
+  lastRetryAt?: string;
+  retryHistory: RetryHistoryEntry[];
 }
 
 /**

@@ -16,6 +16,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconCheck, IconX } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { getIpValidationError } from '@/lib/utils/ip-validation';
 
 interface IpTestModalProps {
   opened: boolean;
@@ -33,23 +34,8 @@ interface TestResult {
   reason?: string;
 }
 
-const validateIpAddress = (value: string) => {
-  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-  
-  if (!ipRegex.test(value)) {
-    return 'Invalid IP address format (e.g., 192.168.1.1)';
-  }
-  
-  const parts = value.split('.');
-  for (const part of parts) {
-    const num = parseInt(part, 10);
-    if (num < 0 || num > 255) {
-      return 'Each IP octet must be between 0 and 255';
-    }
-  }
-  
-  return null;
-};
+// Accepts a plain IPv4 or IPv6 address, matching the backend's rules
+const validateIpAddress = (value: string) => getIpValidationError(value);
 
 export function IpTestModal({ opened, onClose }: IpTestModalProps) {
   const [isLoading, setIsLoading] = useState(false);

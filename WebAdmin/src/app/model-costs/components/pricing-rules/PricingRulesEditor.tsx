@@ -14,7 +14,7 @@ import { IconAlertCircle, IconCheck, IconPlus } from '@tabler/icons-react';
 import type { PricingRulesConfig } from '@/lib/admin-api';
 import { usePricingRules } from '../../hooks/usePricingRules';
 import { RuleConfigHeader } from './RuleConfigHeader';
-import { RuleRow } from './RuleRow';
+import { RuleRow, type ParameterOption } from './RuleRow';
 import { RulePreview } from './RulePreview';
 import { ConstraintsEditor } from './ConstraintsEditor';
 
@@ -26,12 +26,7 @@ interface PricingRulesEditorProps {
   /** Whether the editor is in read-only mode */
   readOnly?: boolean;
   /** Available parameter options from model series */
-  parameterOptions?: Array<{
-    key: string;
-    label: string;
-    type: 'string' | 'number' | 'boolean' | 'enum';
-    options?: string[];
-  }>;
+  parameterOptions?: ParameterOption[];
 }
 
 /**

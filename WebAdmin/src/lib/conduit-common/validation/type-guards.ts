@@ -10,10 +10,10 @@ export function isNonEmptyString(value: unknown): value is string {
 }
 
 /**
- * Check that a value is a positive number (> 0).
+ * Check that a value is a positive, finite number (> 0).
  */
 export function isPositiveNumber(value: unknown): value is number {
-  return typeof value === "number" && !isNaN(value) && value > 0;
+  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 /**

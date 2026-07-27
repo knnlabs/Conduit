@@ -8,6 +8,7 @@ import { CreateProviderToolModal } from '@/components/provider-tools/CreateProvi
 import { ImportProviderToolsModal } from '@/components/provider-tools/ImportProviderToolsModal';
 import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { downloadBlob } from '@/lib/utils/export';
 
 export default function ProviderToolsPage() {
   const { executeWithAdmin } = useAdminClient();
@@ -26,13 +27,9 @@ export default function ProviderToolsPage() {
       );
       
       const blob = new Blob([JSON.stringify(tools, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `provider-tools-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      
+      downloadBlob(blob, `provider-tools-${new Date().toISOString().split('T')[0]}.json`);
+
+
       notify.success(`Exported ${(tools as unknown[]).length} provider tools`, 'Export Successful');
     } catch (error) {
       console.error('Failed to export tools:', error);
