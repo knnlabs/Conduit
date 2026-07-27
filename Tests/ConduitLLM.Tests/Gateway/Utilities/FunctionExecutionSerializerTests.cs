@@ -1,5 +1,5 @@
 using System.Text.Json;
-using ConduitLLM.Gateway.Models;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Utilities;
 
 namespace ConduitLLM.Tests.Http.Utilities
@@ -19,7 +19,7 @@ namespace ConduitLLM.Tests.Http.Utilities
         public void SerializeFunctionExecutionResults_WithEmptyList_ReturnsValidJson()
         {
             // Arrange
-            var results = new List<FunctionExecutionResultForLogging>();
+            var results = new List<ToolExecutionEvent>();
 
             // Act
             var json = FunctionExecutionSerializer.SerializeFunctionExecutionResults(results);
@@ -42,9 +42,9 @@ namespace ConduitLLM.Tests.Http.Utilities
         {
             // Arrange
             var executionId = Guid.NewGuid();
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_123",
                     FunctionName = "get_weather",
@@ -73,12 +73,12 @@ namespace ConduitLLM.Tests.Http.Utilities
             Assert.Equal(1, functionCalls.GetArrayLength());
 
             var call = functionCalls[0];
-            Assert.Equal("call_123", call.GetProperty("toolCallId").GetString());
-            Assert.Equal("get_weather", call.GetProperty("functionName").GetString());
+            Assert.Equal("call_123", call.GetProperty("tool_call_id").GetString());
+            Assert.Equal("get_weather", call.GetProperty("function_name").GetString());
             Assert.Equal("completed", call.GetProperty("status").GetString());
             Assert.Equal(0.005m, call.GetProperty("cost").GetDecimal());
-            Assert.Equal(JsonValueKind.Null, call.GetProperty("errorMessage").ValueKind);
-            Assert.Equal(executionId.ToString(), call.GetProperty("functionExecutionId").GetString());
+            Assert.False(call.TryGetProperty("error_message", out _));
+            Assert.Equal(executionId.ToString(), call.GetProperty("function_execution_id").GetString());
         }
 
         [Fact]
@@ -86,9 +86,9 @@ namespace ConduitLLM.Tests.Http.Utilities
         {
             // Arrange
             var executionId = Guid.NewGuid();
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_456",
                     FunctionName = "search_web",
@@ -114,16 +114,16 @@ namespace ConduitLLM.Tests.Http.Utilities
 
             var call = root.GetProperty("functionCalls")[0];
             Assert.Equal("failed", call.GetProperty("status").GetString());
-            Assert.Equal("Rate limit exceeded", call.GetProperty("errorMessage").GetString());
+            Assert.Equal("Rate limit exceeded", call.GetProperty("error_message").GetString());
         }
 
         [Fact]
         public void SerializeFunctionExecutionResults_WithMixedResults_CalculatesCountsCorrectly()
         {
             // Arrange
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_1",
                     FunctionName = "func1",
@@ -131,7 +131,7 @@ namespace ConduitLLM.Tests.Http.Utilities
                     Cost = 0.01m,
                     FunctionExecutionId = Guid.NewGuid()
                 },
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_2",
                     FunctionName = "func2",
@@ -139,7 +139,7 @@ namespace ConduitLLM.Tests.Http.Utilities
                     Cost = 0.02m,
                     FunctionExecutionId = Guid.NewGuid()
                 },
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_3",
                     FunctionName = "func3",
@@ -148,7 +148,7 @@ namespace ConduitLLM.Tests.Http.Utilities
                     ErrorMessage = "Timeout",
                     FunctionExecutionId = Guid.NewGuid()
                 },
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_4",
                     FunctionName = "func4",
@@ -174,16 +174,16 @@ namespace ConduitLLM.Tests.Http.Utilities
         }
 
         [Fact]
-        public void SerializeFunctionExecutionResults_WithNullFields_SerializesNullsCorrectly()
+        public void SerializeFunctionExecutionResults_WithNullOptionalFields_OmitsThem()
         {
             // Arrange
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = null,
                     FunctionName = null,
-                    Status = null,
+                    Status = string.Empty,
                     Cost = null,
                     ErrorMessage = null,
                     FunctionExecutionId = null
@@ -198,26 +198,26 @@ namespace ConduitLLM.Tests.Http.Utilities
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            // null status doesn't match "completed" or "failed"
+            // Empty status doesn't match "completed" or "failed".
             Assert.Equal(0, root.GetProperty("successCount").GetInt32());
             Assert.Equal(0, root.GetProperty("failedCount").GetInt32());
 
             var call = root.GetProperty("functionCalls")[0];
-            Assert.Equal(JsonValueKind.Null, call.GetProperty("toolCallId").ValueKind);
-            Assert.Equal(JsonValueKind.Null, call.GetProperty("functionName").ValueKind);
-            Assert.Equal(JsonValueKind.Null, call.GetProperty("status").ValueKind);
-            Assert.Equal(JsonValueKind.Null, call.GetProperty("cost").ValueKind);
-            Assert.Equal(JsonValueKind.Null, call.GetProperty("errorMessage").ValueKind);
-            Assert.Equal(JsonValueKind.Null, call.GetProperty("functionExecutionId").ValueKind);
+            Assert.Equal(string.Empty, call.GetProperty("status").GetString());
+            Assert.False(call.TryGetProperty("tool_call_id", out _));
+            Assert.False(call.TryGetProperty("function_name", out _));
+            Assert.False(call.TryGetProperty("cost", out _));
+            Assert.False(call.TryGetProperty("error_message", out _));
+            Assert.False(call.TryGetProperty("function_execution_id", out _));
         }
 
         [Fact]
         public void SerializeFunctionExecutionResults_ReturnsNonIndentedJson()
         {
             // Arrange
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_1",
                     FunctionName = "test",
@@ -237,11 +237,11 @@ namespace ConduitLLM.Tests.Http.Utilities
         public void SerializeFunctionExecutionResults_WithZeroCosts_CalculatesTotalCorrectly()
         {
             // Arrange
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging { Status = "completed", Cost = 0m },
-                new FunctionExecutionResultForLogging { Status = "completed", Cost = 0m },
-                new FunctionExecutionResultForLogging { Status = "completed", Cost = null }
+                new ToolExecutionEvent { Status = "completed", Cost = 0m },
+                new ToolExecutionEvent { Status = "completed", Cost = 0m },
+                new ToolExecutionEvent { Status = "completed", Cost = null }
             };
 
             // Act
@@ -256,9 +256,9 @@ namespace ConduitLLM.Tests.Http.Utilities
         public void SerializeFunctionExecutionResults_WithLargeCost_PreservesPrecision()
         {
             // Arrange
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     Status = "completed",
                     Cost = 123.456789m
@@ -329,6 +329,37 @@ namespace ConduitLLM.Tests.Http.Utilities
             Assert.Equal(1, result.FailedCount);
         }
 
+        [Fact]
+        public void DeserializeFunctionExecutionMetadata_WithLegacyCamelCaseCall_ReadsCall()
+        {
+            var executionId = Guid.NewGuid();
+            var json = $$"""
+                {
+                  "type": "chat_with_functions",
+                  "functionCallCount": 1,
+                  "totalCost": 0.015,
+                  "successCount": 1,
+                  "failedCount": 0,
+                  "functionCalls": [{
+                    "toolCallId": "legacy-call",
+                    "functionName": "legacy-function",
+                    "status": "completed",
+                    "cost": 0.015,
+                    "errorMessage": null,
+                    "functionExecutionId": "{{executionId}}"
+                  }]
+                }
+                """;
+
+            var result = FunctionExecutionSerializer.DeserializeFunctionExecutionMetadata(json);
+
+            Assert.NotNull(result);
+            var call = Assert.Single(result.FunctionCalls!);
+            Assert.Equal("legacy-call", call.ToolCallId);
+            Assert.Equal("legacy-function", call.FunctionName);
+            Assert.Equal(executionId, call.FunctionExecutionId);
+        }
+
         #endregion
 
         #region Roundtrip Tests
@@ -338,9 +369,9 @@ namespace ConduitLLM.Tests.Http.Utilities
         {
             // Arrange
             var executionId = Guid.NewGuid();
-            var results = new List<FunctionExecutionResultForLogging>
+            var results = new List<ToolExecutionEvent>
             {
-                new FunctionExecutionResultForLogging
+                new ToolExecutionEvent
                 {
                     ToolCallId = "call_roundtrip",
                     FunctionName = "test_function",

@@ -1,5 +1,4 @@
 using ConduitLLM.Core.Models;
-using ConduitLLM.Gateway.Models;
 
 namespace ConduitLLM.Gateway.UsageTracking;
 
@@ -65,7 +64,7 @@ public sealed record RequestAccountingSnapshot(
     string? RequestedModel,
     ProviderUsageEvidence? ProviderUsage,
     IReadOnlyList<ProviderCallUsage> ProviderCalls,
-    IReadOnlyList<FunctionExecutionResultForLogging> FunctionExecutions,
+    IReadOnlyList<ToolExecutionEvent> FunctionExecutions,
     decimal FunctionExecutionCost,
     IReadOnlyList<ToolCall> StreamingToolCalls,
     ProviderToolUsage? ProviderToolUsage,
@@ -87,7 +86,7 @@ public interface IRequestAccountingContext
     void RecordProviderCalls(IEnumerable<ProviderCallUsage> providerCalls);
 
     void RecordFunctionExecutions(
-        IEnumerable<FunctionExecutionResultForLogging> executions,
+        IEnumerable<ToolExecutionEvent> executions,
         decimal totalCost);
 
     void RecordStreamingToolCalls(IEnumerable<ToolCall> toolCalls);
@@ -119,7 +118,7 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
     private string? _requestedModel;
     private ProviderUsageEvidence? _providerUsage;
     private List<ProviderCallUsage> _providerCalls = [];
-    private List<FunctionExecutionResultForLogging> _functionExecutions = [];
+    private List<ToolExecutionEvent> _functionExecutions = [];
     private decimal _functionExecutionCost;
     private List<ToolCall> _streamingToolCalls = [];
     private ProviderToolUsage? _providerToolUsage;
@@ -167,7 +166,7 @@ public sealed class RequestAccountingContext : IRequestAccountingContext
     }
 
     public void RecordFunctionExecutions(
-        IEnumerable<FunctionExecutionResultForLogging> executions,
+        IEnumerable<ToolExecutionEvent> executions,
         decimal totalCost)
     {
         ArgumentNullException.ThrowIfNull(executions);
