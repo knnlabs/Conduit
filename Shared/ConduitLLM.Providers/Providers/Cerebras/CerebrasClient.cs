@@ -37,29 +37,6 @@ namespace ConduitLLM.Providers.Cerebras
             ProviderConfigurationRegistry.GetErrorMessages(ProviderType.Cerebras);
 
         /// <summary>
-        /// Fallback models for Cerebras when the models endpoint is not available
-        /// </summary>
-        private static readonly List<ExtendedModelInfo> CerebrasModels = new()
-        {
-            // Llama 3.1 models
-            ExtendedModelInfo.Create("llama3.1-8b", "cerebras", "Llama 3.1 8B"),
-            ExtendedModelInfo.Create("llama3.1-70b", "cerebras", "Llama 3.1 70B"),
-
-            // Llama 3.3 models
-            ExtendedModelInfo.Create("llama-3.3-70b", "cerebras", "Llama 3.3 70B"),
-
-            // Llama 4 Scout models
-            ExtendedModelInfo.Create("llama-4-scout-17b-16e-instruct", "cerebras", "Llama 4 Scout 17B Instruct"),
-
-            // Qwen 3 models
-            ExtendedModelInfo.Create("qwen-3-32b", "cerebras", "Qwen 3 32B"),
-            ExtendedModelInfo.Create("qwen-3-235b-a22b", "cerebras", "Qwen 3 235B"),
-
-            // DeepSeek models (private preview)
-            ExtendedModelInfo.Create("deepseek-r1-distill-llama-70b", "cerebras", "DeepSeek R1 Distill Llama 70B")
-        };
-
-        /// <summary>
         /// Initializes a new instance of the CerebrasClient class.
         /// </summary>
         /// <param name="provider">The provider configuration.</param>

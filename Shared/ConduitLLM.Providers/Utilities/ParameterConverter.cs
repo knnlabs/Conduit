@@ -7,22 +7,6 @@ namespace ConduitLLM.Providers.Utilities
     public static class ParameterConverter
     {
         /// <summary>
-        /// Converts a nullable double to nullable float, maintaining as much precision as possible.
-        /// </summary>
-        /// <param name="value">The double value to convert.</param>
-        /// <returns>The converted float value, or null if input is null.</returns>
-        public static float? ToFloat(double? value)
-        {
-            if (!value.HasValue) return null;
-            
-            // Check for values outside float range
-            if (value.Value > float.MaxValue) return float.MaxValue;
-            if (value.Value < float.MinValue) return float.MinValue;
-            
-            return (float)value.Value;
-        }
-        
-        /// <summary>
         /// Converts a dictionary of string to int (logit bias) to string to float format.
         /// </summary>
         /// <param name="logitBias">The logit bias dictionary with integer values.</param>

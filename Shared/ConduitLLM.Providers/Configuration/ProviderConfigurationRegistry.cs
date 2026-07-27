@@ -33,11 +33,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create or manage an API key in the OpenAI platform.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.OpenAI),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
-                EmbeddingsEndpoint = "/embeddings",
-                ImageGenerationsEndpoint = "/images/generations",
-                AudioTranscriptionsEndpoint = "/audio/transcriptions",
-                AudioSpeechEndpoint = "/audio/speech",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -80,7 +75,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create or manage an API key in the Groq console.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Groq),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -97,9 +91,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create or manage an API key in your Fireworks AI account.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Fireworks),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
-                EmbeddingsEndpoint = "/embeddings",
-                ImageGenerationsEndpoint = "/images/generations",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -116,7 +107,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create or manage an API key in Cerebras Cloud.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Cerebras),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -134,7 +124,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create or manage an API key in SambaNova Cloud.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.SambaNova),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -151,8 +140,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Use a DeepInfra API key with its OpenAI-compatible inference API.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.DeepInfra),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
-                EmbeddingsEndpoint = "/embeddings",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -169,8 +156,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create an API token in the Cloudflare dashboard and enter the account ID used to build the Workers AI endpoint.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Cloudflare),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
-                EmbeddingsEndpoint = "/embeddings",
                 // Model discovery is supported via the native /ai/models/search endpoint
                 // (see CloudflareClient.GetModelsAsync), not the OpenAI-style /models path.
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
@@ -220,9 +205,7 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Contact MiniMax support or use the MiniMax platform to obtain API access.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.MiniMax),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/text/chatcompletion_v2",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
-                SupportsModelsList = false, // MiniMax doesn't support listing models
                 ErrorMessages = new ProviderErrorMessages
                 {
                     InvalidApiKey = "Invalid API key for MiniMax. Please verify your API key is correct.",
@@ -237,9 +220,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Configure the endpoint and API key for an OpenAI-compatible service.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.OpenAICompatible), // Explicit provider URL remains required.
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
-                EmbeddingsEndpoint = "/embeddings",
-                ImageGenerationsEndpoint = "/images/generations",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -283,7 +263,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create or manage an API key in OpenRouter.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.OpenRouter),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -304,9 +283,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Use a key from the Azure OpenAI resource. Set each model mapping's provider model ID to its Azure deployment name.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Azure),
                 ModelsEndpoint = "/openai/deployments",
-                ChatCompletionsEndpoint = "/chat/completions",
-                EmbeddingsEndpoint = "/embeddings",
-                ImageGenerationsEndpoint = "/images/generations",
                 AuthenticationStrategy = ApiKeyHeaderStrategy.AzureInstance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -410,7 +386,6 @@ namespace ConduitLLM.Providers.Configuration
                     + "The project and location select the Vertex AI endpoint; the service-account JSON is stored encrypted on the key credential.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Vertex),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = OAuthAccessTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -464,7 +439,6 @@ namespace ConduitLLM.Providers.Configuration
                 HelpText = "Create or manage an API key in the Meta AI developer platform.",
                 DefaultBaseUrl = DefaultUrl(ProviderType.Meta),
                 ModelsEndpoint = "/models",
-                ChatCompletionsEndpoint = "/chat/completions",
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
@@ -760,16 +734,6 @@ namespace ConduitLLM.Providers.Configuration
             return GetConfiguration(providerType)?.ErrorMessages ?? ProviderErrorMessages.Default;
         }
 
-        /// <summary>
-        /// Checks if a provider supports listing models.
-        /// </summary>
-        /// <param name="providerType">The provider type.</param>
-        /// <returns>True if the provider supports listing models, false otherwise.</returns>
-        public static bool SupportsModelsList(ProviderType providerType)
-        {
-            var config = GetConfiguration(providerType);
-            return config?.SupportsModelsList ?? true;
-        }
     }
 
     /// <summary>
@@ -803,31 +767,6 @@ namespace ConduitLLM.Providers.Configuration
         public string? ModelsEndpoint { get; init; }
 
         /// <summary>
-        /// The endpoint path for chat completions (e.g., "/chat/completions").
-        /// </summary>
-        public string? ChatCompletionsEndpoint { get; init; }
-
-        /// <summary>
-        /// The endpoint path for embeddings (e.g., "/embeddings").
-        /// </summary>
-        public string? EmbeddingsEndpoint { get; init; }
-
-        /// <summary>
-        /// The endpoint path for image generations (e.g., "/images/generations").
-        /// </summary>
-        public string? ImageGenerationsEndpoint { get; init; }
-
-        /// <summary>
-        /// The endpoint path for audio transcriptions.
-        /// </summary>
-        public string? AudioTranscriptionsEndpoint { get; init; }
-
-        /// <summary>
-        /// The endpoint path for audio speech synthesis.
-        /// </summary>
-        public string? AudioSpeechEndpoint { get; init; }
-
-        /// <summary>
         /// The endpoint path for health checks. If null, uses ModelsEndpoint.
         /// </summary>
         public string? HealthCheckEndpoint { get; init; }
@@ -836,12 +775,6 @@ namespace ConduitLLM.Providers.Configuration
         /// The authentication strategy to use for this provider.
         /// </summary>
         public required IAuthenticationStrategy AuthenticationStrategy { get; init; }
-
-        /// <summary>
-        /// Whether this provider supports listing available models.
-        /// Defaults to true.
-        /// </summary>
-        public bool SupportsModelsList { get; init; } = true;
 
         /// <summary>
         /// Error messages specific to this provider.
