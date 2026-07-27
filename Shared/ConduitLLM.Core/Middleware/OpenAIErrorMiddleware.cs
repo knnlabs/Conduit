@@ -37,12 +37,15 @@ namespace ConduitLLM.Core.Middleware
         /// <param name="logger">The logger.</param>
         /// <param name="environment">The web host environment.</param>
         /// <param name="securityEventLogger">Optional security event logger.</param>
+        /// <param name="providerErrorTranslator">Customer-mode provider error translation
+        /// (CONDUIT_CUSTOMER_MODE); registered in the Gateway.</param>
         public OpenAIErrorMiddleware(
             RequestDelegate next,
             ILogger<OpenAIErrorMiddleware> logger,
             IWebHostEnvironment environment,
-            ISecurityEventLogger? securityEventLogger = null)
-            : base(next, logger, environment)
+            ISecurityEventLogger? securityEventLogger = null,
+            IProviderErrorTranslator? providerErrorTranslator = null)
+            : base(next, logger, environment, providerErrorTranslator)
         {
             _securityEventLogger = securityEventLogger;
         }
@@ -80,6 +83,13 @@ namespace ConduitLLM.Core.Middleware
                     Param = mapping.Param
                 }
             };
+
+            if (mapping.ProviderDetail is not null)
+            {
+                errorResponse.Error.Metadata = JsonSerializer.SerializeToElement(
+                    new Dictionary<string, ProviderErrorDetail> { ["provider_error"] = mapping.ProviderDetail },
+                    ErrorJsonOptions);
+            }
 
             return JsonSerializer.Serialize(errorResponse, ErrorJsonOptions);
         }

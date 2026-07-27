@@ -19,6 +19,7 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     private readonly IConfigurationDbContext _dbContext;
     private readonly ILogger<AdminSystemInfoService> _logger;
     private readonly IProviderRepository _providerRepository;
+    private readonly ConduitLLM.Core.Configuration.CustomerErrorOptions _customerErrorOptions;
     private readonly DateTime _startTime;
 
     /// <summary>
@@ -27,14 +28,17 @@ public class AdminSystemInfoService : IAdminSystemInfoService
     /// <param name="dbContext">The configuration database context</param>
     /// <param name="logger">The logger</param>
     /// <param name="providerRepository">The provider repository</param>
+    /// <param name="customerErrorOptions">Customer error mode (CONDUIT_CUSTOMER_MODE)</param>
     public AdminSystemInfoService(
         IConfigurationDbContext dbContext,
         ILogger<AdminSystemInfoService> logger,
-        IProviderRepository providerRepository)
+        IProviderRepository providerRepository,
+        ConduitLLM.Core.Configuration.CustomerErrorOptions? customerErrorOptions = null)
     {
         _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
+        _customerErrorOptions = customerErrorOptions ?? new ConduitLLM.Core.Configuration.CustomerErrorOptions();
         _startTime = Process.GetCurrentProcess().StartTime;
     }
 
@@ -116,7 +120,8 @@ public class AdminSystemInfoService : IAdminSystemInfoService
         {
             RuntimeVersion = RuntimeInformation.FrameworkDescription,
             StartTime = _startTime,
-            Uptime = DateTime.UtcNow - _startTime.ToUniversalTime()
+            Uptime = DateTime.UtcNow - _startTime.ToUniversalTime(),
+            CustomerMode = _customerErrorOptions.Mode.ToString()
         };
     }
 

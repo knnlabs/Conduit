@@ -43,6 +43,8 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      # Customer error visibility: External (default, sanitized) or Internal (raw provider detail)
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-External}"
       # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       # Using new REDIS_URL format (old variables still work for backward compatibility)
       REDIS_URL: "redis://redis:6379"
@@ -122,6 +124,8 @@ services:
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      # Must match the api service — Admin reports this value on the System Info page
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-External}"
       # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       # API-to-API authentication key for backend services
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha

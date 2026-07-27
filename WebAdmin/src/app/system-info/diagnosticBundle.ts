@@ -65,6 +65,7 @@ export function buildDiagnosticBundle(
       uptime: systemInfo?.runtime?.uptime ?? null,
       operatingSystem: systemInfo?.operatingSystem?.description ?? 'unknown',
       architecture: systemInfo?.operatingSystem?.architecture ?? 'unknown',
+      customerMode: systemInfo?.runtime?.customerMode ?? 'External',
     },
     instances: {
       gateway: instanceSummary(find('core-api')),

@@ -20,6 +20,7 @@ public abstract class ExceptionHandlingMiddlewareBase
 {
     private readonly RequestDelegate _next;
     private readonly IWebHostEnvironment _environment;
+    private readonly Interfaces.IProviderErrorTranslator? _providerErrorTranslator;
     protected readonly ILogger Logger;
 
     protected static readonly JsonSerializerOptions ErrorJsonOptions = Serialization.ConduitJsonOptions.Compact;
@@ -33,11 +34,13 @@ public abstract class ExceptionHandlingMiddlewareBase
     protected ExceptionHandlingMiddlewareBase(
         RequestDelegate next,
         ILogger logger,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        Interfaces.IProviderErrorTranslator? providerErrorTranslator = null)
     {
         _next = next ?? throw new ArgumentNullException(nameof(next));
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+        _providerErrorTranslator = providerErrorTranslator;
     }
 
     /// <summary>
@@ -73,7 +76,15 @@ public abstract class ExceptionHandlingMiddlewareBase
         // Map exception using the shared mapper. Mapped first so the log severity matches the
         // response: client errors (404 model_not_found, 400 invalid_request) must not be logged as
         // errors, or every unknown-model request pages an operator.
-        var mapping = ExceptionToResponseMapper.Map(exception);
+        // Provider communication errors go through the customer-mode translator when one is
+        // registered (Gateway): CONDUIT_CUSTOMER_MODE decides whether the customer sees raw
+        // provider text or a classified generic message. Status mapping is identical either way.
+        var providerException = _providerErrorTranslator is not null
+            ? LLMCommunicationException.FindWithStatus(exception)
+            : null;
+        var mapping = providerException is not null
+            ? _providerErrorTranslator!.MapProviderError(providerException)
+            : ExceptionToResponseMapper.Map(exception);
 
         // Log with or without body
         if (requestBody != null)

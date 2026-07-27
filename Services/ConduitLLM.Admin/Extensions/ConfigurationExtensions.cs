@@ -26,6 +26,10 @@ namespace ConduitLLM.Admin.Extensions
             // Add database migration services (CONDUIT_MIGRATION_MODE handling)
             services.AddDatabaseMigration();
 
+            // Customer error mode (CONDUIT_CUSTOMER_MODE) — Admin reports it on System Info;
+            // its own error middleware stays operator-facing and does not use the translator.
+            services.AddCustomerErrorTranslation();
+
             // Shared application services (GlobalSettingsCache, ProviderService,
             // ModelProviderMapping+decorator)
             services.AddSharedApplicationServices();

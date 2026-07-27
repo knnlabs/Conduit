@@ -29,6 +29,8 @@ export interface RuntimeInfo {
   runtimeVersion?: string;
   startTime?: string;
   uptime?: string;
+  /** Customer error visibility mode (CONDUIT_CUSTOMER_MODE): "Internal" | "External" */
+  customerMode?: string;
 }
 
 export interface RecordCountsDto {

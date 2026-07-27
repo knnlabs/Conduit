@@ -55,11 +55,12 @@ namespace ConduitLLM.Core.Services
             MediaGenerationMetrics metrics,
             IProviderErrorTrackingService errorTrackingService,
             ILogger<ImageGenerationOrchestrator> logger,
-            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null)
+            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null,
+            IProviderErrorTranslator? providerErrorTranslator = null)
             : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
                    webhookService, httpClientFactory, parameterValidator, metrics,
-                   errorTrackingService, logger, batchSpendService)
+                   errorTrackingService, logger, batchSpendService, providerErrorTranslator)
         {
 
             // Initialize processing strategies
@@ -311,7 +312,7 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishFailedEventAsync(
             ImageGenerationRequested request,
-            Exception ex,
+            CustomerFacingProviderError customerError,
             bool isRetryable,
             int retryCount,
             int maxRetries)
@@ -320,8 +321,8 @@ namespace ConduitLLM.Core.Services
             {
                 TaskId = request.TaskId,
                 VirtualKeyId = request.VirtualKeyId,
-                Error = ex.Message,
-                ErrorCode = ex.GetType().Name,
+                Error = customerError.Message,
+                ErrorCode = customerError.ErrorCode,
                 Provider = request.Request.Model ?? "unknown",
                 IsRetryable = isRetryable,
                 AttemptCount = retryCount + 1,

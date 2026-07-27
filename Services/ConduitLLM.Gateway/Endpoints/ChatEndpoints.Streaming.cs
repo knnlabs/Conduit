@@ -184,8 +184,17 @@ namespace ConduitLLM.Gateway.Endpoints
                 {
                     try
                     {
+                        // Provider failures get the customer-mode translation (classified
+                        // generic in External, detailed in Internal); anything else keeps
+                        // the fixed transport message.
+                        var providerException =
+                            ConduitLLM.Core.Exceptions.LLMCommunicationException.FindWithStatus(streamEx);
+                        var streamError = providerException is not null
+                            ? _providerErrorTranslator.Translate(providerException)
+                            : null;
                         await sseWriter.WriteErrorEventAsync(
-                            "The provider stream terminated before completion.",
+                            streamError?.Message ?? "The provider stream terminated before completion.",
+                            streamError?.Detail,
                             cancellationToken);
                     }
                     catch (Exception writeEx) when (writeEx is IOException or OperationCanceledException)

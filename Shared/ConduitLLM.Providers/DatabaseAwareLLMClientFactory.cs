@@ -447,7 +447,9 @@ namespace ConduitLLM.Providers
             // Apply context decorator to set provider key context for error tracking
             _logger.LogDebug("Applying context decorator for KeyId: {KeyId}, ProviderId: {ProviderId}",
                 keyCredential.Id, provider.Id);
-            client = new ContextAwareLLMClient(client, keyCredential.Id, provider.Id, _serviceProvider);
+            client = new ContextAwareLLMClient(
+                client, keyCredential.Id, provider.Id, _serviceProvider,
+                string.IsNullOrWhiteSpace(provider.ProviderName) ? providerName : provider.ProviderName);
 
             // Apply decorators if configured
             if (_performanceMetricsService != null)

@@ -9803,6 +9803,24 @@
               }
             }
           },
+          "409": {
+            "description": "Conflict",
+            "headers": {
+              "x-request-id": {
+                "description": "Request identifier for support and distributed tracing.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProblemDetails"
+                }
+              }
+            }
+          },
           "500": {
             "description": "Internal Server Error",
             "headers": {
@@ -24673,8 +24691,8 @@
                 "type": "null"
               },
               {
-                "description": "Usage details (parsed from JSON)",
-                "$ref": "#/components/schemas/UsageDto"
+                "description": "Usage details (parsed from JSON). Typed as the core Usage model — the same type\r\nthat wrote UsageJson — so no fields are lost in the audit round-trip.",
+                "$ref": "#/components/schemas/Usage"
               }
             ]
           },
@@ -32798,6 +32816,26 @@
           "uptime": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string"
+          },
+          "customerMode": {
+            "type": "string"
+          }
+        }
+      },
+      "SearchUsageMetadata": {
+        "type": "object",
+        "properties": {
+          "query_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "document_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "chunked_document_count": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },
@@ -34498,6 +34536,141 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/ModelRateLimitDto"
             }
+          }
+        }
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "prompt_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "completion_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "total_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "image_count": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "video_duration_seconds": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "video_resolution": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "is_batch": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "image_quality": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "image_resolution": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "cached_input_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "cached_write_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "search_units": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "search_metadata": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SearchUsageMetadata"
+              }
+            ]
+          },
+          "inference_steps": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "reasoning_tokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "audio_duration_seconds": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "tts_characters": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "format": "int32"
+          },
+          "metadata": {
+            "type": [
+              "null",
+              "object"
+            ]
+          },
+          "pricing_parameters": {
+            "type": [
+              "null",
+              "object"
+            ]
           }
         }
       },

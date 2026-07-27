@@ -60,11 +60,12 @@ namespace ConduitLLM.Core.Services
             MediaGenerationMetrics metrics,
             IProviderErrorTrackingService errorTrackingService,
             ILogger<VideoGenerationOrchestrator> logger,
-            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null)
+            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null,
+            IProviderErrorTranslator? providerErrorTranslator = null)
             : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
                    webhookService, httpClientFactory, parameterValidator, metrics,
-                   errorTrackingService, logger, batchSpendService)
+                   errorTrackingService, logger, batchSpendService, providerErrorTranslator)
         {
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
 
@@ -467,7 +468,7 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishFailedEventAsync(
             VideoGenerationRequested request,
-            Exception ex,
+            CustomerFacingProviderError customerError,
             bool isRetryable,
             int retryCount,
             int maxRetries)
@@ -482,8 +483,8 @@ namespace ConduitLLM.Core.Services
             await _eventBus.PublishAsync(new VideoGenerationFailed
             {
                 RequestId = request.RequestId,
-                Error = ex.Message,
-                ErrorCode = ex.GetType().Name,
+                Error = customerError.Message,
+                ErrorCode = customerError.ErrorCode,
                 IsRetryable = isRetryable,
                 RetryCount = retryCount,
                 MaxRetries = maxRetries,

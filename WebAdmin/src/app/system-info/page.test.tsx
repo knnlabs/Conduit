@@ -37,7 +37,7 @@ const systemInfo = {
     size: '10 MB',
     tableCount: 12,
   },
-  runtime: { runtimeVersion: '.NET 10', uptime: '01:00:00' },
+  runtime: { runtimeVersion: '.NET 10', uptime: '01:00:00', customerMode: 'Internal' },
   recordCounts: { virtualKeys: 2, settings: 3, providers: 4, modelMappings: 5 },
 };
 
@@ -130,6 +130,8 @@ describe('SystemInfoPage', () => {
     expect(screen.getByText('Redis')).toBeInTheDocument();
     expect(screen.getByText('Messaging')).toBeInTheDocument();
     expect(screen.getByText('Media Storage')).toBeInTheDocument();
+    expect(screen.getByText('Customer mode')).toBeInTheDocument();
+    expect(screen.getByText('Internal')).toBeInTheDocument();
     expect(screen.queryByText('Cache Hit Rate')).not.toBeInTheDocument();
   });
 
