@@ -368,6 +368,8 @@ namespace ConduitLLM.Admin.Services
                     value => existingModelCost.InputCostPerMillionTokens = value, changedProperties);
                 ApplyPatch(modelCost, nameof(modelCost.OutputCostPerMillionTokens), existingModelCost.OutputCostPerMillionTokens,
                     value => existingModelCost.OutputCostPerMillionTokens = value, changedProperties);
+                ApplyPatch(modelCost, nameof(modelCost.ReasoningCostPerMillionTokens), existingModelCost.ReasoningCostPerMillionTokens,
+                    value => existingModelCost.ReasoningCostPerMillionTokens = value, changedProperties);
                 ApplyPatch(modelCost, nameof(modelCost.EmbeddingCostPerMillionTokens), existingModelCost.EmbeddingCostPerMillionTokens,
                     value => existingModelCost.EmbeddingCostPerMillionTokens = value, changedProperties);
                 ApplyPatch(modelCost, nameof(modelCost.BatchProcessingMultiplier), existingModelCost.BatchProcessingMultiplier,

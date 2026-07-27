@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
+import { Suspense, useState } from 'react';
+import { Center, Container, Title, Text, Button, Group, Loader, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh, IconFileImport, IconFileExport } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { ModelCostsTable } from './components/ModelCostsTable';
@@ -75,12 +75,14 @@ export default function ModelCostsPage() {
           </Group>
         </Group>
 
-        <ModelCostsTable 
-          key={refreshKey} 
-          onRefresh={handleRefresh}
-          hasProviders={hasProviders}
-          hasModelMappings={hasModelMappings}
-        />
+        <Suspense fallback={<Center py="xl"><Loader /></Center>}>
+          <ModelCostsTable
+            key={refreshKey}
+            onRefresh={handleRefresh}
+            hasProviders={hasProviders}
+            hasModelMappings={hasModelMappings}
+          />
+        </Suspense>
       </Stack>
       
       <ImportModelCostsModal

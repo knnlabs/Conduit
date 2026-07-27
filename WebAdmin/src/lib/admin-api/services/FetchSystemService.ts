@@ -4,25 +4,8 @@ import type { RequestConfig } from '../client/types';
 import { ENDPOINTS } from '../constants';
 import type {
   SystemInfoDto,
-  HealthStatusDto,
-  SystemHealthDto,
-  SystemResourceMetricsDto,
-  ServiceStatusMapDto,
-  HealthEventsResponseDto,
-  HealthEventSubscriptionOptions,
-  HealthEventSubscription
+  HealthStatusDto
 } from '../models/system';
-import type {
-  BackendSystemInfoResponse,
-  MetricsParams,
-  SystemPerformanceMetrics,
-  ExportParams,
-  ExportResult,
-  ISystemService
-} from './types/system-service.types';
-import { FetchSystemHelpers } from './FetchSystemHelpers';
-import { FetchSystemHealthService } from './FetchSystemHealthService';
-import { FetchSystemMetricsService } from './FetchSystemMetricsService';
 
 const WEBADMIN_SETTING_KEY = 'WebAdmin_VirtualKey';
 const WEBADMIN_GROUP_EXTERNAL_ID = 'webadmin-internal';
@@ -32,22 +15,14 @@ export type ServiceHealthResponse = components['schemas']['ServiceHealthResponse
 /**
  * Type-safe System service using native fetch
  */
-export class FetchSystemService implements ISystemService {
-  private helpers: FetchSystemHelpers;
-  private healthService: FetchSystemHealthService;
-  private metricsService: FetchSystemMetricsService;
-
-  constructor(private readonly client: FetchBaseApiClient) {
-    this.helpers = new FetchSystemHelpers();
-    this.healthService = new FetchSystemHealthService(client);
-    this.metricsService = new FetchSystemMetricsService(client);
-  }
+export class FetchSystemService {
+  constructor(private readonly client: FetchBaseApiClient) {}
 
   /**
    * Get system information
    */
   async getSystemInfo(config?: RequestConfig): Promise<SystemInfoDto> {
-    const response = await this.client['get']<BackendSystemInfoResponse>(
+    return this.client['get']<SystemInfoDto>(
       ENDPOINTS.SYSTEM.INFO,
       {
         signal: config?.signal,
@@ -55,8 +30,6 @@ export class FetchSystemService implements ISystemService {
         headers: config?.headers,
       }
     );
-
-    return this.helpers.transformSystemInfoResponse(response);
   }
 
   /**
@@ -71,29 +44,6 @@ export class FetchSystemService implements ISystemService {
         headers: config?.headers,
       }
     );
-  }
-
-
-  /**
-   * Get performance metrics (optional)
-   * Delegates to FetchSystemMetricsService
-   */
-  async getPerformanceMetrics(
-    params?: MetricsParams,
-    config?: RequestConfig
-  ): Promise<SystemPerformanceMetrics> {
-    return this.metricsService.getPerformanceMetrics(params, config);
-  }
-
-  /**
-   * Export performance data (optional)
-   * Delegates to FetchSystemMetricsService
-   */
-  async exportPerformanceData(
-    params: ExportParams,
-    config?: RequestConfig
-  ): Promise<ExportResult> {
-    return this.metricsService.exportPerformanceData(params, config);
   }
 
   /**
@@ -135,97 +85,6 @@ export class FetchSystemService implements ISystemService {
         headers: config?.headers,
       },
     );
-  }
-
-  /**
-   * Get comprehensive system health status and metrics.
-   * Delegates to FetchSystemHealthService
-   */
-  async getSystemHealth(config?: RequestConfig): Promise<SystemHealthDto> {
-    return this.healthService.getSystemHealth(config);
-  }
-
-  /**
-   * Get detailed system resource metrics.
-   * Delegates to FetchSystemMetricsService
-   */
-  async getSystemMetrics(config?: RequestConfig): Promise<SystemResourceMetricsDto> {
-    return this.metricsService.getSystemMetrics(config);
-  }
-
-  /**
-   * Get health status of individual services.
-   * Delegates to FetchSystemHealthService
-   */
-  async getServiceStatus(config?: RequestConfig): Promise<ServiceStatusMapDto> {
-    return this.healthService.getServiceStatus(config);
-  }
-
-  /**
-   * Get system uptime in seconds.
-   * Delegates to FetchSystemMetricsService
-   */
-  async getUptime(config?: RequestConfig): Promise<number> {
-    return this.metricsService.getUptime(config);
-  }
-
-  /**
-   * Get the number of active connections to the system (null when unknown).
-   * Delegates to FetchSystemMetricsService
-   */
-  async getActiveConnections(config?: RequestConfig): Promise<number | null> {
-    return this.metricsService.getActiveConnections(config);
-  }
-
-  /**
-   * Get recent health events for the system.
-   * Delegates to FetchSystemHealthService
-   */
-  async getHealthEvents(limit?: number, config?: RequestConfig): Promise<HealthEventsResponseDto> {
-    return this.healthService.getHealthEvents(limit, config);
-  }
-
-  /**
-   * Subscribe to real-time health event updates.
-   * Delegates to FetchSystemHealthService
-   */
-  async subscribeToHealthEvents(
-    options?: HealthEventSubscriptionOptions,
-    config?: RequestConfig
-  ): Promise<HealthEventSubscription> {
-    return this.healthService.subscribeToHealthEvents(options, config);
-  }
-
-  /**
-   * Helper method to check if system is healthy
-   * Delegates to FetchSystemHelpers
-   */
-  isSystemHealthy(health: HealthStatusDto): boolean {
-    return this.helpers.isSystemHealthy(health);
-  }
-
-  /**
-   * Helper method to get unhealthy services
-   * Delegates to FetchSystemHelpers
-   */
-  getUnhealthyServices(health: HealthStatusDto): string[] {
-    return this.helpers.getUnhealthyServices(health);
-  }
-
-  /**
-   * Helper method to format uptime
-   * Delegates to FetchSystemHelpers
-   */
-  formatUptime(uptimeSeconds: number): string {
-    return this.helpers.formatUptime(uptimeSeconds);
-  }
-
-  /**
-   * Helper method to check if a feature is enabled
-   * Delegates to FetchSystemHelpers
-   */
-  isFeatureEnabled(systemInfo: SystemInfoDto, feature: string): boolean {
-    return this.helpers.isFeatureEnabled(systemInfo, feature);
   }
 
   /**

@@ -33,6 +33,7 @@ namespace ConduitLLM.Admin.Endpoints
                 Identifier = i.Identifier,
                 Provider = (int?)i.Provider,
                 IsPrimary = i.IsPrimary,
+                Metadata = StructuredJson.ParseObject(i.Metadata),
                 MaxInputTokens = i.MaxInputTokens,
                 MaxOutputTokens = i.MaxOutputTokens,
                 SpeedScore = i.SpeedScore,
@@ -123,7 +124,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <param name="id">The model ID</param>
         /// <param name="dto">The identifier data</param>
         /// <returns>The created identifier</returns>
-        public async Task<IResult> CreateModelIdentifier(int id, CreateModelIdentifierDto dto)
+        public async Task<IResult> CreateModelIdentifier(int id, ModelIdentifierRequestDto dto)
         {
             var model = await _modelRepository.GetByIdWithDetailsAsync(id);
             if (model == null)
@@ -174,17 +175,19 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAudit("Created", "ModelIdentifier", identifier.Id,
                 $"ModelId: {id}, Identifier: {LoggingSanitizer.S(dto.Identifier)}");
 
-            return Results.Created($"/v1/admin/models/{id}/identifiers", new CreatedModelIdentifierDto
+            return Results.Created($"/v1/admin/models/{id}/identifiers", new ModelIdentifierDto
             {
                 Id = identifier.Id,
                 Identifier = identifier.Identifier,
                 Provider = (int?)identifier.Provider,
                 IsPrimary = identifier.IsPrimary,
+                Metadata = StructuredJson.ParseObject(identifier.Metadata),
                 MaxInputTokens = identifier.MaxInputTokens,
                 MaxOutputTokens = identifier.MaxOutputTokens,
                 SpeedScore = identifier.SpeedScore,
                 QualityScore = identifier.QualityScore,
                 ProviderVariation = identifier.ProviderVariation,
+                ModelCostId = identifier.ModelCostId,
                 InputModalities = ModelModalities.Parse(identifier.InputModalitiesJson),
                 OutputModalities = ModelModalities.Parse(identifier.OutputModalitiesJson),
                 OperationalCapabilities = ModelCapabilityResolver.DeserializeOverrides(identifier.OperationalCapabilitiesJson),
@@ -200,7 +203,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <param name="identifierId">The identifier ID</param>
         /// <param name="dto">The updated identifier data</param>
         /// <returns>No content on success</returns>
-        public async Task<IResult> UpdateModelIdentifier(int id, int identifierId, UpdateModelIdentifierDto dto)
+        public async Task<IResult> UpdateModelIdentifier(int id, int identifierId, ModelIdentifierRequestDto dto)
         {
             var model = await _modelRepository.GetByIdWithDetailsAsync(id);
             if (model == null)
@@ -362,6 +365,7 @@ namespace ConduitLLM.Admin.Endpoints
                 Identifier = identifier.Identifier,
                 Provider = (int?)identifier.Provider,
                 IsPrimary = identifier.IsPrimary,
+                Metadata = StructuredJson.ParseObject(identifier.Metadata),
                 MaxInputTokens = identifier.MaxInputTokens,
                 MaxOutputTokens = identifier.MaxOutputTokens,
                 SpeedScore = identifier.SpeedScore,

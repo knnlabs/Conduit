@@ -75,6 +75,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 PricingConfiguration = "{\"baseRate\":0.1}",
                 InputCostPerMillionTokens = 1.5m,
                 OutputCostPerMillionTokens = 2.5m,
+                ReasoningCostPerMillionTokens = 3.5m,
                 IsActive = true
             };
             var association = new ModelProviderTypeAssociation
@@ -135,6 +136,7 @@ namespace ConduitLLM.Tests.Admin.Services
 
                 // Assert
                 result.Should().NotBeNull();
+                result!.ReasoningCostPerMillionTokens.Should().Be(3.5m);
             }
         }
 

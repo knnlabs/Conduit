@@ -87,10 +87,10 @@ namespace ConduitLLM.Admin.Endpoints
                 .WithName("Model_GetIdentifiers").Produces<IEnumerable<ModelIdentifierDto>>().Produces(StatusCodes.Status404NotFound);
             group.MapGet("/{id:int}/available-providers", ([FromServices] ModelEndpoints endpoints, int id) => endpoints.GetAvailableProviders(id))
                 .WithName("Model_GetAvailableProviders").Produces<IEnumerable<ModelProviderAvailabilityDto>>().Produces(StatusCodes.Status404NotFound);
-            group.MapPost("/{id:int}/identifiers", ([FromServices] ModelEndpoints endpoints, int id, CreateModelIdentifierDto dto) => endpoints.CreateModelIdentifier(id, dto))
-                .WithName("Model_CreateIdentifier").Produces<CreatedModelIdentifierDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
-            group.MapPatch("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, JsonMergePatch<UpdateModelIdentifierDto> patch) => endpoints.UpdateModelIdentifier(id, identifierId, patch.Value))
-                .AcceptsJsonMergePatch<UpdateModelIdentifierDto>()
+            group.MapPost("/{id:int}/identifiers", ([FromServices] ModelEndpoints endpoints, int id, ModelIdentifierRequestDto dto) => endpoints.CreateModelIdentifier(id, dto))
+                .WithName("Model_CreateIdentifier").Produces<ModelIdentifierDto>(StatusCodes.Status201Created).Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
+            group.MapPatch("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId, JsonMergePatch<ModelIdentifierRequestDto> patch) => endpoints.UpdateModelIdentifier(id, identifierId, patch.Value))
+                .AcceptsJsonMergePatch<ModelIdentifierRequestDto>()
                 .WithName("Model_UpdateIdentifier").Produces<ModelIdentifierDto>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound).Produces(StatusCodes.Status409Conflict);
             group.MapDelete("/{id:int}/identifiers/{identifierId:int}", ([FromServices] ModelEndpoints endpoints, int id, int identifierId) => endpoints.DeleteModelIdentifier(id, identifierId))
                 .WithName("Model_DeleteIdentifier").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status404NotFound);

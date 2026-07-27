@@ -98,6 +98,7 @@ namespace ConduitLLM.Admin.Extensions
                     Identifier = i.Identifier,
                     Provider = (int?)i.Provider,
                     IsPrimary = i.IsPrimary,
+                    Metadata = StructuredJson.ParseObject(i.Metadata),
                     MaxInputTokens = i.MaxInputTokens,
                     MaxOutputTokens = i.MaxOutputTokens,
                     SpeedScore = i.SpeedScore,

@@ -388,13 +388,13 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Fact]
-    public void Admin_ModelIdentifierCreationPublishesTypedResponseContract()
+    public void Admin_ModelIdentifierCreationPublishesUnifiedResponseContract()
     {
         Operation(_admin, "/v1/admin/models/{id}/identifiers", "post")
             .GetProperty("responses").GetProperty("201")
             .GetProperty("content").GetProperty("application/json")
             .GetProperty("schema").GetProperty("$ref").GetString()
-            .Should().Be("#/components/schemas/CreatedModelIdentifierDto");
+            .Should().Be("#/components/schemas/ModelIdentifierDto");
     }
 
     [Theory]
@@ -407,8 +407,8 @@ public sealed class AuthoritativeContractTests : IDisposable
     [InlineData("/v1/admin/models", "post", "CreateModelDto", "201", "ModelDto")]
     [InlineData("/v1/admin/models/{id}", "patch", "UpdateModelDto", "200", "ModelDto")]
     [InlineData("/v1/admin/models/{id}", "delete", null, "204", null)]
-    [InlineData("/v1/admin/models/{id}/identifiers", "post", "CreateModelIdentifierDto", "201", "CreatedModelIdentifierDto")]
-    [InlineData("/v1/admin/models/{id}/identifiers/{identifierId}", "patch", "UpdateModelIdentifierDto", "200", "ModelIdentifierDto")]
+    [InlineData("/v1/admin/models/{id}/identifiers", "post", "ModelIdentifierRequestDto", "201", "ModelIdentifierDto")]
+    [InlineData("/v1/admin/models/{id}/identifiers/{identifierId}", "patch", "ModelIdentifierRequestDto", "200", "ModelIdentifierDto")]
     [InlineData("/v1/admin/models/{id}/identifiers/{identifierId}", "delete", null, "204", null)]
     [InlineData("/v1/admin/models/{id}/provider-mappings", "post", "ModelProviderMappingDto", "201", "ModelProviderMappingDto")]
     [InlineData("/v1/admin/models/{id}/provider-mappings/{mappingId}", "patch", "UpdateModelProviderMappingDto", "200", "ModelProviderMappingDto")]
@@ -789,6 +789,7 @@ public sealed class AuthoritativeContractTests : IDisposable
         {
             ("VirtualKeyDto", "metadata"),
             ("ModelDto", "modelParameters"),
+            ("ModelIdentifierDto", "metadata"),
             ("ModelSeriesDto", "parameters"),
             ("ModelProviderMappingDto", "providerOptions"),
             ("ModelCostDto", "pricingConfiguration"),

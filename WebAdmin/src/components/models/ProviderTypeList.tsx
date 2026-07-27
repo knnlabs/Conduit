@@ -101,7 +101,7 @@ export function ProviderTypeList({
                   {association.modelCostId ? (
                     <Anchor
                       component={Link}
-                      href={`/model-costs/${association.modelCostId}`}
+                      href={`/model-costs?view=${association.modelCostId}`}
                       size="sm"
                       style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >

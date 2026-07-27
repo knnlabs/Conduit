@@ -65,9 +65,6 @@ namespace ConduitLLM.Core.Extensions
                 });
             }
 
-            // Register policy engine
-            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
-
             // Register the cache manager as singleton
             services.AddSingleton<ICacheManager, CacheManager>();
 
@@ -121,9 +118,6 @@ namespace ConduitLLM.Core.Extensions
 
             // Add cache registry
             services.AddCacheRegistry(autoDiscover);
-
-            // Register policy engine
-            services.AddSingleton<ICachePolicyEngine, CachePolicyEngine>();
 
             // Check if we have Redis configuration for the distributed cache tier
             var redisConnection = configuration.GetConnectionString("Redis") ?? configuration["Redis:Configuration"];

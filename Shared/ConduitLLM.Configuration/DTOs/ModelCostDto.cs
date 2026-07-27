@@ -66,6 +66,12 @@ namespace ConduitLLM.Configuration.DTOs
         public decimal OutputCostPerMillionTokens { get; set; } = 0;
 
         /// <summary>
+        /// Cost per million reasoning tokens in USD. When omitted, billing uses the output-token rate.
+        /// </summary>
+        [Range(0, double.MaxValue)]
+        public decimal? ReasoningCostPerMillionTokens { get; set; }
+
+        /// <summary>
         /// Cost per million tokens for embedding requests in USD, if applicable
         /// </summary>
         public decimal? EmbeddingCostPerMillionTokens { get; set; }

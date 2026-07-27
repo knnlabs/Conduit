@@ -41,6 +41,7 @@ const navigationSections = [
     title: 'Provider & Model Management',
     items: [
       { id: 'models', label: 'Models', href: '/models', icon: IconBrain },
+      { id: 'model-costs', label: 'Model Pricing', href: '/model-costs', icon: IconCoin },
       { id: 'llm-providers', label: 'LLM Providers', href: '/llm-providers', icon: IconServer },
       { id: 'model-mappings', label: 'Model Mappings', href: '/model-mappings', icon: IconRoute },
       { id: 'provider-tools', label: 'Provider Tools', href: '/provider-tools', icon: IconTool },

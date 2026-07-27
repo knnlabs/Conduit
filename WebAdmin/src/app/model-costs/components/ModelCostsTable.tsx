@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Table,
   ScrollArea,
@@ -32,7 +33,7 @@ import {
   IconPhoto,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { fetchModelCosts, useDeleteModelCost } from '../hooks/useModelCostsApi';
+import { fetchModelCostById, fetchModelCosts, useDeleteModelCost } from '../hooks/useModelCostsApi';
 import { ModelCost } from '../types/modelCost';
 import { PricingModel, ModelType } from '@/lib/admin-api';
 import { EditModelCostModalV2 } from './EditModelCostModalV2';
@@ -49,6 +50,14 @@ interface ModelCostsTableProps {
 
 export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: ModelCostsTableProps) {
   const deleteMutation = useDeleteModelCost();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedCostId = useMemo(() => {
+    const value = searchParams.get('view');
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -75,6 +84,32 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       modelType: modelTypeFilter ?? undefined,
     }),
   });
+  const { data: requestedCost } = useQuery({
+    queryKey: ['model-costs', 'detail', requestedCostId],
+    queryFn: () => {
+      if (requestedCostId === null) {
+        throw new Error('A model cost ID is required');
+      }
+      return fetchModelCostById(requestedCostId);
+    },
+    enabled: requestedCostId !== null,
+  });
+
+  useEffect(() => {
+    if (requestedCost) {
+      setViewingCost(requestedCost);
+    }
+  }, [requestedCost]);
+
+  const closeViewingCost = () => {
+    setViewingCost(null);
+    if (requestedCostId !== null) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete('view');
+      const queryString = nextParams.toString();
+      router.replace(queryString ? `/model-costs?${queryString}` : '/model-costs', { scroll: false });
+    }
+  };
 
   // Enrich model costs with provider information
   const { enrichedCosts, isLoading: enrichmentLoading } = useEnrichedModelCosts(data?.items);
@@ -440,7 +475,7 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
         <ViewModelCostModal
           isOpen={!!viewingCost}
           modelCost={viewingCost}
-          onClose={() => setViewingCost(null)}
+          onClose={closeViewingCost}
         />
       )}
     </>
