@@ -36,7 +36,7 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
     /// <summary>
     /// Validates that adding a new credential to the group would not exceed the maximum.
     /// </summary>
-    protected async Task<ValidationResult> ValidateAddAsync(
+    protected async Task<ConduitValidationResult> ValidateAddAsync(
         Expression<Func<TEntity, bool>> groupPredicate,
         CancellationToken cancellationToken = default)
     {
@@ -50,17 +50,17 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
             _logger.LogWarning(
                 "Credential add rejected: {GroupName} already has {CurrentCount}/{MaxPerGroup} {EntityName}s",
                 GroupName, currentCount, MaxPerGroup, EntityName);
-            return ValidationResult.Failure(
+            return ConduitValidationResult.Failure(
                 $"{GroupName} already has the maximum of {MaxPerGroup} {EntityName}s");
         }
 
-        return ValidationResult.Success();
+        return ConduitValidationResult.Success();
     }
 
     /// <summary>
     /// Validates that the credential can be set as primary (must exist and be enabled).
     /// </summary>
-    public async Task<ValidationResult> ValidateSetPrimaryAsync(
+    public async Task<ConduitValidationResult> ValidateSetPrimaryAsync(
         int id,
         CancellationToken cancellationToken = default)
     {
@@ -72,22 +72,22 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
         if (entity == null)
         {
             _logger.LogWarning("Set-primary rejected: {EntityName} {Id} not found", EntityName, id);
-            return ValidationResult.Failure($"{EntityName} not found");
+            return ConduitValidationResult.Failure($"{EntityName} not found");
         }
 
         if (!entity.IsEnabled)
         {
             _logger.LogWarning("Set-primary rejected: {EntityName} {Id} is disabled", EntityName, id);
-            return ValidationResult.Failure($"Cannot set a disabled {EntityName} as primary");
+            return ConduitValidationResult.Failure($"Cannot set a disabled {EntityName} as primary");
         }
 
-        return ValidationResult.Success();
+        return ConduitValidationResult.Success();
     }
 
     /// <summary>
     /// Validates that the credential can be disabled (must exist and not be primary).
     /// </summary>
-    public async Task<ValidationResult> ValidateDisableAsync(
+    public async Task<ConduitValidationResult> ValidateDisableAsync(
         int id,
         CancellationToken cancellationToken = default)
     {
@@ -99,23 +99,23 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
         if (entity == null)
         {
             _logger.LogWarning("Disable rejected: {EntityName} {Id} not found", EntityName, id);
-            return ValidationResult.Failure($"{EntityName} not found");
+            return ConduitValidationResult.Failure($"{EntityName} not found");
         }
 
         if (entity.IsPrimary)
         {
             _logger.LogWarning("Disable rejected: {EntityName} {Id} is primary", EntityName, id);
-            return ValidationResult.Failure(
+            return ConduitValidationResult.Failure(
                 $"Cannot disable a primary {EntityName}. Set another {EntityName} as primary first.");
         }
 
-        return ValidationResult.Success();
+        return ConduitValidationResult.Success();
     }
 
     /// <summary>
     /// Validates that at least one credential in the group is enabled.
     /// </summary>
-    protected async Task<ValidationResult> ValidateHasEnabledAsync(
+    protected async Task<ConduitValidationResult> ValidateHasEnabledAsync(
         Expression<Func<TEntity, bool>> groupAndEnabledPredicate,
         CancellationToken cancellationToken = default)
     {
@@ -129,10 +129,10 @@ public abstract class CredentialValidatorBase<TEntity> where TEntity : class, IC
             _logger.LogWarning(
                 "Validation failed: {GroupName} has no enabled {EntityName}s",
                 GroupName, EntityName);
-            return ValidationResult.Failure(
+            return ConduitValidationResult.Failure(
                 $"{GroupName} must have at least one enabled {EntityName}");
         }
 
-        return ValidationResult.Success();
+        return ConduitValidationResult.Success();
     }
 }

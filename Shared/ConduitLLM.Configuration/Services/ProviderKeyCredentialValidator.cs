@@ -22,19 +22,19 @@ namespace ConduitLLM.Configuration.Services
         /// <summary>
         /// Validates if a new key can be added to a provider
         /// </summary>
-        public Task<ValidationResult> ValidateAddKeyAsync(int providerId, CancellationToken cancellationToken = default)
+        public Task<ConduitValidationResult> ValidateAddKeyAsync(int providerId, CancellationToken cancellationToken = default)
             => ValidateAddAsync(k => k.ProviderId == providerId, cancellationToken);
 
         /// <summary>
         /// Validates if a key can be disabled
         /// </summary>
-        public Task<ValidationResult> ValidateDisableKeyAsync(int keyId, CancellationToken cancellationToken = default)
+        public Task<ConduitValidationResult> ValidateDisableKeyAsync(int keyId, CancellationToken cancellationToken = default)
             => ValidateDisableAsync(keyId, cancellationToken);
 
         /// <summary>
         /// Ensures at least one key is enabled for a provider
         /// </summary>
-        public Task<ValidationResult> ValidateProviderHasEnabledKeyAsync(int providerId, CancellationToken cancellationToken = default)
+        public Task<ConduitValidationResult> ValidateProviderHasEnabledKeyAsync(int providerId, CancellationToken cancellationToken = default)
             => ValidateHasEnabledAsync(k => k.ProviderId == providerId && k.IsEnabled, cancellationToken);
     }
 }

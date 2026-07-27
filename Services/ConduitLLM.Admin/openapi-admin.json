@@ -23823,7 +23823,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationResult"
+                  "$ref": "#/components/schemas/PricingRulesValidationResult"
                 }
               }
             }
@@ -23920,7 +23920,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ValidationResult"
+                  "$ref": "#/components/schemas/PricingRulesValidationResult"
                 }
               }
             }
@@ -31186,6 +31186,36 @@
           }
         }
       },
+      "PricingRulesValidationResult": {
+        "type": "object",
+        "properties": {
+          "parsedConfig": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PricingRulesConfig"
+              }
+            ]
+          },
+          "isValid": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "PricingSimulationRequest": {
         "type": "object",
         "properties": {
@@ -34896,36 +34926,6 @@
               "integer"
             ],
             "format": "int32"
-          }
-        }
-      },
-      "ValidationResult": {
-        "type": "object",
-        "properties": {
-          "isValid": {
-            "type": "boolean"
-          },
-          "errors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            }
-          },
-          "warnings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "parsedConfig": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/PricingRulesConfig"
-              }
-            ]
           }
         }
       },

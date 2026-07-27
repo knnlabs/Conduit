@@ -1,4 +1,5 @@
 using System.Text.Json;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Models.Pricing;
 using Microsoft.Extensions.Logging;
 
@@ -15,7 +16,7 @@ public interface IPricingRulesValidator
     /// <param name="config">The configuration to validate.</param>
     /// <param name="parameterSchema">Optional parameter schema JSON from ModelSeries.Parameters.</param>
     /// <returns>Validation result with errors and warnings.</returns>
-    ValidationResult Validate(PricingRulesConfig config, string? parameterSchema = null);
+    PricingRulesValidationResult Validate(PricingRulesConfig config, string? parameterSchema = null);
 
     /// <summary>
     /// Parses and validates a pricing configuration JSON string.
@@ -23,54 +24,18 @@ public interface IPricingRulesValidator
     /// <param name="json">The JSON string to parse and validate.</param>
     /// <param name="parameterSchema">Optional parameter schema JSON from ModelSeries.Parameters.</param>
     /// <returns>Validation result with errors and warnings.</returns>
-    ValidationResult ValidateJson(string json, string? parameterSchema = null);
+    PricingRulesValidationResult ValidateJson(string json, string? parameterSchema = null);
 }
 
 /// <summary>
 /// Result of pricing rules validation.
 /// </summary>
-public class ValidationResult
+public sealed class PricingRulesValidationResult : ConduitValidationResult
 {
-    /// <summary>
-    /// Whether the configuration is valid (no errors).
-    /// </summary>
-    public bool IsValid => Errors.Count == 0;
-
-    /// <summary>
-    /// List of validation errors that must be fixed.
-    /// </summary>
-    public List<ValidationError> Errors { get; set; } = new();
-
-    /// <summary>
-    /// List of warnings that don't prevent saving but should be addressed.
-    /// </summary>
-    public List<string> Warnings { get; set; } = new();
-
     /// <summary>
     /// The parsed configuration if JSON parsing succeeded.
     /// </summary>
     public PricingRulesConfig? ParsedConfig { get; set; }
-}
-
-/// <summary>
-/// A single validation error.
-/// </summary>
-public class ValidationError
-{
-    /// <summary>
-    /// The field that has the error.
-    /// </summary>
-    public string Field { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Description of the error.
-    /// </summary>
-    public string Message { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Index of the rule if the error is rule-specific.
-    /// </summary>
-    public int? RuleIndex { get; set; }
 }
 
 /// <summary>
@@ -89,13 +54,13 @@ public class PricingRulesValidator : IPricingRulesValidator
     }
 
     /// <inheritdoc />
-    public ValidationResult ValidateJson(string json, string? parameterSchema = null)
+    public PricingRulesValidationResult ValidateJson(string json, string? parameterSchema = null)
     {
-        var result = new ValidationResult();
+        var result = new PricingRulesValidationResult();
 
         if (string.IsNullOrWhiteSpace(json))
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "json",
                 Message = "Pricing configuration JSON is required"
@@ -112,7 +77,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
             if (config == null)
             {
-                result.Errors.Add(new ValidationError
+                result.AddError(new ValidationError
                 {
                     Field = "json",
                     Message = "Failed to parse pricing configuration JSON"
@@ -125,7 +90,7 @@ public class PricingRulesValidator : IPricingRulesValidator
         }
         catch (JsonException ex)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "json",
                 Message = $"Invalid JSON: {ex.Message}"
@@ -135,9 +100,9 @@ public class PricingRulesValidator : IPricingRulesValidator
     }
 
     /// <inheritdoc />
-    public ValidationResult Validate(PricingRulesConfig config, string? parameterSchema = null)
+    public PricingRulesValidationResult Validate(PricingRulesConfig config, string? parameterSchema = null)
     {
-        var result = new ValidationResult { ParsedConfig = config };
+        var result = new PricingRulesValidationResult { ParsedConfig = config };
 
         // 1. Validate required fields
         ValidateRequiredFields(config, result);
@@ -169,11 +134,11 @@ public class PricingRulesValidator : IPricingRulesValidator
         return result;
     }
 
-    private void ValidateRequiredFields(PricingRulesConfig config, ValidationResult result)
+    private void ValidateRequiredFields(PricingRulesConfig config, PricingRulesValidationResult result)
     {
         if (string.IsNullOrEmpty(config.Version))
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "version",
                 Message = "Version is required"
@@ -181,12 +146,12 @@ public class PricingRulesValidator : IPricingRulesValidator
         }
         else if (config.Version != "1.0")
         {
-            result.Warnings.Add($"Unknown schema version '{config.Version}'. Expected '1.0'.");
+            result.AddWarning($"Unknown schema version '{config.Version}'. Expected '1.0'.");
         }
 
         if (string.IsNullOrEmpty(config.PricingType))
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "pricingType",
                 Message = "Pricing type is required"
@@ -195,7 +160,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
         if (config.DefaultRate <= 0)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "defaultRate",
                 Message = "Default rate must be greater than zero so unmatched usage cannot be free"
@@ -203,11 +168,11 @@ public class PricingRulesValidator : IPricingRulesValidator
         }
     }
 
-    private void ValidatePricingType(PricingRulesConfig config, ValidationResult result)
+    private void ValidatePricingType(PricingRulesConfig config, PricingRulesValidationResult result)
     {
         if (!string.IsNullOrEmpty(config.PricingType) && !ValidPricingTypes.Contains(config.PricingType))
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "pricingType",
                 Message = $"Invalid pricing type '{config.PricingType}'. Must be one of: {string.Join(", ", ValidPricingTypes)}"
@@ -215,11 +180,11 @@ public class PricingRulesValidator : IPricingRulesValidator
         }
     }
 
-    private void ValidateUnitField(PricingRulesConfig config, ValidationResult result)
+    private void ValidateUnitField(PricingRulesConfig config, PricingRulesValidationResult result)
     {
         if (!string.IsNullOrEmpty(config.UnitField) && !ValidUnitFields.Contains(config.UnitField))
         {
-            result.Warnings.Add($"Unit field '{config.UnitField}' is not a standard field. Valid options: {string.Join(", ", ValidUnitFields)}");
+            result.AddWarning($"Unit field '{config.UnitField}' is not a standard field. Valid options: {string.Join(", ", ValidUnitFields)}");
         }
 
         // Recommend unit field based on pricing type
@@ -235,16 +200,16 @@ public class PricingRulesValidator : IPricingRulesValidator
 
             if (recommendedField != null)
             {
-                result.Warnings.Add($"No unitField specified. Consider setting it to '{recommendedField}' for {config.PricingType} pricing.");
+                result.AddWarning($"No unitField specified. Consider setting it to '{recommendedField}' for {config.PricingType} pricing.");
             }
         }
     }
 
-    private void ValidateRules(PricingRulesConfig config, ValidationResult result)
+    private void ValidateRules(PricingRulesConfig config, PricingRulesValidationResult result)
     {
         if (config.Rules.Count == 0)
         {
-            result.Warnings.Add("No rules defined. Only the default rate will be used.");
+            result.AddWarning("No rules defined. Only the default rate will be used.");
             return;
         }
 
@@ -254,7 +219,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
             if (rule.Rate < 0)
             {
-                result.Errors.Add(new ValidationError
+                result.AddError(new ValidationError
                 {
                     Field = "rate",
                     Message = "Rate cannot be negative",
@@ -264,7 +229,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
             if (rule.Conditions == null)
             {
-                result.Errors.Add(new ValidationError
+                result.AddError(new ValidationError
                 {
                     Field = "conditions",
                     Message = "Conditions object is required (use {} for catch-all)",
@@ -273,12 +238,12 @@ public class PricingRulesValidator : IPricingRulesValidator
             }
             else if (rule.Conditions.Count == 0)
             {
-                result.Warnings.Add($"Rule {i + 1} has no conditions - will always match at priority {rule.Priority}");
+                result.AddWarning($"Rule {i + 1} has no conditions - will always match at priority {rule.Priority}");
             }
 
             if (rule.Priority < 0)
             {
-                result.Warnings.Add($"Rule {i + 1} has negative priority ({rule.Priority}). Consider using non-negative values.");
+                result.AddWarning($"Rule {i + 1} has negative priority ({rule.Priority}). Consider using non-negative values.");
             }
         }
 
@@ -286,11 +251,11 @@ public class PricingRulesValidator : IPricingRulesValidator
         var priorityGroups = config.Rules.GroupBy(r => r.Priority);
         foreach (var group in priorityGroups.Where(g => g.Count() > 1))
         {
-            result.Warnings.Add($"Multiple rules ({group.Count()}) have priority {group.Key}. Order among them may be unpredictable.");
+            result.AddWarning($"Multiple rules ({group.Count()}) have priority {group.Key}. Order among them may be unpredictable.");
         }
     }
 
-    private void ValidateAgainstSchema(PricingRulesConfig config, string parameterSchema, ValidationResult result)
+    private void ValidateAgainstSchema(PricingRulesConfig config, string parameterSchema, PricingRulesValidationResult result)
     {
         Dictionary<string, ParameterDefinition>? schema;
         try
@@ -303,7 +268,7 @@ public class PricingRulesValidator : IPricingRulesValidator
         catch (JsonException ex)
         {
             _logger.LogWarning(ex, "Failed to parse parameter schema for validation");
-            result.Warnings.Add("Could not parse parameter schema for validation");
+            result.AddWarning("Could not parse parameter schema for validation");
             return;
         }
 
@@ -319,7 +284,7 @@ public class PricingRulesValidator : IPricingRulesValidator
                 // Check if condition key exists in schema
                 if (!schema.TryGetValue(condition.Key, out var paramDef))
                 {
-                    result.Warnings.Add($"Condition '{condition.Key}' not found in model parameters schema. Available: {string.Join(", ", schema.Keys)}");
+                    result.AddWarning($"Condition '{condition.Key}' not found in model parameters schema. Available: {string.Join(", ", schema.Keys)}");
                     continue;
                 }
 
@@ -329,7 +294,7 @@ public class PricingRulesValidator : IPricingRulesValidator
         }
     }
 
-    private void ValidateConditionValue(string key, object value, ParameterDefinition paramDef, ValidationResult result)
+    private void ValidateConditionValue(string key, object value, ParameterDefinition paramDef, PricingRulesValidationResult result)
     {
         var valueStr = ExtractStringValue(value);
 
@@ -342,7 +307,7 @@ public class PricingRulesValidator : IPricingRulesValidator
                 {
                     if (!paramDef.Options.Contains(valueStr, StringComparer.OrdinalIgnoreCase))
                     {
-                        result.Errors.Add(new ValidationError
+                        result.AddError(new ValidationError
                         {
                             Field = key,
                             Message = $"Value '{valueStr}' not in allowed options: {string.Join(", ", paramDef.Options)}"
@@ -358,7 +323,7 @@ public class PricingRulesValidator : IPricingRulesValidator
                     !valueStr.Equals("true", StringComparison.OrdinalIgnoreCase) &&
                     !valueStr.Equals("false", StringComparison.OrdinalIgnoreCase))
                 {
-                    result.Errors.Add(new ValidationError
+                    result.AddError(new ValidationError
                     {
                         Field = key,
                         Message = $"Value '{valueStr}' is not a valid boolean"
@@ -369,7 +334,7 @@ public class PricingRulesValidator : IPricingRulesValidator
             case "integer":
                 if (!long.TryParse(valueStr, out var intValue))
                 {
-                    result.Errors.Add(new ValidationError
+                    result.AddError(new ValidationError
                     {
                         Field = key,
                         Message = $"Value '{valueStr}' is not a valid integer"
@@ -385,7 +350,7 @@ public class PricingRulesValidator : IPricingRulesValidator
             case "slider":
                 if (!decimal.TryParse(valueStr, out var numValue))
                 {
-                    result.Errors.Add(new ValidationError
+                    result.AddError(new ValidationError
                     {
                         Field = key,
                         Message = $"Value '{valueStr}' is not a valid number"
@@ -399,11 +364,11 @@ public class PricingRulesValidator : IPricingRulesValidator
         }
     }
 
-    private void ValidateNumericRange(string key, decimal value, ParameterDefinition paramDef, ValidationResult result)
+    private void ValidateNumericRange(string key, decimal value, ParameterDefinition paramDef, PricingRulesValidationResult result)
     {
         if (paramDef.Min.HasValue && value < paramDef.Min.Value)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = key,
                 Message = $"Value {value} is below minimum {paramDef.Min.Value}"
@@ -412,7 +377,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
         if (paramDef.Max.HasValue && value > paramDef.Max.Value)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = key,
                 Message = $"Value {value} exceeds maximum {paramDef.Max.Value}"
@@ -440,7 +405,7 @@ public class PricingRulesValidator : IPricingRulesValidator
         return value.ToString() ?? string.Empty;
     }
 
-    private void CheckDuplicateRules(PricingRulesConfig config, ValidationResult result)
+    private void CheckDuplicateRules(PricingRulesConfig config, PricingRulesValidationResult result)
     {
         var seen = new HashSet<string>();
         for (int i = 0; i < config.Rules.Count; i++)
@@ -450,7 +415,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
             if (!seen.Add(conditionsKey))
             {
-                result.Warnings.Add($"Rule {i + 1} has identical conditions to another rule");
+                result.AddWarning($"Rule {i + 1} has identical conditions to another rule");
             }
         }
     }
@@ -461,7 +426,7 @@ public class PricingRulesValidator : IPricingRulesValidator
         return string.Join("|", sorted);
     }
 
-    private void ValidateConstraints(PricingRulesConfig config, ValidationResult result)
+    private void ValidateConstraints(PricingRulesConfig config, PricingRulesValidationResult result)
     {
         var c = config.Constraints;
         if (c == null)
@@ -469,7 +434,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
         if (c.MinDuration.HasValue && c.MaxDuration.HasValue && c.MinDuration > c.MaxDuration)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "constraints.minDuration",
                 Message = "Minimum duration cannot exceed maximum duration"
@@ -478,7 +443,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
         if (c.MinSteps.HasValue && c.MaxSteps.HasValue && c.MinSteps > c.MaxSteps)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "constraints.minSteps",
                 Message = "Minimum steps cannot exceed maximum steps"
@@ -487,7 +452,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
         if (c.MinDuration.HasValue && c.MinDuration < 0)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "constraints.minDuration",
                 Message = "Minimum duration cannot be negative"
@@ -496,7 +461,7 @@ public class PricingRulesValidator : IPricingRulesValidator
 
         if (c.MinSteps.HasValue && c.MinSteps < 0)
         {
-            result.Errors.Add(new ValidationError
+            result.AddError(new ValidationError
             {
                 Field = "constraints.minSteps",
                 Message = "Minimum steps cannot be negative"
@@ -504,28 +469,28 @@ public class PricingRulesValidator : IPricingRulesValidator
         }
     }
 
-    private void CheckPotentialIssues(PricingRulesConfig config, ValidationResult result)
+    private void CheckPotentialIssues(PricingRulesConfig config, PricingRulesValidationResult result)
     {
         // Check for very high rates that might be errors
         foreach (var rule in config.Rules.Where(r => r.Rate > 10))
         {
-            result.Warnings.Add($"Rule '{rule.Description ?? "unnamed"}' has rate ${rule.Rate} which seems high. Please verify.");
+            result.AddWarning($"Rule '{rule.Description ?? "unnamed"}' has rate ${rule.Rate} which seems high. Please verify.");
         }
 
         if (config.DefaultRate > 10)
         {
-            result.Warnings.Add($"Default rate ${config.DefaultRate} seems high. Please verify.");
+            result.AddWarning($"Default rate ${config.DefaultRate} seems high. Please verify.");
         }
 
         // Check for zero rates
         foreach (var rule in config.Rules.Where(r => r.Rate == 0))
         {
-            result.Warnings.Add($"Rule '{rule.Description ?? "unnamed"}' has zero rate. This will result in free usage.");
+            result.AddWarning($"Rule '{rule.Description ?? "unnamed"}' has zero rate. This will result in free usage.");
         }
 
         if (config.DefaultRate == 0 && config.Rules.All(r => r.Rate == 0))
         {
-            result.Warnings.Add("All rates are zero. This configuration will result in free usage.");
+            result.AddWarning("All rates are zero. This configuration will result in free usage.");
         }
     }
 }

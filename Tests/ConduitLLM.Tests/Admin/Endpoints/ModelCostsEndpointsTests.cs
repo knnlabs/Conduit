@@ -54,8 +54,8 @@ public sealed class ModelCostsEndpointsTests
             });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var result = Assert.IsType<ValidationResult>(
-            await response.Content.ReadFromJsonAsync<ValidationResult>());
+        var result = Assert.IsType<PricingRulesValidationResult>(
+            await response.Content.ReadFromJsonAsync<PricingRulesValidationResult>());
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, error => error.Field == "quality");
     }
@@ -213,7 +213,7 @@ public sealed class ModelCostsEndpointsTests
         }, endpoints => ModelCostsEndpoints.MapModelCostsEndpoints(endpoints), database);
     }
 
-    private static async Task<ValidationResult> ValidateAsync(
+    private static async Task<PricingRulesValidationResult> ValidateAsync(
         AdminEndpointTestHost host,
         Dictionary<string, JsonElement> pricingConfiguration,
         Dictionary<string, JsonElement>? callerSchema = null)
@@ -227,8 +227,8 @@ public sealed class ModelCostsEndpointsTests
             });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return Assert.IsType<ValidationResult>(
-            await response.Content.ReadFromJsonAsync<ValidationResult>());
+        return Assert.IsType<PricingRulesValidationResult>(
+            await response.Content.ReadFromJsonAsync<PricingRulesValidationResult>());
     }
 
     private static Dictionary<string, JsonElement> CreatePricingConfiguration(string parameter, object value) =>

@@ -44,7 +44,7 @@ public class UsageValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle()
+        result.Errors.Select(error => error.Message).Should().ContainSingle()
             .Which.Should().Contain("Total tokens (200) does not equal prompt (100) + completion (50) tokens");
     }
 
@@ -63,7 +63,7 @@ public class UsageValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle()
+        result.Errors.Select(error => error.Message).Should().ContainSingle()
             .Which.Should().Contain("Cached input tokens (150) exceed total prompt tokens (100)");
     }
 
@@ -83,7 +83,7 @@ public class UsageValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle()
+        result.Errors.Select(error => error.Message).Should().ContainSingle()
             .Which.Should().Contain("Combined cached tokens (110) exceed total prompt tokens (100)");
     }
 
@@ -101,7 +101,7 @@ public class UsageValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().ContainSingle()
+        result.Errors.Select(error => error.Message).Should().ContainSingle()
             .Which.Should().Be("Search units must be positive");
     }
 
@@ -128,7 +128,7 @@ public class UsageValidatorTests
 
         // Assert
         resultLow.IsValid.Should().BeFalse();
-        resultLow.Errors.Should().ContainSingle()
+        resultLow.Errors.Select(error => error.Message).Should().ContainSingle()
             .Which.Should().Contain("Inference steps (0) out of valid range (1-1000)");
 
         // Arrange - too high
@@ -139,7 +139,7 @@ public class UsageValidatorTests
 
         // Assert
         resultHigh.IsValid.Should().BeFalse();
-        resultHigh.Errors.Should().ContainSingle()
+        resultHigh.Errors.Select(error => error.Message).Should().ContainSingle()
             .Which.Should().Contain("Inference steps (1001) out of valid range (1-1000)");
     }
 
@@ -179,13 +179,13 @@ public class UsageValidatorTests
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().HaveCount(7); // 5 negative errors + 2 cached token validation errors
-        result.Errors.Should().Contain("Prompt tokens cannot be negative");
-        result.Errors.Should().Contain("Completion tokens cannot be negative");
-        result.Errors.Should().Contain("Total tokens cannot be negative");
-        result.Errors.Should().Contain("Cached input tokens cannot be negative");
-        result.Errors.Should().Contain("Cache write tokens cannot be negative");
-        result.Errors.Should().Contain("Cached input tokens (-5) exceed total prompt tokens (-10)");
-        result.Errors.Should().Contain("Cache write tokens (-8) exceed total prompt tokens (-10)");
+        result.Errors.Select(error => error.Message).Should().Contain("Prompt tokens cannot be negative");
+        result.Errors.Select(error => error.Message).Should().Contain("Completion tokens cannot be negative");
+        result.Errors.Select(error => error.Message).Should().Contain("Total tokens cannot be negative");
+        result.Errors.Select(error => error.Message).Should().Contain("Cached input tokens cannot be negative");
+        result.Errors.Select(error => error.Message).Should().Contain("Cache write tokens cannot be negative");
+        result.Errors.Select(error => error.Message).Should().Contain("Cached input tokens (-5) exceed total prompt tokens (-10)");
+        result.Errors.Select(error => error.Message).Should().Contain("Cache write tokens (-8) exceed total prompt tokens (-10)");
     }
 
     [Fact]
@@ -204,8 +204,8 @@ public class UsageValidatorTests
         // Assert
         result.IsValid.Should().BeFalse();
         result.Errors.Should().HaveCount(2);
-        result.Errors.Should().Contain("Image count must be positive");
-        result.Errors.Should().Contain("Video duration must be positive");
+        result.Errors.Select(error => error.Message).Should().Contain("Image count must be positive");
+        result.Errors.Select(error => error.Message).Should().Contain("Video duration must be positive");
     }
 
     [Fact]
@@ -228,9 +228,9 @@ public class UsageValidatorTests
 
         // Assert
         result.IsValid.Should().BeFalse();
-        result.Errors.Should().Contain("Search metadata query count must be positive");
-        result.Errors.Should().Contain("Search metadata document count cannot be negative");
-        result.Errors.Should().Contain("Chunked document count (20) cannot exceed total document count (-10)");
+        result.Errors.Select(error => error.Message).Should().Contain("Search metadata query count must be positive");
+        result.Errors.Select(error => error.Message).Should().Contain("Search metadata document count cannot be negative");
+        result.Errors.Select(error => error.Message).Should().Contain("Chunked document count (20) cannot exceed total document count (-10)");
     }
 
     [Fact]

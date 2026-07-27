@@ -6091,6 +6091,12 @@ export interface components {
       rules?: components["schemas"]["PricingRule"][];
       constraints?: null | components["schemas"]["PricingConstraints"];
     };
+    PricingRulesValidationResult: {
+      parsedConfig?: null | components["schemas"]["PricingRulesConfig"];
+      isValid?: boolean;
+      errors?: components["schemas"]["ValidationError"][];
+      warnings?: string[];
+    };
     /** @description Request to simulate pricing calculation */
     PricingSimulationRequest: {
       /** @description The structured pricing configuration. */
@@ -7505,12 +7511,6 @@ export interface components {
       message?: string;
       /** Format: int32 */
       ruleIndex?: null | number;
-    };
-    ValidationResult: {
-      isValid?: boolean;
-      errors?: components["schemas"]["ValidationError"][];
-      warnings?: string[];
-      parsedConfig?: null | components["schemas"]["PricingRulesConfig"];
     };
     VersionInfo: {
       appVersion?: string;
@@ -20620,7 +20620,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ValidationResult"];
+          "application/json": components["schemas"]["PricingRulesValidationResult"];
         };
       };
       /** @description Bad Request */
@@ -20679,7 +20679,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["ValidationResult"];
+          "application/json": components["schemas"]["PricingRulesValidationResult"];
         };
       };
       /** @description Bad Request */
