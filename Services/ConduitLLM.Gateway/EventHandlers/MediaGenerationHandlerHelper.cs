@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Caching.Memory;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -96,53 +97,11 @@ namespace ConduitLLM.Gateway.EventHandlers
         }
 
         /// <summary>
-        /// Critical error patterns that indicate provider-level issues requiring immediate attention
-        /// (authentication failures, account problems, insufficient funds).
+        /// Classifies an asynchronous failure using the same taxonomy as provider-key
+        /// tracking and returns its stable metrics label.
         /// </summary>
-        private static readonly string[] CriticalErrorPatterns =
-        {
-            "invalid api key",
-            "authentication failed",
-            "unauthorized",
-            "forbidden",
-            "account suspended",
-            "insufficient credits"
-        };
-
-        /// <summary>
-        /// Checks if the error represents a critical failure that needs immediate attention.
-        /// </summary>
-        public static bool IsCriticalFailure(string error)
-        {
-            var lowerError = error.ToLowerInvariant();
-            return CriticalErrorPatterns.Any(pattern => lowerError.Contains(pattern));
-        }
-
-        /// <summary>
-        /// Categorizes an error into a type string for structured metrics/alerting.
-        /// </summary>
-        public static string DetermineErrorType(string error, string? errorCode)
-        {
-            if (string.IsNullOrEmpty(error))
-                return "unknown";
-
-            var lowerError = error.ToLowerInvariant();
-
-            if (lowerError.Contains("rate limit") || lowerError.Contains("quota"))
-                return "rate_limit";
-            if (lowerError.Contains("auth") || lowerError.Contains("unauthorized"))
-                return "authentication";
-            if (lowerError.Contains("timeout"))
-                return "timeout";
-            if (lowerError.Contains("invalid") || lowerError.Contains("bad request"))
-                return "validation";
-            if (lowerError.Contains("not found"))
-                return "not_found";
-            if (lowerError.Contains("server error") || lowerError.Contains("internal"))
-                return "server_error";
-
-            return "other";
-        }
+        public static ProviderErrorType ClassifyFailure(string error, string? errorCode)
+            => ProviderErrorClassifier.ClassifyFailure(errorCode, error);
 
         #endregion
     }

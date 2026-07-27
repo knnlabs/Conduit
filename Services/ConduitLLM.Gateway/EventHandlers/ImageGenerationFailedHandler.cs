@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using Microsoft.Extensions.Caching.Memory;
 
 using ConduitLLM.Gateway.Interfaces;
@@ -64,8 +65,21 @@ namespace ConduitLLM.Gateway.EventHandlers
                 _progressCache.Remove(progressCacheKey);
 
                 // Track per-provider failure count
-                MediaGenerationHandlerHelper.TrackFailureMetrics(
+                var failureCount = MediaGenerationHandlerHelper.TrackFailureMetrics(
                     _progressCache, FailureCountCacheKeyPrefix, message.Provider, "image", _logger);
+
+                var providerErrorType = MediaGenerationHandlerHelper.ClassifyFailure(
+                    message.Error, message.ErrorCode);
+
+                _logger.LogInformation("Image generation failure metrics: {@Metrics}", new
+                {
+                    TaskId = message.TaskId,
+                    message.Provider,
+                    ErrorCode = message.ErrorCode ?? "unknown",
+                    message.IsRetryable,
+                    ErrorType = ProviderErrorClassifier.ToMetricLabel(providerErrorType),
+                    ProviderFailureCount = failureCount
+                });
 
                 // Analyze error patterns for actionable diagnostics
                 MediaGenerationHandlerHelper.AnalyzeErrorPattern(
@@ -86,7 +100,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
 
                 // Flag critical failures (auth, account, credits) for immediate attention
-                if (MediaGenerationHandlerHelper.IsCriticalFailure(message.Error))
+                if (ProviderErrorClassifier.IsFatal(providerErrorType))
                 {
                     _logger.LogCritical("Critical image generation failure detected for provider {Provider}: {Error}",
                         message.Provider, message.Error);
