@@ -3629,7 +3629,7 @@ export interface components {
       conflicts: string[];
       providers: components["schemas"]["ProviderCatalogImportResult"][];
     };
-    CacheInjectionPointDto: {
+    CacheInjectionPoint: {
       role?: null | string;
       /** Format: int32 */
       index?: null | number;
@@ -6246,22 +6246,22 @@ export interface components {
       failovers?: number;
       providerDistribution?: components["schemas"]["PromptCachingProviderDistributionDto"][];
     };
-    PromptCachingCapabilityDto: {
-      provider?: string;
-      modelPattern?: string;
-      strategies?: string[];
-      ttls?: string[];
+    PromptCachingCapability: {
+      provider: string;
+      modelPattern: string;
+      strategies: components["schemas"]["PromptCachingStrategy"][];
+      ttls: string[];
       /** Format: int32 */
-      minimumTokens?: null | number;
+      minimumTokens: null | number;
       /** Format: int32 */
-      maxBreakpoints?: number;
-      providerManaged?: boolean;
+      maxBreakpoints: number;
+      providerManaged: boolean;
     };
     PromptCachingConfigDto: {
       /** Format: int32 */
       schemaVersion?: number;
       enabled?: boolean;
-      rules?: components["schemas"]["PromptCachingRuleDto"][];
+      rules?: components["schemas"]["PromptCachingRule"][];
     };
     PromptCachingProviderDistributionDto: {
       provider?: string;
@@ -6270,15 +6270,21 @@ export interface components {
       /** Format: int32 */
       requests?: number;
     };
-    PromptCachingRuleDto: {
+    PromptCachingRule: {
       name: string;
       enabled?: boolean;
       provider: string;
       modelPattern: string;
-      strategy: string;
+      strategy: components["schemas"]["PromptCachingStrategy"];
       ttl?: null | string;
-      injectionPoints?: components["schemas"]["CacheInjectionPointDto"][];
+      injectionPoints?: components["schemas"]["CacheInjectionPoint"][];
     };
+    /** @enum {unknown} */
+    PromptCachingStrategy:
+      | "Automatic"
+      | "OpenRouterAutomatic"
+      | "Explicit"
+      | "OpenRouterExplicit";
     ProviderCatalogImportResult: {
       provider: string;
       /** Format: int32 */
@@ -6969,6 +6975,10 @@ export interface components {
        * @description Number of tasks that were cleaned up.
        */
       cleaned_up?: number;
+      /** Format: int32 */
+      archived?: number;
+      /** Format: int32 */
+      deleted?: number;
       /**
        * Format: int32
        * @description The age threshold, in hours, used for the cleanup.
@@ -7351,7 +7361,7 @@ export interface components {
       /** Format: int32 */
       schemaVersion?: number;
       enabled?: boolean;
-      rules: components["schemas"]["PromptCachingRuleDto"][];
+      rules: components["schemas"]["PromptCachingRule"][];
     };
     UpdateProviderRequest: {
       providerName?: null | string;
@@ -10749,7 +10759,7 @@ export interface operations {
         };
         content: {
           "application/json": {
-            data: components["schemas"]["PromptCachingCapabilityDto"][];
+            data: components["schemas"]["PromptCachingCapability"][];
             pagination: {
               /** Format: int32 */
               page: number;

@@ -13,6 +13,12 @@ namespace ConduitLLM.Admin.DTOs
         [JsonPropertyName("cleaned_up")]
         public int CleanedUp { get; set; }
 
+        [JsonPropertyName("archived")]
+        public int Archived { get; set; }
+
+        [JsonPropertyName("deleted")]
+        public int Deleted { get; set; }
+
         /// <summary>
         /// The age threshold, in hours, used for the cleanup.
         /// </summary>

@@ -1,6 +1,7 @@
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Messaging;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -16,8 +17,9 @@ namespace ConduitLLM.Gateway.Endpoints
         private readonly IAsyncTaskService _taskService;
         private readonly ConduitLLM.Core.Interfaces.IVirtualKeyService _virtualKeyService;
         private readonly IMediaLifecycleService _mediaLifecycleService;
-        private readonly IHttpClientFactory _httpClientFactory;
         private readonly IProviderErrorTrackingService _errorTrackingService;
+        private readonly Base64MediaProcessor _base64MediaProcessor;
+        private readonly UrlMediaProcessor _urlMediaProcessor;
 
         public ImagesEndpoints(
             ILLMClientFactory clientFactory,
@@ -25,13 +27,14 @@ namespace ConduitLLM.Gateway.Endpoints
             ILogger<ImagesEndpoints> logger,
             IModelProviderMappingService modelMappingService,
             IAsyncTaskService taskService,
-            IEventBus eventBus,
+            IEventPublisher eventPublisher,
             ConduitLLM.Core.Interfaces.IVirtualKeyService virtualKeyService,
             IMediaLifecycleService mediaLifecycleService,
-            IHttpClientFactory httpClientFactory,
             IProviderErrorTrackingService errorTrackingService,
+            Base64MediaProcessor base64MediaProcessor,
+            UrlMediaProcessor urlMediaProcessor,
             IHttpContextAccessor httpContextAccessor)
-            : base(eventBus, httpContextAccessor, logger)
+            : base(eventPublisher, httpContextAccessor, logger)
         {
             _clientFactory = clientFactory;
             _storageService = storageService;
@@ -40,8 +43,9 @@ namespace ConduitLLM.Gateway.Endpoints
             _taskService = taskService;
             _virtualKeyService = virtualKeyService;
             _mediaLifecycleService = mediaLifecycleService;
-            _httpClientFactory = httpClientFactory;
             _errorTrackingService = errorTrackingService;
+            _base64MediaProcessor = base64MediaProcessor;
+            _urlMediaProcessor = urlMediaProcessor;
         }
     }
 }

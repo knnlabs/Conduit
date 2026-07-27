@@ -1,22 +1,23 @@
-using System.Diagnostics;
 using System.Security.Claims;
 using System.Text.Json;
 
-using ConduitLLM.Configuration.Messaging;
-using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Gateway.Endpoints;
 
 /// <summary>Shared non-MVC support for stateful Gateway endpoint handlers.</summary>
 public abstract class GatewayEndpointHandlerBase
 {
-    private readonly IEventBus? _eventBus;
+    private readonly IEventPublisher? _eventPublisher;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
-    protected GatewayEndpointHandlerBase(IEventBus? eventBus, IHttpContextAccessor httpContextAccessor, ILogger logger)
+    protected GatewayEndpointHandlerBase(
+        IEventPublisher? eventPublisher,
+        IHttpContextAccessor httpContextAccessor,
+        ILogger logger)
     {
-        _eventBus = eventBus;
+        _eventPublisher = eventPublisher;
         _httpContextAccessor = httpContextAccessor;
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -75,26 +76,5 @@ public abstract class GatewayEndpointHandlerBase
 
     protected void PublishEventFireAndForget<TEvent>(TEvent domainEvent, string operationName, object? contextData = null)
         where TEvent : class
-    {
-        if (_eventBus is null)
-        {
-            EventPublishingMetrics.RecordSkipped(typeof(TEvent).Name);
-            return;
-        }
-
-        _ = Task.Run(async () =>
-        {
-            var stopwatch = Stopwatch.StartNew();
-            try
-            {
-                await _eventBus.PublishAsync(domainEvent);
-                EventPublishingMetrics.RecordSuccess(typeof(TEvent).Name, stopwatch.Elapsed.TotalSeconds);
-            }
-            catch (Exception exception)
-            {
-                EventPublishingMetrics.RecordFailure(typeof(TEvent).Name);
-                Logger.LogWarning(exception, "Failed to publish {EventType} for {Operation}", typeof(TEvent).Name, operationName);
-            }
-        });
-    }
+        => _eventPublisher?.PublishFireAndForget(domainEvent, operationName, contextData);
 }

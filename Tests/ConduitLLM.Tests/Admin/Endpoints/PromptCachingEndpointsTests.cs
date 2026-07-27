@@ -4,9 +4,10 @@ using System.Text.Json;
 
 using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.DTOs.PromptCaching;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -58,12 +59,12 @@ public sealed class PromptCachingEndpointsTests : IDisposable
         var input = new UpdatePromptCachingConfigDto
         {
             Enabled = true,
-            Rules = [new PromptCachingRuleDto
+            Rules = [new PromptCachingRule
             {
                 Name = "Claude",
                 Provider = "OpenRouter",
                 ModelPattern = "anthropic/*",
-                Strategy = "Automatic",
+                Strategy = PromptCachingStrategy.Automatic,
                 Ttl = "5m"
             }]
         };
@@ -81,12 +82,12 @@ public sealed class PromptCachingEndpointsTests : IDisposable
             new UpdatePromptCachingConfigDto
             {
                 Enabled = true,
-                Rules = [new PromptCachingRuleDto
+                Rules = [new PromptCachingRule
                 {
                     Name = "Unsafe",
                     Provider = "Replicate",
                     ModelPattern = "*",
-                    Strategy = "Automatic"
+                    Strategy = PromptCachingStrategy.Automatic
                 }]
             });
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

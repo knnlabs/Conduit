@@ -1,5 +1,4 @@
 using System.Text.Json;
-using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Core.Events;
@@ -7,6 +6,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -29,9 +29,9 @@ namespace ConduitLLM.Gateway.Endpoints
             ICancellableTaskRegistry taskRegistry,
             ILogger<VideosEndpoints> logger,
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
-            IEventBus eventBus,
+            IEventPublisher eventPublisher,
             IHttpContextAccessor httpContextAccessor)
-            : base(eventBus, httpContextAccessor, logger)
+            : base(eventPublisher, httpContextAccessor, logger)
         {
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
             _timeoutProvider = timeoutProvider ?? throw new ArgumentNullException(nameof(timeoutProvider));
@@ -203,7 +203,7 @@ namespace ConduitLLM.Gateway.Endpoints
             }
 
             // Validate task ownership for security
-            if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+            if (!AsyncTaskOwnership.IsOwnedBy(taskStatus, virtualKeyId))
             {
                 // Return 404 instead of 403 to prevent information disclosure
                 Logger.LogWarning("Virtual key {VirtualKeyId} attempted to access task {TaskId} owned by {OwnerKeyId}",
@@ -253,7 +253,7 @@ namespace ConduitLLM.Gateway.Endpoints
             }
 
             // Validate task ownership for security
-            if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+            if (!AsyncTaskOwnership.IsOwnedBy(taskStatus, virtualKeyId))
             {
                 Logger.LogWarning("Virtual key {VirtualKeyId} attempted to retry task {TaskId} owned by {OwnerKeyId}",
                     virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);
@@ -321,7 +321,7 @@ namespace ConduitLLM.Gateway.Endpoints
             }
 
             // Validate task ownership for security
-            if (taskStatus.Metadata?.VirtualKeyId != virtualKeyId)
+            if (!AsyncTaskOwnership.IsOwnedBy(taskStatus, virtualKeyId))
             {
                 Logger.LogWarning("Virtual key {VirtualKeyId} attempted to cancel task {TaskId} owned by {OwnerKeyId}",
                     virtualKeyId, taskId, taskStatus.Metadata?.VirtualKeyId);

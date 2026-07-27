@@ -33,6 +33,9 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         public int VirtualKeyId { get; set; }
 
+        /// <summary>Optional caller identifier to persist as storage metadata.</summary>
+        public string? CreatedBy { get; set; }
+
         /// <summary>
         /// Gets or sets the request ID for tracking.
         /// </summary>

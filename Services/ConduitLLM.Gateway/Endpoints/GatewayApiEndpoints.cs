@@ -9,6 +9,7 @@ using ConduitLLM.Core.Models.Responses;
 using ConduitLLM.Core.Models.Rerank;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Gateway.RateLimiting;
 
 namespace ConduitLLM.Gateway.Endpoints;
@@ -34,6 +35,8 @@ public static class GatewayApiEndpoints
         services.AddScoped<MediaEndpoints>();
         services.AddScoped<DownloadsEndpoints>();
         services.AddScoped<ImagesEndpoints>();
+        services.AddScoped<Base64MediaProcessor>();
+        services.AddScoped<UrlMediaProcessor>();
         services.AddScoped<VideosEndpoints>();
         services.AddScoped<ChatEndpoints>();
         services.AddScoped<IResponsesChatExecutor, ResponsesChatExecutor>();

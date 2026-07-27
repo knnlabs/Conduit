@@ -247,10 +247,8 @@ namespace ConduitLLM.Core.Services.Strategies
             };
 
             // Add CreatedBy if we have virtual key info
-            if (context.VirtualKeyId > 0)
-            {
-                metadata.CreatedBy = context.VirtualKeyId.ToString();
-            }
+            metadata.CreatedBy = context.CreatedBy ??
+                (context.VirtualKeyId > 0 ? context.VirtualKeyId.ToString() : null);
 
             // For video, create VideoMediaMetadata with additional properties
             if (context.MediaType == MediaType.Video)

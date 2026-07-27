@@ -231,6 +231,64 @@ public class BedrockClientTests
             .WithMessage("*input_audio*");
     }
 
+    [Theory]
+    [InlineData("data:image/png,not-base64", "*base64 data URL*")]
+    [InlineData("data:image/bmp;base64,AQID", "*does not support*image/bmp*")]
+    public void MapToConverseRequest_Rejects_Invalid_ImageDataUrls(
+        string url,
+        string expectedMessage)
+    {
+        var client = CreateClient(CreateHandler(HttpStatusCode.OK, "{}"));
+        var request = ChatRequest();
+        request.Messages =
+        [
+            new Message
+            {
+                Role = "user",
+                Content = JsonSerializer.SerializeToElement(new[]
+                {
+                    new
+                    {
+                        type = "image_url",
+                        image_url = new { url }
+                    }
+                })
+            }
+        ];
+
+        var act = () => client.MapToConverseRequest(request);
+
+        act.Should().Throw<ValidationException>()
+            .WithMessage(expectedMessage);
+    }
+
+    [Fact]
+    public void MapToConverseRequest_AcceptsCaseInsensitiveImageDataUrlMarkers()
+    {
+        var client = CreateClient(CreateHandler(HttpStatusCode.OK, "{}"));
+        var request = ChatRequest();
+        request.Messages =
+        [
+            new Message
+            {
+                Role = "user",
+                Content = JsonSerializer.SerializeToElement(new[]
+                {
+                    new
+                    {
+                        type = "image_url",
+                        image_url = new { url = "DATA:image/png;BASE64,AQID" }
+                    }
+                })
+            }
+        ];
+
+        var mapped = client.MapToConverseRequest(request);
+
+        mapped.Messages.Single().Content.Single().Image!.Format.Should().Be("png");
+        mapped.Messages.Single().Content.Single().Image!.Source.Bytes.Should().Be("AQID");
+    }
+
     [Fact]
     public async Task GetModels_Queries_The_Control_Plane_Foundation_Models_Endpoint()
     {

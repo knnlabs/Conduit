@@ -88,8 +88,8 @@ namespace ConduitLLM.Admin.Endpoints
             [FromQuery] int? providerId = null,
             [FromQuery] bool? isActive = null)
         {
-            var effectivePage = Math.Max(1, page ?? 1);
-            var effectivePageSize = Math.Clamp(pageSize ?? 50, 1, 100);
+            var (effectivePage, effectivePageSize) =
+                Pagination.Normalize(page ?? 1, pageSize ?? Pagination.DefaultPageSize);
             var modelCosts = providerId.HasValue
                 ? await _modelCostService.GetModelCostsByProviderAsync(providerId.Value)
                 : await _modelCostService.GetAllModelCostsAsync();

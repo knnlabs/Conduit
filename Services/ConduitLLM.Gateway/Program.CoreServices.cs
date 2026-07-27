@@ -16,7 +16,7 @@ public partial class Program
 {
     public static void ConfigureCoreServices(WebApplicationBuilder builder)
     {
-        builder.Services.AddScoped<ConduitLLM.Core.Services.IEventPublisher,
+        builder.Services.AddSingleton<ConduitLLM.Core.Services.IEventPublisher,
             ConduitLLM.Core.Services.EventPublisher>();
         builder.Services.AddGatewayEndpointHandlers();
         // ========== Core Infrastructure ==========
@@ -119,18 +119,10 @@ public partial class Program
         // Register cancellable task registry
         builder.Services.AddSingleton<ICancellableTaskRegistry, CancellableTaskRegistry>();
 
-        // Always use hybrid database+cache task management
-        builder.Services.AddScoped<IAsyncTaskService>(sp =>
-        {
-            var repository = sp.GetRequiredService<IAsyncTaskRepository>();
-            var cache = sp.GetRequiredService<IDistributedCache>();
-            var eventBus = sp.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
-            var logger = sp.GetRequiredService<ILogger<ConduitLLM.Core.Services.HybridAsyncTaskService>>();
-
-            return eventBus != null
-                ? new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, eventBus, logger)
-                : new ConduitLLM.Core.Services.HybridAsyncTaskService(repository, cache, logger);
-        });
+        builder.Services.AddAsyncTaskServices();
+        builder.Services.AddOptions<ConduitLLM.Core.Options.AsyncTaskRetentionOptions>()
+            .BindConfiguration(ConduitLLM.Core.Options.AsyncTaskRetentionOptions.SectionName);
+        builder.Services.AddHostedService<AsyncTaskRetentionService>();
         builder.Services.AddHostedService<MediaTaskLeaseRecoveryService>();
 
         // ========== Conduit Service ==========

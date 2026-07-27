@@ -44,7 +44,7 @@ namespace ConduitLLM.Admin.Endpoints
             IEventBus eventBus,
             IHttpContextAccessor httpContextAccessor,
             ILogger<ModelEndpoints> logger)
-            : base(eventBus, httpContextAccessor, logger)
+            : base(null, httpContextAccessor, logger)
         {
             _modelRepository = modelRepository ?? throw new ArgumentNullException(nameof(modelRepository));
             _modelSeriesRepository = modelSeriesRepository ?? throw new ArgumentNullException(nameof(modelSeriesRepository));
@@ -143,9 +143,7 @@ namespace ConduitLLM.Admin.Endpoints
             [FromQuery] string? capability = null,
             [FromQuery] bool? hasProviders = null)
         {
-            page = Math.Max(page, 1);
-            if (pageSize < 1) pageSize = 50;
-            if (pageSize > 100) pageSize = 100;
+            (page, pageSize) = Pagination.Normalize(page, pageSize);
 
             var (models, totalCount) = await _modelRepository.GetPaginatedWithFilterAsync(
                 page, pageSize, search, capability, hasProviders);

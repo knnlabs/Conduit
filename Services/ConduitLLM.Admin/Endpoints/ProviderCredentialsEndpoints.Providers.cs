@@ -6,7 +6,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Providers;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.Security;
 
 using Microsoft.AspNetCore.Authorization;
@@ -37,10 +37,10 @@ namespace ConduitLLM.Admin.Endpoints
             IProviderKeyCredentialRepository keyRepository,
             ILLMClientFactory clientFactory,
             IProviderSecretProtector secretProtector,
-            IEventBus eventBus,
+            IEventPublisher eventPublisher,
             IHttpContextAccessor httpContextAccessor,
             ILogger<ProviderCredentialsEndpoints> logger)
-            : base(eventBus, httpContextAccessor, logger)
+            : base(eventPublisher, httpContextAccessor, logger)
         {
             _providerRepository = providerRepository ?? throw new ArgumentNullException(nameof(providerRepository));
             _keyRepository = keyRepository ?? throw new ArgumentNullException(nameof(keyRepository));
@@ -113,10 +113,7 @@ namespace ConduitLLM.Admin.Endpoints
             [FromQuery] int pageSize = 50,
             CancellationToken cancellationToken = default)
         {
-            // Validate and clamp page parameters
-            if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 50;
-            if (pageSize > 100) pageSize = 100;
+            (page, pageSize) = Configuration.DTOs.Pagination.Normalize(page, pageSize);
 
             var (providers, totalCount) = await _providerRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
             var items = providers.Select(ToProviderDto).ToList();

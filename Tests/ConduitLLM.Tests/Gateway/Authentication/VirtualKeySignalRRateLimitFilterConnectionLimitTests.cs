@@ -45,7 +45,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             return new VirtualKeySignalRRateLimitFilter(
                 _mockSignalRRateLimitService.Object,
                 _mockLogger.Object,
-                _mockServiceProvider.Object,
+                Mock.Of<IEventPublisher>(),
                 mockOptions.Object);
         }
 

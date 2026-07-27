@@ -1,24 +1,22 @@
-using System.Diagnostics;
 using System.Security.Claims;
 
 using ConduitLLM.Admin.Auditing;
-using ConduitLLM.Configuration.Messaging;
-using ConduitLLM.Core.Metrics;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Admin.Endpoints;
 
 /// <summary>Shared non-MVC support for stateful Admin endpoint handlers.</summary>
 public abstract class AdminEndpointHandlerBase
 {
-    private readonly IEventBus? _eventBus;
+    private readonly IEventPublisher? _eventPublisher;
     private readonly IHttpContextAccessor _httpContextAccessor;
 
     protected AdminEndpointHandlerBase(
-        IEventBus? eventBus,
+        IEventPublisher? eventPublisher,
         IHttpContextAccessor httpContextAccessor,
         ILogger logger)
     {
-        _eventBus = eventBus;
+        _eventPublisher = eventPublisher;
         _httpContextAccessor = httpContextAccessor;
         Logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -46,33 +44,7 @@ public abstract class AdminEndpointHandlerBase
 
     protected void PublishEventFireAndForget<TEvent>(TEvent domainEvent, string operationName, object? contextData = null)
         where TEvent : class
-    {
-        if (_eventBus is null)
-        {
-            Logger.LogDebug("Event publishing not configured - skipping {EventType} for {Operation}", typeof(TEvent).Name, operationName);
-            EventPublishingMetrics.RecordSkipped(typeof(TEvent).Name);
-            return;
-        }
-
-        _ = Task.Run(async () =>
-        {
-            var stopwatch = Stopwatch.StartNew();
-            try
-            {
-                await _eventBus.PublishAsync(domainEvent);
-                EventPublishingMetrics.RecordSuccess(typeof(TEvent).Name, stopwatch.Elapsed.TotalSeconds);
-                Logger.LogDebug("Published {EventType} event for {Operation} with context {ContextData}",
-                    typeof(TEvent).Name, operationName, contextData);
-            }
-            catch (Exception exception)
-            {
-                EventPublishingMetrics.RecordFailure(typeof(TEvent).Name);
-                Logger.LogWarning(exception,
-                    "Failed to publish {EventType} event for {Operation} - operation completed but event not sent",
-                    typeof(TEvent).Name, operationName);
-            }
-        });
-    }
+        => _eventPublisher?.PublishFireAndForget(domainEvent, operationName, contextData);
 
     protected static IResult Ok<T>(T value) => Results.Ok(value);
     protected static IResult BadRequest(string message) => AdminResults.BadRequest(message);

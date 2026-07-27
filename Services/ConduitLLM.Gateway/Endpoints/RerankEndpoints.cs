@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Rerank;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.UsageTracking;
 
@@ -21,9 +21,9 @@ namespace ConduitLLM.Gateway.Endpoints
             ILLMClientFactory clientFactory,
             IModelProviderMappingService modelMappingService,
             ILogger<RerankEndpoints> logger,
-            IEventBus eventBus,
+            IEventPublisher eventPublisher,
             IHttpContextAccessor httpContextAccessor)
-            : base(eventBus, httpContextAccessor, logger)
+            : base(eventPublisher, httpContextAccessor, logger)
         {
             _clientFactory = clientFactory;
             _modelMappingService = modelMappingService;

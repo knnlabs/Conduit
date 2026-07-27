@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -9,45 +11,50 @@ public static class PromptCachingConstants
     public const int MaxExplicitBreakpoints = 4;
 }
 
+public static class PromptCachingSerialization
+{
+    public static JsonSerializerOptions Options { get; } = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        PropertyNameCaseInsensitive = true
+    };
+}
+
 /// <summary>Provider-aware managed prompt caching configuration.</summary>
 public sealed class PromptCachingConfig
 {
-    [JsonPropertyName("schema_version")]
     public int SchemaVersion { get; set; }
 
-    [JsonPropertyName("enabled")]
     public bool Enabled { get; set; }
 
-    [JsonPropertyName("rules")]
     public List<PromptCachingRule> Rules { get; set; } = new();
 }
 
 public sealed class PromptCachingRule
 {
-    [JsonPropertyName("name")]
+    [Required, MaxLength(100)]
     public string Name { get; set; } = string.Empty;
 
-    [JsonPropertyName("enabled")]
     public bool Enabled { get; set; } = true;
 
-    [JsonPropertyName("provider")]
+    [Required]
     public string Provider { get; set; } = string.Empty;
 
-    [JsonPropertyName("model_pattern")]
+    [Required, MaxLength(200)]
     public string ModelPattern { get; set; } = string.Empty;
 
-    [JsonPropertyName("strategy")]
+    [Required]
     [JsonConverter(typeof(JsonStringEnumConverter<PromptCachingStrategy>))]
     public PromptCachingStrategy Strategy { get; set; }
 
-    [JsonPropertyName("ttl")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Ttl { get; set; }
 
-    [JsonPropertyName("injection_points")]
+    [MaxLength(PromptCachingConstants.MaxExplicitBreakpoints)]
     public List<CacheInjectionPoint> InjectionPoints { get; set; } = new();
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<PromptCachingStrategy>))]
 public enum PromptCachingStrategy
 {
     Automatic,
@@ -60,11 +67,11 @@ public enum PromptCachingStrategy
 
 public sealed class CacheInjectionPoint
 {
-    [JsonPropertyName("role")]
+    [RegularExpression("^(system|developer|user|assistant)$")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Role { get; set; }
 
-    [JsonPropertyName("index")]
+    [Range(-100, 100)]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? Index { get; set; }
 }

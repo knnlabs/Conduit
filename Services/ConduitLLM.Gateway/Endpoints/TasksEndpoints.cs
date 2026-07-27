@@ -29,10 +29,20 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>The task status.</returns>
         public async Task<IResult> GetTaskStatus(string taskId)
         {
+            if (CurrentVirtualKeyId is not int virtualKeyId)
+            {
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+            }
+
             Logger.LogDebug("Getting status for task {TaskId}", taskId);
             try
             {
                 var status = await _taskService.GetTaskStatusAsync(taskId);
+                if (!AsyncTaskOwnership.IsOwnedBy(status, virtualKeyId))
+                {
+                    LogOwnershipFailure(taskId, virtualKeyId, status);
+                    return TaskNotFound();
+                }
                 return Ok(status);
             }
             catch (InvalidOperationException ex)
@@ -48,8 +58,20 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>No content on success.</returns>
         public async Task<IResult> CancelTask(string taskId)
         {
+            if (CurrentVirtualKeyId is not int virtualKeyId)
+            {
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+            }
+
             try
             {
+                var status = await _taskService.GetTaskStatusAsync(taskId);
+                if (!AsyncTaskOwnership.IsOwnedBy(status, virtualKeyId))
+                {
+                    LogOwnershipFailure(taskId, virtualKeyId, status);
+                    return TaskNotFound();
+                }
+
                 await _taskService.CancelTaskAsync(taskId);
                 Logger.LogInformation("Task {TaskId} cancelled successfully", taskId);
                 return NoContent();
@@ -69,6 +91,11 @@ namespace ConduitLLM.Gateway.Endpoints
         /// <returns>The final task status.</returns>
         public async Task<IResult> PollTask(string taskId, int timeout = 300, int interval = 2)
         {
+            if (CurrentVirtualKeyId is not int virtualKeyId)
+            {
+                return OpenAIError(401, "Virtual key not found in request context", "unauthorized");
+            }
+
             // Validate and clamp parameters
             timeout = Math.Clamp(timeout, 1, 600); // Max 10 minutes
             interval = Math.Max(interval, 1); // Min 1 second
@@ -78,6 +105,13 @@ namespace ConduitLLM.Gateway.Endpoints
 
             try
             {
+                var initialStatus = await _taskService.GetTaskStatusAsync(taskId);
+                if (!AsyncTaskOwnership.IsOwnedBy(initialStatus, virtualKeyId))
+                {
+                    LogOwnershipFailure(taskId, virtualKeyId, initialStatus);
+                    return TaskNotFound();
+                }
+
                 var status = await _taskService.PollTaskUntilCompletedAsync(
                     taskId,
                     TimeSpan.FromSeconds(interval),
@@ -92,6 +126,24 @@ namespace ConduitLLM.Gateway.Endpoints
             catch (OperationCanceledException)
             {
                 return OpenAIError(408, "Task polling timed out", "timeout", "timeout");
+            }
+        }
+
+        private IResult TaskNotFound() =>
+            OpenAIError(404, "The requested task was not found", "not_found", "not_found_error");
+
+        private void LogOwnershipFailure(
+            string taskId,
+            int virtualKeyId,
+            AsyncTaskStatus? taskStatus)
+        {
+            if (taskStatus is not null)
+            {
+                Logger.LogWarning(
+                    "Virtual key {VirtualKeyId} attempted to access task {TaskId} owned by {OwnerKeyId}",
+                    virtualKeyId,
+                    taskId,
+                    taskStatus.Metadata?.VirtualKeyId);
             }
         }
 

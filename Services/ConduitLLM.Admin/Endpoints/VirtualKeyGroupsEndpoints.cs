@@ -89,10 +89,7 @@ namespace ConduitLLM.Admin.Endpoints
             [FromQuery] int pageSize = 50,
             CancellationToken cancellationToken = default)
         {
-            // Validate and clamp page parameters
-            if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 50;
-            if (pageSize > 100) pageSize = 100;
+            (page, pageSize) = Pagination.Normalize(page, pageSize);
 
             var (groups, totalCount) = await _groupRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
 
@@ -308,10 +305,7 @@ namespace ConduitLLM.Admin.Endpoints
             [FromQuery] int page = 1,
             [FromQuery] int pageSize = 50)
         {
-            // Validate page parameters
-            if (page < 1) page = 1;
-            if (pageSize < 1) pageSize = 50;
-            if (pageSize > 100) pageSize = 100;
+            (page, pageSize) = Pagination.Normalize(page, pageSize);
 
             var group = await _groupRepository.GetByIdAsync(id);
             if (group == null)

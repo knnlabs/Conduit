@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Core.Utilities;
+
 namespace ConduitLLM.Core.Models;
 
 /// <summary>
@@ -61,15 +63,19 @@ public class ImageUrl
     /// Returns true if the URL is a base64 data URL
     /// </summary>
     [JsonIgnore]
-    public bool IsBase64DataUrl => Url.StartsWith("data:image/");
+    public bool IsBase64DataUrl =>
+        DataUrl.TryParse(Url, out var dataUrl) &&
+        dataUrl.IsBase64 &&
+        dataUrl.MediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Gets the MIME type from the data URL, or null if this is not a data URL
     /// </summary>
     [JsonIgnore]
-    public string? MimeType => IsBase64DataUrl
-        ? Url.Substring(5, Url.IndexOf(';') - 5)
-        : null;
+    public string? MimeType =>
+        DataUrl.TryParse(Url, out var dataUrl) && dataUrl.IsBase64
+            ? dataUrl.MediaType
+            : null;
 
     /// <summary>
     /// Gets the base64 data without the prefix, or null if this is not a data URL
@@ -79,12 +85,9 @@ public class ImageUrl
     {
         get
         {
-            if (!IsBase64DataUrl) return null;
-
-            int startIndex = Url.IndexOf("base64,");
-            if (startIndex < 0) return null;
-
-            return Url.Substring(startIndex + 7);
+            return DataUrl.TryParse(Url, out var dataUrl) && dataUrl.IsBase64
+                ? dataUrl.Data
+                : null;
         }
     }
 }

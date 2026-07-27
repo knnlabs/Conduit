@@ -290,6 +290,41 @@ public sealed class AsyncTaskRepositoryLifecycleTests : IAsyncLifetime
         Assert.True(rows.Single(t => t.Id == "recent-archive").IsArchived);
     }
 
+    [Fact]
+    public async Task ArchiveOldTasks_ExpiresStaleActiveRowsButPreservesIndeterminateWork()
+    {
+        var now = DateTime.UtcNow;
+        var pending = DurableLifecycleTestData.NewAsyncTask(
+            "stale-pending", now.AddDays(-10), state: 0);
+        var processing = DurableLifecycleTestData.NewAsyncTask(
+            "stale-processing", now.AddDays(-10), state: 1);
+        processing.LeaseExpiryTime = now.AddDays(-2);
+        var uncertain = DurableLifecycleTestData.NewAsyncTask(
+            "provider-outcome-unknown", now.AddDays(-10), state: 1);
+        uncertain.ProviderInvocationStartedAt = now.AddDays(-9);
+        uncertain.LeaseExpiryTime = now.AddDays(-2);
+        var indeterminate = DurableLifecycleTestData.NewAsyncTask(
+            "indeterminate", now.AddDays(-10), state: 6);
+        await SeedTasksAsync(pending, processing, uncertain, indeterminate);
+
+        var archived = await _repository.ArchiveOldTasksAsync(
+            TimeSpan.FromDays(30),
+            TimeSpan.FromDays(7));
+
+        Assert.Equal(2, archived);
+        await using var verification = _database.CreateContext();
+        var rows = await verification.AsyncTasks.AsNoTracking().ToListAsync();
+        Assert.All(
+            rows.Where(task => task.Id is "stale-pending" or "stale-processing"),
+            task =>
+            {
+                Assert.True(task.IsArchived);
+                Assert.Equal(5, task.State);
+            });
+        Assert.False(rows.Single(task => task.Id == "provider-outcome-unknown").IsArchived);
+        Assert.False(rows.Single(task => task.Id == "indeterminate").IsArchived);
+    }
+
     private async Task SeedTasksAsync(params AsyncTask[] tasks)
     {
         await _database.SeedAsync(async context =>

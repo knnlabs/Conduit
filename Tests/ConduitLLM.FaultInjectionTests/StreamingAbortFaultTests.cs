@@ -1,10 +1,10 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
-using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
@@ -65,7 +65,7 @@ public sealed class StreamingAbortFaultTests(BillingFaultFixture fixture)
             NullLogger<ChatEndpoints>.Instance,
             Mock.Of<IModelProviderMappingService>(),
             new JsonSerializerOptions(),
-            Mock.Of<IEventBus>(),
+            Mock.Of<IEventPublisher>(),
             Mock.Of<IGlobalSettingsCacheService>(),
             estimator.Object,
             httpContextAccessor: new HttpContextAccessor { HttpContext = context });

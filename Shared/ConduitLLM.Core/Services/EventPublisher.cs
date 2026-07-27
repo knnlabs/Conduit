@@ -11,16 +11,21 @@ namespace ConduitLLM.Core.Services;
 /// <summary>Preserves the controller base's optional, measured fire-and-forget behavior.</summary>
 public sealed class EventPublisher : IEventPublisher
 {
-    private readonly IEventBus? _eventBus;
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IServiceProviderIsService _serviceAvailability;
     private readonly ILogger<EventPublisher> _logger;
 
-    public EventPublisher(IServiceProvider services, ILogger<EventPublisher> logger)
+    public EventPublisher(
+        IServiceScopeFactory scopeFactory,
+        IServiceProviderIsService serviceAvailability,
+        ILogger<EventPublisher> logger)
     {
-        _eventBus = services.GetService<IEventBus>();
+        _scopeFactory = scopeFactory;
+        _serviceAvailability = serviceAvailability;
         _logger = logger;
     }
 
-    public bool IsEnabled => _eventBus is not null;
+    public bool IsEnabled => _serviceAvailability.IsService(typeof(IEventBus));
 
     public void PublishFireAndForget<TEvent>(
         TEvent domainEvent,
@@ -33,7 +38,7 @@ public sealed class EventPublisher : IEventPublisher
                 typeof(TEvent).Name, operationName);
             return;
         }
-        if (_eventBus is null)
+        if (!IsEnabled)
         {
             _logger.LogWarning("Event publishing not configured - skipping {EventType} for {Operation}",
                 typeof(TEvent).Name, operationName);
@@ -46,7 +51,15 @@ public sealed class EventPublisher : IEventPublisher
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                await _eventBus.PublishAsync(domainEvent);
+                using var scope = _scopeFactory.CreateScope();
+                var eventBus = scope.ServiceProvider.GetService<IEventBus>();
+                if (eventBus is null)
+                {
+                    EventPublishingMetrics.RecordSkipped(typeof(TEvent).Name);
+                    return;
+                }
+
+                await eventBus.PublishAsync(domainEvent);
                 stopwatch.Stop();
                 _logger.LogDebug("Published {EventType} for {Operation} with context {ContextData}",
                     typeof(TEvent).Name, operationName, contextData);

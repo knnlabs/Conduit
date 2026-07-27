@@ -31,10 +31,19 @@ public static class TasksEndpoints
         ILoggerFactory loggerFactory)
     {
         olderThanHours = olderThanHours == 0 ? 24 : Math.Max(olderThanHours, 1);
-        var count = await taskService.CleanupOldTasksAsync(TimeSpan.FromHours(olderThanHours));
+        var result = await taskService.CleanupOldTasksAsync(new AsyncTaskRetentionPolicy(
+            TimeSpan.FromHours(olderThanHours),
+            TimeSpan.FromDays(30),
+            TimeSpan.FromDays(7)));
         AdminAudit.Log(context, Logger(loggerFactory), "CleanedUp", "Tasks", detail:
-            $"Removed {count} tasks older than {olderThanHours} hours");
-        return Results.Ok(new TaskCleanupResponseDto { CleanedUp = count, OlderThanHours = olderThanHours });
+            $"Archived {result.Archived} and deleted {result.Deleted} tasks");
+        return Results.Ok(new TaskCleanupResponseDto
+        {
+            CleanedUp = result.Total,
+            Archived = result.Archived,
+            Deleted = result.Deleted,
+            OlderThanHours = olderThanHours
+        });
     }
 
     private static async Task<IResult> Resolve(

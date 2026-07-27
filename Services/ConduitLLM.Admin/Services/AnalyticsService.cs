@@ -70,9 +70,6 @@ public partial class AnalyticsService : IAnalyticsService
                 "Getting logs - Page: {Page}, PageSize: {PageSize}, Filters: Model={Model}, VirtualKeyId={VirtualKeyId}, Status={Status}",
                 page, pageSize, model ?? "all", virtualKeyId?.ToString() ?? "all", status?.ToString() ?? "all");
 
-            // Validate and normalize parameters
-            page = Math.Max(1, page);
-            pageSize = Math.Clamp(pageSize, 1, 100);
             startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-7);
             endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 

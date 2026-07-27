@@ -16,8 +16,6 @@ using ConduitLLM.Gateway.Billing;
 using ConduitLLM.Gateway.Models;
 using GatewayOpsMetrics = ConduitLLM.Gateway.Services.GatewayOperationsMetricsService;
 
-using ConduitLLM.Configuration.Messaging;
-
 using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Gateway.Endpoints
@@ -45,7 +43,7 @@ namespace ConduitLLM.Gateway.Endpoints
             ILogger<ChatEndpoints> logger,
             ConduitLLM.Configuration.Interfaces.IModelProviderMappingService modelMappingService,
             JsonSerializerOptions jsonSerializerOptions,
-            IEventBus eventBus,
+            IEventPublisher eventPublisher,
             ConduitLLM.Configuration.Interfaces.IGlobalSettingsCacheService globalSettingsCacheService,
             ConduitLLM.Core.Interfaces.IUsageEstimationService usageEstimationService,
             ConduitLLM.Functions.Interfaces.IFunctionConfigurationRepository? functionConfigRepository = null,
@@ -54,7 +52,7 @@ namespace ConduitLLM.Gateway.Endpoints
             ISpendReservationService? spendReservationService = null,
             IOptions<BillingAdmissionOptions>? billingAdmissionOptions = null,
             IHttpContextAccessor? httpContextAccessor = null,
-            ConduitLLM.Core.Interfaces.IProviderErrorTranslator? providerErrorTranslator = null) : base(eventBus, httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor)), logger)
+            ConduitLLM.Core.Interfaces.IProviderErrorTranslator? providerErrorTranslator = null) : base(eventPublisher, httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor)), logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

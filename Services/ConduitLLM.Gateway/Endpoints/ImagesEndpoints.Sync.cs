@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Constants;
@@ -110,205 +109,7 @@ namespace ConduitLLM.Gateway.Endpoints
                     modelName,
                     response.Usage is null ? UsageEvidenceSource.Estimated : UsageEvidenceSource.Provider);
 
-                // Store generated images if they're base64 or external URLs
-                for (int i = 0; i < response.Data.Count; i++)
-                {
-                    var imageData = response.Data[i];
-                    Stream? imageStream = null;
-                    string contentType = "image/png";
-                    string extension = "png";
-                    
-                    _logger.LogInformation("Processing image {Index}: URL={Url}, HasB64={HasB64}", 
-                        i, imageData.Url ?? "null", !string.IsNullOrEmpty(imageData.B64Json));
-                    
-                    try
-                    {
-                        if (!string.IsNullOrEmpty(imageData.B64Json))
-                        {
-                            // Decode base64 to binary
-                            try
-                            {
-                                var imageBytes = Convert.FromBase64String(imageData.B64Json);
-                                imageStream = new MemoryStream(imageBytes);
-                                _logger.LogInformation("Decoded base64 image, size: {Size} bytes", imageBytes.Length);
-                            }
-                            catch (FormatException ex)
-                            {
-                                _logger.LogError(ex, "Failed to decode base64 image data");
-                                continue;
-                            }
-                        }
-                        else if (!string.IsNullOrEmpty(imageData.Url) && 
-                                (imageData.Url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || 
-                                 imageData.Url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)))
-                        {
-                            // Stream external image directly to storage without buffering
-                            using var httpClient = _httpClientFactory.CreateClient("ImageDownload");
-                            httpClient.Timeout = TimeSpan.FromSeconds(60); // Increased timeout for streaming
-                            
-                            try
-                            {
-                                // Use GetAsync with HttpCompletionOption.ResponseHeadersRead for streaming
-                                using var imageResponse = await httpClient.GetAsync(imageData.Url, 
-                                    System.Net.Http.HttpCompletionOption.ResponseHeadersRead);
-                                
-                                if (imageResponse.IsSuccessStatusCode)
-                                {
-                                    // Try to determine content type from response
-                                    if (imageResponse.Content.Headers.ContentType != null)
-                                    {
-                                        contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
-                                        extension = ConduitLLM.Core.Utilities.MediaContentTypes.GetExtension(contentType)?.TrimStart('.') ?? "png";
-                                    }
-                                    else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
-                                             imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        contentType = "image/jpeg";
-                                        extension = "jpg";
-                                    }
-                                    
-                                    // Copy the stream to memory to avoid disposal issues
-                                    var responseStream = await imageResponse.Content.ReadAsStreamAsync();
-                                    var memoryStream = new MemoryStream();
-                                    await responseStream.CopyToAsync(memoryStream);
-                                    memoryStream.Position = 0;
-                                    imageStream = memoryStream;
-                                    
-                                    _logger.LogInformation("Downloaded image data: {Bytes} bytes", memoryStream.Length);
-                                }
-                                else
-                                {
-                                    _logger.LogWarning("Failed to download image from {Url}: {StatusCode}", 
-                                        imageData.Url, imageResponse.StatusCode);
-                                    continue;
-                                }
-                            }
-                            catch (TaskCanceledException ex)
-                            {
-                                _logger.LogWarning(ex, "Timeout downloading image from {Url}", imageData.Url);
-                                continue;
-                            }
-                            catch (System.Net.Http.HttpRequestException ex)
-                            {
-                                _logger.LogWarning(ex, "HTTP error downloading image from {Url}", imageData.Url);
-                                continue;
-                            }
-                        }
-                        else if (!string.IsNullOrEmpty(imageData.Url))
-                        {
-                            // Log non-HTTP URLs that we're not downloading
-                            _logger.LogWarning("Image URL is not an HTTP/HTTPS URL, will not download: {Url}", imageData.Url);
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Image data has neither URL nor base64 content");
-                        }
-                        
-                        if (imageStream != null)
-                        {
-                            // Store in media storage directly with streaming
-                            var metadata = new MediaMetadata
-                            {
-                                ContentType = contentType,
-                                FileName = $"generated_{DateTime.UtcNow:yyyyMMddHHmmss}_{i}.{extension}",
-                                MediaType = MediaType.Image,
-                                CreatedBy = CurrentVirtualKeyId?.ToString(),
-                                CustomMetadata = new()
-                                {
-                                    ["prompt"] = request.Prompt,
-                                    ["model"] = request.Model ?? "unknown",
-                                    ["provider"] = mapping?.ProviderId.ToString() ?? "unknown"
-                                }
-                            };
-                            
-                            // Only add originalUrl if it's not empty (R2 doesn't like empty metadata values)
-                            if (!string.IsNullOrEmpty(imageData.Url))
-                            {
-                                metadata.CustomMetadata["originalUrl"] = imageData.Url;
-                            }
-
-                            if (request.User != null)
-                            {
-                                metadata.CreatedBy = request.User;
-                            }
-
-                            // Create progress reporter for large image downloads
-                            var progress = new Progress<long>(bytesProcessed =>
-                            {
-                                _logger.LogDebug("Image storage progress: {BytesProcessed} bytes processed", bytesProcessed);
-                            });
-                            
-                            var storageResult = await _storageService.StoreAsync(imageStream, metadata, progress);
-
-                            // Track media ownership for lifecycle management
-                            try
-                            {
-                                var virtualKeyId = CurrentVirtualKeyId;
-                                if (virtualKeyId != null)
-                                {
-                                    var mediaMetadata = new Core.Interfaces.MediaLifecycleMetadata
-                                    {
-                                        ContentType = contentType,
-                                        SizeBytes = storageResult.SizeBytes,
-                                        Provider = mapping?.Provider?.ProviderType.ToString() ?? "unknown",
-                                        Model = request.Model ?? "unknown",
-                                        Prompt = request.Prompt,
-                                        StorageUrl = storageResult.Url,
-                                        PublicUrl = storageResult.Url
-                                    };
-
-                                    await _mediaLifecycleService.TrackMediaAsync(
-                                        virtualKeyId.Value,
-                                        storageResult.StorageKey,
-                                        "image",
-                                        mediaMetadata);
-
-                                    _logger.LogInformation("Tracked media {StorageKey} for virtual key {VirtualKeyId}",
-                                        storageResult.StorageKey, virtualKeyId.Value);
-                                }
-                                else
-                                {
-                                    _logger.LogWarning("Could not determine virtual key ID for media tracking");
-                                }
-                            }
-                            catch (Exception trackEx)
-                            {
-                                // Don't fail the request if tracking fails
-                                _logger.LogError(trackEx, "Failed to track media ownership, but continuing with response");
-                            }
-                            
-                            // Update response with our proxied URL
-                            _logger.LogInformation("Setting image URL: {Url}", storageResult.Url);
-                            imageData.Url = storageResult.Url;
-                            
-                            // Handle response format
-                            if (request.ResponseFormat == "b64_json")
-                            {
-                                // Read from storage to convert to base64
-                                var storedStream = await _storageService.GetStreamAsync(storageResult.StorageKey);
-                                if (storedStream != null)
-                                {
-                                    using (var ms = new MemoryStream())
-                                    {
-                                        await storedStream.CopyToAsync(ms);
-                                        imageData.B64Json = Convert.ToBase64String(ms.ToArray());
-                                    }
-                                    storedStream.Dispose();
-                                }
-                                imageData.Url = null; // Clear URL when returning base64
-                            }
-                            else if (request.ResponseFormat == "url")
-                            {
-                                // Clear any base64 data when URL format is requested
-                                imageData.B64Json = null;
-                            }
-                        }
-                    }
-                    finally
-                    {
-                        imageStream?.Dispose();
-                    }
-                }
+                await StoreGeneratedImagesAsync(response, request, mapping, cancellationToken);
 
                 GatewayOpsMetrics.RecordMediaOperation("generate", "image", "success", sw.Elapsed.TotalSeconds, request.Model);
                 return Ok(response);
@@ -327,6 +128,121 @@ namespace ConduitLLM.Gateway.Endpoints
                 // Rethrow — OpenAIErrorMiddleware maps exceptions to proper HTTP responses
                 // via ExceptionToResponseMapper (e.g., 429 for RateLimitExceeded, 408 for Timeout, etc.)
                 throw;
+            }
+        }
+
+        private async Task StoreGeneratedImagesAsync(
+            ImageGenerationResponse response,
+            ImageGenerationRequest request,
+            ConduitLLM.Configuration.Entities.ModelProviderMapping? mapping,
+            CancellationToken cancellationToken)
+        {
+            var modelInfo = new GenerationModelInfo
+            {
+                ModelId = request.Model ?? "unknown",
+                ModelAlias = mapping?.ModelAlias ?? request.Model ?? "unknown",
+                ProviderId = mapping?.ProviderId ?? 0,
+                Provider = mapping?.Provider,
+                ModelCostId = mapping?.ModelProviderTypeAssociation?.ModelCostId
+            };
+
+            for (var index = 0; index < response.Data.Count; index++)
+            {
+                var imageData = response.Data[index];
+                if (string.IsNullOrEmpty(imageData.B64Json) && string.IsNullOrEmpty(imageData.Url))
+                {
+                    _logger.LogWarning("Image data has neither URL nor base64 content at index {Index}", index);
+                    continue;
+                }
+
+                var context = new MediaProcessingContext
+                {
+                    MediaType = MediaType.Image,
+                    Index = index,
+                    ModelInfo = modelInfo,
+                    Prompt = request.Prompt,
+                    VirtualKeyId = CurrentVirtualKeyId ?? 0,
+                    CreatedBy = request.User,
+                    RequestId = HttpContext.TraceIdentifier,
+                    CorrelationId = HttpContext.TraceIdentifier
+                };
+
+                ProcessedMediaItem processed;
+                try
+                {
+                    processed = !string.IsNullOrEmpty(imageData.B64Json)
+                        ? await _base64MediaProcessor.ProcessAsync(imageData, context, cancellationToken)
+                        : await _urlMediaProcessor.ProcessAsync(imageData, context, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogWarning(exception, "Failed to store generated image at index {Index}", index);
+                    continue;
+                }
+
+                imageData.Url = processed.Url;
+                if (!string.IsNullOrEmpty(processed.StorageKey))
+                {
+                    await TrackStoredImageAsync(processed, request, mapping);
+                }
+
+                if (request.ResponseFormat == "b64_json" && !string.IsNullOrEmpty(processed.StorageKey))
+                {
+                    using var storedStream = await _storageService.GetStreamAsync(processed.StorageKey);
+                    if (storedStream is not null)
+                    {
+                        using var buffer = new MemoryStream();
+                        await storedStream.CopyToAsync(buffer, cancellationToken);
+                        imageData.B64Json = Convert.ToBase64String(buffer.ToArray());
+                    }
+                    imageData.Url = null;
+                }
+                else if (request.ResponseFormat == "url")
+                {
+                    imageData.B64Json = null;
+                }
+            }
+        }
+
+        private async Task TrackStoredImageAsync(
+            ProcessedMediaItem processed,
+            ImageGenerationRequest request,
+            ConduitLLM.Configuration.Entities.ModelProviderMapping? mapping)
+        {
+            if (CurrentVirtualKeyId is not int virtualKeyId || string.IsNullOrEmpty(processed.StorageKey))
+            {
+                _logger.LogWarning("Could not determine virtual key ID for media tracking");
+                return;
+            }
+
+            try
+            {
+                var info = await _storageService.GetInfoAsync(processed.StorageKey);
+                await _mediaLifecycleService.TrackMediaAsync(
+                    virtualKeyId,
+                    processed.StorageKey,
+                    "image",
+                    new Core.Interfaces.MediaLifecycleMetadata
+                    {
+                        ContentType = info?.ContentType ?? "image/png",
+                        SizeBytes = info?.SizeBytes ?? 0,
+                        Provider = mapping?.Provider?.ProviderType.ToString() ?? "unknown",
+                        Model = request.Model ?? "unknown",
+                        Prompt = request.Prompt,
+                        StorageUrl = processed.Url,
+                        PublicUrl = processed.Url
+                    });
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Failed to track media ownership for {StorageKey}, but continuing with response",
+                    processed.StorageKey);
             }
         }
 

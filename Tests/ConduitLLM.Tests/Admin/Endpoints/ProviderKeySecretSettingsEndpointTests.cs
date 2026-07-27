@@ -3,9 +3,9 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Security;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
 
 using FluentAssertions;
 
@@ -43,7 +43,7 @@ public class ProviderKeySecretSettingsEndpointTests
             _keyRepository.Object,
             Mock.Of<ILLMClientFactory>(),
             _protector,
-            Mock.Of<IEventBus>(),
+            Mock.Of<IEventPublisher>(),
             accessor.Object,
             NullLogger<ProviderCredentialsEndpoints>.Instance);
     }

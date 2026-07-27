@@ -31,7 +31,7 @@ public class PromptCachingLLMClientTests
 
     private void Configure(PromptCachingConfig config) => _settings
         .Setup(s => s.GetSettingValueAsync(PromptCachingLLMClient.SettingsKey))
-        .ReturnsAsync(JsonSerializer.Serialize(config));
+        .ReturnsAsync(JsonSerializer.Serialize(config, PromptCachingSerialization.Options));
 
     [Fact]
     public async Task SupportedRoute_SetsIntentWithoutMutatingMessages()
