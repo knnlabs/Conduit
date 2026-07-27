@@ -10,7 +10,6 @@ at the root.
 | `/api/admin/auth` | `/v1/admin/auth-tokens` |
 | `/api/Analytics` | `/v1/admin/analytics` |
 | `/api/batch-spending` | `/v1/admin/batch-spending-jobs` |
-| `/api/audit/billing` | `/v1/admin/billing-audits` |
 | `/api/Model/bundled-catalog` | `/v1/admin/model-catalogs` |
 | `/api/config` | `/v1/admin/routing-configurations` |
 | `/api/FunctionConfigurations` | `/v1/admin/function-configurations` |

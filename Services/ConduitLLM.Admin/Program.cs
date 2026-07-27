@@ -56,7 +56,6 @@ public partial class Program
                 context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
             });
 
-        builder.Services.AddScoped<BillingAuditEndpoints>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<AnalyticsEndpoints>();
         builder.Services.AddScoped<FunctionConfigurationsEndpoints>();
@@ -131,7 +130,6 @@ public partial class Program
             VirtualKeysEndpoints.MapVirtualKeysEndpoints(openApiApp);
             IpFilterEndpoints.MapIpFilterEndpoints(openApiApp);
             openApiApp.MapHealthMonitoringEndpoints();
-            BillingAuditEndpoints.MapBillingAuditEndpoints(openApiApp);
             AnalyticsEndpoints.MapAnalyticsEndpoints(openApiApp);
             FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(openApiApp);
             ProviderErrorsEndpoints.MapProviderErrorsEndpoints(openApiApp);
@@ -250,7 +248,6 @@ public partial class Program
         VirtualKeysEndpoints.MapVirtualKeysEndpoints(app);
         IpFilterEndpoints.MapIpFilterEndpoints(app);
         app.MapHealthMonitoringEndpoints();
-        BillingAuditEndpoints.MapBillingAuditEndpoints(app);
         AnalyticsEndpoints.MapAnalyticsEndpoints(app);
         FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(app);
         ProviderErrorsEndpoints.MapProviderErrorsEndpoints(app);
