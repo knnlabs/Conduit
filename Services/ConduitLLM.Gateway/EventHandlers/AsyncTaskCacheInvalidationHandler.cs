@@ -16,7 +16,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     {
         private readonly IDistributedCache _cache;
         private readonly ILogger<AsyncTaskCacheInvalidationHandler> _logger;
-        private const string TASK_KEY_PREFIX = "async:task:";
+        private const string TASK_KEY_PREFIX = ConduitLLM.Core.Constants.RedisKeys.AsyncTask.Prefix;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="AsyncTaskCacheInvalidationHandler"/> class.

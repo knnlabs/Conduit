@@ -101,28 +101,6 @@ namespace ConduitLLM.Core.Extensions
         }
 
         /// <summary>
-        /// Converts an existing hosted service registration to use leader election
-        /// </summary>
-        public static IServiceCollection ConvertToLeaderElected<TService>(
-            this IServiceCollection services,
-            string? serviceName = null)
-            where TService : class, IHostedService
-        {
-            // Find and remove the existing hosted service registration
-            var hostedServiceDescriptor = services.FirstOrDefault(d =>
-                d.ServiceType == typeof(IHostedService) &&
-                d.ImplementationType == typeof(TService));
-
-            if (hostedServiceDescriptor != null)
-            {
-                services.Remove(hostedServiceDescriptor);
-            }
-
-            // Add it back with leader election
-            return services.AddLeaderElectedHostedService<TService>(serviceName);
-        }
-
-        /// <summary>
         /// Adds coordinated connection pool warming service.
         /// Unlike leader election, coordinated warming ensures ALL instances warm their pools,
         /// but in a staggered manner to prevent thundering herd effects.

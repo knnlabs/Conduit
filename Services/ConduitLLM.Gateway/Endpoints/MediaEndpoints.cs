@@ -92,7 +92,9 @@ namespace ConduitLLM.Gateway.Endpoints
             var metadata = new MediaMetadata
             {
                 MediaType = determinedMediaType,
-                ContentType = file.ContentType ?? GetContentTypeFromExtension(extension),
+                ContentType = file.ContentType
+                    ?? ConduitLLM.Core.Utilities.MediaContentTypes.GetContentType(extension)
+                    ?? "application/octet-stream",
                 FileName = file.FileName,
                 CreatedBy = CurrentVirtualKeyId?.ToString()
             };
@@ -115,37 +117,6 @@ namespace ConduitLLM.Gateway.Endpoints
                 determinedMediaType.ToString(),
                 file.FileName,
                 file.Length));
-        }
-
-        /// <summary>
-        /// Gets content type from file extension.
-        /// </summary>
-        private static string GetContentTypeFromExtension(string extension)
-        {
-            return extension.ToLowerInvariant() switch
-            {
-                ".jpg" or ".jpeg" => "image/jpeg",
-                ".png" => "image/png",
-                ".gif" => "image/gif",
-                ".webp" => "image/webp",
-                ".bmp" => "image/bmp",
-                ".svg" => "image/svg+xml",
-                ".mp4" => "video/mp4",
-                ".webm" => "video/webm",
-                ".mov" => "video/quicktime",
-                ".avi" => "video/x-msvideo",
-                ".mkv" => "video/x-matroska",
-                ".flv" => "video/x-flv",
-                ".wmv" => "video/x-ms-wmv",
-                ".m4v" => "video/x-m4v",
-                ".mp3" => "audio/mpeg",
-                ".wav" => "audio/wav",
-                ".ogg" => "audio/ogg",
-                ".m4a" => "audio/mp4",
-                ".flac" => "audio/flac",
-                ".aac" => "audio/aac",
-                _ => "application/octet-stream"
-            };
         }
 
         /// <summary>

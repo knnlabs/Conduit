@@ -17,6 +17,21 @@ namespace ConduitLLM.Core.Constants;
 /// </remarks>
 public static class RedisKeys
 {
+    #region Async Tasks
+
+    /// <summary>
+    /// Keys for async task state caching. Written by HybridAsyncTaskService and
+    /// invalidated by AsyncTaskCacheInvalidationHandler — both must share this shape.
+    /// </summary>
+    public static class AsyncTask
+    {
+        public const string Prefix = "async:task:";
+
+        public static string For(string taskId) => $"{Prefix}{taskId}";
+    }
+
+    #endregion
+
     #region Rate Limiting
 
     /// <summary>

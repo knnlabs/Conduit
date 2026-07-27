@@ -158,8 +158,7 @@ namespace ConduitLLM.Gateway.Endpoints
                                     if (imageResponse.Content.Headers.ContentType != null)
                                     {
                                         contentType = imageResponse.Content.Headers.ContentType.MediaType ?? contentType;
-                                        extension = contentType.Split('/').LastOrDefault() ?? "png";
-                                        if (extension == "jpeg") extension = "jpg";
+                                        extension = ConduitLLM.Core.Utilities.MediaContentTypes.GetExtension(contentType)?.TrimStart('.') ?? "png";
                                     }
                                     else if (imageData.Url.Contains(".jpeg", StringComparison.OrdinalIgnoreCase) || 
                                              imageData.Url.Contains(".jpg", StringComparison.OrdinalIgnoreCase))

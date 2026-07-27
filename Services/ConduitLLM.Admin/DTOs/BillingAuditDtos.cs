@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Admin.DTOs
@@ -150,6 +152,17 @@ namespace ConduitLLM.Admin.DTOs
         /// that wrote UsageJson — so no fields are lost in the audit round-trip.
         /// </summary>
         public ConduitLLM.Core.Models.Usage? Usage { get; set; }
+
+        /// <summary>
+        /// Tool usage entries recorded for this request. The stored JSON is service-serialized
+        /// with a provider-dependent shape, so it is surfaced verbatim rather than re-typed.
+        /// </summary>
+        public JsonElement? ToolUsage { get; set; }
+
+        /// <summary>
+        /// Total cost from tool usage (separate from token costs)
+        /// </summary>
+        public decimal? ToolUsageCost { get; set; }
 
         /// <summary>
         /// Additional metadata

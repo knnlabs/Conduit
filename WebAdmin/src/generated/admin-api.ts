@@ -3360,6 +3360,12 @@ export interface components {
       /** @description Whether cost was estimated */
       isEstimated?: boolean;
       usage?: null | components["schemas"]["Usage"];
+      toolUsage?: null | components["schemas"]["JsonElement"];
+      /**
+       * Format: double
+       * @description Total cost from tool usage (separate from token costs)
+       */
+      toolUsageCost?: null | number;
       /** @description Additional metadata */
       metadata?: null | Record<string, never>;
     };
@@ -4750,6 +4756,7 @@ export interface components {
       whitelistFilters: components["schemas"]["IpFilterDto"][];
       blacklistFilters: components["schemas"]["IpFilterDto"][];
     };
+    JsonElement: unknown;
     /** @description DTO for detailed key error information */
     KeyErrorDetailsDto: {
       /**

@@ -213,56 +213,5 @@ namespace ConduitLLM.Core.Extensions
             return services;
         }
 
-        /// <summary>
-        /// Registers custom cache regions from configuration.
-        /// </summary>
-        /// <param name="services">The service collection.</param>
-        /// <param name="configuration">Configuration section containing custom regions.</param>
-        /// <returns>The service collection for chaining.</returns>
-        public static IServiceCollection RegisterCustomCacheRegions(
-            this IServiceCollection services,
-            IConfiguration configuration)
-        {
-            services.AddSingleton<IHostedService>(provider =>
-            {
-                var registry = provider.GetRequiredService<ICacheRegistry>();
-                var logger = provider.GetRequiredService<ILogger<CacheRegistry>>();
-                
-                // Register custom regions from configuration
-                var customRegions = configuration.GetSection("Cache:CustomRegions");
-                foreach (var region in customRegions.GetChildren())
-                {
-                    var config = new CacheRegionConfig
-                    {
-                        Region = CacheRegion.Default, // Custom regions use Default enum
-                        Enabled = region.GetValue("enabled", true),
-                        DefaultTTL = region.GetValue("defaultTTL", TimeSpan.FromMinutes(15)),
-                        MaxTTL = region.GetValue<TimeSpan?>("maxTTL", null),
-                        UseDistributedCache = region.GetValue("useDistributedCache", true),
-                        UseMemoryCache = region.GetValue("useMemoryCache", true),
-                        Priority = region.GetValue("priority", 50),
-                        EvictionPolicy = region.GetValue("evictionPolicy", CacheEvictionPolicy.LRU),
-                        MaxEntries = region.GetValue<int?>("maxEntries", null),
-                        EnableDetailedStats = region.GetValue("enableDetailedStats", false)
-                    };
-                    
-                    registry.RegisterCustomRegion(region.Key, config);
-                    logger.LogInformation("Registered custom cache region '{RegionName}' from configuration", region.Key);
-                }
-                
-                return new NoOpHostedService();
-            });
-
-            return services;
-        }
-        
-        /// <summary>
-        /// No-op hosted service for registration purposes.
-        /// </summary>
-        private class NoOpHostedService : IHostedService
-        {
-            public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-            public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        }
     }
 }

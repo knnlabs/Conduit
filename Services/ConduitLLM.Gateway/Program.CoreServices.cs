@@ -159,9 +159,6 @@ public partial class Program
         // Register Function Discovery Cache service for function tool definition caching
         builder.Services.AddFunctionDiscoveryCache(builder.Configuration);
 
-        // Register Redis batch operations for optimized cache management
-        builder.Services.AddSingleton<IRedisBatchOperations, RedisBatchOperations>();
-
         // ========== Media Generation Services ==========
 
         builder.Services.AddMediaGenerationServices(builder.Configuration, builder.Environment);

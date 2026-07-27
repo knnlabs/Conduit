@@ -302,7 +302,8 @@ namespace ConduitLLM.Admin.Endpoints
                 ProviderType = entity.ProviderType,
                 HttpStatusCode = entity.HttpStatusCode,
                 RequestPath = entity.RequestPath,
-                IsEstimated = entity.IsEstimated
+                IsEstimated = entity.IsEstimated,
+                ToolUsageCost = entity.ToolUsageCost
             };
 
             // Parse usage JSON if present
@@ -320,6 +321,20 @@ namespace ConduitLLM.Admin.Endpoints
                 {
                     // Log but don't fail
                     _logger.LogWarning("Failed to parse usage JSON for audit event {Id}", entity.Id);
+                }
+            }
+
+            // Tool usage is service-serialized JSON of variable shape; surface it verbatim
+            if (!string.IsNullOrEmpty(entity.ToolUsageJson))
+            {
+                try
+                {
+                    using var toolUsageDoc = JsonDocument.Parse(entity.ToolUsageJson);
+                    dto.ToolUsage = toolUsageDoc.RootElement.Clone();
+                }
+                catch (JsonException)
+                {
+                    _logger.LogWarning("Failed to parse tool usage JSON for audit event {Id}", entity.Id);
                 }
             }
 

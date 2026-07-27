@@ -45,7 +45,7 @@ public static class MetricsEndpoints
             Timestamp = DateTime.UtcNow,
             Application = new ApplicationInfoDto
             {
-                Name = "Conduit Gateway API",
+                Name = "Conduit Admin API",
                 Version = typeof(MetricsEndpoints).Assembly.GetName().Version?.ToString() ?? "unknown",
                 Environment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
             },
@@ -88,7 +88,7 @@ public static class MetricsEndpoints
                 Host = builder.Host,
                 Port = builder.Port,
                 Database = builder.Database,
-                ApplicationName = builder.ApplicationName ?? "Conduit Gateway API"
+                ApplicationName = builder.ApplicationName ?? "Conduit Admin API"
             },
             PoolConfiguration = new DatabasePoolConfigurationDto
             {
