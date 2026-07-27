@@ -36,6 +36,11 @@ public partial class Program
 
         builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin", opts =>
         {
+            // AddConduitWolverine is declared in the shared configuration assembly, so
+            // Wolverine's calling-assembly inference can otherwise point static loading at
+            // ConduitLLM.Configuration. The committed adapters are compiled into this host.
+            opts.ApplicationAssembly = typeof(Program).Assembly;
+
             opts.UseSystemTextJsonForSerialization(options =>
             {
                 options.TypeInfoResolverChain.Insert(0, CoreMessagingJsonContext.Default);

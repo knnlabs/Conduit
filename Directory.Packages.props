@@ -101,6 +101,7 @@
     <PackageVersion Include="Testcontainers.Redis" Version="4.0.0" />
     <PackageVersion Include="WolverineFx" Version="6.14.0" />
     <PackageVersion Include="WolverineFx.Postgresql" Version="6.14.0" />
+    <!-- Generation/test-only; production service restores exclude this package. -->
     <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.14.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />

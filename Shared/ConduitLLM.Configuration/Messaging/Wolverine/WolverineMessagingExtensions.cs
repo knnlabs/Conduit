@@ -1,4 +1,5 @@
 using JasperFx;
+using JasperFx.CodeGeneration;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -115,22 +116,11 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
             {
                 opts.ServiceName = serviceName;
 
-                // The bridge handlers are container-resolved per message (see
-                // AddEventBridge): their IEventHandler<T> graphs use scoped services and
-                // opaque factory registrations that codegen cannot inline-construct.
-                // Wolverine 6's default ServiceLocationPolicy.NotAllowed throws
-                // InvalidServiceLocationException at first delivery for exactly that
-                // resolution style, so the policy must be relaxed here. AllowedButWarn
-                // keeps a startup warning per located type as a nudge toward
-                // codegen-friendly registrations for any future native handlers.
-                opts.ServiceLocationPolicy = JasperFx.CodeGeneration.Model.ServiceLocationPolicy.AllowedButWarn;
-
-                // Wolverine 6 split the Roslyn runtime compiler out of the core package;
-                // the default TypeLoadMode.Dynamic fails at startup without it. Explicit
-                // (rather than relying on referenced-assembly auto-registration) so boot
-                // does not depend on assembly load order. Pre-generated static codegen
-                // ('codegen write' + TypeLoadMode.Static) is a cutover optimization (#930).
-                opts.UseRuntimeCompilation();
+                // Handler adapters are committed under each host's Internal/Generated
+                // directory. Static mode is deliberately unconditional: every environment
+                // fails fast when generated code is missing instead of falling back to
+                // runtime Roslyn compilation.
+                opts.CodeGeneration.TypeLoadMode = TypeLoadMode.Static;
 
                 if (inMemory)
                 {
@@ -221,16 +211,14 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
 
             options.Discovery.IncludeType(bridgeType);
 
-            // The bridge must be container-resolved per message, not codegen-inlined:
-            // its IEnumerable<IEventHandler<T>> dependency is scoped, and the handler
-            // implementations behind it use scoped services, IServiceScopeFactory, and
-            // opaque lambda-factory registrations (typed HttpClients, IModelCostService)
-            // that Wolverine's inline construction cannot build. Without this opt-in,
-            // ServiceLocationPolicy.NotAllowed (the Wolverine 6 default) throws
-            // InvalidServiceLocationException at first delivery of the event type.
-            // Container resolution per message is the same semantics the previous
-            // backend's bridge has always had.
-            options.CodeGeneration.AlwaysUseServiceLocationFor(bridgeType);
+            // The generated bridge adapter must resolve the scoped handler collection per
+            // message. Some handlers behind that collection use opaque lambda factories,
+            // typed clients, or IServiceScopeFactory, so Wolverine cannot safely inline
+            // their complete construction graph. Keep the global service-location policy
+            // at its strict default and opt in only this explicitly registered collection.
+            var handlersType = typeof(IEnumerable<>)
+                .MakeGenericType(typeof(IEventHandler<>).MakeGenericType(eventType));
+            options.CodeGeneration.AlwaysUseServiceLocationFor(handlersType);
             options.Services.AddScoped(bridgeType);
         }
     }

@@ -19,6 +19,8 @@ repository root unless a command says otherwise.
 | Produce or inspect detailed coverage | `./scripts/test/coverage-dashboard.ps1 run|report|summary` |
 | Validate EF Core migrations | `./scripts/migrations/validate-migrations.ps1 -CheckPending` |
 | Apply release migrations locally | `docker compose run --rm migrate` |
+| Regenerate committed Wolverine adapters | `./scripts/generate-wolverine-code.ps1` |
+| Verify committed Wolverine adapters | `./scripts/generate-wolverine-code.ps1 -Verify` |
 | Run the Gateway/Admin messaging smoke test | `./scripts/test/wolverine-two-host-smoke.ps1` |
 | Run local CodeQL analysis | `./scripts/test/test-codeql.ps1` |
 
