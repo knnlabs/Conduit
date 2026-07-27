@@ -95,11 +95,10 @@ namespace ConduitLLM.Admin.Services
                 }
 
                 // Get the created model cost with mappings
-                var createdModelCost = await _modelCostRepository.GetByIdAsync(id);
-                if (createdModelCost == null)
-                {
-                    throw new InvalidOperationException($"Failed to retrieve newly created model cost with ID {id}");
-                }
+                var createdModelCost = ConduitLLM.Core.Utilities.ReadBackGuard.RequireCreated(
+                    await _modelCostRepository.GetByIdAsync(id),
+                    "model cost",
+                    id);
 
                 // Publish ModelCostChanged event for cache invalidation and cross-service coordination
                 await PublishEventAsync(

@@ -273,36 +273,7 @@ namespace ConduitLLM.Admin.Endpoints
         /// <param name="file">CSV file containing model costs</param>
         /// <returns>Import result with statistics</returns>
         public async Task<IResult> ImportCsv(IFormFile file)
-        {
-            if (file == null || file.Length == 0)
-            {
-                return AdminResults.BadRequest("No file provided for import");
-            }
-
-            if (!file.FileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase))
-            {
-                return AdminResults.BadRequest("File must be a CSV file");
-            }
-
-            using var reader = new StreamReader(file.OpenReadStream());
-            var csvData = await reader.ReadToEndAsync();
-
-            var result = await _modelCostService.ImportModelCostsAsync(csvData, "csv");
-
-            if (result.SuccessCount == 0 && result.FailureCount > 0)
-            {
-                throw new InvalidOperationException(
-                    System.Text.Json.JsonSerializer.Serialize(new {
-                        message = "Import failed",
-                        errors = result.Errors,
-                        successCount = result.SuccessCount,
-                        failureCount = result.FailureCount
-                    }));
-            }
-
-            LogAdminAuditBulk("ImportedCsv", "ModelCost", result.SuccessCount, result.FailureCount);
-            return Results.Ok(result);
-        }
+            => await ImportFile(file, "csv", "ImportedCsv");
 
         /// <summary>
         /// Imports model costs from JSON file
@@ -310,34 +281,42 @@ namespace ConduitLLM.Admin.Endpoints
         /// <param name="file">JSON file containing model costs</param>
         /// <returns>Import result with statistics</returns>
         public async Task<IResult> ImportJson(IFormFile file)
+            => await ImportFile(file, "json", "ImportedJson");
+
+        private async Task<IResult> ImportFile(
+            IFormFile file,
+            string format,
+            string auditOperation)
         {
             if (file == null || file.Length == 0)
             {
                 return AdminResults.BadRequest("No file provided for import");
             }
 
-            if (!file.FileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+            if (!file.FileName.EndsWith($".{format}", StringComparison.OrdinalIgnoreCase))
             {
-                return AdminResults.BadRequest("File must be a JSON file");
+                return AdminResults.BadRequest($"File must be a {format.ToUpperInvariant()} file");
             }
 
             using var reader = new StreamReader(file.OpenReadStream());
-            var jsonData = await reader.ReadToEndAsync();
-
-            var result = await _modelCostService.ImportModelCostsAsync(jsonData, "json");
+            var data = await reader.ReadToEndAsync();
+            var result = await _modelCostService.ImportModelCostsAsync(data, format);
 
             if (result.SuccessCount == 0 && result.FailureCount > 0)
             {
-                throw new InvalidOperationException(
-                    System.Text.Json.JsonSerializer.Serialize(new {
-                        message = "Import failed",
-                        errors = result.Errors,
-                        successCount = result.SuccessCount,
-                        failureCount = result.FailureCount
-                    }));
+                return AdminResults.Problem(
+                    StatusCodes.Status400BadRequest,
+                    "Import failed",
+                    "import_failed",
+                    extensions: new Dictionary<string, object?>
+                    {
+                        ["import_errors"] = result.Errors,
+                        ["success_count"] = result.SuccessCount,
+                        ["failure_count"] = result.FailureCount
+                    });
             }
 
-            LogAdminAuditBulk("ImportedJson", "ModelCost", result.SuccessCount, result.FailureCount);
+            LogAdminAuditBulk(auditOperation, "ModelCost", result.SuccessCount, result.FailureCount);
             return Results.Ok(result);
         }
 

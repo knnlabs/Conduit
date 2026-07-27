@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Utilities;
 
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Models;
@@ -170,11 +171,10 @@ namespace ConduitLLM.Core.Services
 
             var createdId = await VirtualKeyRepository.CreateAsync(virtualKey);
 
-            virtualKey = await VirtualKeyRepository.GetByIdAsync(createdId);
-            if (virtualKey == null)
-            {
-                throw new InvalidOperationException($"Failed to retrieve newly created virtual key with ID {createdId}");
-            }
+            virtualKey = ReadBackGuard.RequireCreated(
+                await VirtualKeyRepository.GetByIdAsync(createdId),
+                "virtual key",
+                createdId);
 
             Logger.LogInformation("Created new virtual key: {KeyName} (ID: {KeyId})",
                 LoggingSanitizer.S(virtualKey.KeyName), virtualKey.Id);

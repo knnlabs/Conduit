@@ -501,6 +501,18 @@ public class ExceptionToResponseMapperTests
     }
 
     [Fact]
+    public void Map_ResourceConsistencyException_Returns500()
+    {
+        var result = ExceptionToResponseMapper.Map(
+            new ResourceConsistencyException("model cost", 42));
+
+        result.StatusCode.Should().Be(500);
+        result.ErrorCode.Should().Be("resource_consistency_error");
+        result.OpenAIErrorType.Should().Be("server_error");
+        result.ResponseMessage.Should().NotContain("42");
+    }
+
+    [Fact]
     public void Map_UnsupportedProviderException_Returns400WithUnsupportedProvider()
     {
         // Arrange

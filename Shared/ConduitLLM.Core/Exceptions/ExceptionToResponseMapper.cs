@@ -91,6 +91,11 @@ public static class ExceptionToResponseMapper
                 => new(500, "A configuration error occurred", "configuration_error", LogLevel.Error,
                     "Configuration error", false, "server_error"),
 
+            ResourceConsistencyException
+                => new(500, "A newly created resource could not be reloaded",
+                    "resource_consistency_error", LogLevel.Error,
+                    "Resource consistency error", false, "server_error"),
+
             // Standard .NET exceptions — use safe generic messages
             ArgumentNullException argNullEx
                 => new(400, "Required parameter is missing", "missing_parameter", LogLevel.Warning,
