@@ -349,13 +349,15 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Fact]
-    public void Gateway_ModelCapabilityWireProjectionHasExplicitBoundaryName()
+    public void Gateway_DiscoveryCapabilityWireProjectionHasExplicitBoundaryName()
     {
         var schemas = _gateway.RootElement.GetProperty("components").GetProperty("schemas");
 
-        schemas.TryGetProperty("GatewayModelCapabilitiesDto", out _).Should().BeTrue();
+        schemas.TryGetProperty("DiscoveryModelCapabilitiesDto", out _).Should().BeTrue();
+        schemas.TryGetProperty("GatewayModelCapabilitiesDto", out _).Should().BeFalse(
+            "Admin previews and Gateway discovery now share one explicit wire contract");
         schemas.TryGetProperty("ModelCapabilitiesDto", out _).Should().BeFalse(
-            "the unqualified capability DTO is the Configuration/Admin contract");
+            "the unqualified capability DTO is the internal Configuration projection");
     }
 
     [Fact]
