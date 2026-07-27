@@ -324,22 +324,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/admin/database-pool-metrics": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["Metrics_GetDatabasePoolMetrics"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/admin/routing-configurations/routing": {
     parameters: {
       query?: never;
@@ -3031,9 +3015,6 @@ export interface components {
       timestamp?: string;
       /** @description Application identity information. */
       application?: components["schemas"]["ApplicationInfoDto"];
-      /** @description Database connection pool metrics. Either DatabasePoolMetricsDto,
-       *     DatabasePoolMetricsUnavailableDto, or null when unavailable. */
-      database?: unknown;
       /** @description Host system metrics for the current process. */
       system?: components["schemas"]["SystemMetricsDto"];
     };
@@ -3859,74 +3840,6 @@ export interface components {
       size?: string;
       /** Format: int32 */
       tableCount?: null | number;
-    };
-    /** @description Connection pool configuration settings. */
-    DatabasePoolConfigurationDto: {
-      /**
-       * Format: int32
-       * @description Minimum number of connections kept in the pool.
-       */
-      minPoolSize?: number;
-      /**
-       * Format: int32
-       * @description Maximum number of connections allowed in the pool.
-       */
-      maxPoolSize?: number;
-      /**
-       * Format: int32
-       * @description Maximum lifetime of a pooled connection, in seconds.
-       */
-      connectionLifetime?: number;
-      /**
-       * Format: int32
-       * @description Time before an idle pooled connection is closed, in seconds.
-       */
-      connectionIdleLifetime?: number;
-      /** @description Whether connection pooling is enabled. */
-      pooling?: boolean;
-    };
-    /** @description Non-sensitive connection details extracted from the database connection string. */
-    DatabasePoolConnectionInfoDto: {
-      /** @description The database server host. */
-      host?: null | string;
-      /**
-       * Format: int32
-       * @description The database server port.
-       */
-      port?: number;
-      /** @description The database name. */
-      database?: null | string;
-      /** @description The application name reported to the database server. */
-      applicationName?: string;
-    };
-    /** @description Current measured connection pool health metrics. */
-    DatabasePoolCurrentMetricsDto: {
-      /**
-       * Format: int64
-       * @description Time taken to acquire a connection from the pool, in milliseconds.
-       */
-      connectionAcquisitionTimeMs?: number;
-      /** @description Health status derived from the connection acquisition time
-       *     ("healthy", "degraded", or "unhealthy"). */
-      healthStatus?: string;
-      /** @description Additional note about the metrics. */
-      note?: string;
-    };
-    /** @description Database connection pool metrics for a PostgreSQL database. */
-    DatabasePoolMetricsDto: {
-      /**
-       * Format: date-time
-       * @description UTC timestamp when the metrics were captured.
-       */
-      timestamp?: string;
-      /** @description The database provider name (e.g. "postgresql"). */
-      provider?: string;
-      /** @description Non-sensitive connection details extracted from the connection string. */
-      connectionString?: components["schemas"]["DatabasePoolConnectionInfoDto"];
-      /** @description Connection pool configuration settings. */
-      poolConfiguration?: components["schemas"]["DatabasePoolConfigurationDto"];
-      /** @description Current measured pool health metrics. */
-      currentMetrics?: components["schemas"]["DatabasePoolCurrentMetricsDto"];
     };
     DetailedCostDataDto: {
       name?: string;
@@ -8843,39 +8756,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AllMetricsDto"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  Metrics_GetDatabasePoolMetrics: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DatabasePoolMetricsDto"];
         };
       };
       /** @description Internal Server Error */

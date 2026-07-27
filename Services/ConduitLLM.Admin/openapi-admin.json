@@ -2490,57 +2490,6 @@
         ]
       }
     },
-    "/v1/admin/database-pool-metrics": {
-      "get": {
-        "tags": [
-          "Metrics"
-        ],
-        "operationId": "Metrics_GetDatabasePoolMetrics",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "headers": {
-              "x-request-id": {
-                "description": "Request identifier for support and distributed tracing.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DatabasePoolMetricsDto"
-                }
-              }
-            }
-          },
-          "500": {
-            "description": "Internal Server Error",
-            "headers": {
-              "x-request-id": {
-                "description": "Request identifier for support and distributed tracing.",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            },
-            "content": {
-              "application/problem+json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AdminProblemDetails"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "MasterKey": [ ]
-          }
-        ]
-      }
-    },
     "/v1/admin/routing-configurations/routing": {
       "get": {
         "tags": [
@@ -23423,9 +23372,6 @@
             "description": "Application identity information.",
             "$ref": "#/components/schemas/ApplicationInfoDto"
           },
-          "database": {
-            "description": "Database connection pool metrics. Either DatabasePoolMetricsDto,\r\nDatabasePoolMetricsUnavailableDto, or null when unavailable."
-          },
           "system": {
             "description": "Host system metrics for the current process.",
             "$ref": "#/components/schemas/SystemMetricsDto"
@@ -25677,111 +25623,6 @@
             "format": "int32"
           }
         }
-      },
-      "DatabasePoolConfigurationDto": {
-        "type": "object",
-        "properties": {
-          "minPoolSize": {
-            "type": "integer",
-            "description": "Minimum number of connections kept in the pool.",
-            "format": "int32"
-          },
-          "maxPoolSize": {
-            "type": "integer",
-            "description": "Maximum number of connections allowed in the pool.",
-            "format": "int32"
-          },
-          "connectionLifetime": {
-            "type": "integer",
-            "description": "Maximum lifetime of a pooled connection, in seconds.",
-            "format": "int32"
-          },
-          "connectionIdleLifetime": {
-            "type": "integer",
-            "description": "Time before an idle pooled connection is closed, in seconds.",
-            "format": "int32"
-          },
-          "pooling": {
-            "type": "boolean",
-            "description": "Whether connection pooling is enabled."
-          }
-        },
-        "description": "Connection pool configuration settings."
-      },
-      "DatabasePoolConnectionInfoDto": {
-        "type": "object",
-        "properties": {
-          "host": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The database server host."
-          },
-          "port": {
-            "type": "integer",
-            "description": "The database server port.",
-            "format": "int32"
-          },
-          "database": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "The database name."
-          },
-          "applicationName": {
-            "type": "string",
-            "description": "The application name reported to the database server."
-          }
-        },
-        "description": "Non-sensitive connection details extracted from the database connection string."
-      },
-      "DatabasePoolCurrentMetricsDto": {
-        "type": "object",
-        "properties": {
-          "connectionAcquisitionTimeMs": {
-            "type": "integer",
-            "description": "Time taken to acquire a connection from the pool, in milliseconds.",
-            "format": "int64"
-          },
-          "healthStatus": {
-            "type": "string",
-            "description": "Health status derived from the connection acquisition time\r\n(\"healthy\", \"degraded\", or \"unhealthy\")."
-          },
-          "note": {
-            "type": "string",
-            "description": "Additional note about the metrics."
-          }
-        },
-        "description": "Current measured connection pool health metrics."
-      },
-      "DatabasePoolMetricsDto": {
-        "type": "object",
-        "properties": {
-          "timestamp": {
-            "type": "string",
-            "description": "UTC timestamp when the metrics were captured.",
-            "format": "date-time"
-          },
-          "provider": {
-            "type": "string",
-            "description": "The database provider name (e.g. \"postgresql\")."
-          },
-          "connectionString": {
-            "description": "Non-sensitive connection details extracted from the connection string.",
-            "$ref": "#/components/schemas/DatabasePoolConnectionInfoDto"
-          },
-          "poolConfiguration": {
-            "description": "Connection pool configuration settings.",
-            "$ref": "#/components/schemas/DatabasePoolConfigurationDto"
-          },
-          "currentMetrics": {
-            "description": "Current measured pool health metrics.",
-            "$ref": "#/components/schemas/DatabasePoolCurrentMetricsDto"
-          }
-        },
-        "description": "Database connection pool metrics for a PostgreSQL database."
       },
       "DetailedCostDataDto": {
         "type": "object",
