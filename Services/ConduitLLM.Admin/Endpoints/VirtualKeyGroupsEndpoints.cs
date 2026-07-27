@@ -96,18 +96,7 @@ namespace ConduitLLM.Admin.Endpoints
 
             var (groups, totalCount) = await _groupRepository.GetPaginatedAsync(page, pageSize, cancellationToken);
 
-            var dtos = groups.Select(g => new VirtualKeyGroupDto
-            {
-                Id = g.Id,
-                ExternalGroupId = g.ExternalGroupId,
-                GroupName = g.GroupName,
-                Balance = g.Balance,
-                LifetimeCreditsAdded = g.LifetimeCreditsAdded,
-                LifetimeSpent = g.LifetimeSpent,
-                CreatedAt = g.CreatedAt,
-                UpdatedAt = g.UpdatedAt,
-                VirtualKeyCount = g.VirtualKeys?.Count ?? 0
-            }).ToList();
+            var dtos = groups.Select(VirtualKeyGroupDto.FromEntity).ToList();
 
             return Ok(new PagedResult<VirtualKeyGroupDto>
             {
@@ -126,18 +115,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 return AdminResults.NotFoundEntity("VirtualKeyGroup", id);
             }
-            return Ok(new VirtualKeyGroupDto
-            {
-                Id = group.Id,
-                ExternalGroupId = group.ExternalGroupId,
-                GroupName = group.GroupName,
-                Balance = group.Balance,
-                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                LifetimeSpent = group.LifetimeSpent,
-                CreatedAt = group.CreatedAt,
-                UpdatedAt = group.UpdatedAt,
-                VirtualKeyCount = group.VirtualKeys?.Count ?? 0
-            });
+            return Ok(VirtualKeyGroupDto.FromEntity(group));
         }
 
         /// <summary>
@@ -161,18 +139,7 @@ namespace ConduitLLM.Admin.Endpoints
                 $"Name: {group.GroupName}, InitialBalance: {group.Balance}");
             AdminOperationsMetricsService.RecordConfigurationChange("virtualkeygroup", "create");
 
-            var dto = new VirtualKeyGroupDto
-            {
-                Id = group.Id,
-                ExternalGroupId = group.ExternalGroupId,
-                GroupName = group.GroupName,
-                Balance = group.Balance,
-                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                LifetimeSpent = group.LifetimeSpent,
-                CreatedAt = group.CreatedAt,
-                UpdatedAt = group.UpdatedAt,
-                VirtualKeyCount = 0
-            };
+            var dto = VirtualKeyGroupDto.FromEntity(group);
 
             return Results.Created($"/v1/admin/virtual-key-groups/{group.Id}", dto);
         }
@@ -246,22 +213,7 @@ namespace ConduitLLM.Admin.Endpoints
             LogAdminAuditWithChanges("VirtualKeyGroup", id, changes);
             AdminOperationsMetricsService.RecordConfigurationChange("virtualkeygroup", "update");
 
-            return Ok(new VirtualKeyGroupDto
-            {
-                Id = group.Id,
-                ExternalGroupId = group.ExternalGroupId,
-                GroupName = group.GroupName,
-                Balance = group.Balance,
-                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                LifetimeSpent = group.LifetimeSpent,
-                CreatedAt = group.CreatedAt,
-                UpdatedAt = group.UpdatedAt,
-                VirtualKeyCount = group.VirtualKeys?.Count ?? 0,
-                RateLimitRpm = group.RateLimitRpm,
-                RateLimitRpd = group.RateLimitRpd,
-                RateLimitTpm = group.RateLimitTpm,
-                MaxParallelRequests = group.MaxParallelRequests
-            });
+            return Ok(VirtualKeyGroupDto.FromEntity(group));
         }
 
         /// <summary>
@@ -323,18 +275,7 @@ namespace ConduitLLM.Admin.Endpoints
             if (group == null)
                 throw new KeyNotFoundException();
 
-            return Ok(new VirtualKeyGroupDto
-            {
-                Id = group.Id,
-                ExternalGroupId = group.ExternalGroupId,
-                GroupName = group.GroupName,
-                Balance = group.Balance,
-                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                LifetimeSpent = group.LifetimeSpent,
-                CreatedAt = group.CreatedAt,
-                UpdatedAt = group.UpdatedAt,
-                VirtualKeyCount = group.VirtualKeys?.Count ?? 0
-            });
+            return Ok(VirtualKeyGroupDto.FromEntity(group));
         }
 
         /// <summary>

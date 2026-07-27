@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Utilities;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -453,19 +454,7 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
     }
 
     private static bool IsIdempotencyKeyViolation(DbUpdateException ex)
-    {
-        for (Exception? inner = ex.InnerException; inner != null; inner = inner.InnerException)
-        {
-            if (inner is PostgresException pg &&
-                pg.SqlState == PostgresErrorCodes.UniqueViolation &&
-                pg.ConstraintName?.Contains("IdempotencyKey", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
+        => DbUpdateExceptions.IsUniqueViolation(ex, "IdempotencyKey");
 
     /// <inheritdoc />
     public async Task<(List<VirtualKeyGroup> Items, int TotalCount)> GetLowBalanceGroupsPaginatedAsync(

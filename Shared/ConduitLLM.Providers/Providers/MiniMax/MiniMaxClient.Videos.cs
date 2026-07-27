@@ -5,6 +5,7 @@ using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Configuration;
 using ConduitLLM.Providers.Helpers;
 
 using Microsoft.Extensions.Logging;
@@ -120,7 +121,7 @@ namespace ConduitLLM.Providers.MiniMax
 
                 Logger.LogInformation("MiniMax video generation task created: {TaskId}", response.TaskId);
 
-                var pollingTimeoutSeconds = ResolveVideoPollingTimeoutSeconds();
+                var pollingTimeoutSeconds = ProviderTimeouts.VideoPollingSeconds();
                 var initialDelay = TimeSpan.FromMilliseconds(2000);
                 var maxDelay = TimeSpan.FromMilliseconds(30000);
                 var approxMaxAttempts = (int)(pollingTimeoutSeconds / initialDelay.TotalSeconds);
@@ -233,17 +234,6 @@ namespace ConduitLLM.Providers.MiniMax
                     },
                 };
             }, "CreateVideo", cancellationToken);
-        }
-
-        private static int ResolveVideoPollingTimeoutSeconds()
-        {
-            const int defaultSeconds = 600;
-            var envTimeout = Environment.GetEnvironmentVariable("CONDUITLLM__TIMEOUTS__VIDEO_POLLING__SECONDS");
-            if (!string.IsNullOrEmpty(envTimeout) && int.TryParse(envTimeout, out var parsed) && parsed > 0)
-            {
-                return parsed;
-            }
-            return defaultSeconds;
         }
 
         private async Task<MiniMaxVideoStatusResponse> FetchVideoStatusAsync(

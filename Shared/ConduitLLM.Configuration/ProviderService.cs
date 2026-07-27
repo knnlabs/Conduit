@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.Utilities;
 using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -557,49 +558,7 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// Checks if a DbUpdateException is due to a unique constraint violation on the API key
         /// </summary>
-        private bool IsUniqueConstraintViolation(DbUpdateException dbEx)
-        {
-            // Check immediate inner exception
-            if (dbEx.InnerException is PostgresException pgEx)
-            {
-                // PostgreSQL unique constraint violation error code is 23505
-                if (pgEx.SqlState == "23505" && 
-                    pgEx.ConstraintName == "IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
-                {
-                    return true;
-                }
-                
-                // Also check if it's any unique constraint violation on our table
-                if (pgEx.SqlState == "23505" && pgEx.ConstraintName?.Contains("ProviderKeyCredential") == true)
-                {
-                    _logger.LogWarning("Unique constraint violation on unexpected constraint: {ConstraintName}", pgEx.ConstraintName);
-                    return true; // Still treat as duplicate key
-                }
-            }
-            
-            // Sometimes the PostgresException is nested deeper
-            var innerEx = dbEx.InnerException;
-            while (innerEx != null)
-            {
-                if (innerEx is PostgresException postgresEx)
-                {
-                    if (postgresEx.SqlState == "23505" && 
-                        postgresEx.ConstraintName == "IX_ProviderKeyCredential_UniqueApiKeyPerProvider")
-                    {
-                        return true;
-                    }
-                    
-                    // Also check if it's any unique constraint violation on our table
-                    if (postgresEx.SqlState == "23505" && postgresEx.ConstraintName?.Contains("ProviderKeyCredential") == true)
-                    {
-                        _logger.LogWarning("Unique constraint violation on unexpected constraint: {ConstraintName}", postgresEx.ConstraintName);
-                        return true; // Still treat as duplicate key
-                    }
-                }
-                innerEx = innerEx.InnerException;
-            }
-            
-            return false;
-        }
+        private static bool IsUniqueConstraintViolation(DbUpdateException dbEx)
+            => DbUpdateExceptions.IsUniqueViolation(dbEx, "ProviderKeyCredential");
     }
 }

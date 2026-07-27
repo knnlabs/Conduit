@@ -84,18 +84,7 @@ namespace ConduitLLM.Admin.Services
                 return null;
             }
 
-            return new VirtualKeyGroupDto
-            {
-                Id = group.Id,
-                ExternalGroupId = group.ExternalGroupId,
-                GroupName = group.GroupName,
-                Balance = group.Balance,
-                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                LifetimeSpent = group.LifetimeSpent,
-                CreatedAt = group.CreatedAt,
-                UpdatedAt = group.UpdatedAt,
-                VirtualKeyCount = group.VirtualKeys?.Count ?? 0
-            };
+            return VirtualKeyGroupDto.FromEntity(group);
         }
 
         /// <inheritdoc />

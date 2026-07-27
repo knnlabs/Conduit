@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Providers.Configuration;
 using ConduitLLM.Providers.Helpers;
 using CoreModels = ConduitLLM.Core.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
@@ -68,7 +69,7 @@ namespace ConduitLLM.Providers.OpenRouter
                 var options = new PollingOptions(
                     InitialDelay: TimeSpan.FromSeconds(2),
                     MaxDelay: TimeSpan.FromSeconds(30),
-                    Timeout: TimeSpan.FromSeconds(ResolveVideoPollingTimeoutSeconds()),
+                    Timeout: TimeSpan.FromSeconds(ProviderTimeouts.VideoPollingSeconds()),
                     Backoff: BackoffStrategy.ExponentialWithJitter,
                     MaxConsecutiveTransientErrors: 3,
                     BackoffMultiplier: 1.5,
@@ -130,13 +131,6 @@ namespace ConduitLLM.Providers.OpenRouter
                 "failed" => JobState.Failed,
                 _ => JobState.InProgress   // pending / in_progress / queued / unknown → keep polling
             };
-
-        private static int ResolveVideoPollingTimeoutSeconds()
-        {
-            const int defaultSeconds = 600;
-            var env = Environment.GetEnvironmentVariable("CONDUITLLM__TIMEOUTS__VIDEO_POLLING__SECONDS");
-            return !string.IsNullOrEmpty(env) && int.TryParse(env, out var parsed) && parsed > 0 ? parsed : defaultSeconds;
-        }
 
         private record OpenRouterVideoSubmitResponse
         {

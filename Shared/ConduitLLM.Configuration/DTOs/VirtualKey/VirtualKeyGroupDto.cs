@@ -71,5 +71,27 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Requests in flight at once across this group, or null for no group ceiling.
         /// </summary>
         public int? MaxParallelRequests { get; set; }
+
+        /// <summary>
+        /// Maps the entity to its DTO. Single mapping site so every endpoint returns the
+        /// same shape — the rate-limit fields were previously set only by the update
+        /// endpoint, so a PUT reported ceilings that the following GET omitted.
+        /// </summary>
+        public static VirtualKeyGroupDto FromEntity(Entities.VirtualKeyGroup group) => new()
+        {
+            Id = group.Id,
+            ExternalGroupId = group.ExternalGroupId,
+            GroupName = group.GroupName,
+            Balance = group.Balance,
+            LifetimeCreditsAdded = group.LifetimeCreditsAdded,
+            LifetimeSpent = group.LifetimeSpent,
+            CreatedAt = group.CreatedAt,
+            UpdatedAt = group.UpdatedAt,
+            VirtualKeyCount = group.VirtualKeys?.Count ?? 0,
+            RateLimitRpm = group.RateLimitRpm,
+            RateLimitRpd = group.RateLimitRpd,
+            RateLimitTpm = group.RateLimitTpm,
+            MaxParallelRequests = group.MaxParallelRequests
+        };
     }
 }
