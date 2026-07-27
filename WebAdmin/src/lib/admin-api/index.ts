@@ -117,7 +117,6 @@ export {
   FetchFunctionCostsService,
   FetchFunctionExecutionsService
 } from './services/FetchFunctionsService';
-export { FetchPricingService } from './services/FetchPricingService';
 export * from './models/pricing';
 export { FetchProviderSyncService } from './services/FetchProviderSyncService';
 

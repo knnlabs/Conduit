@@ -21,7 +21,6 @@ import {
   FetchFunctionCostsService,
   FetchFunctionExecutionsService
 } from './services/FetchFunctionsService';
-import { FetchPricingService } from './services/FetchPricingService';
 import { FetchProviderSyncService } from './services/FetchProviderSyncService';
 import type { ApiClientConfig } from './client/types';
 import {
@@ -71,7 +70,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
   public readonly functionCredentials: FetchFunctionCredentialsService;
   public readonly functionCosts: FetchFunctionCostsService;
   public readonly functionExecutions: FetchFunctionExecutionsService;
-  public readonly pricing: FetchPricingService;
   public readonly providerSync: FetchProviderSyncService;
 
   constructor(config: ApiClientConfig) {
@@ -98,7 +96,6 @@ export class FetchConduitAdminClient extends FetchBaseApiClient {
     this.functionCredentials = new FetchFunctionCredentialsService(this);
     this.functionCosts = new FetchFunctionCostsService(this);
     this.functionExecutions = new FetchFunctionExecutionsService(this);
-    this.pricing = new FetchPricingService(this);
     this.providerSync = new FetchProviderSyncService(this);
   }
 
