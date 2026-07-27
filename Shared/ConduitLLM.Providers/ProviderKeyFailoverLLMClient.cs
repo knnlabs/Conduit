@@ -147,9 +147,6 @@ internal sealed class ProviderKeyFailoverLLMClient :
             client => InvokeVideoAsync(client, request, apiKey, cancellationToken),
             allowFailover: string.IsNullOrWhiteSpace(apiKey));
 
-    public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        => ExecuteAsync(client => client.GetCapabilitiesAsync(modelId), allowFailover: true);
-
     public Task<AuthenticationResult> VerifyAuthenticationAsync(
         string? apiKey = null,
         string? baseUrl = null,
@@ -240,9 +237,7 @@ internal sealed class ProviderKeyFailoverLLMClient :
             return FatalErrorKind.None;
         }
 
-        var errorType = ProviderErrorClassifier.Classify(
-            communicationException.StatusCode,
-            $"{communicationException.ResponseBody} {communicationException.Message}");
+        var errorType = ProviderErrorClassifier.ClassifyException(exception);
 
         return errorType switch
         {

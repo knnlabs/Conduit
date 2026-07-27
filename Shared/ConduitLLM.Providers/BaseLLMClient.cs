@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using ConduitLLM.Configuration;
@@ -303,31 +304,6 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets the capabilities for this provider. Override in derived classes to provide 
-        /// provider-specific capabilities.
-        /// </summary>
-        /// <param name="modelId">Optional specific model ID to get capabilities for.</param>
-        /// <returns>The provider capabilities.</returns>
-        public virtual Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        {
-            // Return basic capabilities by default
-            return Task.FromResult(new ProviderCapabilities
-            {
-                Provider = ProviderName,
-                ModelId = modelId ?? ProviderModelId,
-                ChatParameters = new ChatParameterSupport
-                {
-                    Temperature = true,
-                    MaxTokens = true
-                },
-                Features = new FeatureSupport
-                {
-                    Streaming = true
-                }
-            });
-        }
-
-        /// <summary>
         /// Reads error content from an HTTP response.
         /// </summary>
         /// <param name="response">The HTTP response.</param>
@@ -467,6 +443,61 @@ namespace ConduitLLM.Providers
         {
             return ProviderInstrumentation.BeginStreaming(
                 operationName, ProviderName, ProviderTypeName, ProviderModelId);
+        }
+
+        /// <summary>
+        /// Runs a provider stream with consistent logging, instrumentation, error translation,
+        /// cancellation handling, and enumerator disposal.
+        /// </summary>
+        protected async IAsyncEnumerable<T> RunStreamingAsync<T>(
+            Func<CancellationToken, IAsyncEnumerable<T>> streamFactory,
+            string operationName,
+            string modelName,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            using var logScope = BeginProviderLogScope(operationName);
+            using var instrumentation = BeginStreamingScope(operationName);
+            var stream = streamFactory(cancellationToken);
+            await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+
+            while (true)
+            {
+                bool hasNext;
+                try
+                {
+                    hasNext = await enumerator.MoveNextAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    instrumentation.RecordFailure(nameof(OperationCanceledException));
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
+                    Logger.LogError(
+                        ex,
+                        "Error in {Operation} from {Provider}: {Message}",
+                        operationName,
+                        ProviderName,
+                        enhancedErrorMessage);
+                    var translated = ExceptionHandler.HandleLlmException(
+                        ex,
+                        Logger,
+                        ProviderName,
+                        modelName);
+                    instrumentation.RecordFailure(translated.GetType().Name);
+                    throw translated;
+                }
+
+                if (!hasNext)
+                {
+                    yield break;
+                }
+
+                instrumentation.RecordChunk();
+                yield return enumerator.Current;
+            }
         }
 
         /// <summary>
@@ -679,80 +710,6 @@ namespace ConduitLLM.Providers
         {
             return ProviderConfigurationRegistry.GetDefaultBaseUrl(Provider.ProviderType)
                 ?? "https://api.example.com";
-        }
-
-        /// <summary>
-        /// Classifies an HTTP error response into a provider error type.
-        /// </summary>
-        /// <param name="response">The HTTP response message.</param>
-        /// <param name="responseBody">The response body content.</param>
-        /// <returns>The classified error type.</returns>
-        protected virtual ProviderErrorType ClassifyHttpError(
-            HttpResponseMessage response,
-            string? responseBody)
-        {
-            // Base classification by status code (shared with key tracking and failover)
-            var errorType = ProviderErrorClassifier.Classify(response.StatusCode, responseBody);
-
-            // Allow provider-specific refinement
-            return RefineErrorClassification(errorType, responseBody);
-        }
-
-        /// <summary>
-        /// Refines error classification based on provider-specific response patterns.
-        /// Override in derived classes to handle provider-specific error messages.
-        /// </summary>
-        /// <param name="baseType">The base error type from status code.</param>
-        /// <param name="responseBody">The response body for additional context.</param>
-        /// <returns>The refined error type.</returns>
-        protected virtual ProviderErrorType RefineErrorClassification(
-            ProviderErrorType baseType,
-            string? responseBody)
-        {
-            if (string.IsNullOrEmpty(responseBody))
-                return baseType;
-
-            var lowerBody = responseBody.ToLowerInvariant();
-
-            // Common pattern: 403 with quota/billing keywords → InsufficientBalance
-            if (baseType == ProviderErrorType.AccessForbidden &&
-                (lowerBody.Contains("insufficient_quota") ||
-                 lowerBody.Contains("exceeded your current quota") ||
-                 lowerBody.Contains("billing") ||
-                 lowerBody.Contains("payment") ||
-                 lowerBody.Contains("credit")))
-            {
-                return ProviderErrorType.InsufficientBalance;
-            }
-
-            // Common pattern: authentication method mismatch (e.g., Bearer token
-            // sent to a provider that requires a custom API key header)
-            if (baseType == ProviderErrorType.InvalidApiKey &&
-                (lowerBody.Contains("invalid bearer token") ||
-                 lowerBody.Contains("invalid api key") ||
-                 lowerBody.Contains("invalid x-api-key") ||
-                 lowerBody.Contains("authentication_error")))
-            {
-                return ProviderErrorType.InvalidApiKey;
-            }
-
-            // Common pattern: rate limit keywords regardless of status code
-            if (lowerBody.Contains("rate limit") ||
-                lowerBody.Contains("too many requests"))
-            {
-                return ProviderErrorType.RateLimitExceeded;
-            }
-
-            // Common pattern: model not found keywords
-            if (lowerBody.Contains("model") &&
-                (lowerBody.Contains("not found") ||
-                 lowerBody.Contains("does not exist") ||
-                 lowerBody.Contains("invalid model")))
-            {
-                return ProviderErrorType.ModelNotFound;
-            }
-
-            return baseType;
         }
 
         /// <summary>

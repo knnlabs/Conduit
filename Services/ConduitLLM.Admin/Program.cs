@@ -56,7 +56,6 @@ public partial class Program
                 context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
             });
 
-        builder.Services.AddScoped<BillingAuditEndpoints>();
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<AnalyticsEndpoints>();
         builder.Services.AddScoped<FunctionConfigurationsEndpoints>();
@@ -81,7 +80,7 @@ public partial class Program
         builder.Services.AddOpenApi("v1", options =>
         {
             options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.AdminApiDocumentTransformer>();
-            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.OperationMetadataTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Core.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ConditionalRequestOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.CollectionPaginationOperationTransformer>();
@@ -96,7 +95,7 @@ public partial class Program
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.IpFilterResponseSchemaTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.StructuredJsonSchemaTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.FunctionExecutionSchemaTransformer>();
-            options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.OperationIdValidationDocumentTransformer>();
+            options.AddDocumentTransformer<ConduitLLM.Core.OpenApi.OperationIdValidationDocumentTransformer>();
         });
 
         // The build-time exporter needs endpoint metadata, not infrastructure. Avoid Postgres,
@@ -131,7 +130,6 @@ public partial class Program
             VirtualKeysEndpoints.MapVirtualKeysEndpoints(openApiApp);
             IpFilterEndpoints.MapIpFilterEndpoints(openApiApp);
             openApiApp.MapHealthMonitoringEndpoints();
-            BillingAuditEndpoints.MapBillingAuditEndpoints(openApiApp);
             AnalyticsEndpoints.MapAnalyticsEndpoints(openApiApp);
             FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(openApiApp);
             ProviderErrorsEndpoints.MapProviderErrorsEndpoints(openApiApp);
@@ -250,7 +248,6 @@ public partial class Program
         VirtualKeysEndpoints.MapVirtualKeysEndpoints(app);
         IpFilterEndpoints.MapIpFilterEndpoints(app);
         app.MapHealthMonitoringEndpoints();
-        BillingAuditEndpoints.MapBillingAuditEndpoints(app);
         AnalyticsEndpoints.MapAnalyticsEndpoints(app);
         FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(app);
         ProviderErrorsEndpoints.MapProviderErrorsEndpoints(app);

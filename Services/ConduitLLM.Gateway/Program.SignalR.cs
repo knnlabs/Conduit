@@ -89,9 +89,6 @@ public partial class Program
         // Register image generation notification service
         builder.Services.AddSingleton<IImageGenerationNotificationService, ImageGenerationNotificationService>();
 
-        // Register unified task notification service
-        builder.Services.AddSingleton<ITaskNotificationService, TaskNotificationService>();
-
         // Register virtual key management notification service
         builder.Services.AddSingleton<IVirtualKeyManagementNotificationService, VirtualKeyManagementNotificationService>();
 

@@ -177,29 +177,6 @@ period, the aggregate cycle, and the last outcome of each phase. Prometheus metr
 purge, expiration, quota, and retention are limited to those groups and reconciliation is skipped because
 an untracked object no longer has group ownership that can be scoped safely.
 
-### Reliable SignalR queue delivery
-
-Queued SignalR notifications use Redis Streams with at-least-once delivery. Future-dated messages
-are held in a Redis sorted set and moved atomically into the delivery stream only when due. A live
-consumer reclaims pending entries left by a crashed consumer after
-`SignalR__MessageQueue__PendingMessageIdleTimeoutMs` (five minutes by default). Keep that timeout
-longer than the longest expected delivery and client-acknowledgment operation; setting it too low
-can cause a healthy worker's in-flight message to be delivered again.
-
-Failed deliveries are rescheduled with exponential delay, bounded by
-`SignalR__MessageQueue__MaxRetryAttempts`,
-`SignalR__MessageQueue__InitialRetryDelaySeconds`, and
-`SignalR__MessageQueue__MaxRetryDelaySeconds`; millisecond delay variants are available for tests.
-After the limit, the message moves to the dead-letter stream. Malformed or incomplete stream entries
-move directly to dead letter. A message already expired at enqueue time is rejected; one that
-expires while queued is dead-lettered without delivery.
-
-Delivery remains deliberately at least once: a worker can send successfully and crash before its
-Redis acknowledgment. SignalR handlers must therefore be idempotent, using the message's stable
-`MessageId` as the deduplication key. The dead-letter endpoints can inspect and requeue valid
-messages; malformed raw entries remain in Redis for forensic inspection and are included in the
-dead-letter count.
-
 ## Runtime configuration (in the Admin UI)
 
 Everything about *how Conduit behaves per request* is data in Postgres, created and edited live

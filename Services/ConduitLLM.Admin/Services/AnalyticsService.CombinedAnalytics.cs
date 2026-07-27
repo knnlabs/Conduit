@@ -214,11 +214,6 @@ namespace ConduitLLM.Admin.Services
             {
                 throw;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error exporting analytics in {Format} format", format);
-                throw;
-            }
         }
 
         #endregion

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using CoreUtils = ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
@@ -50,14 +49,11 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
                 Logger.LogDebug("Creating embeddings using {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<EmbeddingRequest, EmbeddingResponse>(
+                var response = await PostJsonAsync<EmbeddingRequest, EmbeddingResponse>(
                     client,
-                    HttpMethod.Post,
                     endpoint,
                     openAiRequest,
-                    CreateStandardHeaders(apiKey),
-                    DefaultJsonOptions,
-                    Logger,
+                    apiKey,
                     cancellationToken);
 
                 return new CoreModels.EmbeddingResponse

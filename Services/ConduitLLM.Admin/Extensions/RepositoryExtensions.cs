@@ -269,6 +269,10 @@ namespace ConduitLLM.Admin.Extensions
                 CostPerSearchUnit = dto.CostPerSearchUnit,
                 AudioCostPerMinute = dto.AudioCostPerMinute,
                 AudioCostPerThousandCharacters = dto.AudioCostPerThousandCharacters,
+                ModelType = dto.ModelType,
+                IsActive = dto.IsActive,
+                Description = dto.Description,
+                Priority = dto.Priority,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };

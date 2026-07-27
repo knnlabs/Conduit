@@ -1,5 +1,4 @@
 using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Models;
 using ConduitLLM.Functions.DTOs;
@@ -23,12 +22,8 @@ public static class GatewayApiEndpoints
         services.AddHttpContextAccessor();
         services.AddScoped<AuthEndpoints>();
         services.AddScoped<CompletionsEndpoints>();
-        services.AddScoped<ProviderModelsEndpoints>();
         services.AddScoped<DiscoveryEndpoints>();
         services.AddScoped<TasksEndpoints>();
-        services.AddScoped<BatchOperationsEndpoints>();
-        services.AddScoped<SignalRBatchingEndpoints>();
-        services.AddScoped<SignalRHealthEndpoints>();
         services.AddScoped<FunctionsEndpoints>();
         services.AddScoped<RerankEndpoints>();
         services.AddScoped<EmbeddingsEndpoints>();

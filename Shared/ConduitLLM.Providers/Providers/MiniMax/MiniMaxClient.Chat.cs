@@ -1,4 +1,3 @@
-using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
@@ -25,22 +24,7 @@ namespace ConduitLLM.Providers.MiniMax
             {
                 using var httpClient = CreateHttpClient(apiKey);
                 
-                var miniMaxRequest = new MiniMaxChatCompletionRequest
-                {
-                    Model = request.Model ?? ProviderModelId,
-                    Messages = ConvertMessages(request.Messages, includeNames: request.Stream == true),
-                    Stream = request.Stream ?? false,
-                    MaxTokens = request.MaxTokens,
-                    Temperature = request.Temperature,
-                    TopP = request.TopP,
-                    Tools = ConvertTools(request.Tools),
-                    ToolChoice = ConvertToolChoice(request.ToolChoice),
-                    ReplyConstraints = request.ResponseFormat != null ? new ReplyConstraints
-                    {
-                        GuidanceType = request.ResponseFormat.Type == "json_object" ? "json_schema" : null,
-                        JsonSchema = request.ResponseFormat.Type == "json_object" ? new { type = "object" } : null
-                    } : null
-                };
+                var miniMaxRequest = CreateChatRequest(request, request.Stream == true);
 
                 // MiniMax uses different endpoints for streaming vs non-streaming
                 // Streaming uses the v2 API which requires name fields in messages
@@ -48,42 +32,20 @@ namespace ConduitLLM.Providers.MiniMax
                     ? $"{_baseUrl}/v1/text/chatcompletion_v2"
                     : $"{_baseUrl}/v1/chat/completions";
 
-                var requestJson = JsonSerializer.Serialize(miniMaxRequest);
                 if (Logger.IsEnabled(LogLevel.Debug))
                 {
+                    var requestJson = JsonSerializer.Serialize(miniMaxRequest);
                     Logger.LogDebug("MiniMax request to {Endpoint}: {Request}", endpoint, requestJson);
                 }
 
-                var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-                httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-
-                using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
-                var rawContent = await httpResponse.Content.ReadAsStringAsync();
-
-                Logger.LogDebug("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
-
-                if (!httpResponse.IsSuccessStatusCode)
-                {
-                    Logger.LogError("MiniMax API returned {Status}: {Response}", httpResponse.StatusCode, rawContent);
-                    throw new LLMCommunicationException($"MiniMax API returned {httpResponse.StatusCode}: {rawContent}");
-                }
-
-                MiniMaxChatCompletionResponse response;
-                try
-                {
-                    response = JsonSerializer.Deserialize<MiniMaxChatCompletionResponse>(rawContent, CaseInsensitiveJsonOptions)!;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "Error deserializing MiniMax response: {Response}", rawContent);
-                    throw new LLMCommunicationException("Failed to deserialize MiniMax response", ex);
-                }
-
-                if (response == null)
-                {
-                    Logger.LogWarning("MiniMax response is null");
-                    throw new LLMCommunicationException("MiniMax returned null response");
-                }
+                var response = await SendMiniMaxJsonAsync<
+                    MiniMaxChatCompletionRequest,
+                    MiniMaxChatCompletionResponse>(
+                    httpClient,
+                    endpoint,
+                    miniMaxRequest,
+                    CaseInsensitiveJsonOptions,
+                    cancellationToken);
 
                 Logger.LogDebug("MiniMax response choices count: {Count}", response.Choices?.Count ?? 0);
 
@@ -100,5 +62,27 @@ namespace ConduitLLM.Providers.MiniMax
                 return coreResponse;
             }, "CreateChatCompletion", cancellationToken);
         }
+
+        private MiniMaxChatCompletionRequest CreateChatRequest(
+            ChatCompletionRequest request,
+            bool stream) =>
+            new()
+            {
+                Model = request.Model ?? ProviderModelId,
+                Messages = ConvertMessages(request.Messages, includeNames: stream),
+                Stream = stream,
+                MaxTokens = request.MaxTokens,
+                Temperature = request.Temperature,
+                TopP = request.TopP,
+                Tools = ConvertTools(request.Tools),
+                ToolChoice = ConvertToolChoice(request.ToolChoice),
+                ReplyConstraints = request.ResponseFormat != null ? new ReplyConstraints
+                {
+                    GuidanceType =
+                        request.ResponseFormat.Type == "json_object" ? "json_schema" : null,
+                    JsonSchema =
+                        request.ResponseFormat.Type == "json_object" ? new { type = "object" } : null
+                } : null
+            };
     }
 }

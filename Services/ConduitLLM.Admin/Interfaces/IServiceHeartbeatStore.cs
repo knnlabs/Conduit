@@ -1,3 +1,5 @@
+using ConduitLLM.Core.Events;
+
 namespace ConduitLLM.Admin.Interfaces
 {
     /// <summary>
@@ -25,33 +27,15 @@ namespace ConduitLLM.Admin.Interfaces
 
     /// <summary>
     /// A recorded service heartbeat. Serialized to Redis; the reader compares
-    /// <see cref="ReceivedAtUtc"/> against <see cref="IntervalSeconds"/> to judge staleness.
+    /// <see cref="ReceivedAtUtc"/> against <see cref="GatewayHeartbeat.IntervalSeconds"/> to judge staleness.
     /// </summary>
     public sealed class ServiceHeartbeatSnapshot
     {
         /// <summary>Logical service identifier (e.g. "gateway").</summary>
         public string ServiceId { get; set; } = string.Empty;
 
-        /// <summary>Reporting instance (machine name + process id).</summary>
-        public string InstanceId { get; set; } = string.Empty;
-
-        /// <summary>Reported service version.</summary>
-        public string Version { get; set; } = string.Empty;
-
-        /// <summary>Reported source commit.</summary>
-        public string CommitSha { get; set; } = "dev";
-
-        /// <summary>Reported UTC build timestamp.</summary>
-        public string BuildTimestamp { get; set; } = "unknown";
-
-        /// <summary>Readiness status reported by the instance.</summary>
-        public string Status { get; set; } = "healthy";
-
-        /// <summary>Reported process uptime in seconds at the time of the heartbeat.</summary>
-        public double UptimeSeconds { get; set; }
-
-        /// <summary>The reporting service's heartbeat cadence in seconds.</summary>
-        public double IntervalSeconds { get; set; }
+        /// <summary>The heartbeat payload reported by the service instance.</summary>
+        public GatewayHeartbeat Heartbeat { get; set; } = new();
 
         /// <summary>When the service reported the heartbeat (its clock).</summary>
         public DateTime ReportedAtUtc { get; set; }

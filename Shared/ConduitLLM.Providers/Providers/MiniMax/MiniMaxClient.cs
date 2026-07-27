@@ -66,6 +66,24 @@ namespace ConduitLLM.Providers.MiniMax
             _progressCallback = callback;
         }
 
+        private Task<TResponse> SendMiniMaxJsonAsync<TRequest, TResponse>(
+            HttpClient client,
+            string endpoint,
+            TRequest request,
+            JsonSerializerOptions jsonOptions,
+            CancellationToken cancellationToken)
+        {
+            return Core.Utilities.HttpClientHelper.SendJsonRequestAsync<TRequest, TResponse>(
+                client,
+                HttpMethod.Post,
+                endpoint,
+                request,
+                headers: null,
+                jsonOptions,
+                Logger,
+                cancellationToken);
+        }
+
         /// <inheritdoc/>
         protected override string GetDefaultBaseUrl()
         {

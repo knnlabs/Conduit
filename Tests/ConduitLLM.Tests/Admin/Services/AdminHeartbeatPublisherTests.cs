@@ -47,11 +47,11 @@ public class AdminHeartbeatPublisherTests
 
         snapshot.Should().NotBeNull();
         snapshot!.ServiceId.Should().Be(RedisKeys.ServiceHeartbeat.AdminServiceId);
-        snapshot.InstanceId.Should().NotBeNullOrWhiteSpace();
-        snapshot.Status.Should().Be("healthy");
-        snapshot.IntervalSeconds.Should().Be(30);
-        snapshot.Version.Should().NotBeNullOrWhiteSpace();
-        snapshot.CommitSha.Should().NotBeNullOrWhiteSpace();
-        snapshot.BuildTimestamp.Should().NotBeNullOrWhiteSpace();
+        snapshot.Heartbeat.InstanceId.Should().NotBeNullOrWhiteSpace();
+        snapshot.Heartbeat.Status.Should().Be("healthy");
+        snapshot.Heartbeat.IntervalSeconds.Should().Be(30);
+        snapshot.Heartbeat.Version.Should().NotBeNullOrWhiteSpace();
+        snapshot.Heartbeat.CommitSha.Should().NotBeNullOrWhiteSpace();
+        snapshot.Heartbeat.BuildTimestamp.Should().NotBeNullOrWhiteSpace();
     }
 }

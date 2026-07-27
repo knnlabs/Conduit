@@ -174,11 +174,6 @@ namespace ConduitLLM.Core.Decorators
             });
         }
 
-        public async Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        {
-            return await TrackedAsync(() => _innerClient.GetCapabilitiesAsync(modelId));
-        }
-
         /// <summary>
         /// Verifies authentication by delegating to the inner client if it supports
         /// <see cref="IAuthenticationVerifiable"/>.
@@ -266,12 +261,10 @@ namespace ConduitLLM.Core.Decorators
                     return;
                 }
 
-                var errorType = ProviderErrorClassifier.Classify(
-                    ex.StatusCode,
-                    $"{ex.ResponseBody} {ex.Message}");
+                var errorType = ProviderErrorClassifier.ClassifyException(ex);
                 
                 // Only track errors that are meaningful for provider health
-                if (errorType == ProviderErrorType.Unknown)
+                if (!ProviderErrorClassifier.ShouldTrack(errorType))
                 {
                     return;
                 }

@@ -33,28 +33,13 @@ import {
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
 import { notify } from '@/lib/notifications';
-import type { VirtualKeyDto } from '@/lib/admin-api';
+import type { components, VirtualKeyDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useClipboard } from '@mantine/hooks';
 
-interface CapabilityDetails {
-  supported: boolean;
-  supported_languages?: string[];
-  supported_voices?: string[];
-  supported_formats?: string[];
-}
-
-interface DiscoveredModel {
-  id: string;
-  provider?: string;
-  displayName: string;
-  capabilities: Record<string, CapabilityDetails>;
-}
-
-interface DiscoveryPreviewResponse {
-  data: DiscoveredModel[];
-  count: number;
-}
+type DiscoveryPreviewResponse = components['schemas']['DiscoveryModelsResponse'];
+type DiscoveryCapabilityValue =
+  components['schemas']['DiscoveryModelCapabilitiesDto'][keyof components['schemas']['DiscoveryModelCapabilitiesDto']];
 
 const CAPABILITY_FILTERS = [
   { value: '', label: 'All capabilities' },
@@ -129,7 +114,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
         )
       );
       
-      setDiscoveryData(data as DiscoveryPreviewResponse);
+      setDiscoveryData(data);
     } catch (err) {
       console.error('Error fetching discovery preview:', err);
       setError(err as Error);
@@ -157,11 +142,8 @@ export default function VirtualKeyDiscoveryPreviewPage() {
     }
   };
 
-  const renderCapability = (name: string, capability: CapabilityDetails) => {
-    if (typeof capability !== 'object' || !capability) return null;
-    
-    const isSupported = capability.supported === true;
-    if (!isSupported) return null;
+  const renderCapability = (name: string, capability: DiscoveryCapabilityValue) => {
+    if (capability !== true) return null;
 
     return (
       <Box key={name}>
@@ -169,21 +151,6 @@ export default function VirtualKeyDiscoveryPreviewPage() {
           <Badge color="blue" variant="light" size="sm">
             {name.replace(/_/g, ' ')}
           </Badge>
-          {capability.supported_languages && (
-            <Text size="xs" c="dimmed">
-              {capability.supported_languages.length} languages
-            </Text>
-          )}
-          {capability.supported_voices && (
-            <Text size="xs" c="dimmed">
-              {capability.supported_voices.length} voices
-            </Text>
-          )}
-          {capability.supported_formats && (
-            <Text size="xs" c="dimmed">
-              {capability.supported_formats.length} formats
-            </Text>
-          )}
         </Group>
       </Box>
     );
@@ -309,7 +276,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
                     <Card key={model.id} shadow="sm" p="md" radius="md" withBorder>
                       <Stack gap="sm">
                         <div>
-                          <Text fw={500} size="sm">{model.displayName}</Text>
+                          <Text fw={500} size="sm">{model.display_name}</Text>
                           <Group gap="xs" mt="xs">
                             <Badge size="xs" variant="dot">
                               {model.id}

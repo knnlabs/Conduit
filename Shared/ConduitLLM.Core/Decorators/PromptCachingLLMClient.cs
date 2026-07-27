@@ -89,10 +89,6 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
         CancellationToken cancellationToken = default)
         => InvokeVideoGenerationAsync(request, apiKey, cancellationToken);
 
-    /// <inheritdoc />
-    public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        => _innerClient.GetCapabilitiesAsync(modelId);
-
     private async Task<VideoGenerationResponse> InvokeVideoGenerationAsync(
         VideoGenerationRequest request,
         string? apiKey,

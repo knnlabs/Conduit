@@ -46,13 +46,14 @@ public class GatewayHeartbeatHandlerTests
 
         recorded.Should().NotBeNull();
         recorded!.ServiceId.Should().Be(RedisKeys.ServiceHeartbeat.GatewayServiceId);
-        recorded.InstanceId.Should().Be("host_1234");
-        recorded.Version.Should().Be("1.2.3.4");
-        recorded.CommitSha.Should().Be("abc123");
-        recorded.BuildTimestamp.Should().Be("2026-07-23T12:00:00Z");
-        recorded.Status.Should().Be("degraded");
-        recorded.UptimeSeconds.Should().Be(99);
-        recorded.IntervalSeconds.Should().Be(30);
+        recorded.Heartbeat.Should().BeSameAs(message);
+        recorded.Heartbeat.InstanceId.Should().Be("host_1234");
+        recorded.Heartbeat.Version.Should().Be("1.2.3.4");
+        recorded.Heartbeat.CommitSha.Should().Be("abc123");
+        recorded.Heartbeat.BuildTimestamp.Should().Be("2026-07-23T12:00:00Z");
+        recorded.Heartbeat.Status.Should().Be("degraded");
+        recorded.Heartbeat.UptimeSeconds.Should().Be(99);
+        recorded.Heartbeat.IntervalSeconds.Should().Be(30);
         recorded.ReportedAtUtc.Should().Be(message.Timestamp);
     }
 

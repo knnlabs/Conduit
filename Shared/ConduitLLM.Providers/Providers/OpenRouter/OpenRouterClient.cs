@@ -237,53 +237,6 @@ namespace ConduitLLM.Providers.OpenRouter
         }
 
         /// <summary>
-        /// Refines error classification for OpenRouter-specific error patterns.
-        /// </summary>
-        /// <remarks>
-        /// OpenRouter has specific error semantics:
-        /// - 503: No provider meets routing requirements — classify as ModelNotFound
-        ///   since it typically means the requested model/routing combo is unavailable
-        /// - Error responses use numeric code field instead of OpenAI's string type
-        /// </remarks>
-        protected override ProviderErrorType RefineErrorClassification(
-            ProviderErrorType baseType,
-            string? responseBody)
-        {
-            // Apply common patterns first (quota, rate limit, model not found)
-            var refined = base.RefineErrorClassification(baseType, responseBody);
-            if (refined != baseType)
-                return refined;
-
-            if (string.IsNullOrEmpty(responseBody))
-                return baseType;
-
-            // OpenRouter-specific: 503 "no endpoints" → ModelNotFound
-            try
-            {
-                using var doc = JsonDocument.Parse(responseBody);
-                if (!doc.RootElement.TryGetProperty("error", out var error))
-                    return baseType;
-
-                var message = error.TryGetProperty("message", out var msgProp)
-                    ? msgProp.GetString() ?? ""
-                    : "";
-
-                if (baseType == ProviderErrorType.ServiceUnavailable &&
-                    (message.Contains("no endpoints", StringComparison.OrdinalIgnoreCase) ||
-                     message.Contains("no provider", StringComparison.OrdinalIgnoreCase)))
-                {
-                    return ProviderErrorType.ModelNotFound;
-                }
-            }
-            catch (JsonException)
-            {
-                // Not valid JSON, use base classification
-            }
-
-            return baseType;
-        }
-
-        /// <summary>
         /// Extracts enhanced error messages for OpenRouter-specific error patterns.
         /// Adds OpenRouter-specific keyword matching on top of base extraction.
         /// </summary>

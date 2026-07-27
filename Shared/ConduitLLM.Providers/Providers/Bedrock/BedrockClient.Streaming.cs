@@ -29,74 +29,68 @@ namespace ConduitLLM.Providers.Bedrock
         {
             ValidateRequest(request, "StreamChatCompletion");
 
-            using var logScope = BeginProviderLogScope("StreamChatCompletion");
-            var instrumentation = BeginStreamingScope("StreamChatCompletion");
-            HttpClient? httpClient = null;
-            HttpResponseMessage? response = null;
             var modelId = request.Model ?? ProviderModelId;
-
-            try
+            await foreach (var chunk in RunStreamingAsync(
+                ct => ReadBedrockStreamAsync(request, apiKey, ct),
+                "StreamChatCompletion",
+                modelId,
+                cancellationToken))
             {
-                try
-                {
-                    httpClient = CreateHttpClient(apiKey);
-                    var payload = SerializePayload(MapToConverseRequest(request));
-                    var url = BuildModelUrl(modelId, "converse-stream");
-                    var httpRequest = BuildRequest(HttpMethod.Post, url, payload, RuntimeService, apiKey);
-
-                    response = await httpClient.SendAsync(
-                        httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-                    await ThrowOnErrorAsync(response, "streaming chat completion", cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    instrumentation.RecordFailure(nameof(OperationCanceledException));
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    instrumentation.RecordFailure(ex.GetType().Name);
-                    throw;
-                }
-
-                var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-                var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var streamId = $"bedrock-{Guid.NewGuid():N}";
-                // Maps Bedrock content block index -> OpenAI tool call index.
-                var toolCallIndexByBlock = new Dictionary<int, int>();
-                var reportedUsage = false;
-
-                await foreach (var message in AwsEventStreamReader.ReadMessagesAsync(stream, cancellationToken))
-                {
-                    if (message.MessageType == "exception" || message.ExceptionType != null)
-                    {
-                        var error = ExtractErrorFromJson(message.PayloadText, message.PayloadText);
-                        instrumentation.RecordFailure(message.ExceptionType ?? "BedrockStreamException");
-                        throw new LLMCommunicationException(
-                            $"Bedrock streaming error ({message.ExceptionType ?? "exception"}): {error}");
-                    }
-
-                    var chunk = MapStreamEvent(message, streamId, created, modelId, toolCallIndexByBlock);
-                    if (chunk == null)
-                    {
-                        continue;
-                    }
-
-                    if (!reportedUsage && chunk.Usage != null)
-                    {
-                        RecordUsage(chunk.Usage, "StreamChatCompletion");
-                        reportedUsage = true;
-                    }
-
-                    instrumentation.RecordChunk();
-                    yield return chunk;
-                }
+                yield return chunk;
             }
-            finally
+        }
+
+        private async IAsyncEnumerable<ChatCompletionChunk> ReadBedrockStreamAsync(
+            ChatCompletionRequest request,
+            string? apiKey,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using var httpClient = CreateHttpClient(apiKey);
+            var modelId = request.Model ?? ProviderModelId;
+            var payload = SerializePayload(MapToConverseRequest(request));
+            var url = BuildModelUrl(modelId, "converse-stream");
+            using var httpRequest = BuildRequest(HttpMethod.Post, url, payload, RuntimeService, apiKey);
+            using var response = await httpClient.SendAsync(
+                httpRequest,
+                HttpCompletionOption.ResponseHeadersRead,
+                cancellationToken);
+            await ThrowOnErrorAsync(response, "streaming chat completion", cancellationToken);
+
+            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+            var created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var streamId = $"bedrock-{Guid.NewGuid():N}";
+            var toolCallIndexByBlock = new Dictionary<int, int>();
+            var reportedUsage = false;
+
+            await foreach (var message in AwsEventStreamReader.ReadMessagesAsync(
+                stream,
+                cancellationToken))
             {
-                response?.Dispose();
-                httpClient?.Dispose();
-                instrumentation.Dispose();
+                if (message.MessageType == "exception" || message.ExceptionType != null)
+                {
+                    var error = ExtractErrorFromJson(message.PayloadText, message.PayloadText);
+                    throw new LLMCommunicationException(
+                        $"Bedrock streaming error ({message.ExceptionType ?? "exception"}): {error}");
+                }
+
+                var chunk = MapStreamEvent(
+                    message,
+                    streamId,
+                    created,
+                    modelId,
+                    toolCallIndexByBlock);
+                if (chunk == null)
+                {
+                    continue;
+                }
+
+                if (!reportedUsage && chunk.Usage != null)
+                {
+                    RecordUsage(chunk.Usage, "StreamChatCompletion");
+                    reportedUsage = true;
+                }
+
+                yield return chunk;
             }
         }
 

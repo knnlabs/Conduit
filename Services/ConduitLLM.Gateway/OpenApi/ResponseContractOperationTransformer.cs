@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.OpenApi;
 
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
@@ -131,7 +132,7 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
 
     internal static void Normalize(OpenApiOperation operation, string? httpMethod)
     {
-        RemoveLegacyAliases(operation.RequestBody?.Content);
+        OpenApiMediaTypeNormalizer.RemoveLegacyAliases(operation.RequestBody?.Content);
         if (operation.Responses is null)
         {
             return;
@@ -144,7 +145,7 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                 continue;
             }
 
-            RemoveLegacyAliases(response.Content);
+            OpenApiMediaTypeNormalizer.RemoveLegacyAliases(response.Content);
             if (!int.TryParse(responseEntry.Key, out var status) || status is < 200 or >= 300)
             {
                 continue;
@@ -177,13 +178,6 @@ public sealed class ResponseContractOperationTransformer : IOpenApiOperationTran
                 };
             }
         }
-    }
-
-    private static void RemoveLegacyAliases(IDictionary<string, OpenApiMediaType>? content)
-    {
-        content?.Remove("text/json");
-        content?.Remove("text/plain");
-        content?.Remove("application/*+json");
     }
 
     private static void AddOpenAIErrorResponses(

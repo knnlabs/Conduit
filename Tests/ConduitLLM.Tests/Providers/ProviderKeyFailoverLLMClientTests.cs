@@ -332,7 +332,5 @@ public sealed class ProviderKeyFailoverLLMClientTests
                 Data = []
             });
 
-        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-            => Task.FromResult(new ProviderCapabilities());
     }
 }

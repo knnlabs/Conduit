@@ -49,11 +49,6 @@ namespace ConduitLLM.Providers.Configuration
         public required IHttpClientFactory HttpClientFactory { get; init; }
 
         /// <summary>
-        /// Optional model capability service for capability detection.
-        /// </summary>
-        public IModelCapabilityService? CapabilityService { get; init; }
-
-        /// <summary>
         /// Optional per-mapping provider options JSON (see ModelProviderMapping.ProviderOptions),
         /// merged into outgoing requests by providers that support it (currently OpenRouter).
         /// </summary>
@@ -165,8 +160,7 @@ namespace ConduitLLM.Providers.Configuration
                 keyCredential,
                 modelId,
                 logger,
-                context.HttpClientFactory,
-                context.CapabilityService);
+                context.HttpClientFactory);
         }
 
         private static ILLMClient CreateGroqClient(

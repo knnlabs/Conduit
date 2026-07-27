@@ -56,6 +56,7 @@ export interface CreateModelCostDto {
   modelType?: ModelType; // Default: ModelType.Chat
   priority?: number; // Default: 0
   description?: string;
+  isActive?: boolean; // Default: true
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
   outputCostPerMillionTokens: number; // Cost per million tokens in USD
   reasoningCostPerMillionTokens?: number; // Optional override; defaults to output token cost

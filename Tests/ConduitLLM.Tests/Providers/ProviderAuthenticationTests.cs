@@ -4,7 +4,6 @@ using System.Text.Json;
 
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers.OpenAI;
 using ConduitLLM.Providers.Replicate;
 
@@ -25,12 +24,10 @@ namespace ConduitLLM.Tests.Providers
     public class ProviderAuthenticationTests : TestBase
     {
         private readonly Mock<IHttpClientFactory> _httpClientFactoryMock;
-        private readonly Mock<IModelCapabilityService> _capabilityServiceMock;
 
         public ProviderAuthenticationTests(ITestOutputHelper output) : base(output)
         {
             _httpClientFactoryMock = new Mock<IHttpClientFactory>();
-            _capabilityServiceMock = new Mock<IModelCapabilityService>();
         }
 
         #region OpenAI Provider Tests
@@ -82,8 +79,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             // Act
             var result = await client.VerifyAuthenticationAsync();
@@ -114,8 +110,7 @@ namespace ConduitLLM.Tests.Providers
                 new ProviderKeyCredential { Id = 1, ProviderId = 1, ApiKey = "sk-test" },
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
             using var source = new CancellationTokenSource();
             source.Cancel();
 
@@ -160,8 +155,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             // Act
             var result = await client.VerifyAuthenticationAsync();
@@ -213,8 +207,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             // Act
             await client.VerifyAuthenticationAsync();
@@ -266,8 +259,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             // Act
             await client.VerifyAuthenticationAsync(baseUrl: customBaseUrl);
@@ -347,8 +339,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 "gpt-4",
                 CreateLogger<OpenAIClient>().Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             // The HttpClient used for validation should not have BaseAddress set
             // when using absolute URLs

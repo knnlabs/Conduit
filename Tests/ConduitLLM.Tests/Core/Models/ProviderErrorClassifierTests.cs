@@ -48,6 +48,31 @@ public class ProviderErrorClassifierTests
             ProviderErrorClassifier.ClassifyException(outer));
     }
 
+    [Fact]
+    public void ClassifyException_UsesCommunicationMessageWhenBodyHasNoClassificationHint()
+    {
+        var exception = new LLMCommunicationException(
+            "Billing is not enabled for this account",
+            HttpStatusCode.Forbidden,
+            "{\"error\":\"request rejected\"}");
+
+        Assert.Equal(
+            ProviderErrorType.InsufficientBalance,
+            ProviderErrorClassifier.ClassifyException(exception));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest, "rate limit exceeded", ProviderErrorType.RateLimitExceeded)]
+    [InlineData(HttpStatusCode.BadRequest, "requested model does not exist", ProviderErrorType.ModelNotFound)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, "{\"error\":{\"message\":\"No endpoints found\"}}", ProviderErrorType.ModelNotFound)]
+    public void Classify_AppliesBodyRefinementsUsedByTrackingPaths(
+        HttpStatusCode statusCode,
+        string responseDetails,
+        ProviderErrorType expected)
+    {
+        Assert.Equal(expected, ProviderErrorClassifier.Classify(statusCode, responseDetails));
+    }
+
     [Theory]
     [InlineData(ProviderErrorType.InvalidApiKey, "invalid_api_key", "authentication")]
     [InlineData(ProviderErrorType.RateLimitExceeded, "rate_limit_exceeded", "rate_limit")]
@@ -60,5 +85,16 @@ public class ProviderErrorClassifierTests
     {
         Assert.Equal(expectedLabel, ProviderErrorClassifier.ToMetricLabel(errorType));
         Assert.Equal(expectedCategory, ProviderErrorClassifier.ToMetricCategory(errorType));
+    }
+
+    [Theory]
+    [InlineData(ProviderErrorType.InvalidApiKey, true)]
+    [InlineData(ProviderErrorType.RateLimitExceeded, true)]
+    [InlineData(ProviderErrorType.Unknown, false)]
+    public void ShouldTrack_RejectsOnlyUnknownClassifications(
+        ProviderErrorType errorType,
+        bool expected)
+    {
+        Assert.Equal(expected, ProviderErrorClassifier.ShouldTrack(errorType));
     }
 }

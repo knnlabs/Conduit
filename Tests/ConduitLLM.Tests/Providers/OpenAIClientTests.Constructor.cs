@@ -35,8 +35,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 modelId,
                 logger.Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             // Assert
             Assert.NotNull(client);
@@ -70,8 +69,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 modelId,
                 logger.Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             // Assert
             Assert.NotNull(client);
@@ -103,8 +101,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 "my-deployment",
                 logger.Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
 
             var ex = Assert.Throws<ConfigurationException>(act);
             Assert.Contains("Resource Name", ex.Message);

@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -60,38 +61,22 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<OverallMediaStorageStats> GetOverallStorageStatsAsync(int? virtualKeyGroupId = null)
         {
-            try
+            if (virtualKeyGroupId.HasValue)
             {
-                if (virtualKeyGroupId.HasValue)
-                {
-                    _logger.LogDebug("Getting storage statistics for virtual key group {GroupId}", virtualKeyGroupId.Value);
-                }
-                else
-                {
-                    _logger.LogDebug("Getting overall storage statistics");
-                }
-                return await _mediaLifecycleService.GetOverallStorageStatsAsync(virtualKeyGroupId);
+                _logger.LogDebug("Getting storage statistics for virtual key group {GroupId}", virtualKeyGroupId.Value);
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "Error getting overall storage statistics");
-                throw;
+                _logger.LogDebug("Getting overall storage statistics");
             }
+            return await _mediaLifecycleService.GetOverallStorageStatsAsync(virtualKeyGroupId);
         }
 
         /// <inheritdoc/>
         public async Task<MediaStorageStats> GetStorageStatsByVirtualKeyAsync(int virtualKeyId)
         {
-            try
-            {
-                _logger.LogDebug("Getting storage statistics for virtual key {VirtualKeyId}", virtualKeyId);
-                return await _mediaLifecycleService.GetStorageStatsByVirtualKeyAsync(virtualKeyId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting storage statistics for virtual key {VirtualKeyId}", virtualKeyId);
-                throw;
-            }
+            _logger.LogDebug("Getting storage statistics for virtual key {VirtualKeyId}", virtualKeyId);
+            return await _mediaLifecycleService.GetStorageStatsByVirtualKeyAsync(virtualKeyId);
         }
 
         /// <inheritdoc/>
@@ -99,20 +84,12 @@ namespace ConduitLLM.Admin.Services
             int virtualKeyId,
             bool includeDeleted = false)
         {
-            try
-            {
-                _logger.LogDebug("Getting media records for virtual key {VirtualKeyId}", virtualKeyId);
-                return includeDeleted
-                    ? await _mediaRepository.GetByVirtualKeyIdAsync(
-                        virtualKeyId,
-                        includeDeleted: true)
-                    : await _mediaLifecycleService.GetMediaByVirtualKeyAsync(virtualKeyId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting media records for virtual key {VirtualKeyId}", virtualKeyId);
-                throw;
-            }
+            _logger.LogDebug("Getting media records for virtual key {VirtualKeyId}", virtualKeyId);
+            return includeDeleted
+                ? await _mediaRepository.GetByVirtualKeyIdAsync(
+                    virtualKeyId,
+                    includeDeleted: true)
+                : await _mediaLifecycleService.GetMediaByVirtualKeyAsync(virtualKeyId);
         }
 
         /// <inheritdoc/>
@@ -182,11 +159,6 @@ namespace ConduitLLM.Admin.Services
             {
                 throw;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting media record {MediaId}", mediaId);
-                throw;
-            }
         }
 
         /// <inheritdoc/>
@@ -251,56 +223,32 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc/>
         public async Task<List<MediaRecord>> SearchMediaByStorageKeyAsync(string storageKeyPattern)
         {
-            try
+            if (string.IsNullOrWhiteSpace(storageKeyPattern))
             {
-                if (string.IsNullOrWhiteSpace(storageKeyPattern))
-                {
-                    return new List<MediaRecord>();
-                }
-
-                _logger.LogInformation("Searching media by storage key pattern: {Pattern}", storageKeyPattern);
-
-                // Use database-level filtering for efficient pattern matching
-                var matchingMedia = await _mediaRepository.SearchByStorageKeyPatternAsync(storageKeyPattern);
-
-                _logger.LogInformation("Found {Count} media records matching pattern", matchingMedia.Count);
-                return matchingMedia;
+                return new List<MediaRecord>();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error searching media by storage key pattern");
-                throw;
-            }
+
+            _logger.LogInformation("Searching media by storage key pattern: {Pattern}", storageKeyPattern);
+
+            // Use database-level filtering for efficient pattern matching
+            var matchingMedia = await _mediaRepository.SearchByStorageKeyPatternAsync(storageKeyPattern);
+
+            _logger.LogInformation("Found {Count} media records matching pattern", matchingMedia.Count);
+            return matchingMedia;
         }
 
         /// <inheritdoc/>
         public async Task<Dictionary<string, long>> GetStorageStatsByProviderAsync()
         {
-            try
-            {
-                _logger.LogDebug("Getting storage statistics by provider");
-                return await _mediaRepository.GetStorageStatsByProviderAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting storage statistics by provider");
-                throw;
-            }
+            _logger.LogDebug("Getting storage statistics by provider");
+            return await _mediaRepository.GetStorageStatsByProviderAsync();
         }
 
         /// <inheritdoc/>
         public async Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync()
         {
-            try
-            {
-                _logger.LogDebug("Getting storage statistics by media type");
-                return await _mediaRepository.GetStorageStatsByMediaTypeAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting storage statistics by media type");
-                throw;
-            }
+            _logger.LogDebug("Getting storage statistics by media type");
+            return await _mediaRepository.GetStorageStatsByMediaTypeAsync();
         }
     }
 }

@@ -276,6 +276,56 @@ namespace ConduitLLM.Tests.Providers
             AssertRequest(handler, streaming: true);
         }
 
+        [Theory]
+        [MemberData(nameof(HttpErrorCases))]
+        public async Task Embeddings_UseProviderSpecificErrorTranslation(
+            HttpStatusCode statusCode,
+            string responseBody,
+            Type expectedExceptionType,
+            string expectedMessage)
+        {
+            var client = CreateClient(new RecordingHandler(statusCode, responseBody));
+
+            var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
+                client.CreateEmbeddingAsync(new EmbeddingRequest
+                {
+                    Model = "muse-spark-1.1",
+                    Input = "hello"
+                }));
+
+            AssertProviderError(
+                exception,
+                expectedExceptionType,
+                expectedMessage,
+                statusCode,
+                responseBody);
+        }
+
+        [Theory]
+        [MemberData(nameof(HttpErrorCases))]
+        public async Task Images_UseProviderSpecificErrorTranslation(
+            HttpStatusCode statusCode,
+            string responseBody,
+            Type expectedExceptionType,
+            string expectedMessage)
+        {
+            var client = CreateClient(new RecordingHandler(statusCode, responseBody));
+
+            var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
+                client.CreateImageAsync(new ImageGenerationRequest
+                {
+                    Model = "muse-spark-1.1",
+                    Prompt = "hello"
+                }));
+
+            AssertProviderError(
+                exception,
+                expectedExceptionType,
+                expectedMessage,
+                statusCode,
+                responseBody);
+        }
+
         private MetaClient CreateClient(RecordingHandler handler)
         {
             var factory = new Mock<IHttpClientFactory>();

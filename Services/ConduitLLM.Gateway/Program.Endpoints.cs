@@ -6,8 +6,6 @@ public partial class Program
     {
         app.MapModelsEndpoints();
         app.MapGatewayApiEndpoints();
-        app.MapGatewayInternalOperationsEndpoints();
-
         // Map SignalR hubs for real-time updates
 
         // Customer-facing hubs require virtual key authentication

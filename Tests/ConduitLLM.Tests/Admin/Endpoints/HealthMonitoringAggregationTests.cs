@@ -52,8 +52,7 @@ public class HealthMonitoringAggregationTests
     [Fact]
     public void UnrecognizedReportedStatus_ProducesUnknownInstanceStatus()
     {
-        var heartbeat = Heartbeat("garbled", 10);
-        heartbeat.Status = "definitely-not-a-status";
+        var heartbeat = Heartbeat("garbled", 10, "definitely-not-a-status");
 
         var status = HealthMonitoringEndpoints.BuildClusterServiceStatus(
             "core-api",
@@ -79,17 +78,23 @@ public class HealthMonitoringAggregationTests
         status.Instances.Should().BeEmpty();
     }
 
-    private static ServiceHeartbeatSnapshot Heartbeat(string instanceId, double ageSeconds) =>
+    private static ServiceHeartbeatSnapshot Heartbeat(
+        string instanceId,
+        double ageSeconds,
+        string status = "healthy") =>
         new()
         {
             ServiceId = "gateway",
-            InstanceId = instanceId,
-            Version = "3.0.0",
-            CommitSha = "abc123",
-            BuildTimestamp = "2026-07-23T11:00:00Z",
-            Status = "healthy",
-            UptimeSeconds = 500,
-            IntervalSeconds = 30,
+            Heartbeat = new()
+            {
+                InstanceId = instanceId,
+                Version = "3.0.0",
+                CommitSha = "abc123",
+                BuildTimestamp = "2026-07-23T11:00:00Z",
+                Status = status,
+                UptimeSeconds = 500,
+                IntervalSeconds = 30
+            },
             ReceivedAtUtc = Now.AddSeconds(-ageSeconds)
         };
 }

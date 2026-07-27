@@ -52,15 +52,6 @@ namespace ConduitLLM.Core.Services
                     _logger.LogDebug("Task {RequestId} is no longer processing (state: {State}), stopping progress tracking", 
                         request.RequestId, taskStatus.State);
                     
-                    // Publish cancellation event for cleanup
-                    await _eventBus.PublishAsync(new VideoProgressTrackingCancelled
-                    {
-                        RequestId = request.RequestId,
-                        VirtualKeyId = request.VirtualKeyId,
-                        Reason = $"Task state changed to {taskStatus.State}",
-                        CorrelationId = request.CorrelationId
-                    });
-                    
                     return;
                 }
                 

@@ -20,7 +20,6 @@ namespace ConduitLLM.Tests.Middleware
         private readonly Mock<RequestDelegate> _mockNext;
         private readonly Mock<ILogger<OpenAIErrorMiddleware>> _mockLogger;
         private readonly Mock<IWebHostEnvironment> _mockEnvironment;
-        private readonly Mock<ISecurityEventLogger> _mockSecurityLogger;
         private readonly OpenAIErrorMiddleware _middleware;
         private readonly DefaultHttpContext _httpContext;
 
@@ -29,15 +28,13 @@ namespace ConduitLLM.Tests.Middleware
             _mockNext = new Mock<RequestDelegate>();
             _mockLogger = new Mock<ILogger<OpenAIErrorMiddleware>>();
             _mockEnvironment = new Mock<IWebHostEnvironment>();
-            _mockSecurityLogger = new Mock<ISecurityEventLogger>();
 
             _mockEnvironment.Setup(x => x.EnvironmentName).Returns(Environments.Production);
 
             _middleware = new OpenAIErrorMiddleware(
                 _mockNext.Object,
                 _mockLogger.Object,
-                _mockEnvironment.Object,
-                _mockSecurityLogger.Object);
+                _mockEnvironment.Object);
 
             _httpContext = new DefaultHttpContext();
             _httpContext.Response.Body = new MemoryStream();
@@ -350,7 +347,6 @@ namespace ConduitLLM.Tests.Middleware
                 _mockNext.Object,
                 _mockLogger.Object,
                 _mockEnvironment.Object,
-                _mockSecurityLogger.Object,
                 new ConduitLLM.Core.Services.ProviderErrorTranslator(
                     new ConduitLLM.Core.Configuration.CustomerErrorOptions { Mode = mode }));
 

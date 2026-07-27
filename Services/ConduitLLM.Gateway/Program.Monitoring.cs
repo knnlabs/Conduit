@@ -100,7 +100,7 @@ public partial class Program
             "BusinessMetricsService");
 
         // Add gateway operations metrics service for operation-level metrics
-        // Tracks LLM operations, batch operations, media operations, function executions, and routing decisions
+        // Tracks LLM, media, function, and routing operations.
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>(
             serviceProvider =>
             {
@@ -118,12 +118,12 @@ public partial class Program
         builder.Services.AddOpenApi("v1", options =>
         {
             options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.CoreApiDocumentTransformer>();
-            options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.OperationMetadataTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Core.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.VirtualKeySecurityOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.ResponseContractOperationTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Gateway.OpenApi.StructuredJsonSchemaTransformer>();
             options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.UnusedSchemaPruningDocumentTransformer>();
-            options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.OperationIdValidationDocumentTransformer>();
+            options.AddDocumentTransformer<ConduitLLM.Core.OpenApi.OperationIdValidationDocumentTransformer>();
         });
     }
 }

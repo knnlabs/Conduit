@@ -44,7 +44,6 @@ public class VirtualKeySignalRRateLimitFilterMethodLimitTests
         var filter = new VirtualKeySignalRRateLimitFilter(
             rateLimitService.Object,
             Mock.Of<ILogger<VirtualKeySignalRRateLimitFilter>>(),
-            Mock.Of<IEventPublisher>(),
             Options.Create(new SignalRConnectionOptions()));
         var invocation = CreateInvocation(callerContext.Object);
         var nextCallCount = 0;
@@ -82,7 +81,6 @@ public class VirtualKeySignalRRateLimitFilterMethodLimitTests
         var filter = new VirtualKeySignalRRateLimitFilter(
             rateLimitService.Object,
             Mock.Of<ILogger<VirtualKeySignalRRateLimitFilter>>(),
-            Mock.Of<IEventPublisher>(),
             Options.Create(new SignalRConnectionOptions()));
 
         var nextCalled = false;

@@ -168,8 +168,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 modelId,
                 logger.Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
         }
 
         /// <summary>
@@ -200,8 +199,7 @@ namespace ConduitLLM.Tests.Providers
                 keyCredential,
                 deploymentId,
                 logger.Object,
-                _httpClientFactoryMock.Object,
-                _capabilityServiceMock.Object);
+                _httpClientFactoryMock.Object);
         }
 
         private void SetupHttpResponse<T>(HttpStatusCode statusCode, T content, string contentType = "application/json")

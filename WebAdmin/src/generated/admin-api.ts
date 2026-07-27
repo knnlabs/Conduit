@@ -324,22 +324,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/admin/database-pool-metrics": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["Metrics_GetDatabasePoolMetrics"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/admin/routing-configurations/routing": {
     parameters: {
       query?: never;
@@ -1984,102 +1968,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/v1/admin/billing-audits": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["BillingAudit_QueryAuditEvents"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/admin/billing-audits/summary": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["BillingAudit_GetSummary"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/admin/billing-audits/anomalies": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["BillingAudit_DetectAnomalies"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/admin/billing-audits/revenue-loss": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["BillingAudit_GetRevenueLoss"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/admin/billing-audits/export": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    post: operations["BillingAudit_ExportAuditEvents"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/admin/billing-audits/event-types": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get: operations["BillingAudit_GetEventTypes"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/v1/admin/analytics/logs": {
     parameters: {
       query?: never;
@@ -3127,9 +3015,6 @@ export interface components {
       timestamp?: string;
       /** @description Application identity information. */
       application?: components["schemas"]["ApplicationInfoDto"];
-      /** @description Database connection pool metrics. Either DatabasePoolMetricsDto,
-       *     DatabasePoolMetricsUnavailableDto, or null when unavailable. */
-      database?: unknown;
       /** @description Host system metrics for the current process. */
       system?: components["schemas"]["SystemMetricsDto"];
     };
@@ -3332,159 +3217,6 @@ export interface components {
       architecture: components["schemas"]["BatchSpendingArchitectureResponse"];
       /** Format: date-time */
       timestamp: string;
-    };
-    BillingAnomaly: {
-      anomalyType?: string;
-      description?: string;
-      severity?: string;
-      /** Format: date-time */
-      detectedAt?: string;
-      affectedVirtualKeyIds?: number[];
-      /** Format: double */
-      estimatedImpact?: number;
-      metadata?: Record<string, never>;
-    };
-    /** @description DTO for billing audit event */
-    BillingAuditEventDto: {
-      /**
-       * Format: uuid
-       * @description Unique identifier for the audit event
-       */
-      id?: string;
-      /**
-       * Format: date-time
-       * @description Timestamp when the event occurred
-       */
-      timestamp?: string;
-      /** @description Type of billing event */
-      eventType?: string;
-      /**
-       * Format: int32
-       * @description Virtual key ID if applicable
-       */
-      virtualKeyId?: null | number;
-      /**
-       * Format: int32
-       * @description Virtual key group ID for group-level events.
-       */
-      virtualKeyGroupId?: null | number;
-      /** @description Virtual key name for display */
-      virtualKeyName?: null | string;
-      /** @description Model name */
-      model?: null | string;
-      /** @description Request identifier */
-      requestId?: null | string;
-      /**
-       * Format: double
-       * @description Calculated cost
-       */
-      calculatedCost?: null | number;
-      /** @description Failure reason if applicable */
-      failureReason?: null | string;
-      /** @description Provider type */
-      providerType?: null | string;
-      /**
-       * Format: int32
-       * @description HTTP status code
-       */
-      httpStatusCode?: null | number;
-      /** @description Request path */
-      requestPath?: null | string;
-      /** @description Whether cost was estimated */
-      isEstimated?: boolean;
-      usage?: null | components["schemas"]["Usage"];
-      toolUsage?: null | components["schemas"]["JsonElement"];
-      /**
-       * Format: double
-       * @description Total cost from tool usage (separate from token costs)
-       */
-      toolUsageCost?: null | number;
-      /** @description Additional metadata */
-      metadata?: null | Record<string, never>;
-    };
-    /** @enum {unknown} */
-    BillingAuditEventType:
-      | "usageTracked"
-      | "usageEstimated"
-      | "zeroCostSkipped"
-      | "missingCostConfig"
-      | "missingUsageData"
-      | "spendUpdateFailed"
-      | "errorResponseSkipped"
-      | "streamingUsageMissing"
-      | "noVirtualKey"
-      | "jsonParseError"
-      | "unexpectedError"
-      | "toolUsageTracked"
-      | "toolUsageMissingCostConfig"
-      | "pricingCalculationFailed"
-      | "billingReconciliationMismatch"
-      | "invalidPricingConfiguration"
-      | "configuredZeroCost"
-      | "unpricedUsage"
-      | "modelCostCanaryFailed"
-      | null;
-    BillingAuditEventTypeResponse: {
-      value: components["schemas"]["BillingAuditEventType"];
-      name: string;
-      description: string;
-    };
-    /** @description Request DTO for exporting audit events */
-    BillingAuditExportRequest: {
-      /**
-       * Format: date-time
-       * @description Start date for export
-       */
-      from?: string;
-      /**
-       * Format: date-time
-       * @description End date for export
-       */
-      to?: string;
-      /** @description Export format */
-      format?: components["schemas"]["ExportFormat"];
-      /**
-       * Format: int32
-       * @description Optional virtual key ID filter
-       */
-      virtualKeyId?: null | number;
-      /**
-       * Format: int32
-       * @description Optional virtual key group ID filter.
-       */
-      virtualKeyGroupId?: null | number;
-      eventType?: null | components["schemas"]["BillingAuditEventType"];
-    };
-    BillingAuditSummary: {
-      /** Format: int64 */
-      totalEvents?: number;
-      /** Format: int64 */
-      successfulBillings?: number;
-      /** Format: int64 */
-      zeroCostSkipped?: number;
-      /** Format: int64 */
-      estimatedUsages?: number;
-      /** Format: int64 */
-      failedUpdates?: number;
-      /** Format: int64 */
-      errorResponsesSkipped?: number;
-      /** Format: int64 */
-      missingUsageData?: number;
-      /** Format: double */
-      totalBilledAmount?: number;
-      /** Format: double */
-      potentialRevenueLoss?: number;
-      eventTypeBreakdown?: {
-        [key: string]: number;
-      };
-      providerTypeBreakdown?: {
-        [key: string]: number;
-      };
-    };
-    BillingRevenueLossResponse: {
-      /** Format: double */
-      potentialRevenueLoss: number;
-      currency: string;
     };
     /** @description Result of a bulk delete operation */
     BulkDeleteResult: {
@@ -3862,6 +3594,7 @@ export interface components {
       /** Format: int32 */
       priority?: number;
       description?: null | string;
+      isActive?: boolean;
       /** Format: double */
       inputCostPerMillionTokens?: number;
       /** Format: double */
@@ -4109,74 +3842,6 @@ export interface components {
       /** Format: int32 */
       tableCount?: null | number;
     };
-    /** @description Connection pool configuration settings. */
-    DatabasePoolConfigurationDto: {
-      /**
-       * Format: int32
-       * @description Minimum number of connections kept in the pool.
-       */
-      minPoolSize?: number;
-      /**
-       * Format: int32
-       * @description Maximum number of connections allowed in the pool.
-       */
-      maxPoolSize?: number;
-      /**
-       * Format: int32
-       * @description Maximum lifetime of a pooled connection, in seconds.
-       */
-      connectionLifetime?: number;
-      /**
-       * Format: int32
-       * @description Time before an idle pooled connection is closed, in seconds.
-       */
-      connectionIdleLifetime?: number;
-      /** @description Whether connection pooling is enabled. */
-      pooling?: boolean;
-    };
-    /** @description Non-sensitive connection details extracted from the database connection string. */
-    DatabasePoolConnectionInfoDto: {
-      /** @description The database server host. */
-      host?: null | string;
-      /**
-       * Format: int32
-       * @description The database server port.
-       */
-      port?: number;
-      /** @description The database name. */
-      database?: null | string;
-      /** @description The application name reported to the database server. */
-      applicationName?: string;
-    };
-    /** @description Current measured connection pool health metrics. */
-    DatabasePoolCurrentMetricsDto: {
-      /**
-       * Format: int64
-       * @description Time taken to acquire a connection from the pool, in milliseconds.
-       */
-      connectionAcquisitionTimeMs?: number;
-      /** @description Health status derived from the connection acquisition time
-       *     ("healthy", "degraded", or "unhealthy"). */
-      healthStatus?: string;
-      /** @description Additional note about the metrics. */
-      note?: string;
-    };
-    /** @description Database connection pool metrics for a PostgreSQL database. */
-    DatabasePoolMetricsDto: {
-      /**
-       * Format: date-time
-       * @description UTC timestamp when the metrics were captured.
-       */
-      timestamp?: string;
-      /** @description The database provider name (e.g. "postgresql"). */
-      provider?: string;
-      /** @description Non-sensitive connection details extracted from the connection string. */
-      connectionString?: components["schemas"]["DatabasePoolConnectionInfoDto"];
-      /** @description Connection pool configuration settings. */
-      poolConfiguration?: components["schemas"]["DatabasePoolConfigurationDto"];
-      /** @description Current measured pool health metrics. */
-      currentMetrics?: components["schemas"]["DatabasePoolCurrentMetricsDto"];
-    };
     DetailedCostDataDto: {
       name?: string;
       /** Format: double */
@@ -4197,10 +3862,68 @@ export interface components {
       keyId: number;
     };
     DiscoveredModelDto: {
-      id?: string;
-      providerType?: null | components["schemas"]["ProviderType"];
-      displayName?: string;
-      capabilities?: Record<string, never>;
+      id: string;
+      provider: null | string;
+      display_name: string;
+      description: string;
+      model_card_url: string;
+      /** Format: int32 */
+      max_tokens: number;
+      /** Format: int32 */
+      max_input_tokens: number;
+      /** Format: int32 */
+      max_output_tokens: number;
+      tokenizer_type: string;
+      input_modalities: string[];
+      output_modalities: string[];
+      capability_source: string;
+      /** Format: date-time */
+      capabilities_last_verified_at: null | string;
+      parameters: string;
+      capabilities: components["schemas"]["DiscoveryModelCapabilitiesDto"];
+      pricing?: null | components["schemas"]["DiscoveryModelPricingDto"];
+    };
+    DiscoveryModelCapabilitiesDto: {
+      chat: boolean;
+      chat_stream: boolean;
+      image_input: boolean;
+      video_input: boolean;
+      audio_input: boolean;
+      file_input: boolean;
+      vision: boolean;
+      video_understanding: boolean;
+      image_generation: boolean;
+      video_generation: boolean;
+      embeddings: boolean;
+      function_calling: boolean;
+      speech_to_text: boolean;
+      text_to_speech: boolean;
+      rerank: boolean;
+      tool_use?: null | boolean;
+      json_mode?: null | boolean;
+      /** Format: int32 */
+      max_tokens?: null | number;
+      /** Format: int32 */
+      max_output_tokens?: null | number;
+      /** @default false */
+      pdf_input: boolean;
+    };
+    DiscoveryModelPricingDto: {
+      pricing_model: string;
+      /** Format: double */
+      input_cost_per_million_tokens: number;
+      /** Format: double */
+      output_cost_per_million_tokens: number;
+      /** Format: double */
+      cached_input_cost_per_million_tokens: null | number;
+      /** Format: double */
+      embedding_cost_per_million_tokens: null | number;
+      currency: string;
+    };
+    DiscoveryModelsResponse: {
+      data: components["schemas"]["DiscoveredModelDto"][];
+      /** Format: int32 */
+      count: number;
     };
     /** @description Result of applying or dismissing a single drift item. */
     DriftActionResultDto: {
@@ -4297,11 +4020,6 @@ export interface components {
       | "failed"
       | "cancelled"
       | "timedOut";
-    /**
-     * @description Export format options
-     * @enum {unknown}
-     */
-    ExportFormat: "json" | "csv" | "excel";
     /** @description DTO for fatal error information */
     FatalErrorDto: {
       /** @description Type of error */
@@ -4715,7 +4433,6 @@ export interface components {
       whitelistFilters: components["schemas"]["IpFilterDto"][];
       blacklistFilters: components["schemas"]["IpFilterDto"][];
     };
-    JsonElement: unknown;
     /** @description DTO for detailed key error information */
     KeyErrorDetailsDto: {
       /**
@@ -5920,10 +5637,6 @@ export interface components {
       };
       groupQuotaUsage?: components["schemas"]["MediaGroupQuotaUsage"][];
     };
-    PagedResultOfBillingAuditEventDto: {
-      data?: components["schemas"]["BillingAuditEventDto"][];
-      pagination?: components["schemas"]["PaginationMetadata"];
-    };
     PagedResultOfLogRequestDto: {
       data?: components["schemas"]["LogRequestDto"][];
       pagination?: components["schemas"]["PaginationMetadata"];
@@ -6123,28 +5836,6 @@ export interface components {
       usedDefaultRate?: boolean;
       /** @description Warning message if any */
       warningMessage?: null | string;
-    };
-    PricingTemplateConditionsDto: {
-      quality?: null | string;
-      resolution?: null | string;
-      with_audio?: null | boolean;
-      /** Format: int32 */
-      inference_steps_gte?: null | number;
-    };
-    PricingTemplateResponse: {
-      pricingType: string;
-      /** Format: double */
-      defaultRate: number;
-      unitField: string;
-      rules: components["schemas"]["PricingTemplateRuleDto"][];
-    };
-    PricingTemplateRuleDto: {
-      /** Format: int32 */
-      priority: number;
-      description: string;
-      conditions: components["schemas"]["PricingTemplateConditionsDto"];
-      /** Format: double */
-      rate: number;
     };
     /** @description Information about a pricing type */
     PricingTypeInfo: {
@@ -6437,6 +6128,8 @@ export interface components {
       helpText?: null | string;
       /** @description Optional example value shown as the input placeholder. */
       placeholder?: null | string;
+      /** @description Optional registry-defined value used when the operator supplies none. */
+      defaultValue?: null | string;
       /** @description Whether the operator must supply this setting. */
       required?: boolean;
       /** @description Whether the value is sensitive and should be entered masked. */
@@ -6761,14 +6454,6 @@ export interface components {
       startTime?: string;
       uptime?: string;
       customerMode?: string;
-    };
-    SearchUsageMetadata: {
-      /** Format: int32 */
-      query_count?: number;
-      /** Format: int32 */
-      document_count?: number;
-      /** Format: int32 */
-      chunked_document_count?: number;
     };
     /** @description Simplified model information for display within a series context. */
     SeriesSimpleModelDto: {
@@ -7357,39 +7042,6 @@ export interface components {
         [key: string]: components["schemas"]["ModelRateLimitDto"];
       };
     };
-    Usage: {
-      /** Format: int32 */
-      prompt_tokens?: null | number;
-      /** Format: int32 */
-      completion_tokens?: null | number;
-      /** Format: int32 */
-      total_tokens?: null | number;
-      /** Format: int32 */
-      image_count?: null | number;
-      /** Format: double */
-      video_duration_seconds?: null | number;
-      video_resolution?: null | string;
-      is_batch?: null | boolean;
-      image_quality?: null | string;
-      image_resolution?: null | string;
-      /** Format: int32 */
-      cached_input_tokens?: null | number;
-      /** Format: int32 */
-      cached_write_tokens?: null | number;
-      /** Format: int32 */
-      search_units?: null | number;
-      search_metadata?: null | components["schemas"]["SearchUsageMetadata"];
-      /** Format: int32 */
-      inference_steps?: null | number;
-      /** Format: int32 */
-      reasoning_tokens?: null | number;
-      /** Format: double */
-      audio_duration_seconds?: null | number;
-      /** Format: int32 */
-      tts_characters?: null | number;
-      metadata?: null | Record<string, never>;
-      pricing_parameters?: null | Record<string, never>;
-    };
     UsageDto: {
       /** Format: int32 */
       promptTokens?: null | number;
@@ -7488,11 +7140,6 @@ export interface components {
       lastUsed?: null | string;
       /** Format: int32 */
       uniqueModels?: number;
-    };
-    VirtualKeyDiscoveryPreviewDto: {
-      data?: components["schemas"]["DiscoveredModelDto"][];
-      /** Format: int32 */
-      count?: number;
     };
     VirtualKeyDto: {
       /** Format: int32 */
@@ -9110,39 +8757,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["AllMetricsDto"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  Metrics_GetDatabasePoolMetrics: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["DatabasePoolMetricsDto"];
         };
       };
       /** @description Internal Server Error */
@@ -15635,7 +15249,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["VirtualKeyDiscoveryPreviewDto"];
+          "application/json": components["schemas"]["DiscoveryModelsResponse"];
         };
       };
       /** @description Not Found */
@@ -16574,315 +16188,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HealthHistoryResponse"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  BillingAudit_QueryAuditEvents: {
-    parameters: {
-      query: {
-        from: string;
-        to: string;
-        eventType?: components["schemas"]["BillingAuditEventType"];
-        virtualKeyId?: number;
-        virtualKeyGroupId?: number;
-        page?: number;
-        pageSize?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["PagedResultOfBillingAuditEventDto"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  BillingAudit_GetSummary: {
-    parameters: {
-      query?: {
-        from?: string;
-        to?: string;
-        virtualKeyId?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["BillingAuditSummary"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  BillingAudit_DetectAnomalies: {
-    parameters: {
-      query?: {
-        from?: string;
-        to?: string;
-        /** @description 1-based page number. */
-        page?: number;
-        /** @description Items per page (maximum 100). */
-        pageSize?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            data: components["schemas"]["BillingAnomaly"][];
-            pagination: {
-              /** Format: int32 */
-              page: number;
-              /** Format: int32 */
-              pageSize: number;
-              /** Format: int32 */
-              totalItems: number;
-              /** Format: int32 */
-              totalPages: number;
-            };
-          };
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  BillingAudit_GetRevenueLoss: {
-    parameters: {
-      query?: {
-        from?: string;
-        to?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["BillingRevenueLossResponse"];
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  BillingAudit_ExportAuditEvents: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["BillingAuditExportRequest"];
-      };
-    };
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "text/csv": string;
-          "application/json": string;
-        };
-      };
-      /** @description Bad Request */
-      400: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-      /** @description Internal Server Error */
-      500: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/problem+json": components["schemas"]["AdminProblemDetails"];
-        };
-      };
-    };
-  };
-  BillingAudit_GetEventTypes: {
-    parameters: {
-      query?: {
-        /** @description 1-based page number. */
-        page?: number;
-        /** @description Items per page (maximum 100). */
-        pageSize?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          /** @description Request identifier for support and distributed tracing. */
-          "x-request-id"?: string;
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            data: components["schemas"]["BillingAuditEventTypeResponse"][];
-            pagination: {
-              /** Format: int32 */
-              page: number;
-              /** Format: int32 */
-              pageSize: number;
-              /** Format: int32 */
-              totalItems: number;
-              /** Format: int32 */
-              totalPages: number;
-            };
-          };
         };
       };
       /** @description Internal Server Error */
@@ -19087,7 +18392,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["PricingTemplateResponse"];
+          "application/json": components["schemas"]["PricingRulesConfig"];
         };
       };
       /** @description Internal Server Error */

@@ -65,9 +65,8 @@ public sealed class BoundaryDtoTests
     }
 
     [Fact]
-    public void AuditQueriesShareTheCanonicalPaginationDefault()
+    public void PricingAuditQueriesUseTheCanonicalPaginationDefault()
     {
-        new BillingAuditQueryRequest().PageSize.Should().Be(Pagination.DefaultPageSize);
         new PricingAuditQueryRequest().PageSize.Should().Be(Pagination.DefaultPageSize);
     }
 

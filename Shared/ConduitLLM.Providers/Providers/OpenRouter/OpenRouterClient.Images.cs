@@ -1,7 +1,6 @@
 using System.Text.Json.Serialization;
 
 using CoreModels = ConduitLLM.Core.Models;
-using CoreUtils = ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -69,14 +68,11 @@ namespace ConduitLLM.Providers.OpenRouter
                 Logger.LogInformation("Creating images via {Provider} at {Endpoint} with model {Model}",
                     ProviderName, endpoint, body["model"]);
 
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<Dictionary<string, object?>, OpenRouterImageResponse>(
+                var response = await PostJsonAsync<Dictionary<string, object?>, OpenRouterImageResponse>(
                     client,
-                    HttpMethod.Post,
                     endpoint,
                     body,
-                    CreateStandardHeaders(apiKey),
-                    DefaultJsonOptions,
-                    Logger,
+                    apiKey,
                     cancellationToken);
 
                 var data = response.Data?

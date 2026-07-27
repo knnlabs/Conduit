@@ -1,8 +1,11 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+
 using StackExchange.Redis;
+
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
@@ -313,15 +316,15 @@ namespace ConduitLLM.Admin.Services
             string status,
             string leaderInstanceId,
             string triggeredBy) => new()
-        {
-            LastRunTimeUtc = DateTime.UtcNow,
-            FilesDeleted = filesDeleted,
-            BytesFreed = bytesFreed,
-            DurationSeconds = durationSeconds,
-            Status = status,
-            LeaderInstanceId = leaderInstanceId,
-            TriggeredBy = triggeredBy
-        };
+            {
+                LastRunTimeUtc = DateTime.UtcNow,
+                FilesDeleted = filesDeleted,
+                BytesFreed = bytesFreed,
+                DurationSeconds = durationSeconds,
+                Status = status,
+                LeaderInstanceId = leaderInstanceId,
+                TriggeredBy = triggeredBy
+            };
 
         /// <inheritdoc />
         public async Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default)
@@ -368,23 +371,15 @@ namespace ConduitLLM.Admin.Services
             using var scope = _scopeFactory.CreateScope();
             var globalSettingService = scope.ServiceProvider.GetRequiredService<IAdminGlobalSettingService>();
 
-            try
+            // Use the service layer which publishes GlobalSettingChanged events
+            await globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
             {
-                // Use the service layer which publishes GlobalSettingChanged events
-                await globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
-                {
-                    Key = SETTING_KEY_ENABLED,
-                    Value = enabled.ToString().ToLowerInvariant(),
-                    Description = "Runtime toggle for the media cleanup service"
-                });
+                Key = SETTING_KEY_ENABLED,
+                Value = enabled.ToString().ToLowerInvariant(),
+                Description = "Runtime toggle for the media cleanup service"
+            });
 
-                _logger.LogInformation("Media cleanup service enabled state changed to: {Enabled}", enabled);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting cleanup enabled state in GlobalSettings");
-                throw;
-            }
+            _logger.LogInformation("Media cleanup service enabled state changed to: {Enabled}", enabled);
         }
 
         /// <inheritdoc />
@@ -456,11 +451,6 @@ namespace ConduitLLM.Admin.Services
             catch (ArgumentOutOfRangeException)
             {
                 throw; // Re-throw validation errors
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting simple retention override in GlobalSettings");
-                throw;
             }
         }
 

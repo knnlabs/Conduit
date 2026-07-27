@@ -59,8 +59,12 @@ namespace ConduitLLM.Providers.OpenRouter
                     }
                 }
 
-                var submit = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<Dictionary<string, object?>, OpenRouterVideoSubmitResponse>(
-                    client, HttpMethod.Post, $"{BaseUrl}/videos", submitBody, headers, DefaultJsonOptions, Logger, cancellationToken);
+                var submit = await PostJsonAsync<Dictionary<string, object?>, OpenRouterVideoSubmitResponse>(
+                    client,
+                    $"{BaseUrl}/videos",
+                    submitBody,
+                    apiKey,
+                    cancellationToken);
 
                 var jobId = submit.Id;
                 if (string.IsNullOrEmpty(jobId))

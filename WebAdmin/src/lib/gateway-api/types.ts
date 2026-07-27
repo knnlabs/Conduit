@@ -6,7 +6,7 @@ export type GatewayOperations = operations;
 export type GatewayVideoGenerationRequest =
   components["schemas"]["VideoGenerationRequest"];
 export type GatewayVideoGenerationTaskResponse =
-  components["schemas"]["VideoGenerationTaskResponse"];
+  components["schemas"]["AsyncTaskResponse"];
 export type GatewayFunctionExecutionRequest =
   components["schemas"]["FunctionExecutionRequest"];
 

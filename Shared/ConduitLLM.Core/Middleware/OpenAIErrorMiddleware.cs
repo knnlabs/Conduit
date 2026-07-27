@@ -19,8 +19,6 @@ namespace ConduitLLM.Core.Middleware
     /// </summary>
     public class OpenAIErrorMiddleware : ExceptionHandlingMiddlewareBase
     {
-        private readonly ISecurityEventLogger? _securityEventLogger;
-
         private static readonly Counter ExceptionsHandled = Prometheus.Metrics
             .CreateCounter("conduit_error_middleware_exceptions_total", "Total exceptions handled by error middleware",
                 new CounterConfiguration
@@ -36,22 +34,19 @@ namespace ConduitLLM.Core.Middleware
         /// <param name="next">The next middleware in the pipeline.</param>
         /// <param name="logger">The logger.</param>
         /// <param name="environment">The web host environment.</param>
-        /// <param name="securityEventLogger">Optional security event logger.</param>
         /// <param name="providerErrorTranslator">Customer-mode provider error translation
         /// (CONDUIT_CUSTOMER_MODE); registered in the Gateway.</param>
         public OpenAIErrorMiddleware(
             RequestDelegate next,
             ILogger<OpenAIErrorMiddleware> logger,
             IWebHostEnvironment environment,
-            ISecurityEventLogger? securityEventLogger = null,
             IProviderErrorTranslator? providerErrorTranslator = null)
             : base(next, logger, environment, providerErrorTranslator)
         {
-            _securityEventLogger = securityEventLogger;
         }
 
         /// <inheritdoc/>
-        protected override async Task OnExceptionMappedAsync(
+        protected override Task OnExceptionMappedAsync(
             HttpContext context,
             Exception exception,
             ExceptionToResponseMapper.ExceptionMappingResult mapping)
@@ -63,8 +58,7 @@ namespace ConduitLLM.Core.Middleware
                 mapping.StatusCode.ToString(),
                 normalizedEndpoint).Inc();
 
-            // Log security-relevant exceptions
-            await LogSecurityExceptionAsync(context, exception, mapping.StatusCode);
+            return Task.CompletedTask;
         }
 
         /// <inheritdoc/>
@@ -116,40 +110,6 @@ namespace ConduitLLM.Core.Middleware
             return "/other";
         }
 
-        private async Task LogSecurityExceptionAsync(HttpContext context, Exception exception, int statusCode)
-        {
-            if (_securityEventLogger == null)
-                return;
-
-            // Log certain exceptions as security events
-            if (exception is UnauthorizedAccessException || exception is AuthorizationException)
-            {
-                var virtualKey = context.Request.Headers["X-Virtual-Key"].FirstOrDefault() ?? "Unknown";
-                var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-
-                await _securityEventLogger.LogAuthorizationViolationAsync(
-                    virtualKey,
-                    context.Request.Path,
-                    context.Request.Method,
-                    ipAddress);
-            }
-            else if (statusCode == 400 &&
-                     (exception is ArgumentException || exception is InvalidRequestException))
-            {
-                // Potential injection attempt or malformed input
-                var ipAddress = context.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-                await _securityEventLogger.LogSuspiciousActivityAsync(
-                    $"Malformed input detected: {exception.GetType().Name}",
-                    SecurityEventSeverity.Low,
-                    new Dictionary<string, object>
-                    {
-                        ["path"] = context.Request.Path.ToString(),
-                        ["method"] = context.Request.Method,
-                        ["ipAddress"] = ipAddress,
-                        ["traceId"] = context.TraceIdentifier
-                    });
-            }
-        }
     }
 
     /// <summary>

@@ -28,10 +28,34 @@ public static class ProviderErrorClassifier
             _ => ProviderErrorType.Unknown
         };
 
+        if (string.IsNullOrWhiteSpace(responseDetails))
+        {
+            return errorType;
+        }
+
         if (errorType == ProviderErrorType.AccessForbidden &&
             IsBalanceResponse(responseDetails))
         {
             return ProviderErrorType.InsufficientBalance;
+        }
+
+        if (ContainsAny(responseDetails, "rate limit", "too many requests"))
+        {
+            return ProviderErrorType.RateLimitExceeded;
+        }
+
+        if (responseDetails.Contains("model", StringComparison.OrdinalIgnoreCase) &&
+            ContainsAny(responseDetails, "not found", "does not exist", "invalid model"))
+        {
+            return ProviderErrorType.ModelNotFound;
+        }
+
+        // OpenRouter reports an unavailable model/routing combination as a 503 with
+        // "no endpoints" or "no provider" in the response body.
+        if (errorType == ProviderErrorType.ServiceUnavailable &&
+            ContainsAny(responseDetails, "no endpoints", "no provider"))
+        {
+            return ProviderErrorType.ModelNotFound;
         }
 
         return errorType;
@@ -47,7 +71,9 @@ public static class ProviderErrorClassifier
         var communicationException = LLMCommunicationException.FindWithStatus(ex);
         if (communicationException is not null)
         {
-            return Classify(communicationException.StatusCode, communicationException.ResponseBody);
+            return Classify(
+                communicationException.StatusCode,
+                $"{communicationException.ResponseBody} {communicationException.Message}");
         }
 
         return ex switch
@@ -192,6 +218,12 @@ public static class ProviderErrorClassifier
         => errorType is ProviderErrorType.InvalidApiKey
             or ProviderErrorType.InsufficientBalance
             or ProviderErrorType.AccessForbidden;
+
+    /// <summary>
+    /// Returns whether a classification carries actionable provider-health information.
+    /// </summary>
+    public static bool ShouldTrack(ProviderErrorType errorType)
+        => errorType != ProviderErrorType.Unknown;
 
     /// <summary>
     /// Returns true when the response details carry a billing/quota hint. Used to refine

@@ -1,8 +1,5 @@
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
@@ -48,87 +45,46 @@ namespace ConduitLLM.Providers.Replicate
 
             Logger.LogDebug("Creating streaming chat completion with Replicate for model '{ModelId}'", ProviderModelId);
 
-            using var logScope = BeginProviderLogScope("StreamChatCompletion");
-            var instrumentation = BeginStreamingScope("StreamChatCompletion");
-            ProviderInstrumentation.PollingScope? pollScope = null;
-
-            ReplicatePredictionRequest? predictionRequest;
-            ReplicatePredictionResponse? predictionResponse;
-            ReplicatePredictionResponse? finalPrediction = null;
-
-            try
+            await foreach (var chunk in RunStreamingAsync(
+                ct => ReadReplicateStreamAsync(request, apiKey, ct),
+                "StreamChatCompletion",
+                request.Model ?? ProviderModelId,
+                cancellationToken))
             {
-                try
-                {
-                    // Replicate doesn't natively support streaming in the common SSE format
-                    // Instead, we'll simulate streaming by getting the full response and breaking it into chunks
-                    predictionRequest = MapToPredictionRequest(request);
-                    predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    instrumentation.RecordFailure(nameof(OperationCanceledException));
-                    throw;
-                }
-                catch (LLMCommunicationException)
-                {
-                    instrumentation.RecordFailure(nameof(LLMCommunicationException));
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "An unexpected error occurred starting Replicate prediction");
-                    instrumentation.RecordFailure(ex.GetType().Name);
-                    throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-                }
-
-                // First chunk with role "assistant"
-                instrumentation.RecordChunk();
-                yield return CreateChatCompletionChunk(string.Empty, ProviderModelId, isFirst: true);
-
-                try
-                {
-                    if (predictionResponse != null)
-                    {
-                        pollScope = BeginPollingScope("StreamChatCompletion");
-                        finalPrediction = await PollPredictionUntilCompletedAsync(
-                            predictionResponse.Id, apiKey, cancellationToken, pollScope);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    instrumentation.RecordFailure(nameof(OperationCanceledException));
-                    throw;
-                }
-                catch (LLMCommunicationException)
-                {
-                    instrumentation.RecordFailure(nameof(LLMCommunicationException));
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex, "An unexpected error occurred polling Replicate prediction");
-                    instrumentation.RecordFailure(ex.GetType().Name);
-                    throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-                }
-
-                if (finalPrediction != null)
-                {
-                    var content = ExtractTextFromPredictionOutput(finalPrediction.Output);
-                    if (!string.IsNullOrEmpty(content))
-                    {
-                        // Replicate doesn't report token usage; the Gateway's streaming
-                        // accumulator estimates and bills it as estimated usage.
-                        instrumentation.RecordChunk();
-                        yield return CreateChatCompletionChunk(
-                            content, ProviderModelId, isFirst: false, finishReason: "stop");
-                    }
-                }
+                yield return chunk;
             }
-            finally
+        }
+
+        private async IAsyncEnumerable<ChatCompletionChunk> ReadReplicateStreamAsync(
+            ChatCompletionRequest request,
+            string? apiKey,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            // Replicate does not expose the common SSE stream, so emit the completed prediction
+            // as a small sequence of OpenAI-compatible chunks.
+            var predictionRequest = MapToPredictionRequest(request);
+            var predictionResponse = await StartPredictionAsync(
+                predictionRequest,
+                apiKey,
+                cancellationToken);
+
+            yield return CreateChatCompletionChunk(string.Empty, ProviderModelId, isFirst: true);
+
+            using var pollScope = BeginPollingScope("StreamChatCompletion");
+            var finalPrediction = await PollPredictionUntilCompletedAsync(
+                predictionResponse.Id,
+                apiKey,
+                cancellationToken,
+                pollScope);
+            var content = ExtractTextFromPredictionOutput(finalPrediction.Output);
+            if (!string.IsNullOrEmpty(content))
             {
-                pollScope?.Dispose();
-                instrumentation.Dispose();
+                // Replicate does not report token usage; the Gateway estimates it.
+                yield return CreateChatCompletionChunk(
+                    content,
+                    ProviderModelId,
+                    isFirst: false,
+                    finishReason: "stop");
             }
         }
 

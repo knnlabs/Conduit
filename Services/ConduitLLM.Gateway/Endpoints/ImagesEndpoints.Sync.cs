@@ -261,8 +261,14 @@ namespace ConduitLLM.Gateway.Endpoints
                 }
 
                 var errorType = ConduitLLM.Core.Models.ProviderErrorClassifier.ClassifyException(ex);
-                int? httpStatusCode = (ex as LLMCommunicationException)?.StatusCode.HasValue == true
-                    ? (int)(ex as LLMCommunicationException)!.StatusCode!.Value
+                if (!ConduitLLM.Core.Models.ProviderErrorClassifier.ShouldTrack(errorType))
+                {
+                    return;
+                }
+
+                var communicationException = LLMCommunicationException.FindWithStatus(ex);
+                int? httpStatusCode = communicationException?.StatusCode is { } statusCode
+                    ? (int)statusCode
                     : null;
 
                 var errorInfo = new ConduitLLM.Core.Models.ProviderErrorInfo

@@ -2,9 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Gateway.Services;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Gateway.Authentication
 {
@@ -16,7 +14,6 @@ namespace ConduitLLM.Gateway.Authentication
     {
         private readonly ISignalRRateLimitService _signalRRateLimitService;
         private readonly ILogger<VirtualKeySignalRRateLimitFilter> _logger;
-        private readonly IEventPublisher _eventPublisher;
         private readonly SignalRConnectionOptions _connectionOptions;
 
         /// <summary>
@@ -25,12 +22,10 @@ namespace ConduitLLM.Gateway.Authentication
         public VirtualKeySignalRRateLimitFilter(
             ISignalRRateLimitService signalRRateLimitService,
             ILogger<VirtualKeySignalRRateLimitFilter> logger,
-            IEventPublisher eventPublisher,
             IOptions<SignalRConnectionOptions> connectionOptions)
         {
             _signalRRateLimitService = signalRRateLimitService ?? throw new ArgumentNullException(nameof(signalRRateLimitService));
             _logger = logger;
-            _eventPublisher = eventPublisher;
             _connectionOptions = connectionOptions?.Value ?? new SignalRConnectionOptions();
         }
 
@@ -73,22 +68,6 @@ namespace ConduitLLM.Gateway.Authentication
                     LoggingSanitizer.S(virtualKeyHash), result.LimitType, invocationContext.HubMethodName,
                     result.Limit - result.RequestsRemaining, result.Limit, result.ActiveConnections);
                 
-                // Publish rate limit exceeded event
-                var virtualKeyId = 0;
-                if (invocationContext.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
-                {
-                    virtualKeyId = keyId;
-                }
-                
-                PublishRateLimitExceeded(
-                    virtualKeyHash, 
-                    result.LimitType, 
-                    result.Limit, 
-                    result.Limit - result.RequestsRemaining,
-                    result.LimitType == "RPM" ? "minute" : "day",
-                    result.ResetsAt,
-                    invocationContext);
-                
                 throw new HubException(result.DenialReason);
             }
 
@@ -120,7 +99,6 @@ namespace ConduitLLM.Gateway.Authentication
                             LoggingSanitizer.S(virtualKeyHash), limitResult.DenialReason,
                             limitResult.CurrentConnections, limitResult.MaxConnections);
 
-                        PublishConnectionLimitExceeded(virtualKeyHash, limitResult, context);
                         throw new HubException(limitResult.DenialReason);
                     }
 
@@ -190,70 +168,5 @@ namespace ConduitLLM.Gateway.Authentication
                 : null;
         }
         
-        /// <summary>
-        /// Publishes a rate limit exceeded event
-        /// </summary>
-        private void PublishRateLimitExceeded(string virtualKeyHash, string limitType, int limitValue, 
-            int currentUsage, string timeWindow, DateTime resetsAt, HubInvocationContext context)
-        {
-            // Try to get virtual key ID from context
-            var virtualKeyId = 0;
-            if (context.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
-            {
-                virtualKeyId = keyId;
-            }
-            
-            // Get IP address if available
-            var ipAddress = context.Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString();
-            
-            _eventPublisher.PublishFireAndForget(
-                new RateLimitExceeded
-                {
-                    VirtualKeyId = virtualKeyId,
-                    VirtualKeyHash = virtualKeyHash,
-                    LimitType = limitType,
-                    LimitValue = limitValue,
-                    CurrentUsage = currentUsage,
-                    TimeWindow = timeWindow,
-                    ResetsAt = resetsAt,
-                    IpAddress = ipAddress,
-                    RequestedModel = null,
-                    CorrelationId = Guid.NewGuid().ToString()
-                },
-                "SignalR rate limit exceeded",
-                new { VirtualKeyHash = LoggingSanitizer.S(virtualKeyHash), LimitType = limitType });
-        }
-
-        /// <summary>
-        /// Publishes a connection limit exceeded event
-        /// </summary>
-        private void PublishConnectionLimitExceeded(
-            string virtualKeyHash,
-            ConnectionLimitResult limitResult,
-            HubLifetimeContext context)
-        {
-            var virtualKeyId = 0;
-            if (context.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
-            {
-                virtualKeyId = keyId;
-            }
-
-            var ipAddress = context.Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString();
-            var hubName = context.Hub?.GetType().Name;
-
-            _eventPublisher.PublishFireAndForget(
-                new ConnectionLimitExceeded
-                {
-                    VirtualKeyId = virtualKeyId,
-                    VirtualKeyHash = virtualKeyHash,
-                    CurrentConnections = limitResult.CurrentConnections,
-                    MaxConnections = limitResult.MaxConnections,
-                    HubName = hubName,
-                    IpAddress = ipAddress,
-                    CorrelationId = Guid.NewGuid().ToString()
-                },
-                "SignalR connection limit exceeded",
-                new { VirtualKeyHash = LoggingSanitizer.S(virtualKeyHash), HubName = hubName });
-        }
     }
 }
