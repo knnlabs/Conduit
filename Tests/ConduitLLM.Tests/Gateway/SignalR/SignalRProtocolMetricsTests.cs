@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Diagnostics.Metrics;
 using Moq;
 

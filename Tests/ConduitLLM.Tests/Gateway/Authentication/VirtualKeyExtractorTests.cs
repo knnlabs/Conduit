@@ -1,6 +1,6 @@
 using ConduitLLM.Gateway.Authentication;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 

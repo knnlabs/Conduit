@@ -1,7 +1,7 @@
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Validation;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Core.Validation;
 

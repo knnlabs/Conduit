@@ -11,7 +11,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Core.Validation;
 using ConduitLLM.Gateway.EventHandlers;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;

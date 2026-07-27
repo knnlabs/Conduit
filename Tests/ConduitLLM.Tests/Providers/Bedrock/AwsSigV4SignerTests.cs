@@ -2,7 +2,7 @@ using System.Net.Http.Headers;
 
 using ConduitLLM.Providers.Authentication;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

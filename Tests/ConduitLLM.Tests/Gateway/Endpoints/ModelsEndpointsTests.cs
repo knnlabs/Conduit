@@ -9,7 +9,7 @@ using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;

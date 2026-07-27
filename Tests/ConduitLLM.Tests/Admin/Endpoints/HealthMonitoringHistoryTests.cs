@@ -1,7 +1,7 @@
 using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Configuration;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 

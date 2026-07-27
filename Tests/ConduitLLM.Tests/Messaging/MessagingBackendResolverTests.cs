@@ -1,6 +1,6 @@
 using ConduitLLM.Configuration.Messaging;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Configuration;
 

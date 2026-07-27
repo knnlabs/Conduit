@@ -2,7 +2,7 @@ using System.Security.Claims;
 
 using ConduitLLM.Gateway.Endpoints;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 

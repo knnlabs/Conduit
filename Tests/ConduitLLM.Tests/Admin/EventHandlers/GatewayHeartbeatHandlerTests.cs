@@ -4,7 +4,7 @@ using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Events;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Logging;
 

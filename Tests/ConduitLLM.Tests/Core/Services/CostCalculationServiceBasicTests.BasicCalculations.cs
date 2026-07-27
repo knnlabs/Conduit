@@ -1,7 +1,7 @@
 using System.Text.Json;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Tests.TestHelpers;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using ConduitLLM.Configuration.Entities;
 

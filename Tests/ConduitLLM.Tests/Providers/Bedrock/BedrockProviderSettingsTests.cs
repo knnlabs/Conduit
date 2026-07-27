@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Configuration;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using FluentAssertions;
+using AwesomeAssertions;
 using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Tests.Functions.Utilities

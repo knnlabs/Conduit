@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using StackExchange.Redis;

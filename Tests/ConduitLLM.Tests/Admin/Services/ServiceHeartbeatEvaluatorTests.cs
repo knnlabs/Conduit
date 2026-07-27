@@ -1,6 +1,6 @@
 using ConduitLLM.Admin.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Services;
 

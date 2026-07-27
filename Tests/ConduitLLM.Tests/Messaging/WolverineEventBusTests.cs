@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 using ConduitLLM.Configuration.Messaging.Wolverine;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 

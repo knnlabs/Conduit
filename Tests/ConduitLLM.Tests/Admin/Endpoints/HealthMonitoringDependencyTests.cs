@@ -2,7 +2,7 @@ using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Interfaces;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

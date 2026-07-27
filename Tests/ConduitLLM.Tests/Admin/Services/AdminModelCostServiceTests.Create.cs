@@ -2,7 +2,7 @@ using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using System.Text.Json;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 

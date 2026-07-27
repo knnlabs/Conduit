@@ -1,6 +1,6 @@
 using System.Net;
 using ConduitLLM.Core.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace ConduitLLM.Tests.Providers

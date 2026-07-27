@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 

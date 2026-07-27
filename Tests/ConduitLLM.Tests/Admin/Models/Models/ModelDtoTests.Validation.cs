@@ -1,5 +1,5 @@
 using ConduitLLM.Admin.Models.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Models.Models
 {

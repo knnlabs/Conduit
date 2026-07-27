@@ -5,7 +5,7 @@ using System.Text.Json;
 
 using ConduitLLM.Providers.Vertex;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 

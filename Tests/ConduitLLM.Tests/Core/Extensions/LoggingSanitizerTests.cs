@@ -1,6 +1,6 @@
 using ConduitLLM.Configuration.Utilities;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit.Abstractions;
 

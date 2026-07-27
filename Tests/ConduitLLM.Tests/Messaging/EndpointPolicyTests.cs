@@ -2,7 +2,7 @@ using System;
 
 using ConduitLLM.Configuration.Messaging;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

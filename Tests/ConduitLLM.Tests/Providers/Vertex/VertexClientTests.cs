@@ -10,7 +10,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Vertex;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Logging.Abstractions;
 

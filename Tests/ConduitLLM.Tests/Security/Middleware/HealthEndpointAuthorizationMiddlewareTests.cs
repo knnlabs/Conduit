@@ -3,7 +3,7 @@ using System.Net;
 using ConduitLLM.Security.Authorization;
 using ConduitLLM.Security.Middleware;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;

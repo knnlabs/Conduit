@@ -3,7 +3,7 @@ using System.Text.Json;
 
 using AdminOperationIdValidator = ConduitLLM.Admin.OpenApi.OperationIdValidationDocumentTransformer;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.OpenApi;
 

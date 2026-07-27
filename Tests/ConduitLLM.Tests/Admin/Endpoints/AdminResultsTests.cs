@@ -3,7 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Endpoints;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;

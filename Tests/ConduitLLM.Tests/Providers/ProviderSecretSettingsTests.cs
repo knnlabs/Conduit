@@ -2,7 +2,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Security;
 using ConduitLLM.Providers.Configuration;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Logging.Abstractions;

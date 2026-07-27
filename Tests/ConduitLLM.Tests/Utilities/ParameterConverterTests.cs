@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using ConduitLLM.Providers.Utilities;
 
 namespace ConduitLLM.Tests.Utilities

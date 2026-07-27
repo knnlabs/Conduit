@@ -2,7 +2,7 @@ using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.TestInfrastructure;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Endpoints;
 

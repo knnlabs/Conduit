@@ -10,7 +10,7 @@ using ConduitLLM.Core.Models.Audio;
 using ConduitLLM.Core.Models.Rerank;
 using ConduitLLM.Providers.OpenRouter;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 using Moq.Protected;

@@ -10,7 +10,7 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Tests.Builders;
 using ConduitLLM.Configuration.Messaging;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;

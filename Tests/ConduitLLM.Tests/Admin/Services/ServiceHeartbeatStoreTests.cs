@@ -1,7 +1,7 @@
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Logging;
 

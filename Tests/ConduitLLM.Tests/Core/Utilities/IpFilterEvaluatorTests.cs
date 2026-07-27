@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Utilities;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Core.Utilities
 {

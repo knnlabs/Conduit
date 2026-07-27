@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Tests.TestInfrastructure;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;

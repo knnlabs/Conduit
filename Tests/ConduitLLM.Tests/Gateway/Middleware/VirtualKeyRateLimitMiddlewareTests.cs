@@ -3,7 +3,7 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.RateLimiting;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;

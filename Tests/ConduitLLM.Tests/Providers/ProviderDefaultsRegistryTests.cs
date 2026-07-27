@@ -5,7 +5,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers;
 using ConduitLLM.Providers.Configuration;
 
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Moq;

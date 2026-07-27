@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Options;
 using ConduitLLM.Configuration.Services;
 using ConduitLLM.Gateway.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;

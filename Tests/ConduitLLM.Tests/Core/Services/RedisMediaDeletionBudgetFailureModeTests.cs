@@ -1,6 +1,6 @@
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;

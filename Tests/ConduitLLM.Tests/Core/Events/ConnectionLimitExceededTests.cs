@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Tests.Core.Events

@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Tests.TestInfrastructure;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace ConduitLLM.Tests.Configuration.Repositories;

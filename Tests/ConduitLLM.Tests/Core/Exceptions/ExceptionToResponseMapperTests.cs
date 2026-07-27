@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Functions.Exceptions;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;

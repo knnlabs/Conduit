@@ -3,7 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Core.Events;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Configuration.Events;
 

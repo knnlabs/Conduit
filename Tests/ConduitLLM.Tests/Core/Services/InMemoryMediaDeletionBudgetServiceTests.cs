@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

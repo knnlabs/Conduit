@@ -2,7 +2,7 @@ using System.Net.Http;
 
 using ConduitLLM.Gateway.OpenApi;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.OpenApi;
 

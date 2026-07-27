@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 using System;
 using System.Threading.Tasks;

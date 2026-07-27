@@ -1,7 +1,7 @@
 using System.Net;
 
 using ConduitLLM.Core.Utilities;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 
 namespace ConduitLLM.Tests.Core.Utilities

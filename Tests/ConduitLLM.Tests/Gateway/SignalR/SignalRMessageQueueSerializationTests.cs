@@ -4,7 +4,7 @@ using ConduitLLM.Core.Models.SignalR;
 using ConduitLLM.Gateway.Models;
 using ConduitLLM.Gateway.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Gateway.SignalR;
 
