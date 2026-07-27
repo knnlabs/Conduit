@@ -26,11 +26,6 @@ services:
       BillingAdmission__Mode: "Shadow"
       UsageTracking__AccountingFinalizationTimeoutSeconds: "10"
       UsageTracking__GracefulShutdownSeconds: "45"
-      # Health monitoring configuration - API endpoint checks
-      HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
-      HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
-      HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
-      HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
       # Cloudflare R2 configuration (default for development)
       CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
       CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"

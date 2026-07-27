@@ -96,7 +96,6 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 **Volume Mounting:**
 - WebAdmin source: `./WebAdmin:/app/WebAdmin`
-- SDKs: `./SDKs:/app/SDKs`
 - Node modules accessible from both host and container
 
 **Permission Handling:**
@@ -144,7 +143,6 @@ export DOCKER_GROUP_ID=$(id -g)
   - `-LintOnly` - Run linting and fixing only (skip build)
   - `-BuildOnly` - Run build only (skip linting)
   - `-CheckOnly` - Check environment and permissions only
-- `scripts/dev/fix-sdk-errors.ps1` - SDK TypeScript compilation fixes
 - `scripts/dev/create-test-virtual-key.ps1` - Create virtual keys for testing
 - `scripts/dev/setup-r2-dev.ps1` - Setup Cloudflare R2 development environment
 - `scripts/test/validate-eslint.ps1` - Validate ESLint configuration
@@ -234,7 +232,7 @@ dotnet build ConduitLLM.Admin   # Admin API
 1. **NEVER make more than 3-5 file changes without verifying**
 2. **ALWAYS verify after ANY changes:**
    - WebAdmin: `npm run lint` and `npm run type-check` ONLY
-   - Backend/SDKs: Use build commands above
+   - Backend: Use build commands above
 3. **Fix ALL errors immediately** - do not accumulate technical debt
 4. **Never commit code that doesn't verify cleanly**
 
@@ -244,7 +242,6 @@ dotnet build ConduitLLM.Admin   # Admin API
 2. Verify immediately:
    - **WebAdmin**: `npm run lint` && `npm run type-check`
    - **Backend**: `dotnet build`
-   - **SDKs**: `npm run build` in SDK directory
 3. Test changes:
    - API changes: Test with Swagger UI or curl
    - UI changes: Verify in browser with dev tools open
@@ -458,7 +455,7 @@ under `WebAdmin/src/app/api/`
 - Falls back to polling if WebSocket fails
 - Specialized hubs for content-generation, task-tracking, spend-notifications, virtual-key-management, webhook-delivery, and others
 - Observability hubs (metrics, health-monitoring, security-monitoring, usage-analytics) were removed — Prometheus/Grafana owns that surface
-- Hub source: `Services/ConduitLLM.Gateway/Hubs/` and `Services/ConduitLLM.Admin/Hubs/`
+- Hub source: `Services/ConduitLLM.Gateway/Hubs/`
 
 **See:** [`docs/monitoring.md`](docs/monitoring.md#real-time-event-streams) and
 [`docs/configuration.md`](docs/configuration.md#reliable-signalr-queue-delivery)

@@ -33,8 +33,8 @@ jobs:
       - name: Extract version and channel
         id: version
         # A tag is a pre-release iff its name contains a hyphen (SemVer rule).
-        # This single decision drives the GitHub Release flag, the Docker floating
-        # tag, and the npm dist-tag so all three channels stay consistent.
+        # This single decision drives the GitHub Release flag and the Docker
+        # floating tag so both channels stay consistent.
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
