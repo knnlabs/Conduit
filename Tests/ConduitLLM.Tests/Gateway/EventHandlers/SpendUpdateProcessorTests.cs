@@ -6,7 +6,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Gateway.EventHandlers;
 using ConduitLLM.Tests.Messaging;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.DependencyInjection;
 

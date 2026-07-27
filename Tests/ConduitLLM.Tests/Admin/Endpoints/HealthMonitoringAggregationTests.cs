@@ -1,7 +1,7 @@
 using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Interfaces;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Endpoints;
 

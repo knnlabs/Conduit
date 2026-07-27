@@ -3,7 +3,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 

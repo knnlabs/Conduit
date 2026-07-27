@@ -4,7 +4,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 
 namespace ConduitLLM.Tests.Admin.Services;

@@ -2,7 +2,7 @@ using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
-using FluentAssertions;
+using AwesomeAssertions;
 using ConduitLLM.Configuration.Messaging;
 using Microsoft.Extensions.Logging;
 using Moq;

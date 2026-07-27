@@ -1,6 +1,6 @@
 using ConduitLLM.Gateway.Endpoints;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;

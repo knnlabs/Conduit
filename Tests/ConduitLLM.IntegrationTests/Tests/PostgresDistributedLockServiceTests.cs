@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Services;
 using ConduitLLM.IntegrationTests.Infrastructure;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;

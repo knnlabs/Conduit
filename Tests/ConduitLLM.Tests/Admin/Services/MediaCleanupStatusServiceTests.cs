@@ -9,7 +9,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Options;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Tests.TestInfrastructure;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

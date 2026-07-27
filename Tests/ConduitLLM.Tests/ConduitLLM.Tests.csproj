@@ -24,7 +24,7 @@
     <PackageReference Include="Moq.Contrib.HttpClient" />
     <PackageReference Include="bunit" />
     <PackageReference Include="BenchmarkDotNet" />
-    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="AwesomeAssertions" />
     <PackageReference Include="AutoFixture" />
     <PackageReference Include="AutoFixture.Xunit2" />
     <PackageReference Include="AutoFixture.AutoMoq" />

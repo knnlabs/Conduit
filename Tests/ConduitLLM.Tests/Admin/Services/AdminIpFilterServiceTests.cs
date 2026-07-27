@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using ConduitLLM.Configuration.Messaging;
 

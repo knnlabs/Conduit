@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Configuration;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Core.Configuration;
 

@@ -1,6 +1,6 @@
 using ConduitLLM.Providers;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Providers;
 

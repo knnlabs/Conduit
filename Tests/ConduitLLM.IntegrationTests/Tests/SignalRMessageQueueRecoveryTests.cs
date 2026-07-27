@@ -6,7 +6,7 @@ using ConduitLLM.Gateway.Models;
 using ConduitLLM.Gateway.Services;
 using ConduitLLM.IntegrationTests.Infrastructure;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Configuration;

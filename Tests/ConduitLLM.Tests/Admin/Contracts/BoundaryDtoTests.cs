@@ -8,7 +8,7 @@ using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Utilities;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Contracts;
 

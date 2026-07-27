@@ -4,7 +4,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Consumers;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Tests.Messaging;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

@@ -7,7 +7,7 @@ using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Metrics;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;

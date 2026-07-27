@@ -3,7 +3,7 @@ using System.Security.Claims;
 
 using ConduitLLM.Security.Authorization;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;

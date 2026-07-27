@@ -1,6 +1,6 @@
 using ConduitLLM.Gateway.Metrics;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Prometheus;
 

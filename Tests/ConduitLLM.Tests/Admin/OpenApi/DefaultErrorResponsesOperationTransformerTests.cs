@@ -3,7 +3,7 @@ using System.Text.Json;
 
 using ConduitLLM.Admin.OpenApi;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;

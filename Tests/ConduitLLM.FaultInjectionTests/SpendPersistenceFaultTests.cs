@@ -3,7 +3,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 

@@ -6,7 +6,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Core.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;

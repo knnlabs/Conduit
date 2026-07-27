@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.SignalR.Client;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 using ConduitLLM.IntegrationTests.Infrastructure;
 using System.Collections.Concurrent;

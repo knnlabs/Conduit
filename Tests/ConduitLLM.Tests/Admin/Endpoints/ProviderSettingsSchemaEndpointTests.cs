@@ -4,7 +4,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Providers;
 using ConduitLLM.Providers.Configuration;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http.HttpResults;
 

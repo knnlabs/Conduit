@@ -3,7 +3,7 @@ using System.Text;
 
 using ConduitLLM.Providers.Streaming;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

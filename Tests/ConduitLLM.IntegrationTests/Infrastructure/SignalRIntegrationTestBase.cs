@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace ConduitLLM.IntegrationTests.Infrastructure;
@@ -117,7 +117,7 @@ public abstract class SignalRIntegrationTestBase : IAsyncLifetime
     }
 
     /// <summary>
-    /// Asserts connection state with FluentAssertions.
+    /// Asserts connection state with AwesomeAssertions.
     /// </summary>
     protected static void AssertConnectionState(HubConnection connection, HubConnectionState expectedState)
     {

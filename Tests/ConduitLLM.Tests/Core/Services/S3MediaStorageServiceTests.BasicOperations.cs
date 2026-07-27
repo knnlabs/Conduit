@@ -6,7 +6,7 @@ using Amazon.S3.Model;
 
 using ConduitLLM.Core.Models;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 

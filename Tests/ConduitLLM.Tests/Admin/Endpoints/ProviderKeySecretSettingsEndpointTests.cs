@@ -7,7 +7,7 @@ using ConduitLLM.Configuration.Security;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;

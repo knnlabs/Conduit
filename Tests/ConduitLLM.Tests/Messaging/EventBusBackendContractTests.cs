@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

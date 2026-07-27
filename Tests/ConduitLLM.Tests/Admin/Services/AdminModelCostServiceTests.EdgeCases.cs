@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 

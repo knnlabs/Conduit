@@ -2,7 +2,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Constants;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

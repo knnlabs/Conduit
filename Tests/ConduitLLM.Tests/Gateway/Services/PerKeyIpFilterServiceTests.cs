@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Gateway.Interfaces;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

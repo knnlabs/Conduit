@@ -1,6 +1,6 @@
 using System.Text.Json;
 using ConduitLLM.Core.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using Xunit.Abstractions;
 using ConduitLLM.Configuration.Entities;

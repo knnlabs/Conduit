@@ -11,7 +11,7 @@ using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.UsageTracking;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;

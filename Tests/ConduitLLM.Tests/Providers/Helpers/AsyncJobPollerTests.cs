@@ -2,7 +2,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Providers.Helpers;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Logging.Abstractions;
 

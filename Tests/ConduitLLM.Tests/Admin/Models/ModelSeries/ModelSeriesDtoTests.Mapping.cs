@@ -2,7 +2,7 @@ using ConduitLLM.Admin.Models.ModelSeries;
 using ConduitLLM.Configuration.Entities;
 using System.Text.Json;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Models.ModelSeries
 {

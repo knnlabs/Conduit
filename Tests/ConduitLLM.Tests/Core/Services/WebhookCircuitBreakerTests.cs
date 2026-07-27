@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Services;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;

@@ -5,7 +5,7 @@ using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Core.Messaging;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit;
 

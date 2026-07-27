@@ -8,7 +8,7 @@ using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Tests.TestInfrastructure;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;

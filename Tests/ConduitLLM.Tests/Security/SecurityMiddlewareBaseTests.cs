@@ -1,6 +1,6 @@
 using ConduitLLM.Security.Middleware;
 using ConduitLLM.Security.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;

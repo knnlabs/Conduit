@@ -8,7 +8,7 @@ using ConduitLLM.Providers.Authentication;
 using ConduitLLM.Providers.Configuration;
 using ConduitLLM.Providers.OpenAI;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Microsoft.Extensions.Logging.Abstractions;
 
