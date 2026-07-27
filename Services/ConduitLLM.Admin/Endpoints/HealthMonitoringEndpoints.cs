@@ -433,20 +433,21 @@ namespace ConduitLLM.Admin.Endpoints
 
             var instances = heartbeats.Select(heartbeat =>
             {
-                var interval = heartbeat.IntervalSeconds > 0
-                    ? heartbeat.IntervalSeconds
+                var payload = heartbeat.Heartbeat;
+                var interval = payload.IntervalSeconds > 0
+                    ? payload.IntervalSeconds
                     : ServiceHeartbeatEvaluator.DefaultIntervalSeconds;
                 var age = Math.Max(0, (now - heartbeat.ReceivedAtUtc).TotalSeconds);
                 var freshness = ServiceHeartbeatEvaluator.EvaluateStatus(age, interval);
-                var reported = NormalizeReportedStatus(heartbeat.Status);
+                var reported = NormalizeReportedStatus(payload.Status);
                 return new ServiceInstanceStatusDto
                 {
-                    InstanceId = heartbeat.InstanceId,
+                    InstanceId = payload.InstanceId,
                     Status = WorstStatus(freshness, reported),
-                    Version = heartbeat.Version,
-                    CommitSha = heartbeat.CommitSha,
-                    BuildTimestamp = heartbeat.BuildTimestamp,
-                    Uptime = TimeSpan.FromSeconds(Math.Max(0, heartbeat.UptimeSeconds)),
+                    Version = payload.Version,
+                    CommitSha = payload.CommitSha,
+                    BuildTimestamp = payload.BuildTimestamp,
+                    Uptime = TimeSpan.FromSeconds(Math.Max(0, payload.UptimeSeconds)),
                     LastHeartbeat = heartbeat.ReceivedAtUtc,
                     HeartbeatAgeSeconds = Math.Round(age, 1),
                     HeartbeatIntervalSeconds = interval

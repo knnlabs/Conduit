@@ -1,5 +1,8 @@
+using System.Text.Json;
+
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Core.Events;
 
 using AwesomeAssertions;
 
@@ -33,10 +36,7 @@ public class ServiceHeartbeatStoreTests
         var snapshot = new ServiceHeartbeatSnapshot
         {
             ServiceId = "gateway",
-            InstanceId = "host_1234",
-            Version = "1.2.3.4",
-            UptimeSeconds = 42,
-            IntervalSeconds = 30,
+            Heartbeat = Heartbeat("host_1234", version: "1.2.3.4", uptimeSeconds: 42),
             ReportedAtUtc = now,
             ReceivedAtUtc = now
         };
@@ -64,20 +64,20 @@ public class ServiceHeartbeatStoreTests
         await _store.RecordAsync(new ServiceHeartbeatSnapshot
         {
             ServiceId = "gateway",
-            InstanceId = "old",
+            Heartbeat = Heartbeat("old"),
             ReceivedAtUtc = now.AddSeconds(-1)
         });
         var latest = new ServiceHeartbeatSnapshot
         {
             ServiceId = "gateway",
-            InstanceId = "new",
+            Heartbeat = Heartbeat("new"),
             ReceivedAtUtc = now
         };
         await _store.RecordAsync(latest);
 
         var result = await _store.GetAsync("gateway");
 
-        result!.InstanceId.Should().Be("new");
+        result!.Heartbeat.InstanceId.Should().Be("new");
     }
 
     [Fact]
@@ -87,21 +87,19 @@ public class ServiceHeartbeatStoreTests
         await _store.RecordAsync(new ServiceHeartbeatSnapshot
         {
             ServiceId = "gateway",
-            InstanceId = "gateway-a",
-            ReceivedAtUtc = now,
-            IntervalSeconds = 30
+            Heartbeat = Heartbeat("gateway-a"),
+            ReceivedAtUtc = now
         });
         await _store.RecordAsync(new ServiceHeartbeatSnapshot
         {
             ServiceId = "gateway",
-            InstanceId = "gateway-b",
-            ReceivedAtUtc = now,
-            IntervalSeconds = 30
+            Heartbeat = Heartbeat("gateway-b"),
+            ReceivedAtUtc = now
         });
 
         var result = await _store.GetAllAsync("gateway");
 
-        result.Select(item => item.InstanceId)
+        result.Select(item => item.Heartbeat.InstanceId)
             .Should().BeEquivalentTo("gateway-a", "gateway-b");
     }
 
@@ -111,9 +109,8 @@ public class ServiceHeartbeatStoreTests
         await _store.RecordAsync(new ServiceHeartbeatSnapshot
         {
             ServiceId = "gateway",
-            InstanceId = "expired",
-            ReceivedAtUtc = DateTime.UtcNow.AddMinutes(-6),
-            IntervalSeconds = 30
+            Heartbeat = Heartbeat("expired"),
+            ReceivedAtUtc = DateTime.UtcNow.AddMinutes(-6)
         });
 
         (await _store.GetAllAsync("gateway")).Should().BeEmpty();
@@ -166,9 +163,8 @@ public class ServiceHeartbeatStoreTests
         var snapshot = new ServiceHeartbeatSnapshot
         {
             ServiceId = "gateway",
-            InstanceId = "gateway-local",
-            ReceivedAtUtc = DateTime.UtcNow,
-            IntervalSeconds = 30
+            Heartbeat = Heartbeat("gateway-local"),
+            ReceivedAtUtc = DateTime.UtcNow
         };
 
         await store.RecordAsync(snapshot);
@@ -176,4 +172,61 @@ public class ServiceHeartbeatStoreTests
 
         result.Should().ContainSingle().Which.Should().BeSameAs(snapshot);
     }
+
+    [Fact]
+    public void DeserializeSnapshot_ReadsLegacyFlatRedisShape()
+    {
+        const string json = """
+            {
+              "ServiceId": "gateway",
+              "InstanceId": "legacy-a",
+              "Version": "2.9.0",
+              "CommitSha": "oldsha",
+              "BuildTimestamp": "2026-01-01T00:00:00Z",
+              "Status": "degraded",
+              "UptimeSeconds": 123,
+              "IntervalSeconds": 30,
+              "ReportedAtUtc": "2026-07-23T11:59:59Z",
+              "ReceivedAtUtc": "2026-07-23T12:00:00Z"
+            }
+            """;
+
+        var snapshot = ServiceHeartbeatStore.DeserializeSnapshot(json);
+
+        snapshot.Should().NotBeNull();
+        snapshot!.ServiceId.Should().Be("gateway");
+        snapshot.Heartbeat.InstanceId.Should().Be("legacy-a");
+        snapshot.Heartbeat.Status.Should().Be("degraded");
+        snapshot.Heartbeat.Timestamp.Should().Be(
+            new DateTime(2026, 7, 23, 11, 59, 59, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public void SnapshotSerialization_EmbedsHeartbeatPayload()
+    {
+        var snapshot = new ServiceHeartbeatSnapshot
+        {
+            ServiceId = "gateway",
+            Heartbeat = Heartbeat("gateway-a"),
+            ReceivedAtUtc = DateTime.UtcNow
+        };
+
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(snapshot));
+
+        document.RootElement.TryGetProperty("Heartbeat", out var heartbeat).Should().BeTrue();
+        heartbeat.GetProperty("InstanceId").GetString().Should().Be("gateway-a");
+        document.RootElement.TryGetProperty("InstanceId", out _).Should().BeFalse();
+    }
+
+    private static GatewayHeartbeat Heartbeat(
+        string instanceId,
+        string version = "3.0.0",
+        double uptimeSeconds = 0) =>
+        new()
+        {
+            InstanceId = instanceId,
+            Version = version,
+            UptimeSeconds = uptimeSeconds,
+            IntervalSeconds = 30
+        };
 }

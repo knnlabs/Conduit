@@ -49,7 +49,7 @@ namespace ConduitLLM.Admin.Services
             ArgumentNullException.ThrowIfNull(heartbeat);
 
             // Always keep an in-process copy so a Redis-less single instance still works.
-            var instanceKey = GetInProcessKey(heartbeat.ServiceId, heartbeat.InstanceId);
+            var instanceKey = GetInProcessKey(heartbeat.ServiceId, heartbeat.Heartbeat.InstanceId);
             _inProcess[instanceKey] = heartbeat;
             _latestByService[heartbeat.ServiceId] = heartbeat;
 
@@ -62,14 +62,14 @@ namespace ConduitLLM.Admin.Services
             {
                 var db = _redis.GetDatabase();
                 var json = JsonSerializer.Serialize(heartbeat);
-                var ttl = CalculateTtl(heartbeat.IntervalSeconds);
+                var ttl = CalculateTtl(heartbeat.Heartbeat.IntervalSeconds);
                 await db.StringSetAsync(
-                    RedisKeys.ServiceHeartbeat.For(heartbeat.ServiceId, heartbeat.InstanceId),
+                    RedisKeys.ServiceHeartbeat.For(heartbeat.ServiceId, heartbeat.Heartbeat.InstanceId),
                     json,
                     ttl);
                 await db.SetAddAsync(
                     RedisKeys.ServiceHeartbeat.Index(heartbeat.ServiceId),
-                    heartbeat.InstanceId);
+                    heartbeat.Heartbeat.InstanceId);
                 await db.KeyExpireAsync(RedisKeys.ServiceHeartbeat.Index(heartbeat.ServiceId), ttl);
             }
             catch (Exception ex)
@@ -128,8 +128,7 @@ namespace ConduitLLM.Admin.Services
                                 continue;
                             }
 
-                            var snapshot = JsonSerializer.Deserialize<ServiceHeartbeatSnapshot>(
-                                values[index].ToString());
+                            var snapshot = DeserializeSnapshot(values[index].ToString());
                             if (snapshot != null)
                             {
                                 snapshots.Add(snapshot);
@@ -190,11 +189,63 @@ namespace ConduitLLM.Admin.Services
                     : calculated;
         }
 
+        internal static ServiceHeartbeatSnapshot? DeserializeSnapshot(string json)
+        {
+            using var document = JsonDocument.Parse(json);
+            var hasEmbeddedHeartbeat = document.RootElement.EnumerateObject()
+                .Any(property => property.Name.Equals(
+                    nameof(ServiceHeartbeatSnapshot.Heartbeat),
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (hasEmbeddedHeartbeat)
+            {
+                return JsonSerializer.Deserialize<ServiceHeartbeatSnapshot>(json);
+            }
+
+            var legacy = JsonSerializer.Deserialize<LegacyServiceHeartbeatSnapshot>(json);
+            if (legacy is null)
+            {
+                return null;
+            }
+
+            return new ServiceHeartbeatSnapshot
+            {
+                ServiceId = legacy.ServiceId,
+                Heartbeat = new ConduitLLM.Core.Events.GatewayHeartbeat
+                {
+                    InstanceId = legacy.InstanceId,
+                    Version = legacy.Version,
+                    CommitSha = legacy.CommitSha,
+                    BuildTimestamp = legacy.BuildTimestamp,
+                    Status = legacy.Status,
+                    UptimeSeconds = legacy.UptimeSeconds,
+                    IntervalSeconds = legacy.IntervalSeconds,
+                    Timestamp = legacy.ReportedAtUtc
+                },
+                ReportedAtUtc = legacy.ReportedAtUtc,
+                ReceivedAtUtc = legacy.ReceivedAtUtc
+            };
+        }
+
         private static bool IsExpired(ServiceHeartbeatSnapshot snapshot, DateTime now) =>
             snapshot.ReceivedAtUtc != default
-            && now - snapshot.ReceivedAtUtc > CalculateTtl(snapshot.IntervalSeconds);
+            && now - snapshot.ReceivedAtUtc > CalculateTtl(snapshot.Heartbeat.IntervalSeconds);
 
         private static string GetInProcessKey(string serviceId, string instanceId) =>
             $"{serviceId}\n{instanceId}";
+
+        private sealed class LegacyServiceHeartbeatSnapshot
+        {
+            public string ServiceId { get; set; } = string.Empty;
+            public string InstanceId { get; set; } = string.Empty;
+            public string Version { get; set; } = string.Empty;
+            public string CommitSha { get; set; } = "dev";
+            public string BuildTimestamp { get; set; } = "unknown";
+            public string Status { get; set; } = "healthy";
+            public double UptimeSeconds { get; set; }
+            public double IntervalSeconds { get; set; }
+            public DateTime ReportedAtUtc { get; set; }
+            public DateTime ReceivedAtUtc { get; set; }
+        }
     }
 }

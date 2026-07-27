@@ -38,13 +38,7 @@ namespace ConduitLLM.Admin.EventHandlers
                 await _store.RecordAsync(new ServiceHeartbeatSnapshot
                 {
                     ServiceId = RedisKeys.ServiceHeartbeat.GatewayServiceId,
-                    InstanceId = message.InstanceId,
-                    Version = message.Version,
-                    CommitSha = message.CommitSha,
-                    BuildTimestamp = message.BuildTimestamp,
-                    Status = message.Status,
-                    UptimeSeconds = message.UptimeSeconds,
-                    IntervalSeconds = message.IntervalSeconds,
+                    Heartbeat = message,
                     ReportedAtUtc = message.Timestamp,
                     ReceivedAtUtc = DateTime.UtcNow
                 }, context.CancellationToken);

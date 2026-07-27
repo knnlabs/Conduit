@@ -1,8 +1,6 @@
-using System.Diagnostics;
-
 using ConduitLLM.Configuration.Messaging;
-using ConduitLLM.Core.Diagnostics;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
@@ -19,24 +17,9 @@ namespace ConduitLLM.Gateway.Services
     /// Publishing via <see cref="IEventBus"/> keeps Admin↔Gateway strictly event-driven
     /// (epic #909) — there is no synchronous Admin→Gateway HTTP probe.
     /// </remarks>
-    public class GatewayHeartbeatPublisher : BackgroundService
+    public class GatewayHeartbeatPublisher : HeartbeatPublisherBase
     {
-        /// <summary>Floor on the configured interval to avoid flooding the bus.</summary>
-        private const int MinimumIntervalSeconds = 5;
-
-        private static readonly string InstanceIdentifier =
-            $"{Environment.MachineName}_{Environment.ProcessId}";
-
-        private static readonly BuildMetadata ServiceBuild =
-            BuildMetadata.FromAssembly(typeof(GatewayHeartbeatPublisher).Assembly);
-
-        private static readonly DateTime ProcessStartUtc =
-            Process.GetCurrentProcess().StartTime.ToUniversalTime();
-
         private readonly IServiceProvider _serviceProvider;
-        private readonly HealthCheckService _healthCheckService;
-        private readonly ILogger<GatewayHeartbeatPublisher> _logger;
-        private readonly TimeSpan _interval;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="GatewayHeartbeatPublisher"/> class.
@@ -46,77 +29,26 @@ namespace ConduitLLM.Gateway.Services
             HealthCheckService healthCheckService,
             IConfiguration configuration,
             ILogger<GatewayHeartbeatPublisher> logger)
+            : base(
+                healthCheckService,
+                configuration,
+                logger,
+                typeof(GatewayHeartbeatPublisher),
+                "Gateway",
+                "GatewayHeartbeat:IntervalSeconds")
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
-            _healthCheckService = healthCheckService ?? throw new ArgumentNullException(nameof(healthCheckService));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-            var seconds = configuration.GetValue("GatewayHeartbeat:IntervalSeconds", 30);
-            _interval = TimeSpan.FromSeconds(Math.Max(MinimumIntervalSeconds, seconds));
         }
 
-        /// <inheritdoc />
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task EmitAsync(
+            GatewayHeartbeat heartbeat,
+            CancellationToken cancellationToken)
         {
-            _logger.LogInformation(
-                "Gateway heartbeat publisher started (interval {IntervalSeconds}s, instance {InstanceId})",
-                _interval.TotalSeconds, InstanceIdentifier);
-
-            try
-            {
-                // Emit one immediately so a freshly started Gateway is reflected quickly.
-                await PublishHeartbeatAsync(stoppingToken);
-
-                using var timer = new PeriodicTimer(_interval);
-                while (await timer.WaitForNextTickAsync(stoppingToken))
-                {
-                    await PublishHeartbeatAsync(stoppingToken);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // Normal shutdown.
-            }
-        }
-
-        private async Task PublishHeartbeatAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                // IEventBus is registered Scoped, so resolve it in a fresh scope per publish
-                // (a singleton BackgroundService cannot inject it directly).
-                using var scope = _serviceProvider.CreateScope();
-                var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
-                var readiness = await _healthCheckService.CheckHealthAsync(
-                    registration => registration.Tags.Contains("ready") || registration.Tags.Count == 0,
-                    cancellationToken);
-
-                await eventBus.PublishAsync(new GatewayHeartbeat
-                {
-                    InstanceId = InstanceIdentifier,
-                    Version = ServiceBuild.Version,
-                    CommitSha = ServiceBuild.CommitSha,
-                    BuildTimestamp = ServiceBuild.BuildTimestamp,
-                    Status = readiness.Status switch
-                    {
-                        HealthStatus.Healthy => "healthy",
-                        HealthStatus.Degraded => "degraded",
-                        _ => "unhealthy"
-                    },
-                    UptimeSeconds = (DateTime.UtcNow - ProcessStartUtc).TotalSeconds,
-                    IntervalSeconds = _interval.TotalSeconds
-                }, cancellationToken);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // Shutting down — ignore.
-            }
-            catch (Exception ex)
-            {
-                // A missed heartbeat is self-correcting (the next tick supersedes it); never
-                // let it crash the background service.
-                _logger.LogWarning(ex, "Failed to publish Gateway heartbeat");
-            }
+            // IEventBus is registered Scoped, so resolve it in a fresh scope per publish
+            // (a singleton BackgroundService cannot inject it directly).
+            using var scope = _serviceProvider.CreateScope();
+            var eventBus = scope.ServiceProvider.GetRequiredService<IEventBus>();
+            await eventBus.PublishAsync(heartbeat, cancellationToken);
         }
     }
 }
