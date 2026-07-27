@@ -38,10 +38,13 @@ import { ipFilterTemplates, type IpFilterTemplate } from '@/components/ip-filter
 import { useIpFilteringData } from './hooks';
 import { useIpFilteringHandlers } from './handlers';
 import { IpFilteringStats } from './IpFilteringStats';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
+
+const getRuleId = (rule: IpRule) => rule.id ?? '';
+const hasRuleId = (rule: IpRule) => rule.id !== undefined;
 
 export default function IpFilteringPage() {
   const [activeTab, setActiveTab] = useState<string | null>('all');
-  const [selectedRules, setSelectedRules] = useState<string[]>([]);
   const [selectedRule, setSelectedRule] = useState<IpRule | null>(null);
   const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
   const [testModalOpened, { open: openTestModal, close: closeTestModal }] = useDisclosure(false);
@@ -50,6 +53,28 @@ export default function IpFilteringPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const { isLoading, rules, stats, fetchIpRules } = useIpFilteringData();
+
+  // Filter rules based on active tab
+  const filteredRules = rules.filter(rule => {
+    if (activeTab === 'allow') return rule.action === 'allow';
+    if (activeTab === 'block') return rule.action === 'block';
+    return true;
+  });
+  const {
+    selectedKeys,
+    selectedCount,
+    isAllSelected,
+    isIndeterminate,
+    toggleAll,
+    toggleOne,
+    clearSelection,
+    deselect,
+  } = useBulkSelection({
+    items: filteredRules,
+    getKey: getRuleId,
+    isSelectable: hasRuleId,
+  });
+  const selectedRules = Array.from(selectedKeys);
   const {
     handleBulkOperation,
     handleExport,
@@ -58,7 +83,7 @@ export default function IpFilteringPage() {
     handleToggleRule,
     handleModalSubmit,
     handleApplyTemplate,
-  } = useIpFilteringHandlers(fetchIpRules, setSelectedRules);
+  } = useIpFilteringHandlers(fetchIpRules, clearSelection, deselect);
 
   useEffect(() => {
     void fetchIpRules();
@@ -82,13 +107,6 @@ export default function IpFilteringPage() {
       // Don't close modal on error so user can fix and retry
     }
   };
-
-  // Filter rules based on active tab
-  const filteredRules = rules.filter(rule => {
-    if (activeTab === 'allow') return rule.action === 'allow';
-    if (activeTab === 'block') return rule.action === 'block';
-    return true;
-  });
 
   return (
     <>
@@ -233,11 +251,11 @@ export default function IpFilteringPage() {
             <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
             
             {/* Bulk Actions Bar */}
-            {selectedRules.length > 0 && (
+            {selectedCount > 0 && (
               <Card.Section p="md" withBorder>
                 <Group justify="space-between">
                   <Text size="sm">
-                    {selectedRules.length} rule{selectedRules.length !== 1 ? 's' : ''} selected
+                    {selectedCount} rule{selectedCount !== 1 ? 's' : ''} selected
                   </Text>
                   <Group gap="xs">
                     <Button 
@@ -271,8 +289,11 @@ export default function IpFilteringPage() {
             <Card.Section>
               <IpRulesTable
                 data={filteredRules}
-                selectedRules={selectedRules}
-                onSelectionChange={setSelectedRules}
+                selectedRules={selectedKeys}
+                allSelected={isAllSelected}
+                someSelected={isIndeterminate}
+                onSelectAll={toggleAll}
+                onSelectRule={toggleOne}
                 onEdit={handleEditRule}
                 onDelete={(ruleId: string) => void handleDeleteRule(ruleId)}
                 onToggle={(ruleId: string, enabled: boolean) => void handleToggleRule(ruleId, enabled, rules)}

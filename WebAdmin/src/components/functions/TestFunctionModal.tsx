@@ -28,11 +28,10 @@ import { notify } from '@/lib/notifications';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import {
   FunctionConfigurationDto,
-  formatExecutionCost,
-  formatExecutionDuration,
   getExecutionStateBadgeColor,
 } from '@/app/functions/types';
 import type { FunctionExecutionResponse } from '@/lib/gateway-api/types';
+import { formatCost, formatDuration } from '@/lib/utils/formatters';
 
 interface TestFunctionModalProps {
   opened: boolean;
@@ -147,9 +146,9 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
 
       // Show success notification
       if (response.status.toLowerCase() === 'completed') {
-        notify.success(`Execution completed in ${formatExecutionDuration(response.durationMs ?? 0)}`, 'Function executed');
+        notify.success(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
       } else {
-        notify.warning(`Execution completed in ${formatExecutionDuration(response.durationMs ?? 0)}`, 'Function executed');
+        notify.warning(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
       }
     } catch (error) {
       console.warn('Error executing function:', error);
@@ -272,7 +271,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                   </Badge>
                   {testResult.durationMs !== null && testResult.durationMs !== undefined && (
                     <Text size="sm" c="dimmed">
-                      Duration: {formatExecutionDuration(testResult.durationMs)}
+                      Duration: {formatDuration(testResult.durationMs)}
                     </Text>
                   )}
                 </Group>
@@ -352,7 +351,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatExecutionCost(testResult.cost.estimated)}</Text>
+                          <Text size="xs">{formatCost(testResult.cost.estimated)}</Text>
                         </Grid.Col>
                       </>
                     )}
@@ -364,7 +363,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatExecutionCost(testResult.cost.actual)}</Text>
+                          <Text size="xs">{formatCost(testResult.cost.actual)}</Text>
                         </Grid.Col>
                       </>
                     )}

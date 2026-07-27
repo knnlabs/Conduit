@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import {
   Table,
   Group,
@@ -29,11 +29,14 @@ import {
   useBulkDisableModelMappings,
 } from '@/hooks/useModelMappingsApi';
 import type { ModelProviderMappingDto } from '@/lib/admin-api';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { BulkActionsBar } from './BulkActionsBar';
 
 interface ModelMappingsTableProps {
   onRefresh?: () => void;
 }
+
+const getMappingId = (mapping: ModelProviderMappingDto) => mapping.id;
 
 export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const { mappings, isLoading, error, refetch } = useModelMappings();
@@ -43,63 +46,37 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
   const bulkDisable = useBulkDisableModelMappings();
   const router = useRouter();
   
-  // Selection state
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  
-  // Computed values for selection
-  
-  const isAllSelected = useMemo(() => {
-    if (mappings.length === 0) return false;
-    return mappings.every(m => selectedIds.has(m.id));
-  }, [mappings, selectedIds]);
-  
-  const isIndeterminate = useMemo(() => {
-    if (selectedIds.size === 0) return false;
-    return selectedIds.size > 0 && selectedIds.size < mappings.length;
-  }, [selectedIds, mappings]);
-
-  // Selection handlers
-  const handleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(mappings.map(m => m.id)));
-    }
-  };
-  
-  const handleSelectOne = (id: number) => {
-    const newSelection = new Set(selectedIds);
-    if (newSelection.has(id)) {
-      newSelection.delete(id);
-    } else {
-      newSelection.add(id);
-    }
-    setSelectedIds(newSelection);
-  };
-  
-  const handleClearSelection = () => {
-    setSelectedIds(new Set());
-  };
+  const {
+    selectedKeys: selectedIds,
+    isAllSelected,
+    isIndeterminate,
+    toggleAll: handleSelectAll,
+    toggleOne: handleSelectOne,
+    clearSelection: handleClearSelection,
+  } = useBulkSelection({
+    items: mappings,
+    getKey: getMappingId,
+  });
   
   // Bulk action handlers
   const handleBulkDelete = () => {
     const ids = Array.from(selectedIds);
     void bulkDelete.mutateAsync(ids).then(() => {
-      setSelectedIds(new Set());
+      handleClearSelection();
     });
   };
   
   const handleBulkEnable = () => {
     const ids = Array.from(selectedIds);
     void bulkEnable.mutateAsync(ids).then(() => {
-      setSelectedIds(new Set());
+      handleClearSelection();
     });
   };
   
   const handleBulkDisable = () => {
     const ids = Array.from(selectedIds);
     void bulkDisable.mutateAsync(ids).then(() => {
-      setSelectedIds(new Set());
+      handleClearSelection();
     });
   };
 

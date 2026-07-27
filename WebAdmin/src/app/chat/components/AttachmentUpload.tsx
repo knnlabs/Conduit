@@ -28,6 +28,7 @@ import {
   IconX,
 } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
+import { formatters } from '@/lib/utils/formatters';
 
 import type { ChatAttachment } from '../types';
 
@@ -178,7 +179,9 @@ export function AttachmentUpload({
         continue;
       }
       if (file.size > MAX_BYTES[kind]) {
-        setError(`${file.name} exceeds the ${MAX_BYTES[kind] / 1024 / 1024} MiB ${kind} limit.`);
+        setError(
+          `${file.name} exceeds the ${formatters.fileSize(MAX_BYTES[kind], { binary: true })} ${kind} limit.`,
+        );
         continue;
       }
 

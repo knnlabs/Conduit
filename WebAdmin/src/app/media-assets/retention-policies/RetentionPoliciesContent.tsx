@@ -35,6 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { formatters } from '@/lib/utils/formatters';
 import type { MediaRetentionPolicy, CreateMediaRetentionPolicyRequest, UpdateMediaRetentionPolicyRequest } from '@/lib/admin-api';
 
 interface PolicyFormData {
@@ -296,7 +297,7 @@ export default function RetentionPoliciesContent() {
         <Stack gap={2}>
           <Text size="xs">
             {policy.maxStorageSizeBytes
-              ? `${(policy.maxStorageSizeBytes / (1024 * 1024)).toLocaleString()} MB`
+              ? formatters.fileSize(policy.maxStorageSizeBytes, { binary: true })
               : 'Unlimited storage'}
           </Text>
           <Text size="xs" c="dimmed">

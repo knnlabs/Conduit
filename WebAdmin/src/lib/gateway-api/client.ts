@@ -2,6 +2,7 @@ import {
   ContractApiClient,
   DEFAULT_RETRY_STRATEGIES,
   NetworkError,
+  formatters,
   type RetryStrategy,
 } from "@/lib/conduit-common";
 import {
@@ -415,7 +416,7 @@ export class GatewayClient extends ContractApiClient<paths> {
         ? { valid: true }
         : {
             valid: false,
-            message: `File size exceeds maximum allowed size of ${limit / 1024 / 1024}MB for ${inferred}`,
+            message: `File size exceeds maximum allowed size of ${formatters.fileSize(limit, { binary: true })} for ${inferred}`,
           };
     },
     upload: (file: File | Blob, options: MediaUploadOptions = {}) =>

@@ -81,7 +81,7 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
     });
   };
 
-  const formatCost = (costPerUnit?: number | null, billingUnit?: string | null) => {
+  const formatCostPerUnit = (costPerUnit?: number | null, billingUnit?: string | null) => {
     if (!costPerUnit) return 'Not configured';
     const formattedCost = costPerUnit < 0.01 ? costPerUnit.toExponential(2) : costPerUnit.toFixed(4);
     return `$${formattedCost}${billingUnit ? ` per ${billingUnit}` : ''}`;
@@ -91,7 +91,7 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
     <Table.Tr key={tool.id}>
       <Table.Td>{tool.providerName ?? 'Unknown'}</Table.Td>
       <Table.Td>{tool.toolName}</Table.Td>
-      <Table.Td>{formatCost(tool.costPerUnit, tool.billingUnit)}</Table.Td>
+      <Table.Td>{formatCostPerUnit(tool.costPerUnit, tool.billingUnit)}</Table.Td>
       <Table.Td>{tool.costDescription ?? '-'}</Table.Td>
       <Table.Td>
         <Badge color={tool.isActive ? 'green' : 'gray'}>

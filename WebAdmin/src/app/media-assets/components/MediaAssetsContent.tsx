@@ -7,7 +7,7 @@ import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useMediaAssets } from '../hooks/useMediaAssets';
-import { useBulkSelection } from '../hooks/useBulkSelection';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { MediaRecord, VirtualKeyInfo } from '../types';
 import MediaStatsCards from './MediaStatsCards';
 import MediaFilterBar from './MediaFilterBar';
@@ -37,12 +37,15 @@ export default function MediaAssetsContent() {
   } = useMediaAssets(selectedVirtualKey);
 
   const {
-    selectedIds,
+    selectedKeys: selectedIds,
     selectedCount,
-    toggleSelection,
-    deselectAll,
-    getSelectedMedia,
-  } = useBulkSelection(media);
+    toggleOne: toggleSelection,
+    clearSelection: deselectAll,
+    getSelectedItems: getSelectedMedia,
+  } = useBulkSelection({
+    items: media,
+    getKey: (item) => item.id,
+  });
 
   // Fetch key groups
   useEffect(() => {

@@ -2,15 +2,7 @@
  * Shared formatting helpers for the analytics request-log components.
  */
 
-export function formatCost(cost: number | null | undefined): string {
-  if (cost === null || cost === undefined) return '—';
-  if (cost === 0) return '$0.00';
-  return cost < 0.01 ? `$${cost.toFixed(6)}` : `$${cost.toFixed(4)}`;
-}
-
-export function formatDuration(ms: number): string {
-  return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(2)} s`;
-}
+export { formatCost, formatDuration, formatters } from '@/lib/utils/formatters';
 
 export function getHttpStatusColor(statusCode: number | null): string {
   if (statusCode === null) return 'gray';

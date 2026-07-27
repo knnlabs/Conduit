@@ -7,8 +7,6 @@ import {
   Group,
   Button,
   Card,
-  SimpleGrid,
-  ThemeIcon,
   LoadingOverlay,
   Alert,
   Menu,
@@ -26,6 +24,7 @@ import {
   IconSearch,
   IconLayersLinked,
 } from '@tabler/icons-react';
+import { StatCardGrid } from '@/components/common/StatCardGrid';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { VirtualKeysTable } from '@/components/virtualkeys/VirtualKeysTable';
@@ -311,25 +310,7 @@ export default function VirtualKeysPage() {
       </Group>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-        {statCards.map((stat) => (
-          <Card key={stat.title} p="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value}
-                </Text>
-              </div>
-              <ThemeIcon size="lg" variant="light" color={stat.color}>
-                <stat.icon size={20} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <StatCardGrid items={statCards} />
 
       {/* Virtual Keys Table */}
       <Card>
