@@ -437,7 +437,9 @@ public static class MediaEndpoints
     private static string GetAdminActor(HttpContext context) =>
         context.User.Identity?.Name ?? $"master-key:{context.TraceIdentifier}";
 
-    private sealed class MediaEndpointLog;
+    // RDG emits service-resolution code outside this containing type. Keep the
+    // category non-public while making it accessible to assembly-generated code.
+    internal sealed class MediaEndpointLog;
 
     private static async Task<IResult> ExecuteManualCleanupAsync(
         string cleanupType,
