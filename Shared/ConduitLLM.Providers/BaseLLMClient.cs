@@ -26,31 +26,26 @@ namespace ConduitLLM.Providers
     {
         /// <summary>
         /// Default timeout for standard API requests (2 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.DefaultTimeoutSeconds"/>.
         /// </summary>
         protected static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(120);
 
         /// <summary>
         /// Timeout for authentication verification requests (30 seconds).
-        /// Matches <see cref="ProviderHttpClientOptions.AuthVerificationTimeoutSeconds"/>.
         /// </summary>
         protected static readonly TimeSpan AuthVerificationTimeout = TimeSpan.FromSeconds(30);
 
         /// <summary>
         /// Timeout for image generation requests (3 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.ImageGenerationTimeoutSeconds"/>.
         /// </summary>
         protected static readonly TimeSpan ImageGenerationTimeout = TimeSpan.FromSeconds(180);
 
         /// <summary>
         /// Timeout for video generation requests (10 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.VideoGenerationTimeoutSeconds"/>.
         /// </summary>
         protected static readonly TimeSpan VideoGenerationTimeout = TimeSpan.FromMinutes(10);
 
         /// <summary>
         /// Timeout for large file downloads (30 minutes).
-        /// Matches <see cref="ProviderHttpClientOptions.LargeFileDownloadTimeoutSeconds"/>.
         /// </summary>
         protected static readonly TimeSpan LargeFileDownloadTimeout = TimeSpan.FromMinutes(30);
 
@@ -72,14 +67,6 @@ namespace ConduitLLM.Providers
         /// for providers that use different authentication methods (e.g., Token, api-key header).
         /// </remarks>
         protected virtual IAuthenticationStrategy AuthenticationStrategy => BearerTokenStrategy.Instance;
-
-        /// <summary>
-        /// Gets the provider configuration from the registry.
-        /// Returns null if no configuration is registered for this provider type.
-        /// </summary>
-        protected virtual ProviderConfiguration? ProviderConfig =>
-            ProviderConfigurationRegistry.TryGetConfiguration(Provider.ProviderType, out var config)
-                ? config : null;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="BaseLLMClient"/> class.
@@ -844,58 +831,5 @@ namespace ConduitLLM.Providers
             return fallback;
         }
 
-        /// <summary>
-        /// Extracts a user-friendly error message from an HTTP response.
-        /// </summary>
-        /// <param name="response">The HTTP response.</param>
-        /// <param name="responseBody">The response body.</param>
-        /// <returns>A user-friendly error message.</returns>
-        protected virtual async Task<string> ExtractErrorMessageAsync(
-            HttpResponseMessage response,
-            string? responseBody = null)
-        {
-            if (string.IsNullOrEmpty(responseBody) && response.Content != null)
-            {
-                try
-                {
-                    responseBody = await response.Content.ReadAsStringAsync();
-                }
-                catch
-                {
-                    // Ignore read errors
-                }
-            }
-
-            var fallback = $"{response.StatusCode}: {response.ReasonPhrase ?? "Unknown error"}";
-
-            if (!string.IsNullOrEmpty(responseBody))
-            {
-                return ExtractErrorFromJson(responseBody, fallback);
-            }
-
-            return fallback;
-        }
-
-        /// <summary>
-        /// Sends an HTTP request with provider key tracking for error attribution.
-        /// </summary>
-        /// <param name="request">The HTTP request to send.</param>
-        /// <param name="keyCredential">The key credential being used.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The HTTP response.</returns>
-        protected async Task<HttpResponseMessage> SendRequestWithKeyTracking(
-            HttpRequestMessage request,
-            ProviderKeyCredential keyCredential,
-            CancellationToken cancellationToken = default)
-        {
-            // Attach key context to request for error tracking
-            request.Options.Set(new HttpRequestOptionsKey<int>("KeyCredentialId"), keyCredential.Id);
-            request.Options.Set(new HttpRequestOptionsKey<int>("ProviderId"), keyCredential.ProviderId);
-            
-            // Use the appropriate HttpClient
-            var httpClient = CreateHttpClient(keyCredential.ApiKey ?? string.Empty);
-            
-            return await httpClient.SendAsync(request, cancellationToken);
-        }
     }
 }

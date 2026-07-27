@@ -33,10 +33,6 @@ public static class HttpClientExtensions
         services.AddOptions<RetryOptions>()
             .BindConfiguration(RetryOptions.SectionName);
 
-        // Configure timeout options from configuration
-        services.AddOptions<TimeoutOptions>()
-            .BindConfiguration(TimeoutOptions.SectionName);
-
         foreach (var providerType in ProviderHttpClientNames.RegisteredTypes)
         {
             services.AddHttpClient(ProviderHttpClientNames.Chat(providerType))

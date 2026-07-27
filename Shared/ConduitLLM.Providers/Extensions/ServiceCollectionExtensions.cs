@@ -26,10 +26,6 @@ namespace ConduitLLM.Providers.Extensions
             services.AddScoped<ILLMClientFactory, DatabaseAwareLLMClientFactory>();
             services.AddSingleton<IProviderSecretProtector, ProviderSecretProtector>();
 
-            // OBSOLETE: External model discovery is no longer used. 
-            // The Provider Models endpoint now returns models from the local database.
-            // services.AddScoped<ModelListService>();
-
             // Ensure memory cache is registered
             services.AddMemoryCache();
 

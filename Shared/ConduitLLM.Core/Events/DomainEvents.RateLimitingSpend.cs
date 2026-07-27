@@ -66,68 +66,6 @@ namespace ConduitLLM.Core.Events
     // ===============================
 
     /// <summary>
-    /// Raised when a virtual key is approaching its spend threshold
-    /// Enables proactive alerts before limits are hit
-    /// </summary>
-    public record SpendThresholdApproaching : DomainEvent
-    {
-        /// <summary>
-        /// Virtual Key ID approaching the threshold
-        /// </summary>
-        public int VirtualKeyId { get; init; }
-        
-        /// <summary>
-        /// Virtual Key hash for identification
-        /// </summary>
-        public string VirtualKeyHash { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// Key name for notifications
-        /// </summary>
-        public string KeyName { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// Current spend amount
-        /// </summary>
-        public decimal CurrentSpend { get; init; }
-        
-        /// <summary>
-        /// Maximum budget configured
-        /// </summary>
-        public decimal MaxBudget { get; init; }
-        
-        /// <summary>
-        /// Percentage of budget used (0-100)
-        /// </summary>
-        public decimal PercentageUsed { get; init; }
-        
-        /// <summary>
-        /// Threshold percentage that triggered this event (e.g., 80, 90)
-        /// </summary>
-        public int ThresholdPercentage { get; init; }
-        
-        /// <summary>
-        /// Budget duration type (daily, weekly, monthly, etc.)
-        /// </summary>
-        public string? BudgetDuration { get; init; }
-        
-        /// <summary>
-        /// When the budget period started
-        /// </summary>
-        public DateTime? BudgetStartDate { get; init; }
-        
-        /// <summary>
-        /// When the budget will reset
-        /// </summary>
-        public DateTime? BudgetResetDate { get; init; }
-        
-        /// <summary>
-        /// Partition key for ordered processing per virtual key
-        /// </summary>
-        public string PartitionKey => VirtualKeyId.ToString();
-    }
-
-    /// <summary>
     /// Raised when a virtual key exceeds its spend threshold
     /// Critical for enforcing budget limits and notifications
     /// </summary>
