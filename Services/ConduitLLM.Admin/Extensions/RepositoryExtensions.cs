@@ -221,6 +221,7 @@ namespace ConduitLLM.Admin.Extensions
                 PricingConfiguration = StructuredJson.ParseObject(modelCost.PricingConfiguration),
                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                ReasoningCostPerMillionTokens = modelCost.ReasoningCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
@@ -259,6 +260,7 @@ namespace ConduitLLM.Admin.Extensions
                 PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration),
                 InputCostPerMillionTokens = dto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens,
+                ReasoningCostPerMillionTokens = dto.ReasoningCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens,
                 BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
                 SupportsBatchProcessing = dto.SupportsBatchProcessing,
@@ -302,6 +304,8 @@ namespace ConduitLLM.Admin.Extensions
                 entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens.Value;
             if (dto.OutputCostPerMillionTokens.HasValue)
                 entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens.Value;
+            if (dto.ReasoningCostPerMillionTokens.HasValue)
+                entity.ReasoningCostPerMillionTokens = dto.ReasoningCostPerMillionTokens;
             if (dto.EmbeddingCostPerMillionTokens.HasValue)
                 entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
             if (dto.BatchProcessingMultiplier.HasValue)

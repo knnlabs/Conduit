@@ -3846,6 +3846,8 @@ export interface components {
       /** Format: double */
       outputCostPerMillionTokens?: number;
       /** Format: double */
+      reasoningCostPerMillionTokens?: null | number;
+      /** Format: double */
       embeddingCostPerMillionTokens?: null | number;
       /** Format: double */
       batchProcessingMultiplier?: null | number;
@@ -5366,6 +5368,8 @@ export interface components {
       inputCostPerMillionTokens: number;
       /** Format: double */
       outputCostPerMillionTokens: number;
+      /** Format: double */
+      reasoningCostPerMillionTokens: null | number;
       /** Format: double */
       embeddingCostPerMillionTokens: null | number;
       /** Format: date-time */
@@ -7165,6 +7169,8 @@ export interface components {
       inputCostPerMillionTokens?: null | number;
       /** Format: double */
       outputCostPerMillionTokens?: null | number;
+      /** Format: double */
+      reasoningCostPerMillionTokens?: null | number;
       /** Format: double */
       embeddingCostPerMillionTokens?: null | number;
       /** Format: double */

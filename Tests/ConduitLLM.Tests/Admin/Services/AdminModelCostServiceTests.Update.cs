@@ -20,6 +20,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Updated Cost Name",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
+                ReasoningCostPerMillionTokens = 35.00m,
                 ModelProviderTypeAssociationIds = new List<int>()
             };
 
@@ -41,6 +42,7 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Assert
             result.Should().NotBeNull();
+            existingCost.ReasoningCostPerMillionTokens.Should().Be(35.00m);
             _mockModelCostRepository.Verify(x => x.UpdateAsync(It.IsAny<ModelCost>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 

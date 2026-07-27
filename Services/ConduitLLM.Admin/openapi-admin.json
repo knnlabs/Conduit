@@ -26020,6 +26020,14 @@
             "type": "number",
             "format": "double"
           },
+          "reasoningCostPerMillionTokens": {
+            "minimum": 0,
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
           "embeddingCostPerMillionTokens": {
             "type": [
               "null",
@@ -29458,6 +29466,7 @@
           "modelProviderTypeAssociationIds",
           "inputCostPerMillionTokens",
           "outputCostPerMillionTokens",
+          "reasoningCostPerMillionTokens",
           "embeddingCostPerMillionTokens",
           "createdAt",
           "updatedAt",
@@ -29512,6 +29521,14 @@
           "outputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
+            "format": "double"
+          },
+          "reasoningCostPerMillionTokens": {
+            "minimum": 0,
+            "type": [
+              "null",
+              "number"
+            ],
             "format": "double"
           },
           "embeddingCostPerMillionTokens": {
@@ -33825,6 +33842,14 @@
             "format": "double"
           },
           "outputCostPerMillionTokens": {
+            "minimum": 0,
+            "type": [
+              "null",
+              "number"
+            ],
+            "format": "double"
+          },
+          "reasoningCostPerMillionTokens": {
             "minimum": 0,
             "type": [
               "null",

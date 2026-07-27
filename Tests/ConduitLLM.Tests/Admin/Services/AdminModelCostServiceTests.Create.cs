@@ -21,6 +21,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Test Model Cost",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
+                ReasoningCostPerMillionTokens = 30.00m,
                 ModelProviderTypeAssociationIds = new List<int>()
             };
 
@@ -30,6 +31,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = createDto.CostName,
                 InputCostPerMillionTokens = createDto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = createDto.OutputCostPerMillionTokens,
+                ReasoningCostPerMillionTokens = createDto.ReasoningCostPerMillionTokens,
                 ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>()
             };
 
@@ -48,6 +50,12 @@ namespace ConduitLLM.Tests.Admin.Services
             result.CostName.Should().Be("Test Model Cost");
             result.InputCostPerMillionTokens.Should().Be(10.00m);
             result.OutputCostPerMillionTokens.Should().Be(20.00m);
+            result.ReasoningCostPerMillionTokens.Should().Be(30.00m);
+            _mockModelCostRepository.Verify(
+                x => x.CreateAsync(
+                    It.Is<ModelCost>(cost => cost.ReasoningCostPerMillionTokens == 30.00m),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]

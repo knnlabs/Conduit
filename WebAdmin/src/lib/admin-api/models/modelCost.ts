@@ -27,6 +27,7 @@ export interface ModelCostDto {
   modelProviderTypeAssociationIds: number[];
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
   outputCostPerMillionTokens: number; // Cost per million tokens in USD
+  reasoningCostPerMillionTokens?: number; // Optional override; defaults to output token cost
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
   createdAt: string;
   updatedAt: string;
@@ -57,6 +58,7 @@ export interface CreateModelCostDto {
   description?: string;
   inputCostPerMillionTokens: number; // Cost per million tokens in USD
   outputCostPerMillionTokens: number; // Cost per million tokens in USD
+  reasoningCostPerMillionTokens?: number; // Optional override; defaults to output token cost
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
@@ -79,6 +81,7 @@ export interface UpdateModelCostDto {
   isActive?: boolean;
   inputCostPerMillionTokens?: number; // Cost per million tokens in USD
   outputCostPerMillionTokens?: number; // Cost per million tokens in USD
+  reasoningCostPerMillionTokens?: number; // Optional override; defaults to output token cost
   embeddingCostPerMillionTokens?: number; // Cost per million tokens in USD
   batchProcessingMultiplier?: number;
   supportsBatchProcessing?: boolean;
