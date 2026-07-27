@@ -190,10 +190,8 @@ public partial class Program
             }
         }
 
-        // Run database migration startup handling (CONDUIT_MIGRATION_MODE); Apply mode
-        // also seeds default data under the migration lock.
-        await app.RunDatabaseMigrationAsync();
-
+        // Normal startup never mutates the database. MigrationWaitService gates
+        // readiness until the explicit "migrate" release step has completed.
         // Resolve the real client IP via trusted proxies. Must run before any IP-reading middleware:
         // HTTPS redirection honors X-Forwarded-Proto, and the /metrics gate reads the client IP.
         // No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.

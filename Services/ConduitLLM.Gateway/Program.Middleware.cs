@@ -25,9 +25,8 @@ public partial class Program
             }
         }
 
-        // Run database migrations
-        await app.RunDatabaseMigrationAsync();
-
+        // Normal startup never mutates the database. MigrationWaitService gates
+        // readiness until the explicit "migrate" release step has completed.
         // Resolve the real client IP via trusted proxies (must run before ANY middleware that reads
         // the client IP — correlation, auth, security). No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.
         app.UseTrustedProxyForwardedHeaders();

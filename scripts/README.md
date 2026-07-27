@@ -18,14 +18,16 @@ repository root unless a command says otherwise.
 | Run the full local build/test/coverage flow | `./scripts/test/ci-build-test.ps1` |
 | Produce or inspect detailed coverage | `./scripts/test/coverage-dashboard.ps1 run|report|summary` |
 | Validate EF Core migrations | `./scripts/migrations/validate-migrations.ps1 -CheckPending` |
+| Apply release migrations locally | `docker compose run --rm migrate` |
 | Run the Gateway/Admin messaging smoke test | `./scripts/test/wolverine-two-host-smoke.ps1` |
 | Run local CodeQL analysis | `./scripts/test/test-codeql.ps1` |
 
 `dev.ps1` is the canonical development entry point. It always combines
 `docker-compose.yml` with `docker-compose.dev.yml`; do not invoke the
-development override file by itself. When its database has no model identifiers,
-the release's embedded provider catalogs are seeded by the application migration
-path automatically. Use `-SeedModelCatalog` to ask the running Admin API to merge
+development override file by itself. Its one-shot `migrate` service applies EF
+and Wolverine schema changes before either API starts. When its database has no
+model identifiers, the release's embedded provider catalogs are seeded by that
+migrator. Use `-SeedModelCatalog` to ask the running Admin API to merge
 the embedded snapshot again after rebuilding with catalog changes.
 
 ## Optional maintenance tools

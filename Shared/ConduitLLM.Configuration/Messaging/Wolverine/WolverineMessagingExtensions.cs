@@ -44,9 +44,9 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
 
         /// <summary>
         /// Configuration key controlling automatic provisioning of Wolverine's durability
-        /// and queue tables at startup (default <c>true</c>). Production deployments that
-        /// manage schema explicitly set this to <c>false</c> and provision via script —
-        /// see the Phase 2 plan (#924).
+        /// and queue tables at startup (default <c>false</c>). The explicit
+        /// <c>migrate</c> release step owns provisioning. Development environments may
+        /// opt in when intentionally running without that step.
         /// </summary>
         public const string AutoProvisionKey = "ConduitLLM:Messaging:Wolverine:AutoProvision";
 
@@ -108,7 +108,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         {
             var schemaName = configuration[SchemaNameKey]
                 ?? $"wolverine_{serviceName.Replace('-', '_')}";
-            var autoProvision = configuration.GetValue(AutoProvisionKey, true);
+            var autoProvision = configuration.GetValue(AutoProvisionKey, false);
             var inMemory = UsesInMemoryTransport(configuration);
 
             return host.UseWolverine(opts =>

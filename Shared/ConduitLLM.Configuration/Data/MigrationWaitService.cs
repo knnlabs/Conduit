@@ -37,8 +37,8 @@ namespace ConduitLLM.Configuration.Data
     /// In Wait mode, polls until the schema contains every migration this binary knows
     /// about (an external migrator — the "migrate" verb — applies them), then flips
     /// <see cref="MigrationReadinessState"/> so /health/ready starts passing. No-op in
-    /// Apply/Skip modes. An unreachable database is not fatal: readiness simply stays
-    /// down, which is the correct signal for orchestrators.
+    /// Skip mode. An unreachable database is not fatal: readiness simply stays
+    /// down with an actionable diagnostic, which is the correct signal for orchestrators.
     /// </summary>
     public sealed class MigrationWaitService : BackgroundService
     {
@@ -77,7 +77,8 @@ namespace ConduitLLM.Configuration.Data
             await Task.Yield();
 
             _logger.LogInformation(
-                "Migration mode is Wait: this instance will not migrate. Polling until the schema is current; /health/ready is gated until then.");
+                "This service never applies database migrations. Polling until the schema is current; " +
+                "/health/ready is gated until then. Run 'dotnet ConduitLLM.Admin.dll migrate' before rollout.");
 
             var elapsed = Stopwatch.StartNew();
             var interval = InitialPollInterval;
@@ -95,7 +96,8 @@ namespace ConduitLLM.Configuration.Data
                     }
 
                     _logger.LogInformation(
-                        "Waiting for {PendingCount} pending migration(s) to be applied by the migrator (next: {NextMigration})",
+                        "Waiting for {PendingCount} pending migration(s) (next: {NextMigration}). " +
+                        "Run 'dotnet ConduitLLM.Admin.dll migrate' before rollout.",
                         pending.Count, pending[0]);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -110,7 +112,8 @@ namespace ConduitLLM.Configuration.Data
                 if (_options.WaitTimeoutSeconds > 0 && elapsed.Elapsed.TotalSeconds >= _options.WaitTimeoutSeconds)
                 {
                     _logger.LogCritical(
-                        "Schema did not become current within {WaitTimeoutVariable}={TimeoutSeconds}s. Stopping application.",
+                        "Schema did not become current within {WaitTimeoutVariable}={TimeoutSeconds}s. " +
+                        "Run 'dotnet ConduitLLM.Admin.dll migrate', then restart the service. Stopping application.",
                         MigrationStartupOptions.WaitTimeoutVariable, _options.WaitTimeoutSeconds);
                     _lifetime.StopApplication();
                     return;

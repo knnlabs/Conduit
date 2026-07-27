@@ -10,18 +10,24 @@ namespace ConduitLLM.Tests.Configuration.Data
         [Fact]
         public async Task CheckHealthAsync_SchemaNotCurrent_ReturnsUnhealthy()
         {
-            var state = new MigrationReadinessState();
+            var state = new MigrationReadinessState(
+                new MigrationStartupOptions { Mode = MigrationMode.Wait });
             var check = new PendingMigrationsReadinessCheck(state);
 
             var result = await check.CheckHealthAsync(new HealthCheckContext());
 
             Assert.Equal(HealthStatus.Unhealthy, result.Status);
+            Assert.Contains("migrate", result.Description, StringComparison.OrdinalIgnoreCase);
         }
 
         [Fact]
         public async Task CheckHealthAsync_SchemaCurrent_ReturnsHealthy()
         {
-            var state = new MigrationReadinessState { IsSchemaCurrent = true };
+            var state = new MigrationReadinessState(
+                new MigrationStartupOptions { Mode = MigrationMode.Wait })
+            {
+                IsSchemaCurrent = true
+            };
             var check = new PendingMigrationsReadinessCheck(state);
 
             var result = await check.CheckHealthAsync(new HealthCheckContext());

@@ -12,7 +12,8 @@ namespace ConduitLLM.Tests.Configuration.Data
         private readonly Mock<IPendingMigrationsProbe> _probeMock = new();
         private readonly Mock<IHostApplicationLifetime> _lifetimeMock = new();
         private readonly Mock<ILogger<MigrationWaitService>> _loggerMock = new();
-        private readonly MigrationReadinessState _state = new();
+        private readonly MigrationReadinessState _state =
+            new(new MigrationStartupOptions { Mode = MigrationMode.Wait });
 
         private MigrationWaitService CreateService(MigrationMode mode)
         {
@@ -33,7 +34,7 @@ namespace ConduitLLM.Tests.Configuration.Data
         [Fact]
         public async Task ExecuteAsync_ModeNotWait_DoesNothing()
         {
-            var service = CreateService(MigrationMode.Apply);
+            var service = CreateService(MigrationMode.Skip);
 
             await service.StartAsync(CancellationToken.None);
             await (service.ExecuteTask ?? Task.CompletedTask);

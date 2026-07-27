@@ -15,7 +15,25 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      
+
+  # One-shot release gate. Both web services wait for this command to succeed and
+  # never mutate EF or Wolverine schemas during their own startup.
+  migrate:
+    build:
+      context: .
+      dockerfile: Services/ConduitLLM.Admin/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      ASPNETCORE_ENVIRONMENT: Production
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
+    command: ["migrate"]
+    restart: "no"
+    healthcheck:
+      disable: true
+
   redis:
     # Redis 7.4+ enables per-connection hash-field TTL; older external servers use timer cleanup.
     image: redis:7.4.2-alpine
@@ -36,13 +54,15 @@ services:
       context: .
       dockerfile: Services/ConduitLLM.Gateway/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      CONDUIT_MIGRATION_MODE: "Wait"
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
       # Customer error visibility: External (default, sanitized) or Internal (raw provider detail)
       CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-External}"
       # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
@@ -109,13 +129,15 @@ services:
       context: .
       dockerfile: Services/ConduitLLM.Admin/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      CONDUIT_MIGRATION_MODE: "Wait"
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
       # Must match the api service — Admin reports this value on the System Info page
       CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-External}"
       # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.

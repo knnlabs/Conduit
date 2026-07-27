@@ -138,6 +138,8 @@ single origin.
    ```bash
    docker compose up -d
    ```
+   Compose runs the one-shot `migrate` service first. Gateway and Admin start only
+   after it exits successfully; neither API changes the schema during startup.
 
 4. **Access ConduitLLM**
    - **Gateway API**: `http://localhost:5000` (interactive docs at `/scalar/v1`)
