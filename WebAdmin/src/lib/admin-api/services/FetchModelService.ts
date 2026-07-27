@@ -28,9 +28,7 @@ type UpdateModelDto = components['schemas']['UpdateModelDto'];
 type ModelProviderMappingDto = components['schemas']['ModelProviderMappingDto'];
 type ModelIdentifierDto = components['schemas']['ModelIdentifierDto'];
 type ModelProviderAvailabilityDto = components['schemas']['ModelProviderAvailabilityDto'];
-type CreatedModelIdentifierDto = components['schemas']['CreatedModelIdentifierDto'];
-type CreateModelIdentifierDto = components['schemas']['CreateModelIdentifierDto'];
-type UpdateModelIdentifierDto = components['schemas']['UpdateModelIdentifierDto'];
+type ModelIdentifierRequestDto = components['schemas']['ModelIdentifierRequestDto'];
 
 export type CatalogImportCounts = components['schemas']['CatalogImportCounts'];
 export type ProviderCatalogImportResult = components['schemas']['ProviderCatalogImportResult'];
@@ -436,14 +434,14 @@ export class FetchModelService {
     }
 
     const dataWithDefaults = applyProviderAssociationDefaults(data);
-    const requestBody: CreateModelIdentifierDto = {
+    const requestBody: ModelIdentifierRequestDto = {
       ...dataWithDefaults,
       provider: typeof dataWithDefaults.provider === 'number'
         ? dataWithDefaults.provider
         : undefined,
     };
 
-    const result = await this.client['executeContractOperation']<CreatedModelIdentifierDto, CreateModelIdentifierDto>(
+    const result = await this.client['executeContractOperation']<ModelIdentifierDto, ModelIdentifierRequestDto>(
       `/v1/admin/models/${id}/identifiers`,
       HttpMethod.POST,
       (contractClient, options) => contractClient.POST('/v1/admin/models/{id}/identifiers', {
@@ -497,7 +495,7 @@ export class FetchModelService {
     }
 
     const dataWithDefaults = applyProviderAssociationDefaults(data);
-    const requestBody: UpdateModelIdentifierDto = {
+    const requestBody: ModelIdentifierRequestDto = {
       ...dataWithDefaults,
       provider: typeof dataWithDefaults.provider === 'number'
         ? dataWithDefaults.provider

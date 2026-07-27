@@ -11523,7 +11523,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateModelIdentifierDto"
+                "$ref": "#/components/schemas/ModelIdentifierRequestDto"
               }
             }
           },
@@ -11543,7 +11543,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CreatedModelIdentifierDto"
+                  "$ref": "#/components/schemas/ModelIdentifierDto"
                 }
               }
             }
@@ -11800,7 +11800,7 @@
           "content": {
             "application/merge-patch+json": {
               "schema": {
-                "$ref": "#/components/schemas/UpdateModelIdentifierDto"
+                "$ref": "#/components/schemas/ModelIdentifierRequestDto"
               }
             }
           },
@@ -25592,119 +25592,6 @@
           }
         }
       },
-      "CreatedModelIdentifierDto": {
-        "required": [
-          "id",
-          "identifier",
-          "provider",
-          "isPrimary",
-          "maxInputTokens",
-          "maxOutputTokens",
-          "speedScore",
-          "qualityScore",
-          "providerVariation"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "identifier": {
-            "type": "string"
-          },
-          "provider": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "isPrimary": {
-            "type": "boolean"
-          },
-          "maxInputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "maxOutputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "format": "int32"
-          },
-          "speedScore": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "qualityScore": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "format": "double"
-          },
-          "providerVariation": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "inputModalities": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "outputModalities": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "operationalCapabilities": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
-              }
-            ]
-          },
-          "capabilitySource": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ModelCapabilitySource"
-              }
-            ]
-          },
-          "capabilitiesLastVerifiedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        },
-        "description": "DTO returned after creating a model identifier."
-      },
       "CreateFunctionConfigurationRequest": {
         "required": [
           "providerType",
@@ -26313,120 +26200,6 @@
           }
         },
         "description": "Data transfer object for creating a new AI model in the system."
-      },
-      "CreateModelIdentifierDto": {
-        "type": "object",
-        "properties": {
-          "identifier": {
-            "type": "string",
-            "description": "The identifier string used by a provider"
-          },
-          "provider": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The provider type that uses this identifier as an enum value\r\n(OpenAI = 1, Groq = 2, Replicate = 3, etc.)",
-            "format": "int32"
-          },
-          "isPrimary": {
-            "type": [
-              "null",
-              "boolean"
-            ],
-            "description": "Whether this is the primary identifier"
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": { },
-            "description": "Optional metadata as JSON"
-          },
-          "maxInputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Provider-specific override for maximum input tokens",
-            "format": "int32"
-          },
-          "maxOutputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Provider-specific override for maximum output tokens",
-            "format": "int32"
-          },
-          "speedScore": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)",
-            "format": "double"
-          },
-          "qualityScore": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Quality score (0.0 to 1.0, where 1.0 = highest quality)",
-            "format": "double"
-          },
-          "providerVariation": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Model variation or quantization level (e.g., \"GGUF\", \"Q4_K_M\", \"instruct\")"
-          },
-          "inputModalities": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "outputModalities": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "operationalCapabilities": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
-              }
-            ]
-          },
-          "capabilitySource": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ModelCapabilitySource"
-              }
-            ]
-          },
-          "capabilitiesLastVerifiedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        },
-        "description": "DTO for creating a model identifier"
       },
       "CreateModelProviderMappingDto": {
         "required": [
@@ -30065,6 +29838,11 @@
             "type": "boolean",
             "description": "Gets or sets whether this is the primary (preferred) provider for the model."
           },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { },
+            "description": "Gets or sets provider-specific metadata."
+          },
           "maxInputTokens": {
             "type": [
               "null",
@@ -30162,6 +29940,120 @@
           }
         },
         "description": "Lightweight DTO for a model's provider type association (identifier)."
+      },
+      "ModelIdentifierRequestDto": {
+        "type": "object",
+        "properties": {
+          "identifier": {
+            "type": "string",
+            "description": "The identifier string used by a provider"
+          },
+          "provider": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "The provider type that uses this identifier as an enum value\r\n(OpenAI = 1, Groq = 2, Replicate = 3, etc.)",
+            "format": "int32"
+          },
+          "isPrimary": {
+            "type": [
+              "null",
+              "boolean"
+            ],
+            "description": "Whether this is the primary identifier"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { },
+            "description": "Optional metadata as JSON"
+          },
+          "maxInputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Provider-specific override for maximum input tokens",
+            "format": "int32"
+          },
+          "maxOutputTokens": {
+            "type": [
+              "null",
+              "integer"
+            ],
+            "description": "Provider-specific override for maximum output tokens",
+            "format": "int32"
+          },
+          "speedScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)",
+            "format": "double"
+          },
+          "qualityScore": {
+            "type": [
+              "null",
+              "number"
+            ],
+            "description": "Quality score (0.0 to 1.0, where 1.0 = highest quality)",
+            "format": "double"
+          },
+          "providerVariation": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Model variation or quantization level (e.g., \"GGUF\", \"Q4_K_M\", \"instruct\")"
+          },
+          "inputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "outputModalities": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "operationalCapabilities": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
+              }
+            ]
+          },
+          "capabilitySource": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ModelCapabilitySource"
+              }
+            ]
+          },
+          "capabilitiesLastVerifiedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          }
+        },
+        "description": "DTO for creating or updating a model identifier."
       },
       "ModelProviderAvailabilityDto": {
         "required": [
@@ -34161,120 +34053,6 @@
           }
         },
         "description": "Data transfer object for updating an existing AI model in the system."
-      },
-      "UpdateModelIdentifierDto": {
-        "type": "object",
-        "properties": {
-          "identifier": {
-            "type": "string",
-            "description": "The identifier string used by a provider"
-          },
-          "provider": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "The provider type that uses this identifier as an enum value\r\n(OpenAI = 1, Groq = 2, Replicate = 3, etc.)",
-            "format": "int32"
-          },
-          "isPrimary": {
-            "type": [
-              "null",
-              "boolean"
-            ],
-            "description": "Whether this is the primary identifier"
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": { },
-            "description": "Optional metadata as JSON"
-          },
-          "maxInputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Provider-specific override for maximum input tokens",
-            "format": "int32"
-          },
-          "maxOutputTokens": {
-            "type": [
-              "null",
-              "integer"
-            ],
-            "description": "Provider-specific override for maximum output tokens",
-            "format": "int32"
-          },
-          "speedScore": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)",
-            "format": "double"
-          },
-          "qualityScore": {
-            "type": [
-              "null",
-              "number"
-            ],
-            "description": "Quality score (0.0 to 1.0, where 1.0 = highest quality)",
-            "format": "double"
-          },
-          "providerVariation": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "description": "Model variation or quantization level (e.g., \"GGUF\", \"Q4_K_M\", \"instruct\")"
-          },
-          "inputModalities": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "outputModalities": {
-            "type": [
-              "null",
-              "array"
-            ],
-            "items": {
-              "type": "string"
-            }
-          },
-          "operationalCapabilities": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ProviderOperationalCapabilities"
-              }
-            ]
-          },
-          "capabilitySource": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ModelCapabilitySource"
-              }
-            ]
-          },
-          "capabilitiesLastVerifiedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          }
-        },
-        "description": "DTO for updating a model identifier"
       },
       "UpdateModelProviderMappingDto": {
         "type": "object",

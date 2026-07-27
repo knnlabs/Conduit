@@ -3718,32 +3718,6 @@ export interface components {
       endDate?: string;
       data?: components["schemas"]["CostTrendDataDto"][];
     };
-    /** @description DTO returned after creating a model identifier. */
-    CreatedModelIdentifierDto: {
-      /** Format: int32 */
-      id: number;
-      identifier: string;
-      /** Format: int32 */
-      provider: null | number;
-      isPrimary: boolean;
-      /** Format: int32 */
-      maxInputTokens: null | number;
-      /** Format: int32 */
-      maxOutputTokens: null | number;
-      /** Format: double */
-      speedScore: null | number;
-      /** Format: double */
-      qualityScore: null | number;
-      providerVariation: null | string;
-      inputModalities?: null | string[];
-      outputModalities?: null | string[];
-      operationalCapabilities?:
-        | null
-        | components["schemas"]["ProviderOperationalCapabilities"];
-      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
-      /** Format: date-time */
-      capabilitiesLastVerifiedAt?: null | string;
-    };
     CreateFunctionConfigurationRequest: {
       providerType: components["schemas"]["FunctionProviderType"];
       configurationName: string;
@@ -3951,53 +3925,6 @@ export interface components {
       modelParameters?: {
         [key: string]: unknown;
       };
-    };
-    /** @description DTO for creating a model identifier */
-    CreateModelIdentifierDto: {
-      /** @description The identifier string used by a provider */
-      identifier?: string;
-      /**
-       * Format: int32
-       * @description The provider type that uses this identifier as an enum value
-       *     (OpenAI = 1, Groq = 2, Replicate = 3, etc.)
-       */
-      provider?: null | number;
-      /** @description Whether this is the primary identifier */
-      isPrimary?: null | boolean;
-      /** @description Optional metadata as JSON */
-      metadata?: {
-        [key: string]: unknown;
-      };
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum input tokens
-       */
-      maxInputTokens?: null | number;
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum output tokens
-       */
-      maxOutputTokens?: null | number;
-      /**
-       * Format: double
-       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
-       */
-      speedScore?: null | number;
-      /**
-       * Format: double
-       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
-       */
-      qualityScore?: null | number;
-      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
-      providerVariation?: null | string;
-      inputModalities?: null | string[];
-      outputModalities?: null | string[];
-      operationalCapabilities?:
-        | null
-        | components["schemas"]["ProviderOperationalCapabilities"];
-      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
-      /** Format: date-time */
-      capabilitiesLastVerifiedAt?: null | string;
     };
     CreateModelProviderMappingDto: {
       modelAlias: string;
@@ -5589,6 +5516,10 @@ export interface components {
       provider: null | number;
       /** @description Gets or sets whether this is the primary (preferred) provider for the model. */
       isPrimary: boolean;
+      /** @description Gets or sets provider-specific metadata. */
+      metadata?: {
+        [key: string]: unknown;
+      };
       /**
        * Format: int32
        * @description Gets or sets the maximum input token limit for this provider's offering, or null if unknown.
@@ -5619,6 +5550,53 @@ export interface components {
       /** @description Provider-specific accepted modality override; null inherits the model. */
       inputModalities?: null | string[];
       /** @description Provider-specific output modality override; null inherits the model. */
+      outputModalities?: null | string[];
+      operationalCapabilities?:
+        | null
+        | components["schemas"]["ProviderOperationalCapabilities"];
+      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
+      /** Format: date-time */
+      capabilitiesLastVerifiedAt?: null | string;
+    };
+    /** @description DTO for creating or updating a model identifier. */
+    ModelIdentifierRequestDto: {
+      /** @description The identifier string used by a provider */
+      identifier?: string;
+      /**
+       * Format: int32
+       * @description The provider type that uses this identifier as an enum value
+       *     (OpenAI = 1, Groq = 2, Replicate = 3, etc.)
+       */
+      provider?: null | number;
+      /** @description Whether this is the primary identifier */
+      isPrimary?: null | boolean;
+      /** @description Optional metadata as JSON */
+      metadata?: {
+        [key: string]: unknown;
+      };
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum input tokens
+       */
+      maxInputTokens?: null | number;
+      /**
+       * Format: int32
+       * @description Provider-specific override for maximum output tokens
+       */
+      maxOutputTokens?: null | number;
+      /**
+       * Format: double
+       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
+       */
+      speedScore?: null | number;
+      /**
+       * Format: double
+       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
+       */
+      qualityScore?: null | number;
+      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
+      providerVariation?: null | string;
+      inputModalities?: null | string[];
       outputModalities?: null | string[];
       operationalCapabilities?:
         | null
@@ -7274,53 +7252,6 @@ export interface components {
       modelParameters?: {
         [key: string]: unknown;
       };
-    };
-    /** @description DTO for updating a model identifier */
-    UpdateModelIdentifierDto: {
-      /** @description The identifier string used by a provider */
-      identifier?: string;
-      /**
-       * Format: int32
-       * @description The provider type that uses this identifier as an enum value
-       *     (OpenAI = 1, Groq = 2, Replicate = 3, etc.)
-       */
-      provider?: null | number;
-      /** @description Whether this is the primary identifier */
-      isPrimary?: null | boolean;
-      /** @description Optional metadata as JSON */
-      metadata?: {
-        [key: string]: unknown;
-      };
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum input tokens
-       */
-      maxInputTokens?: null | number;
-      /**
-       * Format: int32
-       * @description Provider-specific override for maximum output tokens
-       */
-      maxOutputTokens?: null | number;
-      /**
-       * Format: double
-       * @description Speed score relative to baseline (1.0 = baseline, 2.0 = 2x faster)
-       */
-      speedScore?: null | number;
-      /**
-       * Format: double
-       * @description Quality score (0.0 to 1.0, where 1.0 = highest quality)
-       */
-      qualityScore?: null | number;
-      /** @description Model variation or quantization level (e.g., "GGUF", "Q4_K_M", "instruct") */
-      providerVariation?: null | string;
-      inputModalities?: null | string[];
-      outputModalities?: null | string[];
-      operationalCapabilities?:
-        | null
-        | components["schemas"]["ProviderOperationalCapabilities"];
-      capabilitySource?: null | components["schemas"]["ModelCapabilitySource"];
-      /** Format: date-time */
-      capabilitiesLastVerifiedAt?: null | string;
     };
     UpdateModelProviderMappingDto: {
       modelAlias?: null | string;
@@ -14105,7 +14036,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/json": components["schemas"]["CreateModelIdentifierDto"];
+        "application/json": components["schemas"]["ModelIdentifierRequestDto"];
       };
     };
     responses: {
@@ -14117,7 +14048,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["CreatedModelIdentifierDto"];
+          "application/json": components["schemas"]["ModelIdentifierDto"];
         };
       };
       /** @description Bad Request */
@@ -14286,7 +14217,7 @@ export interface operations {
     };
     requestBody: {
       content: {
-        "application/merge-patch+json": components["schemas"]["UpdateModelIdentifierDto"];
+        "application/merge-patch+json": components["schemas"]["ModelIdentifierRequestDto"];
       };
     };
     responses: {

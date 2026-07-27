@@ -27,6 +27,9 @@ namespace ConduitLLM.Admin.Models.Models
         [Required]
         public bool IsPrimary { get; set; }
 
+        /// <summary>Gets or sets provider-specific metadata.</summary>
+        public Dictionary<string, JsonElement>? Metadata { get; set; }
+
         /// <summary>Gets or sets the maximum input token limit for this provider's offering, or null if unknown.</summary>
         public int? MaxInputTokens { get; set; }
 

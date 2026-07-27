@@ -37,7 +37,7 @@ internal sealed class JsonMergePatchRequestConverterFactory : JsonConverterFacto
         typeof(UpdateModelAuthorDto),
         typeof(UpdateModelCostDto),
         typeof(UpdateModelDto),
-        typeof(UpdateModelIdentifierDto),
+        typeof(ModelIdentifierRequestDto),
         typeof(UpdateModelProviderMappingDto),
         typeof(UpdateModelSeriesDto),
         typeof(UpdateNotificationDto),
