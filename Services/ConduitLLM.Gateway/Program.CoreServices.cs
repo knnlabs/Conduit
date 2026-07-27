@@ -57,7 +57,6 @@ public partial class Program
 
         builder.Services.AddHttpClient();
         builder.Services.AddLLMProviderHttpClients();
-        builder.Services.AddVideoGenerationHttpClients();
         builder.Services.AddHttpClientServices(builder.Configuration);
 
         // Register operation timeout provider for operation-aware timeout policies

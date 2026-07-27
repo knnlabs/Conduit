@@ -328,15 +328,6 @@ namespace ConduitLLM.Providers.OpenAI
         public required List<OpenAIModelData> Data { get; init; }
     }
 
-    internal record OpenAIModelListResponse
-    {
-        [JsonPropertyName("object")]
-        public string Object { get; init; } = "list"; // Expected value
-
-        [JsonPropertyName("data")]
-        public required List<OpenAIModelData> Data { get; init; }
-    }
-
     internal record OpenAIModelData
     {
         [JsonPropertyName("id")]
