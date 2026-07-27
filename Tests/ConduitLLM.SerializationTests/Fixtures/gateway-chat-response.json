@@ -1,0 +1,21 @@
+{
+  "id": "chatcmpl-sourcegen",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Hello"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "created": 1722083696,
+  "model": "gpt-test",
+  "object": "chat.completion",
+  "usage": {
+    "prompt_tokens": 4,
+    "completion_tokens": 2,
+    "total_tokens": 6
+  }
+}

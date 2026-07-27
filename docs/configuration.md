@@ -11,7 +11,7 @@ Conduit's configuration lives in two places, and knowing which is which is most 
 | Lives in | The **environment** (env vars / secrets) | The **database**, edited through the Admin UI |
 | Set by | Your deployment / container platform | Operators, live, in WebAdmin |
 | Changes take effect | On restart | Immediately, no redeploy |
-| Examples | Database URL, keys, storage, migration mode | Providers, virtual keys, model mappings, costs, routing policies |
+| Examples | Database URL, keys, storage, migration readiness mode | Providers, virtual keys, model mappings, costs, routing policies |
 
 The rule of thumb: **infrastructure and secrets are deploy-time; everything about how Conduit routes,
 prices, and gates requests is runtime.**
@@ -31,9 +31,10 @@ of the areas, not a copy of that file:
   (see [Monitoring](./monitoring.md#securing-the-health-endpoints)). Human admins sign in to WebAdmin
   through Clerk, configured with its own keys.
 - **Database** — a single **PostgreSQL** connection URL (`DATABASE_URL`) is required; Conduit is
-  Postgres-only. Schema changes are governed by a **migration mode** (`CONDUIT_MIGRATION_MODE`) that
-  chooses whether a booting service applies migrations itself, waits for an external migration to
-  finish first, or skips the step — the mechanism behind zero-downtime deploys.
+  Postgres-only. Gateway and Admin startup never changes the schema. Run the Admin image's explicit
+  `migrate` command before rolling out either service; the default `CONDUIT_MIGRATION_MODE=Wait`
+  keeps readiness down until that command has brought the schema current. See the
+  [migration deployment strategy](./operations/deployment/migration-deployment-strategy.md).
 - **Customer mode** — `CONDUIT_CUSTOMER_MODE` decides how much provider error detail customers see
   in every customer-facing emission (HTTP error responses, SSE error events, async task status,
   webhook payloads, SignalR failure events). `External` (the default) returns classified generic

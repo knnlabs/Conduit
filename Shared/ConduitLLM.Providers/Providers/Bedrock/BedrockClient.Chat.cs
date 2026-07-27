@@ -4,6 +4,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.Helpers;
+using ConduitLLM.Providers.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -34,7 +35,9 @@ namespace ConduitLLM.Providers.Bedrock
                 await ThrowOnErrorAsync(httpResponse, "chat completion", cancellationToken);
 
                 var body = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
-                var converseResponse = JsonSerializer.Deserialize<BedrockConverseResponse>(body, DefaultJsonOptions)
+                var converseResponse = JsonSerializer.Deserialize(
+                        body,
+                        ProvidersJsonContext.Default.BedrockConverseResponse)
                     ?? throw new LLMCommunicationException("Bedrock returned an empty converse response.");
 
                 var response = MapToCoreResponse(converseResponse, request.Model ?? ProviderModelId);
@@ -336,8 +339,8 @@ namespace ConduitLLM.Providers.Bedrock
             {
                 return serialized.GetString() switch
                 {
-                    "auto" => new BedrockToolChoice { Auto = new { } },
-                    "required" => new BedrockToolChoice { Any = new { } },
+                    "auto" => new BedrockToolChoice { Auto = CreateEmptyJsonObject() },
+                    "required" => new BedrockToolChoice { Any = CreateEmptyJsonObject() },
                     _ => null
                 };
             }
@@ -351,6 +354,12 @@ namespace ConduitLLM.Providers.Bedrock
             }
 
             return null;
+        }
+
+        private static JsonElement CreateEmptyJsonObject()
+        {
+            using var document = JsonDocument.Parse("{}");
+            return document.RootElement.Clone();
         }
 
         internal ChatCompletionResponse MapToCoreResponse(BedrockConverseResponse response, string modelId)

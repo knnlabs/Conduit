@@ -100,8 +100,8 @@ namespace ConduitLLM.Providers.Bedrock
     /// <summary>Exactly one member is set: <c>auto</c>, <c>any</c>, or a named <c>tool</c>.</summary>
     internal class BedrockToolChoice
     {
-        public object? Auto { get; set; }
-        public object? Any { get; set; }
+        public JsonElement? Auto { get; set; }
+        public JsonElement? Any { get; set; }
         public BedrockNamedToolChoice? Tool { get; set; }
     }
 

@@ -7,6 +7,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Authentication;
 using ConduitLLM.Providers.Configuration;
+using ConduitLLM.Providers.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -150,8 +151,10 @@ namespace ConduitLLM.Providers.Bedrock
         /// <summary>
         /// Serializes a Bedrock request body with the client's camelCase conventions.
         /// </summary>
-        internal static byte[] SerializePayload<T>(T body) =>
-            JsonSerializer.SerializeToUtf8Bytes(body, DefaultJsonOptions);
+        internal static byte[] SerializePayload(BedrockConverseRequest body) =>
+            JsonSerializer.SerializeToUtf8Bytes(
+                body,
+                ProvidersJsonContext.Default.BedrockConverseRequest);
 
         /// <summary>
         /// Authentication is applied per request (SigV4 covers the payload), so no client-level

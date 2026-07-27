@@ -4,6 +4,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Providers.Configuration;
+using ConduitLLM.Providers.Serialization;
 using InternalModels = ConduitLLM.Providers.Common.Models;
 using CoreUtils = ConduitLLM.Core.Utilities;
 
@@ -127,8 +128,8 @@ namespace ConduitLLM.Providers.OpenRouter
                     var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenRouterCatalogResponse>(
                         client,
                         endpoint,
+                        ProvidersJsonContext.Default.OpenRouterCatalogResponse,
                         headers,
-                        DefaultJsonOptions,
                         Logger,
                         cancellationToken);
 

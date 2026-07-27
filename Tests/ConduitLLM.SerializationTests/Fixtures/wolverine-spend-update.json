@@ -1,0 +1,9 @@
+{
+  "KeyId": 42,
+  "Amount": 1.25,
+  "RequestId": "req-sourcegen",
+  "PartitionKey": "42",
+  "EventId": "event-sourcegen",
+  "Timestamp": "2026-07-27T12:34:56Z",
+  "CorrelationId": "corr-sourcegen"
+}

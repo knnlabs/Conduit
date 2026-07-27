@@ -1,0 +1,11 @@
+{
+  "data": [
+    {
+      "id": "gpt-test",
+      "object": "model",
+      "created": 1722083696,
+      "owned_by": "conduit"
+    }
+  ],
+  "object": "list"
+}

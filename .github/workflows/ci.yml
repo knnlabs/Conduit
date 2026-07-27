@@ -134,6 +134,10 @@ jobs:
           TEST_REDIS_CONNECTION: localhost:6379
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
 
+      - name: Admin media request-delegate generation guard
+        shell: pwsh
+        run: ./scripts/test/verify-admin-media-rdg.ps1 -NoRestore
+
       # Wolverine build-ahead codegen check (#961): compiles the handler chain for EVERY
       # registered event type up front via JasperFx's `codegen preview`, so codegen /
       # service-location incompatibilities (the class of defect behind W2 in the #929 S1

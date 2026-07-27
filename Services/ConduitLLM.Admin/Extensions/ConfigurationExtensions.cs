@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.ModelCatalogs;
 using ConduitLLM.Core.Extensions;
 
 namespace ConduitLLM.Admin.Extensions
@@ -23,8 +24,13 @@ namespace ConduitLLM.Admin.Extensions
             // Add caching services
             services.AddCachingServices(configuration);
 
-            // Add database migration services (CONDUIT_MIGRATION_MODE handling)
+            // Add read-only database migration readiness handling.
             services.AddDatabaseMigration();
+
+            // The Admin import endpoint can explicitly merge the embedded catalog at
+            // runtime. This is application behavior, not schema migration.
+            services.AddSingleton<BundledModelCatalog>();
+            services.AddScoped<IBundledModelCatalogImporter, BundledModelCatalogImporter>();
 
             // Customer error mode (CONDUIT_CUSTOMER_MODE) — Admin reports it on System Info;
             // its own error middleware stays operator-facing and does not use the translator.

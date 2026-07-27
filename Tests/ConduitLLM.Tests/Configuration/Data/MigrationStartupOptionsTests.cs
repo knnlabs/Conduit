@@ -42,14 +42,14 @@ namespace ConduitLLM.Tests.Configuration.Data
         }
 
         [Fact]
-        public void FromEnvironment_NoVariable_DefaultsToApply()
+        public void FromEnvironment_NoVariable_DefaultsToWait()
         {
             var options = RunWithEnvironment(
                 MigrationStartupOptions.FromEnvironment,
                 _loggerMock.Object,
                 (MigrationStartupOptions.ModeVariable, null));
 
-            Assert.Equal(MigrationMode.Apply, options.Mode);
+            Assert.Equal(MigrationMode.Wait, options.Mode);
             Assert.Equal(MigrationStartupOptions.DefaultLockTimeoutSeconds, options.LockTimeoutSeconds);
             Assert.Equal(0, options.WaitTimeoutSeconds);
         }
@@ -58,7 +58,6 @@ namespace ConduitLLM.Tests.Configuration.Data
         [InlineData("wait", MigrationMode.Wait)]
         [InlineData("Wait", MigrationMode.Wait)]
         [InlineData("WAIT", MigrationMode.Wait)]
-        [InlineData("apply", MigrationMode.Apply)]
         [InlineData("skip", MigrationMode.Skip)]
         [InlineData(" Skip ", MigrationMode.Skip)]
         public void FromEnvironment_ValidValueAnyCase_ParsesMode(string raw, MigrationMode expected)
@@ -80,6 +79,31 @@ namespace ConduitLLM.Tests.Configuration.Data
                 (MigrationStartupOptions.ModeVariable, "Automatic")));
 
             Assert.Contains("Automatic", ex.Message);
+        }
+
+        [Fact]
+        public void FromEnvironment_Apply_ThrowsWithExplicitMigratorInstruction()
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() => RunWithEnvironment(
+                MigrationStartupOptions.FromEnvironment,
+                _loggerMock.Object,
+                (MigrationStartupOptions.ModeVariable, "Apply")));
+
+            Assert.Contains("no longer supported", ex.Message);
+            Assert.Contains("migrate", ex.Message);
+        }
+
+        [Fact]
+        public void ForMigrator_IgnoresRuntimeMode()
+        {
+            var options = RunWithEnvironment(
+                MigrationStartupOptions.ForMigrator,
+                _loggerMock.Object,
+                (MigrationStartupOptions.ModeVariable, "Apply"),
+                (MigrationStartupOptions.LockTimeoutVariable, "42"));
+
+            Assert.Equal(MigrationMode.Wait, options.Mode);
+            Assert.Equal(42, options.LockTimeoutSeconds);
         }
 
         [Fact]

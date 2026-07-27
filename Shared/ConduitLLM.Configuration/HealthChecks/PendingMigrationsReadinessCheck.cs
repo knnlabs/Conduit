@@ -7,9 +7,8 @@ namespace ConduitLLM.Configuration.HealthChecks
     /// <summary>
     /// Fails readiness until <see cref="MigrationReadinessState"/> reports the schema
     /// current. Must be registered with the "ready" tag — /health/ready filters on it.
-    /// In Apply/Skip modes the state is set before the server binds, so this check
-    /// never fails there; in Wait mode it holds readiness at 503 until the external
-    /// migrator has applied all migrations this binary knows about.
+    /// In Skip mode the state starts current; otherwise it holds readiness at 503 until
+    /// the external migrator has applied all migrations this binary knows about.
     /// </summary>
     public class PendingMigrationsReadinessCheck : IHealthCheck
     {
@@ -27,7 +26,7 @@ namespace ConduitLLM.Configuration.HealthChecks
             return Task.FromResult(_state.IsSchemaCurrent
                 ? HealthCheckResult.Healthy("Database schema is current")
                 : HealthCheckResult.Unhealthy(
-                    "Database schema is not current; waiting for migrations to be applied"));
+                    "Database schema is not current. Run 'dotnet ConduitLLM.Admin.dll migrate' before rollout."));
         }
     }
 }

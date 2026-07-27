@@ -1,0 +1,14 @@
+{
+  "code": "validation_error",
+  "traceId": "trace-sourcegen",
+  "errors": {
+    "model": [
+      "The model field is required."
+    ]
+  },
+  "type": "https://errors.conduit.test/validation",
+  "title": "Validation failed",
+  "status": 400,
+  "detail": "The request was invalid.",
+  "instance": "/api/test"
+}

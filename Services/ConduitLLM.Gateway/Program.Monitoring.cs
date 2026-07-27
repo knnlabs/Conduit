@@ -22,8 +22,8 @@ public partial class Program
             var healthChecksBuilder = builder.Services.AddHealthChecks();
 
             // Gate /health/ready on the schema being current. Tag must be "ready" —
-            // that's what the readiness endpoint filters on. Only Wait mode can fail
-            // this check; Apply/Skip set the state before the server binds.
+            // that's what the readiness endpoint filters on. Wait mode holds readiness
+            // down until the explicit migrator catches the schema up; Skip bypasses it.
             healthChecksBuilder.AddCheck<ConduitLLM.Configuration.HealthChecks.PendingMigrationsReadinessCheck>(
                 "pending_migrations",
                 failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy,

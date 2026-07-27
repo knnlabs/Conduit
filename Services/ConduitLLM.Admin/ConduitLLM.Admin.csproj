@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Compile Minimal API request delegates at build time. Treat an endpoint
+         falling back to runtime generation as a build regression. -->
+    <EnableRequestDelegateGenerator>true</EnableRequestDelegateGenerator>
+    <WarningsAsErrors>$(WarningsAsErrors);RDG012</WarningsAsErrors>
     <!-- 1591: missing XML doc; NU1510: intentional direct security references. -->
     <NoWarn>$(NoWarn);1591;NU1510</NoWarn>
     <!-- Build-time OpenAPI document export (opt-in): the committed openapi-admin.json is the

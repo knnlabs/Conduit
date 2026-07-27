@@ -9,6 +9,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Configuration.ModelCatalogs;
 
+using Wolverine;
+using Wolverine.Postgresql;
+
 namespace ConduitLLM.Configuration.Data
 {
     /// <summary>
@@ -42,7 +45,7 @@ namespace ConduitLLM.Configuration.Data
 
             try
             {
-                var options = MigrationStartupOptions.FromEnvironment(logger);
+                var options = MigrationStartupOptions.ForMigrator(logger);
                 var connectionString = ConfigurationDbContextFactory.ResolveNpgsqlConnectionString();
 
                 var contextOptions = new DbContextOptionsBuilder<ConduitDbContext>()
@@ -100,17 +103,44 @@ namespace ConduitLLM.Configuration.Data
                 return;
             }
 
-            logger.LogInformation("Provisioning Wolverine durability/queue schema...");
+            logger.LogInformation("Provisioning Gateway and Admin Wolverine durability/queue schemas...");
 
-            // SetupResources resolves Wolverine's IStatefulResource registrations from
-            // DI without starting the host — no durability agents, listeners, or node
-            // leader election run.
-            using var host = Host.CreateDefaultBuilder()
-                .AddConduitWolverine(configuration, connectionString, "conduit-migrator")
-                .Build();
-            await host.SetupResources(cancellationToken);
+            await ProvisionWolverineHostAsync(
+                configuration,
+                connectionString,
+                serviceName: "conduit-gateway",
+                WolverineQueueNames.Gateway,
+                cancellationToken);
+            await ProvisionWolverineHostAsync(
+                configuration,
+                connectionString,
+                serviceName: "conduit-admin",
+                WolverineQueueNames.Admin,
+                cancellationToken);
 
             logger.LogInformation("Wolverine schema provisioned");
+        }
+
+        private static async Task ProvisionWolverineHostAsync(
+            IConfiguration configuration,
+            string connectionString,
+            string serviceName,
+            IReadOnlyList<string> queueNames,
+            CancellationToken cancellationToken)
+        {
+            // Declare the runtime queues so SetupResources creates both the service's
+            // durability schema and the shared transport schema. The host is never
+            // started, so no listeners, agents, or leader election run.
+            using var host = Host.CreateDefaultBuilder()
+                .AddConduitWolverine(configuration, connectionString, serviceName, options =>
+                {
+                    foreach (var queueName in queueNames)
+                    {
+                        options.ListenToPostgresqlQueue(queueName);
+                    }
+                })
+                .Build();
+            await host.SetupResources(cancellationToken);
         }
 
         /// <summary>

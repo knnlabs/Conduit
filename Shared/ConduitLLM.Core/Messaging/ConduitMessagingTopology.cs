@@ -34,10 +34,10 @@ namespace ConduitLLM.Core.Messaging
     public static class ConduitMessagingTopology
     {
         /// <summary>Default queue for Gateway-consumed events without a tuned policy.</summary>
-        public const string GatewayEventsQueue = "gateway-events";
+        public const string GatewayEventsQueue = WolverineQueueNames.GatewayEvents;
 
         /// <summary>Queue for the shared cache events consumed by the Admin host.</summary>
-        public const string AdminEventsQueue = "admin-events";
+        public const string AdminEventsQueue = WolverineQueueNames.AdminEvents;
 
         /// <summary>webhook-delivery (tuned: <see cref="ConduitEndpointPolicies.WebhookDelivery"/>).</summary>
         public static readonly IReadOnlyList<Type> WebhookDeliveryEvents = new[]

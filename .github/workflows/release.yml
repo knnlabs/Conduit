@@ -13,13 +13,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Create Release
+  metadata:
+    name: Release metadata
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      packages: write
-    
+      contents: read
+
     outputs:
       version: ${{ steps.version.outputs.version }}
       channel: ${{ steps.version.outputs.channel }}
@@ -33,8 +32,6 @@ jobs:
       - name: Extract version and channel
         id: version
         # A tag is a pre-release iff its name contains a hyphen (SemVer rule).
-        # This single decision drives the GitHub Release flag and the Docker
-        # floating tag so both channels stay consistent.
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
@@ -48,20 +45,10 @@ jobs:
             echo "prerelease=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: ${{ steps.version.outputs.prerelease }}
-          # Only stable releases become the repo's "Latest" (and appear in
-          # /releases/latest); betas never move the badge.
-          make_latest: ${{ steps.version.outputs.channel == 'latest' }}
-
   docker:
-    name: Docker - ${{ matrix.service }}
+    name: Build candidate - ${{ matrix.service }}
     runs-on: ubuntu-latest
-    needs: release
+    needs: metadata
     permissions:
       contents: read
       packages: write
@@ -91,21 +78,98 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push candidate
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
-          # Immutable version pin + the floating channel tag (:latest for stable,
-          # :beta for pre-releases). A pre-release never overwrites :latest.
-          tags: |
-            ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:${{ needs.release.outputs.version }}
-            ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:${{ needs.release.outputs.channel }}
+          # Candidate tags are not consumed by deployments. Official version/channel
+          # tags are promoted only after the production migration succeeds.
+          tags: ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:${{ needs.metadata.outputs.version }}-candidate
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
           build-args: |
-            VERSION=${{ needs.release.outputs.version }}
-            COMMIT_SHA=${{ needs.release.outputs.commit_sha }}
-            BUILD_TIMESTAMP=${{ needs.release.outputs.build_timestamp }}
+            VERSION=${{ needs.metadata.outputs.version }}
+            COMMIT_SHA=${{ needs.metadata.outputs.commit_sha }}
+            BUILD_TIMESTAMP=${{ needs.metadata.outputs.build_timestamp }}
+
+  migrate:
+    name: Production migration gate
+    runs-on: ubuntu-latest
+    needs: [metadata, docker]
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DATABASE_URL: ${{ secrets.CONDUIT_RELEASE_DATABASE_URL }}
+
+    steps:
+      - name: Require release database secret
+        run: test -n "$DATABASE_URL"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply database migrations
+        # A non-zero migrator exit code stops the workflow before any official image
+        # tag or GitHub Release is updated. Re-running the job is idempotent.
+        run: |
+          docker run --rm \
+            --env DATABASE_URL \
+            --env CONDUIT_MIGRATION_LOCK_TIMEOUT_SECONDS=600 \
+            --env ConduitLLM__Messaging__Wolverine__AutoProvision=false \
+            "${{ env.REGISTRY }}/nickna/conduit-admin:${{ needs.metadata.outputs.version }}-candidate" \
+            migrate
+
+  promote:
+    name: Promote release images
+    runs-on: ubuntu-latest
+    needs: [metadata, migrate]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote candidate tags
+        run: |
+          for SERVICE in webadmin http admin; do
+            SOURCE="${{ env.REGISTRY }}/nickna/conduit-${SERVICE}:${{ needs.metadata.outputs.version }}-candidate"
+            docker buildx imagetools create \
+              --tag "${{ env.REGISTRY }}/nickna/conduit-${SERVICE}:${{ needs.metadata.outputs.version }}" \
+              --tag "${{ env.REGISTRY }}/nickna/conduit-${SERVICE}:${{ needs.metadata.outputs.channel }}" \
+              "$SOURCE"
+          done
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [metadata, promote]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ needs.metadata.outputs.prerelease }}
+          # Only stable releases become the repo's "Latest"; betas never move it.
+          make_latest: ${{ needs.metadata.outputs.channel == 'latest' }}

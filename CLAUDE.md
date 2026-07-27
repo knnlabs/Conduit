@@ -333,9 +333,10 @@ if (isMetricsData(event.data)) {
 - **Expand/contract policy**: migrations must be backward-compatible with the previous
   release's code; destructive steps (drop/rename) ship one release later, after no
   deployed code references the old shape
-- Runtime application is governed by `CONDUIT_MIGRATION_MODE` (Apply/Wait/Skip) and the
-  `migrate` CLI verb — see
-  [`docs/configuration.md`](docs/configuration.md#deploy-time-configuration-the-environment)
+- Normal services never apply schema changes. The explicit `migrate` CLI verb is
+  the release gate; runtime `CONDUIT_MIGRATION_MODE` supports `Wait` (default) or
+  `Skip` — see
+  [`migration-deployment-strategy.md`](docs/operations/deployment/migration-deployment-strategy.md)
 - Repository interfaces and implementations live in
   `Shared/ConduitLLM.Configuration/Interfaces/` and
   `Shared/ConduitLLM.Configuration/Repositories/`; follow the neighboring patterns

@@ -8,16 +8,9 @@ namespace ConduitLLM.Configuration.Data
     public enum MigrationMode
     {
         /// <summary>
-        /// Apply pending migrations inline before serving traffic, serialized across
-        /// instances by a Postgres advisory lock. Default; the right mode for
-        /// development and single-writer deployments.
-        /// </summary>
-        Apply,
-
-        /// <summary>
         /// Never migrate. Poll until the schema contains every migration this binary
-        /// knows about, gating /health/ready in the meantime. The right mode for
-        /// production services when a release-hook migrator runs "migrate" separately.
+        /// knows about, gating /health/ready in the meantime. This is the default;
+        /// a release hook or one-shot job must run "migrate" separately.
         /// </summary>
         Wait,
 
@@ -38,12 +31,12 @@ namespace ConduitLLM.Configuration.Data
 
         public const int DefaultLockTimeoutSeconds = 300;
 
-        public MigrationMode Mode { get; init; } = MigrationMode.Apply;
+        public MigrationMode Mode { get; init; } = MigrationMode.Wait;
 
         /// <summary>
-        /// How long an Apply-mode instance waits for the advisory lock before failing
-        /// startup. Only contended waiters can time out — the lock winner holds it for
-        /// as long as the migration takes. 0 means wait indefinitely.
+        /// How long the explicit migrator waits for the advisory lock before failing.
+        /// Only contended waiters can time out — the lock winner holds it for as long
+        /// as the migration takes. 0 means wait indefinitely.
         /// </summary>
         public int LockTimeoutSeconds { get; init; } = DefaultLockTimeoutSeconds;
 
@@ -61,14 +54,20 @@ namespace ConduitLLM.Configuration.Data
             MigrationMode mode;
             if (string.IsNullOrWhiteSpace(rawMode))
             {
-                mode = MigrationMode.Apply;
+                mode = MigrationMode.Wait;
             }
-            else if (!Enum.TryParse(rawMode.Trim(), ignoreCase: true, out mode))
+            else if (string.Equals(rawMode.Trim(), "Apply", StringComparison.OrdinalIgnoreCase))
             {
-                // Fail fast: silently applying migrations in a misconfigured production
-                // service is worse than refusing to start.
                 throw new InvalidOperationException(
-                    $"Unrecognized {ModeVariable} value '{rawMode}'. Valid values: Apply, Wait, Skip.");
+                    $"{ModeVariable}=Apply is no longer supported because web services never mutate the schema. " +
+                    $"Run the explicit migrator ('dotnet ConduitLLM.Admin.dll {MigrationCommand.Verb}') before rollout, " +
+                    $"then use {ModeVariable}=Wait.");
+            }
+            else if (!Enum.TryParse(rawMode.Trim(), ignoreCase: true, out mode)
+                || !Enum.IsDefined(mode))
+            {
+                throw new InvalidOperationException(
+                    $"Unrecognized {ModeVariable} value '{rawMode}'. Valid values: Wait, Skip.");
             }
 
             return new MigrationStartupOptions
@@ -76,6 +75,24 @@ namespace ConduitLLM.Configuration.Data
                 Mode = mode,
                 LockTimeoutSeconds = ParseNonNegativeSeconds(LockTimeoutVariable, DefaultLockTimeoutSeconds),
                 WaitTimeoutSeconds = ParseNonNegativeSeconds(WaitTimeoutVariable, 0)
+            };
+        }
+
+        /// <summary>
+        /// Options for the explicit migration command. Runtime migration mode is
+        /// intentionally ignored: the command itself is the authorization to mutate
+        /// the schema.
+        /// </summary>
+        public static MigrationStartupOptions ForMigrator(ILogger logger)
+        {
+            WarnOnRemovedVariables(logger);
+            return new MigrationStartupOptions
+            {
+                Mode = MigrationMode.Wait,
+                LockTimeoutSeconds = ParseNonNegativeSeconds(
+                    LockTimeoutVariable,
+                    DefaultLockTimeoutSeconds),
+                WaitTimeoutSeconds = 0
             };
         }
 

@@ -5,7 +5,8 @@
     <IsConduitTestProject Condition="'$(MSBuildProjectName)' == 'ConduitLLM.Tests' Or
                                      '$(MSBuildProjectName)' == 'ConduitLLM.IntegrationTests' Or
                                      '$(MSBuildProjectName)' == 'ConduitLLM.FaultInjectionTests' Or
-                                     '$(MSBuildProjectName)' == 'ConduitLLM.BillingInvariantTests'">true</IsConduitTestProject>
+                                     '$(MSBuildProjectName)' == 'ConduitLLM.BillingInvariantTests' Or
+                                     '$(MSBuildProjectName)' == 'ConduitLLM.SerializationTests'">true</IsConduitTestProject>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsConduitTestProject)' == 'true'">

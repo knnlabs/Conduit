@@ -32,7 +32,7 @@ namespace ConduitLLM.Gateway.Services
                             var jsonString = (string?)value;
                             if (jsonString != null)
                             {
-                                var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, JsonOptions);
+                                var cost = DeserializeModelCost(jsonString);
                                 if (cost?.Id == modelCostId)
                                 {
                                     await Database.KeyDeleteAsync(key);
@@ -153,7 +153,7 @@ namespace ConduitLLM.Gateway.Services
                                     var jsonString = (string?)value;
                                     if (jsonString != null)
                                     {
-                                        var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, JsonOptions);
+                                        var cost = DeserializeModelCost(jsonString);
                                         if (cost?.Id == id)
                                         {
                                             keysToDelete.Add(key.ToString()!);
@@ -196,7 +196,7 @@ namespace ConduitLLM.Gateway.Services
 
                 await _subscriber.PublishAsync(
                     RedisChannel.Literal(CacheKeys.ModelCost.BatchInvalidationChannel),
-                    JsonSerializer.Serialize(batchMessage));
+                    SerializeBatchInvalidation(batchMessage));
 
                 stopwatch.Stop();
 
@@ -230,7 +230,7 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Message for batch invalidation pub/sub
         /// </summary>
-        private class ModelCostBatchInvalidation
+        internal sealed class ModelCostBatchInvalidation
         {
             public string[] CostIds { get; set; } = Array.Empty<string>();
             public DateTime Timestamp { get; set; }

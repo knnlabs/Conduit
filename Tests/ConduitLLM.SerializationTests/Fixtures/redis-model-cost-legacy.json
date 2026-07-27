@@ -1,0 +1,14 @@
+{
+  "Id": 7,
+  "CostName": "Legacy token pricing",
+  "PricingModel": 0,
+  "InputCostPerMillionTokens": 1.25,
+  "OutputCostPerMillionTokens": 5.00,
+  "CreatedAt": "2026-07-27T12:34:56Z",
+  "UpdatedAt": "2026-07-27T12:34:56Z",
+  "ModelType": "chat",
+  "IsActive": true,
+  "EffectiveDate": "2026-07-27T12:34:56Z",
+  "Priority": 10,
+  "SupportsBatchProcessing": false
+}

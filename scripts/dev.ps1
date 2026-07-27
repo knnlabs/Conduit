@@ -354,7 +354,7 @@ function Build-Containers {
             $buildArgs += '--no-cache'
         }
 
-        $buildArgs += @('api', 'admin', 'webadmin')
+        $buildArgs += @('migrate', 'api', 'admin', 'webadmin')
 
         docker compose @buildArgs
 
@@ -452,7 +452,10 @@ function Start-Development {
             throw "Docker Compose failed to start the development environment"
         }
 
-        $expectedServices = @(docker compose -f docker-compose.yml -f docker-compose.dev.yml config --services)
+        $expectedServices = @(
+            docker compose -f docker-compose.yml -f docker-compose.dev.yml config --services |
+                Where-Object { $_ -ne 'migrate' }
+        )
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to determine expected Docker Compose services"
         }
@@ -467,9 +470,8 @@ function Start-Development {
             throw "Services did not reach running state: $($missingServices -join ', ')"
         }
 
-        # Seed a new local database with every checked-in provider catalog. The
-        # script skips databases that already have identifiers unless explicitly
-        # asked to refresh them.
+        # The one-shot migrator seeds a new database from the checked-in catalogs.
+        # This script skips populated databases unless explicitly asked to refresh.
         $seedScript = Join-Path $scriptDir 'dev' 'seed-model-catalog.ps1'
         if ($SeedModelCatalog) {
             & $seedScript -Force

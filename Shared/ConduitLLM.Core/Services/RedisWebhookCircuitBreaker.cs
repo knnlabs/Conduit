@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Serialization;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using System.Text.Json;
@@ -43,7 +44,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (state.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(state.ToString());
+                    var circuitState = DeserializeCircuitState(state);
                     if (circuitState != null)
                     {
                         // Check if circuit should transition from Open to Half-Open
@@ -56,7 +57,7 @@ namespace ConduitLLM.Core.Services
                             
                             circuitState.State = "HalfOpen";
                             circuitState.HalfOpenTestAt = DateTime.UtcNow;
-                            var newState = JsonSerializer.Serialize(circuitState);
+                            var newState = SerializeCircuitState(circuitState);
                             transaction.StringSetAsync(stateKey, newState, _openDuration);
                             
                             if (transaction.Execute())
@@ -105,7 +106,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (currentState.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(currentState.ToString());
+                    var circuitState = DeserializeCircuitState(currentState);
                     if (circuitState != null && (circuitState.State == "Open" || circuitState.State == "HalfOpen"))
                     {
                         // Close the circuit
@@ -139,7 +140,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (currentState.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(currentState.ToString());
+                    var circuitState = DeserializeCircuitState(currentState);
                     if (circuitState != null && circuitState.State == "HalfOpen")
                     {
                         // Failed in half-open state, immediately open circuit again
@@ -200,7 +201,7 @@ namespace ConduitLLM.Core.Services
                 
                 if (stateTask.Result.HasValue)
                 {
-                    var circuitState = JsonSerializer.Deserialize<CircuitState>(stateTask.Result.ToString());
+                    var circuitState = DeserializeCircuitState(stateTask.Result);
                     if (circuitState != null)
                     {
                         isOpen = circuitState.State == "Open";
@@ -237,7 +238,7 @@ namespace ConduitLLM.Core.Services
                 };
                 
                 var stateKey = RedisKeys.WebhookCircuit.State(urlHash);
-                var stateJson = JsonSerializer.Serialize(circuitState);
+                var stateJson = SerializeCircuitState(circuitState);
                 
                 db.StringSet(stateKey, stateJson, _openDuration.Add(TimeSpan.FromMinutes(5)));
                 
@@ -256,7 +257,7 @@ namespace ConduitLLM.Core.Services
             }
         }
         
-        private class CircuitState
+        internal sealed class CircuitState
         {
             public string State { get; set; } = "Closed"; // Closed, Open, HalfOpen
             public DateTime OpenedAt { get; set; }
@@ -264,5 +265,11 @@ namespace ConduitLLM.Core.Services
             public int FailureCount { get; set; }
             public string WebhookUrl { get; set; } = string.Empty;
         }
+
+        private static CircuitState? DeserializeCircuitState(RedisValue value) =>
+            JsonSerializer.Deserialize(value.ToString(), CoreRedisJsonContext.Default.CircuitState);
+
+        private static string SerializeCircuitState(CircuitState value) =>
+            JsonSerializer.Serialize(value, CoreRedisJsonContext.Default.CircuitState);
     }
 }
