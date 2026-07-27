@@ -65,6 +65,8 @@ try {
         Write-Host "[OK] EF Core tools installed: $efVersion" -ForegroundColor Green
     } catch {
         Write-Host "ERROR: EF Core tools not installed" -ForegroundColor Red
+        # Surface the underlying dotnet error - without this the real cause is invisible in CI
+        Write-Host "dotnet ef --version output: $efVersion"
         Write-Host "Install with: dotnet tool install --global dotnet-ef"
         exit 1
     }
