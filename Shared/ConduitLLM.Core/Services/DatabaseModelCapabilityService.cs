@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Models;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Functions.Utilities;
 
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Caching.Distributed;
@@ -20,13 +21,7 @@ namespace ConduitLLM.Core.Services
     {
         private readonly ILogger<DatabaseModelCapabilityService> _logger;
         private readonly IModelProviderMappingRepository _repository;
-        private readonly IMemoryCache _memoryCache;
-        private readonly IDistributedCache? _distributedCache;
-        private readonly TimeSpan _memoryCacheExpiration = TimeSpan.FromMinutes(5);
-        private readonly TimeSpan _distributedCacheExpiration = TimeSpan.FromMinutes(30);
-        private const string CacheKeyPrefix = "ModelCapability:";
-        private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> KnownCacheKeys = new();
-        private readonly JsonSerializerOptions _jsonOptions;
+        private readonly HybridCacheAccessor _cache;
 
         public DatabaseModelCapabilityService(
             ILogger<DatabaseModelCapabilityService> logger,
@@ -36,22 +31,27 @@ namespace ConduitLLM.Core.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
-            _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
-            _distributedCache = distributedCache;
-            _jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = false
-            };
+            _cache = new HybridCacheAccessor(
+                memoryCache,
+                distributedCache,
+                logger,
+                "DatabaseModelCapability:",
+                TimeSpan.FromMinutes(5),
+                TimeSpan.FromMinutes(30),
+                new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = false
+                });
         }
 
         /// <inheritdoc/>
         public async Task<bool> SupportsVisionAsync(string model)
         {
-            var cacheKey = $"{CacheKeyPrefix}Vision:{model}";
+            var cacheKey = $"Vision:{model}";
             
             // Try hybrid cache first
-            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<bool?>(cacheKey);
             if (cachedResult.HasValue)
             {
                 return cachedResult.Value;
@@ -63,7 +63,7 @@ namespace ConduitLLM.Core.Services
                 var association = mapping?.ModelProviderTypeAssociation;
                 var result = association?.Model is not null &&
                     ModelCapabilityResolver.Resolve(association.Model, association).SupportsImageInput;
-                await SetInHybridCacheAsync(cacheKey, result);
+                await _cache.SetAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
@@ -76,9 +76,9 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<bool> SupportsVideoInputAsync(string model)
         {
-            var cacheKey = $"{CacheKeyPrefix}VideoInput:{model}";
+            var cacheKey = $"VideoInput:{model}";
 
-            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<bool?>(cacheKey);
             if (cachedResult.HasValue)
             {
                 return cachedResult.Value;
@@ -90,7 +90,7 @@ namespace ConduitLLM.Core.Services
                 var association = mapping?.ModelProviderTypeAssociation;
                 var result = association?.Model is not null &&
                     ModelCapabilityResolver.Resolve(association.Model, association).SupportsVideoInput;
-                await SetInHybridCacheAsync(cacheKey, result);
+                await _cache.SetAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
@@ -103,10 +103,10 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<bool> SupportsVideoGenerationAsync(string model)
         {
-            var cacheKey = $"{CacheKeyPrefix}VideoGeneration:{model}";
+            var cacheKey = $"VideoGeneration:{model}";
             
             // Try hybrid cache first
-            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<bool?>(cacheKey);
             if (cachedResult.HasValue)
             {
                 return cachedResult.Value;
@@ -118,7 +118,7 @@ namespace ConduitLLM.Core.Services
                 var association = mapping?.ModelProviderTypeAssociation;
                 var result = association?.Model is not null &&
                     ModelCapabilityResolver.Resolve(association.Model, association).SupportsVideoGeneration;
-                await SetInHybridCacheAsync(cacheKey, result);
+                await _cache.SetAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
@@ -131,9 +131,9 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<bool> SupportsSpeechToTextAsync(string model)
         {
-            var cacheKey = $"{CacheKeyPrefix}SpeechToText:{model}";
+            var cacheKey = $"SpeechToText:{model}";
 
-            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<bool?>(cacheKey);
             if (cachedResult.HasValue)
             {
                 return cachedResult.Value;
@@ -145,7 +145,7 @@ namespace ConduitLLM.Core.Services
                 var association = mapping?.ModelProviderTypeAssociation;
                 var result = association?.Model is not null &&
                     ModelCapabilityResolver.Resolve(association.Model, association).SupportsSpeechToText;
-                await SetInHybridCacheAsync(cacheKey, result);
+                await _cache.SetAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
@@ -158,9 +158,9 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<bool> SupportsTextToSpeechAsync(string model)
         {
-            var cacheKey = $"{CacheKeyPrefix}TextToSpeech:{model}";
+            var cacheKey = $"TextToSpeech:{model}";
 
-            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<bool?>(cacheKey);
             if (cachedResult.HasValue)
             {
                 return cachedResult.Value;
@@ -172,7 +172,7 @@ namespace ConduitLLM.Core.Services
                 var association = mapping?.ModelProviderTypeAssociation;
                 var result = association?.Model is not null &&
                     ModelCapabilityResolver.Resolve(association.Model, association).SupportsTextToSpeech;
-                await SetInHybridCacheAsync(cacheKey, result);
+                await _cache.SetAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
@@ -185,9 +185,9 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<bool> SupportsRerankAsync(string model)
         {
-            var cacheKey = $"{CacheKeyPrefix}Rerank:{model}";
+            var cacheKey = $"Rerank:{model}";
 
-            var cachedResult = await GetFromHybridCacheAsync<bool?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<bool?>(cacheKey);
             if (cachedResult.HasValue)
             {
                 return cachedResult.Value;
@@ -199,7 +199,7 @@ namespace ConduitLLM.Core.Services
                 var association = mapping?.ModelProviderTypeAssociation;
                 var result = association?.Model is not null &&
                     ModelCapabilityResolver.Resolve(association.Model, association).SupportsRerank;
-                await SetInHybridCacheAsync(cacheKey, result);
+                await _cache.SetAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
@@ -212,10 +212,10 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<string?> GetTokenizerTypeAsync(string model)
         {
-            var cacheKey = $"{CacheKeyPrefix}Tokenizer:{model}";
+            var cacheKey = $"Tokenizer:{model}";
             
             // Try hybrid cache first
-            var cachedResult = await GetFromHybridCacheAsync<string?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<string?>(cacheKey);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -236,7 +236,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 string result = tokenizerType.ToString()!;
-                await SetInHybridCacheAsync(cacheKey, result);
+                await _cache.SetAsync(cacheKey, result);
                 return result;
             }
             catch (Exception ex)
@@ -250,10 +250,10 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<string?> GetDefaultModelAsync(string provider, string capabilityType)
         {
-            var cacheKey = $"{CacheKeyPrefix}Default:{provider}:{capabilityType}";
+            var cacheKey = $"Default:{provider}:{capabilityType}";
             
             // Try hybrid cache first
-            var cachedResult = await GetFromHybridCacheAsync<string?>(cacheKey);
+            var cachedResult = await _cache.GetAsync<string?>(cacheKey);
             if (cachedResult != null)
             {
                 return cachedResult;
@@ -264,7 +264,6 @@ namespace ConduitLLM.Core.Services
                 // Default model selection is now deprecated - return null
                 // This functionality should be replaced with priority-based routing
                 _logger.LogWarning("GetDefaultModelAsync is deprecated. Use priority-based routing instead.");
-                await SetInHybridCacheAsync(cacheKey, (string?)null);
                 return null;
             }
             catch (Exception ex)
@@ -278,86 +277,9 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task RefreshCacheAsync()
         {
-            foreach (var cacheKey in KnownCacheKeys.Keys)
-            {
-                _memoryCache.Remove(cacheKey);
-                if (_distributedCache is not null)
-                {
-                    await _distributedCache.RemoveAsync(cacheKey);
-                }
-            }
+            await _cache.ClearAsync();
 
             _logger.LogInformation("Model capability cache refresh completed");
-        }
-
-        /// <summary>
-        /// Gets a value from hybrid cache (L1: Memory, L2: Redis)
-        /// </summary>
-        private async Task<T?> GetFromHybridCacheAsync<T>(string key)
-        {
-            // L1 Cache (Memory) - Fast access
-            if (_memoryCache.TryGetValue(key, out T? memoryValue))
-            {
-                _logger.LogDebug("Memory cache hit for key: {Key}", key);
-                return memoryValue;
-            }
-
-            // L2 Cache (Redis) - Shared state
-            if (_distributedCache != null)
-            {
-                try
-                {
-                    var cachedData = await _distributedCache.GetStringAsync(key);
-                    if (!string.IsNullOrEmpty(cachedData))
-                    {
-                        var distributedValue = JsonSerializer.Deserialize<T>(cachedData, _jsonOptions);
-                        if (distributedValue != null)
-                        {
-                            // Populate L1 cache with shorter TTL
-                            _memoryCache.Set(key, distributedValue, _memoryCacheExpiration);
-                            _logger.LogDebug("Distributed cache hit for key: {Key}", key);
-                            return distributedValue;
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error retrieving from distributed cache for key: {Key}", key);
-                }
-            }
-
-            return default(T);
-        }
-
-        /// <summary>
-        /// Sets a value in hybrid cache (L1: Memory, L2: Redis)
-        /// </summary>
-        private async Task SetInHybridCacheAsync<T>(string key, T value)
-        {
-            try
-            {
-                KnownCacheKeys.TryAdd(key, 0);
-                // Set in distributed cache first
-                if (_distributedCache != null)
-                {
-                    var json = JsonSerializer.Serialize(value, _jsonOptions);
-                    await _distributedCache.SetStringAsync(key, json, new DistributedCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = _distributedCacheExpiration
-                    });
-                }
-
-                // Set in memory cache with shorter TTL for consistency
-                _memoryCache.Set(key, value, _memoryCacheExpiration);
-                
-                _logger.LogDebug("Set value in hybrid cache for key: {Key}", key);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting value in hybrid cache for key: {Key}", key);
-                // Still cache in memory as fallback
-                _memoryCache.Set(key, value, _memoryCacheExpiration);
-            }
         }
 
         /// <summary>
