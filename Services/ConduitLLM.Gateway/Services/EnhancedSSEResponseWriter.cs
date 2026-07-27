@@ -90,6 +90,26 @@ namespace ConduitLLM.Gateway.Services
         }
 
         /// <summary>
+        /// Writes an error event with optional structured provider detail (Internal
+        /// customer mode). The <c>error</c> key keeps its string shape so existing
+        /// consumers are unaffected; <c>provider_error</c> appears only when detail
+        /// is present.
+        /// </summary>
+        public async Task WriteErrorEventAsync(
+            string error,
+            ConduitLLM.Core.Interfaces.ProviderErrorDetail? providerError,
+            CancellationToken cancellationToken = default)
+        {
+            if (providerError is null)
+            {
+                await WriteErrorEventAsync(error, cancellationToken);
+                return;
+            }
+
+            await WriteEventAsync("error", new { error, provider_error = providerError }, cancellationToken);
+        }
+
+        /// <summary>
         /// Writes a reasoning event containing model thinking/reasoning content.
         /// Sent as "event: reasoning" for separate display from main content.
         /// </summary>

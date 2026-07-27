@@ -25,6 +25,8 @@ public static class ExceptionToResponseMapper
     /// exception message in development environments.</param>
     /// <param name="OpenAIErrorType">The OpenAI-compatible error type string (e.g., "invalid_request_error", "server_error").</param>
     /// <param name="Param">The parameter that caused the error, if applicable (e.g., from ArgumentException.ParamName).</param>
+    /// <param name="ProviderDetail">Structured provider-error detail for the response metadata.
+    /// Populated only by IProviderErrorTranslator in Internal customer mode; null otherwise.</param>
     public record ExceptionMappingResult(
         int StatusCode,
         string ResponseMessage,
@@ -33,7 +35,8 @@ public static class ExceptionToResponseMapper
         string LogPrefix,
         bool IncludeExceptionMessageInLog,
         string OpenAIErrorType,
-        string? Param = null);
+        string? Param = null,
+        Interfaces.ProviderErrorDetail? ProviderDetail = null);
 
     /// <summary>
     /// Maps an exception to its corresponding HTTP response information.

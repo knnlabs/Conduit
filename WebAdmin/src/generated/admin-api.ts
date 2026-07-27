@@ -6755,6 +6755,7 @@ export interface components {
       /** Format: date-time */
       startTime?: string;
       uptime?: string;
+      customerMode?: string;
     };
     SearchUsageMetadata: {
       /** Format: int32 */

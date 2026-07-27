@@ -17,6 +17,13 @@ public class LLMCommunicationException : ConduitException
     /// </summary>
     public string? ResponseBody { get; }
 
+    /// <summary>
+    /// The provider that produced this error, when known. Settable because provider
+    /// clients throw without this context; <c>ContextAwareLLMClient</c> stamps it on
+    /// the way out. Customer-facing only in Internal mode.
+    /// </summary>
+    public string? ProviderName { get; set; }
+
     public LLMCommunicationException() { }
     public LLMCommunicationException(string message) : base(message) { }
     public LLMCommunicationException(string message, Exception? innerException = null) : base(message, innerException ?? new Exception(message)) { }

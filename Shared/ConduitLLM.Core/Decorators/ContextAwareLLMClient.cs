@@ -20,18 +20,21 @@ namespace ConduitLLM.Core.Decorators
         private readonly ILLMClient _innerClient;
         private readonly int _keyId;
         private readonly int _providerId;
+        private readonly string? _providerName;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ContextAwareLLMClient>? _logger;
 
         public ContextAwareLLMClient(
-            ILLMClient innerClient, 
-            int keyId, 
+            ILLMClient innerClient,
+            int keyId,
             int providerId,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            string? providerName = null)
         {
             _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
             _keyId = keyId;
             _providerId = providerId;
+            _providerName = providerName;
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = serviceProvider.GetService<ILogger<ContextAwareLLMClient>>();
         }
@@ -52,6 +55,7 @@ namespace ConduitLLM.Core.Decorators
                 }
                 catch (LLMCommunicationException ex)
                 {
+                    StampProviderName(ex);
                     await TrackErrorAsync(ex);
                     throw;
                 }
@@ -87,6 +91,8 @@ namespace ConduitLLM.Core.Decorators
                             _logger?.LogWarning(
                                 "Caught exception in streaming: Type={ExceptionType}, Message={Message}, HasStatusCode={HasStatusCode}",
                                 ex.GetType().Name, ex.Message.Substring(0, Math.Min(ex.Message.Length, 200)), (ex as LLMCommunicationException)?.StatusCode);
+
+                            StampProviderName(ex);
 
                             // Track error only once per stream
                             if (!errorTracked)
@@ -131,6 +137,7 @@ namespace ConduitLLM.Core.Decorators
                 }
                 catch (LLMCommunicationException ex)
                 {
+                    StampProviderName(ex);
                     await TrackErrorAsync(ex);
                     throw;
                 }
@@ -150,6 +157,7 @@ namespace ConduitLLM.Core.Decorators
                 }
                 catch (LLMCommunicationException ex)
                 {
+                    StampProviderName(ex);
                     await TrackErrorAsync(ex);
                     throw;
                 }
@@ -169,6 +177,7 @@ namespace ConduitLLM.Core.Decorators
                 }
                 catch (LLMCommunicationException ex)
                 {
+                    StampProviderName(ex);
                     await TrackErrorAsync(ex);
                     throw;
                 }
@@ -212,6 +221,7 @@ namespace ConduitLLM.Core.Decorators
                 }
                 catch (LLMCommunicationException ex)
                 {
+                    StampProviderName(ex);
                     await TrackErrorAsync(ex);
                     throw;
                 }
@@ -228,6 +238,7 @@ namespace ConduitLLM.Core.Decorators
                 }
                 catch (LLMCommunicationException ex)
                 {
+                    StampProviderName(ex);
                     await TrackErrorAsync(ex);
                     throw;
                 }
@@ -265,6 +276,27 @@ namespace ConduitLLM.Core.Decorators
             }
 
             return baseUrl ?? "https://api.provider.com/health";
+        }
+
+        /// <summary>
+        /// Stamps this client's provider name on every <see cref="LLMCommunicationException"/>
+        /// in the chain so customer-facing translation (Internal mode) can name the provider.
+        /// Never overwrites a name set closer to the source.
+        /// </summary>
+        private void StampProviderName(Exception exception)
+        {
+            if (string.IsNullOrWhiteSpace(_providerName))
+            {
+                return;
+            }
+
+            for (Exception? current = exception; current is not null; current = current.InnerException)
+            {
+                if (current is LLMCommunicationException communicationException)
+                {
+                    communicationException.ProviderName ??= _providerName;
+                }
+            }
         }
 
         private async Task TrackErrorAsync(LLMCommunicationException ex)

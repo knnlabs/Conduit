@@ -38,6 +38,7 @@ namespace ConduitLLM.Gateway.Endpoints
         private readonly IChatSpendEstimator? _chatSpendEstimator;
         private readonly ISpendReservationService? _spendReservationService;
         private readonly BillingAdmissionOptions _billingAdmissionOptions;
+        private readonly ConduitLLM.Core.Interfaces.IProviderErrorTranslator _providerErrorTranslator;
 
         public ChatEndpoints(
             Conduit conduit,
@@ -52,7 +53,8 @@ namespace ConduitLLM.Gateway.Endpoints
             IChatSpendEstimator? chatSpendEstimator = null,
             ISpendReservationService? spendReservationService = null,
             IOptions<BillingAdmissionOptions>? billingAdmissionOptions = null,
-            IHttpContextAccessor? httpContextAccessor = null) : base(eventBus, httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor)), logger)
+            IHttpContextAccessor? httpContextAccessor = null,
+            ConduitLLM.Core.Interfaces.IProviderErrorTranslator? providerErrorTranslator = null) : base(eventBus, httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor)), logger)
         {
             _conduit = conduit ?? throw new ArgumentNullException(nameof(conduit));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -65,6 +67,9 @@ namespace ConduitLLM.Gateway.Endpoints
             _chatSpendEstimator = chatSpendEstimator;
             _spendReservationService = spendReservationService;
             _billingAdmissionOptions = billingAdmissionOptions?.Value ?? new BillingAdmissionOptions();
+            // Default to External so an unwired construction sanitizes rather than leaks.
+            _providerErrorTranslator = providerErrorTranslator
+                ?? new ProviderErrorTranslator(new ConduitLLM.Core.Configuration.CustomerErrorOptions());
         }
 
         /// <summary>
@@ -168,12 +173,14 @@ namespace ConduitLLM.Gateway.Endpoints
                     request.Model,
                     error.MetricOutcome,
                     operationStopwatch.Elapsed.TotalSeconds);
+                var customerError = _providerErrorTranslator.Translate(ex);
                 return OpenAIError(
                     error.StatusCode,
-                    ConduitLLM.Core.Utilities.SensitiveDataRedactor.Redact(ex.Message),
+                    customerError.Message,
                     error.Code,
                     error.Type,
-                    metadata: TryExtractFileAnnotationMetadata(ex.ResponseBody));
+                    metadata: BuildProviderErrorMetadata(
+                        TryExtractFileAnnotationMetadata(ex.ResponseBody), customerError.Detail));
             }
             catch (Exception ex)
             {
@@ -208,6 +215,37 @@ namespace ConduitLLM.Gateway.Endpoints
             string Code,
             string Type,
             string MetricOutcome);
+
+        /// <summary>
+        /// Merges file-annotation metadata mined from the provider body with the
+        /// customer-mode <c>provider_error</c> detail (Internal mode only) into one
+        /// <c>error.metadata</c> element.
+        /// </summary>
+        internal static JsonElement? BuildProviderErrorMetadata(
+            JsonElement? fileAnnotationMetadata,
+            ConduitLLM.Core.Interfaces.ProviderErrorDetail? providerErrorDetail)
+        {
+            if (providerErrorDetail is null)
+            {
+                return fileAnnotationMetadata;
+            }
+
+            var combined = new Dictionary<string, JsonElement>
+            {
+                ["provider_error"] = JsonSerializer.SerializeToElement(providerErrorDetail)
+            };
+
+            if (fileAnnotationMetadata is { } annotations &&
+                annotations.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in annotations.EnumerateObject())
+                {
+                    combined[property.Name] = property.Value.Clone();
+                }
+            }
+
+            return JsonSerializer.SerializeToElement(combined);
+        }
 
         internal static JsonElement? TryExtractFileAnnotationMetadata(string? responseBody)
         {

@@ -55,6 +55,7 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
     private readonly ISpendReservationService? _spendReservationService;
     private readonly BillingAdmissionOptions _billingAdmissionOptions;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IProviderErrorTranslator _providerErrorTranslator;
 
     public ResponsesEndpoints(
         IResponsesChatExecutor executor,
@@ -65,7 +66,8 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
         ILogger<ResponsesEndpoints> logger,
         IChatSpendEstimator? chatSpendEstimator = null,
         ISpendReservationService? spendReservationService = null,
-        IOptions<BillingAdmissionOptions>? billingAdmissionOptions = null)
+        IOptions<BillingAdmissionOptions>? billingAdmissionOptions = null,
+        IProviderErrorTranslator? providerErrorTranslator = null)
         : base(null, httpContextAccessor, logger)
     {
         _executor = executor;
@@ -75,6 +77,10 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
         _chatSpendEstimator = chatSpendEstimator;
         _spendReservationService = spendReservationService;
         _billingAdmissionOptions = billingAdmissionOptions?.Value ?? new BillingAdmissionOptions();
+        // Default to External so an unwired construction sanitizes rather than leaks.
+        _providerErrorTranslator = providerErrorTranslator
+            ?? new ConduitLLM.Core.Services.ProviderErrorTranslator(
+                new ConduitLLM.Core.Configuration.CustomerErrorOptions());
     }
 
     public async Task<IResult> CreateResponse(
@@ -156,11 +162,13 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
         catch (LLMCommunicationException exception)
         {
             var mapped = ChatEndpoints.MapProviderCommunicationError(exception.StatusCode);
+            var customerError = _providerErrorTranslator.Translate(exception);
             return GatewayResults.OpenAIError(
                 mapped.StatusCode,
-                ConduitLLM.Core.Utilities.SensitiveDataRedactor.Redact(exception.Message),
+                customerError.Message,
                 mapped.Code,
-                mapped.Type);
+                mapped.Type,
+                metadata: ChatEndpoints.BuildProviderErrorMetadata(null, customerError.Detail));
         }
         // No blanket catch: OpenAIErrorMiddleware maps exceptions to proper HTTP responses via
         // ExceptionToResponseMapper. A catch-all 500 here masked model-routing client errors (#1191).
@@ -491,14 +499,24 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
             {
                 try
                 {
+                    // Provider failures get the customer-mode translation (classified
+                    // generic in External, detailed in Internal); anything else keeps
+                    // the fixed transport message.
+                    var providerException = LLMCommunicationException.FindWithStatus(exception);
+                    var customerError = providerException is not null
+                        ? _providerErrorTranslator.Translate(providerException)
+                        : null;
+                    var errorMessage = customerError?.Message
+                        ?? "The provider stream terminated before completion.";
                     await WriteEventAsync(
                         "error",
                         Event(
                             "error",
                             ++sequence,
                             ("code", "provider_response_error"),
-                            ("message", "The provider stream terminated before completion."),
-                            ("param", null)),
+                            ("message", errorMessage),
+                            ("param", null),
+                            ("provider_error", customerError?.Detail)),
                         CancellationToken.None);
 
                     var failed = CreateResponseObject(
@@ -510,7 +528,9 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
                         instructions,
                         [],
                         null,
-                        new { code = "provider_response_error", message = "The provider stream terminated before completion." });
+                        customerError?.Detail is { } detail
+                            ? new { code = "provider_response_error", message = errorMessage, provider_error = detail }
+                            : (object)new { code = "provider_response_error", message = errorMessage });
                     await WriteEventAsync(
                         "response.failed",
                         Event("response.failed", ++sequence, ("response", failed)),
@@ -930,6 +950,7 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
                 case "code": payload.Code = (string)value!; break;
                 case "message": payload.Message = (string)value!; break;
                 case "param": payload.Param = value as string; break;
+                case "provider_error": payload.ProviderError = value as ProviderErrorDetail; break;
                 default: throw new ArgumentOutOfRangeException(nameof(values), name, "Unknown Responses event field.");
             }
         }

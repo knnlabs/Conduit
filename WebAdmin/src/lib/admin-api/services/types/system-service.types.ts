@@ -37,6 +37,7 @@ export interface BackendSystemInfoResponse {
     runtimeVersion: string;
     startTime: string; // DateTime serialized as ISO string
     uptime: string;    // TimeSpan serialized as string (e.g., "1.02:03:04.5")
+    customerMode: string; // "Internal" | "External" (CONDUIT_CUSTOMER_MODE)
   };
   recordCounts: {
     virtualKeys: number;

@@ -358,6 +358,15 @@ export default function SystemInfoPage() {
                   {systemInfo?.operatingSystem?.architecture ?? 'unknown'}
                 </Text>
               </Group>
+              <Group justify="space-between">
+                <Text c="dimmed">Customer mode</Text>
+                <Badge
+                  color={systemInfo?.runtime?.customerMode === 'Internal' ? 'orange' : 'teal'}
+                  variant="light"
+                >
+                  {systemInfo?.runtime?.customerMode ?? 'External'}
+                </Badge>
+              </Group>
             </Stack>
           </Card>
 

@@ -277,6 +277,36 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
+        [Fact]
+        public async Task HandleAsync_WhenProviderErrors_ExternalModeSanitizesTaskError()
+        {
+            // Arrange — orchestrators default to External customer mode when no translator
+            // is injected, so raw provider bodies must not reach the stored task error.
+            var request = CreateTestEventRequest();
+            var context = CreateEventContext();
+            var exception = new ConduitLLM.Core.Exceptions.LLMCommunicationException(
+                "API returned an error: 429 - secret provider quota text",
+                System.Net.HttpStatusCode.TooManyRequests,
+                "secret provider quota text");
+
+            SetupFailedGeneration(exception);
+
+            // Act
+            await Orchestrator.HandleAsync(request, context);
+
+            // Assert — indeterminate or failed, either way the stored error is sanitized
+            TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                GetRequestId(request),
+                It.Is<TaskState>(state => state == TaskState.Indeterminate || state == TaskState.Failed),
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                It.Is<string?>(message =>
+                    message != null &&
+                    !message.Contains("secret provider quota text") &&
+                    message.Contains("rate-limited")),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         // Note: Cancellation testing removed from base class due to complexity
         // The orchestrator's cancellation handling requires the linked CancellationTokenSource
         // to be cancelled, which only happens when an OperationCanceledException is thrown

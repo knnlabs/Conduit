@@ -325,6 +325,124 @@ namespace ConduitLLM.Tests.Middleware
             Assert.Equal("test-trace-id", _httpContext.Response.Headers["X-Request-Id"]);
         }
 
+        private OpenAIErrorMiddleware CreateMiddlewareWithCustomerMode(
+            ConduitLLM.Core.Configuration.CustomerErrorMode mode)
+            => new(
+                _mockNext.Object,
+                _mockLogger.Object,
+                _mockEnvironment.Object,
+                _mockSecurityLogger.Object,
+                new ConduitLLM.Core.Services.ProviderErrorTranslator(
+                    new ConduitLLM.Core.Configuration.CustomerErrorOptions { Mode = mode }));
+
+        [Fact]
+        public async Task ProviderError_ExternalMode_ReturnsGenericMessageWithoutMetadata()
+        {
+            // Arrange
+            var middleware = CreateMiddlewareWithCustomerMode(
+                ConduitLLM.Core.Configuration.CustomerErrorMode.External);
+            var exception = new LLMCommunicationException(
+                "API returned an error: 429 - secret quota text",
+                System.Net.HttpStatusCode.TooManyRequests, "secret quota text")
+            { ProviderName = "openai-prod" };
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>())).ThrowsAsync(exception);
+
+            // Act
+            await middleware.InvokeAsync(_httpContext);
+
+            // Assert — status/code unchanged from legacy mapping; message sanitized
+            Assert.Equal(429, _httpContext.Response.StatusCode);
+            var errorResponse = GetErrorResponse(_httpContext);
+            Assert.Equal("rate_limit_exceeded", errorResponse.Error.Code);
+            Assert.DoesNotContain("secret quota text", errorResponse.Error.Message);
+            Assert.DoesNotContain("openai-prod", errorResponse.Error.Message);
+            Assert.Null(errorResponse.Error.Metadata);
+        }
+
+        [Fact]
+        public async Task ProviderError_InternalMode_ReturnsDetailInMetadata()
+        {
+            // Arrange
+            var middleware = CreateMiddlewareWithCustomerMode(
+                ConduitLLM.Core.Configuration.CustomerErrorMode.Internal);
+            var exception = new LLMCommunicationException(
+                "API returned an error", System.Net.HttpStatusCode.TooManyRequests, "Rate limit reached for gpt-4o")
+            { ProviderName = "openai-prod" };
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>())).ThrowsAsync(exception);
+
+            // Act
+            await middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(429, _httpContext.Response.StatusCode);
+            var errorResponse = GetErrorResponse(_httpContext);
+            Assert.Contains("openai-prod", errorResponse.Error.Message);
+            Assert.NotNull(errorResponse.Error.Metadata);
+            var providerError = errorResponse.Error.Metadata!.Value.GetProperty("provider_error");
+            Assert.Equal("openai-prod", providerError.GetProperty("provider").GetString());
+            Assert.Equal("rate_limit_exceeded", providerError.GetProperty("error_type").GetString());
+            Assert.Equal(429, providerError.GetProperty("upstream_status").GetInt32());
+            Assert.Equal("Rate limit reached for gpt-4o", providerError.GetProperty("raw_message").GetString());
+        }
+
+        [Fact]
+        public async Task ProviderError_ExternalMode_AuthFailureStays502WithGenericMessage()
+        {
+            // Arrange — the #1191 status masking must survive translation
+            var middleware = CreateMiddlewareWithCustomerMode(
+                ConduitLLM.Core.Configuration.CustomerErrorMode.External);
+            var exception = new LLMCommunicationException(
+                "invalid api key sk-abc", System.Net.HttpStatusCode.Unauthorized, "invalid api key sk-abc");
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>())).ThrowsAsync(exception);
+
+            // Act
+            await middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(502, _httpContext.Response.StatusCode);
+            var errorResponse = GetErrorResponse(_httpContext);
+            Assert.Equal("provider_authentication_error", errorResponse.Error.Code);
+            Assert.DoesNotContain("sk-abc", errorResponse.Error.Message);
+        }
+
+        [Fact]
+        public async Task ProviderError_ExternalMode_WrappedStatuslessException_IsStillSanitized()
+        {
+            // Arrange — a status-less LLMCommunicationException must not leak its raw
+            // message just because no status-bearing instance exists in the chain
+            var middleware = CreateMiddlewareWithCustomerMode(
+                ConduitLLM.Core.Configuration.CustomerErrorMode.External);
+            var exception = new LLMCommunicationException("raw provider text with secrets");
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>())).ThrowsAsync(exception);
+
+            // Act
+            await middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(502, _httpContext.Response.StatusCode);
+            var errorResponse = GetErrorResponse(_httpContext);
+            Assert.Equal("provider_communication_error", errorResponse.Error.Code);
+            Assert.DoesNotContain("raw provider text", errorResponse.Error.Message);
+        }
+
+        [Fact]
+        public async Task NonProviderException_WithTranslator_UsesLegacyMapping()
+        {
+            // Arrange — the translator only intercepts provider communication errors
+            var middleware = CreateMiddlewareWithCustomerMode(
+                ConduitLLM.Core.Configuration.CustomerErrorMode.External);
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(new ModelNotFoundException("gpt-5"));
+
+            // Act
+            await middleware.InvokeAsync(_httpContext);
+
+            // Assert
+            Assert.Equal(404, _httpContext.Response.StatusCode);
+            var errorResponse = GetErrorResponse(_httpContext);
+            Assert.Equal("model_not_found", errorResponse.Error.Code);
+        }
+
         private static OpenAIErrorResponse GetErrorResponse(HttpContext context)
         {
             context.Response.Body.Position = 0;

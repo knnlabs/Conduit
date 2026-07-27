@@ -34,6 +34,15 @@ of the areas, not a copy of that file:
   Postgres-only. Schema changes are governed by a **migration mode** (`CONDUIT_MIGRATION_MODE`) that
   chooses whether a booting service applies migrations itself, waits for an external migration to
   finish first, or skips the step — the mechanism behind zero-downtime deploys.
+- **Customer mode** — `CONDUIT_CUSTOMER_MODE` decides how much provider error detail customers see
+  in every customer-facing emission (HTTP error responses, SSE error events, async task status,
+  webhook payloads, SignalR failure events). `External` (the default) returns classified generic
+  messages — a rate limit reads as "the model provider rate-limited this request" with no provider
+  name, raw text, or billing/key state — and is the right mode for public or paid deployments.
+  `Internal` adds the provider name, upstream HTTP status, and the redacted raw provider message
+  (plus a structured `error.metadata.provider_error` object) for teams running Conduit as their own
+  router. HTTP status codes are identical in both modes. Set it on **both** the Gateway and Admin
+  services — the Admin only uses it to report the active mode on WebAdmin's System Information page.
 - **Cache (Redis)** — a Redis connection enables distributed caching and is **required for
   distributed rate limiting**; the Gateway will not start rate limiting without it. Redis also backs
   the real-time backplane and ephemeral keys. Redis 7.4 or newer enables per-connection field TTLs

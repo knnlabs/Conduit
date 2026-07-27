@@ -134,6 +134,12 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         /// Total process uptime
         /// </summary>
         public TimeSpan Uptime { get; set; }
+
+        /// <summary>
+        /// Customer error visibility mode (CONDUIT_CUSTOMER_MODE): "Internal" exposes raw
+        /// provider error details to API clients, "External" (default) sanitizes them.
+        /// </summary>
+        public string CustomerMode { get; set; } = "External";
     }
 
     /// <summary>

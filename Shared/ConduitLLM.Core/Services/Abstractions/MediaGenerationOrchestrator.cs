@@ -57,6 +57,7 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected readonly MediaGenerationMetrics _metrics;
         protected readonly IProviderErrorTrackingService _errorTrackingService;
         protected readonly ILogger _logger;
+        protected readonly IProviderErrorTranslator _providerErrorTranslator;
         private readonly IBatchSpendUpdateService? _batchSpendService;
 
         protected MediaGenerationOrchestrator(
@@ -74,7 +75,8 @@ namespace ConduitLLM.Core.Services.Abstractions
             MediaGenerationMetrics metrics,
             IProviderErrorTrackingService errorTrackingService,
             ILogger logger,
-            IBatchSpendUpdateService? batchSpendService = null)
+            IBatchSpendUpdateService? batchSpendService = null,
+            IProviderErrorTranslator? providerErrorTranslator = null)
         {
             _clientFactory = clientFactory ?? throw new ArgumentNullException(nameof(clientFactory));
             _taskService = taskService ?? throw new ArgumentNullException(nameof(taskService));
@@ -91,6 +93,9 @@ namespace ConduitLLM.Core.Services.Abstractions
             _errorTrackingService = errorTrackingService ?? throw new ArgumentNullException(nameof(errorTrackingService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _batchSpendService = batchSpendService;
+            // Default to External so an unwired construction sanitizes rather than leaks.
+            _providerErrorTranslator = providerErrorTranslator
+                ?? new ProviderErrorTranslator(new CustomerErrorOptions());
         }
 
         /// <summary>
@@ -301,7 +306,7 @@ namespace ConduitLLM.Core.Services.Abstractions
                     await _taskService.UpdateTaskStatusAsync(
                         GetRequestId(request),
                         TaskState.Indeterminate,
-                        error: $"Provider outcome is unknown; automatic retry is disabled. {ex.Message}");
+                        error: $"Provider outcome is unknown; automatic retry is disabled. {ToCustomerError(ex, modelInfo).Message}");
                     _logger.LogCritical(ex,
                         "Media generation task {RequestId} has an indeterminate provider outcome",
                         GetRequestId(request));
@@ -373,7 +378,12 @@ namespace ConduitLLM.Core.Services.Abstractions
         protected abstract Usage CreateEstimatedUsageObject(TEventRequest request);
         protected abstract Task PublishStartedEventAsync(TEventRequest request);
         protected abstract Task PublishCompletedEventAsync(TEventRequest request, ProcessedMedia media, decimal cost, GenerationModelInfo modelInfo, TimeSpan duration);
-        protected abstract Task PublishFailedEventAsync(TEventRequest request, Exception ex, bool isRetryable, int retryCount, int maxRetries);
+        /// <summary>
+        /// Publishes the failed event for SignalR/webhook consumers. Receives the
+        /// customer-mode translated error rather than the raw exception so derived
+        /// orchestrators cannot leak provider text past CONDUIT_CUSTOMER_MODE.
+        /// </summary>
+        protected abstract Task PublishFailedEventAsync(TEventRequest request, CustomerFacingProviderError customerError, bool isRetryable, int retryCount, int maxRetries);
         protected abstract Task PublishProgressEventAsync(TEventRequest request, int current, int total, string status);
         protected abstract object CreateWebhookPayload(TEventRequest request, ProcessedMedia media, TimeSpan duration, string status, string? error = null);
         protected abstract string GetMediaType();
@@ -700,20 +710,43 @@ namespace ConduitLLM.Core.Services.Abstractions
             // Update task registry size
             _metrics.UpdateTaskRegistrySize(-1);
             
+            // Everything below reaches customers (task status polls, SignalR events,
+            // webhook payloads), so it carries the customer-mode translated error.
+            // The raw exception stays in the log above and in provider error tracking.
+            var customerError = ToCustomerError(ex, modelInfo);
+
             await _taskService.UpdateTaskStatusAsync(
                 GetRequestId(request),
                 TaskState.Failed,
-                error: ex.Message);
+                error: customerError.Message);
 
             // Track in provider error system for dashboard visibility and auto-disable policies
             await TrackProviderErrorFromExceptionAsync(ex, modelInfo);
 
-            await PublishFailedEventAsync(request, ex, isRetryable, 0, 0);
+            await PublishFailedEventAsync(request, customerError, isRetryable, 0, 0);
 
             if (!string.IsNullOrEmpty(GetWebhookUrl(request)))
             {
-                await SendWebhookNotificationAsync(request, null, stopwatch, "failed", ex.Message);
+                await SendWebhookNotificationAsync(request, null, stopwatch, "failed", customerError.Message);
             }
+        }
+
+        /// <summary>
+        /// Produces the customer-visible error for a failed generation. Provider errors go
+        /// through the CONDUIT_CUSTOMER_MODE translator; Conduit's own failures (virtual-key
+        /// validation, model mapping, storage) keep their message — that text is generated by
+        /// Conduit, is safe in either mode, and tells the customer what to fix.
+        /// </summary>
+        private CustomerFacingProviderError ToCustomerError(Exception ex, GenerationModelInfo? modelInfo)
+        {
+            var isProviderError = LLMCommunicationException.FindWithStatus(ex) is not null
+                || ProviderErrorClassifier.ClassifyException(ex) != ProviderErrorType.Unknown;
+
+            return isProviderError
+                ? _providerErrorTranslator.Translate(ex, modelInfo?.ProviderName)
+                : new CustomerFacingProviderError(
+                    ex.Message, ProviderErrorType.Unknown, Detail: null,
+                    ErrorCodeOverride: ex.GetType().Name);
         }
 
         /// <summary>

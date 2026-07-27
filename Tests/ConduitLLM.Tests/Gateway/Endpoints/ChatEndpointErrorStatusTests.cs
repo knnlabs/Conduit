@@ -124,6 +124,25 @@ public sealed class ChatEndpointErrorStatusTests
     }
 
     [Fact]
+    public async Task ProviderCommunicationError_DefaultExternalMode_SanitizesProviderText()
+    {
+        // CONDUIT_CUSTOMER_MODE defaults to External: raw provider bodies must not
+        // reach the caller, while the status/code contract stays identical.
+        var response = await PostChatAsync(new LLMCommunicationException(
+            "API returned an error: 429 TooManyRequests - secret provider quota text",
+            HttpStatusCode.TooManyRequests,
+            "secret provider quota text"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
+
+        var error = await ReadErrorAsync(response);
+        error.Code.Should().Be("rate_limit_exceeded");
+        error.Message.Should().NotContain("secret provider quota text");
+        error.Message.Should().Contain("rate-limited");
+        error.Metadata.Should().BeNull();
+    }
+
+    [Fact]
     public async Task BodyMissingRequiredMessages_Returns400WithOpenAIEnvelope()
     {
         // Minimal-API binding failure. Before ThrowOnBadRequest this was a bare 400 with an

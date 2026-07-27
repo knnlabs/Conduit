@@ -247,4 +247,59 @@ public class ContextAwareLLMClientTests
         // Assert
         url.Should().Be("https://provider.example.com/health");
     }
+
+    [Fact]
+    public async Task CreateChatCompletionAsync_ProviderThrows_StampsProviderNameOnWholeChain()
+    {
+        // Arrange — a status-bearing exception wrapped in a status-less one, as
+        // provider clients routinely produce
+        var inner = new ConduitLLM.Core.Exceptions.LLMCommunicationException(
+            "API returned an error", System.Net.HttpStatusCode.TooManyRequests, "slow down");
+        var outer = new ConduitLLM.Core.Exceptions.LLMCommunicationException("wrapped", inner);
+        var providerClient = new Mock<ILLMClient>();
+        providerClient
+            .Setup(c => c.CreateChatCompletionAsync(
+                It.IsAny<ChatCompletionRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(outer);
+        var sut = new ContextAwareLLMClient(
+            providerClient.Object, keyId: 0, providerId: 0, _serviceProvider.Object,
+            providerName: "openai-prod");
+
+        // Act
+        var act = () => sut.CreateChatCompletionAsync(new ChatCompletionRequest
+        {
+            Model = "gpt-test",
+            Messages = new List<Message>()
+        });
+
+        // Assert
+        await act.Should().ThrowAsync<ConduitLLM.Core.Exceptions.LLMCommunicationException>();
+        outer.ProviderName.Should().Be("openai-prod");
+        inner.ProviderName.Should().Be("openai-prod");
+    }
+
+    [Fact]
+    public async Task CreateChatCompletionAsync_ProviderNameAlreadySet_IsNotOverwritten()
+    {
+        var ex = new ConduitLLM.Core.Exceptions.LLMCommunicationException(
+            "boom", System.Net.HttpStatusCode.BadGateway, "body")
+        { ProviderName = "set-by-source" };
+        var providerClient = new Mock<ILLMClient>();
+        providerClient
+            .Setup(c => c.CreateChatCompletionAsync(
+                It.IsAny<ChatCompletionRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(ex);
+        var sut = new ContextAwareLLMClient(
+            providerClient.Object, keyId: 0, providerId: 0, _serviceProvider.Object,
+            providerName: "openai-prod");
+
+        var act = () => sut.CreateChatCompletionAsync(new ChatCompletionRequest
+        {
+            Model = "gpt-test",
+            Messages = new List<Message>()
+        });
+
+        await act.Should().ThrowAsync<ConduitLLM.Core.Exceptions.LLMCommunicationException>();
+        ex.ProviderName.Should().Be("set-by-source");
+    }
 }

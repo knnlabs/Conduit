@@ -32816,6 +32816,9 @@
           "uptime": {
             "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
             "type": "string"
+          },
+          "customerMode": {
+            "type": "string"
           }
         }
       },

@@ -61,4 +61,9 @@ public sealed class ResponseStreamEvent
     [JsonPropertyName("param")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Param { get; set; }
+
+    /// <summary>Structured provider detail on error events; Internal customer mode only.</summary>
+    [JsonPropertyName("provider_error")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Interfaces.ProviderErrorDetail? ProviderError { get; set; }
 }

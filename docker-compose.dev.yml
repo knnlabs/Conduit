@@ -6,6 +6,8 @@ services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Development defaults to Internal so provider errors are debuggable; override in .env
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-Internal}"
       # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       ConduitLLM__Messaging__Wolverine__AutoProvision: "true"
       # OpenTelemetry tracing configuration
@@ -42,6 +44,8 @@ services:
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Must match the api service — Admin reports this value on the System Info page
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-Internal}"
       # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       ConduitLLM__Messaging__Wolverine__AutoProvision: "true"
       # OpenTelemetry tracing configuration

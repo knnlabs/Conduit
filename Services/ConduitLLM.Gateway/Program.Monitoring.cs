@@ -81,6 +81,9 @@ public partial class Program
         // Add database migration services
         builder.Services.AddDatabaseMigration();
 
+        // Customer-facing provider-error translation (CONDUIT_CUSTOMER_MODE)
+        builder.Services.AddCustomerErrorTranslation();
+
         // Add connection pool warmer with coordinated warming to prevent thundering herd during deployments
         // Unlike leader election, ALL instances warm their pools, but in a staggered manner
         builder.Services.AddCoordinatedConnectionPoolWarming(builder.Configuration, "CoreAPI");
