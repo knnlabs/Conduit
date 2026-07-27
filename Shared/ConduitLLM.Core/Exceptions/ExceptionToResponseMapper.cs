@@ -96,6 +96,15 @@ public static class ExceptionToResponseMapper
                     "resource_consistency_error", LogLevel.Error,
                     "Resource consistency error", false, "server_error"),
 
+            ConduitLLM.Configuration.Exceptions.BillingSystemException billingEx
+                => new(503, "The billing service is temporarily unavailable",
+                    billingEx.ErrorCode, LogLevel.Error,
+                    "Billing system unavailable", false, "service_unavailable"),
+
+            ConduitLLM.Configuration.Interfaces.RedisCircuitBreakerOpenException circuitEx
+                => new(503, circuitEx.Message, "redis_circuit_open", LogLevel.Warning,
+                    "Redis circuit open", true, "service_unavailable"),
+
             // Standard .NET exceptions — use safe generic messages
             ArgumentNullException argNullEx
                 => new(400, "Required parameter is missing", "missing_parameter", LogLevel.Warning,

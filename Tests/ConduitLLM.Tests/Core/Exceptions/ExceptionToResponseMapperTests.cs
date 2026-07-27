@@ -1,6 +1,8 @@
 using System.Net;
 
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Configuration.Exceptions;
+using ConduitLLM.Configuration.Interfaces;
 
 using FluentAssertions;
 
@@ -510,6 +512,34 @@ public class ExceptionToResponseMapperTests
         result.ErrorCode.Should().Be("resource_consistency_error");
         result.OpenAIErrorType.Should().Be("server_error");
         result.ResponseMessage.Should().NotContain("42");
+    }
+
+    [Fact]
+    public void Map_BillingSystemException_Returns503AndPreservesErrorCode()
+    {
+        var result = ExceptionToResponseMapper.Map(
+            new BillingSystemException(
+                "Spend could not be persisted",
+                virtualKeyId: 42,
+                errorCode: "database_update_failed"));
+
+        result.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        result.ErrorCode.Should().Be("database_update_failed");
+        result.OpenAIErrorType.Should().Be("service_unavailable");
+        result.ResponseMessage.Should().NotContain("42");
+    }
+
+    [Fact]
+    public void Map_RedisCircuitBreakerOpenException_Returns503()
+    {
+        var result = ExceptionToResponseMapper.Map(
+            new RedisCircuitBreakerOpenException(
+                CircuitState.Open,
+                TimeSpan.FromSeconds(12)));
+
+        result.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        result.ErrorCode.Should().Be("redis_circuit_open");
+        result.OpenAIErrorType.Should().Be("service_unavailable");
     }
 
     [Fact]

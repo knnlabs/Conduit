@@ -81,7 +81,7 @@ namespace ConduitLLM.Gateway.Middleware
             throw new BillingSystemException(
                 $"Spend update for Virtual Key {virtualKeyId} was not durably persisted",
                 virtualKeyId,
-                BillingSystemException.ErrorCodes.DatabaseUpdateFailed,
+                "database_update_failed",
                 databaseFailure);
         }
     }

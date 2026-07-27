@@ -131,6 +131,14 @@ public abstract class ExceptionHandlingMiddlewareBase
         {
             context.Response.Headers["Retry-After"] = rateLimitEx.RetryAfterSeconds.Value.ToString();
         }
+        else if (exception is ConduitLLM.Configuration.Interfaces.RedisCircuitBreakerOpenException
+                 {
+                     RetryAfter: { } retryAfter
+                 })
+        {
+            context.Response.Headers["Retry-After"] =
+                Math.Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds)).ToString();
+        }
 
         // Serialize and write the format-specific response
         var json = CreateErrorResponseJson(message, mapping, traceId);

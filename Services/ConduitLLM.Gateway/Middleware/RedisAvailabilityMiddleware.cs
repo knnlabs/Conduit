@@ -1,11 +1,11 @@
 using System;
 using System.Linq;
-using System.Net;
-using System.Text.Json;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
+using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Core.Serialization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -81,10 +81,6 @@ namespace ConduitLLM.Gateway.Middleware
                 context.Request.Path,
                 context.Connection.RemoteIpAddress);
 
-            // Set response status code
-            context.Response.StatusCode = (int)HttpStatusCode.ServiceUnavailable;
-            context.Response.ContentType = "application/json";
-
             // Add Retry-After header if we know when circuit might close
             if (stats.TimeUntilHalfOpen != null && stats.TimeUntilHalfOpen.Value.TotalSeconds > 0)
             {
@@ -95,39 +91,27 @@ namespace ConduitLLM.Gateway.Middleware
             // Add custom headers for monitoring
             context.Response.Headers.Append("X-Circuit-Breaker-State", "Open");
             context.Response.Headers.Append("X-Service-Status", "Degraded");
+            context.Response.Headers["x-request-id"] = context.TraceIdentifier;
 
-            // Prepare error response
-            var response = new
-            {
-                error = new
+            var metadata = _options.IncludeErrorDetails
+                ? System.Text.Json.JsonSerializer.SerializeToElement(new
                 {
-                    code = "SERVICE_UNAVAILABLE",
-                    message = _options.OpenCircuitMessage,
-                    details = _options.IncludeErrorDetails ? new
-                    {
-                        circuit_state = stats.State.ToString(),
-                        total_failures = stats.TotalFailures,
-                        rejected_requests = stats.RejectedRequests,
-                        last_failure_at = stats.LastFailureAt?.ToString("O"),
-                        circuit_opened_at = stats.CircuitOpenedAt?.ToString("O"),
-                        retry_after_seconds = stats.TimeUntilHalfOpen?.TotalSeconds
-                    } : null
-                },
-                timestamp = DateTime.UtcNow.ToString("O"),
-                path = context.Request.Path.Value,
-                request_id = context.TraceIdentifier
-            };
+                    circuit_state = stats.State.ToString(),
+                    total_failures = stats.TotalFailures,
+                    rejected_requests = stats.RejectedRequests,
+                    last_failure_at = stats.LastFailureAt?.ToString("O"),
+                    circuit_opened_at = stats.CircuitOpenedAt?.ToString("O"),
+                    retry_after_seconds = stats.TimeUntilHalfOpen?.TotalSeconds
+                }, ConduitJsonOptions.Compact)
+                : (System.Text.Json.JsonElement?)null;
 
-            // Write response
-            var jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true,
-                DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-            };
-
-            var jsonResponse = JsonSerializer.Serialize(response, jsonOptions);
-            await context.Response.WriteAsync(jsonResponse);
+            await GatewayResults.OpenAIError(
+                    StatusCodes.Status503ServiceUnavailable,
+                    _options.OpenCircuitMessage,
+                    "service_unavailable",
+                    "server_error",
+                    metadata: metadata)
+                .ExecuteAsync(context);
 
             // Record metrics (will be implemented in metrics step)
             RecordRejectedRequest(context);

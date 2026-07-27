@@ -9,6 +9,7 @@ using ConduitLLM.Gateway.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
 
@@ -59,7 +60,7 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Assert
             Assert.Equal((int)HttpStatusCode.ServiceUnavailable, context.Response.StatusCode);
-            Assert.Equal("application/json", context.Response.ContentType);
+            Assert.StartsWith("application/json", context.Response.ContentType);
             Assert.True(context.Response.Headers.ContainsKey("Retry-After"));
             Assert.Equal("30", context.Response.Headers["Retry-After"]);
             Assert.Equal("Open", context.Response.Headers["X-Circuit-Breaker-State"]);
@@ -141,12 +142,15 @@ namespace ConduitLLM.Tests.Http.Middleware
             var responseContent = new StreamReader(responseBody).ReadToEnd();
             var responseJson = JsonDocument.Parse(responseContent);
             
-            Assert.Equal("SERVICE_UNAVAILABLE", responseJson.RootElement.GetProperty("error").GetProperty("code").GetString());
+            Assert.Equal("service_unavailable", responseJson.RootElement.GetProperty("error").GetProperty("code").GetString());
             Assert.Equal("Redis is currently unavailable", responseJson.RootElement.GetProperty("error").GetProperty("message").GetString());
-            Assert.Equal("Open", responseJson.RootElement.GetProperty("error").GetProperty("details").GetProperty("circuit_state").GetString());
-            Assert.Equal(10, responseJson.RootElement.GetProperty("error").GetProperty("details").GetProperty("total_failures").GetInt64());
-            Assert.Equal(5, responseJson.RootElement.GetProperty("error").GetProperty("details").GetProperty("rejected_requests").GetInt64());
-            Assert.Equal(25, responseJson.RootElement.GetProperty("error").GetProperty("details").GetProperty("retry_after_seconds").GetDouble());
+            Assert.Equal("server_error", responseJson.RootElement.GetProperty("error").GetProperty("type").GetString());
+            var metadata = responseJson.RootElement.GetProperty("error").GetProperty("metadata");
+            Assert.Equal("Open", metadata.GetProperty("circuit_state").GetString());
+            Assert.Equal(10, metadata.GetProperty("total_failures").GetInt64());
+            Assert.Equal(5, metadata.GetProperty("rejected_requests").GetInt64());
+            Assert.Equal(25, metadata.GetProperty("retry_after_seconds").GetDouble());
+            Assert.False(responseJson.RootElement.TryGetProperty("request_id", out _));
         }
 
         private HttpContext CreateHttpContext(string path)
@@ -157,6 +161,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             context.Connection.RemoteIpAddress = IPAddress.Parse("127.0.0.1");
             context.Response.Body = new MemoryStream();
             context.TraceIdentifier = Guid.NewGuid().ToString();
+            context.RequestServices = new ServiceCollection()
+                .AddLogging()
+                .BuildServiceProvider();
             return context;
         }
     }

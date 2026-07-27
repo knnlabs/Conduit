@@ -4,6 +4,7 @@ using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Middleware;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -178,6 +179,24 @@ namespace ConduitLLM.Tests.Middleware
             Assert.Equal("Service unavailable", errorResponse.Error.Message);
             Assert.Equal("service_unavailable", errorResponse.Error.Type);
             Assert.Equal("service_unavailable", errorResponse.Error.Code);
+        }
+
+        [Fact]
+        public async Task RedisCircuitBreakerException_Returns503WithRetryAfter()
+        {
+            var exception = new RedisCircuitBreakerOpenException(
+                CircuitState.Open,
+                TimeSpan.FromMilliseconds(4200));
+            _mockNext.Setup(x => x(It.IsAny<HttpContext>()))
+                .ThrowsAsync(exception);
+
+            await _middleware.InvokeAsync(_httpContext);
+
+            Assert.Equal(StatusCodes.Status503ServiceUnavailable, _httpContext.Response.StatusCode);
+            Assert.Equal("5", _httpContext.Response.Headers["Retry-After"]);
+            var errorResponse = GetErrorResponse(_httpContext);
+            Assert.Equal("service_unavailable", errorResponse.Error.Type);
+            Assert.Equal("redis_circuit_open", errorResponse.Error.Code);
         }
 
         [Fact]
