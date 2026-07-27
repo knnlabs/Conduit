@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Common.Models;
+using ConduitLLM.Providers.Serialization;
 
 using Microsoft.Extensions.Logging;
 
@@ -36,7 +37,9 @@ namespace ConduitLLM.Providers.Bedrock
                 await ThrowOnErrorAsync(httpResponse, "model discovery", cancellationToken);
 
                 var body = await httpResponse.Content.ReadAsStringAsync(cancellationToken);
-                var parsed = JsonSerializer.Deserialize<BedrockListFoundationModelsResponse>(body, DefaultJsonOptions);
+                var parsed = JsonSerializer.Deserialize(
+                    body,
+                    ProvidersJsonContext.Default.BedrockListFoundationModelsResponse);
 
                 return parsed?.ModelSummaries?
                     .Where(summary => !string.IsNullOrWhiteSpace(summary.ModelId))

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using ConduitLLM.Configuration.Serialization;
 
 namespace ConduitLLM.Core.Extensions
 {
@@ -40,6 +41,20 @@ namespace ConduitLLM.Core.Extensions
                 options.StreamBufferCapacity = 10;
 
                 configureHubOptions?.Invoke(options);
+            });
+
+            signalRBuilder.AddJsonProtocol(options =>
+            {
+                var resolverChain = options.PayloadSerializerOptions.TypeInfoResolverChain;
+                resolverChain.Insert(
+                    0,
+                    ConfigurationSignalRJsonContext.Default);
+                if (resolverChain.All(static resolver =>
+                        resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
+                {
+                    resolverChain.Add(
+                        new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
+                }
             });
 
             // Add MessagePack protocol support with LZ4 compression

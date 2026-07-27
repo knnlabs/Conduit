@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.Serialization;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -20,6 +21,22 @@ namespace ConduitLLM.Gateway.Services
 
         // Custom counter for pattern match lookups (beyond standard hits/misses/invalidations)
         private long _bufferedPatternMatches;
+
+        private static ModelCost? DeserializeModelCost(string json) =>
+            JsonSerializer.Deserialize(json, GatewayRedisJsonContext.Default.ModelCost);
+
+        private static string SerializeModelCost(ModelCost value) =>
+            JsonSerializer.Serialize(value, GatewayRedisJsonContext.Default.ModelCost);
+
+        private static ModelCostBatchInvalidation? DeserializeBatchInvalidation(string json) =>
+            JsonSerializer.Deserialize(
+                json,
+                GatewayRedisJsonContext.Default.ModelCostBatchInvalidation);
+
+        private static string SerializeBatchInvalidation(ModelCostBatchInvalidation value) =>
+            JsonSerializer.Serialize(
+                value,
+                GatewayRedisJsonContext.Default.ModelCostBatchInvalidation);
 
         public RedisModelCostCache(
             IConnectionMultiplexer redis,
@@ -53,7 +70,7 @@ namespace ConduitLLM.Gateway.Services
                     var jsonString = (string?)cachedValue;
                     if (jsonString is not null)
                     {
-                        var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, JsonOptions);
+                        var cost = DeserializeModelCost(jsonString);
 
                         if (cost != null)
                         {
@@ -82,7 +99,7 @@ namespace ConduitLLM.Gateway.Services
                             var jsonStr = (string?)cached;
                             if (jsonStr is not null)
                             {
-                                return JsonSerializer.Deserialize<ModelCost>(jsonStr, JsonOptions);
+                                return DeserializeModelCost(jsonStr);
                             }
                         }
                         return null;
@@ -125,7 +142,7 @@ namespace ConduitLLM.Gateway.Services
                     var jsonString = (string?)cachedValue;
                     if (jsonString is not null)
                     {
-                        var cost = JsonSerializer.Deserialize<ModelCost>(jsonString, JsonOptions);
+                        var cost = DeserializeModelCost(jsonString);
                         if (cost != null)
                         {
                             Logger.LogDebug("Model cost cache hit for exact model ID: {ModelId}", modelId);
@@ -153,7 +170,7 @@ namespace ConduitLLM.Gateway.Services
                             var jsonStr = (string?)cached;
                             if (jsonStr is not null)
                             {
-                                return JsonSerializer.Deserialize<ModelCost>(jsonStr, JsonOptions);
+                                return DeserializeModelCost(jsonStr);
                             }
                         }
                         return null;
@@ -163,7 +180,7 @@ namespace ConduitLLM.Gateway.Services
                 if (dbCost != null)
                 {
                     // Cache the result with the exact model ID for faster future lookups
-                    var serialized = JsonSerializer.Serialize(dbCost, JsonOptions);
+                    var serialized = SerializeModelCost(dbCost);
                     await Database.StringSetAsync(exactKey, serialized, DefaultExpiry);
                     Interlocked.Increment(ref _bufferedPatternMatches);
 

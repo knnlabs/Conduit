@@ -36,6 +36,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="ConduitLLM.Tests" />
+    <InternalsVisibleTo Include="ConduitLLM.SerializationTests" />
   </ItemGroup>
 
 </Project>

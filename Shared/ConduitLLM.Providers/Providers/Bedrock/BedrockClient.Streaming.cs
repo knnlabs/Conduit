@@ -1,8 +1,10 @@
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Providers.Serialization;
 using ConduitLLM.Providers.Streaming;
 
 using Microsoft.Extensions.Logging;
@@ -204,7 +206,10 @@ namespace ConduitLLM.Providers.Bedrock
         {
             try
             {
-                return JsonSerializer.Deserialize<T>(message.Payload, DefaultJsonOptions);
+                var typeInfo = ProvidersJsonContext.Default.GetTypeInfo(typeof(T)) as JsonTypeInfo<T>
+                    ?? throw new JsonException(
+                        $"No generated JSON metadata is registered for Bedrock stream type {typeof(T).FullName}.");
+                return JsonSerializer.Deserialize(message.Payload, typeInfo);
             }
             catch (JsonException ex)
             {

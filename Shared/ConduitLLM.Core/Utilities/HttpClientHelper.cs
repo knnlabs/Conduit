@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 using ConduitLLM.Core.Exceptions;
 
@@ -167,6 +168,69 @@ namespace ConduitLLM.Core.Utilities
         }
 
         /// <summary>
+        /// Sends a GET request and deserializes the response with source-generated metadata.
+        /// </summary>
+        public static async Task<TResponse> GetJsonAsync<TResponse>(
+            HttpClient client,
+            string endpoint,
+            JsonTypeInfo<TResponse> responseTypeInfo,
+            IDictionary<string, string>? headers = null,
+            ILogger? logger = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    }
+                }
+
+                LogRequestHeaderNames(request, logger);
+                logger?.LogDebug("Sending GET request to {Endpoint}", endpoint);
+
+                using var response = await client.SendAsync(request, cancellationToken);
+                return await ProcessResponseAsync(
+                    response,
+                    responseTypeInfo,
+                    logger,
+                    cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger?.LogError(ex, "HTTP request error communicating with API at {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"HTTP request error: {ex.Message}", ex);
+            }
+            catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            {
+                logger?.LogWarning("Request to {Endpoint} was cancelled", endpoint);
+                throw new LLMCommunicationException("Request was cancelled", ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                logger?.LogError(ex, "Request to {Endpoint} timed out", endpoint);
+                throw new LLMCommunicationException("Request timed out", ex);
+            }
+            catch (JsonException ex)
+            {
+                logger?.LogError(ex, "Failed to deserialize JSON response from {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Failed to deserialize response: {ex.Message}", ex);
+            }
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelNotFoundException &&
+                ex is not ValidationException)
+            {
+                logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
         /// Creates an HTTP request with JSON content and headers.
         /// </summary>
         private static HttpRequestMessage CreateJsonRequest<TRequest>(
@@ -282,6 +346,62 @@ namespace ConduitLLM.Core.Utilities
             {
                 // Log the full response on error for debugging
                 logger?.LogError(ex, "Failed to deserialize response. Redacted content: {Content}",
+                    SensitiveDataRedactor.Redact(responseContent));
+                throw;
+            }
+        }
+
+        private static async Task<TResponse> ProcessResponseAsync<TResponse>(
+            HttpResponseMessage response,
+            JsonTypeInfo<TResponse> responseTypeInfo,
+            ILogger? logger,
+            CancellationToken cancellationToken)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await ReadErrorContentAsync(response, cancellationToken);
+                logger?.LogError("API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
+
+                // Preserve the existing provider-specific diagnostic used by the options-based path.
+                if (errorContent.Contains("\"message\": null") &&
+                    errorContent.Contains("image_generation_user_error"))
+                {
+                    logger?.LogWarning(
+                        "Detected possible OpenAI quota/billing issue - image generation errors with null messages often indicate insufficient quota");
+                    throw new LLMCommunicationException(
+                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your provider account status.",
+                        response.StatusCode,
+                        errorContent,
+                        null);
+                }
+
+                throw new LLMCommunicationException(
+                    $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {SensitiveDataRedactor.Redact(errorContent)}",
+                    response.StatusCode,
+                    errorContent,
+                    null);
+            }
+
+            logger?.LogDebug("Received successful response with status code {StatusCode}", response.StatusCode);
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (logger?.IsEnabled(LogLevel.Debug) == true)
+            {
+                var safeContent = SensitiveDataRedactor.Redact(responseContent);
+                var preview = safeContent.Length > 500 ? safeContent[..500] + "..." : safeContent;
+                logger.LogDebug("Response content preview: {Content}", preview);
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize(responseContent, responseTypeInfo)
+                    ?? throw new LLMCommunicationException("Failed to deserialize response - result was null");
+            }
+            catch (JsonException ex)
+            {
+                logger?.LogError(
+                    ex,
+                    "Failed to deserialize response. Redacted content: {Content}",
                     SensitiveDataRedactor.Redact(responseContent));
                 throw;
             }

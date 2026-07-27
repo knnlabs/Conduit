@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.Constants;
@@ -114,11 +115,43 @@ public abstract class RedisCacheServiceBase
     }
 
     /// <summary>
+    /// Read a cache entry with source-generated metadata.
+    /// </summary>
+    protected async Task<T?> TryGetCacheEntryAsync<T>(
+        string cacheKey,
+        JsonTypeInfo<T> jsonTypeInfo) where T : class
+    {
+        var cachedValue = await Database.StringGetAsync(cacheKey);
+        if (!cachedValue.HasValue)
+        {
+            return null;
+        }
+
+        var jsonString = (string?)cachedValue;
+        return jsonString is null
+            ? null
+            : JsonSerializer.Deserialize(jsonString, jsonTypeInfo);
+    }
+
+    /// <summary>
     /// Serialize and store a value in Redis.
     /// </summary>
     protected async Task SetCacheEntryAsync<T>(string cacheKey, T value, TimeSpan? expiry = null)
     {
         var json = JsonSerializer.Serialize(value, JsonOptions);
+        await Database.StringSetAsync(cacheKey, json, expiry ?? DefaultExpiry);
+    }
+
+    /// <summary>
+    /// Serialize and store a value with source-generated metadata.
+    /// </summary>
+    protected async Task SetCacheEntryAsync<T>(
+        string cacheKey,
+        T value,
+        JsonTypeInfo<T> jsonTypeInfo,
+        TimeSpan? expiry = null)
+    {
+        var json = JsonSerializer.Serialize(value, jsonTypeInfo);
         await Database.StringSetAsync(cacheKey, json, expiry ?? DefaultExpiry);
     }
 

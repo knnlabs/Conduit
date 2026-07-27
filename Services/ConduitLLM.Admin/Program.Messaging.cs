@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
+using ConduitLLM.Core.Serialization;
 
 namespace ConduitLLM.Admin;
 
@@ -35,6 +36,17 @@ public partial class Program
 
         builder.Host.AddConduitWolverine(builder.Configuration, wolverineConnectionString, "conduit-admin", opts =>
         {
+            opts.UseSystemTextJsonForSerialization(options =>
+            {
+                options.TypeInfoResolverChain.Insert(0, CoreMessagingJsonContext.Default);
+                if (options.TypeInfoResolverChain.All(static resolver =>
+                        resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
+                {
+                    options.TypeInfoResolverChain.Add(
+                        new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
+                }
+            });
+
             ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
 
             // Gateway liveness heartbeat bridge (#1067). Registered unconditionally (like the

@@ -7,6 +7,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Gateway.Serialization;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -55,7 +56,9 @@ namespace ConduitLLM.Gateway.Services
             try
             {
                 // Try Redis first - this is ~50x faster than database
-                var virtualKey = await TryGetCacheEntryAsync<VirtualKey>(cacheKey);
+                var virtualKey = await TryGetCacheEntryAsync(
+                    cacheKey,
+                    GatewayRedisJsonContext.Default.VirtualKey);
 
                 if (virtualKey != null)
                 {
@@ -108,7 +111,11 @@ namespace ConduitLLM.Gateway.Services
             {
                 var expiry = CalculateExpiry(virtualKey);
 
-                await SetCacheEntryAsync(cacheKey, virtualKey, expiry);
+                await SetCacheEntryAsync(
+                    cacheKey,
+                    virtualKey,
+                    GatewayRedisJsonContext.Default.VirtualKey,
+                    expiry);
 
                 Logger.LogDebug("Cached Virtual Key: {KeyHash}, expires in {ExpiryMinutes} minutes",
                     keyHash, expiry.TotalMinutes);
@@ -252,7 +259,9 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var batchMessage = JsonSerializer.Deserialize<VirtualKeyBatchInvalidation>(message!.ToString());
+                var batchMessage = JsonSerializer.Deserialize(
+                    message!.ToString(),
+                    GatewayRedisJsonContext.Default.VirtualKeyBatchInvalidation);
                 if (batchMessage?.KeyHashes != null)
                 {
                     var batch = Database.CreateBatch();
@@ -330,7 +339,9 @@ namespace ConduitLLM.Gateway.Services
 
                 await _subscriber.PublishAsync(
                     RedisChannel.Literal(CacheKeys.VirtualKey.BatchInvalidationChannel),
-                    JsonSerializer.Serialize(batchMessage));
+                    JsonSerializer.Serialize(
+                        batchMessage,
+                        GatewayRedisJsonContext.Default.VirtualKeyBatchInvalidation));
 
                 stopwatch.Stop();
 
@@ -387,7 +398,7 @@ namespace ConduitLLM.Gateway.Services
 
         #endregion
 
-        private class VirtualKeyBatchInvalidation
+        internal sealed class VirtualKeyBatchInvalidation
         {
             public string[] KeyHashes { get; set; } = Array.Empty<string>();
             public DateTime Timestamp { get; set; }

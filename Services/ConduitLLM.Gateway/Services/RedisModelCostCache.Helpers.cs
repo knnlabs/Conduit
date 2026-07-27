@@ -91,7 +91,7 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var batchMessage = JsonSerializer.Deserialize<ModelCostBatchInvalidation>(message!.ToString());
+                var batchMessage = DeserializeBatchInvalidation(message!.ToString());
                 if (batchMessage?.CostIds != null)
                 {
                     var requests = batchMessage.CostIds.Select(id => new InvalidationRequest

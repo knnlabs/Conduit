@@ -1,10 +1,13 @@
 using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Serialization;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
+using ConduitLLM.Configuration.Serialization;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Serialization;
 using ConduitLLM.Security.Extensions;
 using ConduitLLM.Security.Middleware;
 
@@ -281,6 +284,16 @@ public partial class Program
 
     private static void ConfigureAdminJson(JsonSerializerOptions options)
     {
+        options.TypeInfoResolverChain.Insert(0, AdminHttpJsonContext.Default);
+        options.TypeInfoResolverChain.Insert(1, ConfigurationHttpJsonContext.Default);
+        options.TypeInfoResolverChain.Insert(2, CoreHttpJsonContext.Default);
+        if (options.TypeInfoResolverChain.All(static resolver =>
+                resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
+        {
+            options.TypeInfoResolverChain.Add(
+                new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
+        }
+
         options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
         options.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
         options.PropertyNameCaseInsensitive = true;
