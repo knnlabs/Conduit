@@ -1,67 +1,6 @@
 namespace ConduitLLM.Core.Events
 {
     // ===============================
-    // Rate Limiting Domain Events
-    // ===============================
-
-    /// <summary>
-    /// Raised when a rate limit is exceeded for a virtual key
-    /// Enables defensive actions and alerting
-    /// </summary>
-    public record RateLimitExceeded : DomainEvent
-    {
-        /// <summary>
-        /// Virtual Key ID that exceeded the limit
-        /// </summary>
-        public int VirtualKeyId { get; init; }
-        
-        /// <summary>
-        /// Virtual Key hash for identification
-        /// </summary>
-        public string VirtualKeyHash { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// Type of rate limit exceeded (RPM, RPD, etc.)
-        /// </summary>
-        public string LimitType { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// The limit that was exceeded
-        /// </summary>
-        public int LimitValue { get; init; }
-        
-        /// <summary>
-        /// Current usage that triggered the limit
-        /// </summary>
-        public int CurrentUsage { get; init; }
-        
-        /// <summary>
-        /// Time window for the rate limit (e.g., "minute", "day")
-        /// </summary>
-        public string TimeWindow { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// When the rate limit will reset
-        /// </summary>
-        public DateTime ResetsAt { get; init; }
-        
-        /// <summary>
-        /// IP address of the request (if available)
-        /// </summary>
-        public string? IpAddress { get; init; }
-        
-        /// <summary>
-        /// Model that was requested
-        /// </summary>
-        public string? RequestedModel { get; init; }
-        
-        /// <summary>
-        /// Partition key for ordered processing per virtual key
-        /// </summary>
-        public string PartitionKey => VirtualKeyId.ToString();
-    }
-
-    // ===============================
     // Spend Threshold Domain Events
     // ===============================
 

@@ -40,30 +40,4 @@ namespace ConduitLLM.Core.Events
         /// </summary>
         public string PartitionKey => VirtualKeyId;
     }
-    
-    /// <summary>
-    /// Event to cancel progress tracking for a video generation task.
-    /// </summary>
-    public record VideoProgressTrackingCancelled : DomainEvent
-    {
-        /// <summary>
-        /// The ID of the video generation request.
-        /// </summary>
-        public string RequestId { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// The virtual key ID for partitioning.
-        /// </summary>
-        public string VirtualKeyId { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// Reason for cancellation.
-        /// </summary>
-        public string Reason { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// Partition key for ordered processing.
-        /// </summary>
-        public string PartitionKey => VirtualKeyId;
-    }
 }

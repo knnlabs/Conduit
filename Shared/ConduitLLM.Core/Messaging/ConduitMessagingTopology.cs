@@ -76,6 +76,7 @@ namespace ConduitLLM.Core.Messaging
             typeof(VirtualKeyCreated),
             typeof(VirtualKeyDeleted),
             typeof(SpendUpdated),
+            typeof(SpendThresholdExceeded),
             typeof(ProviderCreated),
             typeof(ProviderUpdated),
             typeof(ProviderDeleted),

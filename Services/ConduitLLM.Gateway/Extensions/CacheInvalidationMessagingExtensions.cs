@@ -31,6 +31,7 @@ namespace ConduitLLM.Gateway.Extensions
 
             // Spend notification (SignalR)
             services.AddEventHandler<SpendUpdated, Gateway.EventHandlers.SpendUpdatedHandler>();
+            services.AddEventHandler<SpendThresholdExceeded, Gateway.EventHandlers.SpendThresholdAlertHandler>();
 
             // Provider events: capability refresh + cache invalidation (two classes)
             services.AddEventHandler<ProviderUpdated, Gateway.EventHandlers.ProviderEventHandler>();
