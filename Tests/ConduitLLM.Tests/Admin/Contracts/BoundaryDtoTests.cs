@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Utilities;
 
@@ -46,22 +47,19 @@ public sealed class BoundaryDtoTests
     }
 
     [Fact]
-    public void PricingTemplateConditions_PreserveBooleanAndIntegerJsonTypes()
+    public void PricingTemplateConditions_AreOpenAndPreserveJsonTypes()
     {
-        var conditions = new PricingTemplateConditionsDto(
-            Resolution: "1080p",
-            WithAudio: true,
-            InferenceStepsGte: 50);
+        var rule = PricingRuleTemplates.Create("per_second").Rules[0];
+        rule.Conditions["provider_tier"] = "premium";
 
         using var document = JsonDocument.Parse(JsonSerializer.Serialize(
-            conditions,
+            rule.Conditions,
             new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }));
         var root = document.RootElement;
 
         root.GetProperty("resolution").GetString().Should().Be("1080p");
         root.GetProperty("with_audio").ValueKind.Should().Be(JsonValueKind.True);
-        root.GetProperty("inference_steps_gte").GetInt32().Should().Be(50);
-        root.TryGetProperty("quality", out _).Should().BeFalse();
+        root.GetProperty("provider_tier").GetString().Should().Be("premium");
     }
 
     [Fact]
