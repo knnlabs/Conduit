@@ -18,17 +18,20 @@ namespace ConduitLLM.Gateway.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly DiscoveryCacheOptions _options;
+        private readonly JsonSerializerOptions _wireJsonOptions;
         private readonly ILogger<DiscoveryCacheWarmingService> _logger;
 
         public DiscoveryCacheWarmingService(
             IServiceProvider serviceProvider,
             IDiscoveryCacheService discoveryCacheService,
             IOptions<DiscoveryCacheOptions> options,
+            JsonSerializerOptions wireJsonOptions,
             ILogger<DiscoveryCacheWarmingService> logger)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
+            _wireJsonOptions = wireJsonOptions ?? throw new ArgumentNullException(nameof(wireJsonOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -129,7 +132,7 @@ namespace ConduitLLM.Gateway.Services
             }
         }
 
-        private async Task WarmCacheForCapability(
+        internal async Task WarmCacheForCapability(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             string? capability,
             CancellationToken cancellationToken)
@@ -138,111 +141,20 @@ namespace ConduitLLM.Gateway.Services
             {
                 using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);
                 
-                // Get all enabled model mappings with their related data
-                var modelMappings = await context.ModelProviderMappings
-                    .Include(m => m.Provider)
-                    .Include(m => m.ModelProviderTypeAssociation)
-                        .ThenInclude(mpta => mpta.Model)
-                            .ThenInclude(m => m.Series)
-                    .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
-                    .ToListAsync(cancellationToken);
-
-                var models = new List<JsonElement>();
-
-                foreach (var mapping in modelMappings)
-                {
-                    // Skip if model is missing
-                    if (mapping.ModelProviderTypeAssociation?.Model == null)
-                    {
-                        continue;
-                    }
-
-                    var model = mapping.ModelProviderTypeAssociation.Model;
-                    var caps = ModelCapabilityResolver.Resolve(model, mapping.ModelProviderTypeAssociation);
-
-                    // Apply capability filter if specified
-                    if (!string.IsNullOrEmpty(capability))
-                    {
-                        var capabilityKey = capability.Replace("-", "_").ToLowerInvariant();
-                        bool hasCapability = capabilityKey switch
-                        {
-                            "chat" => caps.SupportsChat,
-                            "streaming" or "chat_stream" => caps.SupportsStreaming,
-                            "vision" => caps.SupportsVision,
-                            "image_input" => caps.SupportsImageInput,
-                            "video_input" => caps.SupportsVideoInput,
-                            "audio_input" => caps.SupportsAudioInput,
-                            "file_input" => caps.SupportsFileInput,
-                            "pdf_input" => caps.SupportsFileInput ||
-                                           mapping.Provider?.ProviderType == ProviderType.OpenRouter,
-                            "video_understanding" => caps.SupportsVideoUnderstanding,
-                            "video_generation" => caps.SupportsVideoGeneration,
-                            "image_generation" => caps.SupportsImageGeneration,
-                            "embeddings" => caps.SupportsEmbeddings,
-                            "function_calling" => caps.SupportsFunctionCalling,
-                            _ => false
-                        };
-
-                        if (!hasCapability)
-                        {
-                            continue;
-                        }
-                    }
-
-                    // Use overrides from association first, then fall back to model defaults
-                    var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? model.MaxInputTokens ?? 0;
-                    var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? model.MaxOutputTokens ?? 0;
-
-                    // Serialize to JsonElement for cache-safe storage (anonymous objects can't round-trip through JSON deserialization)
-                    models.Add(JsonSerializer.SerializeToElement(new
-                    {
-                        // Identity
-                        id = mapping.ModelAlias,
-                        provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
-                        display_name = mapping.ModelAlias,
-
-                        // Metadata
-                        description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
-                        model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
-                        max_tokens = maxInputTokens + maxOutputTokens, // Total context window size
-                        max_input_tokens = maxInputTokens,
-                        max_output_tokens = maxOutputTokens,
-                        tokenizer_type = model.TokenizerType.ToString().ToLowerInvariant(),
-                        input_modalities = caps.InputModalities,
-                        output_modalities = caps.OutputModalities,
-                        capability_source = caps.CapabilitySource.ToString().ToLowerInvariant(),
-                        capabilities_last_verified_at = caps.CapabilitiesLastVerifiedAt,
-
-                        // UI Parameters from Model or Series
-                        parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
-
-                        // Capabilities (nested object as expected by SDK)
-                        capabilities = new
-                        {
-                            chat = caps.SupportsChat,
-                            chat_stream = caps.SupportsStreaming,
-                            embeddings = caps.SupportsEmbeddings,
-                            image_generation = caps.SupportsImageGeneration,
-                            vision = caps.SupportsVision,
-                            video_generation = caps.SupportsVideoGeneration,
-                            image_input = caps.SupportsImageInput,
-                            video_input = caps.SupportsVideoInput,
-                            audio_input = caps.SupportsAudioInput,
-                            file_input = caps.SupportsFileInput,
-                            pdf_input = caps.SupportsFileInput ||
-                                        mapping.Provider?.ProviderType == ProviderType.OpenRouter,
-                            video_understanding = caps.SupportsVideoUnderstanding,
-                            function_calling = caps.SupportsFunctionCalling,
-                            tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
-                            json_mode = (bool?)null, // Not tracked — null, not a confident false
-                            max_tokens = maxInputTokens + maxOutputTokens,
-                            max_output_tokens = maxOutputTokens
-                        }
-                    }));
-                }
+                var projectedModels = await DiscoveryModelProjector.ProjectAsync(
+                    context,
+                    capability,
+                    _options.ExposePricing,
+                    _logger,
+                    cancellationToken);
+                var models = projectedModels
+                    .Select(model => JsonSerializer.SerializeToElement(model, _wireJsonOptions))
+                    .ToList();
 
                 // Cache the results
-                var cacheKey = DiscoveryCacheService.BuildCacheKey(capability);
+                var cacheKey = DiscoveryCacheService.BuildCacheKey(
+                    capability,
+                    includePricing: _options.ExposePricing);
                 var discoveryResult = new DiscoveryModelsResult
                 {
                     Data = models,

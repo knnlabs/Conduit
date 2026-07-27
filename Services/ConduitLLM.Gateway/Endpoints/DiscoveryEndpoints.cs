@@ -5,11 +5,11 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.DTOs;
-using ConduitLLM.Configuration.Models;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Functions.Utilities;
+using ConduitLLM.Gateway.Services;
 using GatewayDiscoveredModelDto = ConduitLLM.Gateway.DTOs.DiscoveredModelDto;
 
 namespace ConduitLLM.Gateway.Endpoints
@@ -109,115 +109,13 @@ namespace ConduitLLM.Gateway.Endpoints
                 return Ok(new DiscoveryModelsResponse(cachedModels, cachedModels.Count));
             }
 
-            using var context = await _dbContextFactory.CreateDbContextAsync();
-
-            // Get all enabled model mappings with their related data
-            var modelMappings = await context.ModelProviderMappings
-                .Include(m => m.Provider)
-                .Include(m => m.ModelProviderTypeAssociation)
-                    .ThenInclude(mpta => mpta.Model)
-                        .ThenInclude(m => m.Series)
-                .Include(m => m.ModelProviderTypeAssociation)
-                    .ThenInclude(mpta => mpta.ModelCost)
-                .AsNoTracking()
-                .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
-                .ToListAsync();
-
-            Logger.LogDebug("Found {Count} enabled model mappings for discovery (capability filter: {Capability})",
-                modelMappings.Count, LoggingSanitizer.S(capability ?? "all"));
-
-            var models = new List<GatewayDiscoveredModelDto>();
-
-            foreach (var mapping in modelMappings)
-            {
-                // Skip if model is missing
-                if (mapping.ModelProviderTypeAssociation?.Model == null)
-                {
-                    Logger.LogWarning("Model mapping {ModelAlias} has no model data", LoggingSanitizer.S(mapping.ModelAlias));
-                    continue;
-                }
-
-                var model = mapping.ModelProviderTypeAssociation.Model;
-                var caps = ModelCapabilityResolver.Resolve(model, mapping.ModelProviderTypeAssociation);
-
-                // Apply capability filter if specified
-                if (!string.IsNullOrEmpty(capability))
-                {
-                    var capabilityKey = capability.Replace("-", "_").ToLowerInvariant();
-                    bool hasCapability = capabilityKey switch
-                    {
-                        "chat" => caps.SupportsChat,
-                        "streaming" or "chat_stream" => caps.SupportsStreaming,
-                        "vision" => caps.SupportsVision,
-                        "image_input" => caps.SupportsImageInput,
-                        "video_input" => caps.SupportsVideoInput,
-                        "audio_input" => caps.SupportsAudioInput,
-                        "file_input" => caps.SupportsFileInput,
-                        "pdf_input" => caps.SupportsFileInput ||
-                                       mapping.Provider?.ProviderType == ProviderType.OpenRouter,
-                        "video_understanding" => caps.SupportsVideoUnderstanding,
-                        "video_generation" => caps.SupportsVideoGeneration,
-                        "image_generation" => caps.SupportsImageGeneration,
-                        "embeddings" => caps.SupportsEmbeddings,
-                        "function_calling" => caps.SupportsFunctionCalling,
-                        "speech_to_text" or "audio_transcription" => caps.SupportsSpeechToText,
-                        "text_to_speech" => caps.SupportsTextToSpeech,
-                        "rerank" => caps.SupportsRerank,
-                        _ => false
-                    };
-
-                    if (!hasCapability)
-                    {
-                        continue;
-                    }
-                }
-
-                // Use overrides from association first, then fall back to model defaults
-                var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? model.MaxInputTokens ?? 0;
-                var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? model.MaxOutputTokens ?? 0;
-
-                var pricing = exposePricing
-                    ? BuildPricing(mapping.ModelProviderTypeAssociation.ModelCost)
-                    : null;
-
-                models.Add(new GatewayDiscoveredModelDto(
-                    mapping.ModelAlias,
-                    mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
-                    mapping.ModelAlias,
-                    model.Description ?? string.Empty,
-                    model.ModelCardUrl ?? string.Empty,
-                    maxInputTokens + maxOutputTokens,
-                    maxInputTokens,
-                    maxOutputTokens,
-                    model.TokenizerType.ToString().ToLowerInvariant(),
-                    caps.InputModalities ?? [],
-                    caps.OutputModalities ?? [],
-                    caps.CapabilitySource.ToString().ToLowerInvariant(),
-                    caps.CapabilitiesLastVerifiedAt,
-                    model.ModelParameters ?? model.Series?.Parameters ?? "{}",
-                    new GatewayModelCapabilitiesDto(
-                        caps.SupportsChat,
-                        caps.SupportsStreaming,
-                        caps.SupportsImageInput,
-                        caps.SupportsVideoInput,
-                        caps.SupportsAudioInput,
-                        caps.SupportsFileInput,
-                        caps.SupportsVision,
-                        caps.SupportsVideoUnderstanding,
-                        caps.SupportsImageGeneration,
-                        caps.SupportsVideoGeneration,
-                        caps.SupportsEmbeddings,
-                        caps.SupportsFunctionCalling,
-                        caps.SupportsSpeechToText,
-                        caps.SupportsTextToSpeech,
-                        caps.SupportsRerank,
-                        caps.SupportsFunctionCalling,
-                        null, // json_mode support is not tracked — null, not a confident false
-                        maxInputTokens + maxOutputTokens,
-                        maxOutputTokens,
-                        caps.SupportsFileInput || mapping.Provider?.ProviderType == ProviderType.OpenRouter),
-                    pricing));
-            }
+            using var context = await _dbContextFactory.CreateDbContextAsync(HttpContext.RequestAborted);
+            var models = await DiscoveryModelProjector.ProjectAsync(
+                context,
+                capability,
+                exposePricing,
+                Logger,
+                HttpContext.RequestAborted);
 
             // Cache the results for future requests
             var discoveryResult = new DiscoveryModelsResult
@@ -234,32 +132,6 @@ namespace ConduitLLM.Gateway.Endpoints
                 LoggingSanitizer.S(capability ?? "all"), models.Count);
 
             return Ok(new DiscoveryModelsResponse(models, models.Count));
-        }
-
-        /// <summary>
-        /// Projects the mapping's linked cost configuration into the discovery contract.
-        /// Mirrors the billing path's notion of "active" (IsActive plus the
-        /// EffectiveDate/ExpiryDate window) so discovery never advertises a price the
-        /// billing pipeline would not apply. Returns null when no active cost resolves,
-        /// letting clients distinguish "unpriced" from a zero rate.
-        /// </summary>
-        private static ModelPricingDto? BuildPricing(ConduitLLM.Configuration.Entities.ModelCost? cost)
-        {
-            var now = DateTime.UtcNow;
-            if (cost is not { IsActive: true }
-                || cost.EffectiveDate > now
-                || (cost.ExpiryDate.HasValue && cost.ExpiryDate.Value <= now))
-            {
-                return null;
-            }
-
-            return new ModelPricingDto(
-                cost.PricingModel.ToString().ToLowerInvariant(),
-                cost.InputCostPerMillionTokens,
-                cost.OutputCostPerMillionTokens,
-                cost.CachedInputCostPerMillionTokens,
-                cost.EmbeddingCostPerMillionTokens,
-                "USD");
         }
 
         /// <summary>
