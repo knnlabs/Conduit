@@ -379,7 +379,7 @@ export abstract class BaseApiClient {
   /**
    * Build full URL from path
    */
-  private buildUrl(path: string): string {
+  protected buildUrl(path: string): string {
     // If path is already a full URL, return it
     if (path.startsWith("http://") || path.startsWith("https://")) {
       return path;
@@ -393,7 +393,7 @@ export abstract class BaseApiClient {
   /**
    * Build headers including auth, defaults, and additional headers
    */
-  private buildHeaders(
+  protected buildHeaders(
     additionalHeaders?: Record<string, string>,
   ): Record<string, string> {
     return {
@@ -422,7 +422,7 @@ export abstract class BaseApiClient {
   /**
    * Sleep for a specified duration
    */
-  private sleep(ms: number): Promise<void> {
+  protected sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 

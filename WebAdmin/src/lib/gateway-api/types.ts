@@ -1,4 +1,5 @@
 import type { components, operations } from "@/generated/gateway-api";
+import type { RetryStrategy } from "@/lib/conduit-common";
 
 export type GatewaySchemas = components["schemas"];
 export type GatewayOperations = operations;
@@ -280,6 +281,8 @@ export interface GatewayClientConfig {
   apiKey: string;
   baseURL: string;
   timeout?: number;
+  retries?: number;
+  retryStrategy?: RetryStrategy;
 }
 
 export interface FunctionExecutionResponse {

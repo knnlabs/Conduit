@@ -12,6 +12,14 @@ export type {
 
 // Base API client
 export { BaseApiClient, type BaseRequestOptions } from "./BaseApiClient";
+export {
+  ContractApiClient,
+  recreateContractErrorResponse,
+  type ContractOperation,
+  type ContractOperationOptions,
+  type ContractRequestOptions,
+  type ContractResult,
+} from "./ContractApiClient";
 
 // Base client configuration types
 export type {

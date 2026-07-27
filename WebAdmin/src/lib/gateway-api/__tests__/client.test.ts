@@ -5,6 +5,7 @@ import {
   RateLimitError,
   type ChatAttachment,
 } from "..";
+import { RetryStrategyType } from "@/lib/conduit-common";
 
 describe("GatewayClient", () => {
   beforeEach(() => jest.clearAllMocks());
@@ -104,6 +105,7 @@ describe("GatewayClient", () => {
     const client = new GatewayClient({
       apiKey: "key",
       baseURL: "https://gateway.test",
+      retries: 0,
     });
     const oversized = { size: 101 * 1024 * 1024, type: "image/png" } as Blob;
     expect(client.media.validateFileSize(oversized, "Image")).toEqual(
@@ -122,6 +124,7 @@ describe("GatewayClient", () => {
     const client = new GatewayClient({
       apiKey: "key",
       baseURL: "https://gateway.test",
+      retries: 0,
     });
 
     await expect(client.discovery.getModels()).rejects.toEqual(
@@ -133,6 +136,28 @@ describe("GatewayClient", () => {
     await expect(client.discovery.getModels()).rejects.toBeInstanceOf(
       RateLimitError,
     );
+  });
+
+  it("retries retryable HTTP responses through the shared contract pipeline", async () => {
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(jsonResponse({ error: "Unavailable" }, 503))
+      .mockResolvedValueOnce(jsonResponse({ data: [], count: 0 }));
+    const client = new GatewayClient({
+      apiKey: "key",
+      baseURL: "https://gateway.test",
+      retryStrategy: {
+        type: RetryStrategyType.FIXED_DELAY,
+        maxRetries: 1,
+        delayMs: 0,
+      },
+    });
+
+    await expect(client.discovery.getModels()).resolves.toEqual({
+      data: [],
+      count: 0,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("builds ordered mixed-modality content without rewriting remote URLs", () => {
