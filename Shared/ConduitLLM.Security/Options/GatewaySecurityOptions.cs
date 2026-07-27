@@ -123,10 +123,10 @@ namespace ConduitLLM.Security.Options
         /// </summary>
         public List<string> KeyHeaders { get; set; } = new()
         {
-            "Authorization",
+            SecurityHeaderNames.Authorization,
             "api-key",
-            "X-API-Key",
-            "X-Virtual-Key"
+            SecurityHeaderNames.ApiKey,
+            SecurityHeaderNames.VirtualKey
         };
     }
 }

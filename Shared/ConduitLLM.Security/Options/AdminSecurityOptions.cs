@@ -52,11 +52,11 @@ namespace ConduitLLM.Security.Options
         /// <summary>
         /// Header name for API key
         /// </summary>
-        public string ApiKeyHeader { get; set; } = "X-API-Key";
+        public string ApiKeyHeader { get; set; } = SecurityHeaderNames.ApiKey;
 
         /// <summary>
         /// Alternative header names for backward compatibility
         /// </summary>
-        public List<string> AlternativeHeaders { get; set; } = new() { "X-Master-Key" };
+        public List<string> AlternativeHeaders { get; set; } = new() { SecurityHeaderNames.MasterKey };
     }
 }

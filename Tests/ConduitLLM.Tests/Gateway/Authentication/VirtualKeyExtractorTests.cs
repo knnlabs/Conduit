@@ -66,6 +66,24 @@ public class VirtualKeyExtractorTests
     }
 
     [Fact]
+    public void Extract_CustomConfiguredHeader_IsAccepted()
+    {
+        var context = Context("/v1/embeddings");
+        context.Request.Headers["X-Conduit-Key"] = " condt_custom ";
+
+        VirtualKeyExtractor.Extract(context, ["X-Conduit-Key"]).Should().Be("condt_custom");
+    }
+
+    [Fact]
+    public void Extract_UnconfiguredDefaultHeader_IsRejected()
+    {
+        var context = Context("/v1/embeddings");
+        context.Request.Headers["X-API-Key"] = "condt_default";
+
+        VirtualKeyExtractor.Extract(context, ["X-Conduit-Key"]).Should().BeNull();
+    }
+
+    [Fact]
     public void Extract_OnHubPath_QueryStringWins_OverHeaders()
     {
         var context = Context("/hubs/tasks", "?access_token=from_query");

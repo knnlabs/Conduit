@@ -20,7 +20,8 @@ namespace ConduitLLM.Security.Options
                 ConfigureBaseSecurityOptions(options, configuration, "CONDUIT_ADMIN_");
 
                 // API Authentication (Admin-specific)
-                options.ApiAuth.ApiKeyHeader = configuration["CONDUIT_ADMIN_API_KEY_HEADER"] ?? "X-API-Key";
+                options.ApiAuth.ApiKeyHeader = configuration["CONDUIT_ADMIN_API_KEY_HEADER"]
+                    ?? SecurityHeaderNames.ApiKey;
 
                 var altHeaders = configuration["CONDUIT_ADMIN_API_KEY_ALT_HEADERS"];
                 if (!string.IsNullOrWhiteSpace(altHeaders))
@@ -71,6 +72,13 @@ namespace ConduitLLM.Security.Options
                     configuration.GetValue<bool>("CoreApi:Security:VirtualKey:EnforceModelRestrictions", true));
                 options.VirtualKey.ValidationCacheSeconds = GetConfigValue(configuration, "CONDUIT_CORE_VKEY_CACHE_SECONDS",
                     configuration.GetValue<int>("CoreApi:Security:VirtualKey:ValidationCacheSeconds", 60));
+
+                var keyHeaders = configuration["CONDUIT_CORE_VKEY_HEADERS"]
+                    ?? configuration["CoreApi:Security:VirtualKey:KeyHeaders"];
+                if (!string.IsNullOrWhiteSpace(keyHeaders))
+                {
+                    options.VirtualKey.KeyHeaders = ParseCommaSeparatedList(keyHeaders);
+                }
             });
 
             return services;
