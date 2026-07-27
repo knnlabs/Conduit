@@ -117,6 +117,7 @@ namespace ConduitLLM.Core.Interfaces
         public DateTime LastSeen { get; set; }
         public string LastErrorMessage { get; set; } = string.Empty;
         public int? LastStatusCode { get; set; }
+        public DateTime? DisabledAt { get; set; }
     }
     
     /// <summary>

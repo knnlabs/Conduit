@@ -6386,6 +6386,13 @@ export interface components {
        */
       lastError: null | string;
       /**
+       * Format: date-time
+       * @description When all keys automatically disabled the provider, if applicable.
+       */
+      providerDisabledAt: null | string;
+      /** @description Reason recorded when the provider was automatically disabled. */
+      providerDisableReason: null | string;
+      /**
        * Format: int32
        * @description Number of currently disabled keys
        */

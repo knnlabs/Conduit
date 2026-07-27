@@ -674,21 +674,22 @@ namespace ConduitLLM.Tests.Services
             _keyRepoMock.Setup(x => x.GetByIdAsync(keyId))
                 .ReturnsAsync(key);
             
-            var errorData = new KeyErrorData
+            var errorData = new KeyErrorDetails
             {
-                FatalError = new FatalErrorData
+                FatalError = new FatalErrorInfo
                 {
-                    ErrorType = "InvalidApiKey",
+                    ErrorType = ProviderErrorType.InvalidApiKey,
                     Count = 3,
                     FirstSeen = DateTime.UtcNow.AddHours(-2),
                     LastSeen = DateTime.UtcNow.AddMinutes(-5),
                     LastErrorMessage = "Invalid API key",
                     LastStatusCode = 401,
                     DisabledAt = DateTime.UtcNow.AddMinutes(-5)
-                }
+                },
+                DisabledAt = DateTime.UtcNow.AddMinutes(-5)
             };
             
-            _errorStoreMock.Setup(x => x.GetKeyErrorDataAsync(keyId))
+            _errorStoreMock.Setup(x => x.GetKeyErrorDetailsAsync(keyId))
                 .ReturnsAsync(errorData);
 
             // Act
@@ -711,7 +712,7 @@ namespace ConduitLLM.Tests.Services
         {
             // Arrange
             var providerId = 456;
-            var summaryData = new ProviderSummaryData
+            var summaryData = new ProviderErrorSummary
             {
                 TotalErrors = 50,
                 FatalErrors = 10,
@@ -743,7 +744,7 @@ namespace ConduitLLM.Tests.Services
             var window = TimeSpan.FromHours(1);
             var cutoff = DateTime.UtcNow - window;
             
-            var statsData = new ErrorStatsData
+            var statsData = new ErrorStatistics
             {
                 TotalErrors = 4,
                 FatalErrors = 2,

@@ -31878,6 +31878,8 @@
           "warnings",
           "disabledKeyIds",
           "lastError",
+          "providerDisabledAt",
+          "providerDisableReason",
           "disabledKeyCount"
         ],
         "type": "object",
@@ -31921,6 +31923,21 @@
             ],
             "description": "When the last error occurred",
             "format": "date-time"
+          },
+          "providerDisabledAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "When all keys automatically disabled the provider, if applicable.",
+            "format": "date-time"
+          },
+          "providerDisableReason": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "description": "Reason recorded when the provider was automatically disabled."
           },
           "disabledKeyCount": {
             "type": "integer",
