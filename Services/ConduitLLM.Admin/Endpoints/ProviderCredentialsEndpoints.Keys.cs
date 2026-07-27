@@ -111,7 +111,7 @@ namespace ConduitLLM.Admin.Endpoints
                 ProviderId = providerId,
                 IsPrimary = keyCredential.IsPrimary,
                 IsEnabled = keyCredential.IsEnabled,
-                CorrelationId = Guid.NewGuid()
+                CorrelationId = Guid.NewGuid().ToString()
             }, "create provider key", new { ProviderId = providerId, KeyId = createdKeyId });
 
             LogAdminAudit("Created", "ProviderKeyCredential", createdKeyId, $"Provider: {providerId}, KeyName: {LoggingSanitizer.S(keyCredential.KeyName)}");
@@ -253,7 +253,7 @@ namespace ConduitLLM.Admin.Endpoints
                 KeyId = keyId,
                 ProviderId = providerId,
                 ChangedProperties = changedProperties,
-                CorrelationId = Guid.NewGuid()
+                CorrelationId = Guid.NewGuid().ToString()
             }, "update provider key", new { ProviderId = providerId, KeyId = keyId });
 
             return Ok(ToKeyDto(key));
@@ -307,7 +307,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 KeyId = keyId,
                 ProviderId = providerId,
-                CorrelationId = Guid.NewGuid()
+                CorrelationId = Guid.NewGuid().ToString()
             }, "delete provider key", new { ProviderId = providerId, KeyId = keyId });
 
             return NoContent();
@@ -352,7 +352,7 @@ namespace ConduitLLM.Admin.Endpoints
                 ProviderId = providerId,
                 OldPrimaryKeyId = 0, // Not tracking old primary in this method
                 NewPrimaryKeyId = keyId,
-                CorrelationId = Guid.NewGuid()
+                CorrelationId = Guid.NewGuid().ToString()
             }, "set primary key", new { ProviderId = providerId, KeyId = keyId });
 
             return NoContent();

@@ -1,21 +1,7 @@
+using ConduitLLM.Core.Events;
+
 namespace ConduitLLM.Configuration.Events
 {
-    /// <summary>
-    /// Base class for domain events
-    /// </summary>
-    public abstract record DomainEvent
-    {
-        /// <summary>
-        /// When the event occurred
-        /// </summary>
-        public DateTime Timestamp { get; init; } = DateTime.UtcNow;
-
-        /// <summary>
-        /// Correlation ID for tracking related events
-        /// </summary>
-        public Guid CorrelationId { get; init; } = Guid.NewGuid();
-    }
-
     /// <summary>
     /// Event raised when a new provider key credential is created
     /// </summary>
