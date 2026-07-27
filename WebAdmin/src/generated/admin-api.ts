@@ -3594,6 +3594,7 @@ export interface components {
       /** Format: int32 */
       priority?: number;
       description?: null | string;
+      isActive?: boolean;
       /** Format: double */
       inputCostPerMillionTokens?: number;
       /** Format: double */

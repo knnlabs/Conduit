@@ -22,10 +22,16 @@ import {
 } from '@tabler/icons-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { ModelCostDto, UpdateModelCostDto, PricingModel, ModelType, ModelTypeUtils } from '@/lib/admin-api';
+import { ModelCostDto, UpdateModelCostDto, PricingModel, ModelTypeUtils } from '@/lib/admin-api';
 const getModelTypeSelectOptions = ModelTypeUtils.getSelectOptions;
 import { ModelMappingSelector } from './ModelMappingSelector';
 import { PricingModelSelector } from './PricingModelSelector';
+import {
+  modelCostFormValidation,
+  modelCostToFormValues,
+  toUpdateModelCostDto,
+  type ModelCostFormValues,
+} from '../utils/modelCostForm';
 
 // ExtendedModelProviderMappingDto type removed - not needed
 
@@ -36,101 +42,14 @@ interface EditModelCostModalV2Props {
   onSuccess?: () => void;
 }
 
-interface FormValues {
-  costName: string;
-  modelProviderMappingIds: number[];
-  pricingModel: PricingModel;
-  pricingConfiguration: string;
-  modelType: ModelType;
-  // Token-based costs (per million tokens)
-  inputCostPerMillion: number;
-  outputCostPerMillion: number;
-  cachedInputCostPerMillion: number;
-  cachedInputWriteCostPerMillion: number;
-  embeddingCostPerMillion: number;
-  // Other cost types
-  searchUnitCostPer1K: number;
-  inferenceStepCost: number;
-  defaultInferenceSteps: number;
-  imageCostPerImage: number;
-  audioCostPerMinute: number;
-  audioCostPerKCharacters: number;
-  audioInputCostPerMinute: number;
-  audioOutputCostPerMinute: number;
-  videoCostPerSecond: number;
-  videoResolutionMultipliers: string;
-  imageResolutionMultipliers: string;
-  // Batch processing
-  supportsBatchProcessing: boolean;
-  batchProcessingMultiplier: number;
-  // Image quality
-  imageQualityMultipliers: string;
-  // Metadata
-  priority: number;
-  description: string;
-  isActive: boolean;
-}
-
 export function EditModelCostModalV2({ isOpen, modelCost, onClose, onSuccess }: EditModelCostModalV2Props) {
   const queryClient = useQueryClient();
   const { updateModelCost } = useModelCostsApi();
 
   // Convert backend data to form values
-  const initialValues: FormValues = {
-    costName: modelCost.costName,
-    modelProviderMappingIds: modelCost.modelProviderTypeAssociationIds,
-    pricingModel: modelCost.pricingModel ?? PricingModel.Standard,
-    pricingConfiguration: modelCost.pricingConfiguration ?? '',
-    modelType: modelCost.modelType,
-    // Token costs are already per million tokens
-    inputCostPerMillion: modelCost.inputCostPerMillionTokens ?? 0,
-    outputCostPerMillion: modelCost.outputCostPerMillionTokens ?? 0,
-    cachedInputCostPerMillion: modelCost.cachedInputCostPerMillionTokens ?? 0,
-    cachedInputWriteCostPerMillion: modelCost.cachedInputWriteCostPerMillionTokens ?? 0,
-    embeddingCostPerMillion: modelCost.embeddingCostPerMillionTokens ?? 0,
-    searchUnitCostPer1K: modelCost.costPerSearchUnit ?? 0,
-    // Media/inference pricing (inference-step, image/video, resolution & quality multipliers, and the
-    // per-input/output audio splits) now lives only in pricingConfiguration — the flat fields were
-    // removed from ModelCostDto in #1038. The raw JSON is loaded above into pricingConfiguration; the
-    // individual flat inputs below are not derived from it, so they start empty.
-    inferenceStepCost: 0,
-    defaultInferenceSteps: 0,
-    imageCostPerImage: 0,
-    audioCostPerMinute: modelCost.audioCostPerMinute ?? 0,
-    audioCostPerKCharacters: modelCost.audioCostPerThousandCharacters ?? 0,
-    audioInputCostPerMinute: 0,
-    audioOutputCostPerMinute: 0,
-    videoCostPerSecond: 0,
-    videoResolutionMultipliers: '',
-    imageResolutionMultipliers: '',
-    supportsBatchProcessing: modelCost.supportsBatchProcessing ?? false,
-    batchProcessingMultiplier: modelCost.batchProcessingMultiplier ?? 0.5,
-    imageQualityMultipliers: '',
-    priority: modelCost.priority,
-    description: modelCost.description ?? '',
-    isActive: modelCost.isActive,
-  };
-
-  const form = useForm<FormValues>({
-    initialValues,
-    validate: {
-      costName: (value) => !value?.trim() ? 'Cost name is required' : null,
-      modelProviderMappingIds: (value) => !value || value.length === 0 ? 'At least one model must be selected' : null,
-      priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
-      pricingConfiguration: (value, values) => {
-        if (values.pricingModel !== PricingModel.Standard && !value) {
-          return 'Configuration is required for this pricing model';
-        }
-        if (value) {
-          try {
-            JSON.parse(value);
-          } catch {
-            return 'Invalid JSON format';
-          }
-        }
-        return null;
-      },
-    },
+  const form = useForm<ModelCostFormValues>({
+    initialValues: modelCostToFormValues(modelCost),
+    validate: modelCostFormValidation,
   });
 
   const updateMutation = useMutation({
@@ -142,32 +61,8 @@ export function EditModelCostModalV2({ isOpen, modelCost, onClose, onSuccess }: 
     },
   });
 
-  const handleSubmit = (values: FormValues) => {
-    // Media/inference pricing is serialized into pricingConfiguration (below), not sent as flat
-    // fields — those were removed from UpdateModelCostDto in #1038. Only token/search/batch and the
-    // top-level audio (per-minute, per-1K-chars) fields remain flat.
-    const updates: UpdateModelCostDto = {
-      costName: values.costName,
-      modelProviderTypeAssociationIds: values.modelProviderMappingIds,
-      pricingModel: values.pricingModel,
-      pricingConfiguration: values.pricingConfiguration || undefined,
-      modelType: values.modelType,
-      priority: values.priority,
-      description: values.description || undefined,
-      isActive: values.isActive,
-      inputCostPerMillionTokens: values.inputCostPerMillion,
-      outputCostPerMillionTokens: values.outputCostPerMillion,
-      cachedInputCostPerMillionTokens: values.cachedInputCostPerMillion || undefined,
-      cachedInputWriteCostPerMillionTokens: values.cachedInputWriteCostPerMillion || undefined,
-      embeddingCostPerMillionTokens: values.embeddingCostPerMillion || undefined,
-      costPerSearchUnit: values.searchUnitCostPer1K || undefined,
-      audioCostPerMinute: values.audioCostPerMinute || undefined,
-      audioCostPerThousandCharacters: values.audioCostPerKCharacters || undefined,
-      supportsBatchProcessing: values.supportsBatchProcessing,
-      batchProcessingMultiplier: values.supportsBatchProcessing ? values.batchProcessingMultiplier : undefined,
-    };
-
-    updateMutation.mutate(updates);
+  const handleSubmit = (values: ModelCostFormValues) => {
+    updateMutation.mutate(toUpdateModelCostDto(values));
   };
 
   const showStandardFields = form.values.pricingModel === PricingModel.Standard;

@@ -56,6 +56,11 @@ namespace ConduitLLM.Configuration.DTOs
         public string? Description { get; set; }
 
         /// <summary>
+        /// Indicates whether this cost configuration should be active when created.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
         /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]

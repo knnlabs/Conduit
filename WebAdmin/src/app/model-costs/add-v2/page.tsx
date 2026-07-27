@@ -27,99 +27,25 @@ import {
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useModelCostsApi } from '../hooks/useModelCostsApi';
-import { CreateModelCostDto, PricingModel, ModelType, ModelTypeUtils } from '@/lib/admin-api';
+import { CreateModelCostDto, PricingModel, ModelTypeUtils } from '@/lib/admin-api';
 const getModelTypeSelectOptions = ModelTypeUtils.getSelectOptions;
 import { ModelMappingSelector } from '../components/ModelMappingSelector';
 import { PricingModelSelector } from '../components/PricingModelSelector';
-
-interface FormValues {
-  costName: string;
-  modelProviderMappingIds: number[];
-  pricingModel: PricingModel;
-  pricingConfiguration: string;
-  modelType: ModelType;
-  // Token-based costs (per million tokens)
-  inputCostPerMillion: number;
-  outputCostPerMillion: number;
-  cachedInputCostPerMillion: number;
-  cachedInputWriteCostPerMillion: number;
-  embeddingCostPerMillion: number;
-  // Other cost types
-  searchUnitCostPer1K: number;
-  inferenceStepCost: number;
-  defaultInferenceSteps: number;
-  imageCostPerImage: number;
-  audioCostPerMinute: number;
-  audioCostPerKCharacters: number;
-  audioInputCostPerMinute: number;
-  audioOutputCostPerMinute: number;
-  videoCostPerSecond: number;
-  videoResolutionMultipliers: string;
-  imageResolutionMultipliers: string;
-  // Batch processing
-  supportsBatchProcessing: boolean;
-  batchProcessingMultiplier: number;
-  // Image quality
-  imageQualityMultipliers: string;
-  // Metadata
-  priority: number;
-  description: string;
-  isActive: boolean;
-}
+import {
+  createModelCostFormValues,
+  modelCostFormValidation,
+  toCreateModelCostDto,
+  type ModelCostFormValues,
+} from '../utils/modelCostForm';
 
 export default function AddModelCostV2Page() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { createModelCost } = useModelCostsApi();
   
-  const form = useForm<FormValues>({
-    initialValues: {
-      costName: '',
-      modelProviderMappingIds: [],
-      pricingModel: PricingModel.Standard,
-      pricingConfiguration: '',
-      modelType: ModelType.Chat,
-      inputCostPerMillion: 0,
-      outputCostPerMillion: 0,
-      cachedInputCostPerMillion: 0,
-      cachedInputWriteCostPerMillion: 0,
-      embeddingCostPerMillion: 0,
-      searchUnitCostPer1K: 0,
-      inferenceStepCost: 0,
-      defaultInferenceSteps: 0,
-      imageCostPerImage: 0,
-      audioCostPerMinute: 0,
-      audioCostPerKCharacters: 0,
-      audioInputCostPerMinute: 0,
-      audioOutputCostPerMinute: 0,
-      videoCostPerSecond: 0,
-      videoResolutionMultipliers: '',
-      imageResolutionMultipliers: '',
-      supportsBatchProcessing: false,
-      batchProcessingMultiplier: 0.5,
-      imageQualityMultipliers: '',
-      priority: 0,
-      description: '',
-      isActive: true,
-    },
-    validate: {
-      costName: (value) => !value?.trim() ? 'Cost name is required' : null,
-      modelProviderMappingIds: (value) => !value || value.length === 0 ? 'At least one model must be selected' : null,
-      priority: (value) => value < 0 ? 'Priority must be non-negative' : null,
-      pricingConfiguration: (value, values) => {
-        if (values.pricingModel !== PricingModel.Standard && !value) {
-          return 'Configuration is required for this pricing model';
-        }
-        if (value) {
-          try {
-            JSON.parse(value);
-          } catch {
-            return 'Invalid JSON format';
-          }
-        }
-        return null;
-      },
-    },
+  const form = useForm<ModelCostFormValues>({
+    initialValues: createModelCostFormValues(),
+    validate: modelCostFormValidation,
   });
 
   const createMutation = useMutation({
@@ -133,32 +59,8 @@ export default function AddModelCostV2Page() {
     },
   });
 
-  const handleSubmit = (values: FormValues) => {
-    // Media/inference pricing (image/video/inference-step/resolution & quality multipliers plus the
-    // per-input/output audio splits) is carried in pricingConfiguration (serialized by the pricing
-    // selector), not as flat fields — those were removed from CreateModelCostDto in #1038. Only the
-    // token/search/batch and top-level audio (per-minute, per-1K-chars) fields remain flat.
-    const data: CreateModelCostDto = {
-      costName: values.costName,
-      modelProviderTypeAssociationIds: values.modelProviderMappingIds,
-      pricingModel: values.pricingModel,
-      pricingConfiguration: values.pricingConfiguration || undefined,
-      modelType: values.modelType,
-      priority: values.priority,
-      description: values.description || undefined,
-      inputCostPerMillionTokens: values.inputCostPerMillion,
-      outputCostPerMillionTokens: values.outputCostPerMillion,
-      cachedInputCostPerMillionTokens: values.cachedInputCostPerMillion || undefined,
-      cachedInputWriteCostPerMillionTokens: values.cachedInputWriteCostPerMillion || undefined,
-      embeddingCostPerMillionTokens: values.embeddingCostPerMillion || undefined,
-      costPerSearchUnit: values.searchUnitCostPer1K || undefined,
-      audioCostPerMinute: values.audioCostPerMinute || undefined,
-      audioCostPerThousandCharacters: values.audioCostPerKCharacters || undefined,
-      supportsBatchProcessing: values.supportsBatchProcessing,
-      batchProcessingMultiplier: values.supportsBatchProcessing ? values.batchProcessingMultiplier : undefined,
-    };
-
-    createMutation.mutate(data);
+  const handleSubmit = (values: ModelCostFormValues) => {
+    createMutation.mutate(toCreateModelCostDto(values));
   };
 
   const handleCancel = () => {

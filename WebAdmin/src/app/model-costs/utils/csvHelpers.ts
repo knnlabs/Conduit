@@ -252,6 +252,7 @@ export const convertParsedToDto = (parsedData: ParsedModelCost[]): CreateModelCo
       costPerInferenceStep: cost.costPerInferenceStep,
       defaultInferenceSteps: cost.defaultInferenceSteps,
       priority: cost.priority,
+      isActive: cost.active,
       description: cost.description,
     } as CreateModelCostDto));
 };

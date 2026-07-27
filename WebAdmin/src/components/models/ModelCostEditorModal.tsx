@@ -206,6 +206,7 @@ export function ModelCostEditorModal({
             costName: values.costName,
             modelType: values.modelType,
             priority: values.priority,
+            isActive: values.isActive,
             description: values.description || undefined,
             inputCostPerMillionTokens: values.inputCostPerMillionTokens,
             outputCostPerMillionTokens: values.outputCostPerMillionTokens,

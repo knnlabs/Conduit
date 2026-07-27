@@ -25038,6 +25038,9 @@
               "string"
             ]
           },
+          "isActive": {
+            "type": "boolean"
+          },
           "inputCostPerMillionTokens": {
             "minimum": 0,
             "type": "number",
