@@ -5,7 +5,7 @@ import type {
   CostTrendDto,
   DateRange,
   ProviderCost,
-  ModelUsage,
+  ModelSpendUsage,
   DailyCost,
   DetailedCostDataDto,
   CostTrendDataDto,
@@ -132,7 +132,7 @@ export function useTransformedData(costSummary: CostDashboardDto | undefined, co
   // Transform model usage. The cost summary does not attribute models to
   // providers or report token counts — those fields are deliberately absent
   // rather than filled with guesses or zeros.
-  const modelUsage: ModelUsage[] = costSummary?.topModelsBySpend?.map((model: DetailedCostDataDto) => ({
+  const modelUsage: ModelSpendUsage[] = costSummary?.topModelsBySpend?.map((model: DetailedCostDataDto) => ({
     model: model.name,
     requests: model.requestCount,
     cost: model.cost,

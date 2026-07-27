@@ -44,7 +44,7 @@ export interface UsageAnalytics {
   };
   byProvider: Record<string, ProviderUsage>;
   byVirtualKey: Record<string, VirtualKeyUsage>;
-  byModel: Record<string, ModelUsage>;
+  byModel: Record<string, AnalyticsModelUsage>;
   timeSeries: TimeSeriesData[];
   timeRange: {
     start: string;
@@ -71,7 +71,7 @@ export interface VirtualKeyUsage {
 }
 
 // Matches the wire `ModelUsage` schema (per-model usage aggregate). See issue #1038.
-export interface ModelUsage {
+export interface AnalyticsModelUsage {
   requestCount: number;
   cost: number;
   inputTokens: number;
@@ -150,7 +150,7 @@ export interface RequestLogStatisticsParams {
   model?: string;
 }
 
-export interface RequestLogStatistics {
+export interface RequestLogPeriodStatistics {
   totalRequests: number;
   successfulRequests: number;
   failedRequests: number;

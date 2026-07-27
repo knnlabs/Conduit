@@ -15,7 +15,7 @@ import type {
 import type {
   BackendSystemInfoResponse,
   MetricsParams,
-  PerformanceMetrics,
+  SystemPerformanceMetrics,
   ExportParams,
   ExportResult,
   ISystemService
@@ -81,7 +81,7 @@ export class FetchSystemService implements ISystemService {
   async getPerformanceMetrics(
     params?: MetricsParams,
     config?: RequestConfig
-  ): Promise<PerformanceMetrics> {
+  ): Promise<SystemPerformanceMetrics> {
     return this.metricsService.getPerformanceMetrics(params, config);
   }
 

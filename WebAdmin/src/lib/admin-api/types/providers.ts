@@ -205,11 +205,16 @@ export function getProviderAssociationDefaults(
 }
 
 /** Check whether a value can identify a configurable provider. */
-export function isValidProviderType(provider: string | number): boolean {
+export function isValidProviderType(
+  provider: unknown,
+): provider is ProviderType | number {
   if (typeof provider === 'number') {
     // The backend remains authoritative for numeric enum membership. Accept positive integer IDs so
     // a newly generated provider contract is usable before this compatibility module changes.
     return Number.isInteger(provider) && provider > 0;
+  }
+  if (typeof provider !== 'string') {
+    return false;
   }
   const normalized = normalizeProviderType(provider);
   return normalized !== undefined && normalized !== ProviderType.Unknown;

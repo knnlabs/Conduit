@@ -3,7 +3,10 @@ import { createElement, type PropsWithChildren } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { withAdminClient } from '@/lib/client/adminClient';
-import { useRequestLogs } from './useRequestLogs';
+import {
+  requestLogFiltersToApiParams,
+  useRequestLogs,
+} from './useRequestLogs';
 
 jest.mock('@/lib/client/adminClient', () => ({
   withAdminClient: jest.fn(),
@@ -72,5 +75,23 @@ describe('useRequestLogs', () => {
     expect(result.current.logs[0]?.id).toBe(2);
     expect(result.current.currentPage).toBe(2);
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it('adapts form-state dates and status to the API contract', () => {
+    expect(requestLogFiltersToApiParams({
+      startDate: new Date('2026-07-01T00:00:00Z'),
+      endDate: new Date('2026-07-02T00:00:00Z'),
+      model: 'nova',
+      virtualKeyId: 42,
+      status: 429,
+    }, 3, 25)).toEqual({
+      page: 3,
+      pageSize: 25,
+      startDate: '2026-07-01T00:00:00.000Z',
+      endDate: '2026-07-02T00:00:00.000Z',
+      model: 'nova',
+      virtualKeyId: '42',
+      statusCode: 429,
+    });
   });
 });

@@ -196,7 +196,7 @@ export interface CostTrend {
   tokens: number;
 }
 
-export interface ImportResult {
+export interface ModelCostImportResult {
   success: number;
   failed: number;
   errors: Array<{ row: number; error: string }>;

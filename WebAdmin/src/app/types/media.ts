@@ -3,18 +3,6 @@
  */
 
 /**
- * Standard error response structure from API endpoints
- */
-export interface ErrorResponse {
-  error: {
-    message: string;
-    type: string;
-    param?: string | null;
-    code?: string | null;
-  };
-}
-
-/**
  * Common status types for async generation tasks
  * @deprecated Use MediaGenerationStatus enum instead
  */

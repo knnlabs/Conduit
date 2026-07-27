@@ -4,7 +4,7 @@
 
 import {
   ProviderTypeAssociationInput,
-  ValidationResult
+  AssociationValidationResult
 } from '../types/models';
 import {
   normalizeProviderType,
@@ -19,7 +19,7 @@ import {
  */
 export function validateProviderTypeAssociation(
   input: Partial<ProviderTypeAssociationInput>
-): ValidationResult<ProviderTypeAssociationInput> {
+): AssociationValidationResult<ProviderTypeAssociationInput> {
   const errors: Record<string, string> = {};
   const constraints = getProviderConstraints();
 

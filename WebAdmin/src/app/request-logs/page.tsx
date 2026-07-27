@@ -31,7 +31,7 @@ import { TablePagination } from '@/components/common/TablePagination';
 import { RequestLogsTable } from '@/components/analytics/RequestLogsTable';
 import { RequestLogsFilters } from '@/components/analytics/RequestLogsFilters';
 import { ViewVirtualKeyModal } from '@/components/virtualkeys/ViewVirtualKeyModal';
-import { useRequestLogs, useDistinctModels, type RequestLogFilters } from '@/hooks/useRequestLogs';
+import { useRequestLogs, useDistinctModels, type RequestLogFormFilters } from '@/hooks/useRequestLogs';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
@@ -48,7 +48,7 @@ export default function RequestLogsPage() {
   const [pageSize, setPageSize] = useState(50);
 
   // Filter state
-  const [filters, setFilters] = useState<RequestLogFilters>({});
+  const [filters, setFilters] = useState<RequestLogFormFilters>({});
 
   // Virtual keys for filter dropdown
   const [virtualKeys, setVirtualKeys] = useState<VirtualKeyDto[]>([]);
@@ -165,7 +165,7 @@ export default function RequestLogsPage() {
   }, []);
 
   // Handle filter changes
-  const handleFiltersChange = useCallback((newFilters: RequestLogFilters) => {
+  const handleFiltersChange = useCallback((newFilters: RequestLogFormFilters) => {
     setFilters(newFilters);
     setPage(1); // Reset to first page when changing filters
   }, []);

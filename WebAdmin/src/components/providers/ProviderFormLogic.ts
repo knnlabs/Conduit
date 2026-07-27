@@ -25,7 +25,7 @@ export interface ProviderFormData {
   providerCostMarkupMultiplier: number;
 }
 
-export interface ProviderOption {
+export interface ProviderFormOption {
   value: string;
   label: string;
 }
@@ -38,8 +38,8 @@ export interface ProviderFormLogicResult {
   setIsTesting: (value: boolean) => void;
   testResult: { success: boolean; message: string } | null;
   setTestResult: (value: { success: boolean; message: string } | null) => void;
-  availableProviders: ProviderOption[];
-  setAvailableProviders: (value: ProviderOption[]) => void;
+  availableProviders: ProviderFormOption[];
+  setAvailableProviders: (value: ProviderFormOption[]) => void;
   isLoadingProviders: boolean;
   setIsLoadingProviders: (value: boolean) => void;
   existingProvider: ProviderDto | null;
@@ -64,7 +64,7 @@ export function useProviderFormLogic(
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
+  const [availableProviders, setAvailableProviders] = useState<ProviderFormOption[]>([]);
   const [isLoadingProviders, setIsLoadingProviders] = useState(mode === 'add');
   const [existingProvider, setExistingProvider] = useState<ProviderDto | null>(null);
   const [isLoadingProvider, setIsLoadingProvider] = useState(mode === 'edit');

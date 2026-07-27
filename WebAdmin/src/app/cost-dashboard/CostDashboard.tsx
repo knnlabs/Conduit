@@ -29,7 +29,7 @@ import { ErrorDisplay } from '@/components/common/ErrorDisplay';
 import { useCostData, useTransformedData } from './hooks';
 import { useCostDashboardHandlers } from './handlers';
 import { CostMetricsCards } from './CostMetricsCards';
-import type { ProviderCost, ModelUsage } from './types';
+import type { ProviderCost, ModelSpendUsage } from './types';
 
 export default function CostDashboard() {
   const [timeRange, setTimeRange] = useState('30d');
@@ -217,7 +217,7 @@ export default function CostDashboard() {
             </Table.Thead>
             <Table.Tbody>
               {modelUsage.length > 0 ? (
-                modelUsage.map((model: ModelUsage) => (
+                modelUsage.map((model: ModelSpendUsage) => (
                   <Table.Tr key={model.model}>
                     <Table.Td>
                       <Text size="sm" fw={500}>

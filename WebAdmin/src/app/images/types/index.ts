@@ -7,9 +7,6 @@ import {
 } from '@/app/types/media';
 import type { MediaTask, MediaSettings } from '@/app/hooks/createMediaStore';
 
-// Re-export for components that use ErrorResponse
-export type { ErrorResponse } from '@/app/types/media';
-
 export interface ImageGenerationRequest {
   prompt: string;
   model?: string;
@@ -27,8 +24,6 @@ export interface ImageGenerationResponse {
   created: number;
   data: ImageData[];
 }
-
-// ErrorResponse is now imported from shared media types
 
 // UI-specific interface — same shape as the shared MediaSettings
 // (Size, N, and ResponseFormat removed - now handled by custom parameters)

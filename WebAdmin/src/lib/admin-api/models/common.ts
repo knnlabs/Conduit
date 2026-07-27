@@ -1,6 +1,6 @@
 // Re-export common types from shared package
 export type {
-  ErrorResponse,
+  ApiErrorEnvelope,
   ApiResponse,
   SortOptions,
   FilterOptions,

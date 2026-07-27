@@ -7,8 +7,8 @@ import type { ProviderType } from '../models/providerType';
 export type ProviderTool = components['schemas']['ProviderToolDto'] & Required<Pick<components['schemas']['ProviderToolDto'], 'id' | 'provider' | 'toolName' | 'isActive' | 'updatedAt'>>;
 export type CreateProviderTool = components['schemas']['CreateProviderToolDto'];
 export type UpdateProviderTool = components['schemas']['UpdateProviderToolDto'];
-export type ProviderOption = components['schemas']['ToolProviderDto'] & Required<Pick<components['schemas']['ToolProviderDto'], 'value' | 'name' | 'description'>>;
-export type ImportResult = components['schemas']['ProviderToolImportResultDto'];
+export type ToolProviderOption = components['schemas']['ToolProviderDto'] & Required<Pick<components['schemas']['ToolProviderDto'], 'value' | 'name' | 'description'>>;
+export type ProviderToolImportResult = components['schemas']['ProviderToolImportResultDto'];
 type ProviderToolWire = components['schemas']['ProviderToolDto'];
 
 /**
@@ -60,9 +60,9 @@ export class ProviderToolsService {
   /**
    * Gets available provider types that support tools
    */
-  async getToolProviders(config?: RequestConfig): Promise<ProviderOption[]> {
+  async getToolProviders(config?: RequestConfig): Promise<ToolProviderOption[]> {
     const result = await this.client['executeContractRead']('/v1/admin/provider-tools/providers', (client, options) => client.GET('/v1/admin/provider-tools/providers', options), config);
-    return result.data.map(provider => provider as ProviderOption);
+    return result.data.map(provider => provider as ToolProviderOption);
   }
 
   /**
@@ -77,8 +77,8 @@ export class ProviderToolsService {
    * Bulk import provider tools from a JSON array
    * @param tools Array of provider tools to import
    */
-  async importProviderTools(tools: CreateProviderTool[], config?: RequestConfig): Promise<ImportResult> {
-    return this.client['executeContractOperation']<ImportResult, CreateProviderTool[]>('/v1/admin/provider-tools/import', HttpMethod.POST, (client, options) => client.POST('/v1/admin/provider-tools/import', { ...options, body: tools }), config, tools);
+  async importProviderTools(tools: CreateProviderTool[], config?: RequestConfig): Promise<ProviderToolImportResult> {
+    return this.client['executeContractOperation']<ProviderToolImportResult, CreateProviderTool[]>('/v1/admin/provider-tools/import', HttpMethod.POST, (client, options) => client.POST('/v1/admin/provider-tools/import', { ...options, body: tools }), config, tools);
   }
 
   /**

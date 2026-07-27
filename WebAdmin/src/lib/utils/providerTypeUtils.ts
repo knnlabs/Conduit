@@ -7,16 +7,14 @@
 import {
   ProviderType,
   getProviderTypeName,
+  isValidProviderType,
   normalizeProviderType,
 } from '@/lib/admin-api';
 
-export { ProviderType };
+export { ProviderType, isValidProviderType };
 
 export const getProviderDisplayName = (providerType: ProviderType | number): string =>
   getProviderTypeName(providerType);
-
-export const isValidProviderType = (value: unknown): value is ProviderType =>
-  typeof value === 'string' && normalizeProviderType(value) !== undefined;
 
 /** Canonical compact name used by bulk-mapping matching. */
 export const providerTypeToName = (providerType: ProviderType): string =>

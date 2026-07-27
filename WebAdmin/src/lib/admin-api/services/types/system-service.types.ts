@@ -54,7 +54,7 @@ export interface MetricsParams {
   includeDetails?: boolean;
 }
 
-export interface PerformanceMetrics {
+export interface SystemPerformanceMetrics {
   cpu: {
     usage: number;
     cores: number;
@@ -93,7 +93,7 @@ export interface ISystemService {
   getServiceHealth(
     config?: RequestConfig,
   ): Promise<components['schemas']['ServiceHealthResponse']>;
-  getPerformanceMetrics(params?: MetricsParams, config?: RequestConfig): Promise<PerformanceMetrics>;
+  getPerformanceMetrics(params?: MetricsParams, config?: RequestConfig): Promise<SystemPerformanceMetrics>;
   exportPerformanceData(params: ExportParams, config?: RequestConfig): Promise<ExportResult>;
   getWebAdminVirtualKey(config?: RequestConfig): Promise<string>;
   invalidateFunctionDiscoveryCache(config?: RequestConfig): Promise<{

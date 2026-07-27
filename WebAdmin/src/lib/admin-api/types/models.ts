@@ -72,7 +72,7 @@ export interface NormalizedProviderTypeAssociation extends ProviderTypeAssociati
 /**
  * Validation result for provider type associations
  */
-export interface ValidationResult<T = unknown> {
+export interface AssociationValidationResult<T = unknown> {
   valid: boolean;
   data?: T;
   errors?: Record<string, string | string[]>;

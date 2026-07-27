@@ -3,7 +3,7 @@ import type { RequestConfig } from '../client/types';
 import type { SystemInfoDto, SystemResourceMetricsDto } from '../models/system';
 import type {
   MetricsParams,
-  PerformanceMetrics,
+  SystemPerformanceMetrics,
   ExportParams,
   ExportResult
 } from './types/system-service.types';
@@ -22,7 +22,7 @@ export class FetchSystemMetricsService {
   async getPerformanceMetrics(
     params?: MetricsParams,
     config?: RequestConfig
-  ): Promise<PerformanceMetrics> {
+  ): Promise<SystemPerformanceMetrics> {
     const searchParams = new URLSearchParams();
     if (params?.period) {
       searchParams.set('period', params.period);
@@ -31,7 +31,7 @@ export class FetchSystemMetricsService {
       searchParams.set('includeDetails', 'true');
     }
 
-    return this.client['get']<PerformanceMetrics>(
+    return this.client['get']<SystemPerformanceMetrics>(
       `/system/performance${searchParams.toString() ? `?${searchParams}` : ''}`,
       {
         signal: config?.signal,

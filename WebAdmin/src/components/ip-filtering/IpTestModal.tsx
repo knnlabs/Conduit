@@ -23,7 +23,7 @@ interface IpTestModalProps {
   onClose: () => void;
 }
 
-interface TestResult {
+interface IpFilterTestResult {
   allowed: boolean;
   matchedRule?: {
     id: string;
@@ -39,7 +39,7 @@ const validateIpAddress = (value: string) => getIpValidationError(value);
 
 export function IpTestModal({ opened, onClose }: IpTestModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [testResult, setTestResult] = useState<IpFilterTestResult | null>(null);
   
   const form = useForm({
     initialValues: {
@@ -59,9 +59,9 @@ export function IpTestModal({ opened, onClose }: IpTestModalProps) {
         client.ipFilters.checkIp(values.ipAddress)
       );
 
-      // Convert IpCheckResult to TestResult format. The API now returns only allow/deny + reason;
+      // Convert IpCheckResult to the modal result format. The API now returns only allow/deny + reason;
       // matched-filter enrichment was removed from IpCheckResult in #1038.
-      const testResult: TestResult = {
+      const testResult: IpFilterTestResult = {
         allowed: result.isAllowed,
         reason: result.deniedReason ?? (result.isAllowed ? 'IP address is allowed' : 'IP address is blocked'),
       };
