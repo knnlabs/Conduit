@@ -12,7 +12,7 @@ namespace ConduitLLM.Admin.Models.Models
     /// 
     /// Common update scenarios include:
     /// - Activating/deactivating a model (IsActive)
-    /// - Changing the model's capabilities configuration (ModelCapabilitiesId)
+    /// - Changing the capability flags and modality metadata stored on the model
     /// - Reassigning to a different series (ModelSeriesId)
     /// - Renaming a model (Name) - use with caution as it may break existing references
     /// 

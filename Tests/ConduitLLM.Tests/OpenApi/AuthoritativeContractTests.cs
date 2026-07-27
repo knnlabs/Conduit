@@ -349,6 +349,16 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Fact]
+    public void Gateway_ModelCapabilityWireProjectionHasExplicitBoundaryName()
+    {
+        var schemas = _gateway.RootElement.GetProperty("components").GetProperty("schemas");
+
+        schemas.TryGetProperty("GatewayModelCapabilitiesDto", out _).Should().BeTrue();
+        schemas.TryGetProperty("ModelCapabilitiesDto", out _).Should().BeFalse(
+            "the unqualified capability DTO is the Configuration/Admin contract");
+    }
+
+    [Fact]
     public void Admin_PagedResultsDoNotPublishDeprecatedAliases()
     {
         var schemas = _admin.RootElement.GetProperty("components").GetProperty("schemas");

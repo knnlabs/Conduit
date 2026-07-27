@@ -166,16 +166,23 @@ namespace ConduitLLM.Providers.OpenRouter
 
             var toolsSupported = supported.Contains("tools", StringComparer.OrdinalIgnoreCase);
 
-            info.WithCapabilities(new InternalModels.ModelCapabilities
+            info.WithCapabilities(new ConduitLLM.Configuration.DTOs.ModelCapabilitiesDto
             {
-                Chat = true,
-                TextGeneration = true,
-                FunctionCalling = toolsSupported,
-                ToolUsage = toolsSupported,
-                JsonMode = supported.Contains("response_format", StringComparer.OrdinalIgnoreCase)
-                    || supported.Contains("structured_outputs", StringComparer.OrdinalIgnoreCase),
-                Vision = inputModalities.Contains("image", StringComparer.OrdinalIgnoreCase),
-                ImageGeneration = outputModalities.Contains("image", StringComparer.OrdinalIgnoreCase)
+                CapabilitySource = ConduitLLM.Configuration.Models.ModelCapabilitySource.ProviderApi,
+                InputModalities = ConduitLLM.Configuration.Models.ModelModalities.Normalize(inputModalities),
+                OutputModalities = ConduitLLM.Configuration.Models.ModelModalities.Normalize(outputModalities),
+                SupportsChat = true,
+                SupportsFunctionCalling = toolsSupported,
+                SupportsVision = inputModalities.Contains("image", StringComparer.OrdinalIgnoreCase),
+                SupportsImageInput = inputModalities.Contains("image", StringComparer.OrdinalIgnoreCase),
+                SupportsVideoInput = inputModalities.Contains("video", StringComparer.OrdinalIgnoreCase),
+                SupportsAudioInput = inputModalities.Contains("audio", StringComparer.OrdinalIgnoreCase),
+                SupportsFileInput = inputModalities.Contains("file", StringComparer.OrdinalIgnoreCase),
+                SupportsVideoUnderstanding =
+                    inputModalities.Contains("video", StringComparer.OrdinalIgnoreCase) &&
+                    outputModalities.Contains("text", StringComparer.OrdinalIgnoreCase),
+                SupportsImageGeneration = outputModalities.Contains("image", StringComparer.OrdinalIgnoreCase),
+                SupportsVideoGeneration = outputModalities.Contains("video", StringComparer.OrdinalIgnoreCase)
             });
 
             if (m.ContextLength.HasValue || m.TopProvider?.MaxCompletionTokens != null)

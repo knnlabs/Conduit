@@ -17,7 +17,7 @@ public sealed record ModelListResponse(
     [property: JsonPropertyName("object")] string Object);
 
 /// <summary>Capabilities advertised for a model.</summary>
-public sealed record ModelCapabilitiesDto(
+public sealed record GatewayModelCapabilitiesDto(
     [property: JsonPropertyName("chat")] bool Chat,
     [property: JsonPropertyName("chat_stream")] bool ChatStream,
     [property: JsonPropertyName("image_input")] bool ImageInput,
@@ -52,7 +52,7 @@ public sealed record ModelMetadataDto(
     [property: JsonPropertyName("output_modalities")] IReadOnlyList<string> OutputModalities,
     [property: JsonPropertyName("capability_source")] string CapabilitySource,
     [property: JsonPropertyName("capabilities_last_verified_at")] DateTime? CapabilitiesLastVerifiedAt,
-    [property: JsonPropertyName("capabilities")] ModelCapabilitiesDto Capabilities,
+    [property: JsonPropertyName("capabilities")] GatewayModelCapabilitiesDto Capabilities,
     [property: JsonPropertyName("max_input_tokens")] int? MaxInputTokens,
     [property: JsonPropertyName("max_output_tokens")] int? MaxOutputTokens);
 
@@ -89,7 +89,7 @@ public sealed record DiscoveredModelDto(
     [property: JsonPropertyName("capability_source")] string CapabilitySource,
     [property: JsonPropertyName("capabilities_last_verified_at")] DateTime? CapabilitiesLastVerifiedAt,
     [property: JsonPropertyName("parameters")] string Parameters,
-    [property: JsonPropertyName("capabilities")] ModelCapabilitiesDto Capabilities,
+    [property: JsonPropertyName("capabilities")] GatewayModelCapabilitiesDto Capabilities,
     [property: JsonPropertyName("pricing")] ModelPricingDto? Pricing = null);
 
 /// <summary>Model discovery response.</summary>

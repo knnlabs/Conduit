@@ -83,8 +83,8 @@ namespace ConduitLLM.Admin.Services
                 {
                     ["input_modalities"] = caps.InputModalities,
                     ["output_modalities"] = caps.OutputModalities,
-                    ["capability_source"] = caps.Source.ToString(),
-                    ["capabilities_last_verified_at"] = caps.LastVerifiedAt?.ToString("O") ?? "",
+                    ["capability_source"] = caps.CapabilitySource.ToString(),
+                    ["capabilities_last_verified_at"] = caps.CapabilitiesLastVerifiedAt?.ToString("O") ?? "",
                     ["supports_chat"] = caps.SupportsChat,
                     ["supports_streaming"] = caps.SupportsStreaming,
                     ["supports_vision"] = caps.SupportsImageInput,

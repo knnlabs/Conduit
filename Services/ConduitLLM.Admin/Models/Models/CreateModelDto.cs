@@ -9,13 +9,12 @@ namespace ConduitLLM.Admin.Models.Models
     /// <remarks>
     /// This DTO contains the minimum required information to register a new model.
     /// When creating a model, you must specify its canonical name, the series it belongs to,
-    /// and its capabilities configuration. The model will inherit characteristics from
-    /// its series and capabilities.
+    /// and its capabilities. Capability metadata is stored directly on the canonical
+    /// model and inherits only model-series characteristics.
     /// 
     /// Before creating a model, ensure that:
     /// 1. The ModelSeries exists (or create it first)
-    /// 2. The ModelCapabilities configuration exists (or create it first)
-    /// 3. The model name is unique within the system
+    /// 2. The model name is unique within the system
     /// 
     /// Models created through this DTO will need ModelProviderMappings to be actually
     /// usable by the system, as the mappings connect the canonical model to specific

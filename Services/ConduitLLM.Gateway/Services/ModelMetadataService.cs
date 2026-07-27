@@ -54,9 +54,9 @@ public sealed class ModelMetadataService : IModelMetadataService
             model.ModelCardUrl,
             capabilities.InputModalities ?? [],
             capabilities.OutputModalities ?? [],
-            capabilities.Source.ToString().ToLowerInvariant(),
-            capabilities.LastVerifiedAt,
-            new ModelCapabilitiesDto(
+            capabilities.CapabilitySource.ToString().ToLowerInvariant(),
+            capabilities.CapabilitiesLastVerifiedAt,
+            new GatewayModelCapabilitiesDto(
                 capabilities.SupportsChat,
                 capabilities.SupportsStreaming,
                 capabilities.SupportsImageInput,
@@ -74,7 +74,7 @@ public sealed class ModelMetadataService : IModelMetadataService
                 capabilities.SupportsRerank,
                 PdfInput: capabilities.SupportsFileInput ||
                           mapping.Provider?.ProviderType == ConduitLLM.Configuration.ProviderType.OpenRouter),
-            association.MaxInputTokens ?? model.MaxInputTokens,
-            association.MaxOutputTokens ?? model.MaxOutputTokens);
+            capabilities.MaxInputTokens,
+            capabilities.MaxOutputTokens);
     }
 }

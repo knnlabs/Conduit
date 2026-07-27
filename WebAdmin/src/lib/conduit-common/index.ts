@@ -5,9 +5,6 @@
 // Base types
 export * from "./types/base";
 
-// Capability types
-export * from "./types/capabilities";
-
 // Error types and utilities
 export * from "./errors";
 
