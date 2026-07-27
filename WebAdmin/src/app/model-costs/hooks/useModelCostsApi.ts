@@ -36,6 +36,10 @@ export async function fetchModelCosts(page = 1, pageSize = 50, filters?: ModelCo
   } as ModelCostListResponse;
 }
 
+export async function fetchModelCostById(id: number): Promise<ModelCost> {
+  return withAdminClient(client => client.modelCosts.getById(id));
+}
+
 /**
  * Find a model cost by pattern matching on name or aliases.
  */
