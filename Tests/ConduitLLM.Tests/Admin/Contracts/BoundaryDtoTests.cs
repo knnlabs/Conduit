@@ -1,7 +1,9 @@
 using System.Text.Json;
 
 using ConduitLLM.Admin.DTOs;
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Functions.Entities;
 using ConduitLLM.Functions.Utilities;
@@ -60,6 +62,13 @@ public sealed class BoundaryDtoTests
         root.GetProperty("resolution").GetString().Should().Be("1080p");
         root.GetProperty("with_audio").ValueKind.Should().Be(JsonValueKind.True);
         root.GetProperty("provider_tier").GetString().Should().Be("premium");
+    }
+
+    [Fact]
+    public void AuditQueriesShareTheCanonicalPaginationDefault()
+    {
+        new BillingAuditQueryRequest().PageSize.Should().Be(Pagination.DefaultPageSize);
+        new PricingAuditQueryRequest().PageSize.Should().Be(Pagination.DefaultPageSize);
     }
 
     [Fact]
