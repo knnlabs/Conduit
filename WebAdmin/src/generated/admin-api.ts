@@ -3359,7 +3359,7 @@ export interface components {
       requestPath?: null | string;
       /** @description Whether cost was estimated */
       isEstimated?: boolean;
-      usage?: null | components["schemas"]["UsageDto"];
+      usage?: null | components["schemas"]["Usage"];
       /** @description Additional metadata */
       metadata?: null | Record<string, never>;
     };
@@ -6756,6 +6756,14 @@ export interface components {
       startTime?: string;
       uptime?: string;
     };
+    SearchUsageMetadata: {
+      /** Format: int32 */
+      query_count?: number;
+      /** Format: int32 */
+      document_count?: number;
+      /** Format: int32 */
+      chunked_document_count?: number;
+    };
     /** @description Simplified model information for display within a series context. */
     SeriesSimpleModelDto: {
       /**
@@ -7383,6 +7391,39 @@ export interface components {
       modelRateLimits?: null | {
         [key: string]: components["schemas"]["ModelRateLimitDto"];
       };
+    };
+    Usage: {
+      /** Format: int32 */
+      prompt_tokens?: null | number;
+      /** Format: int32 */
+      completion_tokens?: null | number;
+      /** Format: int32 */
+      total_tokens?: null | number;
+      /** Format: int32 */
+      image_count?: null | number;
+      /** Format: double */
+      video_duration_seconds?: null | number;
+      video_resolution?: null | string;
+      is_batch?: null | boolean;
+      image_quality?: null | string;
+      image_resolution?: null | string;
+      /** Format: int32 */
+      cached_input_tokens?: null | number;
+      /** Format: int32 */
+      cached_write_tokens?: null | number;
+      /** Format: int32 */
+      search_units?: null | number;
+      search_metadata?: null | components["schemas"]["SearchUsageMetadata"];
+      /** Format: int32 */
+      inference_steps?: null | number;
+      /** Format: int32 */
+      reasoning_tokens?: null | number;
+      /** Format: double */
+      audio_duration_seconds?: null | number;
+      /** Format: int32 */
+      tts_characters?: null | number;
+      metadata?: null | Record<string, never>;
+      pricing_parameters?: null | Record<string, never>;
     };
     UsageDto: {
       /** Format: int32 */
@@ -13139,6 +13180,17 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Conflict */
+      409: {
         headers: {
           /** @description Request identifier for support and distributed tracing. */
           "x-request-id"?: string;

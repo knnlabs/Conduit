@@ -5166,6 +5166,12 @@
               "null",
               "string"
             ]
+          },
+          "revised_prompt": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -6920,14 +6926,9 @@
             "type": "string"
           },
           "created_at": {
-            "type": "string",
             "format": "date-time"
           },
           "estimated_completion_time": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "check_status_url": {
@@ -6955,18 +6956,12 @@
             "format": "int32"
           },
           "created_at": {
-            "type": "string",
             "format": "date-time"
           },
           "updated_at": {
-            "type": "string",
             "format": "date-time"
           },
           "completed_at": {
-            "type": [
-              "null",
-              "string"
-            ],
             "format": "date-time"
           },
           "error": {

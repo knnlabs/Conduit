@@ -978,6 +978,7 @@ export interface components {
     ImageData: {
       url?: null | string;
       b64_json?: null | string;
+      revised_prompt?: null | string;
     };
     ImageGenerationRequest: {
       prompt: string;
@@ -1398,9 +1399,9 @@ export interface components {
       task_id?: string;
       status?: string;
       /** Format: date-time */
-      created_at?: string;
+      created_at?: unknown;
       /** Format: date-time */
-      estimated_completion_time?: null | string;
+      estimated_completion_time?: unknown;
       check_status_url?: string;
     };
     /** @description Status information for a video generation task. */
@@ -1410,11 +1411,11 @@ export interface components {
       /** Format: int32 */
       progress?: null | number | string;
       /** Format: date-time */
-      created_at?: string;
+      created_at?: unknown;
       /** Format: date-time */
-      updated_at?: string;
+      updated_at?: unknown;
       /** Format: date-time */
-      completed_at?: null | string;
+      completed_at?: unknown;
       error?: null | string;
       result_raw?: null | string;
       result?: null | components["schemas"]["VideoGenerationResponse"];
