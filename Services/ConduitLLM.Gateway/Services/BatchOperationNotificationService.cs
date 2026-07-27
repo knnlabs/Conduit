@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.DTOs.SignalR;
@@ -106,7 +107,7 @@ namespace ConduitLLM.Gateway.Services
                 AverageItemsPerSecond = averageItemsPerSecond,
                 CompletedAt = DateTime.UtcNow,
                 ResultSummary = resultSummary,
-                Errors = new List<BatchOperationError>()
+                Errors = new List<BatchItemError>()
             };
 
             await SendToGroupAsync($"task-{operationId}", "BatchOperationCompleted", notification);

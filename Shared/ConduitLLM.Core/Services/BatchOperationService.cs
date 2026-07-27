@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using ConduitLLM.Configuration.DTOs.BatchOperations;
 using Microsoft.Extensions.Logging;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;

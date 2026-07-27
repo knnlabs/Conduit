@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.DTOs.BatchOperations;
+
 namespace ConduitLLM.Core.Models
 {
     /// <summary>
@@ -136,37 +138,6 @@ namespace ConduitLLM.Core.Models
         /// Timestamp when the operation completed
         /// </summary>
         public DateTime? CompletedAt { get; set; }
-    }
-
-    /// <summary>
-    /// Error information for a failed batch item
-    /// </summary>
-    public class BatchItemError
-    {
-        /// <summary>
-        /// Index of the item in the batch
-        /// </summary>
-        public int ItemIndex { get; set; }
-
-        /// <summary>
-        /// Identifier for the failed item
-        /// </summary>
-        public string? ItemIdentifier { get; set; }
-
-        /// <summary>
-        /// Error message
-        /// </summary>
-        public string Error { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Stack trace if available
-        /// </summary>
-        public string? StackTrace { get; set; }
-
-        /// <summary>
-        /// Timestamp of the error
-        /// </summary>
-        public DateTime ErrorTime { get; set; } = DateTime.UtcNow;
     }
 
     /// <summary>

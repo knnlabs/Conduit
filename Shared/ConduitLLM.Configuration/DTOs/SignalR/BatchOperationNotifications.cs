@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.DTOs.BatchOperations;
+
 namespace ConduitLLM.Configuration.DTOs.SignalR
 {
     /// <summary>
@@ -165,7 +167,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// <summary>
         /// Summary of errors if any
         /// </summary>
-        public List<BatchOperationError> Errors { get; set; } = new();
+        public List<BatchItemError> Errors { get; set; } = new();
 
         /// <summary>
         /// Result summary data
@@ -258,32 +260,6 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// Timestamp when the operation was cancelled
         /// </summary>
         public DateTime CancelledAt { get; set; } = DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Represents an error that occurred during batch processing
-    /// </summary>
-    public class BatchOperationError
-    {
-        /// <summary>
-        /// Index of the item that failed
-        /// </summary>
-        public int ItemIndex { get; set; }
-
-        /// <summary>
-        /// Identifier for the failed item
-        /// </summary>
-        public string? ItemIdentifier { get; set; }
-
-        /// <summary>
-        /// Error message
-        /// </summary>
-        public string Error { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Timestamp when the error occurred
-        /// </summary>
-        public DateTime ErrorTime { get; set; } = DateTime.UtcNow;
     }
 
 }
