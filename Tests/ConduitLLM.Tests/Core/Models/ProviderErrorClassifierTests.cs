@@ -49,6 +49,18 @@ public class ProviderErrorClassifierTests
     }
 
     [Theory]
+    [InlineData(HttpStatusCode.BadRequest, "rate limit exceeded", ProviderErrorType.RateLimitExceeded)]
+    [InlineData(HttpStatusCode.BadRequest, "requested model does not exist", ProviderErrorType.ModelNotFound)]
+    [InlineData(HttpStatusCode.ServiceUnavailable, "{\"error\":{\"message\":\"No endpoints found\"}}", ProviderErrorType.ModelNotFound)]
+    public void Classify_AppliesBodyRefinementsUsedByTrackingPaths(
+        HttpStatusCode statusCode,
+        string responseDetails,
+        ProviderErrorType expected)
+    {
+        Assert.Equal(expected, ProviderErrorClassifier.Classify(statusCode, responseDetails));
+    }
+
+    [Theory]
     [InlineData(ProviderErrorType.InvalidApiKey, "invalid_api_key", "authentication")]
     [InlineData(ProviderErrorType.RateLimitExceeded, "rate_limit_exceeded", "rate_limit")]
     [InlineData(ProviderErrorType.ServiceUnavailable, "service_unavailable", "provider")]

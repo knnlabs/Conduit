@@ -28,10 +28,34 @@ public static class ProviderErrorClassifier
             _ => ProviderErrorType.Unknown
         };
 
+        if (string.IsNullOrWhiteSpace(responseDetails))
+        {
+            return errorType;
+        }
+
         if (errorType == ProviderErrorType.AccessForbidden &&
             IsBalanceResponse(responseDetails))
         {
             return ProviderErrorType.InsufficientBalance;
+        }
+
+        if (ContainsAny(responseDetails, "rate limit", "too many requests"))
+        {
+            return ProviderErrorType.RateLimitExceeded;
+        }
+
+        if (responseDetails.Contains("model", StringComparison.OrdinalIgnoreCase) &&
+            ContainsAny(responseDetails, "not found", "does not exist", "invalid model"))
+        {
+            return ProviderErrorType.ModelNotFound;
+        }
+
+        // OpenRouter reports an unavailable model/routing combination as a 503 with
+        // "no endpoints" or "no provider" in the response body.
+        if (errorType == ProviderErrorType.ServiceUnavailable &&
+            ContainsAny(responseDetails, "no endpoints", "no provider"))
+        {
+            return ProviderErrorType.ModelNotFound;
         }
 
         return errorType;
