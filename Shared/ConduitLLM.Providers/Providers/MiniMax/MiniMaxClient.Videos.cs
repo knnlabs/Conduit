@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Core.Exceptions;
@@ -74,36 +73,14 @@ namespace ConduitLLM.Providers.MiniMax
                 Logger.LogInformation("MiniMax video generation parameters: Model={Model}, Parameters={@Parameters}", 
                     miniMaxRequest["model"], logSafeRequest);
                 
-                // Serialize the actual request
-                var requestJson = JsonSerializer.Serialize(miniMaxRequest);
-                
-                // Submit the video generation request
-                var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-                httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-                
-                using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
-                var rawContent = await httpResponse.Content.ReadAsStringAsync();
-                
-                Logger.LogInformation("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
-                Logger.LogInformation("MiniMax raw response: {Response}", rawContent);
-                
-                if (!httpResponse.IsSuccessStatusCode)
-                {
-                    throw new LLMCommunicationException($"MiniMax API returned {httpResponse.StatusCode}: {rawContent}");
-                }
-                
-                // Deserialize initial response
-                MiniMaxVideoGenerationResponse response;
-                try
-                {
-                    response = JsonSerializer.Deserialize<MiniMaxVideoGenerationResponse>(rawContent, DefaultJsonOptions)
-                        ?? throw new LLMCommunicationException("MiniMax returned null response");
-                }
-                catch (JsonException ex)
-                {
-                    Logger.LogError(ex, "Error deserializing MiniMax video response: {Response}", rawContent);
-                    throw new LLMCommunicationException("Failed to deserialize MiniMax video response", ex);
-                }
+                var response = await SendMiniMaxJsonAsync<
+                    Dictionary<string, object?>,
+                    MiniMaxVideoGenerationResponse>(
+                    httpClient,
+                    endpoint,
+                    miniMaxRequest,
+                    DefaultJsonOptions,
+                    cancellationToken);
                 
                 // Check for MiniMax error response
                 if (response.BaseResp is { } baseResp && baseResp.StatusCode != 0)

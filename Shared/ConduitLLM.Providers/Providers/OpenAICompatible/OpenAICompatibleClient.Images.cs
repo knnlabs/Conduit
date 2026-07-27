@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using CoreUtils = ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
@@ -101,14 +100,11 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     request.Prompt?.Substring(0, Math.Min(50, request.Prompt?.Length ?? 0)), 
                     openAiRequest.GetValueOrDefault("size"), openAiRequest.GetValueOrDefault("response_format"));
                     
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<Dictionary<string, object?>, ImageGenerationResponse>(
+                var response = await PostJsonAsync<Dictionary<string, object?>, ImageGenerationResponse>(
                     client,
-                    HttpMethod.Post,
                     endpoint,
                     openAiRequest,
-                    CreateStandardHeaders(apiKey),
-                    DefaultJsonOptions,
-                    Logger,
+                    apiKey,
                     cancellationToken);
 
                 return new CoreModels.ImageGenerationResponse

@@ -1,6 +1,5 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Common.Models;
 using ConduitLLM.Providers.Configuration;
 
@@ -31,12 +30,6 @@ namespace ConduitLLM.Providers.SambaNova
     /// </remarks>
     public partial class SambaNovaClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
-        /// <summary>
-        /// Gets the SambaNova-specific error messages from the configuration registry.
-        /// </summary>
-        private static ProviderErrorMessages SambaNovaErrorMessages =>
-            ProviderConfigurationRegistry.GetErrorMessages(ProviderType.SambaNova);
-
         /// <summary>
         /// Fallback models for SambaNova when the models endpoint is not available
         /// </summary>
@@ -87,23 +80,6 @@ namespace ConduitLLM.Providers.SambaNova
                 "sambanova",
                 baseUrl: ProviderConfigurationRegistry.ResolveBaseUrl(provider))
         {
-            if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
-            {
-                throw new ConfigurationException(SambaNovaErrorMessages.MissingApiKey);
-            }
-        }
-
-        /// <summary>
-        /// Configures the HTTP client for SambaNova API requests.
-        /// </summary>
-        /// <param name="client">The HTTP client to configure.</param>
-        /// <param name="apiKey">The API key to configure authentication with.</param>
-        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
-        {
-            base.ConfigureHttpClient(client, apiKey);
-
-            // Set User-Agent for better API analytics
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("ConduitLLM-SambaNovaClient/1.0");
         }
     }
 }

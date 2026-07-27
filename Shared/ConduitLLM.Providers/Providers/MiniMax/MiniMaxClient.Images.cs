@@ -1,6 +1,3 @@
-using System.Text;
-using System.Text.Json;
-
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Exceptions;
 
@@ -43,41 +40,14 @@ namespace ConduitLLM.Providers.MiniMax
 
                 var endpoint = $"{_baseUrl}/v1/image_generation";
                 
-                // Log the request for debugging
-                var requestJson = JsonSerializer.Serialize(miniMaxRequest);
-                Logger.LogInformation("MiniMax image request: {Request}", requestJson);
-                
-                // Make direct HTTP call to debug
-                var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint);
-                httpRequest.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
-                
-                using var httpResponse = await httpClient.SendAsync(httpRequest, cancellationToken);
-                var rawContent = await httpResponse.Content.ReadAsStringAsync();
-                
-                Logger.LogInformation("MiniMax HTTP Status: {Status}", httpResponse.StatusCode);
-                Logger.LogInformation("MiniMax raw response: {Response}", rawContent);
-                
-                if (!httpResponse.IsSuccessStatusCode)
-                {
-                    throw new LLMCommunicationException($"MiniMax API returned {httpResponse.StatusCode}: {rawContent}");
-                }
-                
-                // Now deserialize with specific options
-                MiniMaxImageGenerationResponse response;
-                try
-                {
-                    response = JsonSerializer.Deserialize<MiniMaxImageGenerationResponse>(rawContent, DefaultJsonOptions)
-                        ?? throw new LLMCommunicationException("MiniMax returned null response");
-                }
-                catch (JsonException ex)
-                {
-                    Logger.LogError(ex, "Error deserializing MiniMax response: {Response}", rawContent);
-                    throw new LLMCommunicationException("Failed to deserialize MiniMax response", ex);
-                }
-                
-                // Log the response for debugging
-                var responseJson = JsonSerializer.Serialize(response);
-                Logger.LogInformation("MiniMax image response object: {Response}", responseJson);
+                var response = await SendMiniMaxJsonAsync<
+                    MiniMaxImageGenerationRequest,
+                    MiniMaxImageGenerationResponse>(
+                    httpClient,
+                    endpoint,
+                    miniMaxRequest,
+                    DefaultJsonOptions,
+                    cancellationToken);
                 
                 // Check for MiniMax error response
                 if (response.BaseResp is { } baseResp && baseResp.StatusCode != 0)

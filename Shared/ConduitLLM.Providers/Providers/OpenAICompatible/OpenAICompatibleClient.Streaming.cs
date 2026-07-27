@@ -78,101 +78,71 @@ namespace ConduitLLM.Providers.OpenAICompatible
         /// <summary>
         /// Streams chunks progressively without buffering them into a list
         /// </summary>
-        protected virtual async IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
+        protected virtual IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
             CoreModels.ChatCompletionRequest request,
             string? apiKey = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
-            using var logScope = BeginProviderLogScope("StreamChatCompletion");
-            var instrumentation = BeginStreamingScope("StreamChatCompletion");
-            HttpClient? client = null;
-            HttpResponseMessage? response = null;
+            return RunStreamingAsync(
+                ct => ReadOpenAiStreamAsync(request, apiKey, ct),
+                "StreamChatCompletion",
+                request.Model ?? ProviderModelId,
+                cancellationToken);
+        }
 
-            try
+        private async IAsyncEnumerable<CoreModels.ChatCompletionChunk> ReadOpenAiStreamAsync(
+            CoreModels.ChatCompletionRequest request,
+            string? apiKey,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using var client = CreateHttpClient(apiKey);
+            var openAiRequest = PrepareStreamingRequest(request);
+            var endpoint = GetChatCompletionEndpoint();
+
+            Logger.LogDebug(
+                "Sending streaming chat completion request to {Provider} at {Endpoint}",
+                ProviderName,
+                endpoint);
+
+            using var response = await SendStreamingRequestAsync(
+                client,
+                endpoint,
+                openAiRequest,
+                apiKey,
+                cancellationToken);
+            var reportedUsage = false;
+
+            await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<JsonElement>(
+                response,
+                Logger,
+                DefaultJsonOptions,
+                cancellationToken))
             {
-                try
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    client = CreateHttpClient(apiKey);
-                    var openAiRequest = PrepareStreamingRequest(request);
-                    var endpoint = GetChatCompletionEndpoint();
-
-                    Logger.LogDebug("Sending streaming chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
-
-                    response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
-                }
-                catch (OperationCanceledException)
-                {
-                    instrumentation.RecordFailure(nameof(OperationCanceledException));
-                    response?.Dispose();
-                    client?.Dispose();
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    // Process the error with enhanced error extraction
-                    var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
-                    Logger.LogError(ex, "Error in streaming chat completion from {Provider}: {Message}", ProviderName, enhancedErrorMessage);
-
-                    var error = CoreUtils.ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
-
-                    instrumentation.RecordFailure(error.GetType().Name);
-
-                    // Clean up resources
-                    response?.Dispose();
-                    client?.Dispose();
-
-                    throw error;
+                    yield break;
                 }
 
-                // If we get here, we have a response to stream
-                if (response != null)
+                var mappedChunk = MapStreamingChunk(chunk);
+                if (mappedChunk is null)
                 {
-                    bool reportedUsage = false;
-                    // Stream chunks progressively using StreamHelper - use JsonElement for raw passthrough
-                    await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<System.Text.Json.JsonElement>(
-                        response, Logger, DefaultJsonOptions, cancellationToken))
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            yield break;
-                        }
-
-                        // Transform the raw JSON (allows subclasses to inject provider-specific processing)
-                        var mappedChunk = MapStreamingChunk(chunk);
-
-                        if (mappedChunk != null)
-                        {
-                            // Preserve the original model alias if provided
-                            if (!string.IsNullOrEmpty(request.Model))
-                            {
-                                mappedChunk.Model = request.Model;
-                                mappedChunk.OriginalModelAlias = request.Model;
-                            }
-
-                            // Extract cached token counts + provider-reported cost from provider-specific
-                            // extension data (and strip the raw cost so it is not leaked to clients).
-                            ExtractProviderUsageFromExtensionData(mappedChunk.Usage);
-
-                            instrumentation.RecordChunk();
-
-                            // Many providers emit usage in a final chunk when stream_options.include_usage=true.
-                            // Record once per stream so providers aren't double-counted.
-                            if (!reportedUsage && mappedChunk.Usage != null)
-                            {
-                                RecordUsage(mappedChunk.Usage, "StreamChatCompletion");
-                                reportedUsage = true;
-                            }
-
-                            yield return mappedChunk;
-                        }
-                    }
+                    continue;
                 }
-            }
-            finally
-            {
-                response?.Dispose();
-                client?.Dispose();
-                instrumentation.Dispose();
+
+                if (!string.IsNullOrEmpty(request.Model))
+                {
+                    mappedChunk.Model = request.Model;
+                    mappedChunk.OriginalModelAlias = request.Model;
+                }
+
+                ExtractProviderUsageFromExtensionData(mappedChunk.Usage);
+                if (!reportedUsage && mappedChunk.Usage != null)
+                {
+                    RecordUsage(mappedChunk.Usage, "StreamChatCompletion");
+                    reportedUsage = true;
+                }
+
+                yield return mappedChunk;
             }
         }
 

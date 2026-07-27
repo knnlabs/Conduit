@@ -1,7 +1,6 @@
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models.Rerank;
 using CoreModels = ConduitLLM.Core.Models;
-using CoreUtils = ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -49,14 +48,11 @@ namespace ConduitLLM.Providers.OpenAICompatible
                             body[kvp.Key] = kvp.Value;
                 }
 
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<Dictionary<string, object?>, RerankResponse>(
+                var response = await PostJsonAsync<Dictionary<string, object?>, RerankResponse>(
                     client,
-                    HttpMethod.Post,
                     GetRerankEndpoint(),
                     body,
-                    CreateStandardHeaders(apiKey),
-                    DefaultJsonOptions,
-                    Logger,
+                    apiKey,
                     cancellationToken);
 
                 response.Usage ??= new CoreModels.Usage();

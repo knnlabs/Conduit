@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 using ConduitLLM.Configuration;
@@ -442,6 +443,61 @@ namespace ConduitLLM.Providers
         {
             return ProviderInstrumentation.BeginStreaming(
                 operationName, ProviderName, ProviderTypeName, ProviderModelId);
+        }
+
+        /// <summary>
+        /// Runs a provider stream with consistent logging, instrumentation, error translation,
+        /// cancellation handling, and enumerator disposal.
+        /// </summary>
+        protected async IAsyncEnumerable<T> RunStreamingAsync<T>(
+            Func<CancellationToken, IAsyncEnumerable<T>> streamFactory,
+            string operationName,
+            string modelName,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            using var logScope = BeginProviderLogScope(operationName);
+            using var instrumentation = BeginStreamingScope(operationName);
+            var stream = streamFactory(cancellationToken);
+            await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+
+            while (true)
+            {
+                bool hasNext;
+                try
+                {
+                    hasNext = await enumerator.MoveNextAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    instrumentation.RecordFailure(nameof(OperationCanceledException));
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
+                    Logger.LogError(
+                        ex,
+                        "Error in {Operation} from {Provider}: {Message}",
+                        operationName,
+                        ProviderName,
+                        enhancedErrorMessage);
+                    var translated = ExceptionHandler.HandleLlmException(
+                        ex,
+                        Logger,
+                        ProviderName,
+                        modelName);
+                    instrumentation.RecordFailure(translated.GetType().Name);
+                    throw translated;
+                }
+
+                if (!hasNext)
+                {
+                    yield break;
+                }
+
+                instrumentation.RecordChunk();
+                yield return enumerator.Current;
+            }
         }
 
         /// <summary>

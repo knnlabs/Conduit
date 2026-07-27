@@ -1,7 +1,5 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
-using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Providers.Common.Models;
 using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
@@ -31,12 +29,6 @@ namespace ConduitLLM.Providers.Cerebras
     public partial class CerebrasClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
         /// <summary>
-        /// Gets the Cerebras-specific error messages from the configuration registry.
-        /// </summary>
-        private static ProviderErrorMessages CerebrasErrorMessages =>
-            ProviderConfigurationRegistry.GetErrorMessages(ProviderType.Cerebras);
-
-        /// <summary>
         /// Initializes a new instance of the CerebrasClient class.
         /// </summary>
         /// <param name="provider">The provider configuration.</param>
@@ -61,23 +53,6 @@ namespace ConduitLLM.Providers.Cerebras
                 "cerebras",
                 baseUrl: ProviderConfigurationRegistry.ResolveBaseUrl(provider))
         {
-            if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
-            {
-                throw new ConfigurationException(CerebrasErrorMessages.MissingApiKey);
-            }
-        }
-
-        /// <summary>
-        /// Configures the HTTP client for Cerebras API requests.
-        /// </summary>
-        /// <param name="client">The HTTP client to configure.</param>
-        /// <param name="apiKey">The API key to configure authentication with.</param>
-        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
-        {
-            base.ConfigureHttpClient(client, apiKey);
-
-            // Set User-Agent for better API analytics
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("ConduitLLM-CerebrasClient/1.0");
         }
     }
 }

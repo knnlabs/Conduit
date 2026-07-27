@@ -20,140 +20,111 @@ namespace ConduitLLM.Providers.MiniMax
         {
             ValidateRequest(request, "StreamChatCompletion");
 
-            using var logScope = BeginProviderLogScope("StreamChatCompletion");
-            var instrumentation = BeginStreamingScope("StreamChatCompletion");
-            HttpClient? httpClient = null;
-            HttpResponseMessage? response = null;
-            bool reportedUsage = false;
-
-            try
+            await foreach (var chunk in RunStreamingAsync(
+                ct => ReadMiniMaxStreamAsync(request, apiKey, ct),
+                "StreamChatCompletion",
+                request.Model ?? ProviderModelId,
+                cancellationToken))
             {
+                yield return chunk;
+            }
+        }
+
+        private async IAsyncEnumerable<ChatCompletionChunk> ReadMiniMaxStreamAsync(
+            ChatCompletionRequest request,
+            string? apiKey,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using var httpClient = CreateHttpClient(apiKey);
+            var miniMaxRequest = CreateChatRequest(request, stream: true);
+            var endpoint = $"{_baseUrl}/v1/text/chatcompletion_v2";
+
+            if (Logger.IsEnabled(LogLevel.Debug))
+            {
+                var requestJson = System.Text.Json.JsonSerializer.Serialize(miniMaxRequest);
+                Logger.LogDebug(
+                    "MiniMax Streaming Request to {Endpoint}: {Request}",
+                    endpoint,
+                    requestJson);
+            }
+
+            using var response = await Core.Utilities.HttpClientHelper.SendStreamingRequestAsync(
+                httpClient,
+                HttpMethod.Post,
+                endpoint,
+                miniMaxRequest,
+                null,
+                null,
+                Logger,
+                cancellationToken);
+            var reportedUsage = false;
+
+            await foreach (var chunk in Core.Utilities.StreamHelper
+                .ProcessSseStreamAsync<MiniMaxStreamChunk>(
+                    response,
+                    Logger,
+                    null,
+                    cancellationToken)
+                .WithCancellation(cancellationToken))
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Logger.LogInformation("MiniMax streaming cancelled by client");
+                    yield break;
+                }
+
+                if (chunk == null)
+                {
+                    Logger.LogDebug("Received null chunk from MiniMax stream");
+                    continue;
+                }
+
+                Logger.LogDebug(
+                    "Received MiniMax chunk with ID: {Id}, Choices: {ChoiceCount}",
+                    chunk.Id,
+                    chunk.Choices?.Count ?? 0);
+
+                if (chunk.BaseResp is { } baseResp && baseResp.StatusCode != 0)
+                {
+                    throw new LLMCommunicationException($"MiniMax error: {baseResp.StatusMsg}");
+                }
+
+                ChatCompletionChunk convertedChunk;
                 try
                 {
-                    httpClient = CreateHttpClient(apiKey);
-
-                    var miniMaxRequest = new MiniMaxChatCompletionRequest
-                    {
-                        Model = request.Model ?? ProviderModelId,
-                        Messages = ConvertMessages(request.Messages, includeNames: true),
-                        Stream = true,
-                        MaxTokens = request.MaxTokens,
-                        Temperature = request.Temperature,
-                        TopP = request.TopP,
-                        Tools = ConvertTools(request.Tools),
-                        ToolChoice = ConvertToolChoice(request.ToolChoice),
-                        ReplyConstraints = request.ResponseFormat != null ? new ReplyConstraints
-                        {
-                            GuidanceType = request.ResponseFormat.Type == "json_object" ? "json_schema" : null,
-                            JsonSchema = request.ResponseFormat.Type == "json_object" ? new { type = "object" } : null
-                        } : null
-                    };
-
-                    var endpoint = $"{_baseUrl}/v1/text/chatcompletion_v2";
-
-                    if (Logger.IsEnabled(LogLevel.Debug))
-                    {
-                        var requestJson = System.Text.Json.JsonSerializer.Serialize(miniMaxRequest);
-                        Logger.LogDebug("MiniMax Streaming Request to {Endpoint}: {Request}", endpoint, requestJson);
-                    }
-
-                    response = await Core.Utilities.HttpClientHelper.SendStreamingRequestAsync(
-                        httpClient, HttpMethod.Post, endpoint, miniMaxRequest, null, null, Logger, cancellationToken);
-
-                    Logger.LogDebug("MiniMax streaming response status: {StatusCode}", response.StatusCode);
-
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                        Logger.LogError("MiniMax streaming failed with status {Status}: {Content}",
-                            response.StatusCode, errorContent);
-                        throw new LLMCommunicationException($"MiniMax streaming failed: {response.StatusCode} - {errorContent}");
-                    }
+                    convertedChunk = ConvertToChunk(chunk, request.Model ?? ProviderModelId);
                 }
-                catch (OperationCanceledException)
+                catch (System.Text.Json.JsonException jsonEx)
                 {
-                    instrumentation.RecordFailure(nameof(OperationCanceledException));
-                    throw;
+                    throw new LLMCommunicationException(
+                        $"Failed to parse MiniMax chunk: {jsonEx.Message}",
+                        jsonEx);
                 }
-                catch (Exception ex)
+                catch (Exception conversionException)
                 {
-                    instrumentation.RecordFailure(ex.GetType().Name);
-                    throw;
+                    throw new LLMCommunicationException(
+                        $"Failed to convert MiniMax chunk: {conversionException.Message}",
+                        conversionException);
                 }
 
-                var streamEnum = Core.Utilities.StreamHelper.ProcessSseStreamAsync<MiniMaxStreamChunk>(
-                    response!, Logger, null, cancellationToken);
-
-                await foreach (var chunk in streamEnum.WithCancellation(cancellationToken))
+                if (!reportedUsage && chunk.Usage is { } chunkUsage &&
+                    (chunkUsage.PromptTokens > 0 ||
+                     chunkUsage.CompletionTokens > 0 ||
+                     chunkUsage.TotalTokens > 0))
                 {
-                    if (cancellationToken.IsCancellationRequested)
+                    RecordUsage(new Usage
                     {
-                        Logger.LogInformation("MiniMax streaming cancelled by client");
-                        yield break;
-                    }
-
-                    if (chunk == null)
-                    {
-                        Logger.LogDebug("Received null chunk from MiniMax stream");
-                        continue;
-                    }
-
-                    Logger.LogDebug("Received MiniMax chunk with ID: {Id}, Choices: {ChoiceCount}",
-                        chunk.Id, chunk.Choices?.Count ?? 0);
-
-                    // Check for MiniMax error response embedded in SSE stream
-                    if (chunk.BaseResp is { } baseResp && baseResp.StatusCode != 0)
-                    {
-                        Logger.LogError("MiniMax streaming error: {StatusCode} - {StatusMsg}",
-                            baseResp.StatusCode, baseResp.StatusMsg);
-                        instrumentation.RecordFailure("MiniMaxStreamError");
-                        throw new LLMCommunicationException($"MiniMax error: {baseResp.StatusMsg}");
-                    }
-
-                    ChatCompletionChunk convertedChunk;
-                    try
-                    {
-                        convertedChunk = ConvertToChunk(chunk, request.Model ?? ProviderModelId);
-                    }
-                    catch (System.Text.Json.JsonException jsonEx)
-                    {
-                        Logger.LogError(jsonEx, "Failed to parse MiniMax chunk. Raw chunk: {Chunk}",
-                            System.Text.Json.JsonSerializer.Serialize(chunk));
-                        instrumentation.RecordFailure(nameof(System.Text.Json.JsonException));
-                        throw new LLMCommunicationException($"Failed to parse MiniMax chunk: {jsonEx.Message}", jsonEx);
-                    }
-                    catch (Exception convEx)
-                    {
-                        Logger.LogError(convEx, "Failed to convert MiniMax chunk to standard format");
-                        instrumentation.RecordFailure(convEx.GetType().Name);
-                        throw new LLMCommunicationException($"Failed to convert MiniMax chunk: {convEx.Message}", convEx);
-                    }
-
-                    instrumentation.RecordChunk();
-
-                    if (!reportedUsage && chunk.Usage is { } chunkUsage &&
-                        (chunkUsage.PromptTokens > 0 || chunkUsage.CompletionTokens > 0 || chunkUsage.TotalTokens > 0))
-                    {
-                        RecordUsage(new Usage
-                        {
-                            PromptTokens = chunkUsage.PromptTokens,
-                            CompletionTokens = chunkUsage.CompletionTokens,
-                            TotalTokens = chunkUsage.TotalTokens
-                        }, "StreamChatCompletion");
-                        reportedUsage = true;
-                    }
-
-                    yield return convertedChunk;
+                        PromptTokens = chunkUsage.PromptTokens,
+                        CompletionTokens = chunkUsage.CompletionTokens,
+                        TotalTokens = chunkUsage.TotalTokens
+                    }, "StreamChatCompletion");
+                    reportedUsage = true;
                 }
 
-                Logger.LogDebug("MiniMax streaming completed");
+                yield return convertedChunk;
             }
-            finally
-            {
-                response?.Dispose();
-                httpClient?.Dispose();
-                instrumentation.Dispose();
-            }
+
+            Logger.LogDebug("MiniMax streaming completed");
         }
 
         private ChatCompletionChunk ConvertToChunk(MiniMaxStreamChunk miniMaxChunk, string modelId)

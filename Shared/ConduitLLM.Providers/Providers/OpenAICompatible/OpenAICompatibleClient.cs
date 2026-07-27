@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
@@ -57,6 +58,15 @@ namespace ConduitLLM.Providers.OpenAICompatible
             : base(provider, primaryKeyCredential, providerModelId, logger, httpClientFactory, providerName)
         {
             BaseUrl = baseUrl ?? ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAICompatible)!;
+        }
+
+        protected override void ValidateCredentials()
+        {
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
+            {
+                throw new ConfigurationException(
+                    $"API key is missing for provider '{ProviderName}'");
+            }
         }
     }
 }

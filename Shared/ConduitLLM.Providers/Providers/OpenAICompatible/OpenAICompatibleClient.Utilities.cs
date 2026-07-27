@@ -14,6 +14,29 @@ namespace ConduitLLM.Providers.OpenAICompatible
             string responseContent) => null;
 
         /// <summary>
+        /// Posts JSON with the standard OpenAI-compatible headers, serialization options,
+        /// logging, and provider-specific HTTP error translation.
+        /// </summary>
+        protected Task<TResponse> PostJsonAsync<TRequest, TResponse>(
+            HttpClient client,
+            string endpoint,
+            TRequest request,
+            string? apiKey,
+            CancellationToken cancellationToken)
+        {
+            return Core.Utilities.HttpClientHelper.SendJsonRequestAsync<TRequest, TResponse>(
+                client,
+                HttpMethod.Post,
+                endpoint,
+                request,
+                CreateStandardHeaders(apiKey),
+                DefaultJsonOptions,
+                Logger,
+                cancellationToken,
+                TranslateHttpError);
+        }
+
+        /// <summary>
         /// Configure the HTTP client with provider-specific settings.
         /// </summary>
         /// <param name="client">The HTTP client to configure.</param>
@@ -31,6 +54,9 @@ namespace ConduitLLM.Providers.OpenAICompatible
             {
                 client.BaseAddress = new Uri(BaseUrl);
             }
+
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                $"ConduitLLM-{Provider.ProviderType}Client/1.0");
         }
 
         // ExtractEnhancedErrorMessage is inherited from BaseLLMClient
