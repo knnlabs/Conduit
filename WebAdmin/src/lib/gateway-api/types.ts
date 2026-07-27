@@ -280,7 +280,6 @@ export interface GatewayClientConfig {
   apiKey: string;
   baseURL: string;
   timeout?: number;
-  signalR?: { enabled?: boolean; autoConnect?: boolean };
 }
 
 export interface FunctionExecutionResponse {

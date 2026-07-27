@@ -78,11 +78,6 @@ export class FetchVirtualKeyService {
     return parseCriticalResponse(virtualKeyValidationSchema, response, 'Admin virtual-key validation');
   }
 
-  async maintenance(config?: RequestConfig): Promise<void> {
-    await this.client['executeContractOperation']('/v1/admin/virtual-keys/maintenance', HttpMethod.POST,
-      (client, options) => client.POST('/v1/admin/virtual-keys/maintenance', options), config);
-  }
-
   async previewDiscovery(id: string, capability?: string, config?: RequestConfig): Promise<VirtualKeyDiscoveryPreviewDto> {
     const numericId = Number(id);
     const suffix = capability ? `?capability=${encodeURIComponent(capability)}` : '';
@@ -90,9 +85,5 @@ export class FetchVirtualKeyService {
       (client, options) => client.GET('/v1/admin/virtual-keys/{id}/discovery-preview', {
         ...options, params: { path: { id: numericId }, query: { capability } },
       }), config);
-  }
-
-  isKeyValid(key: VirtualKeyDto): boolean {
-    return key.isEnabled === true && (!key.expiresAt || new Date(key.expiresAt) >= new Date());
   }
 }

@@ -7,7 +7,6 @@ export * from "./token-estimator";
 export {
   GatewayClient,
   ConduitGatewayClient,
-  ConduitCoreClient,
   buildMessageContent,
 } from "./client";
 export {

@@ -7,7 +7,7 @@ import {
   type FunctionCredentialDto, type CreateFunctionCredentialDto, type UpdateFunctionCredentialDto,
   type TestCredentialRequestDto, type TestCredentialResponseDto, type FunctionCostDto,
   type CreateFunctionCostDto, type UpdateFunctionCostDto, type FunctionExecutionDto,
-  FunctionProviderType, FunctionPurpose, ExecutionState,
+  FunctionProviderType, ExecutionState,
 } from '../models/functions';
 import { ValidationError } from '../utils/errors';
 import { validateRequired, validateStringLength } from '../utils/validation';
@@ -115,11 +115,6 @@ export class FetchFunctionConfigurationsService {
     const data = await this.client['executeContractRead'](`/v1/admin/function-configurations/provider/${encodeURIComponent(provider)}`, (c, o) => c.GET('/v1/admin/function-configurations/provider/{providerType}', { ...o, params: { path: { providerType: provider } } }), config);
     return data.data.map(configurationFromWire);
   }
-  async getByPurpose(purpose: FunctionPurpose, config?: RequestConfig): Promise<FunctionConfigurationDto[]> {
-    const value = purpose;
-    const data = await this.client['executeContractRead'](`/v1/admin/function-configurations/purpose/${encodeURIComponent(value)}`, (c, o) => c.GET('/v1/admin/function-configurations/purpose/{purpose}', { ...o, params: { path: { purpose: value } } }), config);
-    return data.data.map(configurationFromWire);
-  }
   async create(data: CreateFunctionConfigurationDto, config?: RequestConfig): Promise<FunctionConfigurationDto> {
     validateCreateConfiguration(data);
     const body = {
@@ -169,10 +164,7 @@ export class FetchFunctionCostsService {
 export class FetchFunctionExecutionsService {
   constructor(private readonly client: FetchBaseApiClient) {}
   async getById(id: string, config?: RequestConfig): Promise<FunctionExecutionDto> { const data = await this.client['executeContractRead'](`/v1/admin/function-executions/${encodeURIComponent(id)}`, (c, o) => c.GET('/v1/admin/function-executions/{id}', { ...o, params: { path: { id } } }), config); return executionFromWire(data); }
-  async getByVirtualKey(virtualKeyId: number, config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead'](`/v1/admin/function-executions/virtual-keys/${virtualKeyId}`, (c, o) => c.GET('/v1/admin/function-executions/virtual-keys/{virtualKeyId}', { ...o, params: { path: { virtualKeyId } } }), config); return data.data.map(executionFromWire); }
   async getByConfiguration(functionConfigurationId: number, config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead'](`/v1/admin/function-executions/configuration/${functionConfigurationId}`, (c, o) => c.GET('/v1/admin/function-executions/configuration/{functionConfigurationId}', { ...o, params: { path: { functionConfigurationId } } }), config); return data.data.map(executionFromWire); }
   async getByState(state: ExecutionState, config?: RequestConfig): Promise<FunctionExecutionDto[]> { const value = state; const data = await this.client['executeContractRead'](`/v1/admin/function-executions/state/${encodeURIComponent(value)}`, (c, o) => c.GET('/v1/admin/function-executions/state/{state}', { ...o, params: { path: { state: value } } }), config); return data.data.map(executionFromWire); }
-  async getExpiredLeases(config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead']('/v1/admin/function-executions/expired-leases', (c, o) => c.GET('/v1/admin/function-executions/expired-leases', o), config); return data.data.map(executionFromWire); }
-  async getReadyForRetry(config?: RequestConfig): Promise<FunctionExecutionDto[]> { const data = await this.client['executeContractRead']('/v1/admin/function-executions/ready-for-retry', (c, o) => c.GET('/v1/admin/function-executions/ready-for-retry', o), config); return data.data.map(executionFromWire); }
   async cleanup(olderThanDays = 30, config?: RequestConfig): Promise<{ deletedCount: number; message: string }> { return this.client['executeContractOperation'](`/v1/admin/function-executions/cleanup?olderThanDays=${olderThanDays}`, HttpMethod.DELETE, (c, o) => c.DELETE('/v1/admin/function-executions/cleanup', { ...o, params: { query: { olderThanDays } } }), config) as Promise<{ deletedCount: number; message: string }>; }
 }

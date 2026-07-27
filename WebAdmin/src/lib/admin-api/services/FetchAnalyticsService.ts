@@ -3,7 +3,6 @@ import type { RequestConfig } from '../client/types';
 import type {
   RequestLogParams,
   RequestLogPage,
-  RequestLogDto,
 } from '../models/analytics';
 
 // Cost-related types
@@ -68,102 +67,6 @@ export class FetchAnalyticsService {
       }),
       config,
     ) as unknown as Promise<RequestLogPage>;
-  }
-
-  /**
-   * Get a specific request log by ID
-   */
-  async getRequestLogById(id: string, config?: RequestConfig): Promise<RequestLogDto> {
-    const numericId = Number(id);
-    return this.client['executeContractRead'](
-      `/v1/admin/analytics/logs/${numericId}`,
-      (contractClient, options) => contractClient.GET('/v1/admin/analytics/logs/{id}', {
-        ...options,
-        params: { path: { id: numericId } },
-      }),
-      config,
-    ) as unknown as Promise<RequestLogDto>;
-  }
-
-
-  /**
-   * Helper method to format date range
-   */
-  formatDateRange(days: number): { startDate: string; endDate: string } {
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-
-    return {
-      startDate: startDate.toISOString().split('T')[0],
-      endDate: endDate.toISOString().split('T')[0],
-    };
-  }
-
-  /**
-   * Helper method to calculate growth rate
-   */
-  calculateGrowthRate(current: number, previous: number): number {
-    if (previous === 0) return current > 0 ? 100 : 0;
-    return ((current - previous) / previous) * 100;
-  }
-
-  /**
-   * Helper method to get top items from analytics
-   */
-  getTopItems<T extends { value: number }>(items: T[], limit: number = 10): T[] {
-    return [...items].sort((a, b) => b.value - a.value).slice(0, limit);
-  }
-
-  /**
-   * Helper method to aggregate time series data
-   */
-  aggregateTimeSeries(
-    data: Array<{ timestamp: string; value: number }>,
-    groupBy: 'hour' | 'day' | 'week' | 'month'
-  ): Array<{ period: string; value: number }> {
-    const grouped = new Map<string, number>();
-
-    data.forEach(item => {
-      const date = new Date(item.timestamp);
-      let period: string;
-
-      switch (groupBy) {
-        case 'hour':
-          period = `${date.toISOString().slice(0, 13)}:00`;
-          break;
-        case 'day':
-          period = date.toISOString().slice(0, 10);
-          break;
-        case 'week': {
-          const weekStart = new Date(date);
-          weekStart.setDate(date.getDate() - date.getDay());
-          period = weekStart.toISOString().slice(0, 10);
-          break;
-        }
-        case 'month':
-          period = date.toISOString().slice(0, 7);
-          break;
-      }
-
-      grouped.set(period, (grouped.get(period) ?? 0) + item.value);
-    });
-
-    return Array.from(grouped.entries())
-      .map(([period, value]) => ({ period, value }))
-      .sort((a, b) => a.period.localeCompare(b.period));
-  }
-
-  /**
-   * Helper method to validate date range
-   */
-  validateDateRange(startDate?: string, endDate?: string): boolean {
-    if (!startDate || !endDate) return true;
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    return start <= end && end <= new Date();
   }
 
   /**

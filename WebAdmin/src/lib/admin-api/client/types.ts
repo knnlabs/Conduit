@@ -4,13 +4,12 @@ import type {
   ResponseInfo as CommonResponseInfo,
   Logger,
   CacheProvider,
-  RequestConfigInfo,
-  SignalRConfig
+  RequestConfigInfo
 } from '@/lib/conduit-common';
 
 // Re-export shared client types so the Admin SDK public surface stays unchanged
 export { HttpError } from '@/lib/conduit-common';
-export type { Logger, CacheProvider, RequestConfigInfo, SignalRConfig };
+export type { Logger, CacheProvider, RequestConfigInfo };
 
 // Admin SDK specific RetryConfig (uses fixed delay)
 export interface RetryConfig extends CommonRetryConfig {
@@ -18,8 +17,6 @@ export interface RetryConfig extends CommonRetryConfig {
   retryDelay: number;  // Fixed delay between retries
   retryCondition?: (error: unknown) => boolean;
 }
-
-// SignalRConfig now imported from Common package above
 
 export interface ConduitConfig {
   masterKey: string;
@@ -32,7 +29,6 @@ export interface ConduitConfig {
     cache?: CacheProvider;
     headers?: Record<string, string>;
     validateStatus?: (status: number) => boolean;
-    signalR?: SignalRConfig;
     /**
      * Custom retry delays in milliseconds
      * @default [1000, 2000, 4000, 8000, 16000]

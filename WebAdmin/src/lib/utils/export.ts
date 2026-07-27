@@ -113,7 +113,3 @@ export function formatDateForExport(date: string | Date | undefined): string {
   const d = new Date(date);
   return d.toISOString();
 }
-
-export function formatCurrencyForExport(amount: number): string {
-  return amount.toFixed(4);
-}

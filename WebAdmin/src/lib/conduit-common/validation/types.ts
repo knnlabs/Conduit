@@ -12,8 +12,3 @@ export interface ValidationResult<T> {
   data?: T;
   errors?: ValidationError[];
 }
-
-export interface PatternValidationResult {
-  isValid: boolean;
-  errors: string[];
-}

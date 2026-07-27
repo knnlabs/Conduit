@@ -21,10 +21,6 @@ export async function getBrowserGatewayClient(): Promise<InstanceType<typeof Con
   browserClient ??= new ConduitGatewayClient({
     apiKey: key,
     baseURL: gatewayApiUrl,
-    signalR: {
-      enabled: true,
-      autoConnect: true,
-    }
   });
 
   return browserClient;

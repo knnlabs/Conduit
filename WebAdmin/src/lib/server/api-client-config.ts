@@ -33,11 +33,6 @@ export const API_CLIENT_CONFIG = {
   // Common settings
   timeout: 60000, // Increased from 30s to 60s for better reliability in docker environment
   maxRetries: 3,
-  
-  // Disable SignalR for server-side usage
-  signalR: {
-    enabled: false
-  }
 } as const;
 
 // Singleton instances
@@ -82,7 +77,6 @@ export async function getServerGatewayClient(): Promise<InstanceType<typeof Cond
     gatewayClient = new ConduitGatewayClient({
       apiKey: webAdminVirtualKey,
       baseURL: API_CLIENT_CONFIG.coreBaseURL,
-      signalR: API_CLIENT_CONFIG.signalR,
     });
   }
   return gatewayClient;

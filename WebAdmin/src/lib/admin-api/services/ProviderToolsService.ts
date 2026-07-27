@@ -33,14 +33,6 @@ export class ProviderToolsService {
   }
 
   /**
-   * Gets a specific provider tool by ID
-   * @param id Tool ID
-   */
-  async getProviderTool(id: number, config?: RequestConfig): Promise<ProviderTool> {
-    return this.client['executeContractRead'](`/v1/admin/provider-tools/${id}`, (client, options) => client.GET('/v1/admin/provider-tools/{id}', { ...options, params: { path: { id } } }), config) as Promise<ProviderTool>;
-  }
-
-  /**
    * Creates a new provider tool
    * @param tool Provider tool creation data
    */

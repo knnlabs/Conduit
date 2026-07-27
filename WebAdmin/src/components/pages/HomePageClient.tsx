@@ -10,13 +10,12 @@ import {
   Grid,
   ThemeIcon
 } from '@mantine/core';
-import { 
-  IconServer, 
+import {
+  IconServer,
   IconKey,
   IconMessageChatbot,
   IconPhoto,
-  IconVideo,
-  IconMicrophone
+  IconVideo
 } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { SystemConfigChecklist } from '@/components/system/SystemConfigChecklist';
@@ -37,7 +36,7 @@ export function HomePageClient() {
       description: 'Create and manage virtual API keys',
       icon: IconKey,
       color: 'green',
-      href: '/virtual-keys'
+      href: '/virtualkeys'
     },
     {
       title: 'Chat Interface',
@@ -59,13 +58,6 @@ export function HomePageClient() {
       icon: IconVideo,
       color: 'red',
       href: '/videos'
-    },
-    {
-      title: 'Audio Processing',
-      description: 'Process and generate audio content',
-      icon: IconMicrophone,
-      color: 'teal',
-      href: '/audio'
     },
   ];
 

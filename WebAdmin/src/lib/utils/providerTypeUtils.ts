@@ -15,17 +15,6 @@ export { ProviderType };
 export const getProviderDisplayName = (providerType: ProviderType | number): string =>
   getProviderTypeName(providerType);
 
-export const providerTypeToString = (providerType: ProviderType): string =>
-  providerType.toString();
-
-export const stringToProviderType = (value: string): ProviderType => {
-  const providerType = normalizeProviderType(value);
-  if (!providerType) {
-    throw new Error(`Invalid provider type string: ${value}`);
-  }
-  return providerType;
-};
-
 export const isValidProviderType = (value: unknown): value is ProviderType =>
   typeof value === 'string' && normalizeProviderType(value) !== undefined;
 

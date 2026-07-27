@@ -55,25 +55,3 @@ export function formatScore(score: number | null, type: 'speed' | 'quality'): st
   if (score >= 0.9) return `${percentage}% quality`;
   return `${percentage}% quality (degraded)`;
 }
-
-/**
- * Gets all capabilities of a model as an array of strings
- */
-export function getModelCapabilityList(model?: ModelDto): string[] {
-  if (!model) return [];
-  
-  const capabilityList: string[] = [];
-  
-  if (model.supportsChat) capabilityList.push('Chat');
-  if (model.supportsImageInput) capabilityList.push('Image Input');
-  if (model.supportsVideoInput) capabilityList.push('Video Input');
-  if (model.supportsAudioInput) capabilityList.push('Audio Input');
-  if (model.supportsFileInput) capabilityList.push('File Input');
-  if (model.supportsFunctionCalling) capabilityList.push('Functions');
-  if (model.supportsStreaming) capabilityList.push('Streaming');
-  if (model.supportsImageGeneration) capabilityList.push('Image Gen');
-  if (model.supportsVideoGeneration) capabilityList.push('Video Gen');
-  if (model.supportsEmbeddings) capabilityList.push('Embeddings');
-  
-  return capabilityList;
-}

@@ -202,30 +202,4 @@ export class FetchModelMappingsService {
     );
   }
 
-  /**
-   * Bulk update model mappings (legacy method for individual updates)
-   */
-  async bulkUpdate(
-    updates: { id: number; data: UpdateModelProviderMappingDto }[],
-    config?: RequestConfig
-  ): Promise<void> {
-    // This would need a specific endpoint - using individual updates for now
-    await Promise.all(
-      updates.map(({ id, data }) => this.update(id, data, config))
-    );
-  }
-
-  /**
-   * Helper method to check if a mapping is enabled
-   */
-  isMappingEnabled(mapping: ModelProviderMappingDto): boolean {
-    return mapping.isEnabled === true;
-  }
-
-  /**
-   * Helper method to format mapping display name
-   */
-  formatMappingName(mapping: ModelProviderMappingDto): string {
-    return `${mapping.modelAlias} → ${mapping.providerId}:${mapping.providerModelId}`;
-  }
 }
