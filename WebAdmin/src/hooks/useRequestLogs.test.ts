@@ -1,4 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { createElement, type PropsWithChildren } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useRequestLogs } from './useRequestLogs';
@@ -43,9 +45,14 @@ describe('useRequestLogs', () => {
       .mockImplementationOnce(() => firstRequest.promise as never)
       .mockImplementationOnce(() => secondRequest.promise as never);
 
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const wrapper = ({ children }: PropsWithChildren) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
     const { result, rerender } = renderHook(
       ({ page }) => useRequestLogs({ page, pageSize: 25 }),
-      { initialProps: { page: 1 } }
+      { initialProps: { page: 1 }, wrapper }
     );
 
     rerender({ page: 2 });

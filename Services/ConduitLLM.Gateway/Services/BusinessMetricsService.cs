@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Prometheus;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Services
@@ -9,11 +10,10 @@ namespace ConduitLLM.Gateway.Services
     /// Service for tracking business metrics including virtual key usage,
     /// model usage patterns, costs, and revenue tracking.
     /// </summary>
-    public class BusinessMetricsService : BackgroundService
+    public class BusinessMetricsService : PeriodicCollectorBackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BusinessMetricsService> _logger;
-        private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
         private readonly HashSet<string> _costRateLabels = [];
         private readonly HashSet<string> _activeModelLabels = [];
 
@@ -138,32 +138,19 @@ namespace ConduitLLM.Gateway.Services
         public BusinessMetricsService(
             IServiceScopeFactory serviceScopeFactory,
             ILogger<BusinessMetricsService> logger)
+            : base(logger, TimeSpan.FromMinutes(1))
         {
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override Task CollectOnceAsync(CancellationToken cancellationToken) =>
+            CollectMetricsAsync();
+
+        protected override void OnCollectionFailed(Exception exception)
         {
-            _logger.LogInformation("Business metrics service starting with {IntervalSeconds}s collection interval",
-                _collectionInterval.TotalSeconds);
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await CollectMetricsAsync();
-                }
-                catch (Exception ex)
-                {
-                    MetricsCollectionInstrumentation.RecordFailure("business");
-                    _logger.LogError(ex, "Error collecting business metrics");
-                }
-
-                await Task.Delay(_collectionInterval, stoppingToken);
-            }
-
-            _logger.LogInformation("Business metrics service stopped");
+            MetricsCollectionInstrumentation.RecordFailure("business");
+            _logger.LogError(exception, "Error collecting business metrics");
         }
 
         internal async Task CollectMetricsAsync()

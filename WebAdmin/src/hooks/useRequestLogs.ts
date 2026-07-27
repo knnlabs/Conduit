@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 /**
@@ -161,56 +161,20 @@ export function useRequestLogs({
   autoRefresh = false,
   refreshInterval = 30000,
 }: UseRequestLogsOptions): UseRequestLogsResult {
-  const [logs, setLogs] = useState<RequestLogEntry[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [stats, setStats] = useState<RequestLogStats | null>(null);
-  const requestSequence = useRef(0);
-  const isMounted = useRef(true);
-
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  const fetchLogs = useCallback(async () => {
-    const requestId = ++requestSequence.current;
-    const isCurrentRequest = () => isMounted.current && requestId === requestSequence.current;
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Build query parameters
-      const params: Record<string, string> = {
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-      };
-
-      if (filters?.startDate) {
-        params.startDate = filters.startDate.toISOString();
-      }
-      if (filters?.endDate) {
-        params.endDate = filters.endDate.toISOString();
-      }
-      if (filters?.model) {
-        params.model = filters.model;
-      }
-      if (filters?.virtualKeyId !== undefined) {
-        params.virtualKeyId = filters.virtualKeyId.toString();
-      }
-      if (filters?.status !== undefined) {
-        params.status = filters.status.toString();
-      }
-
+  const query = useQuery({
+    queryKey: [
+      'request-logs',
+      page,
+      pageSize,
+      filters?.startDate?.toISOString(),
+      filters?.endDate?.toISOString(),
+      filters?.model,
+      filters?.virtualKeyId,
+      filters?.status,
+    ],
+    queryFn: async () => {
       const result = await withAdminClient(async (client) => {
-        // Use the analytics service getRequestLogs method
-        const response = await client.analytics.getRequestLogs({
+        return client.analytics.getRequestLogs({
           page,
           pageSize,
           startDate: filters?.startDate?.toISOString(),
@@ -219,15 +183,10 @@ export function useRequestLogs({
           virtualKeyId: filters?.virtualKeyId?.toString(),
           statusCode: filters?.status,
         });
-        return response;
       });
 
-      // Map the response to our interface
-      // The SDK returns items with slightly different field names
-      // Using type assertion to handle SDK/backend type differences
       const items = result.items ?? [];
       const mappedLogs: RequestLogEntry[] = items.map((item) => {
-        // Cast to unknown first to safely access properties that may have different names
         const rawItem = item as unknown as {
           id?: number | string;
           virtualKeyId?: number;
@@ -298,17 +257,7 @@ export function useRequestLogs({
         };
       });
 
-      if (!isCurrentRequest()) return;
-
-      setLogs(mappedLogs);
-      setTotalCount(result.totalCount ?? 0);
-      setTotalPages(result.totalPages ?? Math.ceil((result.totalCount ?? 0) / pageSize));
-      setCurrentPage(result.page ?? page);
-
-      // Stats below (success/error counts, cost, latency) are computed from the
-      // CURRENT PAGE of logs only — totalRequests is the only period-wide figure.
-      // The UI must label them as page-scoped; a period-wide summary would need
-      // a dedicated server-side endpoint.
+      let stats: RequestLogStats;
       if (mappedLogs.length > 0) {
         const successCount = mappedLogs.filter(
           (log) => log.statusCode === null || (log.statusCode >= 200 && log.statusCode < 400)
@@ -320,65 +269,54 @@ export function useRequestLogs({
         const avgLatency =
           mappedLogs.reduce((sum, log) => sum + log.responseTimeMs, 0) / mappedLogs.length;
 
-        setStats({
+        stats = {
           totalRequests: result.totalCount ?? mappedLogs.length,
           successCount,
           errorCount,
           totalCost,
           avgLatency,
-          successRate: mappedLogs.length > 0 ? (successCount / mappedLogs.length) * 100 : 0,
-        });
+          successRate: (successCount / mappedLogs.length) * 100,
+        };
       } else {
-        setStats({
-          totalRequests: 0,
+        stats = {
+          totalRequests: result.totalCount ?? 0,
           successCount: 0,
           errorCount: 0,
           totalCost: 0,
           avgLatency: 0,
           successRate: 0,
-        });
+        };
       }
-    } catch (err) {
-      if (!isCurrentRequest()) return;
 
-      console.error('Error fetching request logs:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch request logs'));
-      setLogs([]);
-      setTotalCount(0);
-      setTotalPages(0);
-      setStats(null);
-    } finally {
-      if (isCurrentRequest()) {
-        setIsLoading(false);
-      }
-    }
-  }, [page, pageSize, filters]);
+      return {
+        logs: mappedLogs,
+        totalCount: result.totalCount ?? 0,
+        totalPages: result.totalPages ?? Math.ceil((result.totalCount ?? 0) / pageSize),
+        currentPage: result.page ?? page,
+        stats,
+      };
+    },
+    refetchInterval: autoRefresh ? refreshInterval : false,
+  });
 
-  // Initial fetch and refetch on dependency changes
-  useEffect(() => {
-    void fetchLogs();
-  }, [fetchLogs]);
-
-  // Auto-refresh if enabled
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const intervalId = setInterval(() => {
-      void fetchLogs();
-    }, refreshInterval);
-
-    return () => clearInterval(intervalId);
-  }, [autoRefresh, refreshInterval, fetchLogs]);
+  let queryError: Error | null = null;
+  if (query.error) {
+    queryError = query.error instanceof Error
+      ? query.error
+      : new Error('Failed to fetch request logs');
+  }
 
   return {
-    logs,
-    totalCount,
-    totalPages,
-    currentPage,
-    isLoading,
-    error,
-    stats,
-    refetch: fetchLogs,
+    logs: query.data?.logs ?? [],
+    totalCount: query.data?.totalCount ?? 0,
+    totalPages: query.data?.totalPages ?? 0,
+    currentPage: query.data?.currentPage ?? page,
+    isLoading: query.isFetching,
+    error: queryError,
+    stats: query.data?.stats ?? null,
+    refetch: async () => {
+      await query.refetch();
+    },
   };
 }
 
@@ -386,49 +324,28 @@ export function useRequestLogs({
  * Hook for fetching distinct model names for filter dropdown
  */
 export function useDistinctModels() {
-  const [models, setModels] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const query = useQuery({
+    queryKey: ['request-log-models'],
+    queryFn: async () => {
+      const result = await withAdminClient(client =>
+        client.analytics.getRequestLogs({ page: 1, pageSize: 100 })
+      );
+      return [
+        ...new Set(
+          (result.items ?? [])
+            .map(item => {
+              const rawItem = item as unknown as { model?: string; modelName?: string };
+              return rawItem.model ?? rawItem.modelName ?? '';
+            })
+            .filter(model => model !== '')
+        ),
+      ].sort();
+    },
+  });
 
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        setIsLoading(true);
-        // The SDK doesn't have a direct method for this, so we'll use a workaround
-        // by fetching logs and extracting unique models, or call the endpoint directly
-        const result = await withAdminClient(async (client) => {
-          // Try to get distinct models from the logs endpoint
-          // This is a temporary solution - ideally the SDK would have this method
-          const response = await client.analytics.getRequestLogs({
-            page: 1,
-            pageSize: 100,
-          });
-          return response;
-        });
-
-        // Extract unique model names
-        const items = result.items ?? [];
-        const uniqueModels = [
-          ...new Set(
-            items
-              .map((item) => {
-                const rawItem = item as unknown as { model?: string; modelName?: string };
-                return rawItem.model ?? rawItem.modelName ?? '';
-              })
-              .filter((model) => model !== '')
-          ),
-        ];
-        setModels(uniqueModels.sort());
-      } catch (err) {
-        console.error('Error fetching distinct models:', err);
-        setError(err instanceof Error ? err : new Error('Failed to fetch models'));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void fetchModels();
-  }, []);
-
-  return { models, isLoading, error };
+  return {
+    models: query.data ?? [],
+    isLoading: query.isFetching,
+    error: query.error instanceof Error ? query.error : null,
+  };
 }

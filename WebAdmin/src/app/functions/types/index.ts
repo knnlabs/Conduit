@@ -95,42 +95,74 @@ export function getExecutionModeName(mode: FunctionExecutionMode): string {
   }
 }
 
+const EXECUTION_STATE_PRESENTATION: Record<
+  ExecutionState,
+  { label: string; badgeColor: string; className: string }
+> = {
+  [ExecutionState.Pending]: {
+    label: 'Pending',
+    badgeColor: 'yellow',
+    className: 'text-yellow-600 bg-yellow-50',
+  },
+  [ExecutionState.Running]: {
+    label: 'Running',
+    badgeColor: 'blue',
+    className: 'text-blue-600 bg-blue-50',
+  },
+  [ExecutionState.Completed]: {
+    label: 'Completed',
+    badgeColor: 'green',
+    className: 'text-green-600 bg-green-50',
+  },
+  [ExecutionState.Failed]: {
+    label: 'Failed',
+    badgeColor: 'red',
+    className: 'text-red-600 bg-red-50',
+  },
+  [ExecutionState.Cancelled]: {
+    label: 'Cancelled',
+    badgeColor: 'gray',
+    className: 'text-gray-600 bg-gray-50',
+  },
+  [ExecutionState.TimedOut]: {
+    label: 'Timed Out',
+    badgeColor: 'orange',
+    className: 'text-orange-600 bg-orange-50',
+  },
+};
+
 export function getExecutionStateName(state: ExecutionState): string {
-  switch (state) {
-    case ExecutionState.Pending:
-      return 'Pending';
-    case ExecutionState.Running:
-      return 'Running';
-    case ExecutionState.Completed:
-      return 'Completed';
-    case ExecutionState.Failed:
-      return 'Failed';
-    case ExecutionState.Cancelled:
-      return 'Cancelled';
-    case ExecutionState.TimedOut:
-      return 'Timed Out';
-    default:
-      return `Unknown (${String(state)})`;
-  }
+  return EXECUTION_STATE_PRESENTATION[state]?.label ?? `Unknown (${String(state)})`;
 }
 
 export function getExecutionStateColor(state: ExecutionState): string {
-  switch (state) {
-    case ExecutionState.Pending:
-      return 'text-yellow-600 bg-yellow-50';
-    case ExecutionState.Running:
-      return 'text-blue-600 bg-blue-50';
-    case ExecutionState.Completed:
-      return 'text-green-600 bg-green-50';
-    case ExecutionState.Failed:
-      return 'text-red-600 bg-red-50';
-    case ExecutionState.Cancelled:
-      return 'text-gray-600 bg-gray-50';
-    case ExecutionState.TimedOut:
-      return 'text-orange-600 bg-orange-50';
-    default:
-      return 'text-gray-600 bg-gray-50';
-  }
+  return EXECUTION_STATE_PRESENTATION[state]?.className ?? 'text-gray-600 bg-gray-50';
+}
+
+export function getExecutionStateBadgeColor(state: string): string {
+  const normalized = normalizeExecutionState(state);
+  return normalized
+    ? EXECUTION_STATE_PRESENTATION[normalized].badgeColor
+    : 'gray';
+}
+
+export function formatExecutionDuration(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return '-';
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
+export function formatExecutionCost(cost: number | null | undefined): string {
+  return cost === null || cost === undefined || !Number.isFinite(cost)
+    ? '-'
+    : `$${cost.toFixed(6)}`;
+}
+
+function normalizeExecutionState(state: string): ExecutionState | undefined {
+  const normalized = state.toLowerCase().replace(/[_\s-]/g, '');
+  return Object.values(ExecutionState).find(
+    candidate => candidate.toLowerCase() === normalized,
+  );
 }
 
 export function getPricingModelName(model: FunctionPricingModel): string {

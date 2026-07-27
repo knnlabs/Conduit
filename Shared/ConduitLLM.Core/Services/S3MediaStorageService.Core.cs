@@ -6,6 +6,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Transfer;
 
+using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Options;
@@ -735,9 +736,7 @@ namespace ConduitLLM.Core.Services
 
         private static async Task<string> ComputeHashAsync(Stream stream)
         {
-            using var sha256 = SHA256.Create();
-            var hash = await sha256.ComputeHashAsync(stream);
-            return Convert.ToBase64String(hash).Replace("/", "-").Replace("+", "_").TrimEnd('=');
+            return await Sha256Hash.LegacyStorageBase64UrlAsync(stream);
         }
 
         private static string GenerateStorageKey(string contentHash, MediaType mediaType, string extension)

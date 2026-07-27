@@ -47,15 +47,10 @@ namespace ConduitLLM.Providers.Meta
                 public const string Models = "/models";
             }
 
-            public static class ErrorMessages
-            {
-                public const string MissingApiKey = "API key is missing for provider 'meta'";
-                public const string RateLimitExceeded = "Meta Model API rate limit exceeded. Please try again later or reduce your request frequency.";
-                public const string InvalidApiKey = "Invalid Meta Model API key. Please check your credentials.";
-                public const string ModelNotFound = "The specified model is not available. Please check the model name and try again.";
-                public const string QuotaExceeded = "API quota exceeded. Please check your usage limits or remaining credits.";
-            }
         }
+
+        private static ProviderErrorMessages MetaErrorMessages =>
+            ProviderConfigurationRegistry.GetErrorMessages(ProviderType.Meta);
 
         /// <summary>
         /// Fallback models for Meta when the models endpoint is not available
@@ -95,7 +90,7 @@ namespace ConduitLLM.Providers.Meta
         {
             if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
             {
-                throw new ConfigurationException(Constants.ErrorMessages.MissingApiKey);
+                throw new ConfigurationException(MetaErrorMessages.MissingApiKey);
             }
         }
 

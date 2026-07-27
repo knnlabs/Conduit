@@ -1,5 +1,6 @@
-using System.Security.Cryptography;
 using System.Text;
+
+using ConduitLLM.Configuration.Utilities;
 
 namespace ConduitLLM.Core.Utilities
 {
@@ -104,9 +105,7 @@ namespace ConduitLLM.Core.Utilities
         /// <returns>A SHA-256 hash of the image data as a hex string</returns>
         public static string CalculateImageHash(byte[] imageData)
         {
-            using var sha256 = SHA256.Create();
-            byte[] hashBytes = sha256.ComputeHash(imageData);
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+            return Sha256Hash.LowerHex(imageData);
         }
 
         /// <summary>

@@ -43,12 +43,12 @@ export default function ProviderErrorsPage() {
     recentErrors,
     isLoading,
     error,
-    refresh,
+    refetch,
   } = useProviderErrors(parseInt(timeWindow));
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await refresh();
+    await refetch();
     setIsRefreshing(false);
     notify.success('Provider error data has been refreshed', 'Refreshed');
   };
@@ -65,7 +65,7 @@ export default function ProviderErrorsPage() {
 
       notify.success(`Errors cleared${reenableKey ? ' and key re-enabled' : ''}`);
 
-      await refresh();
+      await refetch();
     } catch {
       notify.error(new Error('Failed to clear errors'));
     }

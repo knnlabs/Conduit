@@ -5,7 +5,7 @@ import {
   NotImplementedError,
   TimeoutError,
 } from '@/lib/conduit-common';
-import { handleApiError } from './api-errors';
+import { toApiErrorResponse } from './api-errors';
 import { logger } from '@/lib/utils/logging';
 
 jest.mock('next/server', () => ({
@@ -23,7 +23,7 @@ jest.mock('@/lib/utils/logging', () => ({
   },
 }));
 
-describe('handleApiError', () => {
+describe('toApiErrorResponse', () => {
   test.each([
     [new InsufficientBalanceError('balance'), 402],
     [new AuthorizationError('forbidden'), 403],
@@ -31,7 +31,7 @@ describe('handleApiError', () => {
     [new NotImplementedError('not implemented'), 501],
     [new ConduitError('teapot', 418, 'HTTP_418'), 418],
   ])('preserves ConduitError status %#', async (error, expectedStatus) => {
-    const response = handleApiError(error);
+    const response = toApiErrorResponse(error);
 
     expect(response.status).toBe(expectedStatus);
     await expect(response.json()).resolves.toEqual({ error: error.message });
@@ -45,8 +45,24 @@ describe('handleApiError', () => {
   });
 
   it('uses 500 for a non-HTTP ConduitError status', () => {
-    const response = handleApiError(new ConduitError('network', 0, 'NETWORK_ERROR'));
+    const response = toApiErrorResponse(new ConduitError('network', 0, 'NETWORK_ERROR'));
 
     expect(response.status).toBe(500);
+  });
+
+  it('uses the canonical duck-typed HTTP status and ProblemDetails message', async () => {
+    const response = toApiErrorResponse({
+      message: 'request failed',
+      response: {
+        status: 422,
+        data: { detail: 'The submitted value is invalid' },
+        headers: {},
+      },
+    });
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: 'The submitted value is invalid',
+    });
   });
 });

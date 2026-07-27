@@ -32,27 +32,10 @@ import {
   FunctionConfigurationDto,
   ExecutionState,
   getExecutionStateName,
+  getExecutionStateBadgeColor,
+  formatExecutionDuration,
+  formatExecutionCost,
 } from '../types';
-
-// Helper function for execution state colors
-function getExecutionStateBadgeColor(state: ExecutionState): string {
-  switch (state) {
-    case ExecutionState.Pending:
-      return 'yellow';
-    case ExecutionState.Running:
-      return 'blue';
-    case ExecutionState.Completed:
-      return 'green';
-    case ExecutionState.Failed:
-      return 'red';
-    case ExecutionState.Cancelled:
-      return 'gray';
-    case ExecutionState.TimedOut:
-      return 'orange';
-    default:
-      return 'gray';
-  }
-}
 
 export default function FunctionExecutionsPage() {
   const { executeWithAdmin } = useAdminClient();
@@ -164,17 +147,6 @@ export default function FunctionExecutionsPage() {
         })();
       },
     });
-  };
-
-  const formatDuration = (ms: number | null | undefined): string => {
-    if (!ms) return '-';
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
-
-  const formatCost = (cost: number | null | undefined): string => {
-    if (cost === null || cost === undefined) return '-';
-    return `$${cost.toFixed(6)}`;
   };
 
   const getConfigurationName = (configId: number): string => {
@@ -302,13 +274,13 @@ export default function FunctionExecutionsPage() {
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatDuration(execution.durationMs ?? undefined)}</Text>
+                      <Text size="sm">{formatExecutionDuration(execution.durationMs)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatCost(execution.cost.estimated ?? undefined)}</Text>
+                      <Text size="sm">{formatExecutionCost(execution.cost.estimated)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatCost(execution.cost.actual ?? undefined)}</Text>
+                      <Text size="sm">{formatExecutionCost(execution.cost.actual)}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm" c="dimmed">
@@ -361,13 +333,13 @@ export default function FunctionExecutionsPage() {
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Duration</Text>
-                <Text size="sm">{formatDuration(selectedExecution.durationMs ?? undefined)}</Text>
+                <Text size="sm">{formatExecutionDuration(selectedExecution.durationMs)}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Costs</Text>
                 <Text size="sm">
-                  Estimated: {formatCost(selectedExecution.cost.estimated ?? undefined)}<br />
-                  Actual: {formatCost(selectedExecution.cost.actual ?? undefined)}
+                  Estimated: {formatExecutionCost(selectedExecution.cost.estimated)}<br />
+                  Actual: {formatExecutionCost(selectedExecution.cost.actual)}
                 </Text>
               </Grid.Col>
               <Grid.Col span={6}>

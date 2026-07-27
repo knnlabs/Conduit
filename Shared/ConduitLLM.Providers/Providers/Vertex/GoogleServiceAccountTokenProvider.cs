@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Providers.Http;
 
@@ -42,7 +43,7 @@ internal sealed class GoogleServiceAccountTokenProvider
         _serviceAccount = ParseCredential(serviceAccountJson);
         _cacheKey = new TokenCacheKey(
             credentialId,
-            Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(serviceAccountJson))));
+            Sha256Hash.UpperHex(serviceAccountJson));
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 

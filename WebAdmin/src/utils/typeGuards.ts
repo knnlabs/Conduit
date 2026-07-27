@@ -3,7 +3,10 @@
  */
 
 import type { ModelDto } from '@/lib/admin-api';
-import { isErrorLike } from '@/lib/conduit-common';
+import {
+  getErrorMessage as getCanonicalErrorMessage,
+  isErrorLike,
+} from '@/lib/conduit-common';
 
 // Removed capabilities-related type guards as capabilities are now embedded directly in ModelDto
 
@@ -73,17 +76,5 @@ export function isValidModelId(id: unknown): id is number {
  */
 export const isErrorWithMessage = isErrorLike;
 
-/**
- * Get error message from unknown error type
- */
-export function getErrorMessage(error: unknown): string {
-  if (isErrorWithMessage(error)) {
-    return error.message;
-  }
-  
-  if (typeof error === 'string') {
-    return error;
-  }
-  
-  return 'An unknown error occurred';
-}
+/** Canonical error-message extraction shared by all API clients. */
+export const getErrorMessage = getCanonicalErrorMessage;

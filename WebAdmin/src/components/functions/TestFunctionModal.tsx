@@ -26,7 +26,12 @@ import {
 } from '@tabler/icons-react';
 import { notify } from '@/lib/notifications';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
-import { FunctionConfigurationDto } from '@/app/functions/types';
+import {
+  FunctionConfigurationDto,
+  formatExecutionCost,
+  formatExecutionDuration,
+  getExecutionStateBadgeColor,
+} from '@/app/functions/types';
 import type { FunctionExecutionResponse } from '@/lib/gateway-api/types';
 
 interface TestFunctionModalProps {
@@ -142,9 +147,9 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
 
       // Show success notification
       if (response.status.toLowerCase() === 'completed') {
-        notify.success(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
+        notify.success(`Execution completed in ${formatExecutionDuration(response.durationMs ?? 0)}`, 'Function executed');
       } else {
-        notify.warning(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
+        notify.warning(`Execution completed in ${formatExecutionDuration(response.durationMs ?? 0)}`, 'Function executed');
       }
     } catch (error) {
       console.warn('Error executing function:', error);
@@ -180,32 +185,6 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
     setActiveTab('parameters');
     setLoadingSchema(false);
     onClose();
-  };
-
-  const formatDuration = (ms: number): string => {
-    if (ms < 1000) {
-      return `${ms.toFixed(0)}ms`;
-    }
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
-
-  const formatCost = (cost: number): string => {
-    return `$${cost.toFixed(6)}`;
-  };
-
-  const getStateColor = (state: string): string => {
-    switch (state.toLowerCase()) {
-      case 'completed':
-        return 'green';
-      case 'failed':
-        return 'red';
-      case 'running':
-        return 'blue';
-      case 'pending':
-        return 'yellow';
-      default:
-        return 'gray';
-    }
   };
 
   return (
@@ -284,7 +263,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
               <Stack gap="md">
                 <Group justify="space-between">
                   <Badge
-                    color={getStateColor(testResult.status)}
+                    color={getExecutionStateBadgeColor(testResult.status)}
                     variant="filled"
                     size="lg"
                     leftSection={getStateIcon(testResult.status)}
@@ -293,7 +272,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                   </Badge>
                   {testResult.durationMs !== null && testResult.durationMs !== undefined && (
                     <Text size="sm" c="dimmed">
-                      Duration: {formatDuration(testResult.durationMs)}
+                      Duration: {formatExecutionDuration(testResult.durationMs)}
                     </Text>
                   )}
                 </Group>
@@ -373,7 +352,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatCost(testResult.cost.estimated)}</Text>
+                          <Text size="xs">{formatExecutionCost(testResult.cost.estimated)}</Text>
                         </Grid.Col>
                       </>
                     )}
@@ -385,7 +364,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatCost(testResult.cost.actual)}</Text>
+                          <Text size="xs">{formatExecutionCost(testResult.cost.actual)}</Text>
                         </Grid.Col>
                       </>
                     )}

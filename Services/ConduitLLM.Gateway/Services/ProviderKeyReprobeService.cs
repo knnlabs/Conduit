@@ -16,7 +16,7 @@ namespace ConduitLLM.Gateway.Services;
 /// <summary>
 /// Half-open recovery worker for provider keys disabled due to insufficient balance.
 /// </summary>
-public sealed class ProviderKeyReprobeService : BackgroundService
+public sealed class ProviderKeyReprobeService : PeriodicCollectorBackgroundService
 {
     private readonly IRedisErrorStore _errorStore;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -30,6 +30,10 @@ public sealed class ProviderKeyReprobeService : BackgroundService
         IOptions<ProviderKeyReprobeOptions> options,
         ILogger<ProviderKeyReprobeService> logger,
         TimeProvider? timeProvider = null)
+        : base(
+            logger,
+            options.Value.ScanInterval,
+            timeProvider: timeProvider)
     {
         _errorStore = errorStore;
         _scopeFactory = scopeFactory;
@@ -38,32 +42,16 @@ public sealed class ProviderKeyReprobeService : BackgroundService
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        if (!_options.Enabled)
-        {
-            _logger.LogInformation("Provider key balance reprobes are disabled");
-            return;
-        }
+    protected override bool IsCollectorEnabled => _options.Enabled;
 
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                await RunOnceAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Provider key reprobe scan failed");
-            }
+    protected override Task CollectOnceAsync(CancellationToken cancellationToken) =>
+        RunOnceAsync(cancellationToken);
 
-            await Task.Delay(_options.ScanInterval, _timeProvider, stoppingToken);
-        }
-    }
+    protected override void OnCollectorDisabled() =>
+        _logger.LogInformation("Provider key balance reprobes are disabled");
+
+    protected override void OnCollectionFailed(Exception exception) =>
+        _logger.LogError(exception, "Provider key reprobe scan failed");
 
     /// <summary>
     /// Executes one scan. Public for deterministic operational tests.

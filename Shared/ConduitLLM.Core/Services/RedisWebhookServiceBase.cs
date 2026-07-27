@@ -1,3 +1,5 @@
+using ConduitLLM.Configuration.Utilities;
+
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -25,9 +27,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         protected static string GetUrlHash(string webhookUrl)
         {
-            using var sha256 = System.Security.Cryptography.SHA256.Create();
-            var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(webhookUrl));
-            return Convert.ToBase64String(hashBytes).Replace("/", "-").Replace("+", "_").Substring(0, 16);
+            return Sha256Hash.LegacyStorageBase64Url(webhookUrl)[..16];
         }
     }
 }

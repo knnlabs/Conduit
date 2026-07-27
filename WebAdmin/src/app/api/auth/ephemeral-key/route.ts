@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleApiError } from '@/lib/errors/api-errors';
+import { toApiErrorResponse } from '@/lib/errors/api-errors';
 import { getServerAdminClient, getServerCoreClient } from '@/lib/server/api-client-config';
 
 interface EphemeralKeyRequest {
@@ -58,6 +58,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error generating ephemeral key:', error);
-    return handleApiError(error);
+    return toApiErrorResponse(error);
   }
 }

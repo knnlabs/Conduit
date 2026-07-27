@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Prometheus;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Services
@@ -9,11 +10,10 @@ namespace ConduitLLM.Gateway.Services
     /// Service for tracking task processing metrics including queue depths,
     /// processing times, and success/failure rates.
     /// </summary>
-    public class TaskProcessingMetricsService : BackgroundService
+    public class TaskProcessingMetricsService : PeriodicCollectorBackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<TaskProcessingMetricsService> _logger;
-        private readonly TimeSpan _collectionInterval = TimeSpan.FromSeconds(30);
         private readonly HashSet<(string TaskType, string Status)> _taskQueueLabels = [];
         private readonly HashSet<string> _taskWaitLabels = [];
         private readonly HashSet<string> _virtualKeySpendLabels = [];
@@ -102,31 +102,19 @@ namespace ConduitLLM.Gateway.Services
         public TaskProcessingMetricsService(
             IServiceScopeFactory serviceScopeFactory,
             ILogger<TaskProcessingMetricsService> logger)
+            : base(logger, TimeSpan.FromSeconds(30))
         {
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override Task CollectOnceAsync(CancellationToken cancellationToken) =>
+            CollectMetricsAsync();
+
+        protected override void OnCollectionFailed(Exception exception)
         {
-            _logger.LogInformation("Task processing metrics service starting...");
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await CollectMetricsAsync();
-                }
-                catch (Exception ex)
-                {
-                    MetricsCollectionInstrumentation.RecordFailure("task_processing");
-                    _logger.LogError(ex, "Error collecting task processing metrics");
-                }
-
-                await Task.Delay(_collectionInterval, stoppingToken);
-            }
-
-            _logger.LogInformation("Task processing metrics service stopped");
+            MetricsCollectionInstrumentation.RecordFailure("task_processing");
+            _logger.LogError(exception, "Error collecting task processing metrics");
         }
 
         internal async Task CollectMetricsAsync()

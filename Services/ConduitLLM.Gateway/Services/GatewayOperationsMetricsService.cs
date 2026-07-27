@@ -1,4 +1,5 @@
 using Prometheus;
+using ConduitLLM.Core.Services;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -7,11 +8,10 @@ namespace ConduitLLM.Gateway.Services
     /// Provides static recording methods for controllers to report operation-level metrics,
     /// mirroring the pattern established by AdminOperationsMetricsService.
     /// </summary>
-    public class GatewayOperationsMetricsService : BackgroundService
+    public class GatewayOperationsMetricsService : PeriodicCollectorBackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<GatewayOperationsMetricsService> _logger;
-        private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
 
         // LLM operation metrics
         private static readonly Counter LlmOperations = Prometheus.Metrics
@@ -103,38 +103,17 @@ namespace ConduitLLM.Gateway.Services
         public GatewayOperationsMetricsService(
             IServiceProvider serviceProvider,
             ILogger<GatewayOperationsMetricsService> logger)
+            : base(logger, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(5))
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            _logger.LogInformation("GatewayOperationsMetricsService starting with collection interval {Interval}", _collectionInterval);
+        protected override Task CollectOnceAsync(CancellationToken cancellationToken) =>
+            CollectMetricsAsync();
 
-            // Brief delay to let other services initialize first
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await CollectMetricsAsync();
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error collecting gateway operations metrics");
-                }
-
-                await Task.Delay(_collectionInterval, stoppingToken);
-            }
-
-            _logger.LogInformation("GatewayOperationsMetricsService stopped");
-        }
+        protected override void OnCollectionFailed(Exception exception) =>
+            _logger.LogError(exception, "Error collecting gateway operations metrics");
 
         private Task CollectMetricsAsync()
         {

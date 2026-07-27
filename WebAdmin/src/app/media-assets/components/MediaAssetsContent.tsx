@@ -28,7 +28,7 @@ export default function MediaAssetsContent() {
 
   const {
     media,
-    loading,
+    isLoading,
     filters,
     applyFilters,
     deleteMedia,
@@ -230,7 +230,7 @@ export default function MediaAssetsContent() {
             variant="light"
             leftSection={<IconRefresh size={16} />}
             onClick={() => void refetch()}
-            loading={loading}
+            loading={isLoading}
           >
             Refresh
           </Button>
@@ -268,7 +268,7 @@ export default function MediaAssetsContent() {
 
         <MediaGallery
           media={media}
-          loading={loading}
+          loading={isLoading}
           selectedIds={selectedIds}
           onSelectMedia={toggleSelection}
           onViewMedia={setSelectedMedia}
