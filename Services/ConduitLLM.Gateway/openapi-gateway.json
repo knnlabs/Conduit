@@ -2947,7 +2947,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/VideoGenerationTaskResponse"
+                  "$ref": "#/components/schemas/AsyncTaskResponse"
                 }
               }
             }
@@ -3508,6 +3508,9 @@
             "format": "date-time"
           },
           "updated_at": {
+            "format": "date-time"
+          },
+          "completed_at": {
             "format": "date-time"
           },
           "result": { },
@@ -4527,7 +4530,7 @@
             "type": "string"
           },
           "capabilities": {
-            "$ref": "#/components/schemas/GatewayModelCapabilitiesDto"
+            "$ref": "#/components/schemas/DiscoveryModelCapabilitiesDto"
           },
           "pricing": {
             "oneOf": [
@@ -4535,12 +4538,11 @@
                 "type": "null"
               },
               {
-                "$ref": "#/components/schemas/ModelPricingDto"
+                "$ref": "#/components/schemas/DiscoveryModelPricingDto"
               }
             ]
           }
-        },
-        "description": "A model returned by the Conduit discovery extension."
+        }
       },
       "DiscoveryCapabilitiesResponse": {
         "required": [
@@ -4556,6 +4558,160 @@
           }
         },
         "description": "Known model capability names."
+      },
+      "DiscoveryModelCapabilitiesDto": {
+        "required": [
+          "chat",
+          "chat_stream",
+          "image_input",
+          "video_input",
+          "audio_input",
+          "file_input",
+          "vision",
+          "video_understanding",
+          "image_generation",
+          "video_generation",
+          "embeddings",
+          "function_calling",
+          "speech_to_text",
+          "text_to_speech",
+          "rerank"
+        ],
+        "type": "object",
+        "properties": {
+          "chat": {
+            "type": "boolean"
+          },
+          "chat_stream": {
+            "type": "boolean"
+          },
+          "image_input": {
+            "type": "boolean"
+          },
+          "video_input": {
+            "type": "boolean"
+          },
+          "audio_input": {
+            "type": "boolean"
+          },
+          "file_input": {
+            "type": "boolean"
+          },
+          "vision": {
+            "type": "boolean"
+          },
+          "video_understanding": {
+            "type": "boolean"
+          },
+          "image_generation": {
+            "type": "boolean"
+          },
+          "video_generation": {
+            "type": "boolean"
+          },
+          "embeddings": {
+            "type": "boolean"
+          },
+          "function_calling": {
+            "type": "boolean"
+          },
+          "speech_to_text": {
+            "type": "boolean"
+          },
+          "text_to_speech": {
+            "type": "boolean"
+          },
+          "rerank": {
+            "type": "boolean"
+          },
+          "tool_use": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "json_mode": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "max_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max_output_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pdf_input": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "DiscoveryModelPricingDto": {
+        "required": [
+          "pricing_model",
+          "input_cost_per_million_tokens",
+          "output_cost_per_million_tokens",
+          "cached_input_cost_per_million_tokens",
+          "embedding_cost_per_million_tokens",
+          "currency"
+        ],
+        "type": "object",
+        "properties": {
+          "pricing_model": {
+            "type": "string"
+          },
+          "input_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "output_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "cached_input_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "embedding_cost_per_million_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
       },
       "DiscoveryModelsResponse": {
         "required": [
@@ -4578,8 +4734,7 @@
             ],
             "format": "int32"
           }
-        },
-        "description": "Model discovery response."
+        }
       },
       "DownloadUrlResponse": {
         "required": [
@@ -5105,108 +5260,6 @@
             "additionalProperties": { }
           }
         }
-      },
-      "GatewayModelCapabilitiesDto": {
-        "required": [
-          "chat",
-          "chat_stream",
-          "image_input",
-          "video_input",
-          "audio_input",
-          "file_input",
-          "vision",
-          "video_understanding",
-          "image_generation",
-          "video_generation",
-          "embeddings",
-          "function_calling",
-          "speech_to_text",
-          "text_to_speech",
-          "rerank"
-        ],
-        "type": "object",
-        "properties": {
-          "chat": {
-            "type": "boolean"
-          },
-          "chat_stream": {
-            "type": "boolean"
-          },
-          "image_input": {
-            "type": "boolean"
-          },
-          "video_input": {
-            "type": "boolean"
-          },
-          "audio_input": {
-            "type": "boolean"
-          },
-          "file_input": {
-            "type": "boolean"
-          },
-          "vision": {
-            "type": "boolean"
-          },
-          "video_understanding": {
-            "type": "boolean"
-          },
-          "image_generation": {
-            "type": "boolean"
-          },
-          "video_generation": {
-            "type": "boolean"
-          },
-          "embeddings": {
-            "type": "boolean"
-          },
-          "function_calling": {
-            "type": "boolean"
-          },
-          "speech_to_text": {
-            "type": "boolean"
-          },
-          "text_to_speech": {
-            "type": "boolean"
-          },
-          "rerank": {
-            "type": "boolean"
-          },
-          "tool_use": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "json_mode": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "max_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "max_output_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "pdf_input": {
-            "type": "boolean",
-            "default": false
-          }
-        },
-        "description": "Capabilities advertised for a model."
       },
       "GenerateEphemeralKeyRequest": {
         "type": "object",
@@ -5751,7 +5804,7 @@
             "format": "date-time"
           },
           "capabilities": {
-            "$ref": "#/components/schemas/GatewayModelCapabilitiesDto"
+            "$ref": "#/components/schemas/DiscoveryModelCapabilitiesDto"
           },
           "max_input_tokens": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
@@ -5818,60 +5871,6 @@
           }
         },
         "description": "UI parameter metadata for a model."
-      },
-      "ModelPricingDto": {
-        "required": [
-          "pricing_model",
-          "input_cost_per_million_tokens",
-          "output_cost_per_million_tokens",
-          "cached_input_cost_per_million_tokens",
-          "embedding_cost_per_million_tokens",
-          "currency"
-        ],
-        "type": "object",
-        "properties": {
-          "pricing_model": {
-            "type": "string"
-          },
-          "input_cost_per_million_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "output_cost_per_million_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "cached_input_cost_per_million_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "embedding_cost_per_million_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
-            "format": "double"
-          },
-          "currency": {
-            "type": "string"
-          }
-        },
-        "description": "Operator-configured pricing for a discovered model, in USD per million tokens.\r\nOnly the standard token rates and the pricing-model discriminator are projected;\r\nclients should treat any `pricing_model` other than `standard` as too\r\ncomplex to preview rather than rendering a number from these fields."
       },
       "OpenAIErrorResponse": {
         "required": [
@@ -6914,30 +6913,19 @@
           }
         }
       },
-      "VideoGenerationTaskResponse": {
-        "type": "object",
-        "properties": {
-          "task_id": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "created_at": {
-            "format": "date-time"
-          },
-          "estimated_completion_time": {
-            "format": "date-time"
-          },
-          "check_status_url": {
-            "type": "string"
-          }
-        },
-        "description": "Response for async video generation task creation."
-      },
       "VideoGenerationTaskStatus": {
+        "required": [
+          "task_id",
+          "status"
+        ],
         "type": "object",
         "properties": {
+          "result_raw": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
           "task_id": {
             "type": "string"
           },
@@ -6962,18 +6950,6 @@
           "completed_at": {
             "format": "date-time"
           },
-          "error": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
-          "result_raw": {
-            "type": [
-              "null",
-              "string"
-            ]
-          },
           "result": {
             "oneOf": [
               {
@@ -6982,6 +6958,12 @@
               {
                 "$ref": "#/components/schemas/VideoGenerationResponse"
               }
+            ]
+          },
+          "error": {
+            "type": [
+              "null",
+              "string"
             ]
           }
         },
