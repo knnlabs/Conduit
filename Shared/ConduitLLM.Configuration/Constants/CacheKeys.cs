@@ -440,25 +440,6 @@ public static class CacheKeys
 
     #endregion
 
-    #region Batch Idempotency Cache
-
-    /// <summary>
-    /// Cache keys for batch operation idempotency tracking.
-    /// Used by BatchOperationIdempotencyService.
-    /// </summary>
-    public static class BatchIdempotency
-    {
-        /// <summary>Prefix for batch idempotency keys</summary>
-        public const string Prefix = "batch:idempotency:";
-
-        /// <summary>Builds a cache key for batch idempotency</summary>
-        /// <param name="idempotencyKey">The client-provided idempotency key</param>
-        /// <returns>Full cache key like "batch:idempotency:abc123"</returns>
-        public static string ByKey(string idempotencyKey) => $"{Prefix}{idempotencyKey}";
-    }
-
-    #endregion
-
     #region Analytics Cache
 
     /// <summary>

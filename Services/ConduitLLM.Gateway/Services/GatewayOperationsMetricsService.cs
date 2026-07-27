@@ -29,30 +29,6 @@ namespace ConduitLLM.Gateway.Services
                     Buckets = Histogram.ExponentialBuckets(0.01, 2, 16) // 10ms to ~327s
                 });
 
-        // Batch operation metrics
-        private static readonly Counter BatchOperations = Prometheus.Metrics
-            .CreateCounter("conduit_gateway_batch_operations_total", "Total batch operations",
-                new CounterConfiguration
-                {
-                    LabelNames = new[] { "operation", "status" } // operation: spend_update, virtualkey_update, webhook_send
-                });
-
-        private static readonly Histogram BatchSize = Prometheus.Metrics
-            .CreateHistogram("conduit_gateway_batch_size", "Number of items per batch operation",
-                new HistogramConfiguration
-                {
-                    LabelNames = new[] { "operation" },
-                    Buckets = new[] { 1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000, 10000.0 }
-                });
-
-        private static readonly Histogram BatchDuration = Prometheus.Metrics
-            .CreateHistogram("conduit_gateway_batch_duration_seconds", "Batch operation duration",
-                new HistogramConfiguration
-                {
-                    LabelNames = new[] { "operation" },
-                    Buckets = Histogram.ExponentialBuckets(0.01, 2, 14) // 10ms to ~82s
-                });
-
         // Media operation metrics
         private static readonly Counter MediaOperations = Prometheus.Metrics
             .CreateCounter("conduit_gateway_media_operations_total", "Total media operations",
@@ -135,22 +111,6 @@ namespace ConduitLLM.Gateway.Services
             if (durationSeconds.HasValue)
             {
                 LlmOperationDuration.WithLabels(operation, model).Observe(durationSeconds.Value);
-            }
-        }
-
-        /// <summary>
-        /// Records a batch operation.
-        /// </summary>
-        public static void RecordBatchOperation(string operation, string status, int itemCount = 0, double? durationSeconds = null)
-        {
-            BatchOperations.WithLabels(operation, status).Inc();
-            if (itemCount > 0)
-            {
-                BatchSize.WithLabels(operation).Observe(itemCount);
-            }
-            if (durationSeconds.HasValue)
-            {
-                BatchDuration.WithLabels(operation).Observe(durationSeconds.Value);
             }
         }
 

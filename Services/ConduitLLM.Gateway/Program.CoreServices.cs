@@ -102,10 +102,6 @@ public partial class Program
 
         builder.Services.AddAuditServices();
 
-        // ========== Batch Operations ==========
-
-        builder.Services.AddBatchOperationServices();
-
         // ========== Webhook Services ==========
 
         builder.Services.AddWebhookServices(builder.Configuration);

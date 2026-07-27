@@ -100,7 +100,7 @@ public partial class Program
             "BusinessMetricsService");
 
         // Add gateway operations metrics service for operation-level metrics
-        // Tracks LLM operations, batch operations, media operations, function executions, and routing decisions
+        // Tracks LLM, media, function, and routing operations.
         builder.Services.AddLeaderElectedHostedService<ConduitLLM.Gateway.Services.GatewayOperationsMetricsService>(
             serviceProvider =>
             {
