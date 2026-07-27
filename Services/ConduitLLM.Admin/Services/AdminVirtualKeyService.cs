@@ -34,6 +34,7 @@ namespace ConduitLLM.Admin.Services
         private readonly IModelProviderMappingRepository _modelProviderMappingRepository;
         private readonly IModelCapabilityService _modelCapabilityService;
         private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
+        private readonly DiscoveryCacheOptions _discoveryOptions;
         private readonly ILogger<AdminVirtualKeyService> _logger;
 
         /// <summary>
@@ -51,6 +52,7 @@ namespace ConduitLLM.Admin.Services
         /// <param name="mediaLifecycleService">Optional media lifecycle service for cleaning up associated media files (null if not configured)</param>
         /// <param name="mediaDeletionEngine">Guarded media deletion engine.</param>
         /// <param name="mediaCleanupLockService">Distributed lock shared with scheduled cleanup.</param>
+        /// <param name="discoveryOptions">Shared discovery response settings.</param>
         public AdminVirtualKeyService(
             IVirtualKeyRepository virtualKeyRepository,
             IVirtualKeySpendHistoryRepository spendHistoryRepository,
@@ -63,7 +65,8 @@ namespace ConduitLLM.Admin.Services
             IEventBus? eventBus = null,
             IMediaLifecycleService? mediaLifecycleService = null,
             IMediaDeletionEngine? mediaDeletionEngine = null,
-            IDistributedLockService? mediaCleanupLockService = null)
+            IDistributedLockService? mediaCleanupLockService = null,
+            Microsoft.Extensions.Options.IOptions<DiscoveryCacheOptions>? discoveryOptions = null)
             : base(virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger)
         {
             _cache = cache;
@@ -73,6 +76,7 @@ namespace ConduitLLM.Admin.Services
             _modelProviderMappingRepository = modelProviderMappingRepository ?? throw new ArgumentNullException(nameof(modelProviderMappingRepository));
             _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
+            _discoveryOptions = discoveryOptions?.Value ?? new DiscoveryCacheOptions();
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 

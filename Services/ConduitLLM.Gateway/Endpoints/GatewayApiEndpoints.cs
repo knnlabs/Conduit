@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.DTOs.BatchOperations;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Models;

@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Models;
 using ConduitLLM.Gateway.DTOs;
@@ -56,7 +57,7 @@ public sealed class ModelMetadataService : IModelMetadataService
             capabilities.OutputModalities ?? [],
             capabilities.CapabilitySource.ToString().ToLowerInvariant(),
             capabilities.CapabilitiesLastVerifiedAt,
-            new GatewayModelCapabilitiesDto(
+            new DiscoveryModelCapabilitiesDto(
                 capabilities.SupportsChat,
                 capabilities.SupportsStreaming,
                 capabilities.SupportsImageInput,

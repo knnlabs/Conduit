@@ -87,6 +87,11 @@ namespace ConduitLLM.Admin.Extensions
             // Add context management services
             services.AddConduitContextManagement(configuration);
 
+            // The Admin discovery preview uses the same pricing visibility option as Gateway,
+            // without registering the cache implementation itself.
+            services.Configure<ConduitLLM.Core.Services.DiscoveryCacheOptions>(
+                configuration.GetSection("Discovery"));
+
             // Note: AddDiscoveryCache is not registered in Admin API as it's optional
             // The SystemInfo endpoint handler has IDiscoveryCacheService? as a nullable dependency.
             // If needed in the future, must first register AddCacheManager(configuration)

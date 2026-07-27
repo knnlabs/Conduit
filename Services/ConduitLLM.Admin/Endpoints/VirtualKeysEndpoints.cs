@@ -66,7 +66,7 @@ public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
             .WithName("VirtualKeys_Maintenance").Produces(StatusCodes.Status204NoContent).Produces(StatusCodes.Status401Unauthorized)
             .Produces(StatusCodes.Status403Forbidden).RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/{id}/discovery-preview", ([FromServices] VirtualKeysEndpoints endpoints, int id, string? capability = null) => endpoints.PreviewDiscovery(id, capability))
-            .WithName("VirtualKeys_PreviewDiscovery").Produces<VirtualKeyDiscoveryPreviewDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
+            .WithName("VirtualKeys_PreviewDiscovery").Produces<DiscoveryModelsResponse>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/{id}/group", ([FromServices] VirtualKeysEndpoints endpoints, int id) => endpoints.GetKeyGroup(id))
             .WithName("VirtualKeys_GetGroup").Produces<VirtualKeyGroupDto>().Produces(StatusCodes.Status404NotFound).RequireAuthorization("MasterKeyPolicy");
         group.MapGet("/{id}/rate-limit-usage", (

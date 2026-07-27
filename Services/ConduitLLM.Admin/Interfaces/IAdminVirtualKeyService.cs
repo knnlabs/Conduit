@@ -78,7 +78,7 @@ public interface IAdminVirtualKeyService
     /// <param name="id">The ID of the virtual key</param>
     /// <param name="capability">Optional capability filter (e.g. "chat", "vision", "audio_transcription")</param>
     /// <returns>Discovery response as the virtual key would see it, or null if key not found</returns>
-    Task<VirtualKeyDiscoveryPreviewDto?> PreviewDiscoveryAsync(int id, string? capability = null);
+    Task<DiscoveryModelsResponse?> PreviewDiscoveryAsync(int id, string? capability = null);
 
     /// <summary>
     /// Gets the virtual key by ID

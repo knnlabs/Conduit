@@ -1,18 +1,18 @@
 using ConduitLLM.Configuration;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Models;
-using ConduitLLM.Functions.Utilities;
-using ConduitLLM.Gateway.DTOs;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
-namespace ConduitLLM.Gateway.Services;
+namespace ConduitLLM.Core.Services;
 
 /// <summary>
-/// Owns the database query, capability filtering, and wire projection shared by live discovery
-/// requests and startup cache warming.
+/// Owns the database query, capability filtering, and wire projection shared by live discovery,
+/// cache warming, and administrative previews.
 /// </summary>
-internal static class DiscoveryModelProjector
+public static class DiscoveryModelProjector
 {
     public static async Task<IReadOnlyList<DiscoveredModelDto>> ProjectAsync(
         ConduitDbContext context,
@@ -38,7 +38,7 @@ internal static class DiscoveryModelProjector
         logger.LogDebug(
             "Found {Count} enabled model mappings for discovery (capability filter: {Capability})",
             modelMappings.Count,
-            LoggingSanitizer.S(capability ?? "all"));
+            capability ?? "all");
 
         var models = new List<DiscoveredModelDto>();
         foreach (var mapping in modelMappings)
@@ -47,9 +47,7 @@ internal static class DiscoveryModelProjector
             var model = association?.Model;
             if (model is null)
             {
-                logger.LogWarning(
-                    "Model mapping {ModelAlias} has no model data",
-                    LoggingSanitizer.S(mapping.ModelAlias));
+                logger.LogWarning("Model mapping {ModelAlias} has no model data", mapping.ModelAlias);
                 continue;
             }
 
@@ -76,10 +74,10 @@ internal static class DiscoveryModelProjector
                 model.TokenizerType.ToString().ToLowerInvariant(),
                 capabilities.InputModalities ?? [],
                 capabilities.OutputModalities ?? [],
-                capabilities.Source.ToString().ToLowerInvariant(),
-                capabilities.LastVerifiedAt,
+                capabilities.CapabilitySource.ToString().ToLowerInvariant(),
+                capabilities.CapabilitiesLastVerifiedAt,
                 model.ModelParameters ?? model.Series?.Parameters ?? "{}",
-                new ModelCapabilitiesDto(
+                new DiscoveryModelCapabilitiesDto(
                     capabilities.SupportsChat,
                     capabilities.SupportsStreaming,
                     capabilities.SupportsImageInput,
@@ -109,7 +107,7 @@ internal static class DiscoveryModelProjector
     private static bool SupportsCapability(
         string? capability,
         ProviderType? providerType,
-        EffectiveModelCapabilities capabilities)
+        ModelCapabilitiesDto capabilities)
     {
         if (string.IsNullOrWhiteSpace(capability))
         {
@@ -138,7 +136,7 @@ internal static class DiscoveryModelProjector
         };
     }
 
-    private static ModelPricingDto? BuildPricing(ModelCost? cost)
+    private static DiscoveryModelPricingDto? BuildPricing(ModelCost? cost)
     {
         var now = DateTime.UtcNow;
         if (cost is not { IsActive: true }
@@ -148,7 +146,7 @@ internal static class DiscoveryModelProjector
             return null;
         }
 
-        return new ModelPricingDto(
+        return new DiscoveryModelPricingDto(
             cost.PricingModel.ToString().ToLowerInvariant(),
             cost.InputCostPerMillionTokens,
             cost.OutputCostPerMillionTokens,

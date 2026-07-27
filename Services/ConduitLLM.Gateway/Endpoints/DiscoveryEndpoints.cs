@@ -9,8 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Functions.Utilities;
-using ConduitLLM.Gateway.Services;
-using GatewayDiscoveredModelDto = ConduitLLM.Gateway.DTOs.DiscoveredModelDto;
+using GatewayDiscoveredModelDto = ConduitLLM.Configuration.DTOs.DiscoveredModelDto;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
