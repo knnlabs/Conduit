@@ -1,16 +1,39 @@
 import { ConduitAdminClient } from '@/lib/admin-api';
 import { ConduitGatewayClient } from '@/lib/gateway-api';
 
-// Validate required environment variables at runtime
-function validateEnvironment() {
-  const requiredEnvVars = {
-    CONDUIT_API_TO_API_BACKEND_AUTH_KEY: process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY,
-  };
+const isLoopbackUrl = (value: string): boolean => {
+  try {
+    const hostname = new URL(value).hostname;
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1';
+  } catch {
+    return false;
+  }
+};
 
-  for (const [key, value] of Object.entries(requiredEnvVars)) {
-    if (!value) {
-      throw new Error(`Missing required environment variable: ${key}`);
+/**
+ * Validate the environment used by server-side API clients.
+ */
+export function validateApiClientEnvironment(): void {
+  const errors: string[] = [];
+
+  if (!process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY) {
+    errors.push('Missing required environment variable: CONDUIT_API_TO_API_BACKEND_AUTH_KEY');
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    const adminBaseUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://localhost:5002';
+    const coreBaseUrl = process.env.CONDUIT_API_BASE_URL ?? 'http://localhost:5000';
+
+    if (isLoopbackUrl(adminBaseUrl)) {
+      errors.push('CONDUIT_ADMIN_API_BASE_URL must not use a loopback host in production');
     }
+    if (isLoopbackUrl(coreBaseUrl)) {
+      errors.push('CONDUIT_API_BASE_URL must not use a loopback host in production');
+    }
+  }
+
+  if (errors.length > 0) {
+    throw new Error(`Environment validation failed:\n${errors.join('\n')}`);
   }
 }
 
@@ -43,7 +66,7 @@ let webAdminVirtualKey: string | null = null;
 export function getServerAdminClient(): ConduitAdminClient {
   if (!adminClient) {
     // Validate environment at runtime
-    validateEnvironment();
+    validateApiClientEnvironment();
     
     adminClient = new ConduitAdminClient({
       baseUrl: API_CLIENT_CONFIG.adminBaseURL,
@@ -58,7 +81,7 @@ export function getServerAdminClient(): ConduitAdminClient {
 export async function getServerGatewayClient(): Promise<InstanceType<typeof ConduitGatewayClient>> {
   if (!gatewayClient || !webAdminVirtualKey) {
     // Validate environment at runtime
-    validateEnvironment();
+    validateApiClientEnvironment();
 
     // Get the WebAdmin's virtual key - this will auto-create it with $1000 if it doesn't exist
     if (!webAdminVirtualKey) {
