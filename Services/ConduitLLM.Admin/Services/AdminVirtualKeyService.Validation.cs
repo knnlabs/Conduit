@@ -4,6 +4,7 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Core.Models;
+
 using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
 namespace ConduitLLM.Admin.Services
@@ -86,34 +87,26 @@ namespace ConduitLLM.Admin.Services
         {
             _logger.LogDebug("Getting validation info for virtual key ID {KeyId}", id);
 
-            try
+            var key = await _virtualKeyRepository.GetByIdAsync(id);
+            if (key == null)
             {
-                var key = await _virtualKeyRepository.GetByIdAsync(id);
-                if (key == null)
-                {
-                    return null;
-                }
+                return null;
+            }
 
-                return new VirtualKeyValidationInfoDto
-                {
-                    Id = key.Id,
-                    KeyName = key.KeyName,
-                    AllowedModels = VirtualKeyUtilities.ParseAllowedModels(key.AllowedModels),
-                    VirtualKeyGroupId = key.VirtualKeyGroupId,
-                    IsEnabled = key.IsEnabled,
-                    ExpiresAt = key.ExpiresAt,
-                    RateLimitRpm = key.RateLimitRpm,
-                    RateLimitRpd = key.RateLimitRpd,
-                    RateLimitTpm = key.RateLimitTpm,
-                    MaxParallelRequests = key.MaxParallelRequests,
-                    RateLimitPriority = key.RateLimitPriority
-                };
-            }
-            catch (Exception ex)
+            return new VirtualKeyValidationInfoDto
             {
-                _logger.LogError(ex, "Failed to retrieve validation info for virtual key ID {KeyId}", id);
-                throw;
-            }
+                Id = key.Id,
+                KeyName = key.KeyName,
+                AllowedModels = VirtualKeyUtilities.ParseAllowedModels(key.AllowedModels),
+                VirtualKeyGroupId = key.VirtualKeyGroupId,
+                IsEnabled = key.IsEnabled,
+                ExpiresAt = key.ExpiresAt,
+                RateLimitRpm = key.RateLimitRpm,
+                RateLimitRpd = key.RateLimitRpd,
+                RateLimitTpm = key.RateLimitTpm,
+                MaxParallelRequests = key.MaxParallelRequests,
+                RateLimitPriority = key.RateLimitPriority
+            };
         }
     }
 }

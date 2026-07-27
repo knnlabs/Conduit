@@ -89,67 +89,56 @@ namespace ConduitLLM.Admin.Services
         {
             if (_mediaLifecycleService != null)
             {
-                try
+                await using var mediaContext =
+                    await _dbContextFactory.CreateDbContextAsync();
+                var mediaRecords = await mediaContext.MediaRecords
+                    .IgnoreQueryFilters()
+                    .AsNoTracking()
+                    .Where(record => record.VirtualKeyId == keyId)
+                    .ToListAsync();
+                if (mediaRecords.Count == 0)
                 {
-                    await using var mediaContext =
-                        await _dbContextFactory.CreateDbContextAsync();
-                    var mediaRecords = await mediaContext.MediaRecords
-                        .IgnoreQueryFilters()
-                        .AsNoTracking()
-                        .Where(record => record.VirtualKeyId == keyId)
-                        .ToListAsync();
-                    if (mediaRecords.Count == 0)
-                    {
-                        return;
-                    }
-
-                    if (_mediaDeletionEngine == null || _mediaCleanupLockService == null)
-                    {
-                        throw new InvalidOperationException(
-                            "Virtual key deletion is blocked because the guarded media deletion engine is unavailable.");
-                    }
-
-                    await using var lockHandle = await _mediaCleanupLockService.AcquireLockAsync(
-                        MediaCleanupLock.Key,
-                        MediaCleanupLock.Duration);
-                    if (lockHandle == null)
-                    {
-                        throw new InvalidOperationException(
-                            "Virtual key deletion is blocked while another media cleanup run is active.");
-                    }
-
-                    var operation = new MediaDeletionOperationContext(
-                        MediaCleanupTypes.VirtualKey,
-                        "virtual-key",
-                        $"virtual-key:{keyId}");
-                    var result = await _mediaDeletionEngine.ExecuteOperationAsync(
-                        operation,
-                        () => _mediaDeletionEngine.DeleteAsync(
-                            new MediaDeletionRequest(
-                                mediaRecords,
-                                operation,
-                                Purge: true)));
-
-                    if (result.IsDryRun || result.BudgetExhausted || result.Failures > 0)
-                    {
-                        throw new InvalidOperationException(
-                            $"Virtual key deletion aborted: media cleanup was not complete " +
-                            $"(dryRun={result.IsDryRun}, budgetExhausted={result.BudgetExhausted}, " +
-                            $"failed={result.Failures}, deleted={result.FilesDeleted}).");
-                    }
-
-                    Logger.LogInformation(
-                        "Deleted {DeletedCount} media files for virtual key {KeyId}",
-                        result.FilesDeleted, keyId);
+                    return;
                 }
-                catch (Exception ex)
+
+                if (_mediaDeletionEngine == null || _mediaCleanupLockService == null)
                 {
-                    Logger.LogError(
-                        ex,
-                        "Failed to delete media files for virtual key {KeyId}; key deletion is blocked to preserve media tracking",
-                        keyId);
-                    throw;
+                    throw new InvalidOperationException(
+                        "Virtual key deletion is blocked because the guarded media deletion engine is unavailable.");
                 }
+
+                await using var lockHandle = await _mediaCleanupLockService.AcquireLockAsync(
+                    MediaCleanupLock.Key,
+                    MediaCleanupLock.Duration);
+                if (lockHandle == null)
+                {
+                    throw new InvalidOperationException(
+                        "Virtual key deletion is blocked while another media cleanup run is active.");
+                }
+
+                var operation = new MediaDeletionOperationContext(
+                    MediaCleanupTypes.VirtualKey,
+                    "virtual-key",
+                    $"virtual-key:{keyId}");
+                var result = await _mediaDeletionEngine.ExecuteOperationAsync(
+                    operation,
+                    () => _mediaDeletionEngine.DeleteAsync(
+                        new MediaDeletionRequest(
+                            mediaRecords,
+                            operation,
+                            Purge: true)));
+
+                if (result.IsDryRun || result.BudgetExhausted || result.Failures > 0)
+                {
+                    throw new InvalidOperationException(
+                        $"Virtual key deletion aborted: media cleanup was not complete " +
+                        $"(dryRun={result.IsDryRun}, budgetExhausted={result.BudgetExhausted}, " +
+                        $"failed={result.Failures}, deleted={result.FilesDeleted}).");
+                }
+
+                Logger.LogInformation(
+                    "Deleted {DeletedCount} media files for virtual key {KeyId}",
+                    result.FilesDeleted, keyId);
             }
             else
             {
