@@ -55,7 +55,7 @@ namespace ConduitLLM.Core.Utilities
             catch (Exception ex) when (
                 ex is not LLMCommunicationException &&
                 ex is not ConfigurationException &&
-                ex is not ModelUnavailableException &&
+                ex is not ModelNotFoundException &&
                 ex is not ValidationException)
             {
                 logger.LogError(ex, "Unexpected error during {ServiceName} communication", serviceName);
@@ -79,7 +79,7 @@ namespace ConduitLLM.Core.Utilities
         {
             if (ex is LLMCommunicationException or
                 ConfigurationException or
-                ModelUnavailableException or
+                ModelNotFoundException or
                 ValidationException)
             {
                 // Provider-specific translations are already safe for the caller.
@@ -105,7 +105,10 @@ namespace ConduitLLM.Core.Utilities
                 if (statusCode == HttpStatusCode.NotFound)
                 {
                     logger.LogError(httpEx, "Model {Model} not found for {Provider}", modelName, providerName);
-                    return new ModelUnavailableException($"Model '{modelName}' not found for provider {providerName}", httpEx);
+                    return new ModelNotFoundException(
+                        modelName,
+                        $"Model '{modelName}' not found for provider {providerName}",
+                        httpEx);
                 }
 
                 logger.LogError(httpEx, "HTTP error from {Provider} using model {Model}: {StatusCode}",

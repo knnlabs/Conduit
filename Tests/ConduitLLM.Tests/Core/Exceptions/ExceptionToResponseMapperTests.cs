@@ -501,26 +501,6 @@ public class ExceptionToResponseMapperTests
     }
 
     [Fact]
-    public void Map_ModelUnavailableException_Returns404WithModelNotFound()
-    {
-        // Arrange
-        var exception = new ModelUnavailableException("Model 'llama-4' not found for provider Groq");
-
-        // Act
-        var result = ExceptionToResponseMapper.Map(exception);
-
-        // Assert
-        result.StatusCode.Should().Be(404);
-        result.ErrorCode.Should().Be("model_not_found");
-        result.ResponseMessage.Should().Contain("llama-4");
-        result.LogLevel.Should().Be(LogLevel.Warning);
-        result.LogPrefix.Should().Be("Model unavailable");
-        result.IncludeExceptionMessageInLog.Should().BeTrue();
-        result.OpenAIErrorType.Should().Be("invalid_request_error");
-        result.Param.Should().Be("model");
-    }
-
-    [Fact]
     public void Map_UnsupportedProviderException_Returns400WithUnsupportedProvider()
     {
         // Arrange

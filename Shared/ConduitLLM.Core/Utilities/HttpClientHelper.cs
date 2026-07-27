@@ -86,7 +86,7 @@ namespace ConduitLLM.Core.Utilities
             catch (Exception ex) when (
                 ex is not LLMCommunicationException &&
                 ex is not ConfigurationException &&
-                ex is not ModelUnavailableException &&
+                ex is not ModelNotFoundException &&
                 ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
@@ -158,7 +158,7 @@ namespace ConduitLLM.Core.Utilities
             catch (Exception ex) when (
                 ex is not LLMCommunicationException &&
                 ex is not ConfigurationException &&
-                ex is not ModelUnavailableException &&
+                ex is not ModelNotFoundException &&
                 ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
@@ -389,7 +389,7 @@ namespace ConduitLLM.Core.Utilities
             catch (Exception ex) when (
                 ex is not LLMCommunicationException &&
                 ex is not ConfigurationException &&
-                ex is not ModelUnavailableException &&
+                ex is not ModelNotFoundException &&
                 ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during streaming API communication with {Endpoint}", endpoint);

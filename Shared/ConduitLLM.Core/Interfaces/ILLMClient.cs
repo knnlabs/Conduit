@@ -38,7 +38,7 @@ public interface ILLMClient
     /// <returns>The chat completion response from the model.</returns>
     /// <exception cref="ValidationException">Thrown when the request fails validation.</exception>
     /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the provider.</exception>
-    /// <exception cref="ModelUnavailableException">Thrown when the requested model is not available.</exception>
+    /// <exception cref="ModelNotFoundException">Thrown when the requested model is not available.</exception>
     /// <remarks>
     /// <para>
     /// This method sends a completion request to the LLM provider's API and awaits the full
@@ -68,7 +68,7 @@ public interface ILLMClient
     /// <returns>An asynchronous enumerable of chat completion chunks representing the streaming response.</returns>
     /// <exception cref="ValidationException">Thrown when the request fails validation.</exception>
     /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the provider.</exception>
-    /// <exception cref="ModelUnavailableException">Thrown when the requested model is not available.</exception>
+    /// <exception cref="ModelNotFoundException">Thrown when the requested model is not available.</exception>
     /// <remarks>
     /// <para>
     /// This method is similar to <see cref="CreateChatCompletionAsync"/> but returns a stream of

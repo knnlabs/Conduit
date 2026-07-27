@@ -66,12 +66,6 @@ public static class ExceptionToResponseMapper
                 => new(400, validationEx.Message, "validation_error", LogLevel.Warning,
                     "Validation error", true, "invalid_request_error"),
 
-            // The provider reported the model as missing (e.g. an upstream 404).
-            // Note: derives from Exception, not ConduitException.
-            ModelUnavailableException modelUnavailableEx
-                => new(404, modelUnavailableEx.Message, "model_not_found", LogLevel.Warning,
-                    "Model unavailable", true, "invalid_request_error", "model"),
-
             // A provider was requested that is not configured or not supported — a client
             // mistake, not a server fault.
             UnsupportedProviderException unsupportedEx
