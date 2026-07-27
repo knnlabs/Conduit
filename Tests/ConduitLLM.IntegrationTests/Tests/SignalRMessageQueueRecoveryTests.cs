@@ -19,6 +19,7 @@ using StackExchange.Redis;
 using Xunit;
 
 using SignalRMessage = ConduitLLM.Core.Models.SignalR.SignalRMessage;
+using TaskProgressMessage = ConduitLLM.Core.Models.SignalR.TaskProgressMessage;
 
 namespace ConduitLLM.IntegrationTests.Tests;
 
