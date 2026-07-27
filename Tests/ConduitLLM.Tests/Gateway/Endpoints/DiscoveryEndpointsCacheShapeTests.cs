@@ -177,7 +177,7 @@ public sealed class DiscoveryEndpointsCacheShapeTests : IDisposable
         public Task InvalidatePatternAsync(string pattern, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
 
-        public Task<DiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
-            => Task.FromResult(new DiscoveryCacheStatistics());
+        public Task<CacheStats> GetStatisticsAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(new CacheStats());
     }
 }

@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.DTOs.Monitoring;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using Microsoft.AspNetCore.Mvc;
 using ConduitLLM.Admin.DTOs;
 
@@ -25,7 +26,7 @@ public static class SystemInfoEndpoints
             .WithName("SystemInfo_InvalidateDiscoveryCache").Produces<CacheInvalidationPublishedResponse>(StatusCodes.Status200OK);
         group.MapGet("/cache/function-discovery/stats", GetFunctionDiscoveryStats)
             .WithName("SystemInfo_GetFunctionDiscoveryCacheStats")
-            .Produces<FunctionDiscoveryCacheStatistics>(StatusCodes.Status200OK)
+            .Produces<CacheStats>(StatusCodes.Status200OK)
             .Produces<CacheServiceUnavailableResponse>(StatusCodes.Status404NotFound);
         group.MapPost("/cache/invalidate-function-discovery", InvalidateFunctionDiscovery)
             .WithName("SystemInfo_InvalidateFunctionDiscoveryCache")

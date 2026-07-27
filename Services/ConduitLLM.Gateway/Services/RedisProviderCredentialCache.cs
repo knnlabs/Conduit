@@ -154,13 +154,13 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Get cache performance statistics
         /// </summary>
-        public async Task<ProviderCacheStats> GetStatsAsync()
+        public async Task<CacheStats> GetStatsAsync()
         {
             try
             {
                 var (hits, misses, invalidations, resetTime) = await GetBaseStatsAsync(ServiceName);
 
-                return new ProviderCacheStats
+                return new CacheStats
                 {
                     HitCount = hits,
                     MissCount = misses,
@@ -172,7 +172,7 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting provider credential cache statistics");
-                return new ProviderCacheStats { LastResetTime = DateTime.UtcNow };
+                return new CacheStats { LastResetTime = DateTime.UtcNow };
             }
         }
 

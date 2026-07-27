@@ -116,7 +116,19 @@ describe('Global Settings generated operations', () => {
   });
 
   it('gets cache statistics', async () => {
-    const stats = { cacheSize: 1, cacheHits: 2, cacheMisses: 3, invalidations: 4, hitRate: 40, lastLoadTime: setting.updatedAt, cachedKeys: [setting.key] };
+    const stats = {
+      hitCount: 2,
+      missCount: 3,
+      invalidationCount: 4,
+      hitRate: 0.4,
+      averageGetTime: '00:00:00',
+      lastResetTime: setting.updatedAt,
+      lastInvalidationTime: null,
+      entryCount: 1,
+      patternMatchCount: 0,
+      isEnabled: true,
+      cachedKeys: [setting.key],
+    };
     mockFetch.mockResolvedValueOnce(response(stats));
     await expect(client().settings.getCacheStats()).resolves.toEqual(stats);
     expect((mockFetch.mock.calls[0]?.[0] as Request).url).toBe('https://admin.test/v1/admin/global-settings/cache/stats');

@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -50,21 +51,6 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Get cache performance statistics
         /// </summary>
-        Task<ModelCostCacheStats> GetStatsAsync();
-    }
-
-    /// <summary>
-    /// Cache performance statistics for Model Costs
-    /// </summary>
-    public class ModelCostCacheStats
-    {
-        public long HitCount { get; set; }
-        public long MissCount { get; set; }
-        public long InvalidationCount { get; set; }
-        public double HitRate => HitCount + MissCount > 0 ? (double)HitCount / (HitCount + MissCount) : 0;
-        public TimeSpan AverageGetTime { get; set; }
-        public DateTime LastResetTime { get; set; }
-        public long EntryCount { get; set; }
-        public long PatternMatchCount { get; set; }
+        Task<CacheStats> GetStatsAsync();
     }
 }

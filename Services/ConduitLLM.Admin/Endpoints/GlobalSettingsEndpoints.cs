@@ -4,6 +4,7 @@ using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.Messaging;
@@ -47,7 +48,7 @@ public static class GlobalSettingsEndpoints
         group.MapGet("/cache/stats", GetCacheStats).WithName("GlobalSettings_GetCacheStats")
             .WithMetadata(new ObsoleteAttribute(
                 "Use conduit cache metrics in the Infrastructure Grafana dashboard."))
-            .Produces<GlobalSettingCacheStatsDto>();
+            .Produces<CacheStats>();
         group.MapPost("/cache/reload", ReloadCache).WithName("GlobalSettings_ReloadCache")
             .Produces<GlobalSettingsReloadAcceptedResponse>(StatusCodes.Status202Accepted);
         group.MapPost("/cache/invalidate/{key}", InvalidateCache).WithName("GlobalSettings_InvalidateCache")
@@ -158,17 +159,7 @@ public static class GlobalSettingsEndpoints
 
     private static async Task<IResult> GetCacheStats([FromServices] IGlobalSettingsCacheService cacheService)
     {
-        var stats = await cacheService.GetCacheStatsAsync();
-        return Results.Ok(new GlobalSettingCacheStatsDto
-        {
-            CacheSize = (int)stats["CacheSize"],
-            CacheHits = (long)stats["CacheHits"],
-            CacheMisses = (long)stats["CacheMisses"],
-            Invalidations = (long)stats["Invalidations"],
-            HitRate = (double)stats["HitRate"],
-            LastLoadTime = (DateTime)stats["LastLoadTime"],
-            CachedKeys = (List<string>)stats["CachedKeys"]
-        });
+        return Results.Ok(await cacheService.GetCacheStatsAsync());
     }
 
     private static async Task<IResult> ReloadCache(

@@ -1,3 +1,5 @@
+using ConduitLLM.Core.Models;
+
 namespace ConduitLLM.Configuration.Interfaces;
 
 /// <summary>
@@ -64,6 +66,6 @@ public interface IGlobalSettingsCacheService
     /// <summary>
     /// Gets cache statistics for monitoring and debugging.
     /// </summary>
-    /// <returns>Dictionary containing cache hit/miss counts and other metrics.</returns>
-    Task<Dictionary<string, object>> GetCacheStatsAsync();
+    /// <returns>Strongly typed cache hit/miss counts and other metrics.</returns>
+    Task<CacheStats> GetCacheStatsAsync();
 }

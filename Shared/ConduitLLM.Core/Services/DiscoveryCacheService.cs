@@ -85,6 +85,7 @@ namespace ConduitLLM.Core.Services
         // Statistics tracking
         private long _totalHits;
         private long _totalMisses;
+        private long _totalInvalidations;
         private DateTime? _lastInvalidation;
 
         private const CacheRegion DISCOVERY_REGION = CacheRegion.ModelDiscovery;
@@ -161,6 +162,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 _lastInvalidation = DateTime.UtcNow;
+                Interlocked.Increment(ref _totalInvalidations);
 
                 // Use CacheManager's ClearRegionAsync for surgical invalidation
                 // This uses the tracked keys to remove only discovery entries from both memory and Redis
@@ -200,19 +202,18 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        public Task<DiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
+        public Task<CacheStats> GetStatisticsAsync(CancellationToken cancellationToken = default)
         {
             var hits = Interlocked.Read(ref _totalHits);
             var misses = Interlocked.Read(ref _totalMisses);
-            var total = hits + misses;
 
-            var stats = new DiscoveryCacheStatistics
+            var stats = new CacheStats
             {
-                Hits = hits,
-                Misses = misses,
-                HitRate = total > 0 ? (double)hits / total * 100 : 0,
-                CachedEntries = 0, // Would require cache key scanning in production
-                LastInvalidation = _lastInvalidation
+                HitCount = hits,
+                MissCount = misses,
+                InvalidationCount = Interlocked.Read(ref _totalInvalidations),
+                EntryCount = 0, // Would require cache key scanning in production
+                LastInvalidationTime = _lastInvalidation
             };
 
             return Task.FromResult(stats);

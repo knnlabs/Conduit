@@ -4,6 +4,7 @@ using StackExchange.Redis;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Metrics;
 
@@ -171,7 +172,7 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Get cache statistics for monitoring
         /// </summary>
-        public async Task<ConduitLLM.Core.Interfaces.VirtualKeyCacheStats> GetStatsAsync()
+        public async Task<CacheStats> GetStatsAsync()
         {
             try
             {
@@ -204,7 +205,7 @@ namespace ConduitLLM.Gateway.Services
                     await Database.StringSetAsync(CacheKeys.Stats.VirtualKeyResetTime, DateTime.UtcNow.Ticks.ToString());
                 }
 
-                return new ConduitLLM.Core.Interfaces.VirtualKeyCacheStats
+                return new CacheStats
                 {
                     HitCount = hitCount,
                     MissCount = missCount,
@@ -216,7 +217,7 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting cache statistics");
-                return new ConduitLLM.Core.Interfaces.VirtualKeyCacheStats();
+                return new CacheStats();
             }
         }
 

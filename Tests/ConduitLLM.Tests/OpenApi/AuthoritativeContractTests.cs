@@ -526,7 +526,7 @@ public sealed class AuthoritativeContractTests : IDisposable
 
     [Theory]
     [InlineData("GlobalSettingDto", "id", "key", "value", "description", "createdAt", "updatedAt")]
-    [InlineData("GlobalSettingCacheStatsDto", "cacheSize", "cacheHits", "cacheMisses", "invalidations", "hitRate", "lastLoadTime", "cachedKeys")]
+    [InlineData("CacheStats", "hitCount", "missCount", "invalidationCount", "hitRate", "averageGetTime", "lastResetTime", "lastInvalidationTime", "entryCount", "patternMatchCount", "isEnabled", "cachedKeys")]
     public void Admin_GlobalSettingsResponsesRequireAlwaysEmittedProperties(string schema, params string[] properties)
     {
         var required = _admin.RootElement.GetProperty("components").GetProperty("schemas")

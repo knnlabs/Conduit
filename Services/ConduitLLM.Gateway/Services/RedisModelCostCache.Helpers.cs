@@ -17,7 +17,7 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Get cache performance statistics
         /// </summary>
-        public async Task<ModelCostCacheStats> GetStatsAsync()
+        public async Task<CacheStats> GetStatsAsync()
         {
             try
             {
@@ -25,7 +25,7 @@ namespace ConduitLLM.Gateway.Services
                 var patternMatches = await Database.StringGetAsync(CacheKeys.Stats.PatternMatches());
                 var pendingPatternMatches = Interlocked.Read(ref _bufferedPatternMatches);
 
-                return new ModelCostCacheStats
+                return new CacheStats
                 {
                     HitCount = hits + PendingHits,
                     MissCount = misses + PendingMisses,
@@ -38,7 +38,7 @@ namespace ConduitLLM.Gateway.Services
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error getting model cost cache statistics");
-                return new ModelCostCacheStats { LastResetTime = DateTime.UtcNow };
+                return new CacheStats { LastResetTime = DateTime.UtcNow };
             }
         }
 

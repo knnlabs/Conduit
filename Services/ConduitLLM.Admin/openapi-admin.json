@@ -2339,7 +2339,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FunctionDiscoveryCacheStatistics"
+                  "$ref": "#/components/schemas/CacheStats"
                 }
               }
             }
@@ -7098,7 +7098,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/GlobalSettingCacheStatsDto"
+                  "$ref": "#/components/schemas/CacheStats"
                 }
               }
             }
@@ -25398,6 +25398,72 @@
           }
         }
       },
+      "CacheStats": {
+        "required": [
+          "hitCount",
+          "missCount",
+          "invalidationCount",
+          "hitRate",
+          "averageGetTime",
+          "lastResetTime",
+          "lastInvalidationTime",
+          "entryCount",
+          "patternMatchCount",
+          "isEnabled",
+          "cachedKeys"
+        ],
+        "type": "object",
+        "properties": {
+          "hitCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "missCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invalidationCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hitRate": {
+            "type": "number",
+            "format": "double"
+          },
+          "averageGetTime": {
+            "pattern": "^-?(\\d+\\.)?\\d{2}:\\d{2}:\\d{2}(\\.\\d{1,7})?$",
+            "type": "string"
+          },
+          "lastResetTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastInvalidationTime": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "entryCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "patternMatchCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "isEnabled": {
+            "type": "boolean"
+          },
+          "cachedKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "CatalogImportCounts": {
         "required": [
           "authors",
@@ -27301,37 +27367,6 @@
         },
         "description": "Result returned after testing a function credential."
       },
-      "FunctionDiscoveryCacheStatistics": {
-        "type": "object",
-        "properties": {
-          "hits": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "misses": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "hitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "cachedEntries": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "lastInvalidation": {
-            "type": [
-              "null",
-              "string"
-            ],
-            "format": "date-time"
-          },
-          "isEnabled": {
-            "type": "boolean"
-          }
-        }
-      },
       "FunctionExecutionAdminDetailsDto": {
         "type": "object",
         "properties": {
@@ -27522,50 +27557,6 @@
           "rag",
           null
         ]
-      },
-      "GlobalSettingCacheStatsDto": {
-        "required": [
-          "cacheSize",
-          "cacheHits",
-          "cacheMisses",
-          "invalidations",
-          "hitRate",
-          "lastLoadTime",
-          "cachedKeys"
-        ],
-        "type": "object",
-        "properties": {
-          "cacheSize": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "cacheHits": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "cacheMisses": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "invalidations": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "hitRate": {
-            "type": "number",
-            "format": "double"
-          },
-          "lastLoadTime": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "cachedKeys": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
       },
       "GlobalSettingDefinitionDto": {
         "type": "object",
