@@ -13,7 +13,7 @@ type CreateVirtualKeyRequestDto = components['schemas']['CreateVirtualKeyRequest
 type CreateVirtualKeyResponseDto = components['schemas']['CreateVirtualKeyResponseDto'];
 type UpdateVirtualKeyRequestDto = components['schemas']['UpdateVirtualKeyRequestDto'];
 type VirtualKeyValidationResponseDto = components['schemas']['VirtualKeyValidationResult'];
-type VirtualKeyDiscoveryPreviewDto = components['schemas']['VirtualKeyDiscoveryPreviewDto'];
+type VirtualKeyDiscoveryPreviewDto = components['schemas']['DiscoveryModelsResponse'];
 type ListQuery = paths['/v1/admin/virtual-keys']['get']['parameters']['query'];
 
 export interface VirtualKeyListResponseDto {
