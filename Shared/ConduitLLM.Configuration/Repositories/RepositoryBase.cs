@@ -190,6 +190,48 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         }
     }
 
+    /// <summary>
+    /// Executes a write operation with consistent database and concurrency diagnostics.
+    /// </summary>
+    protected async Task<TResult> ExecuteWriteAsync<TResult>(
+        Func<ConduitDbContext, Task<TResult>> operation,
+        string operationName,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            return await operation(context);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            Logger.LogWarning(
+                ex,
+                "Concurrency conflict {OperationName} {EntityType}",
+                operationName,
+                EntityTypeName);
+            throw;
+        }
+        catch (DbUpdateException ex)
+        {
+            Logger.LogError(
+                ex,
+                "Database error {OperationName} {EntityType}",
+                operationName,
+                EntityTypeName);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(
+                ex,
+                "Error {OperationName} {EntityType}",
+                operationName,
+                EntityTypeName);
+            throw;
+        }
+    }
+
     #endregion
 
     #region Standard CRUD operations
@@ -210,27 +252,15 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-
             OnBeforeCreate(entity);
 
             GetDbSet(context).Add(entity);
             await context.SaveChangesAsync(cancellationToken);
 
             return entity.Id;
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(ex, "Database error creating {EntityType}", EntityTypeName);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating {EntityType}", EntityTypeName);
-            throw;
-        }
+        }, "creating", cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -238,28 +268,15 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-
             OnBeforeUpdate(entity);
 
             GetDbSet(context).Update(entity);
             int rowsAffected = await context.SaveChangesAsync(cancellationToken);
 
             return rowsAffected > 0;
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            Logger.LogWarning(ex, "Concurrency conflict updating {EntityType} with ID {Id} — another process modified this entity",
-                EntityTypeName, entity.Id);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error updating {EntityType} with ID {Id}", EntityTypeName, entity.Id);
-            throw;
-        }
+        }, $"updating ID {entity.Id}", cancellationToken);
     }
 
     /// <inheritdoc/>

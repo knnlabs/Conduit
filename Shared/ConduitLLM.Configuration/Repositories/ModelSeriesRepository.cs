@@ -99,26 +99,13 @@ public class ModelSeriesRepository : RepositoryBase<ModelSeries, int>, IModelSer
     {
         ArgumentNullException.ThrowIfNull(series);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                OnBeforeCreate(series);
-                GetDbSet(context).Add(series);
-                await context.SaveChangesAsync(cancellationToken);
-                return series;
-            }, cancellationToken);
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(ex, "Database error creating {EntityType}", EntityTypeName);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating {EntityType}", EntityTypeName);
-            throw;
-        }
+            OnBeforeCreate(series);
+            GetDbSet(context).Add(series);
+            await context.SaveChangesAsync(cancellationToken);
+            return series;
+        }, "creating", cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -126,25 +113,12 @@ public class ModelSeriesRepository : RepositoryBase<ModelSeries, int>, IModelSer
     {
         ArgumentNullException.ThrowIfNull(series);
 
-        try
+        return await ExecuteWriteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                OnBeforeUpdate(series);
-                GetDbSet(context).Update(series);
-                await context.SaveChangesAsync(cancellationToken);
-                return series;
-            }, cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            Logger.LogError(ex, "Concurrency error updating {EntityType} with ID {Id}", EntityTypeName, series.Id);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error updating {EntityType} with ID {Id}", EntityTypeName, series.Id);
-            throw;
-        }
+            OnBeforeUpdate(series);
+            GetDbSet(context).Update(series);
+            await context.SaveChangesAsync(cancellationToken);
+            return series;
+        }, $"updating ID {series.Id}", cancellationToken);
     }
 }

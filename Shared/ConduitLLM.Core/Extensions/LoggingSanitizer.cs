@@ -12,6 +12,9 @@ namespace ConduitLLM.Core.Extensions
     /// <see cref="ConduitLLM.Configuration.Utilities.LoggingSanitizer"/>.
     /// New code should use the Configuration namespace directly.
     /// </remarks>
+    [Obsolete(
+        "Use ConduitLLM.Configuration.Utilities.LoggingSanitizer directly.",
+        false)]
     public static class LoggingSanitizer
     {
         /// <summary>

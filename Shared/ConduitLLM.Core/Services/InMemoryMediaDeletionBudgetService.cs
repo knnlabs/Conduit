@@ -9,15 +9,16 @@ namespace ConduitLLM.Core.Services
     /// Note: Counters are not persisted and will reset on application restart.
     /// Note: Counters are not shared across multiple instances.
     /// </summary>
-    public class InMemoryMediaDeletionBudgetService : IMediaDeletionBudgetService
+    public class InMemoryMediaDeletionBudgetService : MediaDeletionBudgetServiceBase
     {
         private readonly ConcurrentDictionary<string, long> _monthlyCounts = new();
         private readonly ILogger<InMemoryMediaDeletionBudgetService> _logger;
         private readonly object _reservationLock = new();
 
-        public string BackendName => "InMemory";
-        public bool IsPersistent => false;
-        public DateTime? LastFailureAtUtc => null;
+        protected override string KeyPrefix => "";
+        public override string BackendName => "InMemory";
+        public override bool IsPersistent => false;
+        public override DateTime? LastFailureAtUtc => null;
 
         public InMemoryMediaDeletionBudgetService(ILogger<InMemoryMediaDeletionBudgetService> logger)
         {
@@ -28,7 +29,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public Task<long> GetMonthlyDeleteCountAsync(CancellationToken cancellationToken = default)
+        public override Task<long> GetMonthlyDeleteCountAsync(CancellationToken cancellationToken = default)
         {
             var key = GetCurrentMonthKey();
             var count = _monthlyCounts.GetValueOrDefault(key, 0);
@@ -36,7 +37,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public Task<long> IncrementMonthlyDeleteCountAsync(int count, CancellationToken cancellationToken = default)
+        public override Task<long> IncrementMonthlyDeleteCountAsync(int count, CancellationToken cancellationToken = default)
         {
             if (count <= 0)
             {
@@ -57,7 +58,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public Task<MediaDeletionBudgetReservation> ReserveAsync(
+        public override Task<MediaDeletionBudgetReservation> ReserveAsync(
             int requestedDeletions,
             int budget,
             CancellationToken cancellationToken = default)
@@ -82,26 +83,6 @@ namespace ConduitLLM.Core.Services
                     granted,
                     newTotal));
             }
-        }
-
-        /// <inheritdoc/>
-        public async Task<bool> WouldExceedBudgetAsync(int proposedDeletions, int budget, CancellationToken cancellationToken = default)
-        {
-            var currentCount = await GetMonthlyDeleteCountAsync(cancellationToken);
-            return (currentCount + proposedDeletions) > budget;
-        }
-
-        /// <inheritdoc/>
-        public async Task<long> GetRemainingBudgetAsync(int budget, CancellationToken cancellationToken = default)
-        {
-            var currentCount = await GetMonthlyDeleteCountAsync(cancellationToken);
-            var remaining = budget - currentCount;
-            return remaining > 0 ? remaining : 0;
-        }
-
-        private static string GetCurrentMonthKey()
-        {
-            return DateTime.UtcNow.ToString("yyyy-MM");
         }
 
         private void CleanupOldMonths()

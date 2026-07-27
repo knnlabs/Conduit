@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -62,8 +63,8 @@ namespace ConduitLLM.Core.Services
 
                 // Generate storage key
                 var contentHash = ComputeHash(data);
-                var extension = GetExtensionFromContentType(metadata.ContentType);
-                var storageKey = GenerateStorageKey(contentHash, metadata.MediaType, extension);
+                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+                var storageKey = MediaStorageKeys.GenerateFlat(contentHash, metadata.MediaType, extension);
 
                 // Store in memory
                 var mediaInfo = new MediaInfo
@@ -237,17 +238,6 @@ namespace ConduitLLM.Core.Services
             return Sha256Hash.LegacyStorageBase64Url(data);
         }
 
-        private static string GenerateStorageKey(string contentHash, MediaType mediaType, string extension)
-        {
-            var typeFolder = mediaType.ToString().ToLower();
-            return $"{typeFolder}/{contentHash}{extension}";
-        }
-
-        private static string GetExtensionFromContentType(string contentType)
-        {
-            return Utilities.MediaContentTypes.GetExtension(contentType) ?? "";
-        }
-
         /// <summary>
         /// Gets the current storage size in bytes.
         /// </summary>
@@ -298,8 +288,8 @@ namespace ConduitLLM.Core.Services
 
                 // Generate storage key
                 var contentHash = ComputeHash(data);
-                var extension = GetExtensionFromContentType(metadata.ContentType);
-                var storageKey = GenerateStorageKey(contentHash, MediaType.Video, extension);
+                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+                var storageKey = MediaStorageKeys.GenerateFlat(contentHash, MediaType.Video, extension);
 
                 // Store in memory
                 var mediaInfo = new MediaInfo
@@ -352,10 +342,10 @@ namespace ConduitLLM.Core.Services
         public Task<MultipartUploadSession> InitiateMultipartUploadAsync(VideoMediaMetadata metadata)
         {
             var sessionId = Guid.NewGuid().ToString();
-            var storageKey = GenerateStorageKey(
+            var storageKey = MediaStorageKeys.GenerateFlat(
                 sessionId, 
                 MediaType.Video, 
-                GetExtensionFromContentType(metadata.ContentType));
+                MediaContentTypes.GetExtension(metadata.ContentType) ?? "");
 
             var session = new MultipartUploadSession
             {
@@ -511,10 +501,10 @@ namespace ConduitLLM.Core.Services
         {
             // For in-memory storage, we'll generate a temporary upload token
             var uploadToken = Guid.NewGuid().ToString();
-            var storageKey = GenerateStorageKey(
+            var storageKey = MediaStorageKeys.GenerateFlat(
                 uploadToken, 
                 MediaType.Video, 
-                GetExtensionFromContentType(metadata.ContentType));
+                MediaContentTypes.GetExtension(metadata.ContentType) ?? "");
 
             // In a real implementation, you might store this token temporarily
             // For now, we'll just return a URL that would be handled by a separate endpoint

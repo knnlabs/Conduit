@@ -11,12 +11,13 @@ namespace ConduitLLM.Core.Services
     /// Redis-based implementation of media deletion budget tracking.
     /// Uses monthly-keyed counters with automatic expiry.
     /// </summary>
-    public class RedisMediaDeletionBudgetService : IMediaDeletionBudgetService
+    public class RedisMediaDeletionBudgetService : MediaDeletionBudgetServiceBase
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisMediaDeletionBudgetService> _logger;
         private readonly MediaBudgetFailureMode _failureMode;
-        private const string KEY_PREFIX = "media:monthly-deletes:";
+        private DateTime? _lastFailureAtUtc;
+        private const string BudgetKeyPrefix = "media:monthly-deletes:";
         private const string RESERVE_SCRIPT = """
             local current = tonumber(redis.call('GET', KEYS[1]) or '0')
             local remaining = tonumber(ARGV[2]) - current
@@ -31,9 +32,10 @@ namespace ConduitLLM.Core.Services
             return {granted, current}
             """;
 
-        public string BackendName => "Redis";
-        public bool IsPersistent => true;
-        public DateTime? LastFailureAtUtc { get; private set; }
+        protected override string KeyPrefix => BudgetKeyPrefix;
+        public override string BackendName => "Redis";
+        public override bool IsPersistent => true;
+        public override DateTime? LastFailureAtUtc => _lastFailureAtUtc;
 
         public RedisMediaDeletionBudgetService(
             IConnectionMultiplexer redis,
@@ -56,7 +58,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<long> GetMonthlyDeleteCountAsync(CancellationToken cancellationToken = default)
+        public override async Task<long> GetMonthlyDeleteCountAsync(CancellationToken cancellationToken = default)
         {
             var key = GetCurrentMonthKey();
             var db = _redis.GetDatabase();
@@ -87,7 +89,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<long> IncrementMonthlyDeleteCountAsync(int count, CancellationToken cancellationToken = default)
+        public override async Task<long> IncrementMonthlyDeleteCountAsync(int count, CancellationToken cancellationToken = default)
         {
             if (count <= 0)
             {
@@ -125,7 +127,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<MediaDeletionBudgetReservation> ReserveAsync(
+        public override async Task<MediaDeletionBudgetReservation> ReserveAsync(
             int requestedDeletions,
             int budget,
             CancellationToken cancellationToken = default)
@@ -170,29 +172,9 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        /// <inheritdoc/>
-        public async Task<bool> WouldExceedBudgetAsync(int proposedDeletions, int budget, CancellationToken cancellationToken = default)
-        {
-            var currentCount = await GetMonthlyDeleteCountAsync(cancellationToken);
-            return (currentCount + proposedDeletions) > budget;
-        }
-
-        /// <inheritdoc/>
-        public async Task<long> GetRemainingBudgetAsync(int budget, CancellationToken cancellationToken = default)
-        {
-            var currentCount = await GetMonthlyDeleteCountAsync(cancellationToken);
-            var remaining = budget - currentCount;
-            return remaining > 0 ? remaining : 0;
-        }
-
-        private static string GetCurrentMonthKey()
-        {
-            return $"{KEY_PREFIX}{DateTime.UtcNow:yyyy-MM}";
-        }
-
         private void RecordFailure(Exception exception, string operation)
         {
-            LastFailureAtUtc = DateTime.UtcNow;
+            _lastFailureAtUtc = DateTime.UtcNow;
             _logger.LogError(
                 exception,
                 "Media delete budget Redis {Operation} failed; applying {FailureMode}",

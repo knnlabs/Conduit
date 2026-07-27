@@ -1,8 +1,8 @@
 // Import shared HTTP constants from Common package
-import { HTTP_HEADERS, CONTENT_TYPES, HTTP_STATUS as COMMON_HTTP_STATUS } from '@/lib/conduit-common';
+import { HTTP_HEADERS, CONTENT_TYPES, HTTP_STATUS } from '@/lib/conduit-common';
 
 // Re-export for backward compatibility
-export { HTTP_HEADERS, CONTENT_TYPES };
+export { HTTP_HEADERS, CONTENT_TYPES, HTTP_STATUS };
 
 /**
  * Client information constants.
@@ -36,13 +36,6 @@ export const CACHE_TTL = {
   MEDIUM: 300,       // 5 minutes
   LONG: 3600,        // 1 hour
   VERY_LONG: 86400,  // 24 hours
-} as const;
-
-// Re-export HTTP_STATUS with backward compatibility aliases
-export const HTTP_STATUS = {
-  ...COMMON_HTTP_STATUS,
-  RATE_LIMITED: COMMON_HTTP_STATUS.TOO_MANY_REQUESTS, // Alias for backward compatibility
-  INTERNAL_ERROR: COMMON_HTTP_STATUS.INTERNAL_SERVER_ERROR, // Alias for backward compatibility
 } as const;
 
 export const BUDGET_DURATION = {

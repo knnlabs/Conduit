@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using ConfigLoggingSanitizer = ConduitLLM.Configuration.Utilities.LoggingSanitizer;
 
 using Microsoft.AspNetCore.Http;
 
@@ -69,7 +70,7 @@ public static partial class RequestBodyCapture
 
             // LoggingSanitizer.S() strips control characters and enforces its own
             // max length (1000 chars), providing a final safety net
-            return LoggingSanitizer.S(redacted);
+            return ConfigLoggingSanitizer.S(redacted);
         }
         catch
         {

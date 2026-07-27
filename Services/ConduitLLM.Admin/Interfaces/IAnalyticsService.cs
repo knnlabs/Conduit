@@ -164,7 +164,7 @@ public class AnalyticsSummaryDto
     /// <summary>
     /// Comparison with previous period
     /// </summary>
-    public PeriodComparison? Comparison { get; set; }
+    public AnalyticsPeriodComparison? Comparison { get; set; }
 }
 
 /// <summary>
@@ -196,7 +196,7 @@ public class ModelUsageSummary
     /// Total output tokens generated
     /// </summary>
     public long OutputTokens { get; set; }
-    
+
     /// <summary>
     /// Average response time in milliseconds, or null when the aggregation does not measure it
     /// </summary>
@@ -273,6 +273,16 @@ public class DailyStatistics
     /// Total output tokens for this date
     /// </summary>
     public long OutputTokens { get; set; }
+
+    /// <summary>
+    /// Total cached input tokens for this date
+    /// </summary>
+    public long CachedInputTokens { get; set; }
+
+    /// <summary>
+    /// Total cached write tokens for this date
+    /// </summary>
+    public long CachedWriteTokens { get; set; }
     
     /// <summary>
     /// Average response time for this date
@@ -288,7 +298,7 @@ public class DailyStatistics
 /// <summary>
 /// Period comparison for trend analysis
 /// </summary>
-public class PeriodComparison
+public class AnalyticsPeriodComparison
 {
     /// <summary>
     /// Absolute change in cost compared to previous period

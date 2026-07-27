@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Models;
+using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Gateway.Models
 {
@@ -53,21 +54,16 @@ namespace ConduitLLM.Gateway.Models
     /// <summary>
     /// Response when creating an ephemeral key
     /// </summary>
-    public class EphemeralKeyResponse
+    public class EphemeralKeyResponse : EphemeralKeyResponseBase
     {
         /// <summary>
         /// The ephemeral key token to use for authentication
         /// </summary>
-        public string EphemeralKey { get; set; } = string.Empty;
-
-        /// <summary>
-        /// When the ephemeral key expires
-        /// </summary>
-        public DateTimeOffset ExpiresAt { get; set; }
-
-        /// <summary>
-        /// The TTL in seconds
-        /// </summary>
-        public int ExpiresInSeconds { get; set; }
+        [JsonPropertyName("ephemeral_key")]
+        public string EphemeralKey
+        {
+            get => Token;
+            set => Token = value;
+        }
     }
 }

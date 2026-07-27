@@ -2,6 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -137,8 +138,12 @@ namespace ConduitLLM.Core.Services
             try
             {
                 // Generate storage key
-                var extension = GetExtensionFromContentType(metadata.ContentType);
-                var storageKey = GenerateStorageKey(Guid.NewGuid().ToString(), MediaType.Video, extension);
+                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+                var storageKey = MediaStorageKeys.GenerateDatePartitioned(
+                    Guid.NewGuid().ToString(),
+                    MediaType.Video,
+                    extension,
+                    DateTime.UtcNow);
 
                 var presignRequest = new GetPreSignedUrlRequest
                 {

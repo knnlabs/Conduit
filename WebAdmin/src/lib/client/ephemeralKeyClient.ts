@@ -1,13 +1,10 @@
 /**
  * Client for managing ephemeral API keys for direct browser-to-Gateway API communication
  */
-
-interface EphemeralKeyResponse {
-  ephemeralKey: string;
-  expiresAt: string;
-  expiresInSeconds: number;
-  coreApiUrl: string; // Keep as coreApiUrl for backward compatibility with API response
-}
+import {
+  parseCriticalResponse,
+  webAdminEphemeralKeySchema,
+} from '@/lib/api-transport/critical-response-validation';
 
 interface EphemeralKeyCache {
   key: string;
@@ -46,7 +43,11 @@ class EphemeralKeyClient {
       throw new Error(`Failed to get ephemeral key: ${response.statusText}`);
     }
 
-    const data = await response.json() as EphemeralKeyResponse;
+    const data = parseCriticalResponse(
+      webAdminEphemeralKeySchema,
+      await response.json(),
+      'WebAdmin ephemeral-key issuance',
+    );
 
     return {
       key: data.ephemeralKey,

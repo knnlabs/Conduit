@@ -10,7 +10,7 @@ export const adminEphemeralKeySchema = z.object({
   expiresInSeconds: z.number().int().positive(),
 });
 
-export const webAdminEphemeralKeySchema = adminEphemeralKeySchema.extend({
+export const webAdminEphemeralMasterKeySchema = adminEphemeralKeySchema.extend({
   adminApiUrl: z.string().url(),
 });
 
@@ -23,6 +23,13 @@ export const gatewayEphemeralKeySchema = z.object({
   expiresAt: value.expires_at,
   expiresInSeconds: value.expires_in_seconds,
 }));
+
+export const webAdminEphemeralKeySchema = z.object({
+  ephemeralKey: nonEmpty,
+  expiresAt: dateTime,
+  expiresInSeconds: z.number().int().positive(),
+  coreApiUrl: z.string().url(),
+});
 
 export const virtualKeyIssueSchema = z.object({
   virtualKey: nonEmpty,

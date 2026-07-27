@@ -9,6 +9,7 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services.Strategies
@@ -42,7 +43,7 @@ namespace ConduitLLM.Core.Services.Strategies
         {
             // Extract URL from the media object
             string? url = ExtractUrl(mediaData);
-            if (string.IsNullOrEmpty(url) || !IsValidUrl(url))
+            if (string.IsNullOrEmpty(url) || !UrlBuilder.IsValidUrl(url))
             {
                 throw new InvalidOperationException($"Invalid or missing URL in media data");
             }
@@ -175,12 +176,6 @@ namespace ConduitLLM.Core.Services.Strategies
             var type = mediaData.GetType();
             var urlProperty = type.GetProperty("Url");
             return urlProperty?.GetValue(mediaData) as string;
-        }
-
-        private bool IsValidUrl(string url)
-        {
-            return url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                   url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
         }
 
         private HttpClient CreateHttpClient(MediaType mediaType)

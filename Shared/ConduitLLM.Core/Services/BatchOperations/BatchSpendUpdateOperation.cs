@@ -142,7 +142,7 @@ namespace ConduitLLM.Core.Services.BatchOperations
             };
         }
 
-        protected override RetryOptions RetryOptions => new()
+        protected override BatchRetryOptions RetryOptions => new()
         {
             MaxRetries = 3,
             InitialDelay = TimeSpan.FromSeconds(1),

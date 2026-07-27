@@ -1,4 +1,4 @@
-using ConduitLLM.Core.Extensions;
+using ConduitLLM.Configuration.Utilities;
 
 using FluentAssertions;
 

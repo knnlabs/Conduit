@@ -204,7 +204,10 @@ public sealed record SignalRHealthResponse(
     SignalRConnectionHealthDto Connections,
     SignalRQueueHealthDto Queue);
 
-/// <summary>Public file metadata.</summary>
+/// <summary>
+/// Public file metadata contract. Kept separate from the Core storage model so
+/// API requiredness and wire names remain stable as the internal model evolves.
+/// </summary>
 public sealed record FileMetadataResponse(
     [property: JsonPropertyName("file_name")] string? FileName,
     [property: JsonPropertyName("content_type")] string ContentType,

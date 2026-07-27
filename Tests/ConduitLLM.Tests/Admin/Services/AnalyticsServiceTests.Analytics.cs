@@ -40,7 +40,18 @@ namespace ConduitLLM.Tests.Admin.Services
 
             var dailyStats = new List<DailyStatisticsAggregation>
             {
-                new() { Date = DateTime.UtcNow.Date, RequestCount = 3, Cost = 0.07m, InputTokens = 350, OutputTokens = 150, AverageResponseTime = 933.33, ErrorCount = 1 }
+                new()
+                {
+                    Date = DateTime.UtcNow.Date,
+                    RequestCount = 3,
+                    Cost = 0.07m,
+                    InputTokens = 350,
+                    OutputTokens = 150,
+                    CachedInputTokens = 80,
+                    CachedWriteTokens = 20,
+                    AverageResponseTime = 933.33,
+                    ErrorCount = 1,
+                }
             };
 
             _mockRequestLogRepository
@@ -81,6 +92,9 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.True(result.SuccessRate > 66 && result.SuccessRate < 67); // 2/3 success
             Assert.Equal(2, result.TopModels.Count);
             Assert.Equal(2, result.TopVirtualKeys.Count);
+            var daily = Assert.Single(result.DailyStats);
+            Assert.Equal(80, daily.CachedInputTokens);
+            Assert.Equal(20, daily.CachedWriteTokens);
         }
 
         #endregion

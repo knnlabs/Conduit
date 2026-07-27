@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.RateLimiting;
 
@@ -118,7 +119,7 @@ namespace ConduitLLM.Gateway.Middleware
                 catch (Exception ex)
                 {
                     _logger.LogDebug(ex, "Rate limit check threw for virtual key {KeyHashPrefix}",
-                        SafeKeyPrefix(keyHash));
+                        SpanHelper.MaskSecret(keyHash));
 
                     if (_failurePolicy.ShouldReject("request-limits", ex.Message))
                     {
@@ -168,7 +169,7 @@ namespace ConduitLLM.Gateway.Middleware
             catch (Exception ex)
             {
                 _logger.LogDebug(ex, "Concurrency check threw for virtual key {KeyHashPrefix}",
-                    SafeKeyPrefix(keyHash));
+                    SpanHelper.MaskSecret(keyHash));
 
                 if (_failurePolicy.ShouldReject(ConcurrencyRateLimitService.ScopeName, ex.Message))
                 {
@@ -225,7 +226,7 @@ namespace ConduitLLM.Gateway.Middleware
                 {
                     _logger.LogWarning(ex,
                         "Failed to release the concurrency slot for virtual key {KeyHashPrefix}; it will expire on its own",
-                        SafeKeyPrefix(keyHash));
+                        SpanHelper.MaskSecret(keyHash));
                 }
             }
         }
@@ -270,10 +271,6 @@ namespace ConduitLLM.Gateway.Middleware
                 message);
         }
 
-        private static string SafeKeyPrefix(string keyHash)
-        {
-            return keyHash.Length <= 8 ? keyHash : keyHash[..8];
-        }
     }
 
     public static class VirtualKeyRateLimitMiddlewareExtensions
