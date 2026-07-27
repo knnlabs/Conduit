@@ -2,6 +2,8 @@ import {
   buildMessageContent,
   GatewayClient,
   ModelCapability,
+  ConflictError,
+  NotFoundError,
   RateLimitError,
   type ChatAttachment,
 } from "..";
@@ -158,6 +160,44 @@ describe("GatewayClient", () => {
       count: 0,
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    [404, NotFoundError],
+    [409, ConflictError],
+  ])("maps Gateway status %i through the common hierarchy", async (status, ErrorType) => {
+    jest.spyOn(global, "fetch").mockResolvedValue(
+      jsonResponse({ error: { message: "Mapped error" } }, status),
+    );
+    const client = new GatewayClient({
+      apiKey: "key",
+      baseURL: "https://gateway.test",
+      retries: 0,
+    });
+
+    await expect(client.discovery.getModels()).rejects.toBeInstanceOf(ErrorType);
+  });
+
+  it("preserves rate-limit scope from Gateway responses", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValue({
+      ...jsonResponse({ error: { message: "Busy model" } }, 429),
+      headers: new Headers([
+        ["retry-after", "3"],
+        ["x-ratelimit-scope", "model:sora-2:rpm"],
+      ]),
+    } as Response);
+    const client = new GatewayClient({
+      apiKey: "key",
+      baseURL: "https://gateway.test",
+      retries: 0,
+    });
+
+    await expect(client.discovery.getModels()).rejects.toEqual(
+      expect.objectContaining({
+        retryAfter: 3,
+        scope: "model:sora-2:rpm",
+      }),
+    );
   });
 
   it("builds ordered mixed-modality content without rewriting remote URLs", () => {

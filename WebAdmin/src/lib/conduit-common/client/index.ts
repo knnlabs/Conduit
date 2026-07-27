@@ -3,7 +3,6 @@ export type {
   Logger,
   CacheProvider,
   RetryConfig,
-  HttpError,
   RequestConfigInfo,
   ResponseInfo,
   ClientLifecycleCallbacks,

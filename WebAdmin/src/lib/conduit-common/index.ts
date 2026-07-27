@@ -17,9 +17,6 @@ export * from "./http";
 // Client configuration types
 export * from "./client";
 
-// Value-level export of the HttpError class (the client barrel re-exports it type-only)
-export { HttpError } from "./client/types";
-
 // Formatting utilities
 export * from "./formatting";
 

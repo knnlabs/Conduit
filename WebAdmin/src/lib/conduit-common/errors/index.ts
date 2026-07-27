@@ -355,7 +355,9 @@ export function isErrorLike(error: unknown): error is {
 }
 
 // Next.js-specific utilities for error serialization across server/client boundaries
-export function serializeError(error: unknown): Record<string, unknown> {
+export function serializeConduitError(
+  error: unknown,
+): Record<string, unknown> {
   if (isConduitError(error)) {
     return error.toSerializable();
   }
@@ -454,7 +456,7 @@ export function getErrorStatusCode(error: unknown): number | undefined {
  * Handle API errors and convert them to appropriate ConduitError types
  * This function is primarily used by the Admin SDK
  */
-export function handleApiError(
+export function throwApiError(
   error: unknown,
   endpoint?: string,
   method?: string,
@@ -468,7 +470,12 @@ export function handleApiError(
     const { status, data } = error.response;
     // Support both standard error format and ASP.NET Core ProblemDetails format
     const errorData = data as {
-      error?: string;
+      error?: string | {
+        message?: string;
+        code?: string;
+        type?: string;
+        param?: string;
+      };
       message?: string;
       details?: unknown;
       // ProblemDetails fields
@@ -480,9 +487,13 @@ export function handleApiError(
     } | null;
 
     // Extract message from various possible fields, preferring detail for ProblemDetails
+    const nestedErrorMessage =
+      typeof errorData?.error === "string"
+        ? errorData.error
+        : errorData?.error?.message;
     const baseMessage =
       errorData?.detail ||
-      errorData?.error ||
+      nestedErrorMessage ||
       errorData?.message ||
       errorData?.title ||
       error.message;

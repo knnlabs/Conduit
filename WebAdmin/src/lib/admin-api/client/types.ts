@@ -8,7 +8,6 @@ import type {
 } from '@/lib/conduit-common';
 
 // Re-export shared client types so the Admin SDK public surface stays unchanged
-export { HttpError } from '@/lib/conduit-common';
 export type { Logger, CacheProvider, RequestConfigInfo };
 
 // Admin SDK specific RetryConfig (uses fixed delay)

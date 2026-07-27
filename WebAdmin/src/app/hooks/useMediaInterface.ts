@@ -11,7 +11,7 @@ interface UseMediaInterfaceOptions {
   /** Callback when model selection changes */
   onModelChange: (model: string) => void;
   /** Callback when an error occurs */
-  onError: (error: string) => void;
+  onError: (error: Error | string) => void;
   /** Prefix for parameter persistence key */
   parameterPersistPrefix: 'image' | 'video';
 }
@@ -67,7 +67,7 @@ export function useMediaInterface(options: UseMediaInterfaceOptions): UseMediaIn
   // Handle models loading error
   useEffect(() => {
     if (modelsError) {
-      onError(`Failed to load models: ${modelsError.message}`);
+      onError(modelsError);
     }
   }, [modelsError, onError]);
 

@@ -23,7 +23,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Safely extracts details from an HttpError
+ * Safely extracts details from a structured HTTP error
  */
 export function getErrorDetails(error: unknown): Record<string, unknown> {
   if (isHttpError(error) && error.response.data) {
@@ -37,8 +37,7 @@ export function getErrorDetails(error: unknown): Record<string, unknown> {
 }
 
 /**
- * Safely extracts context from an HttpError
- * Since HttpError doesn't have a context property, we extract from response data
+ * Safely extracts context from structured HTTP response data.
  */
 export function getErrorContext(error: unknown): Record<string, unknown> {
   if (isHttpError(error) && error.response.data) {

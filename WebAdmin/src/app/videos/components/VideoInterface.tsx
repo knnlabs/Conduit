@@ -3,7 +3,6 @@
 import { Stack, Paper, LoadingOverlay, Text } from '@mantine/core';
 import { useVideoStore } from '../hooks/useVideoStore';
 import { ErrorDisplay } from '@/components/common/ErrorDisplay';
-import { createEnhancedError } from '@/lib/utils/error-enhancement';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useMediaInterface } from '@/app/hooks/useMediaInterface';
 import { ModelCapability } from '@/lib/gateway-api';
@@ -104,7 +103,7 @@ export default function VideoInterface() {
       {/* Error Display */}
       {error && (
         <ErrorDisplay 
-          error={createEnhancedError(error)}
+          error={error}
           variant="inline"
           showDetails={true}
           onRetry={() => setError(null)}

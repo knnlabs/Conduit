@@ -11,7 +11,7 @@ import {
   type ContractOperation,
   type RetryStrategy,
   RetryStrategyType,
-  handleApiError,
+  throwApiError,
 } from "@/lib/conduit-common";
 import type { paths } from "../generated/admin-api";
 import type {
@@ -115,7 +115,7 @@ export abstract class FetchBaseApiClient extends ContractApiClient<paths> {
       data = null;
     }
 
-    return handleApiError({
+    return throwApiError({
       response: { status: response.status, data, headers },
       config: { url: response.url, method: "unknown" },
       isHttpError: false,
