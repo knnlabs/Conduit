@@ -258,15 +258,6 @@ namespace ConduitLLM.Core.Decorators
         }
 
         /// <summary>
-        /// Gets the capabilities supported by the provider.
-        /// </summary>
-        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        {
-            // No performance tracking needed for capabilities
-            return _innerClient.GetCapabilitiesAsync(modelId);
-        }
-
-        /// <summary>
         /// Verifies authentication by delegating to the inner client if it supports IAuthenticationVerifiable.
         /// </summary>
         public Task<AuthenticationResult> VerifyAuthenticationAsync(

@@ -72,9 +72,6 @@ public class ContextAwareLLMClientTests
             CancellationToken cancellationToken = default)
             => throw new NotImplementedException();
 
-        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-            => Task.FromResult(new ProviderCapabilities());
-
         public Task<AuthenticationResult> VerifyAuthenticationAsync(
             string? apiKey = null,
             string? baseUrl = null,

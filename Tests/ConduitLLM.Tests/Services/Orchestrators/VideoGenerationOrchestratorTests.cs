@@ -46,8 +46,6 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             => throw new NotImplementedException();
         public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
             => Task.FromResult(new List<string>());
-        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-            => Task.FromResult(new ProviderCapabilities());
         public void Dispose() { }
     }
     

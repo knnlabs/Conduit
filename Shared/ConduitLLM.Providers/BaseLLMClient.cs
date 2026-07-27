@@ -303,31 +303,6 @@ namespace ConduitLLM.Providers
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets the capabilities for this provider. Override in derived classes to provide 
-        /// provider-specific capabilities.
-        /// </summary>
-        /// <param name="modelId">Optional specific model ID to get capabilities for.</param>
-        /// <returns>The provider capabilities.</returns>
-        public virtual Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        {
-            // Return basic capabilities by default
-            return Task.FromResult(new ProviderCapabilities
-            {
-                Provider = ProviderName,
-                ModelId = modelId ?? ProviderModelId,
-                ChatParameters = new ChatParameterSupport
-                {
-                    Temperature = true,
-                    MaxTokens = true
-                },
-                Features = new FeatureSupport
-                {
-                    Streaming = true
-                }
-            });
-        }
-
-        /// <summary>
         /// Reads error content from an HTTP response.
         /// </summary>
         /// <param name="response">The HTTP response.</param>

@@ -258,5 +258,4 @@ internal sealed class RoutedChatClient : ILLMClient
     public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default) => _routes[0].Client.ListModelsAsync(apiKey, cancellationToken);
     public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default) => _routes[0].Client.CreateEmbeddingAsync(request, apiKey, cancellationToken);
     public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default) => _routes[0].Client.CreateImageAsync(request, apiKey, cancellationToken);
-    public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null) => _routes[0].Client.GetCapabilitiesAsync(modelId);
 }

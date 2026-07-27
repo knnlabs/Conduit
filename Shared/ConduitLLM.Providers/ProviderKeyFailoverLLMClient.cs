@@ -147,9 +147,6 @@ internal sealed class ProviderKeyFailoverLLMClient :
             client => InvokeVideoAsync(client, request, apiKey, cancellationToken),
             allowFailover: string.IsNullOrWhiteSpace(apiKey));
 
-    public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        => ExecuteAsync(client => client.GetCapabilitiesAsync(modelId), allowFailover: true);
-
     public Task<AuthenticationResult> VerifyAuthenticationAsync(
         string? apiKey = null,
         string? baseUrl = null,

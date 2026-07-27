@@ -1,7 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Providers.Authentication;
 using ConduitLLM.Providers.Configuration;
 
@@ -34,7 +33,6 @@ namespace ConduitLLM.Providers.OpenAI
         }
 
         private readonly bool _isAzure;
-        private readonly IModelCapabilityService? _capabilityService;
 
         /// <summary>
         /// Gets the authentication strategy for the configured provider type.
@@ -59,7 +57,6 @@ namespace ConduitLLM.Providers.OpenAI
         /// <param name="providerModelId">The specific model ID to use with this provider. For Azure, this is the deployment name.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
-        /// <param name="capabilityService">Optional service for model capability detection and validation.</param>
         /// <param name="providerName">Optional provider name override. If not specified, uses provider.ProviderName or defaults to "openai".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing for non-Azure providers.</exception>
@@ -69,7 +66,6 @@ namespace ConduitLLM.Providers.OpenAI
             string providerModelId,
             ILogger<OpenAIClient> logger,
             IHttpClientFactory httpClientFactory,
-            IModelCapabilityService? capabilityService = null,
             string? providerName = null)
             : base(
                 provider,
@@ -81,7 +77,6 @@ namespace ConduitLLM.Providers.OpenAI
                 DetermineBaseUrl(provider, primaryKeyCredential))
         {
             _isAzure = provider.ProviderType == ProviderType.Azure;
-            _capabilityService = capabilityService;
         }
 
         /// <summary>

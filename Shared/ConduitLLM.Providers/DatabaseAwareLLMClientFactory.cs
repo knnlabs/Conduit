@@ -37,7 +37,6 @@ namespace ConduitLLM.Providers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DatabaseAwareLLMClientFactory> _logger;
         private readonly IPerformanceMetricsService? _performanceMetricsService;
-        private readonly IModelCapabilityService? _capabilityService;
         private readonly IServiceProvider _serviceProvider;
         private readonly IDbContextFactory<ConduitDbContext>? _dbContextFactory;
         private readonly IDistributedCache? _distributedCache;
@@ -53,7 +52,6 @@ namespace ConduitLLM.Providers
             ILogger<DatabaseAwareLLMClientFactory> logger,
             IServiceProvider serviceProvider,
             IPerformanceMetricsService? performanceMetricsService = null,
-            IModelCapabilityService? capabilityService = null,
             IDbContextFactory<ConduitDbContext>? dbContextFactory = null,
             IDistributedCache? distributedCache = null)
         {
@@ -64,7 +62,6 @@ namespace ConduitLLM.Providers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _performanceMetricsService = performanceMetricsService;
-            _capabilityService = capabilityService;
             _dbContextFactory = dbContextFactory;
             _distributedCache = distributedCache;
         }
@@ -415,7 +412,6 @@ namespace ConduitLLM.Providers
             {
                 LoggerFactory = _loggerFactory,
                 HttpClientFactory = _httpClientFactory,
-                CapabilityService = _capabilityService,
                 ProviderOptionsJson = providerOptionsJson
             };
 
