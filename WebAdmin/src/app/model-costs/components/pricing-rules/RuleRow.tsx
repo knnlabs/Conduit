@@ -24,7 +24,7 @@ import {
 import type { PricingRule, PricingValidationError } from '@/lib/admin-api';
 import { ConditionBuilder } from './ConditionBuilder';
 
-interface ParameterOption {
+export interface ParameterOption {
   key: string;
   label: string;
   type: 'string' | 'number' | 'boolean' | 'enum';

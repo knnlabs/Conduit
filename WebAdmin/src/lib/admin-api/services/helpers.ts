@@ -66,7 +66,7 @@ export function createGetByStringId<TResponse>(endpoint: (id: string) => string)
  * ```typescript
  * export class FetchVirtualKeyService {
  *   constructor(private readonly client: FetchBaseApiClient) {}
- *   list = createListMethod<PaginatedResponse<VirtualKeyDto>>(ENDPOINTS.VIRTUAL_KEYS.LIST);
+ *   list = createListMethod<PagedResult<VirtualKeyDto>>(ENDPOINTS.VIRTUAL_KEYS.LIST);
  * }
  * ```
  */

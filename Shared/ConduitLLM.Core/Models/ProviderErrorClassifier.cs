@@ -61,7 +61,12 @@ public static class ProviderErrorClassifier
             or ProviderErrorType.InsufficientBalance
             or ProviderErrorType.AccessForbidden;
 
-    private static bool IsBalanceResponse(string? responseDetails)
+    /// <summary>
+    /// Returns true when the response details carry a billing/quota hint. Used to refine
+    /// a 403 into <see cref="ProviderErrorType.InsufficientBalance"/>, and by callers that
+    /// have no HTTP status at all (e.g. balance reprobes) as a last-resort signal.
+    /// </summary>
+    public static bool IsBalanceResponse(string? responseDetails)
     {
         if (string.IsNullOrWhiteSpace(responseDetails))
         {

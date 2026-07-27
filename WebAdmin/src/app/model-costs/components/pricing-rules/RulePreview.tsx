@@ -20,13 +20,7 @@ import {
 } from '@mantine/core';
 import { IconPlayerPlay, IconCode, IconTestPipe, IconCurrencyDollar, IconCheck, IconX } from '@tabler/icons-react';
 import type { PricingRulesConfig, PricingRule } from '@/lib/admin-api';
-
-interface ParameterOption {
-  key: string;
-  label: string;
-  type: 'string' | 'number' | 'boolean' | 'enum';
-  options?: string[];
-}
+import type { ParameterOption } from './RuleRow';
 
 interface RulePreviewProps {
   config: PricingRulesConfig;

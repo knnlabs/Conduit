@@ -122,7 +122,7 @@ namespace ConduitLLM.Gateway.Middleware
 
                     if (_failurePolicy.ShouldReject("request-limits", ex.Message))
                     {
-                        await WriteDegradedResponseAsync(context, "request-limits");
+                        await RateLimitResponse.WriteDegradedAsync(context, "request-limits");
                         return;
                     }
 
@@ -135,7 +135,7 @@ namespace ConduitLLM.Gateway.Middleware
                         string.IsNullOrEmpty(result.LimitType) ? "request-limits" : result.LimitType,
                         "the rate limit store was unreachable"))
                 {
-                    await WriteDegradedResponseAsync(context, "request-limits");
+                    await RateLimitResponse.WriteDegradedAsync(context, "request-limits");
                     return;
                 }
 
@@ -172,7 +172,7 @@ namespace ConduitLLM.Gateway.Middleware
 
                 if (_failurePolicy.ShouldReject(ConcurrencyRateLimitService.ScopeName, ex.Message))
                 {
-                    await WriteDegradedResponseAsync(context, ConcurrencyRateLimitService.ScopeName);
+                    await RateLimitResponse.WriteDegradedAsync(context, ConcurrencyRateLimitService.ScopeName);
                     return;
                 }
 
@@ -183,7 +183,7 @@ namespace ConduitLLM.Gateway.Middleware
             if (decision is { Degraded: true } &&
                 _failurePolicy.ShouldReject(decision.Scope, "the rate limit store was unreachable"))
             {
-                await WriteDegradedResponseAsync(context, decision.Scope);
+                await RateLimitResponse.WriteDegradedAsync(context, decision.Scope);
                 return;
             }
 
@@ -250,42 +250,18 @@ namespace ConduitLLM.Gateway.Middleware
                 context, result.Limit, result.RequestsRemaining, result.ResetsAt, result.LimitType);
         }
 
-        /// <summary>
-        /// Refuses a request whose limits could not be evaluated, under a fail-closed policy.
-        /// </summary>
-        /// <remarks>
-        /// 503 rather than 429: the caller has not exceeded anything, the gateway simply cannot
-        /// tell. Conflating the two would have clients back off against a quota they may be
-        /// nowhere near.
-        /// </remarks>
-        private static Task WriteDegradedResponseAsync(HttpContext context, string scope)
-        {
-            context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
-            context.Response.Headers["Retry-After"] = "5";
-            context.Response.Headers["X-RateLimit-Scope"] = scope;
-            context.Response.ContentType = "application/json";
-
-            return System.Text.Json.JsonSerializer.SerializeAsync(
-                context.Response.Body,
-                new ConduitLLM.Core.Models.OpenAIErrorResponse
-                {
-                    Error = new ConduitLLM.Core.Models.OpenAIError
-                    {
-                        Message = "Rate limits cannot be verified right now and this deployment is configured to fail closed. Retry shortly.",
-                        Type = "service_unavailable",
-                        Code = "rate_limit_unavailable"
-                    }
-                });
-        }
-
         private static Task WriteRateLimitedResponseAsync(HttpContext context, RateLimitCheckResult result)
         {
-            var retryAfterSeconds = RateLimitResponse.RetryAfterSeconds(result.ResetsAt);
             // A saturation shed is not the caller exceeding their own limit: the group is busy
-            // and this key's tier only reaches part of the group ceiling. Say so.
-            var message = RateLimitSaturationPolicy.IsSaturationScope(result.LimitType)
-                ? $"The key's group is saturated and this key's priority tier is admitted to only {result.Limit} of the group's requests. Retry after {retryAfterSeconds} seconds."
-                : $"{result.LimitType} rate limit exceeded ({result.Limit} requests). Retry after {retryAfterSeconds} seconds.";
+            // and this key's tier only reaches part of the group ceiling. Say so. Every other
+            // scope uses the shared default so the middleware and filter 429s stay identical.
+            string? message = null;
+            if (RateLimitSaturationPolicy.IsSaturationScope(result.LimitType))
+            {
+                var retryAfterSeconds = RateLimitResponse.RetryAfterSeconds(result.ResetsAt);
+                message = $"The key's group is saturated and this key's priority tier is admitted to only {result.Limit} of the group's requests. Retry after {retryAfterSeconds} seconds.";
+            }
+
             return RateLimitResponse.WriteAsync(
                 context,
                 result.LimitType,

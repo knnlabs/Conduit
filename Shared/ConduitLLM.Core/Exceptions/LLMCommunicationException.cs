@@ -26,4 +26,30 @@ public class LLMCommunicationException : ConduitException
         StatusCode = statusCode;
         ResponseBody = responseBody;
     }
+
+    /// <summary>
+    /// Walks the exception chain and returns the most informative
+    /// <see cref="LLMCommunicationException"/>: the outermost one that carries a
+    /// <see cref="StatusCode"/>, falling back to the outermost one without.
+    /// Provider clients routinely wrap a status-bearing instance inside a status-less
+    /// one, so callers that stop at the first match misclassify the error.
+    /// </summary>
+    public static LLMCommunicationException? FindWithStatus(Exception exception)
+    {
+        LLMCommunicationException? withoutStatus = null;
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is LLMCommunicationException communicationException)
+            {
+                if (communicationException.StatusCode.HasValue)
+                {
+                    return communicationException;
+                }
+
+                withoutStatus ??= communicationException;
+            }
+        }
+
+        return withoutStatus;
+    }
 }

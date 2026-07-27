@@ -1,36 +1,22 @@
-import { 
-  MediaData, 
-  MediaMetadata, 
+import {
+  MediaData,
+  MediaMetadata,
   MediaUsage,
-  RetryHistoryEntry,
   ResponseFormat,
-  MediaGenerationStatus 
+  MediaGenerationStatus
 } from '@/app/types/media';
+import type { MediaTask, MediaSettings } from '@/app/hooks/createMediaStore';
 import { VIDEO_POLLING_CONFIG, RETRY_CONFIG } from '@/app/config/mediaGeneration';
 
 // Re-export for components that use ErrorResponse
 export type { ErrorResponse } from '@/app/types/media';
 
-export interface VideoSettings {
-  model: string;
-  [key: string]: unknown; // Allow additional properties
-}
+// Same shape as the shared MediaSettings
+export type VideoSettings = MediaSettings;
 
-export interface VideoTask {
-  id: string;
-  prompt: string;
-  status: MediaGenerationStatus;
-  progress: number;
-  message?: string;
-  estimatedTimeToCompletion?: number;
-  createdAt: string;
-  updatedAt: string;
-  result?: VideoGenerationResult;
-  error?: string;
+// Shared media task shape (includes lastRetryAt) plus video settings
+export interface VideoTask extends MediaTask<VideoGenerationResult> {
   settings: VideoSettings;
-  retryCount: number;
-  lastRetryAt?: string;
-  retryHistory: Array<RetryHistoryEntry>;
 }
 
 // Local video types to avoid broken SDK imports

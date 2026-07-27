@@ -13,42 +13,16 @@ import type {
 } from '../models/ipFilter';
 import { ValidationError } from '../utils/errors';
 import { validateRequired, validateStringLength, validateEnum } from '../utils/validation';
-
-function isValidIpv4(ip: string): boolean {
-  const parts = ip.split('.');
-  if (parts.length !== 4) return false;
-  return parts.every((part) => {
-    const num = parseInt(part, 10);
-    return !isNaN(num) && num >= 0 && num <= 255 && part === num.toString();
-  });
-}
-
-function isValidIpv6(ip: string): boolean {
-  if (ip.includes('::ffff:')) return isValidIpv4(ip.split('::ffff:')[1]);
-  const ipv6Regex = /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|::)$/;
-  return ipv6Regex.test(ip);
-}
-
-function isValidIp(ip: string): boolean {
-  return isValidIpv4(ip) || isValidIpv6(ip);
-}
+import { getIpValidationError, getIpOrCidrValidationError } from '@/lib/utils/ip-validation';
 
 function validateIpAddressOrCidr(value: string): void {
-  if (!value.includes('/')) {
-    if (!isValidIp(value)) throw new ValidationError('Invalid IP address format (e.g., 192.168.1.1 or 2001:db8::1)');
-    return;
-  }
-  const [ip, prefixStr] = value.split('/');
-  const prefix = parseInt(prefixStr, 10);
-  if (!isValidIp(ip)) throw new ValidationError('Invalid IP address format in CIDR notation (e.g., 192.168.1.0/24 or 2001:db8::/32)');
-  if (isValidIpv4(ip) && (isNaN(prefix) || prefix < 0 || prefix > 32))
-    throw new ValidationError('IPv4 CIDR prefix must be between 0 and 32');
-  if (!isValidIpv4(ip) && (isNaN(prefix) || prefix < 0 || prefix > 128))
-    throw new ValidationError('IPv6 CIDR prefix must be between 0 and 128');
+  const error = getIpOrCidrValidationError(value);
+  if (error) throw new ValidationError(error);
 }
 
 function validateIpAddress(value: string): void {
-  if (!isValidIp(value)) throw new ValidationError('Invalid IP address format');
+  const error = getIpValidationError(value);
+  if (error) throw new ValidationError(error);
 }
 
 function validateCreateIpFilterRequest(request: CreateIpFilterDto): void {

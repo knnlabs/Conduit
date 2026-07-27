@@ -119,16 +119,6 @@ export function isDefined<T>(value: T | null | undefined): value is T {
   return value !== null && value !== undefined;
 }
 
-/**
- * Type guard for non-empty string
- */
-export function isNonEmptyString(value: unknown): value is string {
-  return typeof value === 'string' && value.length > 0;
-}
-
-/**
- * Type guard for positive number
- */
-export function isPositiveNumber(value: unknown): value is number {
-  return typeof value === 'number' && value > 0 && isFinite(value);
-}
+// Shared type guards — unified implementations live in conduit-common
+// (non-empty after trimming; positive AND finite).
+export { isNonEmptyString, isPositiveNumber } from '@/lib/conduit-common/validation/type-guards';

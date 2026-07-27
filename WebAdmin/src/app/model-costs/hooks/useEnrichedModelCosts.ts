@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import type { ModelCostDto, ModelProviderMappingDto } from '@/lib/admin-api';
+import type { ModelCostDto } from '@/lib/admin-api';
+import type { ExtendedModelProviderMappingDto } from '../types/modelCost';
 
 interface ProviderInfo {
   providerId: number;
@@ -10,12 +11,6 @@ interface ProviderInfo {
 
 export interface EnrichedModelCost extends ModelCostDto {
   providers: ProviderInfo[];
-}
-
-// Extended type to include additional fields from API response
-interface ExtendedModelProviderMappingDto extends ModelProviderMappingDto {
-  providerName?: string;
-  providerTypeName?: string;
 }
 
 export function useEnrichedModelCosts(modelCosts: ModelCostDto[] | undefined) {

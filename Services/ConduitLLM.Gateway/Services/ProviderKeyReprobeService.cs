@@ -247,40 +247,19 @@ public sealed class ProviderKeyReprobeService : BackgroundService
 
     internal static ProviderErrorType ClassifyProbeFailure(Exception exception)
     {
-        var communicationException = FindCommunicationException(exception);
-        if (communicationException?.StatusCode == HttpStatusCode.Unauthorized)
-        {
-            return ProviderErrorType.InvalidApiKey;
-        }
-
-        if (communicationException?.StatusCode == HttpStatusCode.PaymentRequired)
-        {
-            return ProviderErrorType.InsufficientBalance;
-        }
-
+        var communicationException = LLMCommunicationException.FindWithStatus(exception);
         var details = $"{communicationException?.ResponseBody} {exception.Message}";
-        return details.Contains("balance", StringComparison.OrdinalIgnoreCase) ||
-               details.Contains("quota", StringComparison.OrdinalIgnoreCase) ||
-               details.Contains("payment required", StringComparison.OrdinalIgnoreCase)
+
+        var classified = ProviderErrorClassifier.Classify(communicationException?.StatusCode, details);
+        if (classified != ProviderErrorType.Unknown)
+        {
+            return classified;
+        }
+
+        // No usable status anywhere in the chain — fall back to the balance keywords so a
+        // still-unfunded key keeps its InsufficientBalance classification during reprobe.
+        return ProviderErrorClassifier.IsBalanceResponse(details)
             ? ProviderErrorType.InsufficientBalance
             : ProviderErrorType.Unknown;
-    }
-
-    private static LLMCommunicationException? FindCommunicationException(Exception exception)
-    {
-        for (var current = exception; current != null; current = current.InnerException!)
-        {
-            if (current is LLMCommunicationException communicationException)
-            {
-                return communicationException;
-            }
-
-            if (current.InnerException == null)
-            {
-                break;
-            }
-        }
-
-        return null;
     }
 }

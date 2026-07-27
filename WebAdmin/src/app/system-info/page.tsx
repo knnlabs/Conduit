@@ -32,6 +32,7 @@ import type { SystemInfoDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
 import { getHealthColor } from '@/lib/utils/badge-helpers';
+import { downloadBlob } from '@/lib/utils/export';
 import { buildDiagnosticBundle } from './diagnosticBundle';
 
 type ServiceHealthResponse = components['schemas']['ServiceHealthResponse'];
@@ -200,12 +201,7 @@ export default function SystemInfoPage() {
       [JSON.stringify(buildDiagnosticBundle(systemInfo, health), null, 2)],
       { type: 'application/json' },
     );
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `conduit-diagnostics-${new Date().toISOString()}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(blob, `conduit-diagnostics-${new Date().toISOString()}.json`);
     notify.success('Redacted diagnostics bundle exported');
   };
 

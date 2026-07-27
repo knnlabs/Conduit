@@ -5,7 +5,7 @@
 
 import { getErrorStatusCode, getErrorMessage, isHttpError } from './error-utils';
 
-export type ErrorType = 'network' | 'auth' | 'timeout' | 'validation' | 'permission' | 'notFound' | 'server' | 'payment' | 'generic';
+export type ErrorType = 'network' | 'auth' | 'timeout' | 'validation' | 'permission' | 'notFound' | 'server' | 'payment' | 'rateLimit' | 'generic';
 export type RecoveryAction = 'retry' | 'login' | 'reload' | 'navigate' | 'none';
 
 export interface ErrorClassification {
@@ -29,6 +29,7 @@ export class ErrorClassifier {
       if (status === 403) return 'permission';
       if (status === 404) return 'notFound';
       if (status === 408 || status === 504) return 'timeout';
+      if (status === 429) return 'rateLimit';
       if (status >= 400 && status < 500) return 'validation';
       if (status >= 500) return 'server';
     }
@@ -58,7 +59,12 @@ export class ErrorClassifier {
     if (errorMessage.includes('timeout') || errorMessage.includes('408') || errorMessage.includes('504') || errorName.includes('timeout')) {
       return 'timeout';
     }
-    
+
+    if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests') || errorMessage.includes('429')) {
+      return 'rateLimit';
+    }
+
+
     if (errorMessage.includes('validation') || errorMessage.includes('invalid') || errorMessage.includes('400')) {
       return 'validation';
     }
@@ -79,7 +85,7 @@ export class ErrorClassifier {
    */
   static isRecoverable(error: unknown): boolean {
     const classification = this.classify(error);
-    const recoverableTypes: ErrorType[] = ['network', 'timeout', 'server'];
+    const recoverableTypes: ErrorType[] = ['network', 'timeout', 'server', 'rateLimit'];
     return recoverableTypes.includes(classification);
   }
 
@@ -107,6 +113,7 @@ export class ErrorClassifier {
       notFound: 'The requested resource was not found.',
       server: 'Server error occurred. Please try again later.',
       payment: 'Insufficient credits or API key balance. Please check your provider configuration and ensure you have sufficient credits.',
+      rateLimit: 'Rate limit exceeded. Please wait a moment and try again.',
       generic: originalMessage || fallback,
     };
     
@@ -128,6 +135,7 @@ export class ErrorClassifier {
       notFound: 'navigate',
       server: 'retry',
       payment: 'navigate',
+      rateLimit: 'retry',
       generic: 'reload',
     };
     
@@ -149,6 +157,7 @@ export class ErrorClassifier {
       notFound: 'medium',
       server: 'high',
       payment: 'high',
+      rateLimit: 'medium',
       generic: 'medium',
     };
     

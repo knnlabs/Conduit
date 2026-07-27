@@ -167,11 +167,12 @@ describe('Type Guards', () => {
   describe('isNonEmptyString', () => {
     it('should return true for non-empty strings', () => {
       expect(isNonEmptyString('hello')).toBe(true);
-      expect(isNonEmptyString(' ')).toBe(true);
+      expect(isNonEmptyString(' hello ')).toBe(true);
     });
 
     it('should return false for empty strings and non-strings', () => {
       expect(isNonEmptyString('')).toBe(false);
+      expect(isNonEmptyString(' ')).toBe(false); // whitespace-only counts as empty (trimmed)
       expect(isNonEmptyString(null)).toBe(false);
       expect(isNonEmptyString(undefined)).toBe(false);
       expect(isNonEmptyString(123)).toBe(false);

@@ -63,33 +63,18 @@ public sealed class TokenRateLimitFilter : IEndpointFilter
         if (decision.Degraded &&
             _failurePolicy.ShouldReject(decision.Scope, "the rate limit store was unreachable"))
         {
-            http.Response.Headers["Retry-After"] = "5";
-            http.Response.Headers["X-RateLimit-Scope"] = decision.Scope;
-            return Results.Json(
-                new ConduitLLM.Core.Models.OpenAIErrorResponse
-                {
-                    Error = new ConduitLLM.Core.Models.OpenAIError
-                    {
-                        Message = "Rate limits cannot be verified right now and this deployment is configured to fail closed. Retry shortly.",
-                        Type = "service_unavailable",
-                        Code = "rate_limit_unavailable"
-                    }
-                },
-                statusCode: StatusCodes.Status503ServiceUnavailable);
+            return RateLimitResponse.DegradedResult(http, decision.Scope);
         }
 
         RateLimitResponse.SetHeaders(http, decision.Limit, decision.Remaining, decision.ResetsAt, decision.Scope);
 
         if (!decision.IsAllowed)
         {
-            var retryAfter = RateLimitResponse.RetryAfterSeconds(decision.ResetsAt);
             return RateLimitResponse.AsResult(
                 http,
                 decision.Scope,
                 decision.Limit,
-                decision.ResetsAt,
-                $"Rate limit exceeded for {decision.Scope} ({decision.Limit} per minute). " +
-                $"Retry after {retryAfter} seconds.");
+                decision.ResetsAt);
         }
 
         return await next(context);

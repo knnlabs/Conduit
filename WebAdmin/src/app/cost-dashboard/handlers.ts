@@ -1,6 +1,7 @@
 import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { safeLog } from '@/lib/utils/logging';
+import { downloadBlob } from '@/lib/utils/export';
 import type { DateRange } from './types';
 
 export function useCostDashboardHandlers(
@@ -56,15 +57,9 @@ export function useCostDashboardHandlers(
       // Create a blob from the Uint8Array and download. Re-wrap so the bytes are
       // backed by a plain ArrayBuffer (Uint8Array<ArrayBufferLike> is not a BlobPart).
       const blob = new Blob([new Uint8Array(exportData)], { type: 'text/csv; charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `cost-report-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
+      downloadBlob(blob, `cost-report-${timeRange}-${new Date().toISOString().split('T')[0]}.csv`);
+
+
       notify.success('Cost report has been downloaded', 'Export Successful');
     } catch (err) {
       safeLog('error', 'Failed to export cost data', err);

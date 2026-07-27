@@ -49,6 +49,28 @@ export function escapeCsvField(value: unknown): string {
   return text;
 }
 
+/**
+ * Triggers a browser download for a Blob using the safe object-URL pattern:
+ * createObjectURL -> hidden anchor -> appendChild -> click -> removeChild,
+ * revoking the object URL after a short delay so the download can start.
+ */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  try {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+  }
+}
+
 export function exportToCSV<T extends Record<string, unknown>>(
   data: T[],
   filename: string,
@@ -77,29 +99,13 @@ export function exportToCSV<T extends Record<string, unknown>>(
 
   // Create blob and download
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}.csv`);
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `${filename}.csv`);
 }
 
 export function exportToJSON<T>(data: T, filename: string) {
   const jsonContent = JSON.stringify(data, null, 2);
   const blob = new Blob([jsonContent], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `${filename}.json`);
-  link.style.display = 'none';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, `${filename}.json`);
 }
 
 export function formatDateForExport(date: string | Date | undefined): string {

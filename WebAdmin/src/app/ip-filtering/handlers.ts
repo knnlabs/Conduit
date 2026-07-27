@@ -1,6 +1,7 @@
 import { useSecurityApi, type IpRule } from '@/hooks/useSecurityApi';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { notify } from '@/lib/notifications';
+import { downloadBlob, escapeCsvField } from '@/lib/utils/export';
 import type { IpFilterTemplate, IpTemplateRule } from '@/components/ip-filtering/ipFilterTemplates';
 
 export function useIpFilteringHandlers(
@@ -69,11 +70,8 @@ export function useIpFilteringHandlers(
         const headers = ['id', 'name', 'ipAddressOrCidr', 'filterType', 'isEnabled', 'description', 'createdAt'];
         const csvContent = [
           headers.join(','),
-          ...filters.map(filter => 
-            headers.map(header => {
-              const value = filter[header as keyof typeof filter];
-              return typeof value === 'string' ? `"${value}"` : String(value);
-            }).join(',')
+          ...filters.map(filter =>
+            headers.map(header => escapeCsvField(filter[header as keyof typeof filter])).join(',')
           )
         ].join('\n');
         content = csvContent;
@@ -84,14 +82,7 @@ export function useIpFilteringHandlers(
 
       // Create and download the file
       const blob = new Blob([content], { type: mimeType });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ip-rules.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      downloadBlob(blob, `ip-rules.${format}`);
 
       notify.success(`IP rules exported as ${format.toUpperCase()}`);
     } catch (error) {

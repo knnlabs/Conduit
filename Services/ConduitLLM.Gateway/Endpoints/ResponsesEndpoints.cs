@@ -158,7 +158,7 @@ public sealed class ResponsesEndpoints : GatewayEndpointHandlerBase
             var mapped = ChatEndpoints.MapProviderCommunicationError(exception.StatusCode);
             return GatewayResults.OpenAIError(
                 mapped.StatusCode,
-                exception.Message,
+                ConduitLLM.Core.Utilities.SensitiveDataRedactor.Redact(exception.Message),
                 mapped.Code,
                 mapped.Type);
         }

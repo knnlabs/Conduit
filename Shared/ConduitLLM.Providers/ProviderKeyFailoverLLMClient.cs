@@ -237,7 +237,7 @@ internal sealed class ProviderKeyFailoverLLMClient :
 
     private static FatalErrorKind ClassifyFatalError(Exception exception)
     {
-        var communicationException = ExtractCommunicationException(exception);
+        var communicationException = LLMCommunicationException.FindWithStatus(exception);
         if (communicationException is null)
         {
             return FatalErrorKind.None;
@@ -254,19 +254,6 @@ internal sealed class ProviderKeyFailoverLLMClient :
             ProviderErrorType.AccessForbidden => FatalErrorKind.Credential,
             _ => FatalErrorKind.None
         };
-    }
-
-    private static LLMCommunicationException? ExtractCommunicationException(Exception exception)
-    {
-        for (Exception? current = exception; current is not null; current = current.InnerException)
-        {
-            if (current is LLMCommunicationException communicationException)
-            {
-                return communicationException;
-            }
-        }
-
-        return null;
     }
 
     private static async Task<VideoGenerationResponse> InvokeVideoAsync(

@@ -14,6 +14,7 @@ import {
 import { useForm } from '@mantine/form';
 import { IconAlertCircle } from '@tabler/icons-react';
 import type { IpRule } from '@/hooks/useSecurityApi';
+import { getIpOrCidrValidationError } from '@/lib/utils/ip-validation';
 
 interface IpRuleModalProps {
   opened: boolean;
@@ -23,34 +24,8 @@ interface IpRuleModalProps {
   isLoading?: boolean;
 }
 
-const validateIpAddress = (value: string) => {
-  // Basic validation for IP address or CIDR notation
-  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-  const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}\/\d{1,2}$/;
-  
-  if (!ipRegex.test(value) && !cidrRegex.test(value)) {
-    return 'Invalid IP address or CIDR format (e.g., 192.168.1.1 or 192.168.1.0/24)';
-  }
-  
-  // Validate IP octets
-  const parts = value.split('/')[0].split('.');
-  for (const part of parts) {
-    const num = parseInt(part, 10);
-    if (num < 0 || num > 255) {
-      return 'Each IP octet must be between 0 and 255';
-    }
-  }
-  
-  // Validate CIDR suffix if present
-  if (value.includes('/')) {
-    const cidrSuffix = parseInt(value.split('/')[1], 10);
-    if (cidrSuffix < 0 || cidrSuffix > 32) {
-      return 'CIDR suffix must be between 0 and 32';
-    }
-  }
-  
-  return null;
-};
+// Accepts IPv4/IPv6 addresses and CIDR ranges, matching the backend's rules
+const validateIpAddress = (value: string) => getIpOrCidrValidationError(value);
 
 export function IpRuleModal({ 
   opened, 
