@@ -118,12 +118,12 @@ public partial class Program
         builder.Services.AddOpenApi("v1", options =>
         {
             options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.CoreApiDocumentTransformer>();
-            options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.OperationMetadataTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Core.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.VirtualKeySecurityOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Gateway.OpenApi.ResponseContractOperationTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Gateway.OpenApi.StructuredJsonSchemaTransformer>();
             options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.UnusedSchemaPruningDocumentTransformer>();
-            options.AddDocumentTransformer<ConduitLLM.Gateway.OpenApi.OperationIdValidationDocumentTransformer>();
+            options.AddDocumentTransformer<ConduitLLM.Core.OpenApi.OperationIdValidationDocumentTransformer>();
         });
     }
 }

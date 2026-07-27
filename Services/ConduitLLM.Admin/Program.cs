@@ -80,7 +80,7 @@ public partial class Program
         builder.Services.AddOpenApi("v1", options =>
         {
             options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.AdminApiDocumentTransformer>();
-            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.OperationMetadataTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Core.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ConditionalRequestOperationTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.CollectionPaginationOperationTransformer>();
@@ -95,7 +95,7 @@ public partial class Program
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.IpFilterResponseSchemaTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.StructuredJsonSchemaTransformer>();
             options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.FunctionExecutionSchemaTransformer>();
-            options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.OperationIdValidationDocumentTransformer>();
+            options.AddDocumentTransformer<ConduitLLM.Core.OpenApi.OperationIdValidationDocumentTransformer>();
         });
 
         // The build-time exporter needs endpoint metadata, not infrastructure. Avoid Postgres,

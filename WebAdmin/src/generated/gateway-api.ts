@@ -596,6 +596,8 @@ export interface components {
       created_at?: unknown;
       /** Format: date-time */
       updated_at?: unknown;
+      /** Format: date-time */
+      completed_at?: unknown;
       result?: unknown;
       error?: null | string;
     };
@@ -760,7 +762,6 @@ export interface components {
       truncation?: null | components["schemas"]["JsonElement"];
       user?: null | string;
     };
-    /** @description A model returned by the Conduit discovery extension. */
     DiscoveredModelDto: {
       id: string;
       provider: null | string;
@@ -780,14 +781,50 @@ export interface components {
       /** Format: date-time */
       capabilities_last_verified_at: unknown;
       parameters: string;
-      capabilities: components["schemas"]["GatewayModelCapabilitiesDto"];
-      pricing?: null | components["schemas"]["ModelPricingDto"];
+      capabilities: components["schemas"]["DiscoveryModelCapabilitiesDto"];
+      pricing?: null | components["schemas"]["DiscoveryModelPricingDto"];
     };
     /** @description Known model capability names. */
     DiscoveryCapabilitiesResponse: {
       capabilities: string[];
     };
-    /** @description Model discovery response. */
+    DiscoveryModelCapabilitiesDto: {
+      chat: boolean;
+      chat_stream: boolean;
+      image_input: boolean;
+      video_input: boolean;
+      audio_input: boolean;
+      file_input: boolean;
+      vision: boolean;
+      video_understanding: boolean;
+      image_generation: boolean;
+      video_generation: boolean;
+      embeddings: boolean;
+      function_calling: boolean;
+      speech_to_text: boolean;
+      text_to_speech: boolean;
+      rerank: boolean;
+      tool_use?: null | boolean;
+      json_mode?: null | boolean;
+      /** Format: int32 */
+      max_tokens?: null | number | string;
+      /** Format: int32 */
+      max_output_tokens?: null | number | string;
+      /** @default false */
+      pdf_input: boolean;
+    };
+    DiscoveryModelPricingDto: {
+      pricing_model: string;
+      /** Format: double */
+      input_cost_per_million_tokens: number | string;
+      /** Format: double */
+      output_cost_per_million_tokens: number | string;
+      /** Format: double */
+      cached_input_cost_per_million_tokens: null | number | string;
+      /** Format: double */
+      embedding_cost_per_million_tokens: null | number | string;
+      currency: string;
+    };
     DiscoveryModelsResponse: {
       data: components["schemas"]["DiscoveredModelDto"][];
       /** Format: int32 */
@@ -954,32 +991,6 @@ export interface components {
         [key: string]: unknown;
       };
     };
-    /** @description Capabilities advertised for a model. */
-    GatewayModelCapabilitiesDto: {
-      chat: boolean;
-      chat_stream: boolean;
-      image_input: boolean;
-      video_input: boolean;
-      audio_input: boolean;
-      file_input: boolean;
-      vision: boolean;
-      video_understanding: boolean;
-      image_generation: boolean;
-      video_generation: boolean;
-      embeddings: boolean;
-      function_calling: boolean;
-      speech_to_text: boolean;
-      text_to_speech: boolean;
-      rerank: boolean;
-      tool_use?: null | boolean;
-      json_mode?: null | boolean;
-      /** Format: int32 */
-      max_tokens?: null | number | string;
-      /** Format: int32 */
-      max_output_tokens?: null | number | string;
-      /** @default false */
-      pdf_input: boolean;
-    };
     /** @description Request for generating an ephemeral key */
     GenerateEphemeralKeyRequest: {
       metadata?: null | components["schemas"]["EphemeralKeyMetadata"];
@@ -1107,7 +1118,7 @@ export interface components {
       capability_source: string;
       /** Format: date-time */
       capabilities_last_verified_at: unknown;
-      capabilities: components["schemas"]["GatewayModelCapabilitiesDto"];
+      capabilities: components["schemas"]["DiscoveryModelCapabilitiesDto"];
       /** Format: int32 */
       max_input_tokens: null | number | string;
       /** Format: int32 */
@@ -1125,22 +1136,6 @@ export interface components {
       model_alias: string;
       series_name: string;
       parameters: components["schemas"]["JsonElement"];
-    };
-    /** @description Operator-configured pricing for a discovered model, in USD per million tokens.
-     *     Only the standard token rates and the pricing-model discriminator are projected;
-     *     clients should treat any `pricing_model` other than `standard` as too
-     *     complex to preview rather than rendering a number from these fields. */
-    ModelPricingDto: {
-      pricing_model: string;
-      /** Format: double */
-      input_cost_per_million_tokens: number | string;
-      /** Format: double */
-      output_cost_per_million_tokens: number | string;
-      /** Format: double */
-      cached_input_cost_per_million_tokens: null | number | string;
-      /** Format: double */
-      embedding_cost_per_million_tokens: null | number | string;
-      currency: string;
     };
     OpenAIErrorResponse: {
       error: {
@@ -1389,20 +1384,11 @@ export interface components {
       model?: null | string;
       usage?: null | components["schemas"]["VideoGenerationUsage"];
     };
-    /** @description Response for async video generation task creation. */
-    VideoGenerationTaskResponse: {
-      task_id?: string;
-      status?: string;
-      /** Format: date-time */
-      created_at?: unknown;
-      /** Format: date-time */
-      estimated_completion_time?: unknown;
-      check_status_url?: string;
-    };
     /** @description Status information for a video generation task. */
     VideoGenerationTaskStatus: {
-      task_id?: string;
-      status?: string;
+      result_raw?: null | string;
+      task_id: string;
+      status: string;
       /** Format: int32 */
       progress?: null | number | string;
       /** Format: date-time */
@@ -1411,9 +1397,8 @@ export interface components {
       updated_at?: unknown;
       /** Format: date-time */
       completed_at?: unknown;
-      error?: null | string;
-      result_raw?: null | string;
       result?: null | components["schemas"]["VideoGenerationResponse"];
+      error?: null | string;
     };
     VideoGenerationUsage: {
       /** Format: int32 */
@@ -3116,7 +3101,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["VideoGenerationTaskResponse"];
+          "application/json": components["schemas"]["AsyncTaskResponse"];
         };
       };
       /** @description Bad Request */

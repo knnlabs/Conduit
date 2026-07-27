@@ -1,7 +1,7 @@
 using System.Net.Http;
 using System.Text.Json;
 
-using AdminOperationIdValidator = ConduitLLM.Admin.OpenApi.OperationIdValidationDocumentTransformer;
+using AdminOperationIdValidator = ConduitLLM.Core.OpenApi.OperationIdValidationDocumentTransformer;
 
 using AwesomeAssertions;
 

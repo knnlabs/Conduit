@@ -5,6 +5,7 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Common" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Protocols.MessagePack" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.StackExchangeRedis" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Http" />
@@ -21,6 +22,7 @@
     <PackageReference Include="Microsoft.ML.Tokenizers.Data.O200kBase" />
     <PackageReference Include="Microsoft.ML.Tokenizers.Data.P50kBase" />
     <PackageReference Include="Microsoft.ML.Tokenizers.Data.R50kBase" />
+    <PackageReference Include="Microsoft.OpenApi" />
     <PackageReference Include="Polly" />
     <PackageReference Include="Polly.Contrib.WaitAndRetry" />
     <PackageReference Include="prometheus-net" />
