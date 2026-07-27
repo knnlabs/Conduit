@@ -3,6 +3,7 @@ using System.Net;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Functions.Exceptions;
 
 using FluentAssertions;
 
@@ -540,6 +541,24 @@ public class ExceptionToResponseMapperTests
         result.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
         result.ErrorCode.Should().Be("redis_circuit_open");
         result.OpenAIErrorType.Should().Be("service_unavailable");
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests, 429, "rate_limit_exceeded")]
+    [InlineData(HttpStatusCode.ServiceUnavailable, 503, "provider_unavailable")]
+    public void Map_FunctionCommunicationException_UsesProviderStatusTable(
+        HttpStatusCode providerStatus,
+        int expectedStatus,
+        string expectedCode)
+    {
+        var result = ExceptionToResponseMapper.Map(
+            new FunctionCommunicationException(
+                "Tavily",
+                "Provider failed",
+                providerStatus));
+
+        result.StatusCode.Should().Be(expectedStatus);
+        result.ErrorCode.Should().Be(expectedCode);
     }
 
     [Fact]

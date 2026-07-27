@@ -3,6 +3,8 @@ using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Functions.Extensions;
 using ConduitLLM.Functions.Interfaces;
 using ConduitLLM.Functions.Enums;
+using ConduitLLM.Functions.Exceptions;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.UsageTracking;
 
@@ -140,6 +142,22 @@ public class FunctionsEndpoints : GatewayEndpointHandlerBase
 
             // Return execution result
             return Ok(execution.ToContractDto());
+        }
+        catch (FunctionCommunicationException ex)
+        {
+            var mapping = ExceptionToResponseMapper.Map(ex);
+            _logger.Log(
+                mapping.LogLevel,
+                ex,
+                "Function provider {Provider} returned {StatusCode}",
+                ex.ProviderName,
+                ex.StatusCode);
+            return OpenAIError(
+                mapping.StatusCode,
+                mapping.ResponseMessage,
+                mapping.ErrorCode,
+                mapping.OpenAIErrorType,
+                mapping.Param);
         }
         catch (InvalidOperationException ex)
         {

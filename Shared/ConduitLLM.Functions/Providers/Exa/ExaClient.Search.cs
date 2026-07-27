@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Exceptions;
 using ConduitLLM.Functions.Providers.Exa.Models;
 
 namespace ConduitLLM.Functions.Providers.Exa;
@@ -79,6 +80,14 @@ public partial class ExaClient
                     ["resultCount"] = exaResponse.Results.Count
                 }
             };
+        }
+        catch (FunctionCommunicationException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {

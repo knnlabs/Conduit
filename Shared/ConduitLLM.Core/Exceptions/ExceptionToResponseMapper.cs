@@ -87,6 +87,9 @@ public static class ExceptionToResponseMapper
             LLMCommunicationException commEx
                 => MapLLMCommunicationException(commEx),
 
+            ConduitLLM.Functions.Exceptions.FunctionCommunicationException functionEx
+                => MapProviderCommunicationStatus(functionEx.StatusCode, functionEx.Message),
+
             ConfigurationException
                 => new(500, "A configuration error occurred", "configuration_error", LogLevel.Error,
                     "Configuration error", false, "server_error"),
