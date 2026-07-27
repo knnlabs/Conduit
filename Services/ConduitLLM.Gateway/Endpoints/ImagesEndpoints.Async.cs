@@ -104,21 +104,7 @@ namespace ConduitLLM.Gateway.Endpoints
                     TaskId = "", // Will be filled in after task creation
                     VirtualKeyId = virtualKeyId,
                     VirtualKeyHash = virtualKey.KeyHash,
-                    Request = new ConduitLLM.Core.Events.ImageGenerationRequest
-                    {
-                        Prompt = request.Prompt,
-                        Model = request.Model,
-                        N = request.N,
-                        Size = request.Size,
-                        Quality = request.Quality,
-                        Style = request.Style,
-                        ResponseFormat = request.ResponseFormat,
-                        User = request.User,
-                        Image = request.Image,
-                        Mask = request.Mask,
-                        Operation = request.Operation,
-                        ExtensionData = request.ExtensionData
-                    },
+                    Request = request,
                     UserId = HttpContext.User.FindFirst("sub")?.Value ?? "anonymous",
                     Priority = 0, // Normal priority
                     RequestedAt = DateTime.UtcNow,

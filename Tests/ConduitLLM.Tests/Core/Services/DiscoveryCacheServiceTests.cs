@@ -234,9 +234,9 @@ namespace ConduitLLM.Tests.Core.Services
             var stats = await _service.GetStatisticsAsync();
 
             // Assert
-            Assert.Equal(1, stats.Hits);
-            Assert.Equal(1, stats.Misses);
-            Assert.Equal(50.0, stats.HitRate); // 1 hit / 2 total = 50%
+            Assert.Equal(1, stats.HitCount);
+            Assert.Equal(1, stats.MissCount);
+            Assert.Equal(0.5, stats.HitRate); // 1 hit / 2 total
         }
 
         [Theory]

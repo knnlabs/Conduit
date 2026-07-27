@@ -298,7 +298,7 @@ namespace ConduitLLM.Configuration
                     IsPrimary = keyCredential.IsPrimary,
                     IsEnabled = keyCredential.IsEnabled,
                     Timestamp = DateTime.UtcNow,
-                    CorrelationId = Guid.NewGuid()
+                    CorrelationId = Guid.NewGuid().ToString()
                 });
 
                     return keyCredential;
@@ -384,7 +384,7 @@ namespace ConduitLLM.Configuration
                         ProviderId = keyCredential.ProviderId,
                         ChangedProperties = changedProperties.ToArray(),
                         Timestamp = DateTime.UtcNow,
-                        CorrelationId = Guid.NewGuid()
+                        CorrelationId = Guid.NewGuid().ToString()
                     });
                 }
 
@@ -429,7 +429,7 @@ namespace ConduitLLM.Configuration
                         KeyId = keyId,
                         ProviderId = key.ProviderId,
                         Timestamp = DateTime.UtcNow,
-                        CorrelationId = Guid.NewGuid()
+                        CorrelationId = Guid.NewGuid().ToString()
                     });
                 }
                 
@@ -473,7 +473,7 @@ namespace ConduitLLM.Configuration
                         OldPrimaryKeyId = oldPrimaryKeyId,
                         NewPrimaryKeyId = keyId,
                         Timestamp = DateTime.UtcNow,
-                        CorrelationId = Guid.NewGuid()
+                        CorrelationId = Guid.NewGuid().ToString()
                     });
                 }
                 else

@@ -1,6 +1,5 @@
 using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Security.Middleware;
-using ConduitLLM.Security.Models;
 using ISecurityService = ConduitLLM.Security.Interfaces.ISecurityService;
 
 namespace ConduitLLM.Admin.Middleware
@@ -28,42 +27,25 @@ namespace ConduitLLM.Admin.Middleware
         }
 
         /// <summary>
-        /// Logs granular security events distinguishing auth failures, rate limits, and IP blocks.
+        /// Records Admin API security violation metrics.
         /// </summary>
-        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityCheckResult result, string clientIp)
+        protected override void RecordViolationMetric(int statusCode)
         {
-            var method = context.Request.Method;
-            var path = context.Request.Path.Value ?? "";
-
-            switch (result.StatusCode)
+            switch (statusCode)
             {
-                case 401:
-                    Logger.LogWarning(
-                        "Security event: AuthenticationFailure — {Method} {Path} from {ClientIp}. Reason: {Reason}",
-                        method, path, clientIp, result.Reason);
+                case StatusCodes.Status401Unauthorized:
                     AdminSecurityMetrics.RecordAuthFailure();
                     break;
-                case 429:
-                    Logger.LogWarning(
-                        "Security event: RateLimitExceeded — {Method} {Path} from {ClientIp}. Reason: {Reason}",
-                        method, path, clientIp, result.Reason);
+                case StatusCodes.Status429TooManyRequests:
                     AdminSecurityMetrics.RecordRateLimitHit();
                     break;
-                case 403:
-                    Logger.LogWarning(
-                        "Security event: AccessDenied — {Method} {Path} from {ClientIp}. Reason: {Reason}",
-                        method, path, clientIp, result.Reason);
+                case StatusCodes.Status403Forbidden:
                     AdminSecurityMetrics.RecordAccessDenied();
                     break;
                 default:
-                    Logger.LogWarning(
-                        "Security event: Blocked ({StatusCode}) — {Method} {Path} from {ClientIp}. Reason: {Reason}",
-                        result.StatusCode, method, path, clientIp, result.Reason);
                     AdminSecurityMetrics.RecordBlocked();
                     break;
             }
-
-            return Task.CompletedTask;
         }
     }
 

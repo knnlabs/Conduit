@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -44,7 +45,7 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Cache statistics</returns>
-        Task<DiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+        Task<CacheStats> GetStatisticsAsync(CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -75,34 +76,4 @@ namespace ConduitLLM.Core.Interfaces
         public string? CapabilityFilter { get; set; }
     }
 
-    /// <summary>
-    /// Statistics for discovery cache
-    /// </summary>
-    public class DiscoveryCacheStatistics
-    {
-        /// <summary>
-        /// Total number of cache hits
-        /// </summary>
-        public long Hits { get; set; }
-
-        /// <summary>
-        /// Total number of cache misses
-        /// </summary>
-        public long Misses { get; set; }
-
-        /// <summary>
-        /// Cache hit rate percentage
-        /// </summary>
-        public double HitRate { get; set; }
-
-        /// <summary>
-        /// Number of cached entries
-        /// </summary>
-        public int CachedEntries { get; set; }
-
-        /// <summary>
-        /// Last cache invalidation time
-        /// </summary>
-        public DateTime? LastInvalidation { get; set; }
-    }
 }

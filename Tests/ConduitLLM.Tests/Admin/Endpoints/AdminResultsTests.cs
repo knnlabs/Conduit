@@ -64,4 +64,26 @@ public class AdminResultsTests
 
         ((IStatusCodeHttpResult)result).StatusCode.Should().Be(StatusCodes.Status409Conflict);
     }
+
+    [Fact]
+    public async Task StandardHelpers_UseCanonicalErrorCodes()
+    {
+        var (_, badRequest) = await ExecuteAsync(AdminResults.BadRequest("invalid"));
+        var (_, notFound) = await ExecuteAsync(AdminResults.NotFound("missing"));
+        var (_, conflict) = await ExecuteAsync(AdminResults.Conflict("duplicate"));
+
+        badRequest.Code.Should().Be(AdminErrorCodes.ValidationError);
+        notFound.Code.Should().Be(AdminErrorCodes.NotFound);
+        conflict.Code.Should().Be(AdminErrorCodes.Conflict);
+    }
+
+    [Theory]
+    [InlineData(StatusCodes.Status400BadRequest, AdminErrorCodes.ValidationError)]
+    [InlineData(StatusCodes.Status404NotFound, AdminErrorCodes.NotFound)]
+    [InlineData(StatusCodes.Status409Conflict, AdminErrorCodes.Conflict)]
+    [InlineData(StatusCodes.Status500InternalServerError, AdminErrorCodes.InternalError)]
+    public void ForStatus_ReturnsCanonicalCode(int statusCode, string expectedCode)
+    {
+        AdminErrorCodes.ForStatus(statusCode).Should().Be(expectedCode);
+    }
 }

@@ -20,6 +20,7 @@ public class FunctionDiscoveryCacheService : IFunctionDiscoveryCacheService
     // Statistics tracking
     private long _totalHits;
     private long _totalMisses;
+    private long _totalInvalidations;
     private DateTime? _lastInvalidation;
 
     private const CacheRegion FUNCTION_DISCOVERY_REGION = CacheRegion.FunctionDiscovery;
@@ -178,6 +179,7 @@ public class FunctionDiscoveryCacheService : IFunctionDiscoveryCacheService
         try
         {
             _lastInvalidation = DateTime.UtcNow;
+            Interlocked.Increment(ref _totalInvalidations);
 
             // Use CacheManager's ClearRegionAsync for surgical invalidation
             // This uses the tracked keys to remove only function discovery entries from both memory and Redis
@@ -216,20 +218,19 @@ public class FunctionDiscoveryCacheService : IFunctionDiscoveryCacheService
         }
     }
 
-    public async Task<FunctionDiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
+    public async Task<CacheStats> GetStatisticsAsync(CancellationToken cancellationToken = default)
     {
         var hits = Interlocked.Read(ref _totalHits);
         var misses = Interlocked.Read(ref _totalMisses);
-        var total = hits + misses;
         var isEnabled = await IsCachingEnabledAsync(cancellationToken);
 
-        var stats = new FunctionDiscoveryCacheStatistics
+        var stats = new CacheStats
         {
-            Hits = hits,
-            Misses = misses,
-            HitRate = total > 0 ? (double)hits / total * 100 : 0,
-            CachedEntries = 0, // Would require cache key scanning in production
-            LastInvalidation = _lastInvalidation,
+            HitCount = hits,
+            MissCount = misses,
+            InvalidationCount = Interlocked.Read(ref _totalInvalidations),
+            EntryCount = 0, // Would require cache key scanning in production
+            LastInvalidationTime = _lastInvalidation,
             IsEnabled = isEnabled
         };
 

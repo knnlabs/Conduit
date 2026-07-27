@@ -47,19 +47,8 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    StampProviderName(ex);
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(
+                () => _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken));
         }
 
         public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
@@ -129,19 +118,7 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.ListModelsAsync(apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    StampProviderName(ex);
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(() => _innerClient.ListModelsAsync(apiKey, cancellationToken));
         }
 
         public async Task<EmbeddingResponse> CreateEmbeddingAsync(
@@ -149,19 +126,8 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.CreateEmbeddingAsync(request, apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    StampProviderName(ex);
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(
+                () => _innerClient.CreateEmbeddingAsync(request, apiKey, cancellationToken));
         }
 
         public async Task<ImageGenerationResponse> CreateImageAsync(
@@ -169,19 +135,8 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.CreateImageAsync(request, apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    StampProviderName(ex);
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(
+                () => _innerClient.CreateImageAsync(request, apiKey, cancellationToken));
         }
 
         public async Task<VideoGenerationResponse> CreateVideoAsync(
@@ -189,60 +144,39 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
+            return await TrackedAsync(async () =>
             {
-                try
+                // CreateVideoAsync is not on ILLMClient — only specific providers implement it.
+                // The inner client may itself be a decorator (e.g. PromptCachingLLMClient)
+                // that hides the provider's video capability, so unwrap the chain to the
+                // innermost provider client before reflecting (issue #976).
+                var providerClient = _innerClient.UnwrapInnermost();
+                var providerClientType = providerClient.GetType();
+                var createVideoMethod = providerClientType.GetMethod("CreateVideoAsync",
+                    new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+
+                if (createVideoMethod == null)
                 {
-                    // CreateVideoAsync is not on ILLMClient — only specific providers implement it.
-                    // The inner client may itself be a decorator (e.g. PromptCachingLLMClient)
-                    // that hides the provider's video capability, so unwrap the chain to the
-                    // innermost provider client before reflecting (issue #976).
-                    var providerClient = _innerClient.UnwrapInnermost();
-                    var providerClientType = providerClient.GetType();
-                    var createVideoMethod = providerClientType.GetMethod("CreateVideoAsync",
-                        new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
-
-                    if (createVideoMethod == null)
-                    {
-                        throw new NotSupportedException(
-                            $"The underlying client {providerClientType.Name} does not support video generation");
-                    }
-
-                    var task = (Task<VideoGenerationResponse>?)createVideoMethod.Invoke(
-                        providerClient, new object?[] { request, apiKey, cancellationToken });
-
-                    if (task == null)
-                    {
-                        throw new InvalidOperationException(
-                            $"CreateVideoAsync on {providerClientType.Name} returned null");
-                    }
-
-                    return await task;
+                    throw new NotSupportedException(
+                        $"The underlying client {providerClientType.Name} does not support video generation");
                 }
-                catch (LLMCommunicationException ex)
+
+                var task = (Task<VideoGenerationResponse>?)createVideoMethod.Invoke(
+                    providerClient, new object?[] { request, apiKey, cancellationToken });
+
+                if (task == null)
                 {
-                    StampProviderName(ex);
-                    await TrackErrorAsync(ex);
-                    throw;
+                    throw new InvalidOperationException(
+                        $"CreateVideoAsync on {providerClientType.Name} returned null");
                 }
-            }
+
+                return await task;
+            });
         }
 
         public async Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.GetCapabilitiesAsync(modelId);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    StampProviderName(ex);
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(() => _innerClient.GetCapabilitiesAsync(modelId));
         }
 
         /// <summary>
@@ -288,6 +222,29 @@ namespace ConduitLLM.Core.Decorators
                 if (current is LLMCommunicationException communicationException)
                 {
                     communicationException.ProviderName ??= _providerName;
+                }
+            }
+        }
+
+        private async Task<T> TrackedAsync<T>(Func<Task<T>> operation)
+        {
+            using (ProviderKeyContext.Set(_keyId, _providerId))
+            {
+                try
+                {
+                    return await operation();
+                }
+                catch (Exception ex)
+                {
+                    StampProviderName(ex);
+
+                    var communicationException = LLMCommunicationException.FindWithStatus(ex);
+                    if (communicationException is not null)
+                    {
+                        await TrackErrorAsync(communicationException);
+                    }
+
+                    throw;
                 }
             }
         }

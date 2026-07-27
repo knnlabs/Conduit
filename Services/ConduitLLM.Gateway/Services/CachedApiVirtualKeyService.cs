@@ -210,7 +210,7 @@ namespace ConduitLLM.Gateway.Services
         /// <summary>
         /// Get cache performance statistics
         /// </summary>
-        public async Task<ConduitLLM.Core.Interfaces.VirtualKeyCacheStats> GetCacheStatsAsync()
+        public async Task<CacheStats> GetCacheStatsAsync()
         {
             return await _cache.GetStatsAsync();
         }

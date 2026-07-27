@@ -3644,6 +3644,27 @@ export interface components {
       message: string;
       note: string;
     };
+    CacheStats: {
+      /** Format: int64 */
+      hitCount: number;
+      /** Format: int64 */
+      missCount: number;
+      /** Format: int64 */
+      invalidationCount: number;
+      /** Format: double */
+      hitRate: number;
+      averageGetTime: string;
+      /** Format: date-time */
+      lastResetTime: string;
+      /** Format: date-time */
+      lastInvalidationTime: null | string;
+      /** Format: int64 */
+      entryCount: number;
+      /** Format: int64 */
+      patternMatchCount: number;
+      isEnabled: boolean;
+      cachedKeys: string[];
+    };
     CatalogImportCounts: {
       /** Format: int32 */
       authors: number;
@@ -4405,19 +4426,6 @@ export interface components {
       /** Format: double */
       durationMs?: number;
     };
-    FunctionDiscoveryCacheStatistics: {
-      /** Format: int64 */
-      hits?: number;
-      /** Format: int64 */
-      misses?: number;
-      /** Format: double */
-      hitRate?: number;
-      /** Format: int32 */
-      cachedEntries?: number;
-      /** Format: date-time */
-      lastInvalidation?: null | string;
-      isEnabled?: boolean;
-    };
     FunctionExecutionAdminDetailsDto: {
       /** Format: int32 */
       virtualKeyId?: number;
@@ -4494,21 +4502,6 @@ export interface components {
       | "custom";
     /** @enum {unknown} */
     FunctionPurpose: "search" | "answer" | "contentRetrieval" | "rag" | null;
-    GlobalSettingCacheStatsDto: {
-      /** Format: int32 */
-      cacheSize: number;
-      /** Format: int64 */
-      cacheHits: number;
-      /** Format: int64 */
-      cacheMisses: number;
-      /** Format: int64 */
-      invalidations: number;
-      /** Format: double */
-      hitRate: number;
-      /** Format: date-time */
-      lastLoadTime: string;
-      cachedKeys: string[];
-    };
     /** @description Server-owned metadata for a known global setting. */
     GlobalSettingDefinitionDto: {
       key?: string;
@@ -9039,7 +9032,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["FunctionDiscoveryCacheStatistics"];
+          "application/json": components["schemas"]["CacheStats"];
         };
       };
       /** @description Not Found */
@@ -11624,7 +11617,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GlobalSettingCacheStatsDto"];
+          "application/json": components["schemas"]["CacheStats"];
         };
       };
       /** @description Internal Server Error */

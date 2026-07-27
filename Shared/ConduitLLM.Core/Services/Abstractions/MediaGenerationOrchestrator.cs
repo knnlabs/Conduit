@@ -842,6 +842,19 @@ namespace ConduitLLM.Core.Services.Abstractions
         /// </summary>
         protected virtual (string ErrorType, string ErrorCategory) CategorizeError(Exception ex)
         {
+            var providerErrorType = ProviderErrorClassifier.ClassifyException(ex);
+            if (providerErrorType == ProviderErrorType.Unknown)
+            {
+                providerErrorType = ProviderErrorClassifier.ClassifyFailure(errorCode: null, ex.Message);
+            }
+
+            if (providerErrorType != ProviderErrorType.Unknown)
+            {
+                return (
+                    ProviderErrorClassifier.ToMetricLabel(providerErrorType),
+                    ProviderErrorClassifier.ToMetricCategory(providerErrorType));
+            }
+
             return ex switch
             {
                 TaskCanceledException => ("timeout", "task_timeout"),
@@ -855,15 +868,7 @@ namespace ConduitLLM.Core.Services.Abstractions
                 System.Net.Sockets.SocketException => ("network", "socket_error"),
                 System.IO.IOException => ("storage", "io_error"),
                 OutOfMemoryException => ("resource", "memory_error"),
-                _ when ex.Message.Contains("rate limit", StringComparison.OrdinalIgnoreCase) => ("rate_limit", "provider_limit"),
-                _ when ex.Message.Contains("quota", StringComparison.OrdinalIgnoreCase) => ("quota", "provider_quota"),
-                _ when ex.Message.Contains("insufficient", StringComparison.OrdinalIgnoreCase) => ("quota", "insufficient_quota"),
-                _ when ex.Message.Contains("unauthorized", StringComparison.OrdinalIgnoreCase) => ("authentication", "invalid_credentials"),
-                _ when ex.Message.Contains("forbidden", StringComparison.OrdinalIgnoreCase) => ("authentication", "access_denied"),
-                _ when ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase) => ("validation", "resource_not_found"),
                 _ when ex.Message.Contains("bad request", StringComparison.OrdinalIgnoreCase) => ("validation", "bad_request"),
-                _ when ex.Message.Contains("service unavailable", StringComparison.OrdinalIgnoreCase) => ("provider", "service_unavailable"),
-                _ when ex.Message.Contains("internal server", StringComparison.OrdinalIgnoreCase) => ("provider", "internal_error"),
                 _ => ("unknown", "unclassified")
             };
         }

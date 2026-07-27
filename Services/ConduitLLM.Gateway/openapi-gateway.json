@@ -4527,7 +4527,7 @@
             "type": "string"
           },
           "capabilities": {
-            "$ref": "#/components/schemas/ModelCapabilitiesDto"
+            "$ref": "#/components/schemas/GatewayModelCapabilitiesDto"
           },
           "pricing": {
             "oneOf": [
@@ -5106,6 +5106,108 @@
           }
         }
       },
+      "GatewayModelCapabilitiesDto": {
+        "required": [
+          "chat",
+          "chat_stream",
+          "image_input",
+          "video_input",
+          "audio_input",
+          "file_input",
+          "vision",
+          "video_understanding",
+          "image_generation",
+          "video_generation",
+          "embeddings",
+          "function_calling",
+          "speech_to_text",
+          "text_to_speech",
+          "rerank"
+        ],
+        "type": "object",
+        "properties": {
+          "chat": {
+            "type": "boolean"
+          },
+          "chat_stream": {
+            "type": "boolean"
+          },
+          "image_input": {
+            "type": "boolean"
+          },
+          "video_input": {
+            "type": "boolean"
+          },
+          "audio_input": {
+            "type": "boolean"
+          },
+          "file_input": {
+            "type": "boolean"
+          },
+          "vision": {
+            "type": "boolean"
+          },
+          "video_understanding": {
+            "type": "boolean"
+          },
+          "image_generation": {
+            "type": "boolean"
+          },
+          "video_generation": {
+            "type": "boolean"
+          },
+          "embeddings": {
+            "type": "boolean"
+          },
+          "function_calling": {
+            "type": "boolean"
+          },
+          "speech_to_text": {
+            "type": "boolean"
+          },
+          "text_to_speech": {
+            "type": "boolean"
+          },
+          "rerank": {
+            "type": "boolean"
+          },
+          "tool_use": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "json_mode": {
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "max_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "max_output_tokens": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "null",
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pdf_input": {
+            "type": "boolean",
+            "default": false
+          }
+        },
+        "description": "Capabilities advertised for a model."
+      },
       "GenerateEphemeralKeyRequest": {
         "type": "object",
         "properties": {
@@ -5528,108 +5630,6 @@
           }
         }
       },
-      "ModelCapabilitiesDto": {
-        "required": [
-          "chat",
-          "chat_stream",
-          "image_input",
-          "video_input",
-          "audio_input",
-          "file_input",
-          "vision",
-          "video_understanding",
-          "image_generation",
-          "video_generation",
-          "embeddings",
-          "function_calling",
-          "speech_to_text",
-          "text_to_speech",
-          "rerank"
-        ],
-        "type": "object",
-        "properties": {
-          "chat": {
-            "type": "boolean"
-          },
-          "chat_stream": {
-            "type": "boolean"
-          },
-          "image_input": {
-            "type": "boolean"
-          },
-          "video_input": {
-            "type": "boolean"
-          },
-          "audio_input": {
-            "type": "boolean"
-          },
-          "file_input": {
-            "type": "boolean"
-          },
-          "vision": {
-            "type": "boolean"
-          },
-          "video_understanding": {
-            "type": "boolean"
-          },
-          "image_generation": {
-            "type": "boolean"
-          },
-          "video_generation": {
-            "type": "boolean"
-          },
-          "embeddings": {
-            "type": "boolean"
-          },
-          "function_calling": {
-            "type": "boolean"
-          },
-          "speech_to_text": {
-            "type": "boolean"
-          },
-          "text_to_speech": {
-            "type": "boolean"
-          },
-          "rerank": {
-            "type": "boolean"
-          },
-          "tool_use": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "json_mode": {
-            "type": [
-              "null",
-              "boolean"
-            ]
-          },
-          "max_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "max_output_tokens": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
-            "format": "int32"
-          },
-          "pdf_input": {
-            "type": "boolean",
-            "default": false
-          }
-        },
-        "description": "Capabilities advertised for a model."
-      },
       "ModelListItemDto": {
         "required": [
           "id",
@@ -5751,7 +5751,7 @@
             "format": "date-time"
           },
           "capabilities": {
-            "$ref": "#/components/schemas/ModelCapabilitiesDto"
+            "$ref": "#/components/schemas/GatewayModelCapabilitiesDto"
           },
           "max_input_tokens": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",

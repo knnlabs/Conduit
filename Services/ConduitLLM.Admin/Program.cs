@@ -1,4 +1,5 @@
 using ConduitLLM.Admin.Endpoints;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
@@ -51,9 +52,7 @@ public partial class Program
             options.CustomizeProblemDetails = context =>
             {
                 context.ProblemDetails.Extensions["code"] =
-                    context.ProblemDetails.Status == StatusCodes.Status400BadRequest
-                        ? "validation_error"
-                        : "request_failed";
+                    AdminErrorCodes.ForStatus(context.ProblemDetails.Status);
                 context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
             });
 

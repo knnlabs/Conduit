@@ -341,11 +341,9 @@ namespace ConduitLLM.Tests.Providers
             var claude = models.First(m => m.Id == "anthropic/claude-3.5-sonnet");
             claude.Name.Should().Be("Anthropic: Claude 3.5 Sonnet");
             claude.Capabilities.Should().NotBeNull();
-            claude.Capabilities!.Vision.Should().BeTrue();          // image input modality
-            claude.Capabilities.FunctionCalling.Should().BeTrue();  // supported_parameters contains "tools"
-            claude.Capabilities.ToolUsage.Should().BeTrue();
-            claude.Capabilities.JsonMode.Should().BeTrue();         // supported_parameters contains "response_format"
-            claude.Capabilities.ImageGeneration.Should().BeFalse(); // no image output modality
+            claude.Capabilities!.SupportsVision.Should().BeTrue();          // image input modality
+            claude.Capabilities.SupportsFunctionCalling.Should().BeTrue();  // supported_parameters contains "tools"
+            claude.Capabilities.SupportsImageGeneration.Should().BeFalse(); // no image output modality
             claude.TokenLimits.Should().NotBeNull();
             claude.TokenLimits!.Context.Should().Be(200000);
             claude.TokenLimits.Output.Should().Be(8192);
@@ -366,7 +364,7 @@ namespace ConduitLLM.Tests.Providers
             var model = models[0];
             model.Id.Should().Be("minimal/model");
             model.Capabilities.Should().NotBeNull();      // chat defaults still applied
-            model.Capabilities!.Chat.Should().BeTrue();
+            model.Capabilities!.SupportsChat.Should().BeTrue();
             model.TokenLimits.Should().BeNull();          // no context/limits reported
         }
 

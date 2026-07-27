@@ -349,6 +349,16 @@ public sealed class AuthoritativeContractTests : IDisposable
     }
 
     [Fact]
+    public void Gateway_ModelCapabilityWireProjectionHasExplicitBoundaryName()
+    {
+        var schemas = _gateway.RootElement.GetProperty("components").GetProperty("schemas");
+
+        schemas.TryGetProperty("GatewayModelCapabilitiesDto", out _).Should().BeTrue();
+        schemas.TryGetProperty("ModelCapabilitiesDto", out _).Should().BeFalse(
+            "the unqualified capability DTO is the Configuration/Admin contract");
+    }
+
+    [Fact]
     public void Admin_PagedResultsDoNotPublishDeprecatedAliases()
     {
         var schemas = _admin.RootElement.GetProperty("components").GetProperty("schemas");
@@ -526,7 +536,7 @@ public sealed class AuthoritativeContractTests : IDisposable
 
     [Theory]
     [InlineData("GlobalSettingDto", "id", "key", "value", "description", "createdAt", "updatedAt")]
-    [InlineData("GlobalSettingCacheStatsDto", "cacheSize", "cacheHits", "cacheMisses", "invalidations", "hitRate", "lastLoadTime", "cachedKeys")]
+    [InlineData("CacheStats", "hitCount", "missCount", "invalidationCount", "hitRate", "averageGetTime", "lastResetTime", "lastInvalidationTime", "entryCount", "patternMatchCount", "isEnabled", "cachedKeys")]
     public void Admin_GlobalSettingsResponsesRequireAlwaysEmittedProperties(string schema, params string[] properties)
     {
         var required = _admin.RootElement.GetProperty("components").GetProperty("schemas")

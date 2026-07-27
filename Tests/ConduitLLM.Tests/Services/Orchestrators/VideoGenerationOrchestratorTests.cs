@@ -103,16 +103,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             return new VideoGenerationRequested
             {
                 RequestId = "test-task-id",
-                Model = "test-model",
-                Prompt = "Generate a test video",
-                VirtualKeyId = "1",  // Must be a valid integer string for parsing
-                IsAsync = true,
-                Parameters = new VideoGenerationParameters
+                Request = new VideoGenerationRequest
                 {
+                    Model = "test-model",
+                    Prompt = "Generate a test video",
                     Duration = 5,
                     Size = "1280x720",
                     Fps = 30
                 },
+                VirtualKeyId = "1",  // Must be a valid integer string for parsing
+                IsAsync = true,
                 WebhookUrl = "https://example.com/webhook",
                 CorrelationId = "test-correlation-id"
             };
@@ -167,8 +167,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             var request = new VideoGenerationRequested
             {
                 RequestId = "sync-task-id",
-                Model = "test-model",
-                Prompt = "Test prompt",
+                Request = new VideoGenerationRequest
+                {
+                    Model = "test-model",
+                    Prompt = "Test prompt"
+                },
                 VirtualKeyId = "1",  // Must be a valid integer string for parsing
                 IsAsync = false // Sync request
             };
@@ -280,9 +283,9 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 It.Is<VideoGenerationCompleted>(e =>
                     e.RequestId == request.RequestId &&
                     e.Cost == 0.34m &&
-                    e.Model == request.Model &&
-                    e.Duration == 5 && // From request.Parameters.Duration
-                    e.Resolution == "1280x720" && // From request.Parameters.Size
+                    e.Model == request.Request!.Model &&
+                    e.Duration == 5 &&
+                    e.Resolution == "1280x720" &&
                     e.Provider == "Test Provider" && // From ModelMappingService mock
                     e.GenerationDuration > TimeSpan.Zero),
                 It.IsAny<CancellationToken>()), Times.Once);
@@ -295,11 +298,13 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             var request = new VideoGenerationRequested
             {
                 RequestId = "test-task-id",
-                Model = "test-model",
-                Prompt = "Generate a test video",
+                Request = new VideoGenerationRequest
+                {
+                    Model = "test-model",
+                    Prompt = "Generate a test video"
+                },
                 VirtualKeyId = "1",
                 IsAsync = true,
-                Parameters = null, // No parameters
                 CorrelationId = "test-correlation-id"
             };
             var context = CreateEventContext();

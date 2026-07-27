@@ -31,7 +31,7 @@ public sealed class ModelCapabilityResolverTests
 
         Assert.Null(capabilities.InputModalities);
         Assert.Null(capabilities.OutputModalities);
-        Assert.Equal(ModelCapabilitySource.Unknown, capabilities.Source);
+        Assert.Equal(ModelCapabilitySource.Unknown, capabilities.CapabilitySource);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public sealed class ModelCapabilityResolverTests
         var capabilities = ModelCapabilityResolver.Resolve(model, association);
 
         Assert.True(capabilities.SupportsVideoInput);
-        Assert.Equal(ModelCapabilitySource.ProviderApi, capabilities.Source);
+        Assert.Equal(ModelCapabilitySource.ProviderApi, capabilities.CapabilitySource);
         Assert.Equal(["text"], ModelModalities.Parse(model.InputModalitiesJson));
     }
 
@@ -75,5 +75,30 @@ public sealed class ModelCapabilityResolverTests
 
         Assert.True(capabilities.SupportsImageInput);
         Assert.True(capabilities.SupportsVision);
+    }
+
+    [Fact]
+    public void Resolve_IncludesEffectiveTokenLimitsAndProvenance()
+    {
+        var verifiedAt = DateTime.UtcNow;
+        var model = new Model
+        {
+            MaxInputTokens = 100_000,
+            MaxOutputTokens = 8_000,
+            CapabilitySource = ModelCapabilitySource.Curated
+        };
+        var association = new ModelProviderTypeAssociation
+        {
+            MaxOutputTokens = 16_000,
+            CapabilitySource = ModelCapabilitySource.ProviderApi,
+            CapabilitiesLastVerifiedAt = verifiedAt
+        };
+
+        var capabilities = ModelCapabilityResolver.Resolve(model, association);
+
+        Assert.Equal(100_000, capabilities.MaxInputTokens);
+        Assert.Equal(16_000, capabilities.MaxOutputTokens);
+        Assert.Equal(ModelCapabilitySource.ProviderApi, capabilities.CapabilitySource);
+        Assert.Equal(verifiedAt, capabilities.CapabilitiesLastVerifiedAt);
     }
 }

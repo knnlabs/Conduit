@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces;
 
@@ -32,18 +33,5 @@ public interface IProviderToolCache
     /// <summary>
     /// Gets cache statistics.
     /// </summary>
-    Task<ProviderToolCacheStats> GetStatsAsync();
-}
-
-/// <summary>
-/// Statistics for the provider tool cache.
-/// </summary>
-public class ProviderToolCacheStats
-{
-    public long HitCount { get; set; }
-    public long MissCount { get; set; }
-    public long InvalidationCount { get; set; }
-    public double HitRate => HitCount + MissCount > 0 ? (double)HitCount / (HitCount + MissCount) : 0;
-    public DateTime LastResetTime { get; set; } = DateTime.UtcNow;
-    public long EntryCount { get; set; }
+    Task<CacheStats> GetStatsAsync();
 }

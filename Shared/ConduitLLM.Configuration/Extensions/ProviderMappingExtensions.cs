@@ -48,30 +48,7 @@ namespace ConduitLLM.Configuration.Extensions
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
                 ProviderOptions = ParseOptions(mapping.ProviderOptions),
-                Capabilities = capabilities is not null ? new ModelCapabilitiesDto
-                {
-                    InputModalities = capabilities.InputModalities,
-                    OutputModalities = capabilities.OutputModalities,
-                    CapabilitySource = capabilities.Source,
-                    CapabilitiesLastVerifiedAt = capabilities.LastVerifiedAt,
-                    SupportsImageInput = capabilities.SupportsImageInput,
-                    SupportsVideoInput = capabilities.SupportsVideoInput,
-                    SupportsAudioInput = capabilities.SupportsAudioInput,
-                    SupportsFileInput = capabilities.SupportsFileInput,
-                    SupportsVideoUnderstanding = capabilities.SupportsVideoUnderstanding,
-                    SupportsVision = capabilities.SupportsVision,
-                    SupportsImageGeneration = capabilities.SupportsImageGeneration,
-                    SupportsVideoGeneration = capabilities.SupportsVideoGeneration,
-                    SupportsEmbeddings = capabilities.SupportsEmbeddings,
-                    SupportsSpeechToText = capabilities.SupportsSpeechToText,
-                    SupportsTextToSpeech = capabilities.SupportsTextToSpeech,
-                    SupportsRerank = capabilities.SupportsRerank,
-                    SupportsChat = capabilities.SupportsChat,
-                    SupportsFunctionCalling = capabilities.SupportsFunctionCalling,
-                    SupportsStreaming = capabilities.SupportsStreaming,
-                    MaxInputTokens = association!.MaxInputTokens ?? association.Model.MaxInputTokens,
-                    MaxOutputTokens = association.MaxOutputTokens ?? association.Model.MaxOutputTokens
-                } : null
+                Capabilities = capabilities
             };
         }
 

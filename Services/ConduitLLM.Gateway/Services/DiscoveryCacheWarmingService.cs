@@ -210,8 +210,8 @@ namespace ConduitLLM.Gateway.Services
                         tokenizer_type = model.TokenizerType.ToString().ToLowerInvariant(),
                         input_modalities = caps.InputModalities,
                         output_modalities = caps.OutputModalities,
-                        capability_source = caps.Source.ToString().ToLowerInvariant(),
-                        capabilities_last_verified_at = caps.LastVerifiedAt,
+                        capability_source = caps.CapabilitySource.ToString().ToLowerInvariant(),
+                        capabilities_last_verified_at = caps.CapabilitiesLastVerifiedAt,
 
                         // UI Parameters from Model or Series
                         parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",

@@ -128,37 +128,16 @@ namespace ConduitLLM.Gateway.Endpoints
             // Register the task for cancellation
             _taskRegistry.RegisterTask(taskId, cts);
 
-            // Convert ExtensionData to provider options for the event payload
-            Dictionary<string, object>? providerOptions = null;
-            if (request.ExtensionData != null && request.ExtensionData.Count > 0)
-            {
-                providerOptions = new Dictionary<string, object>();
-                foreach (var kvp in request.ExtensionData)
-                {
-                    providerOptions[kvp.Key] = kvp.Value.ToString();
-                }
-            }
-
             PublishEventFireAndForget(new VideoGenerationRequested
             {
                 RequestId = taskId,
-                Model = request.Model,
-                Prompt = request.Prompt,
+                Request = request,
                 VirtualKeyId = virtualKeyId.ToString(),
                 IsAsync = true,
                 RequestedAt = DateTime.UtcNow,
                 CorrelationId = taskId,
                 WebhookUrl = request.WebhookUrl,
-                WebhookHeaders = request.WebhookHeaders,
-                Parameters = new VideoGenerationParameters
-                {
-                    Size = request.Size,
-                    Duration = request.Duration,
-                    Fps = request.Fps,
-                    Style = request.Style,
-                    ResponseFormat = request.ResponseFormat,
-                    ProviderOptions = providerOptions
-                }
+                WebhookHeaders = request.WebhookHeaders
             }, "create async video generation", new { TaskId = taskId, Model = request.Model });
 
             var taskResponse = new VideoGenerationTaskResponse

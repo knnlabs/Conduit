@@ -6,27 +6,27 @@ namespace ConduitLLM.Admin.Endpoints;
 public static class AdminResults
 {
     public static IResult BadRequest(string message, string? code = null) =>
-        Problem(StatusCodes.Status400BadRequest, message, code ?? "bad_request");
+        Problem(StatusCodes.Status400BadRequest, message, code ?? AdminErrorCodes.ValidationError);
 
     public static IResult NotFound(string message, string? code = null) =>
-        Problem(StatusCodes.Status404NotFound, message, code ?? "not_found");
+        Problem(StatusCodes.Status404NotFound, message, code ?? AdminErrorCodes.NotFound);
 
     public static IResult NotFoundEntity(string entityType, object? entityId = null)
     {
         var message = entityId is null
             ? $"{entityType} not found"
             : $"{entityType} with ID '{entityId}' not found";
-        return NotFound(message, "not_found");
+        return NotFound(message, AdminErrorCodes.NotFound);
     }
 
     public static IResult Conflict(string message, string? code = null) =>
-        Problem(StatusCodes.Status409Conflict, message, code ?? "conflict");
+        Problem(StatusCodes.Status409Conflict, message, code ?? AdminErrorCodes.Conflict);
 
     public static IResult ValidationError(string message) =>
-        Problem(StatusCodes.Status400BadRequest, message, "validation_error");
+        Problem(StatusCodes.Status400BadRequest, message, AdminErrorCodes.ValidationError);
 
     public static IResult ServiceUnavailable(string message, string? code = null) =>
-        Problem(StatusCodes.Status503ServiceUnavailable, message, code ?? "service_unavailable");
+        Problem(StatusCodes.Status503ServiceUnavailable, message, code ?? AdminErrorCodes.ServiceUnavailable);
 
     public static IResult Problem(
         int status,
@@ -34,7 +34,7 @@ public static class AdminResults
         string? code = null,
         IReadOnlyDictionary<string, string[]>? errors = null,
         string? traceId = null) =>
-        new AdminProblemResult(status, detail, code, errors, traceId);
+        new AdminProblemResult(status, detail, code ?? AdminErrorCodes.ForStatus(status), errors, traceId);
 
     /// <summary>
     /// Writes an <see cref="AdminProblemDetails"/> body whose TraceId matches the

@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Decorators;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using FluentAssertions;
@@ -301,5 +302,44 @@ public class ContextAwareLLMClientTests
 
         await act.Should().ThrowAsync<ConduitLLM.Core.Exceptions.LLMCommunicationException>();
         ex.ProviderName.Should().Be("set-by-source");
+    }
+
+    [Fact]
+    public async Task CreateEmbeddingAsync_WrappedCommunicationError_IsTracked()
+    {
+        var communicationException = new LLMCommunicationException(
+            "rate limited",
+            System.Net.HttpStatusCode.TooManyRequests,
+            "slow down");
+        var wrappedException = new AggregateException("provider call failed", communicationException);
+        var providerClient = new Mock<ILLMClient>();
+        providerClient
+            .Setup(c => c.CreateEmbeddingAsync(
+                It.IsAny<EmbeddingRequest>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(wrappedException);
+
+        var errorTracker = new Mock<IProviderErrorTrackingService>();
+        _serviceProvider
+            .Setup(serviceProvider => serviceProvider.GetService(typeof(IProviderErrorTrackingService)))
+            .Returns(errorTracker.Object);
+        var sut = new ContextAwareLLMClient(
+            providerClient.Object,
+            keyId: 42,
+            providerId: 7,
+            _serviceProvider.Object);
+
+        var act = () => sut.CreateEmbeddingAsync(new EmbeddingRequest
+        {
+            Input = "hello",
+            Model = "embedding-test"
+        });
+
+        await act.Should().ThrowAsync<AggregateException>();
+        errorTracker.Verify(
+            tracker => tracker.TrackErrorAsync(It.Is<ProviderErrorInfo>(error =>
+                error.KeyCredentialId == 42 &&
+                error.ProviderId == 7 &&
+                error.ErrorType == ProviderErrorType.RateLimitExceeded)),
+            Times.Once);
     }
 }

@@ -3,6 +3,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using StackExchange.Redis;
 
@@ -73,13 +74,13 @@ public class RedisProviderToolCache : BufferedStatsRedisCacheBase, IProviderTool
     }
 
     /// <inheritdoc/>
-    public async Task<ProviderToolCacheStats> GetStatsAsync()
+    public async Task<CacheStats> GetStatsAsync()
     {
         try
         {
             var (hits, misses, invalidations, resetTime) = await GetBaseStatsAsync(ServiceName);
 
-            return new ProviderToolCacheStats
+            return new CacheStats
             {
                 HitCount = hits + PendingHits,
                 MissCount = misses + PendingMisses,
@@ -91,7 +92,7 @@ public class RedisProviderToolCache : BufferedStatsRedisCacheBase, IProviderTool
         catch (Exception ex)
         {
             Logger.LogError(ex, "Error getting provider tool cache statistics");
-            return new ProviderToolCacheStats { LastResetTime = DateTime.UtcNow };
+            return new CacheStats { LastResetTime = DateTime.UtcNow };
         }
     }
 

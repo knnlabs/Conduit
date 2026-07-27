@@ -43,7 +43,7 @@ public class AdminExceptionMiddleware : ExceptionHandlingMiddlewareBase
             Title = mapping.StatusCode >= 500 ? "Internal Server Error" : "Request Failed",
             Status = mapping.StatusCode,
             Detail = message,
-            Code = mapping.ErrorCode,
+            Code = AdminErrorCodes.ForStatus(mapping.StatusCode),
             TraceId = traceId
         };
         return JsonSerializer.Serialize(problem, ErrorJsonOptions);

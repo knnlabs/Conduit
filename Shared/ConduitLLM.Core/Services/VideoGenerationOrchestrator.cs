@@ -37,8 +37,8 @@ namespace ConduitLLM.Core.Services
 
         // Implement abstract property accessors
         protected override string GetRequestId(VideoGenerationRequested request) => request.RequestId;
-        protected override string GetModel(VideoGenerationRequested request) => request.Model;
-        protected override string GetPrompt(VideoGenerationRequested request) => request.Prompt;
+        protected override string GetModel(VideoGenerationRequested request) => request.ResolveRequest().Model;
+        protected override string GetPrompt(VideoGenerationRequested request) => request.ResolveRequest().Prompt;
         protected override string GetVirtualKeyId(VideoGenerationRequested request) => request.VirtualKeyId;
         protected override string? GetWebhookUrl(VideoGenerationRequested request) => request.WebhookUrl;
         protected override string? GetCorrelationId(VideoGenerationRequested request) => request.CorrelationId;
@@ -206,7 +206,7 @@ namespace ConduitLLM.Core.Services
                     MediaType = MediaType.Video,
                     Index = index,
                     ModelInfo = modelInfo,
-                    Prompt = request.Prompt,
+                    Prompt = request.ResolveRequest().Prompt,
                     VirtualKeyId = virtualKey.Id,
                     RequestId = request.RequestId,
                     CorrelationId = request.CorrelationId
@@ -297,6 +297,13 @@ namespace ConduitLLM.Core.Services
             VideoGenerationRequested request,
             GenerationModelInfo modelInfo)
         {
+            var eventRequest = request.ResolveRequest();
+            if (!string.IsNullOrWhiteSpace(eventRequest.Prompt))
+            {
+                eventRequest.Model = modelInfo.ModelId;
+                return eventRequest;
+            }
+
             // Extract request from task metadata if available
             var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
             if (taskStatus?.Metadata is TaskMetadata taskMetadata && taskMetadata.ExtensionData != null)
@@ -325,10 +332,10 @@ namespace ConduitLLM.Core.Services
             return new VideoGenerationRequest
             {
                 Model = modelInfo.ModelId,
-                Prompt = request.Prompt,
-                Duration = request.Parameters?.Duration,
-                Size = request.Parameters?.Size,
-                Fps = request.Parameters?.Fps,
+                Prompt = eventRequest.Prompt,
+                Duration = eventRequest.Duration,
+                Size = eventRequest.Size,
+                Fps = eventRequest.Fps,
                 N = 1
             };
         }
@@ -342,15 +349,16 @@ namespace ConduitLLM.Core.Services
 
         protected override Usage CreateUsageObject(VideoGenerationRequested request, VideoGenerationResponse response)
         {
+            var generationRequest = request.ResolveRequest();
             var providerMetadata = response.Data?.FirstOrDefault()?.Metadata;
             var resolution = providerMetadata is { Width: > 0, Height: > 0 }
                 ? $"{providerMetadata.Width}x{providerMetadata.Height}"
-                : request.Parameters?.Size ?? "1280x720";
+                : generationRequest.Size ?? "1280x720";
             var duration = providerMetadata?.Duration > 0
                 ? providerMetadata.Duration
                 : response.Usage?.TotalDurationSeconds > 0
                     ? response.Usage.TotalDurationSeconds
-                    : request.Parameters?.Duration ?? 5;
+                    : generationRequest.Duration ?? 5;
 
             // Build pricing parameters for rules-based pricing
             var pricingParameters = new Dictionary<string, object>
@@ -360,20 +368,20 @@ namespace ConduitLLM.Core.Services
             };
 
             // Add optional parameters that may affect pricing
-            if (request.Parameters?.Fps.HasValue == true)
+            if (generationRequest.Fps.HasValue)
             {
-                pricingParameters["fps"] = request.Parameters.Fps.Value;
+                pricingParameters["fps"] = generationRequest.Fps.Value;
             }
 
-            if (!string.IsNullOrEmpty(request.Parameters?.Style))
+            if (!string.IsNullOrEmpty(generationRequest.Style))
             {
-                pricingParameters["style"] = request.Parameters.Style;
+                pricingParameters["style"] = generationRequest.Style;
             }
 
             // Include provider-specific options that may affect pricing (e.g., audio, aspect_ratio)
-            if (request.Parameters?.ProviderOptions != null)
+            if (generationRequest.ExtensionData != null)
             {
-                foreach (var option in request.Parameters.ProviderOptions)
+                foreach (var option in generationRequest.ExtensionData)
                 {
                     // Copy pricing-relevant options
                     var key = option.Key.ToLowerInvariant();
@@ -420,8 +428,9 @@ namespace ConduitLLM.Core.Services
             TimeSpan duration)
         {
             // Fall back to request values only when the provider did not report delivered metadata.
-            double videoDuration = request.Parameters?.Duration ?? 5;
-            var resolution = request.Parameters?.Size ?? "1280x720";
+            var generationRequest = request.ResolveRequest();
+            double videoDuration = generationRequest.Duration ?? 5;
+            var resolution = generationRequest.Size ?? "1280x720";
 
             // Extract file size from processed media metadata if available
             long fileSize = 0;
@@ -460,7 +469,7 @@ namespace ConduitLLM.Core.Services
                 GenerationDuration = duration,
                 Cost = cost,
                 Provider = modelInfo.ProviderName,
-                Model = request.Model,
+                Model = generationRequest.Model,
                 CompletedAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
@@ -517,14 +526,15 @@ namespace ConduitLLM.Core.Services
             string status,
             string? error = null)
         {
+            var generationRequest = request.ResolveRequest();
             return new VideoCompletionWebhookPayload
             {
                 TaskId = request.RequestId,
                 Status = status,
                 VideoUrl = media.Url,
                 GenerationDurationSeconds = duration.TotalSeconds,
-                Model = request.Model,
-                Prompt = request.Prompt,
+                Model = generationRequest.Model,
+                Prompt = generationRequest.Prompt,
                 Error = error
             };
         }
@@ -536,16 +546,17 @@ namespace ConduitLLM.Core.Services
             GenerationModelInfo modelInfo,
             VideoGenerationRequest generationRequest)
         {
+            var eventRequest = request.ResolveRequest();
             _logger.LogInformation(
                 "Video generation request prepared: TaskId={TaskId}, Model={Model}, Provider={Provider}, " +
                 "Duration={Duration}, Resolution={Resolution}, FPS={FPS}, PromptLength={PromptLength}",
                 request.RequestId,
-                request.Model,
+                eventRequest.Model,
                 modelInfo.ProviderName,
                 generationRequest.Duration,
                 generationRequest.Size,
                 generationRequest.Fps,
-                request.Prompt?.Length ?? 0);
+                eventRequest.Prompt.Length);
         }
 
         protected override bool IsRetryableError(Exception ex)

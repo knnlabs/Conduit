@@ -780,7 +780,7 @@ export interface components {
       /** Format: date-time */
       capabilities_last_verified_at: unknown;
       parameters: string;
-      capabilities: components["schemas"]["ModelCapabilitiesDto"];
+      capabilities: components["schemas"]["GatewayModelCapabilitiesDto"];
       pricing?: null | components["schemas"]["ModelPricingDto"];
     };
     /** @description Known model capability names. */
@@ -954,6 +954,32 @@ export interface components {
         [key: string]: unknown;
       };
     };
+    /** @description Capabilities advertised for a model. */
+    GatewayModelCapabilitiesDto: {
+      chat: boolean;
+      chat_stream: boolean;
+      image_input: boolean;
+      video_input: boolean;
+      audio_input: boolean;
+      file_input: boolean;
+      vision: boolean;
+      video_understanding: boolean;
+      image_generation: boolean;
+      video_generation: boolean;
+      embeddings: boolean;
+      function_calling: boolean;
+      speech_to_text: boolean;
+      text_to_speech: boolean;
+      rerank: boolean;
+      tool_use?: null | boolean;
+      json_mode?: null | boolean;
+      /** Format: int32 */
+      max_tokens?: null | number | string;
+      /** Format: int32 */
+      max_output_tokens?: null | number | string;
+      /** @default false */
+      pdf_input: boolean;
+    };
     /** @description Request for generating an ephemeral key */
     GenerateEphemeralKeyRequest: {
       metadata?: null | components["schemas"]["EphemeralKeyMetadata"];
@@ -1053,32 +1079,6 @@ export interface components {
       reasoning_details?: null | components["schemas"]["JsonElement"];
       reasoning?: null | string;
     };
-    /** @description Capabilities advertised for a model. */
-    ModelCapabilitiesDto: {
-      chat: boolean;
-      chat_stream: boolean;
-      image_input: boolean;
-      video_input: boolean;
-      audio_input: boolean;
-      file_input: boolean;
-      vision: boolean;
-      video_understanding: boolean;
-      image_generation: boolean;
-      video_generation: boolean;
-      embeddings: boolean;
-      function_calling: boolean;
-      speech_to_text: boolean;
-      text_to_speech: boolean;
-      rerank: boolean;
-      tool_use?: null | boolean;
-      json_mode?: null | boolean;
-      /** Format: int32 */
-      max_tokens?: null | number | string;
-      /** Format: int32 */
-      max_output_tokens?: null | number | string;
-      /** @default false */
-      pdf_input: boolean;
-    };
     /** @description An OpenAI-compatible model entry. */
     ModelListItemDto: {
       id: string;
@@ -1107,7 +1107,7 @@ export interface components {
       capability_source: string;
       /** Format: date-time */
       capabilities_last_verified_at: unknown;
-      capabilities: components["schemas"]["ModelCapabilitiesDto"];
+      capabilities: components["schemas"]["GatewayModelCapabilitiesDto"];
       /** Format: int32 */
       max_input_tokens: null | number | string;
       /** Format: int32 */

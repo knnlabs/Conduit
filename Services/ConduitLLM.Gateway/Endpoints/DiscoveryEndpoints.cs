@@ -11,7 +11,6 @@ using Microsoft.Extensions.Options;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Functions.Utilities;
 using GatewayDiscoveredModelDto = ConduitLLM.Gateway.DTOs.DiscoveredModelDto;
-using GatewayModelCapabilitiesDto = ConduitLLM.Gateway.DTOs.ModelCapabilitiesDto;
 
 namespace ConduitLLM.Gateway.Endpoints
 {
@@ -193,8 +192,8 @@ namespace ConduitLLM.Gateway.Endpoints
                     model.TokenizerType.ToString().ToLowerInvariant(),
                     caps.InputModalities ?? [],
                     caps.OutputModalities ?? [],
-                    caps.Source.ToString().ToLowerInvariant(),
-                    caps.LastVerifiedAt,
+                    caps.CapabilitySource.ToString().ToLowerInvariant(),
+                    caps.CapabilitiesLastVerifiedAt,
                     model.ModelParameters ?? model.Series?.Parameters ?? "{}",
                     new GatewayModelCapabilitiesDto(
                         caps.SupportsChat,

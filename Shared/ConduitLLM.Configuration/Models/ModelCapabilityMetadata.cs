@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 
 namespace ConduitLLM.Configuration.Models;
@@ -80,41 +81,13 @@ public sealed class ProviderOperationalCapabilities
 }
 
 /// <summary>
-/// Effective capabilities after canonical metadata and provider overrides are combined.
-/// </summary>
-public sealed record EffectiveModelCapabilities(
-    IReadOnlyList<string>? InputModalities,
-    IReadOnlyList<string>? OutputModalities,
-    bool SupportsChat,
-    bool SupportsStreaming,
-    bool SupportsVision,
-    bool SupportsImageGeneration,
-    bool SupportsVideoGeneration,
-    bool SupportsEmbeddings,
-    bool SupportsFunctionCalling,
-    bool SupportsSpeechToText,
-    bool SupportsTextToSpeech,
-    bool SupportsRerank,
-    ModelCapabilitySource Source,
-    DateTime? LastVerifiedAt)
-{
-    public bool SupportsImageInput => InputModalities?.Contains(ModelModalities.Image, StringComparer.Ordinal) == true;
-    public bool SupportsVideoInput => InputModalities?.Contains(ModelModalities.Video, StringComparer.Ordinal) == true;
-    public bool SupportsAudioInput => InputModalities?.Contains(ModelModalities.Audio, StringComparer.Ordinal) == true;
-    public bool SupportsFileInput => InputModalities?.Contains(ModelModalities.File, StringComparer.Ordinal) == true;
-    public bool SupportsVideoUnderstanding =>
-        SupportsVideoInput &&
-        OutputModalities?.Contains(ModelModalities.Text, StringComparer.Ordinal) == true;
-}
-
-/// <summary>
 /// Resolves canonical and provider-specific model capability metadata.
 /// </summary>
 public static class ModelCapabilityResolver
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public static EffectiveModelCapabilities Resolve(
+    public static ModelCapabilitiesDto Resolve(
         Model model,
         ModelProviderTypeAssociation? association = null)
     {
@@ -137,21 +110,46 @@ public static class ModelCapabilityResolver
 
         var operationOverrides = DeserializeOverrides(association?.OperationalCapabilitiesJson);
 
-        return new EffectiveModelCapabilities(
-            inputs,
-            outputs,
-            operationOverrides?.SupportsChat ?? model.SupportsChat,
-            operationOverrides?.SupportsStreaming ?? model.SupportsStreaming,
-            inputs?.Contains(ModelModalities.Image, StringComparer.Ordinal) == true,
-            operationOverrides?.SupportsImageGeneration ?? model.SupportsImageGeneration,
-            operationOverrides?.SupportsVideoGeneration ?? model.SupportsVideoGeneration,
-            operationOverrides?.SupportsEmbeddings ?? model.SupportsEmbeddings,
-            operationOverrides?.SupportsFunctionCalling ?? model.SupportsFunctionCalling,
-            operationOverrides?.SupportsSpeechToText ?? model.SupportsSpeechToText,
-            operationOverrides?.SupportsTextToSpeech ?? model.SupportsTextToSpeech,
-            operationOverrides?.SupportsRerank ?? model.SupportsRerank,
-            association?.CapabilitySource ?? model.CapabilitySource,
-            association?.CapabilitiesLastVerifiedAt ?? model.CapabilitiesLastVerifiedAt);
+        var supportsImageInput =
+            inputs?.Contains(ModelModalities.Image, StringComparer.Ordinal) == true;
+        var supportsVideoInput =
+            inputs?.Contains(ModelModalities.Video, StringComparer.Ordinal) == true;
+
+        return new ModelCapabilitiesDto
+        {
+            InputModalities = inputs,
+            OutputModalities = outputs,
+            CapabilitySource = association?.CapabilitySource ?? model.CapabilitySource,
+            CapabilitiesLastVerifiedAt =
+                association?.CapabilitiesLastVerifiedAt ?? model.CapabilitiesLastVerifiedAt,
+            SupportsImageInput = supportsImageInput,
+            SupportsVideoInput = supportsVideoInput,
+            SupportsAudioInput =
+                inputs?.Contains(ModelModalities.Audio, StringComparer.Ordinal) == true,
+            SupportsFileInput =
+                inputs?.Contains(ModelModalities.File, StringComparer.Ordinal) == true,
+            SupportsVideoUnderstanding =
+                supportsVideoInput &&
+                outputs?.Contains(ModelModalities.Text, StringComparer.Ordinal) == true,
+            SupportsChat = operationOverrides?.SupportsChat ?? model.SupportsChat,
+            SupportsStreaming = operationOverrides?.SupportsStreaming ?? model.SupportsStreaming,
+            SupportsVision = supportsImageInput,
+            SupportsImageGeneration =
+                operationOverrides?.SupportsImageGeneration ?? model.SupportsImageGeneration,
+            SupportsVideoGeneration =
+                operationOverrides?.SupportsVideoGeneration ?? model.SupportsVideoGeneration,
+            SupportsEmbeddings =
+                operationOverrides?.SupportsEmbeddings ?? model.SupportsEmbeddings,
+            SupportsFunctionCalling =
+                operationOverrides?.SupportsFunctionCalling ?? model.SupportsFunctionCalling,
+            SupportsSpeechToText =
+                operationOverrides?.SupportsSpeechToText ?? model.SupportsSpeechToText,
+            SupportsTextToSpeech =
+                operationOverrides?.SupportsTextToSpeech ?? model.SupportsTextToSpeech,
+            SupportsRerank = operationOverrides?.SupportsRerank ?? model.SupportsRerank,
+            MaxInputTokens = association?.MaxInputTokens ?? model.MaxInputTokens,
+            MaxOutputTokens = association?.MaxOutputTokens ?? model.MaxOutputTokens
+        };
     }
 
     public static string? SerializeOverrides(ProviderOperationalCapabilities? capabilities) =>

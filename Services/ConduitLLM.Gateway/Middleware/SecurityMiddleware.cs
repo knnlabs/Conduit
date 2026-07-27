@@ -1,5 +1,5 @@
+using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Security.Middleware;
-using ConduitLLM.Security.Models;
 using ISecurityService = ConduitLLM.Security.Interfaces.ISecurityService;
 
 namespace ConduitLLM.Gateway.Middleware
@@ -27,39 +27,25 @@ namespace ConduitLLM.Gateway.Middleware
         }
 
         /// <summary>
-        /// Logs granular security events.
+        /// Records Gateway API security violation metrics.
         /// </summary>
-        protected override Task OnSecurityViolationAsync(HttpContext context, SecurityCheckResult result, string clientIp)
+        protected override void RecordViolationMetric(int statusCode)
         {
-            var method = context.Request.Method;
-            var path = context.Request.Path.Value ?? "";
-            var virtualKey = context.Items["AttemptedKey"] as string ?? "";
-
-            switch (result.StatusCode)
+            switch (statusCode)
             {
-                case 401:
-                    Logger.LogWarning(
-                        "Security event: AuthenticationFailure — {Method} {Path} from {ClientIp}. Reason: {Reason}",
-                        method, path, clientIp, result.Reason);
+                case StatusCodes.Status401Unauthorized:
+                    GatewaySecurityMetrics.RecordAuthFailure();
                     break;
-                case 429:
-                    Logger.LogWarning(
-                        "Security event: RateLimitExceeded — {Method} {Path} from {ClientIp} [VirtualKey: {VirtualKey}]. Reason: {Reason}",
-                        method, path, clientIp, virtualKey, result.Reason);
+                case StatusCodes.Status429TooManyRequests:
+                    GatewaySecurityMetrics.RecordRateLimitHit();
                     break;
-                case 403:
-                    Logger.LogWarning(
-                        "Security event: AccessDenied — {Method} {Path} from {ClientIp}. Reason: {Reason}",
-                        method, path, clientIp, result.Reason);
+                case StatusCodes.Status403Forbidden:
+                    GatewaySecurityMetrics.RecordAccessDenied();
                     break;
                 default:
-                    Logger.LogWarning(
-                        "Security event: Blocked ({StatusCode}) — {Method} {Path} from {ClientIp}. Reason: {Reason}",
-                        result.StatusCode, method, path, clientIp, result.Reason);
+                    GatewaySecurityMetrics.RecordBlocked();
                     break;
             }
-
-            return Task.CompletedTask;
         }
     }
 

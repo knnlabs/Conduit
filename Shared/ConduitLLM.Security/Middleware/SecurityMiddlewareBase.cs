@@ -101,13 +101,48 @@ namespace ConduitLLM.Security.Middleware
         }
 
         /// <summary>
-        /// Called when a security violation occurs, before the error response is sent.
-        /// Override in derived classes to record security events.
+        /// Logs and records a security violation before the error response is sent.
         /// </summary>
         protected virtual Task OnSecurityViolationAsync(HttpContext context, SecurityCheckResult result, string clientIp)
         {
-            // Default implementation does nothing - derived classes can override
+            var method = context.Request.Method;
+            var path = context.Request.Path.Value ?? "";
+            var attemptedKey = context.Items["AttemptedKey"] as string ?? "";
+            var statusCode = result.StatusCode ?? StatusCodes.Status403Forbidden;
+
+            switch (statusCode)
+            {
+                case StatusCodes.Status401Unauthorized:
+                    Logger.LogWarning(
+                        "Security event: AuthenticationFailure — {Method} {Path} from {ClientIp} [AttemptedKey: {AttemptedKey}]. Reason: {Reason}",
+                        method, path, clientIp, attemptedKey, result.Reason);
+                    break;
+                case StatusCodes.Status429TooManyRequests:
+                    Logger.LogWarning(
+                        "Security event: RateLimitExceeded — {Method} {Path} from {ClientIp} [AttemptedKey: {AttemptedKey}]. Reason: {Reason}",
+                        method, path, clientIp, attemptedKey, result.Reason);
+                    break;
+                case StatusCodes.Status403Forbidden:
+                    Logger.LogWarning(
+                        "Security event: AccessDenied — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        method, path, clientIp, result.Reason);
+                    break;
+                default:
+                    Logger.LogWarning(
+                        "Security event: Blocked ({StatusCode}) — {Method} {Path} from {ClientIp}. Reason: {Reason}",
+                        statusCode, method, path, clientIp, result.Reason);
+                    break;
+            }
+
+            RecordViolationMetric(statusCode);
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Records an API-specific security violation metric.
+        /// </summary>
+        protected virtual void RecordViolationMetric(int statusCode)
+        {
         }
 
         /// <summary>

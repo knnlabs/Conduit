@@ -13,12 +13,17 @@ export interface GlobalSettingDto {
 }
 
 export interface GlobalSettingCacheStats {
-  cacheSize: number;
-  cacheHits: number;
-  cacheMisses: number;
-  invalidations: number;
+  hitCount: number;
+  missCount: number;
+  invalidationCount: number;
+  /** Fraction from 0 through 1. */
   hitRate: number;
-  lastLoadTime: string;
+  averageGetTime: string;
+  lastResetTime: string;
+  lastInvalidationTime: string | null;
+  entryCount: number;
+  patternMatchCount: number;
+  isEnabled: boolean;
   cachedKeys: string[];
 }
 

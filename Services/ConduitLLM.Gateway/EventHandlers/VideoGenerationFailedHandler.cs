@@ -2,6 +2,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Interfaces;
 
 using Microsoft.AspNetCore.SignalR;
@@ -74,6 +75,8 @@ namespace ConduitLLM.Gateway.EventHandlers
                 // Track per-provider failure count
                 var failureCount = MediaGenerationHandlerHelper.TrackFailureMetrics(
                     _progressCache, FailureCountCacheKeyPrefix, provider, "video", _logger);
+                var providerErrorType = MediaGenerationHandlerHelper.ClassifyFailure(
+                    message.Error, message.ErrorCode);
 
                 // Log structured metrics for monitoring/alerting pipelines
                 _logger.LogInformation("Video generation failure metrics: {@Metrics}", new
@@ -83,7 +86,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                     ErrorCode = message.ErrorCode ?? "unknown",
                     IsRetryable = message.IsRetryable,
                     FailedAt = message.FailedAt,
-                    ErrorType = MediaGenerationHandlerHelper.DetermineErrorType(message.Error, message.ErrorCode),
+                    ErrorType = ProviderErrorClassifier.ToMetricLabel(providerErrorType),
                     ProviderFailureCount = failureCount
                 });
 
@@ -122,7 +125,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 }
 
                 // Flag critical failures (auth, account, credits) for immediate attention
-                if (MediaGenerationHandlerHelper.IsCriticalFailure(message.Error))
+                if (ProviderErrorClassifier.IsFatal(providerErrorType))
                 {
                     _logger.LogCritical("Critical video generation failure detected for provider {Provider}: {Error}",
                         provider, message.Error);

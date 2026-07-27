@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Core.Models;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -10,7 +11,7 @@ public sealed class GlobalSettingsResponseSchemaTransformer : IOpenApiSchemaTran
     public Task TransformAsync(OpenApiSchema schema, OpenApiSchemaTransformerContext context, CancellationToken cancellationToken)
     {
         var type = context.JsonTypeInfo.Type;
-        if (type == typeof(GlobalSettingDto) || type == typeof(GlobalSettingCacheStatsDto))
+        if (type == typeof(GlobalSettingDto) || type == typeof(CacheStats))
         {
             schema.Required ??= new HashSet<string>();
             foreach (var propertyName in schema.Properties?.Keys ?? [])

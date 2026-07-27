@@ -83,7 +83,7 @@ namespace ConduitLLM.Gateway.Endpoints
         private void StoreFunctionExecutionResults(AgenticExecutionMetrics agenticMetrics)
         {
             var functionExecutionResults = agenticMetrics.FunctionCalls
-                .Select(fc => new FunctionExecutionResultForLogging
+                .Select(fc => new ToolExecutionEvent
                 {
                     ToolCallId = fc.ToolCallId,
                     FunctionName = fc.FunctionName,
@@ -287,15 +287,7 @@ namespace ConduitLLM.Gateway.Endpoints
 
                 if (toolEvent.Status == "completed" || toolEvent.Status == "failed")
                 {
-                    state.FunctionExecutionResults.Add(new FunctionExecutionResultForLogging
-                    {
-                        ToolCallId = toolEvent.ToolCallId,
-                        FunctionName = toolEvent.FunctionName,
-                        Status = toolEvent.Status,
-                        Cost = toolEvent.Cost,
-                        ErrorMessage = toolEvent.ErrorMessage,
-                        FunctionExecutionId = toolEvent.FunctionExecutionId
-                    });
+                    state.FunctionExecutionResults.Add(toolEvent);
                     state.TotalFunctionCost += toolEvent.Cost ?? 0m;
                 }
             };
@@ -622,7 +614,7 @@ namespace ConduitLLM.Gateway.Endpoints
             public string? StreamingModel { get; set; }
             public BoundedStringAccumulator ContentAccumulator { get; }
             public Dictionary<int, StreamingToolCallAccumulator> AccumulatedToolCalls { get; } = new();
-            public List<FunctionExecutionResultForLogging> FunctionExecutionResults { get; } = new();
+            public List<ToolExecutionEvent> FunctionExecutionResults { get; } = new();
             public decimal TotalFunctionCost { get; set; }
             public Dictionary<int, Usage> ProviderCalls { get; } = new();
             public ProviderToolUsage? ProviderToolUsage { get; set; }

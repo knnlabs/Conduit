@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -279,19 +280,16 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
         }
     }
 
-    public Task<Dictionary<string, object>> GetCacheStatsAsync()
+    public Task<CacheStats> GetCacheStatsAsync()
     {
-        var stats = new Dictionary<string, object>
+        var stats = new CacheStats
         {
-            ["CacheSize"] = _cache.Count,
-            ["CacheHits"] = _cacheHits,
-            ["CacheMisses"] = _cacheMisses,
-            ["Invalidations"] = _invalidations,
-            ["HitRate"] = _cacheHits + _cacheMisses > 0
-                ? (double)_cacheHits / (_cacheHits + _cacheMisses) * 100
-                : 0,
-            ["LastLoadTime"] = _lastLoadTime,
-            ["CachedKeys"] = _cache.Keys.ToList()
+            EntryCount = _cache.Count,
+            HitCount = Interlocked.Read(ref _cacheHits),
+            MissCount = Interlocked.Read(ref _cacheMisses),
+            InvalidationCount = Interlocked.Read(ref _invalidations),
+            LastResetTime = _lastLoadTime,
+            CachedKeys = _cache.Keys.OrderBy(key => key).ToArray()
         };
 
         return Task.FromResult(stats);

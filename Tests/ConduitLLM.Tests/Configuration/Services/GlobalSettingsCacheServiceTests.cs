@@ -66,8 +66,8 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert
             var stats = await _service.GetCacheStatsAsync();
-            stats["CacheSize"].Should().Be(3);
-            ((List<string>)stats["CachedKeys"]).Should().Contain(new[] { "setting1", "setting2", "setting3" });
+            stats.EntryCount.Should().Be(3);
+            stats.CachedKeys.Should().Contain(new[] { "setting1", "setting2", "setting3" });
         }
 
         [Fact]
@@ -81,7 +81,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert
             var stats = await _service.GetCacheStatsAsync();
-            stats["CacheSize"].Should().Be(0);
+            stats.EntryCount.Should().Be(0);
         }
 
         [Fact]
@@ -160,7 +160,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             // Assert - Should handle cancellation gracefully
             var stats = await _service.GetCacheStatsAsync();
             // Cache size might be less than 100 if cancellation was honored
-            ((int)stats["CacheSize"]).Should().BeLessThanOrEqualTo(100);
+            stats.EntryCount.Should().BeLessThanOrEqualTo(100);
         }
 
         #endregion
@@ -181,14 +181,14 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Verify cache has data
             var statsBefore = await _service.GetCacheStatsAsync();
-            statsBefore["CacheSize"].Should().Be(1);
+            statsBefore.EntryCount.Should().Be(1);
 
             // Act
             await _service.StopAsync(CancellationToken.None);
 
             // Assert
             var statsAfter = await _service.GetCacheStatsAsync();
-            statsAfter["CacheSize"].Should().Be(0);
+            statsAfter.EntryCount.Should().Be(0);
         }
 
         [Fact]
@@ -530,7 +530,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             await _service.StartAsync(CancellationToken.None);
 
             var statsBefore = await _service.GetCacheStatsAsync();
-            var invalidationsBefore = (long)statsBefore["Invalidations"];
+            var invalidationsBefore = statsBefore.InvalidationCount;
 
             _mockRepository.Setup(x => x.GetByKeyAsync("stat_test", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new GlobalSetting { Id = 1, Key = "stat_test", Value = "new_value" });
@@ -540,7 +540,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert
             var statsAfter = await _service.GetCacheStatsAsync();
-            var invalidationsAfter = (long)statsAfter["Invalidations"];
+            var invalidationsAfter = statsAfter.InvalidationCount;
             invalidationsAfter.Should().Be(invalidationsBefore + 1);
         }
 
@@ -573,8 +573,8 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert
             var stats = await _service.GetCacheStatsAsync();
-            stats["CacheSize"].Should().Be(2);
-            var cachedKeys = (List<string>)stats["CachedKeys"];
+            stats.EntryCount.Should().Be(2);
+            var cachedKeys = stats.CachedKeys;
             cachedKeys.Should().Contain("setting2");
             cachedKeys.Should().Contain("setting3");
             cachedKeys.Should().NotContain("setting1");
@@ -605,7 +605,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             await _service.PublishReloadAsync("reload-1");
 
             var stats = await _service.GetCacheStatsAsync();
-            ((List<string>)stats["CachedKeys"]).Should().ContainSingle("new");
+            stats.CachedKeys.Should().ContainSingle("new");
             _mockRepository.Verify(
                 repository => repository.GetAllUnboundedAsync(It.IsAny<CancellationToken>()),
                 Times.Exactly(2));
@@ -636,13 +636,13 @@ namespace ConduitLLM.Tests.Configuration.Services
             var stats = await _service.GetCacheStatsAsync();
 
             // Assert
-            stats["CacheSize"].Should().Be(2);
-            ((long)stats["CacheHits"]).Should().BeGreaterThan(0);
-            stats.Should().ContainKey("CacheMisses");
-            stats.Should().ContainKey("Invalidations");
-            stats.Should().ContainKey("HitRate");
-            stats.Should().ContainKey("LastLoadTime");
-            stats.Should().ContainKey("CachedKeys");
+            stats.EntryCount.Should().Be(2);
+            stats.HitCount.Should().BeGreaterThan(0);
+            stats.MissCount.Should().BeGreaterThanOrEqualTo(0);
+            stats.InvalidationCount.Should().BeGreaterThanOrEqualTo(0);
+            stats.HitRate.Should().BeInRange(0, 1);
+            stats.LastResetTime.Should().NotBe(default);
+            stats.CachedKeys.Should().HaveCount(2);
         }
 
         [Fact]
@@ -667,8 +667,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             var stats = await _service.GetCacheStatsAsync();
 
             // Assert
-            var hitRate = (double)stats["HitRate"];
-            hitRate.Should().BeApproximately(75.0, 0.1); // 3 hits / 4 total = 75%
+            stats.HitRate.Should().BeApproximately(0.75, 0.001); // 3 hits / 4 total
         }
 
         #endregion
@@ -698,7 +697,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert - All invalidations should complete successfully
             var stats = await _service.GetCacheStatsAsync();
-            ((long)stats["Invalidations"]).Should().Be(10);
+            stats.InvalidationCount.Should().Be(10);
         }
 
         [Fact]

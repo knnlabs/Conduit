@@ -236,7 +236,7 @@ namespace ConduitLLM.Tests.Admin.Integration
                 new CreateModelAuthorDto { Name = "OpenAI" });
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-            (await ReadCodeAsync(response)).Should().Be("invalid_operation");
+            (await ReadCodeAsync(response)).Should().Be("validation_error");
             _repository.Verify(r => r.CreateAsync(It.IsAny<ModelAuthor>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -370,7 +370,7 @@ namespace ConduitLLM.Tests.Admin.Integration
             var response = await _client.DeleteAsync("/v1/admin/model-authors/6");
 
             response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-            (await ReadCodeAsync(response)).Should().Be("invalid_operation");
+            (await ReadCodeAsync(response)).Should().Be("validation_error");
             _repository.Verify(r => r.DeleteAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
