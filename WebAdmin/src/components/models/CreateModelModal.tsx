@@ -7,8 +7,12 @@ import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useFormModal } from '@/hooks/useFormModal';
 import { EntityFormModal } from '@/components/common/EntityFormModal';
-import { TOKENIZER_SELECT_OPTIONS, TokenizerType, isValidTokenizerType } from '@/lib/utils/tokenizerTypes';
+import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
 import type { CreateModelDto, ModelSeriesDto } from '@/lib/admin-api';
+import {
+  MIN_MODEL_TOKEN_LIMIT,
+  modelFormValidation,
+} from './modelFormValidation';
 
 interface CreateModelModalProps {
   isOpen: boolean;
@@ -44,14 +48,7 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
       maxInputTokens: undefined as number | undefined,
       maxOutputTokens: undefined as number | undefined
     },
-    validate: {
-      name: (value) => !value ? 'Name is required' : null,
-      tokenizerType: (value: TokenizerType | null | undefined) => {
-        if (value === null || value === undefined) return 'Tokenizer type is required';
-        if (!isValidTokenizerType(value)) return 'Invalid tokenizer type';
-        return null;
-      }
-    }
+    validate: modelFormValidation,
   });
 
   useEffect(() => {
@@ -229,13 +226,13 @@ export function CreateModelModal({ isOpen, onClose, onSuccess }: CreateModelModa
         <NumberInput
           label="Max Input Tokens"
           placeholder="e.g., 128000"
-          min={0}
+          min={MIN_MODEL_TOKEN_LIMIT}
           {...form.getInputProps('maxInputTokens')}
         />
         <NumberInput
           label="Max Output Tokens"
           placeholder="e.g., 4096"
-          min={0}
+          min={MIN_MODEL_TOKEN_LIMIT}
           {...form.getInputProps('maxOutputTokens')}
         />
       </Group>

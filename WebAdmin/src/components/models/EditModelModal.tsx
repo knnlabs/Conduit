@@ -11,7 +11,11 @@ import { ProviderTypeList } from './ProviderTypeList';
 import { EditProviderTypeModal } from './EditProviderTypeModal';
 import { DeleteProviderTypeModal } from './DeleteProviderTypeModal';
 import { tryConvertReplicateSchema, isValidReplicateSchema } from '@/utils/replicateSchemaConverter';
-import { TOKENIZER_SELECT_OPTIONS, TokenizerType, isValidTokenizerType } from '@/lib/utils/tokenizerTypes';
+import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
+import {
+  MIN_MODEL_TOKEN_LIMIT,
+  modelFormValidation,
+} from './modelFormValidation';
 import type { 
   ModelDto, 
   UpdateModelDto, 
@@ -97,12 +101,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       maxOutputTokens: model?.maxOutputTokens ?? null
     },
     validate: {
-      name: (value) => !value ? 'Name is required' : null,
-      tokenizerType: (value) => {
-        if (value === null || value === undefined) return 'Tokenizer type is required';
-        if (!isValidTokenizerType(value)) return 'Invalid tokenizer type';
-        return null;
-      },
+      ...modelFormValidation,
       modelParameters: (value) => {
         if (value) {
           try {
@@ -114,18 +113,6 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
             setJsonError(error);
             return error;
           }
-        }
-        return null;
-      },
-      maxInputTokens: (value) => {
-        if (value !== null && value !== undefined && value < 1024) {
-          return 'Minimum value is 1024 tokens';
-        }
-        return null;
-      },
-      maxOutputTokens: (value) => {
-        if (value !== null && value !== undefined && value < 1024) {
-          return 'Minimum value is 1024 tokens';
         }
         return null;
       }
@@ -237,6 +224,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       await executeWithAdmin(client => client.models.update(modelId, dto as unknown as UpdateModelDto));
       notify.success('Model updated successfully');
       onSuccess();
+      handleClose();
     } catch (error) {
       console.error('Failed to update model:', error);
       notify.error(error, 'Failed to update model');
@@ -465,7 +453,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                 <TextInput
                   label="Max Input Tokens"
                   type="number"
-                  min={1024}
+                  min={MIN_MODEL_TOKEN_LIMIT}
                   placeholder="e.g., 128000"
                   value={form.values.maxInputTokens?.toString() ?? ''}
                   onChange={(e) => form.setFieldValue('maxInputTokens', e.currentTarget.value ? parseInt(e.currentTarget.value) : null)}
@@ -474,7 +462,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                 <TextInput
                   label="Max Output Tokens"
                   type="number"
-                  min={1024}
+                  min={MIN_MODEL_TOKEN_LIMIT}
                   placeholder="e.g., 4096"
                   value={form.values.maxOutputTokens?.toString() ?? ''}
                   onChange={(e) => form.setFieldValue('maxOutputTokens', e.currentTarget.value ? parseInt(e.currentTarget.value) : null)}
