@@ -48,14 +48,6 @@ Every request carries a **correlation ID** (accepted from inbound `X-Correlation
 upstream provider calls** — so a single ID ties together the whole path of one request across
 services.
 
-For reliable SignalR delivery, `signalr.queue.depth` and
-`signalr.queue.dead_letter.depth` expose current queue and dead-letter counts,
-`signalr.queue.pending.oldest_age` reports the oldest pending entry in seconds, and the
-`signalr.queue.claimed` and `signalr.queue.retries` counters show recovery and retry activity. The
-protected `/health/signalr/queue` endpoint returns the same pending, delayed, claimed, retry, age,
-and dead-letter state; `/health/signalr/queue/deadletter` lists valid dead-letter messages for
-operator review.
-
 ## Real-time event streams
 
 Conduit pushes live updates over **SignalR** (WebSockets, with automatic fallback to other

@@ -143,36 +143,6 @@ public static class RedisKeys
 
     #endregion
 
-    #region SignalR Infrastructure
-
-    /// <summary>
-    /// Keys for SignalR infrastructure services (message queuing, batching, monitoring).
-    /// Used by Gateway SignalR services.
-    /// </summary>
-    public static class SignalR
-    {
-        // Message queue
-        public const string MessageStream = "signalr:messages";
-        public const string DelayedMessages = "signalr:messages:delayed";
-        public const string DeadLetterStream = "signalr:deadletter";
-
-        // Acknowledgments
-        public const string PendingAcknowledgments = "signalr:acknowledgments";
-        public const string ConnectionMessagesPrefix = "signalr:conn_msgs";
-
-        // Connection monitoring
-        public const string ActiveConnections = "signalr:connections";
-        public const string GroupConnectionsPrefix = "signalr:groups";
-
-        // Message batching
-        public const string ActiveBatches = "signalr:batches:active";
-        public const string BatchQueue = "signalr:batches:queue";
-        public const string BatchStatsMethods = "signalr:batches:stats:methods";
-        public const string BatchStatsGlobal = "signalr:batches:stats:global";
-    }
-
-    #endregion
-
     #region Distributed Locks
 
     /// <summary>

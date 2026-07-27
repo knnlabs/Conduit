@@ -41,10 +41,6 @@ public partial class Program
 
         builder.Services.AddObservabilityServices(builder.Configuration);
 
-        // ========== SignalR Reliability ==========
-
-        builder.Services.AddSignalRReliabilityServices();
-
         // ========== Database Services ==========
 
         builder.Services.AddDatabaseServices(builder.Configuration);

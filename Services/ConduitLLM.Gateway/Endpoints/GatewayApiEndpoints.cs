@@ -27,8 +27,6 @@ public static class GatewayApiEndpoints
         services.AddScoped<DiscoveryEndpoints>();
         services.AddScoped<TasksEndpoints>();
         services.AddScoped<BatchOperationsEndpoints>();
-        services.AddScoped<SignalRBatchingEndpoints>();
-        services.AddScoped<SignalRHealthEndpoints>();
         services.AddScoped<FunctionsEndpoints>();
         services.AddScoped<RerankEndpoints>();
         services.AddScoped<EmbeddingsEndpoints>();
