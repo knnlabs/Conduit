@@ -261,12 +261,10 @@ namespace ConduitLLM.Core.Decorators
                     return;
                 }
 
-                var errorType = ProviderErrorClassifier.Classify(
-                    ex.StatusCode,
-                    $"{ex.ResponseBody} {ex.Message}");
+                var errorType = ProviderErrorClassifier.ClassifyException(ex);
                 
                 // Only track errors that are meaningful for provider health
-                if (errorType == ProviderErrorType.Unknown)
+                if (!ProviderErrorClassifier.ShouldTrack(errorType))
                 {
                     return;
                 }

@@ -764,6 +764,12 @@ namespace ConduitLLM.Core.Services.Abstractions
                 }
 
                 var errorType = ProviderErrorClassifier.ClassifyException(ex);
+                if (!ProviderErrorClassifier.ShouldTrack(errorType))
+                {
+                    return;
+                }
+
+                var communicationException = LLMCommunicationException.FindWithStatus(ex);
 
                 var errorInfo = new ProviderErrorInfo
                 {
@@ -771,8 +777,8 @@ namespace ConduitLLM.Core.Services.Abstractions
                     ProviderId = modelInfo.ProviderId,
                     ErrorType = errorType,
                     ErrorMessage = ex.Message,
-                    HttpStatusCode = (ex as LLMCommunicationException)?.StatusCode.HasValue == true
-                        ? (int)(ex as LLMCommunicationException)!.StatusCode!.Value
+                    HttpStatusCode = communicationException?.StatusCode is { } statusCode
+                        ? (int)statusCode
                         : null,
                     ModelName = modelInfo.ModelId,
                     OccurredAt = DateTime.UtcNow

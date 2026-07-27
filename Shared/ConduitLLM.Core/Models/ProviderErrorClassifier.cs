@@ -71,7 +71,9 @@ public static class ProviderErrorClassifier
         var communicationException = LLMCommunicationException.FindWithStatus(ex);
         if (communicationException is not null)
         {
-            return Classify(communicationException.StatusCode, communicationException.ResponseBody);
+            return Classify(
+                communicationException.StatusCode,
+                $"{communicationException.ResponseBody} {communicationException.Message}");
         }
 
         return ex switch
@@ -216,6 +218,12 @@ public static class ProviderErrorClassifier
         => errorType is ProviderErrorType.InvalidApiKey
             or ProviderErrorType.InsufficientBalance
             or ProviderErrorType.AccessForbidden;
+
+    /// <summary>
+    /// Returns whether a classification carries actionable provider-health information.
+    /// </summary>
+    public static bool ShouldTrack(ProviderErrorType errorType)
+        => errorType != ProviderErrorType.Unknown;
 
     /// <summary>
     /// Returns true when the response details carry a billing/quota hint. Used to refine

@@ -237,9 +237,7 @@ internal sealed class ProviderKeyFailoverLLMClient :
             return FatalErrorKind.None;
         }
 
-        var errorType = ProviderErrorClassifier.Classify(
-            communicationException.StatusCode,
-            $"{communicationException.ResponseBody} {communicationException.Message}");
+        var errorType = ProviderErrorClassifier.ClassifyException(exception);
 
         return errorType switch
         {
