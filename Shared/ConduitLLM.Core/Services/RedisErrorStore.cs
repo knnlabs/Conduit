@@ -126,7 +126,7 @@ namespace ConduitLLM.Core.Services
             await _db.SortedSetRemoveRangeByRankAsync(feedKey, 0, -1001);
         }
 
-        public async Task<FatalErrorData?> GetFatalErrorDataAsync(int keyId)
+        public async Task<FatalErrorInfo?> GetFatalErrorAsync(int keyId)
         {
             var fatalKey = CacheKeys.ProviderError.FatalByKey(keyId);
             var data = await _db.HashGetAllAsync(fatalKey);
@@ -136,19 +136,42 @@ namespace ConduitLLM.Core.Services
             
             var dict = data.ToDictionary(x => x.Name.ToString(), x => x.Value.ToString());
             
-            return new FatalErrorData
+            if (!Enum.TryParse<ProviderErrorType>(
+                    dict.GetValueOrDefault("error_type"),
+                    ignoreCase: true,
+                    out var errorType) ||
+                !int.TryParse(
+                    dict.GetValueOrDefault("count"),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var count) ||
+                !DateTime.TryParse(
+                    dict.GetValueOrDefault("first_seen"),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind,
+                    out var firstSeen) ||
+                !DateTime.TryParse(
+                    dict.GetValueOrDefault("last_seen"),
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.RoundtripKind,
+                    out var lastSeen))
             {
-                ErrorType = dict.GetValueOrDefault("error_type"),
-                Count = int.TryParse(dict.GetValueOrDefault("count"), out var count) ? count : 0,
-                FirstSeen = dict.TryGetValue("first_seen", out var firstSeen)
-                    ? DateTime.Parse(firstSeen, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null,
-                LastSeen = dict.TryGetValue("last_seen", out var lastSeen)
-                    ? DateTime.Parse(lastSeen, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null,
-                LastErrorMessage = dict.GetValueOrDefault("last_error_message"),
+                _logger.LogWarning(
+                    "Ignoring incomplete fatal-error hash for key {KeyId}",
+                    keyId);
+                return null;
+            }
+
+            return new FatalErrorInfo
+            {
+                ErrorType = errorType,
+                Count = count,
+                FirstSeen = firstSeen,
+                LastSeen = lastSeen,
+                LastErrorMessage = dict.GetValueOrDefault("last_error_message") ?? string.Empty,
                 LastStatusCode = int.TryParse(dict.GetValueOrDefault("last_status_code"), out var code)
                     ? code : null,
-                DisabledAt = dict.TryGetValue("disabled_at", out var disabledAt)
-                    ? DateTime.Parse(disabledAt, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind) : null
+                DisabledAt = ParseOptionalDateTime(dict.GetValueOrDefault("disabled_at"))
             };
         }
 
@@ -427,12 +450,13 @@ namespace ConduitLLM.Core.Services
                 DateTimeStyles.RoundtripKind,
                 out var parsed) ? parsed : null;
 
-        public async Task<KeyErrorData?> GetKeyErrorDataAsync(int keyId)
+        public async Task<KeyErrorDetails?> GetKeyErrorDetailsAsync(int keyId)
         {
-            var result = new KeyErrorData();
+            var result = new KeyErrorDetails { KeyId = keyId };
             
-            // Get fatal error data
-            result.FatalError = await GetFatalErrorDataAsync(keyId);
+            // Get fatal error information
+            result.FatalError = await GetFatalErrorAsync(keyId);
+            result.DisabledAt = result.FatalError?.DisabledAt;
             
             // Get recent warnings
             var warningKey = CacheKeys.ProviderError.WarningsByKey(keyId);
@@ -446,9 +470,18 @@ namespace ConduitLLM.Core.Services
                 try
                 {
                     var data = JsonDocument.Parse(warning.ToString());
-                    result.RecentWarnings.Add(new WarningData
+                    var typeName = data.RootElement.GetProperty("type").GetString();
+                    if (!Enum.TryParse<ProviderErrorType>(typeName, ignoreCase: true, out var warningType))
                     {
-                        Type = data.RootElement.GetProperty("type").GetString() ?? "",
+                        _logger.LogWarning(
+                            "Ignoring warning with unknown provider error type {ErrorType}",
+                            typeName);
+                        continue;
+                    }
+
+                    result.RecentWarnings.Add(new WarningInfo
+                    {
+                        Type = warningType,
                         Message = data.RootElement.GetProperty("message").GetString() ?? "",
                         Timestamp = data.RootElement.GetProperty("timestamp").GetDateTime()
                     });
@@ -462,7 +495,7 @@ namespace ConduitLLM.Core.Services
             return result;
         }
 
-        public async Task<ProviderSummaryData?> GetProviderSummaryAsync(int providerId)
+        public async Task<ProviderErrorSummary?> GetProviderSummaryAsync(int providerId)
         {
             var summaryKey = CacheKeys.ProviderError.ProviderSummary(providerId);
             var disabledSetKey = CacheKeys.ProviderError.DisabledKeysByProvider(providerId);
@@ -485,8 +518,9 @@ namespace ConduitLLM.Core.Services
                 .Select(m => (int)m)
                 .ToList();
 
-            return new ProviderSummaryData
+            return new ProviderErrorSummary
             {
+                ProviderId = providerId,
                 TotalErrors = int.Parse(dict.GetValueOrDefault("total_errors", "0"), CultureInfo.InvariantCulture),
                 FatalErrors = int.Parse(dict.GetValueOrDefault("fatal_errors", "0"), CultureInfo.InvariantCulture),
                 Warnings = int.Parse(dict.GetValueOrDefault("warnings", "0"), CultureInfo.InvariantCulture),
@@ -499,9 +533,9 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        public async Task<ErrorStatsData> GetErrorStatisticsAsync(TimeSpan window)
+        public async Task<ErrorStatistics> GetErrorStatisticsAsync(TimeSpan window)
         {
-            var stats = new ErrorStatsData();
+            var stats = new ErrorStatistics();
             var cutoff = DateTime.UtcNow - window;
             
             // Get recent errors from feed
@@ -526,7 +560,9 @@ namespace ConduitLLM.Core.Services
                     stats.ErrorsByType[errorType]++;
 
                     // Count by provider
-                    var providerId = data.RootElement.GetProperty("providerId").GetInt32();
+                    var providerId = data.RootElement.GetProperty("providerId")
+                        .GetInt32()
+                        .ToString(CultureInfo.InvariantCulture);
                     if (!stats.ErrorsByProvider.ContainsKey(providerId))
                         stats.ErrorsByProvider[providerId] = 0;
                     stats.ErrorsByProvider[providerId]++;

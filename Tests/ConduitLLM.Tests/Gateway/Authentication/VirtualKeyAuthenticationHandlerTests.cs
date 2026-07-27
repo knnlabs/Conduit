@@ -11,6 +11,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Authentication;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Security.Options;
 
 namespace ConduitLLM.Tests.Http.Authentication
 {
@@ -46,7 +47,8 @@ namespace ConduitLLM.Tests.Http.Authentication
                 _loggerFactoryMock.Object,
                 UrlEncoder.Default,
                 _virtualKeyServiceMock.Object,
-                _ephemeralKeyServiceMock.Object);
+                _ephemeralKeyServiceMock.Object,
+                Options.Create(new GatewaySecurityOptions()));
 
             _httpContext = new DefaultHttpContext();
         }

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Security.Options;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Gateway.Authentication
 {
@@ -13,16 +15,20 @@ namespace ConduitLLM.Gateway.Authentication
     {
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ILogger<VirtualKeySignalRAuthenticationHandler> _logger;
+        private readonly IReadOnlyList<string> _keyHeaders;
 
         /// <summary>
         /// Initializes a new instance of VirtualKeySignalRAuthenticationHandler
         /// </summary>
         public VirtualKeySignalRAuthenticationHandler(
             IVirtualKeyService virtualKeyService,
-            ILogger<VirtualKeySignalRAuthenticationHandler> logger)
+            ILogger<VirtualKeySignalRAuthenticationHandler> logger,
+            IOptions<GatewaySecurityOptions> securityOptions)
         {
             _virtualKeyService = virtualKeyService;
             _logger = logger;
+            ArgumentNullException.ThrowIfNull(securityOptions);
+            _keyHeaders = securityOptions.Value.VirtualKey.KeyHeaders;
         }
 
         /// <summary>
@@ -98,8 +104,8 @@ namespace ConduitLLM.Gateway.Authentication
         /// <summary>
         /// Extracts the Virtual Key from the request
         /// </summary>
-        private static string? ExtractVirtualKey(HttpContext context) =>
-            VirtualKeyExtractor.Extract(context);
+        private string? ExtractVirtualKey(HttpContext context) =>
+            VirtualKeyExtractor.Extract(context, _keyHeaders);
 
         /// <summary>
         /// Gets the client IP address from the request

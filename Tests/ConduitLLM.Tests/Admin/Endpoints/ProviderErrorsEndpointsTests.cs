@@ -38,6 +38,34 @@ public class ProviderErrorsEndpointsTests
     }
 
     [Fact]
+    public async Task GetErrorSummary_ExposesProviderDisableMetadata()
+    {
+        var disabledAt = new DateTime(2026, 7, 26, 12, 0, 0, DateTimeKind.Utc);
+        var provider = new Provider { Id = 22, ProviderName = "Example" };
+        _providerRepository
+            .Setup(x => x.GetPaginatedAsync(1, 100, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((new List<Provider> { provider }, 1));
+        _errorService
+            .Setup(x => x.GetProviderSummaryAsync(provider.Id))
+            .ReturnsAsync(new ProviderErrorSummary
+            {
+                ProviderId = provider.Id,
+                ProviderDisabledAt = disabledAt,
+                ProviderDisableReason = ProviderErrorTrackingService.AllKeysDisabledReason
+            });
+
+        var result = await _endpoints.GetErrorSummary();
+
+        var summaries = Assert.IsType<List<ProviderErrorSummaryDto>>(
+            Assert.IsAssignableFrom<IValueHttpResult>(result).Value);
+        var summary = Assert.Single(summaries);
+        Assert.Equal(disabledAt, summary.ProviderDisabledAt);
+        Assert.Equal(
+            ProviderErrorTrackingService.AllKeysDisabledReason,
+            summary.ProviderDisableReason);
+    }
+
+    [Fact]
     public async Task ClearKeyErrors_ReenablesProviderWhenAllKeysAutoDisabledIt()
     {
         const int keyId = 11;

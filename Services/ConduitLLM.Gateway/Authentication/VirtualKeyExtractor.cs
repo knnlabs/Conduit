@@ -1,4 +1,6 @@
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Security;
+using ConduitLLM.Security.Options;
 
 namespace ConduitLLM.Gateway.Authentication
 {
@@ -14,7 +16,7 @@ namespace ConduitLLM.Gateway.Authentication
         /// sole legitimate use. Query strings land in access logs and referrers, so header
         /// credentials are required everywhere else.
         /// </summary>
-        public static string? Extract(HttpContext? context)
+        public static string? Extract(HttpContext? context, IReadOnlyList<string>? keyHeaders = null)
         {
             if (context == null)
             {
@@ -35,20 +37,33 @@ namespace ConduitLLM.Gateway.Authentication
                 }
             }
 
-            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(authHeader))
-            {
-                var token = SpanHelper.ExtractBearerToken(authHeader);
-                if (!string.IsNullOrEmpty(token))
-                {
-                    return token;
-                }
-            }
+            keyHeaders ??= new GatewaySecurityOptions().VirtualKey.KeyHeaders;
 
-            var apiKeyHeader = context.Request.Headers["X-API-Key"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(apiKeyHeader))
+            foreach (var headerName in keyHeaders)
             {
-                return apiKeyHeader.Trim();
+                if (string.IsNullOrWhiteSpace(headerName))
+                {
+                    continue;
+                }
+
+                var value = context.Request.Headers[headerName].FirstOrDefault();
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    continue;
+                }
+
+                if (headerName.Equals(SecurityHeaderNames.Authorization, StringComparison.OrdinalIgnoreCase))
+                {
+                    var token = SpanHelper.ExtractBearerToken(value);
+                    if (!string.IsNullOrWhiteSpace(token))
+                    {
+                        return token;
+                    }
+
+                    continue;
+                }
+
+                return value.Trim();
             }
 
             return null;

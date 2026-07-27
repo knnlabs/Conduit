@@ -245,7 +245,7 @@ namespace ConduitLLM.Configuration
                 var validationResult = await _keyValidator.ValidateAddKeyAsync(providerId);
                 if (!validationResult.IsValid)
                 {
-                    throw new InvalidOperationException(validationResult.ErrorMessage);
+                    throw new InvalidOperationException(validationResult.Errors[0].Message);
                 }
 
                 // If this is the first key or marked as primary, ensure it's the only primary
@@ -349,7 +349,7 @@ namespace ConduitLLM.Configuration
                     var validationResult = await _keyValidator.ValidateDisableKeyAsync(keyId);
                     if (!validationResult.IsValid)
                     {
-                        throw new InvalidOperationException(validationResult.ErrorMessage);
+                        throw new InvalidOperationException(validationResult.Errors[0].Message);
                     }
                 }
 
@@ -452,7 +452,7 @@ namespace ConduitLLM.Configuration
                 var validationResult = await _keyValidator.ValidateSetPrimaryAsync(keyId);
                 if (!validationResult.IsValid)
                 {
-                    throw new InvalidOperationException(validationResult.ErrorMessage);
+                    throw new InvalidOperationException(validationResult.Errors[0].Message);
                 }
 
                 // Get the old primary key before changing

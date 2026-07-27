@@ -12,7 +12,7 @@ import {
 } from '@/lib/utils/error-utils';
 
 // Map local API errors to appropriate HTTP responses.
-export function handleApiError(error: unknown): NextResponse {
+export function toApiErrorResponse(error: unknown): NextResponse {
   const errorMessage = getErrorMessage(error);
   const statusCode = getErrorStatusCode(error);
   const errorType = statusCode ? String(statusCode) : 'unknown';
@@ -82,7 +82,7 @@ export function handleApiError(error: unknown): NextResponse {
 }
 
 // Legacy alias for backward compatibility
-export const mapApiErrorToResponse = handleApiError;
+export const mapApiErrorToResponse = toApiErrorResponse;
 
 // Re-export HttpError for convenience
 export { HttpError };

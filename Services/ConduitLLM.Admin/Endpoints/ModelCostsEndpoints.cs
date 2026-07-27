@@ -6,6 +6,7 @@ using ConduitLLM.Admin.Auditing;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Services;
 
@@ -66,8 +67,8 @@ namespace ConduitLLM.Admin.Endpoints
             g.MapGet("/export/json", ([FromServices] ModelCostsEndpoints e,int? providerId=null)=>e.ExportJson(providerId)).WithName("ModelCosts_ExportJson").Produces(StatusCodes.Status200OK,typeof(void),"application/json");
             g.MapPost("/import/csv", ([FromServices] ModelCostsEndpoints e,IFormFile file)=>e.ImportCsv(file)).WithName("ModelCosts_ImportCsv").DisableAntiforgery().Accepts<IFormFile>("multipart/form-data").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
             g.MapPost("/import/json", ([FromServices] ModelCostsEndpoints e,IFormFile file)=>e.ImportJson(file)).WithName("ModelCosts_ImportJson").DisableAntiforgery().Accepts<IFormFile>("multipart/form-data").Produces<BulkImportResult>().Produces(StatusCodes.Status400BadRequest);
-            g.MapPost("/{id:int}/validate-pricing-rules", ([FromServices] ModelCostsEndpoints e,int id,ValidatePricingRulesRequest d)=>e.ValidatePricingRules(id,d)).WithName("ModelCosts_ValidatePricingRules").Produces<ValidationResult>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
-            g.MapPost("/validate-pricing-rules", ([FromServices] ModelCostsEndpoints e,ValidatePricingRulesRequest d)=>e.ValidatePricingRulesStandalone(d)).WithName("ModelCosts_ValidatePricingRulesStandalone").Produces<ValidationResult>().Produces(StatusCodes.Status400BadRequest);
+            g.MapPost("/{id:int}/validate-pricing-rules", ([FromServices] ModelCostsEndpoints e,int id,ValidatePricingRulesRequest d)=>e.ValidatePricingRules(id,d)).WithName("ModelCosts_ValidatePricingRules").Produces<PricingRulesValidationResult>().Produces(StatusCodes.Status400BadRequest).Produces(StatusCodes.Status404NotFound);
+            g.MapPost("/validate-pricing-rules", ([FromServices] ModelCostsEndpoints e,ValidatePricingRulesRequest d)=>e.ValidatePricingRulesStandalone(d)).WithName("ModelCosts_ValidatePricingRulesStandalone").Produces<PricingRulesValidationResult>().Produces(StatusCodes.Status400BadRequest);
             return app;
         }
 
@@ -388,7 +389,7 @@ namespace ConduitLLM.Admin.Endpoints
 
             if (associatedModels.Count == 0)
             {
-                result.Errors.Add(new ValidationError
+                result.AddError(new ValidationError
                 {
                     Field = "modelCostId",
                     Message = $"Model cost {id} has no associated models; persisted parameter schema validation could not be performed."
@@ -413,7 +414,7 @@ namespace ConduitLLM.Admin.Endpoints
                         "Skipping pricing-rule schema validation for model {ModelId}: {SchemaError}",
                         model.Id,
                         schemaError);
-                    result.Errors.Add(new ValidationError
+                    result.AddError(new ValidationError
                     {
                         Field = "parameterSchema",
                         Message = $"[{modelLabel}] {schemaError}"
@@ -424,7 +425,7 @@ namespace ConduitLLM.Admin.Endpoints
                 var modelResult = _pricingRulesValidator.Validate(result.ParsedConfig, parameterSchema);
                 foreach (var error in modelResult.Errors.Where(error => !baseErrors.Contains(GetErrorKey(error))))
                 {
-                    result.Errors.Add(new ValidationError
+                    result.AddError(new ValidationError
                     {
                         Field = error.Field,
                         Message = $"[{modelLabel}] {error.Message}",
@@ -434,7 +435,7 @@ namespace ConduitLLM.Admin.Endpoints
 
                 foreach (var warning in modelResult.Warnings.Where(warning => !baseWarnings.Contains(warning)))
                 {
-                    result.Warnings.Add($"[{modelLabel}] {warning}");
+                    result.AddWarning($"[{modelLabel}] {warning}");
                 }
             }
 

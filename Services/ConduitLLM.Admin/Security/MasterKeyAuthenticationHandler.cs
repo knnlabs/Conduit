@@ -7,7 +7,9 @@ using Microsoft.Extensions.Options;
 using ConduitLLM.Admin.Metrics;
 using ConduitLLM.Admin.Services;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Security;
 using ConduitLLM.Security.Cryptography;
+using ConduitLLM.Security.Options;
 
 namespace ConduitLLM.Admin.Security
 {
@@ -18,6 +20,7 @@ namespace ConduitLLM.Admin.Security
     {
         private readonly string? _masterKey;
         private readonly IEphemeralMasterKeyService _ephemeralMasterKeyService;
+        private readonly IReadOnlyList<string> _keyHeaders;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MasterKeyAuthenticationHandler"/> class.
@@ -27,18 +30,26 @@ namespace ConduitLLM.Admin.Security
         /// <param name="encoder">The URL encoder</param>
         /// <param name="configuration">The application configuration</param>
         /// <param name="ephemeralMasterKeyService">The ephemeral master key service</param>
+        /// <param name="securityOptions">Configured Admin authentication header names</param>
         public MasterKeyAuthenticationHandler(
             IOptionsMonitor<MasterKeyAuthenticationSchemeOptions> options,
             ILoggerFactory logger,
             UrlEncoder encoder,
             IConfiguration configuration,
-            IEphemeralMasterKeyService ephemeralMasterKeyService)
+            IEphemeralMasterKeyService ephemeralMasterKeyService,
+            IOptions<AdminSecurityOptions> securityOptions)
             : base(options, logger, encoder)
         {
             // Get backend auth key from environment variable first, then fallback to configuration
             _masterKey = Environment.GetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY") 
                 ?? configuration["AdminApi:MasterKey"];
             _ephemeralMasterKeyService = ephemeralMasterKeyService ?? throw new ArgumentNullException(nameof(ephemeralMasterKeyService));
+            ArgumentNullException.ThrowIfNull(securityOptions);
+            _keyHeaders = new[] { securityOptions.Value.ApiAuth.ApiKeyHeader }
+                .Concat(securityOptions.Value.ApiAuth.AlternativeHeaders)
+                .Where(header => !string.IsNullOrWhiteSpace(header))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToArray();
         }
 
         /// <summary>
@@ -71,16 +82,21 @@ namespace ConduitLLM.Admin.Security
             // Check for master key in headers
             string? providedKey = null;
 
-            if (Context.Request.Headers.TryGetValue("X-API-Key", out var apiKeyValues))
+            foreach (var headerName in _keyHeaders)
             {
-                providedKey = apiKeyValues.FirstOrDefault();
+                if (Context.Request.Headers.TryGetValue(headerName, out var keyValues))
+                {
+                    providedKey = keyValues.FirstOrDefault();
+                    if (!string.IsNullOrWhiteSpace(providedKey))
+                    {
+                        break;
+                    }
+                }
             }
-            else if (Context.Request.Headers.TryGetValue("X-Master-Key", out var masterKeyValues))
-            {
-                providedKey = masterKeyValues.FirstOrDefault();
-            }
+
             // Check Authorization header for Bearer token
-            else if (Context.Request.Headers.TryGetValue("Authorization", out var authValues))
+            if (string.IsNullOrWhiteSpace(providedKey) &&
+                Context.Request.Headers.TryGetValue(SecurityHeaderNames.Authorization, out var authValues))
             {
                 var authHeader = authValues.FirstOrDefault();
                 if (!string.IsNullOrEmpty(authHeader))

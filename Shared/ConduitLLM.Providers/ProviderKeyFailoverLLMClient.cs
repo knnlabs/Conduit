@@ -4,6 +4,7 @@ using System.Runtime.ExceptionServices;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -154,21 +155,17 @@ internal sealed class ProviderKeyFailoverLLMClient :
         string? baseUrl = null,
         CancellationToken cancellationToken = default)
     {
-        if (InnerClient is IAuthenticationVerifiable authenticationVerifiable)
-        {
-            return authenticationVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl, cancellationToken);
-        }
-
-        return Task.FromResult(AuthenticationResult.Failure(
-            "Provider does not support authentication verification",
-            $"The {InnerClient.GetType().Name} client has not implemented authentication verification"));
+        return AuthenticationVerificationDelegator.VerifyAsync(
+            InnerClient,
+            InnerClient.GetType().Name,
+            apiKey,
+            baseUrl,
+            cancellationToken);
     }
 
     public string GetHealthCheckUrl(string? baseUrl = null)
     {
-        return InnerClient is IAuthenticationVerifiable authenticationVerifiable
-            ? authenticationVerifiable.GetHealthCheckUrl(baseUrl)
-            : baseUrl ?? "https://api.provider.com/health";
+        return AuthenticationVerificationDelegator.GetHealthCheckUrl(InnerClient, baseUrl);
     }
 
     private async Task<T> ExecuteAsync<T>(

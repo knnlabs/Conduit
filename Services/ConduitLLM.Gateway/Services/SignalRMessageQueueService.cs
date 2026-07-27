@@ -326,7 +326,7 @@ namespace ConduitLLM.Gateway.Services
                 : defaultValue;
         }
 
-        private static JsonSerializerOptions CreateQueueSerializerOptions()
+        internal static JsonSerializerOptions CreateQueueSerializerOptions()
         {
             var resolver = new DefaultJsonTypeInfoResolver();
             resolver.Modifiers.Add(typeInfo =>
@@ -342,8 +342,10 @@ namespace ConduitLLM.Gateway.Services
                     UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FailSerialization,
                     DerivedTypes =
                     {
-                        new JsonDerivedType(typeof(ConduitLLM.Core.Models.SignalR.TaskProgressMessage), "core.task-progress"),
-                        new JsonDerivedType(typeof(ConduitLLM.Gateway.Models.TaskProgressMessage), "gateway.task-progress"),
+                        // Read the legacy Core shape for one compatibility window. All new
+                        // TaskProgressMessage instances serialize with the Gateway discriminator.
+                        new JsonDerivedType(typeof(LegacyCoreTaskProgressMessage), "core.task-progress"),
+                        new JsonDerivedType(typeof(TaskProgressMessage), "gateway.task-progress"),
                         new JsonDerivedType(typeof(TaskCompletedMessage), "gateway.task-completed")
                     }
                 };

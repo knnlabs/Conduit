@@ -99,6 +99,16 @@ namespace ConduitLLM.Admin.DTOs
         /// When the last error occurred
         /// </summary>
         [JsonRequired] public DateTime? LastError { get; set; }
+
+        /// <summary>
+        /// When all keys automatically disabled the provider, if applicable.
+        /// </summary>
+        [JsonRequired] public DateTime? ProviderDisabledAt { get; set; }
+
+        /// <summary>
+        /// Reason recorded when the provider was automatically disabled.
+        /// </summary>
+        [JsonRequired] public string? ProviderDisableReason { get; set; }
         
         /// <summary>
         /// Number of currently disabled keys

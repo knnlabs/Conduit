@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
@@ -18,17 +16,7 @@ namespace ConduitLLM.Configuration.Utilities
         /// <returns>Hexadecimal string representation of the hash</returns>
         public static string HashKey(string key)
         {
-            using var sha256 = SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(key);
-            var hash = sha256.ComputeHash(bytes);
-
-            // Convert to hex string to match Admin API format
-            var builder = new StringBuilder();
-            foreach (byte b in hash)
-            {
-                builder.Append(b.ToString("x2"));
-            }
-            return builder.ToString();
+            return Sha256Hash.LowerHex(key);
         }
 
         /// <summary>
@@ -37,7 +25,7 @@ namespace ConduitLLM.Configuration.Utilities
         /// <returns>A 32-character secure random string</returns>
         public static string GenerateSecureKey()
         {
-            using var rng = RandomNumberGenerator.Create();
+            using var rng = System.Security.Cryptography.RandomNumberGenerator.Create();
             var bytes = new byte[32]; // 256 bits
             rng.GetBytes(bytes);
             return Convert.ToBase64String(bytes)

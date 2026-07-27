@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
-
+using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -235,9 +234,7 @@ namespace ConduitLLM.Core.Services
 
         private static string ComputeHash(byte[] data)
         {
-            using var sha256 = SHA256.Create();
-            var hash = sha256.ComputeHash(data);
-            return Convert.ToBase64String(hash).Replace("/", "-").Replace("+", "_").TrimEnd('=');
+            return Sha256Hash.LegacyStorageBase64Url(data);
         }
 
         private static string GenerateStorageKey(string contentHash, MediaType mediaType, string extension)

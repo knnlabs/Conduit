@@ -145,7 +145,9 @@ namespace ConduitLLM.Admin.Endpoints
                     Warnings = r.summary.Warnings,
                     DisabledKeyIds = r.summary.DisabledKeyIds,
                     DisabledKeyCount = r.summary.DisabledKeyIds.Count,
-                    LastError = r.summary.LastError
+                    LastError = r.summary.LastError,
+                    ProviderDisabledAt = r.summary.ProviderDisabledAt,
+                    ProviderDisableReason = r.summary.ProviderDisableReason
                 })
                 .ToList();
 

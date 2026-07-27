@@ -254,14 +254,12 @@ namespace ConduitLLM.Core.Decorators
             string? baseUrl = null,
             CancellationToken cancellationToken = default)
         {
-            if (_innerClient is IAuthenticationVerifiable authVerifiable)
-            {
-                return authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl, cancellationToken);
-            }
-
-            return Task.FromResult(AuthenticationResult.Failure(
-                "Provider does not support authentication verification",
-                $"The {_innerClient.GetType().Name} client has not implemented authentication verification"));
+            return Utilities.AuthenticationVerificationDelegator.VerifyAsync(
+                _innerClient,
+                _innerClient.GetType().Name,
+                apiKey,
+                baseUrl,
+                cancellationToken);
         }
 
         /// <summary>
@@ -270,12 +268,7 @@ namespace ConduitLLM.Core.Decorators
         /// </summary>
         public string GetHealthCheckUrl(string? baseUrl = null)
         {
-            if (_innerClient is IAuthenticationVerifiable authVerifiable)
-            {
-                return authVerifiable.GetHealthCheckUrl(baseUrl);
-            }
-
-            return baseUrl ?? "https://api.provider.com/health";
+            return Utilities.AuthenticationVerificationDelegator.GetHealthCheckUrl(_innerClient, baseUrl);
         }
 
         /// <summary>

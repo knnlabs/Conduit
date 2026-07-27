@@ -39,18 +39,18 @@ namespace ConduitLLM.Providers.Meta
             return statusCode switch
             {
                 System.Net.HttpStatusCode.Unauthorized =>
-                    new ConfigurationException(Constants.ErrorMessages.InvalidApiKey, communicationError),
+                    new ConfigurationException(MetaErrorMessages.InvalidApiKey, communicationError),
                 System.Net.HttpStatusCode.TooManyRequests =>
                     CreateCommunicationError(
-                        Constants.ErrorMessages.RateLimitExceeded,
+                        MetaErrorMessages.RateLimitExceeded,
                         statusCode,
                         responseContent,
                         requestId),
                 System.Net.HttpStatusCode.NotFound =>
-                    new ModelUnavailableException(Constants.ErrorMessages.ModelNotFound, communicationError),
+                    new ModelUnavailableException(MetaErrorMessages.ModelNotFound, communicationError),
                 System.Net.HttpStatusCode.PaymentRequired =>
                     CreateCommunicationError(
-                        Constants.ErrorMessages.QuotaExceeded,
+                        MetaErrorMessages.QuotaExceeded,
                         statusCode,
                         responseContent,
                         requestId),

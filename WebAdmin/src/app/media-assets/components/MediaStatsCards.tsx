@@ -6,9 +6,9 @@ import { useMediaStats } from '../hooks/useMediaStats';
 import { formatters } from '@/lib/utils/formatters';
 
 export default function MediaStatsCards() {
-  const { stats, loading } = useMediaStats();
+  const { stats, isLoading } = useMediaStats();
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Grid>
         {[1, 2, 3, 4].map((i) => (

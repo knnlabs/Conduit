@@ -1,13 +1,13 @@
 using System.Data;
 using System.Globalization;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Exceptions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using Microsoft.EntityFrameworkCore;
@@ -346,7 +346,7 @@ public class RefundService : IRefundService
 
     private static string CreateLedgerIdempotencyKey(int groupId, string operationId)
     {
-        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(operationId)));
+        var hash = Sha256Hash.UpperHex(operationId);
         return $"refund:{groupId}:{hash[..32]}";
     }
 
@@ -369,6 +369,6 @@ public class RefundService : IRefundService
 
         var canonical = string.Join('|', groupId, originalTransactionId, modelId,
             UsageKey(originalUsage), UsageKey(refundUsage), refundReason, requestLogId);
-        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical)));
+        return Sha256Hash.UpperHex(canonical);
     }
 }

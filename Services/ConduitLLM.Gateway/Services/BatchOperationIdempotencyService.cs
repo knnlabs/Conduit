@@ -1,8 +1,7 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using StackExchange.Redis;
 using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.Utilities;
 using ConduitLLM.Core.Interfaces;
 
 namespace ConduitLLM.Gateway.Services
@@ -180,12 +179,7 @@ namespace ConduitLLM.Gateway.Services
                 }
 
                 var combined = string.Join("|", components);
-                var bytes = Encoding.UTF8.GetBytes(combined);
-                var hash = SHA256.HashData(bytes);
-                var token = Convert.ToBase64String(hash)
-                    .Replace("+", "-")
-                    .Replace("/", "_")
-                    .TrimEnd('=');
+                var token = Sha256Hash.Base64Url(combined);
 
                 _logger.LogDebug(
                     "Generated idempotency token {Token} for operation {OperationType}",

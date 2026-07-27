@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using ConduitLLM.Admin.Security;
 using ConduitLLM.Admin.Services;
+using ConduitLLM.Security.Options;
 
 namespace ConduitLLM.Tests.Admin.Security
 {
@@ -37,7 +38,8 @@ namespace ConduitLLM.Tests.Admin.Security
 
         private async Task<AuthenticateResult> RunAuthenticationAsync(
             string? masterKey,
-            Action<HttpContext>? configureContext = null)
+            Action<HttpContext>? configureContext = null,
+            AdminSecurityOptions? securityOptions = null)
         {
             Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", masterKey);
 
@@ -53,7 +55,8 @@ namespace ConduitLLM.Tests.Admin.Security
                 _loggerFactoryMock.Object,
                 UrlEncoder.Default,
                 _configurationMock.Object,
-                _ephemeralKeyServiceMock.Object);
+                _ephemeralKeyServiceMock.Object,
+                Options.Create(securityOptions ?? new AdminSecurityOptions()));
 
             var httpContext = new DefaultHttpContext();
             configureContext?.Invoke(httpContext);
@@ -129,6 +132,28 @@ namespace ConduitLLM.Tests.Admin.Security
             Assert.True(result.Succeeded);
             Assert.Equal("AdminUser", result.Principal?.Identity?.Name);
             Assert.True(result.Principal?.HasClaim("MasterKey", "true"));
+        }
+
+        [Fact]
+        public async Task HandleAuthenticateAsync_CustomConfiguredHeader_Succeeds()
+        {
+            var result = await RunAuthenticationAsync(
+                "valid-key",
+                ctx =>
+                {
+                    ctx.Request.Path = "/api/test";
+                    ctx.Request.Headers["X-Conduit-Admin-Key"] = "valid-key";
+                },
+                new AdminSecurityOptions
+                {
+                    ApiAuth = new ApiAuthOptions
+                    {
+                        ApiKeyHeader = "X-Conduit-Admin-Key",
+                        AlternativeHeaders = []
+                    }
+                });
+
+            Assert.True(result.Succeeded);
         }
 
         [Fact]

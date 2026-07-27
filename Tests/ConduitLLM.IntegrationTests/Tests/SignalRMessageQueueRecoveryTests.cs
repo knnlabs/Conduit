@@ -18,7 +18,6 @@ using StackExchange.Redis;
 
 using Xunit;
 
-using CoreTaskProgressMessage = ConduitLLM.Core.Models.SignalR.TaskProgressMessage;
 using SignalRMessage = ConduitLLM.Core.Models.SignalR.SignalRMessage;
 
 namespace ConduitLLM.IntegrationTests.Tests;
@@ -215,10 +214,10 @@ public sealed class SignalRMessageQueueRecoveryTests : IAsyncLifetime
     {
         return new QueuedMessage
         {
-            Message = new CoreTaskProgressMessage
+            Message = new TaskProgressMessage
             {
                 TaskId = Guid.NewGuid().ToString("N"),
-                Status = "running",
+                StatusMessage = "running",
                 ProgressPercentage = 50
             },
             ConnectionId = "test-connection",

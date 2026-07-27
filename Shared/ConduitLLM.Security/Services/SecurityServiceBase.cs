@@ -167,6 +167,7 @@ namespace ConduitLLM.Security.Services
 
                 return SecurityCheckResult.RateLimited(
                     "Rate limit exceeded",
+                    Options.RateLimiting.WindowSeconds,
                     Options.RateLimiting.MaxRequests);
             }
 

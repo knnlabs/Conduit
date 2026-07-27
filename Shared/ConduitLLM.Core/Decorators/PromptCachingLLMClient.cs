@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Utilities;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Services;
 using Microsoft.Extensions.Logging;
@@ -131,14 +132,12 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
         string? baseUrl = null,
         CancellationToken cancellationToken = default)
     {
-        if (_innerClient is IAuthenticationVerifiable authVerifiable)
-        {
-            return authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl, cancellationToken);
-        }
-
-        return Task.FromResult(AuthenticationResult.Failure(
-            "Provider does not support authentication verification",
-            $"The {_innerClient.GetType().Name} client has not implemented authentication verification"));
+        return AuthenticationVerificationDelegator.VerifyAsync(
+            _innerClient,
+            _innerClient.GetType().Name,
+            apiKey,
+            baseUrl,
+            cancellationToken);
     }
 
     /// <summary>
@@ -147,12 +146,7 @@ public class PromptCachingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenti
     /// </summary>
     public string GetHealthCheckUrl(string? baseUrl = null)
     {
-        if (_innerClient is IAuthenticationVerifiable authVerifiable)
-        {
-            return authVerifiable.GetHealthCheckUrl(baseUrl);
-        }
-
-        return baseUrl ?? "https://api.provider.com/health";
+        return AuthenticationVerificationDelegator.GetHealthCheckUrl(_innerClient, baseUrl);
     }
 
     private async Task TryInjectCacheControlAsync(ChatCompletionRequest request)

@@ -1,17 +1,17 @@
 using Prometheus;
 
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Services;
 namespace ConduitLLM.Admin.Services
 {
     /// <summary>
     /// Service for tracking Admin API specific operational metrics.
     /// Monitors virtual key operations, provider management, and configuration changes.
     /// </summary>
-    public class AdminOperationsMetricsService : BackgroundService
+    public class AdminOperationsMetricsService : PeriodicCollectorBackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<AdminOperationsMetricsService> _logger;
-        private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
 
         // Virtual Key operation metrics
         private static readonly Counter VirtualKeyOperations = Prometheus.Metrics
@@ -113,6 +113,7 @@ namespace ConduitLLM.Admin.Services
         public AdminOperationsMetricsService(
             IServiceProvider serviceProvider,
             ILogger<AdminOperationsMetricsService> logger)
+            : base(logger, TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(5))
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
@@ -121,35 +122,13 @@ namespace ConduitLLM.Admin.Services
         /// <summary>
         /// Executes the background service to periodically collect metrics.
         /// </summary>
-        /// <param name="stoppingToken">The cancellation token to stop the service.</param>
+        /// <param name="cancellationToken">The cancellation token to stop the service.</param>
         /// <returns>A task that represents the asynchronous operation.</returns>
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            _logger.LogInformation("AdminOperationsMetricsService starting with collection interval {Interval}", _collectionInterval);
+        protected override Task CollectOnceAsync(CancellationToken cancellationToken) =>
+            CollectMetricsAsync();
 
-            // Brief delay to let other services initialize first
-            await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await CollectMetricsAsync();
-                }
-                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-                {
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error collecting admin operations metrics");
-                }
-
-                await Task.Delay(_collectionInterval, stoppingToken);
-            }
-
-            _logger.LogInformation("AdminOperationsMetricsService stopped");
-        }
+        protected override void OnCollectionFailed(Exception exception) =>
+            _logger.LogError(exception, "Error collecting admin operations metrics");
 
         private async Task CollectMetricsAsync()
         {

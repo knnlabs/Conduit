@@ -53,27 +53,41 @@ namespace ConduitLLM.Core.Models.SignalR
     }
 
     /// <summary>
-    /// Task progress message with structured data
+    /// Message for task progress updates that require acknowledgment.
     /// </summary>
     public class TaskProgressMessage : SignalRMessage
     {
-        public string TaskId { get; set; } = string.Empty;
-        public int ProgressPercentage { get; set; }
-        public string Status { get; set; } = string.Empty;
-        public string? Message { get; set; }
-        public DateTime? EstimatedCompletionTime { get; set; }
-        public Dictionary<string, object>? Metadata { get; set; }
-    }
+        public override string MessageType => "TaskProgress";
 
-    /// <summary>
-    /// Message acknowledgment
-    /// </summary>
-    public class MessageAcknowledgment
-    {
-        public string MessageId { get; set; } = string.Empty;
-        public string ClientId { get; set; } = string.Empty;
-        public DateTime AcknowledgedAt { get; set; } = DateTime.UtcNow;
-        public bool Success { get; set; }
-        public string? ErrorMessage { get; set; }
+        /// <summary>
+        /// ID of the task.
+        /// </summary>
+        public string TaskId { get; set; } = null!;
+
+        /// <summary>
+        /// Current progress percentage (0-100).
+        /// </summary>
+        public int ProgressPercentage { get; set; }
+
+        /// <summary>
+        /// Human-readable status message.
+        /// </summary>
+        public string StatusMessage { get; set; } = null!;
+
+        /// <summary>
+        /// Additional metadata about the progress.
+        /// </summary>
+        public Dictionary<string, object>? Metadata { get; set; }
+
+        /// <summary>
+        /// Estimated time remaining in seconds.
+        /// </summary>
+        public int? EstimatedSecondsRemaining { get; set; }
+
+        public TaskProgressMessage()
+        {
+            IsCritical = true;
+            Priority = 5;
+        }
     }
 }

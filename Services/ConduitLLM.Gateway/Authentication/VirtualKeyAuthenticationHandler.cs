@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Gateway.Metrics;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Security.Options;
 using Prometheus;
 
 namespace ConduitLLM.Gateway.Authentication
@@ -19,6 +20,7 @@ namespace ConduitLLM.Gateway.Authentication
     {
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly IEphemeralKeyService _ephemeralKeyService;
+        private readonly IReadOnlyList<string> _keyHeaders;
 
         /// <summary>
         /// Initializes a new instance of the VirtualKeyAuthenticationHandler
@@ -28,11 +30,14 @@ namespace ConduitLLM.Gateway.Authentication
             ILoggerFactory logger,
             UrlEncoder encoder,
             IVirtualKeyService virtualKeyService,
-            IEphemeralKeyService ephemeralKeyService)
+            IEphemeralKeyService ephemeralKeyService,
+            IOptions<GatewaySecurityOptions> securityOptions)
             : base(options, logger, encoder)
         {
             _virtualKeyService = virtualKeyService;
             _ephemeralKeyService = ephemeralKeyService;
+            ArgumentNullException.ThrowIfNull(securityOptions);
+            _keyHeaders = securityOptions.Value.VirtualKey.KeyHeaders;
         }
 
         /// <summary>
@@ -220,8 +225,8 @@ namespace ConduitLLM.Gateway.Authentication
         /// <summary>
         /// Extracts the Virtual Key from the request
         /// </summary>
-        private static string? ExtractVirtualKey(Microsoft.AspNetCore.Http.HttpContext context) =>
-            VirtualKeyExtractor.Extract(context);
+        private string? ExtractVirtualKey(Microsoft.AspNetCore.Http.HttpContext context) =>
+            VirtualKeyExtractor.Extract(context, _keyHeaders);
 
         /// <summary>
         /// Sanitizes a key for logging by showing only first few characters

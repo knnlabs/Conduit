@@ -402,7 +402,35 @@ export function getErrorMessage(error: unknown): string {
     return error.message;
   }
 
+  if (isHttpError(error)) {
+    const data = error.response.data;
+    if (typeof data === "object" && data !== null) {
+      const record = data as Record<string, unknown>;
+      const nestedError = record.error;
+      if (typeof record.detail === "string") return record.detail;
+      if (typeof nestedError === "string") return nestedError;
+      if (
+        typeof nestedError === "object" &&
+        nestedError !== null &&
+        typeof (nestedError as Record<string, unknown>).message === "string"
+      ) {
+        return (nestedError as Record<string, unknown>).message as string;
+      }
+      if (typeof record.message === "string") return record.message;
+      if (typeof record.title === "string") return record.title;
+      if (typeof record.details === "string") return record.details;
+    }
+  }
+
   if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (isErrorLike(error)) {
     return error.message;
   }
 
@@ -410,12 +438,16 @@ export function getErrorMessage(error: unknown): string {
 }
 
 // Helper for Next.js error pages
-export function getErrorStatusCode(error: unknown): number {
+export function getErrorStatusCode(error: unknown): number | undefined {
   if (isConduitError(error)) {
     return error.statusCode;
   }
 
-  return 500;
+  if (isHttpError(error)) {
+    return error.response.status;
+  }
+
+  return undefined;
 }
 
 /**

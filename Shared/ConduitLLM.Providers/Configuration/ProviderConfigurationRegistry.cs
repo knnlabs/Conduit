@@ -38,7 +38,7 @@ namespace ConduitLLM.Providers.Configuration
                 {
                     InvalidApiKey = "Invalid API key for OpenAI. Please verify your API key is correct.",
                     RateLimitExceeded = "OpenAI API rate limit exceeded. Please try again later.",
-                    InsufficientBalance = "Insufficient balance in your OpenAI account.",
+                    QuotaExceeded = "Insufficient balance in your OpenAI account.",
                     ModelNotFound = "Model not found. Please verify the model ID is correct."
                 },
                 Settings = new[]
@@ -442,9 +442,11 @@ namespace ConduitLLM.Providers.Configuration
                 AuthenticationStrategy = BearerTokenStrategy.Instance,
                 ErrorMessages = new ProviderErrorMessages
                 {
-                    InvalidApiKey = "Invalid API key for Meta. Please verify your API key is correct.",
-                    RateLimitExceeded = "Meta API rate limit exceeded. Please try again later.",
-                    ModelNotFound = "Model not found. Please verify the Meta model ID is correct."
+                    MissingApiKey = "API key is missing for provider 'meta'",
+                    InvalidApiKey = "Invalid Meta Model API key. Please check your credentials.",
+                    RateLimitExceeded = "Meta Model API rate limit exceeded. Please try again later or reduce your request frequency.",
+                    ModelNotFound = "The specified model is not available. Please check the model name and try again.",
+                    QuotaExceeded = "API quota exceeded. Please check your usage limits or remaining credits."
                 }
             }
         };
@@ -797,7 +799,7 @@ namespace ConduitLLM.Providers.Configuration
         private const string DefaultInvalidApiKey = "Invalid API key. Please verify your API key is correct.";
         private const string DefaultRateLimitExceeded = "API rate limit exceeded. Please try again later.";
         private const string DefaultModelNotFound = "Model not found. Please verify the model ID is correct.";
-        private const string DefaultInsufficientBalance = "Insufficient balance in your account.";
+        private const string DefaultQuotaExceeded = "API quota exceeded. Please check your usage limits or remaining credits.";
         private const string DefaultMissingApiKey = "API key is required.";
 
         /// <summary>
@@ -808,7 +810,7 @@ namespace ConduitLLM.Providers.Configuration
             InvalidApiKey = DefaultInvalidApiKey,
             RateLimitExceeded = DefaultRateLimitExceeded,
             ModelNotFound = DefaultModelNotFound,
-            InsufficientBalance = DefaultInsufficientBalance,
+            QuotaExceeded = DefaultQuotaExceeded,
             MissingApiKey = DefaultMissingApiKey
         };
 
@@ -828,9 +830,9 @@ namespace ConduitLLM.Providers.Configuration
         public string ModelNotFound { get; init; } = DefaultModelNotFound;
 
         /// <summary>
-        /// Message for insufficient balance errors.
+        /// Message for quota or account-balance errors.
         /// </summary>
-        public string InsufficientBalance { get; init; } = DefaultInsufficientBalance;
+        public string QuotaExceeded { get; init; } = DefaultQuotaExceeded;
 
         /// <summary>
         /// Message for missing API key errors.

@@ -52,7 +52,7 @@ public class ProviderKeyReprobeServiceTests
             .ReturnsAsync(new List<string> { "model" });
         _errorStore
             .Setup(x => x.GetProviderSummaryAsync(42))
-            .ReturnsAsync(new ProviderSummaryData
+            .ReturnsAsync(new ProviderErrorSummary
             {
                 ProviderDisabledAt = Now.UtcDateTime.AddHours(-2),
                 ProviderDisableReason = ProviderErrorTrackingService.AllKeysDisabledReason

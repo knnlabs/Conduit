@@ -315,42 +315,11 @@ namespace ConduitLLM.Core.Services
             if (key == null)
                 return null;
             
-            var errorData = await _errorStore.GetKeyErrorDataAsync(keyId);
-            
-            var details = new KeyErrorDetails
-            {
-                KeyId = keyId,
-                KeyName = key.KeyName ?? $"Key {keyId}",
-                IsDisabled = !key.IsEnabled,
-                DisabledAt = errorData?.FatalError?.DisabledAt
-            };
-            
-            if (errorData?.FatalError != null)
-            {
-                var fatal = errorData.FatalError;
-                details.FatalError = new FatalErrorInfo
-                {
-                    ErrorType = Enum.Parse<ProviderErrorType>(fatal.ErrorType ?? "Unknown"),
-                    Count = fatal.Count,
-                    FirstSeen = fatal.FirstSeen ?? DateTime.UtcNow,
-                    LastSeen = fatal.LastSeen ?? DateTime.UtcNow,
-                    LastErrorMessage = fatal.LastErrorMessage ?? "",
-                    LastStatusCode = fatal.LastStatusCode
-                };
-            }
-            
-            if (errorData?.RecentWarnings != null)
-            {
-                foreach (var warning in errorData.RecentWarnings)
-                {
-                    details.RecentWarnings.Add(new WarningInfo
-                    {
-                        Type = Enum.Parse<ProviderErrorType>(warning.Type),
-                        Message = warning.Message,
-                        Timestamp = warning.Timestamp
-                    });
-                }
-            }
+            var details = await _errorStore.GetKeyErrorDetailsAsync(keyId)
+                ?? new KeyErrorDetails { KeyId = keyId };
+            details.KeyId = keyId;
+            details.KeyName = key.KeyName ?? $"Key {keyId}";
+            details.IsDisabled = !key.IsEnabled;
             
             return details;
         }
@@ -362,33 +331,13 @@ namespace ConduitLLM.Core.Services
             if (summaryData == null)
                 return null;
             
-            return new ProviderErrorSummary
-            {
-                ProviderId = providerId,
-                TotalErrors = summaryData.TotalErrors,
-                FatalErrors = summaryData.FatalErrors,
-                Warnings = summaryData.Warnings,
-                DisabledKeyIds = summaryData.DisabledKeyIds,
-                LastError = summaryData.LastError,
-                ProviderDisabledAt = summaryData.ProviderDisabledAt,
-                ProviderDisableReason = summaryData.ProviderDisableReason
-            };
+            summaryData.ProviderId = providerId;
+            return summaryData;
         }
 
         public async Task<ErrorStatistics> GetErrorStatisticsAsync(TimeSpan window)
         {
-            var statsData = await _errorStore.GetErrorStatisticsAsync(window);
-            
-            var stats = new ErrorStatistics
-            {
-                TotalErrors = statsData.TotalErrors,
-                FatalErrors = statsData.FatalErrors,
-                Warnings = statsData.Warnings,
-                ErrorsByType = statsData.ErrorsByType,
-                ErrorsByProvider = statsData.ErrorsByProvider.ToDictionary(
-                    kvp => kvp.Key.ToString(),
-                    kvp => kvp.Value)
-            };
+            var stats = await _errorStore.GetErrorStatisticsAsync(window);
             
             // Count disabled keys
             using (var scope = _scopeFactory.CreateScope())

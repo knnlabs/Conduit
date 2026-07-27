@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import createClient from 'openapi-fetch';
-import { handleApiError } from '@/lib/errors/api-errors';
+import { toApiErrorResponse } from '@/lib/errors/api-errors';
 import type { paths as AdminPaths } from '@/generated/admin-api';
 import {
   adminEphemeralKeySchema,
@@ -79,6 +79,6 @@ export async function POST() {
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error generating ephemeral master key:', error);
-    return handleApiError(error);
+    return toApiErrorResponse(error);
   }
 }

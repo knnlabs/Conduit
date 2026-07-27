@@ -39,7 +39,11 @@ namespace ConduitLLM.Security.Models
         /// <summary>
         /// Creates a rate limited result
         /// </summary>
-        public static SecurityCheckResult RateLimited(string reason, int? limit = null, int? remaining = null, DateTime? resetsAt = null)
+        public static SecurityCheckResult RateLimited(
+            string reason,
+            int retryAfterSeconds,
+            int? limit = null,
+            int? remaining = null)
         {
             var result = new SecurityCheckResult
             {
@@ -48,7 +52,7 @@ namespace ConduitLLM.Security.Models
                 StatusCode = 429,
                 Headers = new Dictionary<string, string>
                 {
-                    ["Retry-After"] = "60"
+                    ["Retry-After"] = retryAfterSeconds.ToString()
                 }
             };
 
@@ -56,9 +60,6 @@ namespace ConduitLLM.Security.Models
                 result.Headers["X-RateLimit-Limit"] = limit.Value.ToString();
             if (remaining.HasValue)
                 result.Headers["X-RateLimit-Remaining"] = remaining.Value.ToString();
-            if (resetsAt.HasValue)
-                result.Headers["X-RateLimit-Reset"] = new DateTimeOffset(resetsAt.Value).ToUnixTimeSeconds().ToString();
-
             return result;
         }
     }

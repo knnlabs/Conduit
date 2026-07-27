@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { withAdminClient } from '@/lib/client/adminClient';
 import type { components } from '@/lib/admin-api';
 
@@ -12,23 +12,14 @@ interface UseProviderErrorsReturn {
   recentErrors: ProviderErrorDto[];
   isLoading: boolean;
   error: string | null;
-  refresh: () => Promise<void>;
+  refetch: () => Promise<void>;
 }
 
 export function useProviderErrors(hours: number = 24): UseProviderErrorsReturn {
-  const [stats, setStats] = useState<ErrorStatisticsDto | null>(null);
-  const [summaries, setSummaries] = useState<ProviderErrorSummaryDto[]>([]);
-  const [recentErrors, setRecentErrors] = useState<ProviderErrorDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Fetch all data in parallel
-      const [statsData, summariesData, errorsData] = await Promise.all([
+  const query = useQuery({
+    queryKey: ['provider-errors', hours],
+    queryFn: async () => {
+      const [stats, summaries, recentErrors] = await Promise.all([
         withAdminClient(client =>
           client.providerErrors.getStatistics(hours)
         ),
@@ -39,28 +30,20 @@ export function useProviderErrors(hours: number = 24): UseProviderErrorsReturn {
           client.providerErrors.getRecentErrors({ limit: 100 })
         ),
       ]);
-
-      setStats(statsData);
-      setSummaries(summariesData);
-      setRecentErrors(errorsData);
-    } catch (err) {
-      console.error('Failed to fetch provider error data:', err);
-      setError('Failed to load provider error data. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [hours]);
-
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+      return { stats, summaries, recentErrors };
+    },
+  });
 
   return {
-    stats,
-    summaries,
-    recentErrors,
-    isLoading,
-    error,
-    refresh: fetchData,
+    stats: query.data?.stats ?? null,
+    summaries: query.data?.summaries ?? [],
+    recentErrors: query.data?.recentErrors ?? [],
+    isLoading: query.isFetching,
+    error: query.error
+      ? 'Failed to load provider error data. Please try again.'
+      : null,
+    refetch: async () => {
+      await query.refetch();
+    },
   };
 }
