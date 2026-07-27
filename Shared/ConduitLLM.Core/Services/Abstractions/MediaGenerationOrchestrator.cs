@@ -11,6 +11,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Core.Policies;
 using ConduitLLM.Core.Validation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -313,7 +314,12 @@ namespace ConduitLLM.Core.Services.Abstractions
                 }
                 else
                 {
-                    await HandleFailureAsync(request, ex, stopwatch, modelInfo);
+                    await HandleFailureAsync(
+                        request,
+                        ex,
+                        stopwatch,
+                        modelInfo,
+                        context.CancellationToken);
                 }
             }
             finally
@@ -526,31 +532,10 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
         }
 
-        protected virtual bool IsRetryableError(Exception ex)
-        {
-            // Check exception type
-            var isRetryableType = ex switch
-            {
-                TimeoutException => true,
-                HttpRequestException => true,
-                TaskCanceledException => true,
-                System.IO.IOException => true,
-                System.Net.Sockets.SocketException => true,
-                _ => false
-            };
-
-            // Check for specific error messages
-            if (!isRetryableType && ex.Message != null)
-            {
-                var lowerMessage = ex.Message.ToLowerInvariant();
-                isRetryableType = lowerMessage.Contains("timeout") ||
-                                  lowerMessage.Contains("connection") ||
-                                  lowerMessage.Contains("temporarily unavailable") ||
-                                  lowerMessage.Contains("rate limit");
-            }
-
-            return isRetryableType;
-        }
+        protected virtual bool IsRetryableError(
+            Exception ex,
+            CancellationToken callerToken) =>
+            TransientErrorPolicy.IsTransient(ex, callerToken);
 
         protected virtual async Task UpdateTaskStatusAsync(string taskId, TaskState state, CancellationToken cancellationToken)
         {
@@ -669,13 +654,18 @@ namespace ConduitLLM.Core.Services.Abstractions
             }
         }
 
-        protected virtual async Task HandleFailureAsync(TEventRequest request, Exception ex, Stopwatch stopwatch, GenerationModelInfo? modelInfo)
+        protected virtual async Task HandleFailureAsync(
+            TEventRequest request,
+            Exception ex,
+            Stopwatch stopwatch,
+            GenerationModelInfo? modelInfo,
+            CancellationToken callerToken)
         {
             _logger.LogError(ex, "{MediaType} generation failed for task {RequestId}", 
                 GetMediaType(), GetRequestId(request));
             
             // Check if error is retryable
-            var isRetryable = IsRetryableError(ex);
+            var isRetryable = IsRetryableError(ex, callerToken);
             
             // Categorize error for metrics
             var (errorType, errorCategory) = CategorizeError(ex);

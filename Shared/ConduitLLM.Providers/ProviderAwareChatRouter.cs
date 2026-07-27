@@ -1,11 +1,11 @@
 using System.Collections.Concurrent;
-using System.Net;
 using System.Runtime.CompilerServices;
 
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Policies;
 
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
@@ -164,7 +164,7 @@ internal sealed class RoutedChatClient : ILLMClient
                 await SuccessAsync(mapping, cancellationToken);
                 return response;
             }
-            catch (Exception ex) when (IsRetryable(ex, cancellationToken))
+            catch (Exception ex) when (TransientErrorPolicy.IsTransient(ex, cancellationToken))
             {
                 RouteCircuitRegistry.Failure(mapping.Id); _request.RoutingFailoverCount++; last = ex;
             }
@@ -191,7 +191,7 @@ internal sealed class RoutedChatClient : ILLMClient
                 {
                     hasFirst = await enumerator.MoveNextAsync();
                 }
-                catch (Exception ex) when (IsRetryable(ex, cancellationToken))
+                catch (Exception ex) when (TransientErrorPolicy.IsTransient(ex, cancellationToken))
                 {
                     await enumerator.DisposeAsync();
                     RouteCircuitRegistry.Failure(mapping.Id); _request.RoutingFailoverCount++; last = ex;
@@ -255,16 +255,6 @@ internal sealed class RoutedChatClient : ILLMClient
                 new DistributedCacheEntryOptions { SlidingExpiration = TimeSpan.FromSeconds(_policy.AffinityTtlSeconds) }, cancellationToken);
     }
     internal static string AffinityCacheKey(string alias, string key) => $"routing:affinity:{alias}:{key}";
-    private static bool IsRetryable(Exception exception, CancellationToken callerToken)
-    {
-        if (exception is OperationCanceledException) return !callerToken.IsCancellationRequested;
-        if (exception is HttpRequestException or RequestTimeoutException) return true;
-        if (exception is LLMCommunicationException communication)
-            return communication.StatusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests ||
-                   communication.StatusCode is >= HttpStatusCode.InternalServerError;
-        return false;
-    }
-
     public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default) => _routes[0].Client.ListModelsAsync(apiKey, cancellationToken);
     public Task<EmbeddingResponse> CreateEmbeddingAsync(EmbeddingRequest request, string? apiKey = null, CancellationToken cancellationToken = default) => _routes[0].Client.CreateEmbeddingAsync(request, apiKey, cancellationToken);
     public Task<ImageGenerationResponse> CreateImageAsync(ImageGenerationRequest request, string? apiKey = null, CancellationToken cancellationToken = default) => _routes[0].Client.CreateImageAsync(request, apiKey, cancellationToken);

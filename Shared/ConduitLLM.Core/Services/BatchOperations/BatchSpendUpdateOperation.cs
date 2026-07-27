@@ -150,13 +150,5 @@ namespace ConduitLLM.Core.Services.BatchOperations
             BackoffMultiplier = 2.0
         };
 
-        protected override bool IsRetryableException(Exception exception)
-        {
-            // Retry on transient database errors and timeout
-            return exception is TimeoutException
-                || exception is TaskCanceledException
-                || (exception.Message?.Contains("timeout", StringComparison.OrdinalIgnoreCase) ?? false)
-                || base.IsRetryableException(exception);
-        }
     }
 }

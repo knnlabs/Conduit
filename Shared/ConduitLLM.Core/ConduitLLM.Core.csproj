@@ -22,6 +22,7 @@
     <PackageReference Include="Microsoft.ML.Tokenizers.Data.P50kBase" />
     <PackageReference Include="Microsoft.ML.Tokenizers.Data.R50kBase" />
     <PackageReference Include="Polly" />
+    <PackageReference Include="Polly.Contrib.WaitAndRetry" />
     <PackageReference Include="prometheus-net" />
     <PackageReference Include="prometheus-net.AspNetCore" />
     <PackageReference Include="StackExchange.Redis" />
