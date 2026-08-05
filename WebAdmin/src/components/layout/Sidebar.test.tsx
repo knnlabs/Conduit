@@ -26,4 +26,16 @@ describe('Sidebar', () => {
 
     expect(mockPush).toHaveBeenCalledWith('/model-costs');
   });
+
+  it('links to the provider sync page', () => {
+    render(
+      <MantineProvider>
+        <Sidebar />
+      </MantineProvider>,
+    );
+
+    fireEvent.click(screen.getByText('Provider Sync'));
+
+    expect(mockPush).toHaveBeenCalledWith('/provider-sync');
+  });
 });
