@@ -121,6 +121,14 @@ namespace ConduitLLM.Configuration.Entities
         public string? ProviderOperationId { get; set; }
 
         /// <summary>
+        /// Identifies the operator retry command that most recently moved an
+        /// indeterminate task back to pending. Used to make command redelivery
+        /// idempotent across the database update and follow-on event publish.
+        /// </summary>
+        [MaxLength(64)]
+        public string? RetryDispatchId { get; set; }
+
+        /// <summary>
         /// Gets or sets the version number for optimistic concurrency control.
         /// </summary>
         [ConcurrencyCheck]

@@ -203,19 +203,21 @@ public sealed class AsyncTaskRepositoryLifecycleTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ResolveIndeterminateTaskAsync_ResetsRetryOrRecordsTerminalOutcome()
+    public async Task IndeterminateResolution_PreparesIdempotentRetryOrRecordsNoChargeFailure()
     {
         var now = DateTime.UtcNow;
         var retry = NewIndeterminateTask("retry", now);
         var terminal = NewIndeterminateTask("terminal", now);
         await SeedTasksAsync(retry, terminal);
 
-        Assert.True(await _repository.ResolveIndeterminateTaskAsync(
-            "retry", targetState: 0, isRetryable: true, reason: "safe to retry",
-            providerOperationId: "replacement-id"));
-        Assert.True(await _repository.ResolveIndeterminateTaskAsync(
-            "terminal", targetState: 3, isRetryable: false, reason: "provider failed",
-            providerOperationId: "final-id"));
+        var prepared = await _repository.PrepareIndeterminateTaskRetryAsync(
+            "retry", "dispatch-1", "provider confirmed no work");
+        var redelivered = await _repository.PrepareIndeterminateTaskRetryAsync(
+            "retry", "dispatch-1", "provider confirmed no work");
+        Assert.Equal(IndeterminateTaskRetryPreparationStatus.Prepared, prepared.Status);
+        Assert.Equal(IndeterminateTaskRetryPreparationStatus.AlreadyPrepared, redelivered.Status);
+        Assert.True(await _repository.FailIndeterminateTaskWithoutChargeAsync(
+            "terminal", "provider failed", providerOperationId: "final-id"));
 
         await using var verification = _database.CreateContext();
         var rows = await verification.AsyncTasks.AsNoTracking().ToListAsync();
@@ -228,6 +230,7 @@ public sealed class AsyncTaskRepositoryLifecycleTests : IAsyncLifetime
         Assert.Null(retryRow.ProviderInvocationStartedAt);
         Assert.Null(retryRow.ProviderInvocationCompletedAt);
         Assert.Null(retryRow.ProviderOperationId);
+        Assert.Equal("dispatch-1", retryRow.RetryDispatchId);
         Assert.Null(retryRow.CompletedAt);
         Assert.Null(retryRow.NextRetryAt);
 
@@ -237,6 +240,22 @@ public sealed class AsyncTaskRepositoryLifecycleTests : IAsyncLifetime
         Assert.Equal("final-id", terminalRow.ProviderOperationId);
         Assert.NotNull(terminalRow.CompletedAt);
         Assert.Equal("provider failed", terminalRow.Error);
+    }
+
+    [Fact]
+    public async Task GetByStateAsync_FiltersOrdersAndPaginates()
+    {
+        var now = DateTime.UtcNow;
+        var oldest = NewIndeterminateTask("oldest", now.AddMinutes(-3));
+        var newest = NewIndeterminateTask("newest", now.AddMinutes(-1));
+        var middle = NewIndeterminateTask("middle", now.AddMinutes(-2));
+        var failed = DurableLifecycleTestData.NewAsyncTask("failed", now, state: 3);
+        await SeedTasksAsync(oldest, newest, middle, failed);
+
+        var (tasks, totalCount) = await _repository.GetByStateAsync(6, page: 2, pageSize: 1);
+
+        Assert.Equal(3, totalCount);
+        Assert.Equal(new[] { "middle" }, tasks.Select(task => task.Id));
     }
 
     [Fact]

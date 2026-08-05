@@ -13,3 +13,25 @@ public sealed class ResolveIndeterminateTaskDto
     [MaxLength(200)]
     public string? ProviderOperationId { get; set; }
 }
+
+public sealed record IndeterminateTaskDto(
+    string TaskId,
+    string TaskType,
+    string State,
+    int VirtualKeyId,
+    string? Model,
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    DateTime? CompletedAt,
+    string? Error,
+    int RetryCount,
+    int MaxRetries,
+    DateTime? ProviderInvocationStartedAt,
+    DateTime? ProviderInvocationCompletedAt,
+    string? ProviderOperationId);
+
+public sealed record TaskResolutionAcceptedDto(
+    string TaskId,
+    string Resolution,
+    string DispatchId,
+    DateTime AcceptedAt);

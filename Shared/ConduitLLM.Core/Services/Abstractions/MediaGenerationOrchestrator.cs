@@ -288,6 +288,8 @@ namespace ConduitLLM.Core.Services.Abstractions
                         GetRequestId(request),
                         TaskState.Indeterminate,
                         error: "Provider outcome is unknown after cancellation; automatic retry is disabled.");
+                    MediaTaskIdempotencyMetrics.RecordIndeterminate("orchestrator_cancellation");
+                    _metrics.UpdateTaskRegistrySize(-1);
                     _logger.LogCritical(
                         "Media generation task {RequestId} was cancelled with an indeterminate provider outcome",
                         GetRequestId(request));
@@ -308,6 +310,8 @@ namespace ConduitLLM.Core.Services.Abstractions
                         GetRequestId(request),
                         TaskState.Indeterminate,
                         error: $"Provider outcome is unknown; automatic retry is disabled. {ToCustomerError(ex, modelInfo).Message}");
+                    MediaTaskIdempotencyMetrics.RecordIndeterminate("orchestrator_exception");
+                    _metrics.UpdateTaskRegistrySize(-1);
                     _logger.LogCritical(ex,
                         "Media generation task {RequestId} has an indeterminate provider outcome",
                         GetRequestId(request));

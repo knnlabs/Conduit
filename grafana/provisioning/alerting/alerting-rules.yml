@@ -17,6 +17,8 @@ deleteRules:
     uid: conduit-rate-limiting
   - orgId: 1
     uid: conduit-redis-memory
+  - orgId: 1
+    uid: conduit-indeterminate-media-task
 
 groups:
   - orgId: 1
@@ -239,6 +241,74 @@ groups:
           description: "Request latency (P95) has exceeded 10 seconds. Current value: {{ $values.B.Value }}s"
         labels:
           severity: warning
+          service: conduit
+
+      # Indeterminate media tasks require provider reconciliation before retry.
+      - uid: conduit-indeterminate-media-task
+        title: Indeterminate Media Task
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(media_task_indeterminate_total[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: A media provider outcome is unknown
+          description: "Do not retry blindly. Follow docs/operations/indeterminate-media-tasks.md and reconcile the provider outcome first."
+        labels:
+          severity: critical
           service: conduit
 
   - orgId: 1

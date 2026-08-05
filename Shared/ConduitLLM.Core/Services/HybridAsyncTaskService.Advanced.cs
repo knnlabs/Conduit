@@ -55,28 +55,105 @@ namespace ConduitLLM.Core.Services
             => _repository.ExtendLeaseAsync(taskId, workerId, extension, cancellationToken);
 
         /// <inheritdoc/>
-        public async Task<bool> ResolveIndeterminateTaskAsync(
+        public async Task<AsyncTaskSummaryPage> GetTasksByStateAsync(
+            TaskState state,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            var (tasks, totalCount) = await _repository.GetByStateAsync(
+                (int)state, page, pageSize, cancellationToken);
+            var summaries = new List<AsyncTaskSummary>(tasks.Count);
+            foreach (var task in tasks)
+            {
+                ConduitLLM.Core.Models.TaskMetadata? metadata = null;
+                if (!string.IsNullOrEmpty(task.Metadata))
+                {
+                    try
+                    {
+                        metadata = JsonSerializer.Deserialize<ConduitLLM.Core.Models.TaskMetadata>(task.Metadata);
+                    }
+                    catch (JsonException exception)
+                    {
+                        _logger.LogWarning(exception,
+                            "Ignoring malformed metadata while listing async task {TaskId}", task.Id);
+                    }
+                }
+                summaries.Add(new AsyncTaskSummary(
+                    task.Id,
+                    task.Type,
+                    (TaskState)task.State,
+                    task.VirtualKeyId,
+                    metadata?.Model,
+                    task.CreatedAt,
+                    task.UpdatedAt,
+                    task.CompletedAt,
+                    task.Error,
+                    task.RetryCount,
+                    task.MaxRetries,
+                    task.ProviderInvocationStartedAt,
+                    task.ProviderInvocationCompletedAt,
+                    task.ProviderOperationId));
+            }
+            return new AsyncTaskSummaryPage(summaries, page, pageSize, totalCount);
+        }
+
+        /// <inheritdoc/>
+        public async Task<bool> FailIndeterminateTaskWithoutChargeAsync(
             string taskId,
-            IndeterminateTaskResolution resolution,
             string reason,
             string? providerOperationId = null,
             CancellationToken cancellationToken = default)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(reason);
-            var (state, retryable) = resolution switch
-            {
-                IndeterminateTaskResolution.SafeToRetry => ((int)TaskState.Pending, true),
-                IndeterminateTaskResolution.Failed => ((int)TaskState.Failed, false),
-                IndeterminateTaskResolution.Completed => ((int)TaskState.Completed, false),
-                _ => throw new ArgumentOutOfRangeException(nameof(resolution))
-            };
-            var updated = await _repository.ResolveIndeterminateTaskAsync(
-                taskId, state, retryable, reason, providerOperationId, cancellationToken);
+            var updated = await _repository.FailIndeterminateTaskWithoutChargeAsync(
+                taskId, reason, providerOperationId, cancellationToken);
             if (updated)
             {
                 await _cache.RemoveAsync(GetTaskKey(taskId), cancellationToken);
+                if (_eventBus != null)
+                {
+                    await _eventBus.PublishAsync(new AsyncTaskUpdated
+                    {
+                        TaskId = taskId,
+                        State = TaskState.Failed.ToString(),
+                        IsCompleted = true
+                    }, cancellationToken);
+                }
             }
             return updated;
+        }
+
+        /// <inheritdoc/>
+        public async Task<MediaTaskRetryPreparation> PrepareIndeterminateTaskRetryAsync(
+            string taskId,
+            string dispatchId,
+            string reason,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _repository.PrepareIndeterminateTaskRetryAsync(
+                taskId, dispatchId, reason, cancellationToken);
+            if (result.Task != null)
+            {
+                await _cache.RemoveAsync(GetTaskKey(taskId), cancellationToken);
+            }
+
+            var status = result.Status switch
+            {
+                IndeterminateTaskRetryPreparationStatus.Prepared => MediaTaskRetryPreparationStatus.Prepared,
+                IndeterminateTaskRetryPreparationStatus.AlreadyPrepared => MediaTaskRetryPreparationStatus.AlreadyPrepared,
+                IndeterminateTaskRetryPreparationStatus.Missing => MediaTaskRetryPreparationStatus.Missing,
+                IndeterminateTaskRetryPreparationStatus.NotIndeterminate => MediaTaskRetryPreparationStatus.NotIndeterminate,
+                IndeterminateTaskRetryPreparationStatus.UnsupportedTaskType => MediaTaskRetryPreparationStatus.UnsupportedTaskType,
+                IndeterminateTaskRetryPreparationStatus.RetryLimitExceeded => MediaTaskRetryPreparationStatus.RetryLimitExceeded,
+                _ => throw new ArgumentOutOfRangeException()
+            };
+            var metadata = result.Task?.Metadata is { Length: > 0 } json
+                ? JsonSerializer.Deserialize<ConduitLLM.Core.Models.TaskMetadata>(json)
+                : null;
+            return new MediaTaskRetryPreparation(status, result.Task?.Type, metadata);
         }
 
         /// <inheritdoc/>

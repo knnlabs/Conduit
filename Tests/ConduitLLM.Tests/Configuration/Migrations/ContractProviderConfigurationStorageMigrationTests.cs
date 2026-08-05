@@ -42,7 +42,7 @@ public sealed class ContractProviderConfigurationStorageMigrationTests
         var differ = context.GetService<IMigrationsModelDiffer>();
         var currentModel = context.GetService<IDesignTimeModel>().Model;
         var targetModel = context.GetService<IModelRuntimeInitializer>()
-            .Initialize(new ContractProviderConfigurationStorage().TargetModel, designTime: true);
+            .Initialize(new AddAsyncTaskRetryDispatchId().TargetModel, designTime: true);
 
         Assert.False(differ.HasDifferences(
             targetModel.GetRelationalModel(),

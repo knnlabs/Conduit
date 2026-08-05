@@ -116,6 +116,9 @@ namespace ConduitLLM.Gateway.Endpoints
             {
                 Model = request.Model,
                 Prompt = request.Prompt,
+                Payload = JsonSerializer.Serialize(request),
+                WebhookUrl = request.WebhookUrl,
+                WebhookHeaders = request.WebhookHeaders,
                 ExtensionData = new Dictionary<string, object>
                 {
                     ["VirtualKey"] = virtualKey,

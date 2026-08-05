@@ -61,6 +61,13 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <returns>List of pending tasks.</returns>
         Task<List<AsyncTask>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default);
 
+        /// <summary>Gets one page of non-archived tasks in the requested state.</summary>
+        Task<(List<AsyncTask> Tasks, int TotalCount)> GetByStateAsync(
+            int state,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Attempts to lease a pending task for processing.
         /// </summary>
@@ -127,12 +134,21 @@ namespace ConduitLLM.Configuration.Interfaces
             string? providerOperationId = null,
             CancellationToken cancellationToken = default);
 
-        Task<bool> ResolveIndeterminateTaskAsync(
+        Task<bool> FailIndeterminateTaskWithoutChargeAsync(
             string taskId,
-            int targetState,
-            bool isRetryable,
             string reason,
             string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Atomically prepares an indeterminate media task for an operator-approved retry.
+        /// Repeating the same dispatch ID is idempotent so a redelivered reconciliation
+        /// command can safely publish the follow-on generation event.
+        /// </summary>
+        Task<IndeterminateTaskRetryPreparation> PrepareIndeterminateTaskRetryAsync(
+            string taskId,
+            string dispatchId,
+            string reason,
             CancellationToken cancellationToken = default);
 
         Task<ExpiredTaskRecoveryResult> RecoverExpiredMediaTasksAsync(
@@ -149,4 +165,18 @@ namespace ConduitLLM.Configuration.Interfaces
     }
 
     public sealed record ExpiredTaskRecoveryResult(int ResetToPending, int MarkedIndeterminate);
+
+    public enum IndeterminateTaskRetryPreparationStatus
+    {
+        Prepared = 0,
+        AlreadyPrepared = 1,
+        Missing = 2,
+        NotIndeterminate = 3,
+        UnsupportedTaskType = 4,
+        RetryLimitExceeded = 5
+    }
+
+    public sealed record IndeterminateTaskRetryPreparation(
+        IndeterminateTaskRetryPreparationStatus Status,
+        AsyncTask? Task = null);
 }

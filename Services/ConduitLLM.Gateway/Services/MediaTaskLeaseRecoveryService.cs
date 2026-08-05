@@ -1,14 +1,14 @@
-using System.Diagnostics.Metrics;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Metrics;
 
 namespace ConduitLLM.Gateway.Services;
 
 /// <summary>Classifies expired media leases without blindly repeating provider work.</summary>
 public sealed class MediaTaskLeaseRecoveryService : BackgroundService
 {
-    private static readonly Meter Meter = new("ConduitLLM.Media.Idempotency");
-    private static readonly Counter<long> SafeRecoveries = Meter.CreateCounter<long>("media_task_safe_recoveries");
-    private static readonly Counter<long> IndeterminateTasks = Meter.CreateCounter<long>("media_task_indeterminate");
+    private static readonly System.Diagnostics.Metrics.Meter Meter = new("ConduitLLM.Media.Idempotency");
+    private static readonly System.Diagnostics.Metrics.Counter<long> SafeRecoveries =
+        Meter.CreateCounter<long>("media_task_safe_recoveries");
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<MediaTaskLeaseRecoveryService> _logger;
 
@@ -33,7 +33,8 @@ public sealed class MediaTaskLeaseRecoveryService : BackgroundService
                 if (result.ResetToPending > 0) SafeRecoveries.Add(result.ResetToPending);
                 if (result.MarkedIndeterminate > 0)
                 {
-                    IndeterminateTasks.Add(result.MarkedIndeterminate);
+                    MediaTaskIdempotencyMetrics.RecordIndeterminate(
+                        "lease_recovery", result.MarkedIndeterminate);
                     _logger.LogCritical(
                         "Marked {Count} expired media tasks indeterminate; provider reconciliation is required",
                         result.MarkedIndeterminate);

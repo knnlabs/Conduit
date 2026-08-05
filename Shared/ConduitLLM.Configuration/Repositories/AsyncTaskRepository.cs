@@ -339,6 +339,30 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
+        public Task<(List<AsyncTask> Tasks, int TotalCount)> GetByStateAsync(
+            int state,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            page = Math.Max(1, page);
+            pageSize = Math.Clamp(pageSize, 1, 100);
+            return ExecuteAsync(async context =>
+            {
+                var query = context.AsyncTasks.AsNoTracking()
+                    .Where(task => !task.IsArchived && task.State == state);
+                var totalCount = await query.CountAsync(cancellationToken);
+                var tasks = await query
+                    .OrderByDescending(task => task.UpdatedAt)
+                    .ThenBy(task => task.Id)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToListAsync(cancellationToken);
+                return (tasks, totalCount);
+            }, cancellationToken, nameof(GetByStateAsync));
+        }
+
+        /// <inheritdoc/>
         public async Task<AsyncTask?> LeaseNextPendingTaskAsync(string workerId, TimeSpan leaseDuration, string? taskType = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(workerId))
@@ -705,44 +729,109 @@ namespace ConduitLLM.Configuration.Repositories
         }
 
         /// <inheritdoc/>
-        public async Task<bool> ResolveIndeterminateTaskAsync(
+        public async Task<bool> FailIndeterminateTaskWithoutChargeAsync(
             string taskId,
-            int targetState,
-            bool isRetryable,
             string reason,
             string? providerOperationId = null,
             CancellationToken cancellationToken = default)
         {
             return await ExecuteAsync(async context =>
             {
-                var task = await context.AsyncTasks.SingleOrDefaultAsync(
-                    t => t.Id == taskId && t.State == 6, cancellationToken);
-                if (task == null) return false;
-
-                task.State = targetState;
-                task.IsRetryable = isRetryable;
-                task.Error = reason;
-                task.ProviderOperationId = providerOperationId ?? task.ProviderOperationId;
-                task.LeasedBy = null;
-                task.LeaseExpiryTime = null;
-                task.UpdatedAt = DateTime.UtcNow;
-                task.Version++;
-                if (targetState == 0)
-                {
-                    task.ProviderInvocationStartedAt = null;
-                    task.ProviderInvocationCompletedAt = null;
-                    task.ProviderOperationId = null;
-                    task.CompletedAt = null;
-                    task.NextRetryAt = null;
-                    task.RetryCount++;
-                }
-                else
-                {
-                    task.CompletedAt = DateTime.UtcNow;
-                }
-
-                return await context.SaveChangesAsync(cancellationToken) == 1;
+                var now = DateTime.UtcNow;
+                var query = context.AsyncTasks.Where(task => task.Id == taskId && task.State == 6);
+                var affected = providerOperationId == null
+                    ? await query.ExecuteUpdateAsync(setters => setters
+                        .SetProperty(task => task.State, 3)
+                        .SetProperty(task => task.IsRetryable, false)
+                        .SetProperty(task => task.Error, reason)
+                        .SetProperty(task => task.LeasedBy, (string?)null)
+                        .SetProperty(task => task.LeaseExpiryTime, (DateTime?)null)
+                        .SetProperty(task => task.UpdatedAt, now)
+                        .SetProperty(task => task.CompletedAt, now)
+                        .SetProperty(task => task.Version, task => task.Version + 1),
+                        cancellationToken)
+                    : await query.ExecuteUpdateAsync(setters => setters
+                        .SetProperty(task => task.State, 3)
+                        .SetProperty(task => task.IsRetryable, false)
+                        .SetProperty(task => task.Error, reason)
+                        .SetProperty(task => task.ProviderOperationId, providerOperationId)
+                        .SetProperty(task => task.LeasedBy, (string?)null)
+                        .SetProperty(task => task.LeaseExpiryTime, (DateTime?)null)
+                        .SetProperty(task => task.UpdatedAt, now)
+                        .SetProperty(task => task.CompletedAt, now)
+                        .SetProperty(task => task.Version, task => task.Version + 1),
+                        cancellationToken);
+                return affected == 1;
             }, cancellationToken);
+        }
+
+        /// <inheritdoc/>
+        public async Task<IndeterminateTaskRetryPreparation> PrepareIndeterminateTaskRetryAsync(
+            string taskId,
+            string dispatchId,
+            string reason,
+            CancellationToken cancellationToken = default)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(taskId);
+            ArgumentException.ThrowIfNullOrWhiteSpace(dispatchId);
+            ArgumentException.ThrowIfNullOrWhiteSpace(reason);
+            if (dispatchId.Length > 64)
+                throw new ArgumentOutOfRangeException(nameof(dispatchId));
+
+            return await ExecuteAsync(async context =>
+            {
+                var now = DateTime.UtcNow;
+                var mediaTypes = new[] { "image_generation", "video_generation" };
+                var affected = await context.AsyncTasks
+                    .Where(task => task.Id == taskId && task.State == 6 &&
+                        mediaTypes.Contains(task.Type) && task.RetryCount < task.MaxRetries)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(task => task.State, 0)
+                        .SetProperty(task => task.IsRetryable, true)
+                        .SetProperty(task => task.Error, reason)
+                        .SetProperty(task => task.RetryDispatchId, dispatchId)
+                        .SetProperty(task => task.LeasedBy, (string?)null)
+                        .SetProperty(task => task.LeaseExpiryTime, (DateTime?)null)
+                        .SetProperty(task => task.ProviderInvocationStartedAt, (DateTime?)null)
+                        .SetProperty(task => task.ProviderInvocationCompletedAt, (DateTime?)null)
+                        .SetProperty(task => task.ProviderOperationId, (string?)null)
+                        .SetProperty(task => task.CompletedAt, (DateTime?)null)
+                        .SetProperty(task => task.NextRetryAt, (DateTime?)null)
+                        .SetProperty(task => task.UpdatedAt, now)
+                        .SetProperty(task => task.RetryCount, task => task.RetryCount + 1)
+                        .SetProperty(task => task.Version, task => task.Version + 1),
+                        cancellationToken);
+
+                var task = await context.AsyncTasks.AsNoTracking()
+                    .SingleOrDefaultAsync(candidate => candidate.Id == taskId, cancellationToken);
+                if (affected == 1)
+                {
+                    return new IndeterminateTaskRetryPreparation(
+                        IndeterminateTaskRetryPreparationStatus.Prepared, task);
+                }
+                if (task == null)
+                {
+                    return new IndeterminateTaskRetryPreparation(
+                        IndeterminateTaskRetryPreparationStatus.Missing);
+                }
+                if (task.State == 0 && task.RetryDispatchId == dispatchId)
+                {
+                    return new IndeterminateTaskRetryPreparation(
+                        IndeterminateTaskRetryPreparationStatus.AlreadyPrepared, task);
+                }
+                if (!mediaTypes.Contains(task.Type))
+                {
+                    return new IndeterminateTaskRetryPreparation(
+                        IndeterminateTaskRetryPreparationStatus.UnsupportedTaskType, task);
+                }
+                if (task.State == 6 && task.RetryCount >= task.MaxRetries)
+                {
+                    return new IndeterminateTaskRetryPreparation(
+                        IndeterminateTaskRetryPreparationStatus.RetryLimitExceeded, task);
+                }
+                return new IndeterminateTaskRetryPreparation(
+                    IndeterminateTaskRetryPreparationStatus.NotIndeterminate, task);
+            }, cancellationToken, nameof(PrepareIndeterminateTaskRetryAsync));
         }
 
         /// <inheritdoc/>

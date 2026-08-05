@@ -110,11 +110,25 @@ namespace ConduitLLM.Core.Interfaces
             TimeSpan extension,
             CancellationToken cancellationToken = default);
 
-        Task<bool> ResolveIndeterminateTaskAsync(
+        /// <summary>Returns a sanitized page of tasks in the requested state.</summary>
+        Task<AsyncTaskSummaryPage> GetTasksByStateAsync(
+            TaskState state,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Marks an indeterminate task failed without charging the customer.</summary>
+        Task<bool> FailIndeterminateTaskWithoutChargeAsync(
             string taskId,
-            IndeterminateTaskResolution resolution,
             string reason,
             string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Idempotently prepares a media task for a durable operator retry.</summary>
+        Task<MediaTaskRetryPreparation> PrepareIndeterminateTaskRetryAsync(
+            string taskId,
+            string dispatchId,
+            string reason,
             CancellationToken cancellationToken = default);
     }
 
@@ -238,12 +252,43 @@ namespace ConduitLLM.Core.Interfaces
         Indeterminate
     }
 
-    public enum IndeterminateTaskResolution
+    /// <summary>Safe task data intended for operator listings; excludes payloads and secrets.</summary>
+    public sealed record AsyncTaskSummary(
+        string TaskId,
+        string TaskType,
+        TaskState State,
+        int VirtualKeyId,
+        string? Model,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        DateTime? CompletedAt,
+        string? Error,
+        int RetryCount,
+        int MaxRetries,
+        DateTime? ProviderInvocationStartedAt,
+        DateTime? ProviderInvocationCompletedAt,
+        string? ProviderOperationId);
+
+    public sealed record AsyncTaskSummaryPage(
+        IReadOnlyList<AsyncTaskSummary> Tasks,
+        int Page,
+        int PageSize,
+        int TotalCount);
+
+    public enum MediaTaskRetryPreparationStatus
     {
-        SafeToRetry,
-        Failed,
-        Completed
+        Prepared = 0,
+        AlreadyPrepared = 1,
+        Missing = 2,
+        NotIndeterminate = 3,
+        UnsupportedTaskType = 4,
+        RetryLimitExceeded = 5
     }
+
+    public sealed record MediaTaskRetryPreparation(
+        MediaTaskRetryPreparationStatus Status,
+        string? TaskType = null,
+        TaskMetadata? Metadata = null);
 
     /// <summary>Thresholds used for one async-task retention pass.</summary>
     public sealed record AsyncTaskRetentionPolicy(

@@ -196,6 +196,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/v1/admin/tasks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** List indeterminate async media tasks */
+    get: operations["Tasks_List"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/v1/admin/tasks/{taskId}/resolve": {
     parameters: {
       query?: never;
@@ -4403,6 +4420,30 @@ export interface components {
        */
       count?: number;
     };
+    IndeterminateTaskDto: {
+      taskId: string;
+      taskType: string;
+      state: string;
+      /** Format: int32 */
+      virtualKeyId: number;
+      model: null | string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+      /** Format: date-time */
+      completedAt: null | string;
+      error: null | string;
+      /** Format: int32 */
+      retryCount: number;
+      /** Format: int32 */
+      maxRetries: number;
+      /** Format: date-time */
+      providerInvocationStartedAt: null | string;
+      /** Format: date-time */
+      providerInvocationCompletedAt: null | string;
+      providerOperationId: null | string;
+    };
     IpCheckResult: {
       isAllowed: boolean;
       deniedReason?: null | string;
@@ -5637,6 +5678,10 @@ export interface components {
       };
       groupQuotaUsage?: components["schemas"]["MediaGroupQuotaUsage"][];
     };
+    PagedResultOfIndeterminateTaskDto: {
+      data?: components["schemas"]["IndeterminateTaskDto"][];
+      pagination?: components["schemas"]["PaginationMetadata"];
+    };
     PagedResultOfLogRequestDto: {
       data?: components["schemas"]["LogRequestDto"][];
       pagination?: components["schemas"]["PaginationMetadata"];
@@ -6644,6 +6689,13 @@ export interface components {
        * @description The age threshold, in hours, used for the cleanup.
        */
       older_than_hours?: number;
+    };
+    TaskResolutionAcceptedDto: {
+      taskId: string;
+      resolution: string;
+      dispatchId: string;
+      /** Format: date-time */
+      acceptedAt: string;
     };
     TestFunctionCredentialRequest: {
       /** Format: int32 */
@@ -8460,6 +8512,87 @@ export interface operations {
       };
     };
   };
+  Tasks_List: {
+    parameters: {
+      query?: {
+        state?: string;
+        page?: number;
+        pageSize?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PagedResultOfIndeterminateTaskDto"];
+        };
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Too Many Requests */
+      429: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+      /** @description Internal Server Error */
+      500: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/problem+json": components["schemas"]["AdminProblemDetails"];
+        };
+      };
+    };
+  };
   Tasks_ResolveIndeterminate: {
     parameters: {
       query?: never;
@@ -8475,6 +8608,17 @@ export interface operations {
       };
     };
     responses: {
+      /** @description Accepted */
+      202: {
+        headers: {
+          /** @description Request identifier for support and distributed tracing. */
+          "x-request-id"?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskResolutionAcceptedDto"];
+        };
+      };
       /** @description No Content */
       204: {
         headers: {
