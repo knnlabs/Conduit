@@ -73,7 +73,6 @@ jobs:
           dotnet test Tests/ConduitLLM.Tests/ConduitLLM.Tests.csproj
           --configuration Release
           --filter FullyQualifiedName~ReleaseMigrationCommandTests
-          --no-restore
 
       - name: Generate idempotent migration script
         run: |
