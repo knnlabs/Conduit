@@ -3881,60 +3881,60 @@ export interface components {
     DiscoveredModelDto: {
       id: string;
       provider: null | string;
-      display_name: string;
+      displayName: string;
       description: string;
-      model_card_url: string;
+      modelCardUrl: string;
       /** Format: int32 */
-      max_tokens: number;
+      maxTokens: number;
       /** Format: int32 */
-      max_input_tokens: number;
+      maxInputTokens: number;
       /** Format: int32 */
-      max_output_tokens: number;
-      tokenizer_type: string;
-      input_modalities: string[];
-      output_modalities: string[];
-      capability_source: string;
+      maxOutputTokens: number;
+      tokenizerType: string;
+      inputModalities: string[];
+      outputModalities: string[];
+      capabilitySource: string;
       /** Format: date-time */
-      capabilities_last_verified_at: null | string;
+      capabilitiesLastVerifiedAt: null | string;
       parameters: string;
       capabilities: components["schemas"]["DiscoveryModelCapabilitiesDto"];
       pricing?: null | components["schemas"]["DiscoveryModelPricingDto"];
     };
     DiscoveryModelCapabilitiesDto: {
       chat: boolean;
-      chat_stream: boolean;
-      image_input: boolean;
-      video_input: boolean;
-      audio_input: boolean;
-      file_input: boolean;
+      chatStream: boolean;
+      imageInput: boolean;
+      videoInput: boolean;
+      audioInput: boolean;
+      fileInput: boolean;
       vision: boolean;
-      video_understanding: boolean;
-      image_generation: boolean;
-      video_generation: boolean;
+      videoUnderstanding: boolean;
+      imageGeneration: boolean;
+      videoGeneration: boolean;
       embeddings: boolean;
-      function_calling: boolean;
-      speech_to_text: boolean;
-      text_to_speech: boolean;
+      functionCalling: boolean;
+      speechToText: boolean;
+      textToSpeech: boolean;
       rerank: boolean;
-      tool_use?: null | boolean;
-      json_mode?: null | boolean;
+      toolUse?: null | boolean;
+      jsonMode?: null | boolean;
       /** Format: int32 */
-      max_tokens?: null | number;
+      maxTokens?: null | number;
       /** Format: int32 */
-      max_output_tokens?: null | number;
+      maxOutputTokens?: null | number;
       /** @default false */
-      pdf_input: boolean;
+      pdfInput: boolean;
     };
     DiscoveryModelPricingDto: {
-      pricing_model: string;
+      pricingModel: string;
       /** Format: double */
-      input_cost_per_million_tokens: number;
+      inputCostPerMillionTokens: number;
       /** Format: double */
-      output_cost_per_million_tokens: number;
+      outputCostPerMillionTokens: number;
       /** Format: double */
-      cached_input_cost_per_million_tokens: null | number;
+      cachedInputCostPerMillionTokens: null | number;
       /** Format: double */
-      embedding_cost_per_million_tokens: null | number;
+      embeddingCostPerMillionTokens: null | number;
       currency: string;
     };
     DiscoveryModelsResponse: {

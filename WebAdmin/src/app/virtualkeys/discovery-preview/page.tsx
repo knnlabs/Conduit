@@ -145,11 +145,16 @@ export default function VirtualKeyDiscoveryPreviewPage() {
   const renderCapability = (name: string, capability: DiscoveryCapabilityValue) => {
     if (capability !== true) return null;
 
+    const label = name
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .toLowerCase();
+
     return (
       <Box key={name}>
         <Group gap="xs" mb="xs">
           <Badge color="blue" variant="light" size="sm">
-            {name.replace(/_/g, ' ')}
+            {label}
           </Badge>
         </Group>
       </Box>
@@ -276,7 +281,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
                     <Card key={model.id} shadow="sm" p="md" radius="md" withBorder>
                       <Stack gap="sm">
                         <div>
-                          <Text fw={500} size="sm">{model.display_name}</Text>
+                          <Text fw={500} size="sm">{model.displayName}</Text>
                           <Group gap="xs" mt="xs">
                             <Badge size="xs" variant="dot">
                               {model.id}

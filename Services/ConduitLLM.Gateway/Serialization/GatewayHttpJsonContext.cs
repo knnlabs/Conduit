@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Gateway.DTOs;
 
 namespace ConduitLLM.Gateway.Serialization;
@@ -19,4 +20,5 @@ namespace ConduitLLM.Gateway.Serialization;
 [JsonSerializable(typeof(FileMetadataResponse))]
 [JsonSerializable(typeof(DownloadUrlResponse))]
 [JsonSerializable(typeof(MediaUploadResponse))]
+[JsonSerializable(typeof(DiscoveryModelsResponse))]
 public partial class GatewayHttpJsonContext : JsonSerializerContext;

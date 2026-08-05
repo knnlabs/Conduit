@@ -4,6 +4,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Models;
+using ConduitLLM.Gateway.Options;
 using ConduitLLM.Gateway.Services;
 
 using Microsoft.Extensions.Logging;
@@ -61,7 +62,7 @@ public class ModelMetadataServiceTests
 
         var result = await _service.GetModelMetadataAsync("video-reader");
 
-        var json = JsonSerializer.Serialize(result);
+        var json = JsonSerializer.Serialize(result, GatewayJsonOptions.Create());
         Assert.Contains("\"video_input\":true", json);
         Assert.Contains("\"video_understanding\":true", json);
         Assert.Contains("\"video_generation\":false", json);

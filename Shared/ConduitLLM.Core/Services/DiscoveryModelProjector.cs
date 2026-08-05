@@ -9,8 +9,8 @@ using Microsoft.Extensions.Logging;
 namespace ConduitLLM.Core.Services;
 
 /// <summary>
-/// Owns the database query, capability filtering, and wire projection shared by live discovery,
-/// cache warming, and administrative previews.
+/// Owns the database query, capability filtering, and service-neutral projection shared by live
+/// discovery, cache warming, and administrative previews. Each HTTP service owns its wire dialect.
 /// </summary>
 public static class DiscoveryModelProjector
 {

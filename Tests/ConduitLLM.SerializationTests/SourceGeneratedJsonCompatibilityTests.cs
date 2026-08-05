@@ -5,6 +5,7 @@ using System.Text.Json.Serialization.Metadata;
 
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Serialization;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs.SignalR;
 using ConduitLLM.Configuration.Serialization;
@@ -134,6 +135,65 @@ public sealed class SourceGeneratedJsonCompatibilityTests
             GatewayHttpJsonContext.Default.ModelListResponse,
             "gateway-model-list.json",
             SnakeCaseWireOptions());
+    }
+
+    [Fact]
+    public void Discovery_projection_uses_service_owned_wire_dialects()
+    {
+        var capabilities = new DiscoveryModelCapabilitiesDto(
+            Chat: true,
+            ChatStream: true,
+            ImageInput: false,
+            VideoInput: false,
+            AudioInput: false,
+            FileInput: false,
+            Vision: false,
+            VideoUnderstanding: false,
+            ImageGeneration: false,
+            VideoGeneration: false,
+            Embeddings: false,
+            FunctionCalling: true,
+            SpeechToText: false,
+            TextToSpeech: false,
+            Rerank: false);
+        var value = new DiscoveryModelsResponse(
+            [
+                new DiscoveredModelDto(
+                    "gpt-test",
+                    "openai",
+                    "GPT Test",
+                    "Test model",
+                    "https://example.test/models/gpt-test",
+                    12_000,
+                    8_000,
+                    4_000,
+                    "cl100k",
+                    ["text"],
+                    ["text"],
+                    "provider",
+                    FixtureTime,
+                    "{}",
+                    capabilities)
+            ],
+            1);
+
+        using var adminDocument = JsonDocument.Parse(JsonSerializer.Serialize(
+            value,
+            AdminHttpJsonContext.Default.DiscoveryModelsResponse));
+        using var gatewayDocument = JsonDocument.Parse(JsonSerializer.Serialize(
+            value,
+            GatewayHttpJsonContext.Default.DiscoveryModelsResponse));
+
+        var adminModel = adminDocument.RootElement.GetProperty("data")[0];
+        var gatewayModel = gatewayDocument.RootElement.GetProperty("data")[0];
+
+        Assert.True(adminModel.TryGetProperty("displayName", out _));
+        Assert.True(adminModel.GetProperty("capabilities").TryGetProperty("chatStream", out _));
+        Assert.False(adminModel.TryGetProperty("display_name", out _));
+
+        Assert.True(gatewayModel.TryGetProperty("display_name", out _));
+        Assert.True(gatewayModel.GetProperty("capabilities").TryGetProperty("chat_stream", out _));
+        Assert.False(gatewayModel.TryGetProperty("displayName", out _));
     }
 
     [Fact]

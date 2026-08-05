@@ -25840,17 +25840,17 @@
         "required": [
           "id",
           "provider",
-          "display_name",
+          "displayName",
           "description",
-          "model_card_url",
-          "max_tokens",
-          "max_input_tokens",
-          "max_output_tokens",
-          "tokenizer_type",
-          "input_modalities",
-          "output_modalities",
-          "capability_source",
-          "capabilities_last_verified_at",
+          "modelCardUrl",
+          "maxTokens",
+          "maxInputTokens",
+          "maxOutputTokens",
+          "tokenizerType",
+          "inputModalities",
+          "outputModalities",
+          "capabilitySource",
+          "capabilitiesLastVerifiedAt",
           "parameters",
           "capabilities"
         ],
@@ -25865,46 +25865,46 @@
               "string"
             ]
           },
-          "display_name": {
+          "displayName": {
             "type": "string"
           },
           "description": {
             "type": "string"
           },
-          "model_card_url": {
+          "modelCardUrl": {
             "type": "string"
           },
-          "max_tokens": {
+          "maxTokens": {
             "type": "integer",
             "format": "int32"
           },
-          "max_input_tokens": {
+          "maxInputTokens": {
             "type": "integer",
             "format": "int32"
           },
-          "max_output_tokens": {
+          "maxOutputTokens": {
             "type": "integer",
             "format": "int32"
           },
-          "tokenizer_type": {
+          "tokenizerType": {
             "type": "string"
           },
-          "input_modalities": {
+          "inputModalities": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "output_modalities": {
+          "outputModalities": {
             "type": "array",
             "items": {
               "type": "string"
             }
           },
-          "capability_source": {
+          "capabilitySource": {
             "type": "string"
           },
-          "capabilities_last_verified_at": {
+          "capabilitiesLastVerifiedAt": {
             "type": [
               "null",
               "string"
@@ -25932,19 +25932,19 @@
       "DiscoveryModelCapabilitiesDto": {
         "required": [
           "chat",
-          "chat_stream",
-          "image_input",
-          "video_input",
-          "audio_input",
-          "file_input",
+          "chatStream",
+          "imageInput",
+          "videoInput",
+          "audioInput",
+          "fileInput",
           "vision",
-          "video_understanding",
-          "image_generation",
-          "video_generation",
+          "videoUnderstanding",
+          "imageGeneration",
+          "videoGeneration",
           "embeddings",
-          "function_calling",
-          "speech_to_text",
-          "text_to_speech",
+          "functionCalling",
+          "speechToText",
+          "textToSpeech",
           "rerank"
         ],
         "type": "object",
@@ -25952,75 +25952,75 @@
           "chat": {
             "type": "boolean"
           },
-          "chat_stream": {
+          "chatStream": {
             "type": "boolean"
           },
-          "image_input": {
+          "imageInput": {
             "type": "boolean"
           },
-          "video_input": {
+          "videoInput": {
             "type": "boolean"
           },
-          "audio_input": {
+          "audioInput": {
             "type": "boolean"
           },
-          "file_input": {
+          "fileInput": {
             "type": "boolean"
           },
           "vision": {
             "type": "boolean"
           },
-          "video_understanding": {
+          "videoUnderstanding": {
             "type": "boolean"
           },
-          "image_generation": {
+          "imageGeneration": {
             "type": "boolean"
           },
-          "video_generation": {
+          "videoGeneration": {
             "type": "boolean"
           },
           "embeddings": {
             "type": "boolean"
           },
-          "function_calling": {
+          "functionCalling": {
             "type": "boolean"
           },
-          "speech_to_text": {
+          "speechToText": {
             "type": "boolean"
           },
-          "text_to_speech": {
+          "textToSpeech": {
             "type": "boolean"
           },
           "rerank": {
             "type": "boolean"
           },
-          "tool_use": {
+          "toolUse": {
             "type": [
               "null",
               "boolean"
             ]
           },
-          "json_mode": {
+          "jsonMode": {
             "type": [
               "null",
               "boolean"
             ]
           },
-          "max_tokens": {
+          "maxTokens": {
             "type": [
               "null",
               "integer"
             ],
             "format": "int32"
           },
-          "max_output_tokens": {
+          "maxOutputTokens": {
             "type": [
               "null",
               "integer"
             ],
             "format": "int32"
           },
-          "pdf_input": {
+          "pdfInput": {
             "type": "boolean",
             "default": false
           }
@@ -26028,34 +26028,34 @@
       },
       "DiscoveryModelPricingDto": {
         "required": [
-          "pricing_model",
-          "input_cost_per_million_tokens",
-          "output_cost_per_million_tokens",
-          "cached_input_cost_per_million_tokens",
-          "embedding_cost_per_million_tokens",
+          "pricingModel",
+          "inputCostPerMillionTokens",
+          "outputCostPerMillionTokens",
+          "cachedInputCostPerMillionTokens",
+          "embeddingCostPerMillionTokens",
           "currency"
         ],
         "type": "object",
         "properties": {
-          "pricing_model": {
+          "pricingModel": {
             "type": "string"
           },
-          "input_cost_per_million_tokens": {
+          "inputCostPerMillionTokens": {
             "type": "number",
             "format": "double"
           },
-          "output_cost_per_million_tokens": {
+          "outputCostPerMillionTokens": {
             "type": "number",
             "format": "double"
           },
-          "cached_input_cost_per_million_tokens": {
+          "cachedInputCostPerMillionTokens": {
             "type": [
               "null",
               "number"
             ],
             "format": "double"
           },
-          "embedding_cost_per_million_tokens": {
+          "embeddingCostPerMillionTokens": {
             "type": [
               "null",
               "number"

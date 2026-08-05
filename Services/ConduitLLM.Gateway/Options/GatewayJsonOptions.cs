@@ -1,7 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using ConduitLLM.Configuration.Serialization;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Serialization;
 using ConduitLLM.Gateway.Serialization;
@@ -17,7 +16,6 @@ public static class GatewayJsonOptions
     {
         options.TypeInfoResolverChain.Insert(0, GatewayHttpJsonContext.Default);
         options.TypeInfoResolverChain.Insert(1, CoreHttpJsonContext.Default);
-        options.TypeInfoResolverChain.Insert(2, ConfigurationHttpJsonContext.Default);
         if (options.TypeInfoResolverChain.All(static resolver =>
                 resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
         {

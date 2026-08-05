@@ -16,4 +16,5 @@ namespace ConduitLLM.Admin.Serialization;
 [JsonSerializable(typeof(PagedResult<MetricKeyCountDto>))]
 [JsonSerializable(typeof(BatchSpendingStatusResponse))]
 [JsonSerializable(typeof(BatchSpendingInformationResponse))]
+[JsonSerializable(typeof(DiscoveryModelsResponse))]
 public partial class AdminHttpJsonContext : JsonSerializerContext;
