@@ -44,140 +44,132 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger.LogInformation("Processing video generation completion for request {RequestId}: Video generated in {Duration}s (cost: ${Cost})",
                 message.RequestId, message.GenerationDuration.TotalSeconds, message.Cost);
 
+            // Parse resolution to width/height if available
+            int width = 0, height = 0;
+            if (!string.IsNullOrEmpty(message.Resolution))
+            {
+                var parts = message.Resolution.Split('x', 'X');
+                if (parts.Length == 2)
+                {
+                    int.TryParse(parts[0], out width);
+                    int.TryParse(parts[1], out height);
+                }
+            }
+
+            // Update task status to completed with VideoGenerationResponse format
+            // This matches what the SDK expects: { created, data: [{ url, metadata }], model }
+            var result = new VideoGenerationResponse
+            {
+                Created = new DateTimeOffset(message.CompletedAt).ToUnixTimeSeconds(),
+                Data = new List<VideoData>
+                {
+                    new VideoData
+                    {
+                        Url = message.VideoUrl,
+                        Metadata = new VideoMetadata
+                        {
+                            Width = width,
+                            Height = height,
+                            Duration = message.Duration,
+                            FileSizeBytes = message.FileSize
+                        }
+                    }
+                },
+                Model = message.Model,
+                Usage = new VideoGenerationUsage
+                {
+                    VideosGenerated = 1,
+                    TotalDurationSeconds = message.Duration
+                }
+            };
+
+            await _asyncTaskService.UpdateTaskStatusAsync(
+                message.RequestId,
+                TaskState.Completed,
+                progress: 100,
+                result: result,
+                error: null,
+                cancellationToken: context.CancellationToken);
+
+            // Update the RequestLog with the actual cost and metadata
+            // The middleware logs async submissions at $0 and defers balance billing to the orchestrator.
             try
             {
-                // Parse resolution to width/height if available
-                int width = 0, height = 0;
-                if (!string.IsNullOrEmpty(message.Resolution))
-                {
-                    var parts = message.Resolution.Split('x', 'X');
-                    if (parts.Length == 2)
-                    {
-                        int.TryParse(parts[0], out width);
-                        int.TryParse(parts[1], out height);
-                    }
-                }
-
-                // Update task status to completed with VideoGenerationResponse format
-                // This matches what the SDK expects: { created, data: [{ url, metadata }], model }
-                var result = new VideoGenerationResponse
-                {
-                    Created = new DateTimeOffset(message.CompletedAt).ToUnixTimeSeconds(),
-                    Data = new List<VideoData>
-                    {
-                        new VideoData
-                        {
-                            Url = message.VideoUrl,
-                            Metadata = new VideoMetadata
-                            {
-                                Width = width,
-                                Height = height,
-                                Duration = message.Duration,
-                                FileSizeBytes = message.FileSize
-                            }
-                        }
-                    },
-                    Model = message.Model,
-                    Usage = new VideoGenerationUsage
-                    {
-                        VideosGenerated = 1,
-                        TotalDurationSeconds = message.Duration
-                    }
-                };
-
-                await _asyncTaskService.UpdateTaskStatusAsync(
-                    message.RequestId,
-                    TaskState.Completed,
-                    progress: 100,
-                    result: result,
-                    error: null,
+                var updated = await _requestLogRepository.UpdateCostByTaskIdAsync(
+                    taskId: message.RequestId,
+                    cost: message.Cost,
+                    modelName: message.Model,
+                    durationSeconds: message.Duration,
+                    resolution: message.Resolution,
+                    billedAtUtc: message.CompletedAt,
                     cancellationToken: context.CancellationToken);
 
-                // Update the RequestLog with the actual cost and metadata
-                // The middleware logs async submissions at $0 and defers balance billing to the orchestrator.
-                try
+                if (updated)
                 {
-                    var updated = await _requestLogRepository.UpdateCostByTaskIdAsync(
-                        taskId: message.RequestId,
-                        cost: message.Cost,
-                        modelName: message.Model,
-                        durationSeconds: message.Duration,
-                        resolution: message.Resolution,
-                        billedAtUtc: message.CompletedAt,
-                        cancellationToken: context.CancellationToken);
-
-                    if (updated)
-                    {
-                        _logger.LogInformation(
-                            "Updated RequestLog for task {TaskId} with actual cost ${Cost} (duration: {Duration}s)",
-                            message.RequestId, message.Cost, message.Duration);
-                    }
-                    else
-                    {
-                        _logger.LogWarning(
-                            "Could not find RequestLog for task {TaskId} to update cost - log may not exist or taskId not stored in metadata",
-                            message.RequestId);
-                    }
+                    _logger.LogInformation(
+                        "Updated RequestLog for task {TaskId} with actual cost ${Cost} (duration: {Duration}s)",
+                        message.RequestId, message.Cost, message.Duration);
                 }
-                catch (Exception ex)
+                else
                 {
-                    // Log but don't fail the handler - the video was generated successfully
-                    _logger.LogError(ex,
-                        "Failed to update RequestLog cost for task {TaskId}, actual cost ${Cost} may not be reflected in logs",
-                        message.RequestId, message.Cost);
+                    _logger.LogWarning(
+                        "Could not find RequestLog for task {TaskId} to update cost - log may not exist or taskId not stored in metadata",
+                        message.RequestId);
                 }
-
-                // Clear progress cache for this task
-                var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
-                _progressCache.Remove(progressCacheKey);
-
-                // Store completion info for analytics and audit
-                var completionData = new
-                {
-                    RequestId = message.RequestId,
-                    VideoUrl = message.VideoUrl,
-                    PreviewUrl = message.PreviewUrl,
-                    VideoDuration = message.Duration,
-                    Resolution = message.Resolution,
-                    FileSize = message.FileSize,
-                    Provider = message.Provider,
-                    Model = message.Model,
-                    GenerationDuration = message.GenerationDuration.TotalSeconds,
-                    Cost = message.Cost,
-                    CompletedAt = message.CompletedAt
-                };
-
-                // Cache completion data for recent tasks (24 hours)
-                MediaGenerationHandlerHelper.UpdateCompletedTasksCache(_progressCache, CompletedTasksCacheKey, completionData);
-
-                // Log performance metrics
-                _logger.LogInformation("Video generation performance - Provider: {Provider}, Model: {Model}, Generation time: {GenerationTime}s, Video duration: {VideoDuration}s, Cost: ${Cost}",
-                    LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), message.GenerationDuration.TotalSeconds, message.Duration, message.Cost);
-
-                // Track provider-specific metrics
-                LogProviderMetrics(message.Provider, message.Model, message.GenerationDuration, message.Duration, message.Cost);
-
-                // Send completion notification via notification service
-                await _notificationService.NotifyVideoGenerationCompletedAsync(
-                    message.RequestId,
-                    message.VideoUrl,
-                    message.GenerationDuration,
-                    message.Cost,
-                    previewUrl: message.PreviewUrl,
-                    resolution: message.Resolution,
-                    fileSize: message.FileSize,
-                    provider: message.Provider,
-                    model: message.Model,
-                    completedAt: message.CompletedAt,
-                    generationDurationSeconds: message.GenerationDuration.TotalSeconds);
-
-                _logger.LogInformation("Video generation completed for request {RequestId}", message.RequestId);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error handling video generation completion for request {RequestId}", message.RequestId);
-                throw; // Let the endpoint retry policy handle it
+                // Log but don't fail the handler - the video was generated successfully
+                _logger.LogError(ex,
+                    "Failed to update RequestLog cost for task {TaskId}, actual cost ${Cost} may not be reflected in logs",
+                    message.RequestId, message.Cost);
             }
+
+            // Clear progress cache for this task
+            var progressCacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
+            _progressCache.Remove(progressCacheKey);
+
+            // Store completion info for analytics and audit
+            var completionData = new
+            {
+                RequestId = message.RequestId,
+                VideoUrl = message.VideoUrl,
+                PreviewUrl = message.PreviewUrl,
+                VideoDuration = message.Duration,
+                Resolution = message.Resolution,
+                FileSize = message.FileSize,
+                Provider = message.Provider,
+                Model = message.Model,
+                GenerationDuration = message.GenerationDuration.TotalSeconds,
+                Cost = message.Cost,
+                CompletedAt = message.CompletedAt
+            };
+
+            // Cache completion data for recent tasks (24 hours)
+            MediaGenerationHandlerHelper.UpdateCompletedTasksCache(_progressCache, CompletedTasksCacheKey, completionData);
+
+            // Log performance metrics
+            _logger.LogInformation("Video generation performance - Provider: {Provider}, Model: {Model}, Generation time: {GenerationTime}s, Video duration: {VideoDuration}s, Cost: ${Cost}",
+                LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), message.GenerationDuration.TotalSeconds, message.Duration, message.Cost);
+
+            // Track provider-specific metrics
+            LogProviderMetrics(message.Provider, message.Model, message.GenerationDuration, message.Duration, message.Cost);
+
+            // Send completion notification via notification service
+            await _notificationService.NotifyVideoGenerationCompletedAsync(
+                message.RequestId,
+                message.VideoUrl,
+                message.GenerationDuration,
+                message.Cost,
+                previewUrl: message.PreviewUrl,
+                resolution: message.Resolution,
+                fileSize: message.FileSize,
+                provider: message.Provider,
+                model: message.Model,
+                completedAt: message.CompletedAt,
+                generationDurationSeconds: message.GenerationDuration.TotalSeconds);
+
+            _logger.LogInformation("Video generation completed for request {RequestId}", message.RequestId);
         }
 
         private void LogProviderMetrics(string provider, string model, TimeSpan generationDuration, double videoDuration, decimal cost)

@@ -159,15 +159,15 @@ namespace ConduitLLM.Tests.Http.Consumers
                 x => x.InvalidateAllDiscoveryAsync(It.IsAny<CancellationToken>()),
                 Times.Never);
 
-            // Verify error was logged
+            // The messaging boundary owns the failure log and retry decision.
             _mockLogger.Verify(
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to invalidate model mapping cache")),
+                    It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                Times.Never);
         }
 
         [Fact]
@@ -201,15 +201,15 @@ namespace ConduitLLM.Tests.Http.Consumers
                 x => x.RemoveManyAsync(It.IsAny<IEnumerable<string>>(), CacheRegion.ModelMetadata, It.IsAny<CancellationToken>()),
                 Times.Once);
 
-            // Verify error was logged
+            // The messaging boundary owns the failure log and retry decision.
             _mockLogger.Verify(
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("Failed to invalidate discovery cache")),
+                    It.IsAny<It.IsAnyType>(),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                Times.Never);
         }
 
         [Fact]

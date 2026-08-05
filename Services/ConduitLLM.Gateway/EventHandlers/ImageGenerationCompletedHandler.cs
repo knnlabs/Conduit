@@ -34,75 +34,67 @@ namespace ConduitLLM.Gateway.EventHandlers
         public async Task HandleAsync(ImageGenerationCompleted message, IEventContext context)
         {
 
-            _logger.LogInformation("Processing image generation completion for task {TaskId}: {ImageCount} images generated in {Duration}s (cost: ${Cost})", 
+            _logger.LogInformation("Processing image generation completion for task {TaskId}: {ImageCount} images generated in {Duration}s (cost: ${Cost})",
                 message.TaskId, message.Images.Count(), message.Duration.TotalSeconds, message.Cost);
 
-            try
+            // Update task status to completed (if async task record exists)
+            var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.TaskId, context.CancellationToken);
+            if (taskStatus != null)
             {
-                // Update task status to completed (if async task record exists)
-                var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.TaskId, context.CancellationToken);
-                if (taskStatus != null)
+                var result = new
                 {
-                    var result = new
-                    {
-                        images = message.Images.Select(img => new { url = img.Url, revisedPrompt = img.RevisedPrompt }).ToList(),
-                        imageCount = message.Images.Count(),
-                        provider = message.Provider,
-                        model = message.Model,
-                        duration = message.Duration.TotalSeconds,
-                        cost = message.Cost
-                    };
-
-                    await _asyncTaskService.UpdateTaskStatusAsync(
-                        message.TaskId,
-                        TaskState.Completed,
-                        progress: 100,
-                        result: result,
-                        error: null,
-                        cancellationToken: context.CancellationToken);
-                }
-
-                // Clear progress cache for this task
-                var progressCacheKey = CacheKeys.MediaProgress.ImageProgress(message.TaskId);
-                _progressCache.Remove(progressCacheKey);
-
-                // Store completion info for analytics and audit
-                var completionData = new
-                {
-                    TaskId = message.TaskId,
-                    VirtualKeyId = message.VirtualKeyId,
-                    ImageCount = message.Images.Count(),
-                    Provider = message.Provider,
-                    Model = message.Model,
-                    Duration = message.Duration.TotalSeconds,
-                    Cost = message.Cost,
-                    CompletedAt = DateTime.UtcNow,
-                    ImageUrls = message.Images.Select(img => img.Url).ToList()
+                    images = message.Images.Select(img => new { url = img.Url, revisedPrompt = img.RevisedPrompt }).ToList(),
+                    imageCount = message.Images.Count(),
+                    provider = message.Provider,
+                    model = message.Model,
+                    duration = message.Duration.TotalSeconds,
+                    cost = message.Cost
                 };
-                
-                // Cache completion data for recent tasks (24 hours)
-                MediaGenerationHandlerHelper.UpdateCompletedTasksCache(_progressCache, CompletedTasksCacheKey, completionData);
-                
-                // Log performance metrics
-                var avgTimePerImage = message.Duration.TotalSeconds / Math.Max(1, message.Images.Count());
-                _logger.LogInformation("Image generation performance - Provider: {Provider}, Model: {Model}, Avg time per image: {AvgTime}s, Total cost: ${Cost}",
-                    LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), avgTimePerImage, message.Cost);
-                
-                // Track provider-specific metrics
-                LogProviderMetrics(message.Provider, message.Model, message.Images.Count(), message.Duration, message.Cost);
-                
-                // Send completion notification to WebAdmin
-                await _notificationService.NotifyImageGenerationCompletedAsync(
+
+                await _asyncTaskService.UpdateTaskStatusAsync(
                     message.TaskId,
-                    message.Images.Select(img => img.Url ?? string.Empty).ToArray(),
-                    message.Duration,
-                    message.Cost);
+                    TaskState.Completed,
+                    progress: 100,
+                    result: result,
+                    error: null,
+                    cancellationToken: context.CancellationToken);
             }
-            catch (Exception ex)
+
+            // Clear progress cache for this task
+            var progressCacheKey = CacheKeys.MediaProgress.ImageProgress(message.TaskId);
+            _progressCache.Remove(progressCacheKey);
+
+            // Store completion info for analytics and audit
+            var completionData = new
             {
-                _logger.LogError(ex, "Error processing image generation completion for task {TaskId}", message.TaskId);
-                throw; // Let the endpoint retry policy handle it
-            }
+                TaskId = message.TaskId,
+                VirtualKeyId = message.VirtualKeyId,
+                ImageCount = message.Images.Count(),
+                Provider = message.Provider,
+                Model = message.Model,
+                Duration = message.Duration.TotalSeconds,
+                Cost = message.Cost,
+                CompletedAt = DateTime.UtcNow,
+                ImageUrls = message.Images.Select(img => img.Url).ToList()
+            };
+
+            // Cache completion data for recent tasks (24 hours)
+            MediaGenerationHandlerHelper.UpdateCompletedTasksCache(_progressCache, CompletedTasksCacheKey, completionData);
+
+            // Log performance metrics
+            var avgTimePerImage = message.Duration.TotalSeconds / Math.Max(1, message.Images.Count());
+            _logger.LogInformation("Image generation performance - Provider: {Provider}, Model: {Model}, Avg time per image: {AvgTime}s, Total cost: ${Cost}",
+                LoggingSanitizer.S(message.Provider), LoggingSanitizer.S(message.Model), avgTimePerImage, message.Cost);
+
+            // Track provider-specific metrics
+            LogProviderMetrics(message.Provider, message.Model, message.Images.Count(), message.Duration, message.Cost);
+
+            // Send completion notification to WebAdmin
+            await _notificationService.NotifyImageGenerationCompletedAsync(
+                message.TaskId,
+                message.Images.Select(img => img.Url ?? string.Empty).ToArray(),
+                message.Duration,
+                message.Cost);
         }
 
         private void LogProviderMetrics(string provider, string model, int imageCount, TimeSpan duration, decimal cost)
@@ -118,7 +110,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 ["cost_per_image"] = imageCount > 0 ? cost / imageCount : 0,
                 ["images_per_second"] = duration.TotalSeconds > 0 ? imageCount / duration.TotalSeconds : 0
             };
-            
+
             _logger.LogInformation("Image generation metrics: {Metrics}", metrics);
         }
     }

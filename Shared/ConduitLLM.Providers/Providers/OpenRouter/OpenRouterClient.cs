@@ -110,39 +110,31 @@ namespace ConduitLLM.Providers.OpenRouter
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteApiRequestAsync(async () =>
             {
-                return await ExecuteApiRequestAsync(async () =>
-                {
-                    using var client = CreateHttpClient(apiKey);
-                    var headers = CreateStandardHeaders(apiKey);
+                using var client = CreateHttpClient(apiKey);
+                var headers = CreateStandardHeaders(apiKey);
 
-                    // Validate the API key first via GET /key (the /models endpoint is public
-                    // and does not require authentication)
-                    await ValidateApiKeyAsync(client, headers, cancellationToken);
+                // Validate the API key first via GET /key (the /models endpoint is public
+                // and does not require authentication)
+                await ValidateApiKeyAsync(client, headers, cancellationToken);
 
-                    var endpoint = GetModelsEndpoint();
+                var endpoint = GetModelsEndpoint();
 
-                    Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
+                Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenRouterCatalogResponse>(
-                        client,
-                        endpoint,
-                        ProvidersJsonContext.Default.OpenRouterCatalogResponse,
-                        headers,
-                        Logger,
-                        cancellationToken);
+                var response = await CoreUtils.HttpClientHelper.GetJsonAsync<OpenRouterCatalogResponse>(
+                    client,
+                    endpoint,
+                    ProvidersJsonContext.Default.OpenRouterCatalogResponse,
+                    headers,
+                    Logger,
+                    cancellationToken);
 
-                    return response.Data
-                        .Select(MapModelInfo)
-                        .ToList();
-                }, "GetModels", cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to retrieve models from {Provider} API.", ProviderName);
-                throw;
-            }
+                return response.Data
+                    .Select(MapModelInfo)
+                    .ToList();
+            }, "GetModels", cancellationToken);
         }
 
         /// <summary>

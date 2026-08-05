@@ -40,69 +40,61 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<MediaStorageResult> StoreAsync(Stream content, MediaMetadata metadata, IProgress<long>? progress = null)
         {
-            try
+            // Read content into memory
+            using var memoryStream = new MemoryStream();
+            var buffer = new byte[81920]; // 80KB buffer
+            int bytesRead;
+            long totalBytesRead = 0;
+
+            while ((bytesRead = await content.ReadAsync(buffer, 0, buffer.Length)) > 0)
             {
-                // Read content into memory
-                using var memoryStream = new MemoryStream();
-                var buffer = new byte[81920]; // 80KB buffer
-                int bytesRead;
-                long totalBytesRead = 0;
-                
-                while ((bytesRead = await content.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                {
-                    await memoryStream.WriteAsync(buffer, 0, bytesRead);
-                    totalBytesRead += bytesRead;
-                    progress?.Report(totalBytesRead);
-                }
-                
-                var data = memoryStream.ToArray();
-                if (_quotaGuard != null)
-                {
-                    await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
-                }
-
-                // Generate storage key
-                var contentHash = ComputeHash(data);
-                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
-                var storageKey = MediaStorageKeys.GenerateFlat(contentHash, metadata.MediaType, extension);
-
-                // Store in memory
-                var mediaInfo = new MediaInfo
-                {
-                    StorageKey = storageKey,
-                    ContentType = metadata.ContentType,
-                    SizeBytes = data.Length,
-                    FileName = metadata.FileName,
-                    MediaType = metadata.MediaType,
-                    CreatedAt = DateTime.UtcNow,
-                    ExpiresAt = metadata.ExpiresAt,
-                    CustomMetadata = new Dictionary<string, string>(metadata.CustomMetadata ?? new())
-                };
-
-                _storage[storageKey] = new StoredMedia
-                {
-                    Data = data,
-                    Info = mediaInfo
-                };
-
-                _logger.LogInformation("Stored media in memory with key {StorageKey}", storageKey);
-
-                var url = await GenerateUrlAsync(storageKey);
-                
-                return new MediaStorageResult
-                {
-                    StorageKey = storageKey,
-                    Url = url,
-                    SizeBytes = data.Length,
-                    ContentHash = contentHash,
-                    CreatedAt = mediaInfo.CreatedAt
-                };
+                await memoryStream.WriteAsync(buffer, 0, bytesRead);
+                totalBytesRead += bytesRead;
+                progress?.Report(totalBytesRead);
             }
-            catch (Exception ex)
+
+            var data = memoryStream.ToArray();
+            if (_quotaGuard != null)
             {
-                _logger.LogError(ex, "Failed to store media in memory");
-                throw;
+                await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
             }
+
+            // Generate storage key
+            var contentHash = ComputeHash(data);
+            var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+            var storageKey = MediaStorageKeys.GenerateFlat(contentHash, metadata.MediaType, extension);
+
+            // Store in memory
+            var mediaInfo = new MediaInfo
+            {
+                StorageKey = storageKey,
+                ContentType = metadata.ContentType,
+                SizeBytes = data.Length,
+                FileName = metadata.FileName,
+                MediaType = metadata.MediaType,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = metadata.ExpiresAt,
+                CustomMetadata = new Dictionary<string, string>(metadata.CustomMetadata ?? new())
+            };
+
+            _storage[storageKey] = new StoredMedia
+            {
+                Data = data,
+                Info = mediaInfo
+            };
+
+            _logger.LogInformation("Stored media in memory with key {StorageKey}", storageKey);
+
+            var url = await GenerateUrlAsync(storageKey);
+
+            return new MediaStorageResult
+            {
+                StorageKey = storageKey,
+                Url = url,
+                SizeBytes = data.Length,
+                ContentHash = contentHash,
+                CreatedAt = mediaInfo.CreatedAt
+            };
         }
 
         /// <inheritdoc/>
@@ -261,81 +253,73 @@ namespace ConduitLLM.Core.Services
 
         /// <inheritdoc/>
         public async Task<MediaStorageResult> StoreVideoAsync(
-            Stream content, 
+            Stream content,
             VideoMediaMetadata metadata,
             Action<long>? progressCallback = null)
         {
-            try
+            // Read content with progress reporting
+            using var memoryStream = new MemoryStream();
+            var buffer = new byte[81920]; // 80KB buffer
+            int bytesRead;
+            long totalBytesRead = 0;
+
+            while ((bytesRead = await content.ReadAsync(buffer, 0, buffer.Length)) > 0)
             {
-                // Read content with progress reporting
-                using var memoryStream = new MemoryStream();
-                var buffer = new byte[81920]; // 80KB buffer
-                int bytesRead;
-                long totalBytesRead = 0;
-                
-                while ((bytesRead = await content.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                {
-                    await memoryStream.WriteAsync(buffer, 0, bytesRead);
-                    totalBytesRead += bytesRead;
-                    progressCallback?.Invoke(totalBytesRead);
-                }
-                
-                var data = memoryStream.ToArray();
-                if (_quotaGuard != null)
-                {
-                    await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
-                }
-
-                // Generate storage key
-                var contentHash = ComputeHash(data);
-                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
-                var storageKey = MediaStorageKeys.GenerateFlat(contentHash, MediaType.Video, extension);
-
-                // Store in memory
-                var mediaInfo = new MediaInfo
-                {
-                    StorageKey = storageKey,
-                    ContentType = metadata.ContentType,
-                    SizeBytes = data.Length,
-                    FileName = metadata.FileName,
-                    MediaType = MediaType.Video,
-                    CreatedAt = DateTime.UtcNow,
-                    ExpiresAt = metadata.ExpiresAt,
-                    CustomMetadata = new Dictionary<string, string>(metadata.CustomMetadata ?? new())
-                    {
-                        ["duration"] = metadata.Duration.ToString(),
-                        ["resolution"] = metadata.Resolution,
-                        ["width"] = metadata.Width.ToString(),
-                        ["height"] = metadata.Height.ToString(),
-                        ["framerate"] = metadata.FrameRate.ToString()
-                    }
-                };
-
-                _storage[storageKey] = new StoredMedia
-                {
-                    Data = data,
-                    Info = mediaInfo,
-                    VideoMetadata = metadata
-                };
-
-                _logger.LogInformation("Stored video in memory with key {StorageKey}", storageKey);
-
-                var url = await GenerateUrlAsync(storageKey);
-                
-                return new MediaStorageResult
-                {
-                    StorageKey = storageKey,
-                    Url = url,
-                    SizeBytes = data.Length,
-                    ContentHash = contentHash,
-                    CreatedAt = mediaInfo.CreatedAt
-                };
+                await memoryStream.WriteAsync(buffer, 0, bytesRead);
+                totalBytesRead += bytesRead;
+                progressCallback?.Invoke(totalBytesRead);
             }
-            catch (Exception ex)
+
+            var data = memoryStream.ToArray();
+            if (_quotaGuard != null)
             {
-                _logger.LogError(ex, "Failed to store video in memory");
-                throw;
+                await _quotaGuard.EnsureCanStoreAsync(metadata.CreatedBy, data.LongLength);
             }
+
+            // Generate storage key
+            var contentHash = ComputeHash(data);
+            var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+            var storageKey = MediaStorageKeys.GenerateFlat(contentHash, MediaType.Video, extension);
+
+            // Store in memory
+            var mediaInfo = new MediaInfo
+            {
+                StorageKey = storageKey,
+                ContentType = metadata.ContentType,
+                SizeBytes = data.Length,
+                FileName = metadata.FileName,
+                MediaType = MediaType.Video,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = metadata.ExpiresAt,
+                CustomMetadata = new Dictionary<string, string>(metadata.CustomMetadata ?? new())
+                {
+                    ["duration"] = metadata.Duration.ToString(),
+                    ["resolution"] = metadata.Resolution,
+                    ["width"] = metadata.Width.ToString(),
+                    ["height"] = metadata.Height.ToString(),
+                    ["framerate"] = metadata.FrameRate.ToString()
+                }
+            };
+
+            _storage[storageKey] = new StoredMedia
+            {
+                Data = data,
+                Info = mediaInfo,
+                VideoMetadata = metadata
+            };
+
+            _logger.LogInformation("Stored video in memory with key {StorageKey}", storageKey);
+
+            var url = await GenerateUrlAsync(storageKey);
+
+            return new MediaStorageResult
+            {
+                StorageKey = storageKey,
+                Url = url,
+                SizeBytes = data.Length,
+                ContentHash = contentHash,
+                CreatedAt = mediaInfo.CreatedAt
+            };
         }
 
         /// <inheritdoc/>
@@ -343,8 +327,8 @@ namespace ConduitLLM.Core.Services
         {
             var sessionId = Guid.NewGuid().ToString();
             var storageKey = MediaStorageKeys.GenerateFlat(
-                sessionId, 
-                MediaType.Video, 
+                sessionId,
+                MediaType.Video,
                 MediaContentTypes.GetExtension(metadata.ContentType) ?? "");
 
             var session = new MultipartUploadSession
@@ -457,9 +441,9 @@ namespace ConduitLLM.Core.Services
         {
             _multipartSessions.TryRemove(sessionId, out _);
             _multipartParts.TryRemove(sessionId, out _);
-            
+
             _logger.LogInformation("Aborted in-memory multipart upload session {SessionId}", sessionId);
-            
+
             return Task.CompletedTask;
         }
 
@@ -502,8 +486,8 @@ namespace ConduitLLM.Core.Services
             // For in-memory storage, we'll generate a temporary upload token
             var uploadToken = Guid.NewGuid().ToString();
             var storageKey = MediaStorageKeys.GenerateFlat(
-                uploadToken, 
-                MediaType.Video, 
+                uploadToken,
+                MediaType.Video,
                 MediaContentTypes.GetExtension(metadata.ContentType) ?? "");
 
             // In a real implementation, you might store this token temporarily

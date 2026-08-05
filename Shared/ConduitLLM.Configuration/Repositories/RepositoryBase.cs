@@ -137,26 +137,17 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         string? operationName = null)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        try
-        {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            var result = await operation(context);
-            sw.Stop();
+        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+        var result = await operation(context);
+        sw.Stop();
 
-            if (sw.ElapsedMilliseconds > SlowQueryThresholdMs && operationName != null)
-            {
-                Logger.LogWarning("Slow repository operation: {OperationName} {EntityType} took {ElapsedMs}ms",
-                    operationName, EntityTypeName, sw.ElapsedMilliseconds);
-            }
-
-            return result;
-        }
-        catch (Exception ex) when (operationName != null)
+        if (sw.ElapsedMilliseconds > SlowQueryThresholdMs && operationName != null)
         {
-            Logger.LogError(ex, "Error {OperationName} {EntityType} after {ElapsedMs}ms",
+            Logger.LogWarning("Slow repository operation: {OperationName} {EntityType} took {ElapsedMs}ms",
                 operationName, EntityTypeName, sw.ElapsedMilliseconds);
-            throw;
         }
+
+        return result;
     }
 
     /// <summary>
@@ -170,66 +161,29 @@ public abstract class RepositoryBase<TEntity, TKey> : IRepositoryBase<TEntity, T
         string? operationName = null)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
-        try
-        {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            await operation(context);
-            sw.Stop();
+        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+        await operation(context);
+        sw.Stop();
 
-            if (sw.ElapsedMilliseconds > SlowQueryThresholdMs && operationName != null)
-            {
-                Logger.LogWarning("Slow repository operation: {OperationName} {EntityType} took {ElapsedMs}ms",
-                    operationName, EntityTypeName, sw.ElapsedMilliseconds);
-            }
-        }
-        catch (Exception ex) when (operationName != null)
+        if (sw.ElapsedMilliseconds > SlowQueryThresholdMs && operationName != null)
         {
-            Logger.LogError(ex, "Error {OperationName} {EntityType} after {ElapsedMs}ms",
+            Logger.LogWarning("Slow repository operation: {OperationName} {EntityType} took {ElapsedMs}ms",
                 operationName, EntityTypeName, sw.ElapsedMilliseconds);
-            throw;
         }
     }
 
     /// <summary>
-    /// Executes a write operation with consistent database and concurrency diagnostics.
+    /// Executes a write operation with a fresh database context.
     /// </summary>
     protected async Task<TResult> ExecuteWriteAsync<TResult>(
         Func<ConduitDbContext, Task<TResult>> operation,
         string operationName,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-            return await operation(context);
-        }
-        catch (DbUpdateConcurrencyException ex)
-        {
-            Logger.LogWarning(
-                ex,
-                "Concurrency conflict {OperationName} {EntityType}",
-                operationName,
-                EntityTypeName);
-            throw;
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(
-                ex,
-                "Database error {OperationName} {EntityType}",
-                operationName,
-                EntityTypeName);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(
-                ex,
-                "Error {OperationName} {EntityType}",
-                operationName,
-                EntityTypeName);
-            throw;
-        }
+        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await operation(context);
+
+
     }
 
     #endregion

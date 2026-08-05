@@ -50,30 +50,20 @@ namespace ConduitLLM.Gateway.EventHandlers
 
         private async Task RefreshAndInvalidateAsync(int providerId, string operation, bool invalidateDiscovery)
         {
-            try
+            _logger.LogInformation(
+                "Processing provider {Operation} event: Provider ID {ProviderId}",
+                operation, providerId);
+
+            await _settingsRefreshService.RefreshProvidersAsync();
+
+            if (invalidateDiscovery)
             {
-                _logger.LogInformation(
-                    "Processing provider {Operation} event: Provider ID {ProviderId}",
-                    operation, providerId);
-
-                await _settingsRefreshService.RefreshProvidersAsync();
-
-                if (invalidateDiscovery)
-                {
-                    await _discoveryCacheService.InvalidateAllDiscoveryAsync();
-                }
-
-                _logger.LogInformation(
-                    "Successfully refreshed provider credentials after {Operation} of Provider ID {ProviderId}",
-                    operation, providerId);
+                await _discoveryCacheService.InvalidateAllDiscoveryAsync();
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to refresh provider credentials after {Operation} of Provider ID {ProviderId}",
-                    operation, providerId);
-                throw;
-            }
+
+            _logger.LogInformation(
+                "Successfully refreshed provider credentials after {Operation} of Provider ID {ProviderId}",
+                operation, providerId);
         }
     }
 }

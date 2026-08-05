@@ -16,14 +16,14 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<DistributedSpendNotificationService> _logger;
         private readonly RedisConnectionFactory _redisConnectionFactory;
-        
+
         private ISpendDataRepository? _repository;
         private IBudgetAlertManager? _budgetAlertManager;
         private ISpendPatternAnalyzer? _patternAnalyzer;
-        
+
         private Timer? _patternAnalysisTimer;
         private readonly TimeSpan _analysisInterval = TimeSpan.FromMinutes(5);
-        
+
         public string InstanceId { get; }
 
         public DistributedSpendNotificationService(
@@ -36,39 +36,31 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _redisConnectionFactory = redisConnectionFactory ?? throw new ArgumentNullException(nameof(redisConnectionFactory));
-            
+
             InstanceId = GenerateInstanceId();
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            try
-            {
-                await InitializeServicesAsync();
-                
-                _patternAnalysisTimer = new Timer(
-                    async _ => await AnalyzeSpendingPatternsAsync(),
-                    null,
-                    _analysisInterval,
-                    _analysisInterval);
-                
-                _logger.LogInformation("DistributedSpendNotificationService started with instance ID: {InstanceId}", 
-                    InstanceId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to start DistributedSpendNotificationService");
-                throw;
-            }
+            await InitializeServicesAsync();
+
+            _patternAnalysisTimer = new Timer(
+                async _ => await AnalyzeSpendingPatternsAsync(),
+                null,
+                _analysisInterval,
+                _analysisInterval);
+
+            _logger.LogInformation("DistributedSpendNotificationService started with instance ID: {InstanceId}",
+                InstanceId);
         }
 
         public async Task StopAsync(CancellationToken cancellationToken)
         {
             _logger.LogInformation("DistributedSpendNotificationService stopping...");
-            
+
             _patternAnalysisTimer?.Change(Timeout.Infinite, 0);
             _patternAnalysisTimer?.Dispose();
-            
+
             if (_repository != null)
             {
                 await _repository.UnregisterInstanceAsync(InstanceId);
@@ -90,7 +82,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
                 {
                     await _repository.RecordSpendingPatternAsync(virtualKeyId, amount, totalSpend);
                 }
-                
+
                 // Check budget thresholds if applicable
                 if (budget.HasValue && budget.Value > 0 && _budgetAlertManager != null)
                 {
@@ -132,7 +124,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
             {
                 var groupName = $"vkey-{virtualKeyId}";
                 await _hubContext.Clients.Group(groupName).SendAsync("SpendSummary", summary);
-                
+
                 _logger.LogInformation(
                     "Sent spend summary for VirtualKey {VirtualKeyId}: Period {Period}, Total: ${TotalSpend:F2}",
                     virtualKeyId, summary.Period, summary.TotalSpend);
@@ -172,16 +164,16 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
             {
                 var connection = await _redisConnectionFactory.GetConnectionAsync();
                 var database = connection.GetDatabase();
-                
+
                 // Create repositories and services
                 using var scope = _serviceScopeFactory.CreateScope();
                 var serviceProvider = scope.ServiceProvider;
-                
+
                 // Initialize repository
                 _repository = new SpendDataRepository(
                     database,
                     serviceProvider.GetRequiredService<ILogger<SpendDataRepository>>());
-                
+
                 // Initialize budget alert manager
                 var lockService = serviceProvider.GetRequiredService<IDistributedLockService>();
                 _budgetAlertManager = new BudgetAlertManager(
@@ -189,16 +181,16 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
                     _repository,
                     lockService,
                     serviceProvider.GetRequiredService<ILogger<BudgetAlertManager>>());
-                
+
                 // Initialize pattern analyzer
                 _patternAnalyzer = new SpendPatternAnalyzer(
                     _hubContext,
                     _repository,
                     serviceProvider.GetRequiredService<ILogger<SpendPatternAnalyzer>>());
-                
+
                 // Register instance
                 await RegisterInstanceAsync();
-                
+
                 _logger.LogInformation("Distributed spend notification services initialized with Redis backend");
             }
             catch (Exception ex)
@@ -266,7 +258,7 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
 
         private static string GenerateInstanceId()
         {
-            return $"{Environment.MachineName}_{Environment.ProcessId}_{Guid.NewGuid():N}".Substring(0, 
+            return $"{Environment.MachineName}_{Environment.ProcessId}_{Guid.NewGuid():N}".Substring(0,
                 Math.Min(50, $"{Environment.MachineName}_{Environment.ProcessId}_{Guid.NewGuid():N}".Length));
         }
 

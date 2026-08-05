@@ -53,15 +53,7 @@ namespace ConduitLLM.Core.Extensions
                     configOptions.ConnectTimeout = 5000;
                     configOptions.ConnectRetry = 3;
 
-                    try
-                    {
-                        return ConnectionMultiplexer.Connect(configOptions);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "Failed to create Redis connection. Cache will fall back to memory only.");
-                        throw;
-                    }
+                    return ConnectionMultiplexer.Connect(configOptions);
                 });
             }
 
@@ -91,7 +83,7 @@ namespace ConduitLLM.Core.Extensions
             {
                 throw new NotSupportedException(
                     "Cache auto-discovery is no longer supported due to performance issues. " +
-                    "All standard cache regions are automatically registered. " + 
+                    "All standard cache regions are automatically registered. " +
                     "For custom regions, use configuration-based registration.");
             }
 
@@ -106,7 +98,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="autoDiscover">Whether to automatically discover cache regions.</param>
         /// <returns>The service collection for chaining.</returns>
         public static IServiceCollection AddCacheInfrastructure(
-            this IServiceCollection services, 
+            this IServiceCollection services,
             IConfiguration configuration,
             bool autoDiscover = false) // DISABLED: Issue #562 - causes startup hang
         {
@@ -133,24 +125,16 @@ namespace ConduitLLM.Core.Extensions
                 services.TryAddSingleton<IConnectionMultiplexer>(sp =>
                 {
                     var logger = sp.GetRequiredService<ILogger<CacheManager>>();
-                    
+
                     // Parse connection string and set non-blocking options
-                    logger.LogInformation("Creating Redis connection for cache infrastructure: {Connection}", 
+                    logger.LogInformation("Creating Redis connection for cache infrastructure: {Connection}",
                         redisConnection.Contains("password=") ? redisConnection.Replace("password=", "password=******") : redisConnection);
                     var configOptions = ConfigurationOptions.Parse(redisConnection);
                     configOptions.AbortOnConnectFail = false; // Don't block on startup
                     configOptions.ConnectTimeout = 5000; // 5 second timeout
                     configOptions.ConnectRetry = 3;
-                    
-                    try
-                    {
-                        return ConnectionMultiplexer.Connect(configOptions);
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.LogError(ex, "Failed to create Redis connection. Cache functionality may be degraded.");
-                        throw;
-                    }
+
+                    return ConnectionMultiplexer.Connect(configOptions);
                 });
             }
 
@@ -201,7 +185,7 @@ namespace ConduitLLM.Core.Extensions
 
                 return cacheManager;
             });
-            
+
             // Health checks removed per YAGNI principle
 
             return services;

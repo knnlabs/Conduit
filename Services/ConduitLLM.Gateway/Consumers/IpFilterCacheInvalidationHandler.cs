@@ -34,16 +34,8 @@ namespace ConduitLLM.Gateway.Consumers
                 "IpFilterChanged received - FilterId: {FilterId}, ChangeType: {ChangeType}, FilterType: {FilterType}, IsEnabled: {IsEnabled}",
                 message.FilterId, message.ChangeType, message.FilterType, message.IsEnabled);
 
-            try
-            {
-                _ipFilterService.InvalidateCache();
-                _logger.LogInformation("IP filter rules cache invalidated due to filter change event");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error invalidating IP filter rules cache");
-                throw;
-            }
+            _ipFilterService.InvalidateCache();
+            _logger.LogInformation("IP filter rules cache invalidated due to filter change event");
 
             return Task.CompletedTask;
         }

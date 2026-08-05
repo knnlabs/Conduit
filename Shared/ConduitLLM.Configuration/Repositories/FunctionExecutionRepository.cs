@@ -47,113 +47,71 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
     /// <inheritdoc/>
     public async Task<List<FunctionExecution>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Include(e => e.FunctionConfiguration)
-                    .Where(e => e.VirtualKeyId == virtualKeyId)
-                    .OrderByDescending(e => e.RequestedAt)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting executions for virtual key {VirtualKeyId}",
-                LoggingSanitizer.S(virtualKeyId));
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                .Where(e => e.VirtualKeyId == virtualKeyId)
+                .OrderByDescending(e => e.RequestedAt)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<List<FunctionExecution>> GetByFunctionConfigurationIdAsync(int functionConfigurationId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(e => e.FunctionConfigurationId == functionConfigurationId)
-                    .OrderByDescending(e => e.RequestedAt)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting executions for function configuration {ConfigId}",
-                LoggingSanitizer.S(functionConfigurationId));
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(e => e.FunctionConfigurationId == functionConfigurationId)
+                .OrderByDescending(e => e.RequestedAt)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<List<FunctionExecution>> GetByStateAsync(ExecutionState state, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Include(e => e.FunctionConfiguration)
-                    .Where(e => e.State == state)
-                    .OrderBy(e => e.RequestedAt)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting executions with state {State}", LoggingSanitizer.S(state));
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                .Where(e => e.State == state)
+                .OrderBy(e => e.RequestedAt)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<List<FunctionExecution>> GetExpiredLeasesAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                var now = DateTime.UtcNow;
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .Include(e => e.FunctionConfiguration)
-                    .Where(e => e.LeasedBy != null
-                        && e.LeaseExpiryTime < now
-                        && (e.State == ExecutionState.Pending || e.State == ExecutionState.Running))
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting executions with expired leases");
-            throw;
-        }
+            var now = DateTime.UtcNow;
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                .Where(e => e.LeasedBy != null
+                    && e.LeaseExpiryTime < now
+                    && (e.State == ExecutionState.Pending || e.State == ExecutionState.Running))
+                .ToListAsync(cancellationToken);
+        }, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<List<FunctionExecution>> GetReadyForRetryAsync(CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                var now = DateTime.UtcNow;
-                return await GetDbSet(context)
-                    .AsNoTracking()
-                    .Include(e => e.FunctionConfiguration)
-                    .Where(e => e.State == ExecutionState.Failed
-                        && e.NextRetryAt != null
-                        && e.NextRetryAt <= now)
-                    .ToListAsync(cancellationToken);
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting executions ready for retry");
-            throw;
-        }
+            var now = DateTime.UtcNow;
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .Include(e => e.FunctionConfiguration)
+                .Where(e => e.State == ExecutionState.Failed
+                    && e.NextRetryAt != null
+                    && e.NextRetryAt <= now)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken);
     }
 
     #endregion
@@ -168,60 +126,46 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
             throw new ArgumentException("Worker ID cannot be null or empty", nameof(workerId));
         }
 
+        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        // No explicit transaction: the single SaveChangesAsync is atomic on its own,
+        // and racing workers are arbitrated by the Version concurrency token.
         try
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            var now = DateTime.UtcNow;
+            var leaseExpiry = now.Add(leaseDuration);
 
-            // No explicit transaction: the single SaveChangesAsync is atomic on its own,
-            // and racing workers are arbitrated by the Version concurrency token.
-            try
+            // Find the next pending execution that is not leased or has an expired lease
+            var execution = await GetDbSet(context)
+                .Where(e => e.State == ExecutionState.Pending
+                    && (e.LeasedBy == null || e.LeaseExpiryTime < now))
+                .OrderBy(e => e.RequestedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (execution == null)
             {
-                var now = DateTime.UtcNow;
-                var leaseExpiry = now.Add(leaseDuration);
-
-                // Find the next pending execution that is not leased or has an expired lease
-                var execution = await GetDbSet(context)
-                    .Where(e => e.State == ExecutionState.Pending
-                        && (e.LeasedBy == null || e.LeaseExpiryTime < now))
-                    .OrderBy(e => e.RequestedAt)
-                    .FirstOrDefaultAsync(cancellationToken);
-
-                if (execution == null)
-                {
-                    return null;
-                }
-
-                // Lease the execution
-                execution.LeasedBy = workerId;
-                execution.LeaseExpiryTime = leaseExpiry;
-                execution.Version++;
-
-                await context.SaveChangesAsync(cancellationToken);
-
-                Logger.LogInformation("Leased execution {ExecutionId} to worker {WorkerId} until {LeaseExpiry}",
-                    execution.Id, workerId, leaseExpiry);
-
-                return execution;
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                // Another worker grabbed this execution, that's okay
-                Logger.LogDebug(ex, "Concurrency conflict while leasing execution (another worker may have claimed it)");
                 return null;
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error leasing next pending execution for worker {WorkerId}",
-                    LoggingSanitizer.S(workerId));
-                throw;
-            }
+
+            // Lease the execution
+            execution.LeasedBy = workerId;
+            execution.LeaseExpiryTime = leaseExpiry;
+            execution.Version++;
+
+            await context.SaveChangesAsync(cancellationToken);
+
+            Logger.LogInformation("Leased execution {ExecutionId} to worker {WorkerId} until {LeaseExpiry}",
+                execution.Id, workerId, leaseExpiry);
+
+            return execution;
         }
-        catch (Exception ex) when (ex is not DbUpdateConcurrencyException)
+        catch (DbUpdateConcurrencyException ex)
         {
-            Logger.LogError(ex, "Error in LeaseNextPendingAsync for worker {WorkerId}",
-                LoggingSanitizer.S(workerId));
-            throw;
+            // Another worker grabbed this execution, that's okay
+            Logger.LogDebug(ex, "Concurrency conflict while leasing execution (another worker may have claimed it)");
+            return null;
         }
+
     }
 
     #endregion
@@ -282,43 +226,34 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
     /// <inheritdoc/>
     public async Task UpdateStateAsync(Guid executionId, ExecutionState state, string? errorMessage = null, CancellationToken cancellationToken = default)
     {
-        try
+        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+
+        var execution = await GetDbSet(context)
+            .FirstOrDefaultAsync(e => e.Id == executionId, cancellationToken);
+
+        if (execution != null)
         {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            execution.State = state;
+            execution.ErrorMessage = errorMessage;
+            execution.Version++;
 
-            var execution = await GetDbSet(context)
-                .FirstOrDefaultAsync(e => e.Id == executionId, cancellationToken);
-
-            if (execution != null)
+            if (state == ExecutionState.Running && !execution.StartedAt.HasValue)
             {
-                execution.State = state;
-                execution.ErrorMessage = errorMessage;
-                execution.Version++;
-
-                if (state == ExecutionState.Running && !execution.StartedAt.HasValue)
-                {
-                    execution.StartedAt = DateTime.UtcNow;
-                }
-                else if (state == ExecutionState.Completed ||
-                         state == ExecutionState.Failed ||
-                         state == ExecutionState.Cancelled ||
-                         state == ExecutionState.TimedOut)
-                {
-                    execution.CompletedAt = DateTime.UtcNow;
-                    if (execution.StartedAt.HasValue)
-                    {
-                        execution.Duration = execution.CompletedAt.Value - execution.StartedAt.Value;
-                    }
-                }
-
-                await context.SaveChangesAsync(cancellationToken);
+                execution.StartedAt = DateTime.UtcNow;
             }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error updating state for execution {ExecutionId}",
-                LoggingSanitizer.S(executionId));
-            throw;
+            else if (state == ExecutionState.Completed ||
+                     state == ExecutionState.Failed ||
+                     state == ExecutionState.Cancelled ||
+                     state == ExecutionState.TimedOut)
+            {
+                execution.CompletedAt = DateTime.UtcNow;
+                if (execution.StartedAt.HasValue)
+                {
+                    execution.Duration = execution.CompletedAt.Value - execution.StartedAt.Value;
+                }
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -356,27 +291,19 @@ public class FunctionExecutionRepository : RepositoryBase<FunctionExecution, Gui
     /// <inheritdoc/>
     public async Task<int> DeleteOldExecutionsAsync(DateTime olderThan, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
 
-            var oldExecutions = await GetDbSet(context)
-                .Where(e => e.RequestedAt < olderThan)
-                .ToListAsync(cancellationToken);
+        var oldExecutions = await GetDbSet(context)
+            .Where(e => e.RequestedAt < olderThan)
+            .ToListAsync(cancellationToken);
 
-            GetDbSet(context).RemoveRange(oldExecutions);
-            int count = await context.SaveChangesAsync(cancellationToken);
+        GetDbSet(context).RemoveRange(oldExecutions);
+        int count = await context.SaveChangesAsync(cancellationToken);
 
-            Logger.LogInformation("Deleted {Count} old function executions older than {OlderThan}",
-                count, olderThan);
+        Logger.LogInformation("Deleted {Count} old function executions older than {OlderThan}",
+            count, olderThan);
 
-            return count;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting old executions");
-            throw;
-        }
+        return count;
     }
 
     #endregion

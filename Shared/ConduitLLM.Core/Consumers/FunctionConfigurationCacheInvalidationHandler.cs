@@ -33,28 +33,14 @@ public class FunctionConfigurationCacheInvalidationHandler : ConduitLLM.Configur
             message.ProviderType,
             message.ChangeType);
 
-        try
-        {
-            // Invalidate all function discovery cache entries
-            // Since we cache by lists of IDs, invalidating all is the safest approach
-            await _cacheService.InvalidateAllFunctionDiscoveryAsync();
+        // Invalidate all function discovery cache entries
+        // Since we cache by lists of IDs, invalidating all is the safest approach
+        await _cacheService.InvalidateAllFunctionDiscoveryAsync();
 
-            _logger.LogInformation(
-                "Successfully invalidated function discovery cache for '{ConfigName}' (ID: {ConfigId})",
-                message.ConfigurationName,
-                message.FunctionConfigurationId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to invalidate function discovery cache for '{ConfigName}' (ID: {ConfigId})",
-                message.ConfigurationName,
-                message.FunctionConfigurationId);
-
-            // Rethrow to allow the transport retry policy to handle the failure
-            throw;
-        }
+        _logger.LogInformation(
+            "Successfully invalidated function discovery cache for '{ConfigName}' (ID: {ConfigId})",
+            message.ConfigurationName,
+            message.FunctionConfigurationId);
     }
 }
 
@@ -82,23 +68,10 @@ public class FunctionDiscoveryCacheInvalidationRequestHandler : ConduitLLM.Confi
             message.Reason,
             message.RequestedBy);
 
-        try
-        {
-            await _cacheService.InvalidateAllFunctionDiscoveryAsync();
+        await _cacheService.InvalidateAllFunctionDiscoveryAsync();
 
-            _logger.LogInformation(
-                "Successfully invalidated all function discovery cache entries. Reason: {Reason}",
-                message.Reason);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(
-                ex,
-                "Failed to invalidate function discovery cache. Reason: {Reason}",
-                message.Reason);
-
-            // Rethrow to allow the transport retry policy to handle the failure
-            throw;
-        }
+        _logger.LogInformation(
+            "Successfully invalidated all function discovery cache entries. Reason: {Reason}",
+            message.Reason);
     }
 }

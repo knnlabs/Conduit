@@ -231,11 +231,7 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
             await LoadAllSettingsAsync(CancellationToken.None);
             _logger.LogInformation("Reloaded {Count} settings from database", _cache.Count);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error reloading all settings");
-            throw;
-        }
+
         finally
         {
             _lock.Release();
@@ -315,31 +311,23 @@ public class GlobalSettingsCacheService : IHostedService, IGlobalSettingsCacheSe
     /// </summary>
     private async Task LoadAllSettingsAsync(CancellationToken cancellationToken)
     {
-        try
+        using (var scope = _scopeFactory.CreateScope())
         {
-            using (var scope = _scopeFactory.CreateScope())
+            var repository = scope.ServiceProvider.GetRequiredService<IGlobalSettingRepository>();
+            var settings = await repository.GetAllUnboundedAsync();
+
+            foreach (var setting in settings)
             {
-                var repository = scope.ServiceProvider.GetRequiredService<IGlobalSettingRepository>();
-                var settings = await repository.GetAllUnboundedAsync();
-
-                foreach (var setting in settings)
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        break;
-                    }
-
-                    _cache.TryAdd(setting.Key, setting.Value);
+                    break;
                 }
 
-                _lastLoadTime = DateTime.UtcNow;
-                _logger.LogDebug("Loaded {Count} settings into cache", _cache.Count);
+                _cache.TryAdd(setting.Key, setting.Value);
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error loading settings from database");
-            throw;
+
+            _lastLoadTime = DateTime.UtcNow;
+            _logger.LogDebug("Loaded {Count} settings into cache", _cache.Count);
         }
     }
 }

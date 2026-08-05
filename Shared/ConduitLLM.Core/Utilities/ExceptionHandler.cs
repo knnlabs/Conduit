@@ -49,9 +49,10 @@ namespace ConduitLLM.Core.Utilities
             }
             catch (OperationCanceledException ex) when (ex.CancellationToken.IsCancellationRequested)
             {
-                logger.LogWarning("Request to {ServiceName} was canceled by user", serviceName);
-                throw; // Pass cancellation exceptions through unchanged
+                // Pass caller cancellation through unchanged for the outer boundary to handle.
+                throw;
             }
+
             catch (Exception ex) when (
                 ex is not LLMCommunicationException &&
                 ex is not ConfigurationException &&

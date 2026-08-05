@@ -162,7 +162,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
-        /// Executes a SignalR operation with error handling but rethrows exceptions.
+        /// Executes a SignalR operation and lets failures propagate to the caller.
         /// Use this when the caller needs to know about failures.
         /// </summary>
         protected async Task ExecuteWithThrowAsync(
@@ -170,24 +170,16 @@ namespace ConduitLLM.Core.Services
             string operationName,
             string target)
         {
-            try
+            if (_resiliencePolicy != null)
             {
-                if (_resiliencePolicy != null)
-                {
-                    await _resiliencePolicy.ExecuteAsync(operation);
-                }
-                else
-                {
-                    await operation();
-                }
+                await _resiliencePolicy.ExecuteAsync(operation);
+            }
+            else
+            {
+                await operation();
+            }
 
-                Logger.LogDebug("{Operation} notification sent to {Target}", operationName, target);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to send {Operation} notification to {Target}", operationName, target);
-                throw;
-            }
+            Logger.LogDebug("{Operation} notification sent to {Target}", operationName, target);
         }
     }
 

@@ -39,26 +39,18 @@ public class ProviderToolCacheInvalidationHandler : IEventHandler<ProviderToolCh
             return;
         }
 
-        try
+        if (Enum.TryParse<ProviderType>(@event.ProviderType, true, out var providerType))
         {
-            if (Enum.TryParse<ProviderType>(@event.ProviderType, true, out var providerType))
-            {
-                await _providerToolCache.InvalidateProviderAsync(providerType);
-                _logger.LogInformation("Provider tool cache invalidated for {ProviderType} due to {ChangeType} event",
-                    providerType, @event.ChangeType);
-            }
-            else
-            {
-                // Unknown provider type — clear all to be safe
-                await _providerToolCache.ClearAllAsync();
-                _logger.LogWarning("Unknown provider type '{ProviderType}' in event, cleared all provider tool cache entries",
-                    @event.ProviderType);
-            }
+            await _providerToolCache.InvalidateProviderAsync(providerType);
+            _logger.LogInformation("Provider tool cache invalidated for {ProviderType} due to {ChangeType} event",
+                providerType, @event.ChangeType);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error invalidating provider tool cache for {ProviderType}", @event.ProviderType);
-            throw;
+            // Unknown provider type — clear all to be safe
+            await _providerToolCache.ClearAllAsync();
+            _logger.LogWarning("Unknown provider type '{ProviderType}' in event, cleared all provider tool cache entries",
+                @event.ProviderType);
         }
     }
 }

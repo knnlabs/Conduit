@@ -655,9 +655,10 @@ namespace ConduitLLM.Providers
             }
             catch (OperationCanceledException)
             {
-                Logger.LogDebug("{Provider} authentication verification was cancelled", ProviderName);
+                // Preserve caller cancellation instead of treating it as an authentication failure.
                 throw;
             }
+
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error verifying {Provider} authentication", ProviderName);

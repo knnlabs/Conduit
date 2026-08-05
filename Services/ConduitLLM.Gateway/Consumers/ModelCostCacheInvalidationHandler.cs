@@ -61,8 +61,8 @@ namespace ConduitLLM.Gateway.Consumers
             }
 
             // Log warning for cost changes that might affect billing
-            if (@event.ChangeType == "Updated" && 
-                (@event.ChangedProperties?.Contains("InputCost") == true || 
+            if (@event.ChangeType == "Updated" &&
+                (@event.ChangedProperties?.Contains("InputCost") == true ||
                  @event.ChangedProperties?.Contains("OutputCost") == true ||
                  @event.ChangedProperties?.Contains("Cost") == true))
             {
@@ -74,45 +74,21 @@ namespace ConduitLLM.Gateway.Consumers
             // Clear the cache used by CostCalculationService. ModelCostChanged only contains
             // the database cost ID, while lookups are also cached by provider model identifier,
             // so the whole region must be invalidated to cover every affected mapping.
-            try
-            {
-                await _modelCostService.ClearCacheAsync(context.CancellationToken);
-                _logger.LogInformation("Billing model cost cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error invalidating billing model cost cache");
-                throw;
-            }
+            await _modelCostService.ClearCacheAsync(context.CancellationToken);
+            _logger.LogInformation("Billing model cost cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
 
             // Discovery responses embed pricing from ModelCost, so a repricing must also
             // drop cached discovery payloads or clients keep seeing the old rates until TTL.
-            try
-            {
-                await _discoveryCacheService.InvalidateAllDiscoveryAsync(context.CancellationToken);
-                _logger.LogInformation("Discovery cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error invalidating discovery cache after model cost change");
-                throw;
-            }
+            await _discoveryCacheService.InvalidateAllDiscoveryAsync(context.CancellationToken);
+            _logger.LogInformation("Discovery cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
 
             // Invalidate pricing rules cache if available
             if (_pricingRulesCache != null && @event.ModelCostId > 0)
             {
-                try
-                {
-                    await _pricingRulesCache.InvalidateCacheAsync(@event.ModelCostId);
-                    _logger.LogInformation(
-                        "Pricing rules cache invalidated for ModelCostId: {ModelCostId}",
-                        @event.ModelCostId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error invalidating pricing rules cache for ModelCostId: {ModelCostId}", @event.ModelCostId);
-                    throw;
-                }
+                await _pricingRulesCache.InvalidateCacheAsync(@event.ModelCostId);
+                _logger.LogInformation(
+                    "Pricing rules cache invalidated for ModelCostId: {ModelCostId}",
+                    @event.ModelCostId);
             }
         }
     }

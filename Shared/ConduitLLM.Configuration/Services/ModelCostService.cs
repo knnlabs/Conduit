@@ -39,81 +39,57 @@ public class ModelCostService : IModelCostService
             throw new ArgumentException("Model ID cannot be empty", nameof(modelId));
         }
 
-        try
+        // Get all model costs with their associated ModelProviderTypeAssociations
+        var allCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+            _modelCostRepository.GetPaginatedAsync, cancellationToken: cancellationToken);
+
+        // Find a cost where one of its associated ModelProviderTypeAssociations has this identifier
+        var now = DateTime.UtcNow;
+        var modelCost = allCosts
+            .Where(cost => cost.IsActive && cost.EffectiveDate <= now)
+            .Where(cost => !cost.ExpiryDate.HasValue || cost.ExpiryDate.Value > now)
+            .Where(cost => cost.ModelProviderTypeAssociations.Any(assoc =>
+                assoc.Identifier == modelId && assoc.IsEnabled))
+            .OrderByDescending(cost => cost.Priority)
+            .ThenByDescending(cost => cost.EffectiveDate)
+            .FirstOrDefault();
+
+        if (modelCost == null)
         {
-            // Get all model costs with their associated ModelProviderTypeAssociations
-            var allCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                _modelCostRepository.GetPaginatedAsync, cancellationToken: cancellationToken);
-
-            // Find a cost where one of its associated ModelProviderTypeAssociations has this identifier
-            var now = DateTime.UtcNow;
-            var modelCost = allCosts
-                .Where(cost => cost.IsActive && cost.EffectiveDate <= now)
-                .Where(cost => !cost.ExpiryDate.HasValue || cost.ExpiryDate.Value > now)
-                .Where(cost => cost.ModelProviderTypeAssociations.Any(assoc =>
-                    assoc.Identifier == modelId && assoc.IsEnabled))
-                .OrderByDescending(cost => cost.Priority)
-                .ThenByDescending(cost => cost.EffectiveDate)
-                .FirstOrDefault();
-
-            if (modelCost == null)
-            {
-                _logger.LogDebug("No model cost found for identifier: {ModelId}", modelId);
-            }
-
-            return modelCost;
+            _logger.LogDebug("No model cost found for identifier: {ModelId}", modelId);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting cost for model {ModelId}", modelId);
-            throw;
-        }
+
+        return modelCost;
     }
 
     /// <inheritdoc />
     public async Task<ModelCost?> GetCostByIdAsync(int modelCostId, CancellationToken cancellationToken = default)
     {
-        try
+        var modelCost = await _modelCostRepository.GetByIdAsync(modelCostId, cancellationToken);
+
+        if (modelCost == null)
         {
-            var modelCost = await _modelCostRepository.GetByIdAsync(modelCostId, cancellationToken);
-
-            if (modelCost == null)
-            {
-                _logger.LogDebug("No model cost found for ID: {ModelCostId}", modelCostId);
-                return null;
-            }
-
-            // Validate the cost is active and within date range
-            var now = DateTime.UtcNow;
-            if (!modelCost.IsActive || modelCost.EffectiveDate > now ||
-                (modelCost.ExpiryDate.HasValue && modelCost.ExpiryDate.Value <= now))
-            {
-                _logger.LogDebug("Model cost ID {ModelCostId} exists but is not active or outside date range", modelCostId);
-                return null;
-            }
-
-            return modelCost;
+            _logger.LogDebug("No model cost found for ID: {ModelCostId}", modelCostId);
+            return null;
         }
-        catch (Exception ex)
+
+        // Validate the cost is active and within date range
+        var now = DateTime.UtcNow;
+        if (!modelCost.IsActive || modelCost.EffectiveDate > now ||
+            (modelCost.ExpiryDate.HasValue && modelCost.ExpiryDate.Value <= now))
         {
-            _logger.LogError(ex, "Error getting cost by ID {ModelCostId}", modelCostId);
-            throw;
+            _logger.LogDebug("Model cost ID {ModelCostId} exists but is not active or outside date range", modelCostId);
+            return null;
         }
+
+        return modelCost;
     }
 
     /// <inheritdoc />
     public async Task<List<ModelCost>> ListModelCostsAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
-                _modelCostRepository.GetPaginatedAsync, cancellationToken: cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing model costs");
-            throw;
-        }
+        return await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+            _modelCostRepository.GetPaginatedAsync, cancellationToken: cancellationToken);
     }
 
     /// <inheritdoc />
@@ -124,20 +100,12 @@ public class ModelCostService : IModelCostService
             throw new ArgumentNullException(nameof(modelCost));
         }
 
-        try
-        {
-            modelCost.CreatedAt = DateTime.UtcNow;
-            modelCost.UpdatedAt = DateTime.UtcNow;
+        modelCost.CreatedAt = DateTime.UtcNow;
+        modelCost.UpdatedAt = DateTime.UtcNow;
 
-            await _modelCostRepository.CreateAsync(modelCost, cancellationToken);
-            _logger.LogInformation("Created model cost {CostName} (ID: {CostId}) with input={InputCost}/M, output={OutputCost}/M",
-                modelCost.CostName, modelCost.Id, modelCost.InputCostPerMillionTokens, modelCost.OutputCostPerMillionTokens);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding model cost {CostName}", modelCost.CostName);
-            throw;
-        }
+        await _modelCostRepository.CreateAsync(modelCost, cancellationToken);
+        _logger.LogInformation("Created model cost {CostName} (ID: {CostId}) with input={InputCost}/M, output={OutputCost}/M",
+            modelCost.CostName, modelCost.Id, modelCost.InputCostPerMillionTokens, modelCost.OutputCostPerMillionTokens);
     }
 
     /// <inheritdoc />
@@ -148,74 +116,58 @@ public class ModelCostService : IModelCostService
             throw new ArgumentNullException(nameof(modelCost));
         }
 
-        try
+        var existingCost = await _modelCostRepository.GetByIdAsync(modelCost.Id, cancellationToken);
+
+        if (existingCost == null)
         {
-            var existingCost = await _modelCostRepository.GetByIdAsync(modelCost.Id, cancellationToken);
-
-            if (existingCost == null)
-            {
-                _logger.LogWarning("Attempted to update non-existent model cost {ModelCostId}", modelCost.Id);
-                return false;
-            }
-
-            // Update properties
-            existingCost.CostName = modelCost.CostName;
-            existingCost.PricingModel = modelCost.PricingModel;
-            existingCost.PricingConfiguration = modelCost.PricingConfiguration;
-            existingCost.InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens;
-            existingCost.OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens;
-            existingCost.EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens;
-            existingCost.ModelType = modelCost.ModelType;
-            existingCost.IsActive = modelCost.IsActive;
-            existingCost.EffectiveDate = modelCost.EffectiveDate;
-            existingCost.ExpiryDate = modelCost.ExpiryDate;
-            existingCost.Description = modelCost.Description;
-            existingCost.Priority = modelCost.Priority;
-            existingCost.BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier;
-            existingCost.SupportsBatchProcessing = modelCost.SupportsBatchProcessing;
-            existingCost.CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens;
-            existingCost.CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens;
-            existingCost.CostPerSearchUnit = modelCost.CostPerSearchUnit;
-            existingCost.AudioCostPerMinute = modelCost.AudioCostPerMinute;
-            existingCost.AudioCostPerThousandCharacters = modelCost.AudioCostPerThousandCharacters;
-            existingCost.ReasoningCostPerMillionTokens = modelCost.ReasoningCostPerMillionTokens;
-            existingCost.UpdatedAt = DateTime.UtcNow;
-
-            var result = await _modelCostRepository.UpdateAsync(existingCost, cancellationToken);
-            if (result)
-            {
-                _logger.LogInformation("Updated model cost {CostName} (ID: {ModelCostId})", existingCost.CostName, modelCost.Id);
-            }
-            return result;
+            _logger.LogWarning("Attempted to update non-existent model cost {ModelCostId}", modelCost.Id);
+            return false;
         }
-        catch (Exception ex)
+
+        // Update properties
+        existingCost.CostName = modelCost.CostName;
+        existingCost.PricingModel = modelCost.PricingModel;
+        existingCost.PricingConfiguration = modelCost.PricingConfiguration;
+        existingCost.InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens;
+        existingCost.OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens;
+        existingCost.EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens;
+        existingCost.ModelType = modelCost.ModelType;
+        existingCost.IsActive = modelCost.IsActive;
+        existingCost.EffectiveDate = modelCost.EffectiveDate;
+        existingCost.ExpiryDate = modelCost.ExpiryDate;
+        existingCost.Description = modelCost.Description;
+        existingCost.Priority = modelCost.Priority;
+        existingCost.BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier;
+        existingCost.SupportsBatchProcessing = modelCost.SupportsBatchProcessing;
+        existingCost.CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens;
+        existingCost.CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens;
+        existingCost.CostPerSearchUnit = modelCost.CostPerSearchUnit;
+        existingCost.AudioCostPerMinute = modelCost.AudioCostPerMinute;
+        existingCost.AudioCostPerThousandCharacters = modelCost.AudioCostPerThousandCharacters;
+        existingCost.ReasoningCostPerMillionTokens = modelCost.ReasoningCostPerMillionTokens;
+        existingCost.UpdatedAt = DateTime.UtcNow;
+
+        var result = await _modelCostRepository.UpdateAsync(existingCost, cancellationToken);
+        if (result)
         {
-            _logger.LogError(ex, "Error updating model cost with ID {ModelCostId}", modelCost.Id);
-            throw;
+            _logger.LogInformation("Updated model cost {CostName} (ID: {ModelCostId})", existingCost.CostName, modelCost.Id);
         }
+        return result;
     }
 
     /// <inheritdoc />
     public async Task<bool> DeleteModelCostAsync(int id, CancellationToken cancellationToken = default)
     {
-        try
+        var result = await _modelCostRepository.DeleteAsync(id, cancellationToken);
+        if (result)
         {
-            var result = await _modelCostRepository.DeleteAsync(id, cancellationToken);
-            if (result)
-            {
-                _logger.LogInformation("Deleted model cost {ModelCostId}", id);
-            }
-            else
-            {
-                _logger.LogWarning("Attempted to delete non-existent model cost {ModelCostId}", id);
-            }
-            return result;
+            _logger.LogInformation("Deleted model cost {ModelCostId}", id);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error deleting model cost with ID {ModelCostId}", id);
-            throw;
+            _logger.LogWarning("Attempted to delete non-existent model cost {ModelCostId}", id);
         }
+        return result;
     }
 
     /// <inheritdoc />

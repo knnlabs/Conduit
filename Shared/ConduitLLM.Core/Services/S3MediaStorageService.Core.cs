@@ -49,35 +49,35 @@ namespace ConduitLLM.Core.Services
             _logger = logger;
             _timeProvider = timeProvider ?? TimeProvider.System;
             _quotaGuard = quotaGuard;
-            
+
             // Validate required configuration
             if (string.IsNullOrEmpty(_options.AccessKey))
             {
                 throw new InvalidOperationException("S3 AccessKey is required. Set CONDUITLLM__STORAGE__S3__ACCESSKEY environment variable.");
             }
-            
+
             if (string.IsNullOrEmpty(_options.SecretKey))
             {
                 throw new InvalidOperationException("S3 SecretKey is required. Set CONDUITLLM__STORAGE__S3__SECRETKEY environment variable.");
             }
-            
+
             if (string.IsNullOrEmpty(_options.BucketName))
             {
                 throw new InvalidOperationException("S3 BucketName is required. Set CONDUITLLM__STORAGE__S3__BUCKETNAME environment variable.");
             }
-            
+
             _bucketName = _options.BucketName;
-            
+
             // Log R2 detection and configuration
             _logger.LogInformation("S3 Storage Options - ServiceUrl: {ServiceUrl}, IsR2: {IsR2}", _options.ServiceUrl, _options.IsR2);
             if (_options.IsR2)
             {
-                _logger.LogInformation("Cloudflare R2 detected. Using optimized settings: MultipartChunkSize={ChunkSize}MB, MultipartThreshold={Threshold}MB", 
-                    _options.MultipartChunkSizeBytes / (1024 * 1024), 
+                _logger.LogInformation("Cloudflare R2 detected. Using optimized settings: MultipartChunkSize={ChunkSize}MB, MultipartThreshold={Threshold}MB",
+                    _options.MultipartChunkSizeBytes / (1024 * 1024),
                     _options.MultipartThresholdBytes / (1024 * 1024));
             }
-            
-            _logger.LogInformation("S3MediaStorageService initialized with bucket: {BucketName}, ServiceUrl: {ServiceUrl}, Region: {Region}", 
+
+            _logger.LogInformation("S3MediaStorageService initialized with bucket: {BucketName}, ServiceUrl: {ServiceUrl}, Region: {Region}",
                 _bucketName, _options.ServiceUrl ?? "default", _options.Region);
 
             var config = new AmazonS3Config
@@ -154,11 +154,7 @@ namespace ConduitLLM.Core.Services
                 _bucketInitialized = true;
                 _logger.LogInformation("S3 bucket initialization completed successfully");
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to initialize S3 bucket");
-                throw;
-            }
+
             finally
             {
                 _initLock.Release();
@@ -215,8 +211,8 @@ namespace ConduitLLM.Core.Services
                 // For R2, we can't use TransferUtility due to streaming signature issues
                 // So we'll always use PutObject for R2, regardless of file size
                 bool useTransferUtility = !_options.IsR2 && uploadStream.Length > _options.MultipartThresholdBytes;
-                
-                _logger.LogInformation("S3 Upload Decision: IsR2={IsR2}, StreamLength={Length}, Threshold={Threshold}, UseTransferUtility={UseTransfer}", 
+
+                _logger.LogInformation("S3 Upload Decision: IsR2={IsR2}, StreamLength={Length}, Threshold={Threshold}, UseTransferUtility={UseTransfer}",
                     _options.IsR2, uploadStream.Length, _options.MultipartThresholdBytes, useTransferUtility);
 
                 // Store content length before upload (stream may be disposed after)
@@ -235,20 +231,20 @@ namespace ConduitLLM.Core.Services
                         PartSize = _options.MultipartChunkSizeBytes,
                         CannedACL = S3CannedACL.Private
                     };
-                    
+
                     // In AWS SDK v3, DisablePayloadSigning might not be available on TransferUtilityUploadRequest
                     // We'll need to use PutObject for R2 instead
 
                     // Add metadata
                     uploadRequest.Metadata.Add("content-type", metadata.ContentType);
                     uploadRequest.Metadata.Add("media-type", metadata.MediaType.ToString());
-                    
+
                     // Only add optional metadata if not null/empty (R2 doesn't like empty metadata values)
                     if (!string.IsNullOrEmpty(metadata.FileName))
                     {
                         uploadRequest.Metadata.Add("original-filename", metadata.FileName);
                     }
-                    
+
                     if (!string.IsNullOrEmpty(metadata.CreatedBy))
                     {
                         uploadRequest.Metadata.Add("created-by", metadata.CreatedBy);
@@ -272,7 +268,7 @@ namespace ConduitLLM.Core.Services
                     uploadRequest.UploadProgressEvent += (sender, args) =>
                     {
                         // TransferUtility already reports progress
-                        _logger.LogDebug("Upload progress: {TransferredBytes}/{TotalBytes}", 
+                        _logger.LogDebug("Upload progress: {TransferredBytes}/{TotalBytes}",
                             args.TransferredBytes, args.TotalBytes);
                     };
 
@@ -288,7 +284,7 @@ namespace ConduitLLM.Core.Services
                         InputStream = uploadStream,
                         ContentType = metadata.ContentType
                     };
-                    
+
                     // For R2 compatibility, disable payload signing
                     if (_options.IsR2)
                     {
@@ -300,13 +296,13 @@ namespace ConduitLLM.Core.Services
                     // Add metadata
                     putRequest.Metadata.Add("content-type", metadata.ContentType);
                     putRequest.Metadata.Add("media-type", metadata.MediaType.ToString());
-                    
+
                     // Only add optional metadata if not null/empty (R2 doesn't like empty metadata values)
                     if (!string.IsNullOrEmpty(metadata.FileName))
                     {
                         putRequest.Metadata.Add("original-filename", metadata.FileName);
                     }
-                    
+
                     if (!string.IsNullOrEmpty(metadata.CreatedBy))
                     {
                         putRequest.Metadata.Add("created-by", metadata.CreatedBy);
@@ -347,29 +343,25 @@ namespace ConduitLLM.Core.Services
             catch (AmazonS3Exception ex)
             {
                 _logger.LogError(ex, "AWS S3 error while storing media: {ErrorCode}", ex.ErrorCode);
-                
+
                 if (ex.StatusCode == System.Net.HttpStatusCode.RequestEntityTooLarge)
                 {
                     throw new InvalidOperationException("File size exceeds S3 limits", ex);
                 }
-                else if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized || 
+                else if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized ||
                          ex.StatusCode == System.Net.HttpStatusCode.Forbidden)
                 {
                     throw new UnauthorizedAccessException("Insufficient permissions to upload to S3", ex);
                 }
-                else if (ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable || 
+                else if (ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable ||
                          ex.ErrorCode == "SlowDown")
                 {
                     throw new InvalidOperationException("S3 service is throttling requests. Please retry later.", ex);
                 }
-                
+
                 throw;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to store media to S3");
-                throw;
-            }
+
             finally
             {
                 // Dispose of the memory stream if we created one
@@ -386,7 +378,7 @@ namespace ConduitLLM.Core.Services
             {
                 using var base64Stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(base64Content));
                 using var decodedStream = new CryptoStream(base64Stream, new FromBase64Transform(), CryptoStreamMode.Read);
-                
+
                 return await StoreAsync(decodedStream, metadata, progress);
             }
             catch (FormatException ex)
@@ -420,11 +412,7 @@ namespace ConduitLLM.Core.Services
                 _logger.LogWarning("Media with key {StorageKey} not found", storageKey);
                 return null;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to retrieve media {StorageKey} from S3", storageKey);
-                throw;
-            }
+
         }
 
         /// <inheritdoc/>
@@ -441,7 +429,7 @@ namespace ConduitLLM.Core.Services
                 var response = await _s3Client.GetObjectMetadataAsync(metadataRequest);
 
                 var mediaType = MediaType.Other;
-                
+
                 // AWS SDK prefixes custom metadata with "x-amz-meta-" when returned
                 if (response.Metadata.Keys.Contains("x-amz-meta-media-type"))
                 {
@@ -508,11 +496,7 @@ namespace ConduitLLM.Core.Services
             {
                 return null;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get media info for {StorageKey}", storageKey);
-                throw;
-            }
+
         }
 
         /// <inheritdoc/>
@@ -643,31 +627,23 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<string> GenerateUrlAsync(string storageKey, TimeSpan? expiration = null)
         {
-            try
+            // If we have a public base URL configured, use it for public access
+            if (!string.IsNullOrEmpty(_options.PublicBaseUrl))
             {
-                // If we have a public base URL configured, use it for public access
-                if (!string.IsNullOrEmpty(_options.PublicBaseUrl))
-                {
-                    return $"{_options.PublicBaseUrl.TrimEnd('/')}/{storageKey}";
-                }
-
-                // Otherwise, generate a presigned URL
-                var urlRequest = new GetPreSignedUrlRequest
-                {
-                    BucketName = _bucketName,
-                    Key = storageKey,
-                    Verb = HttpVerb.GET,
-                    Expires = DateTime.UtcNow.Add(expiration ?? _options.DefaultUrlExpiration),
-                    Protocol = Protocol.HTTP
-                };
-
-                return await _s3Client.GetPreSignedURLAsync(urlRequest);
+                return $"{_options.PublicBaseUrl.TrimEnd('/')}/{storageKey}";
             }
-            catch (Exception ex)
+
+            // Otherwise, generate a presigned URL
+            var urlRequest = new GetPreSignedUrlRequest
             {
-                _logger.LogError(ex, "Failed to generate URL for {StorageKey}", storageKey);
-                throw;
-            }
+                BucketName = _bucketName,
+                Key = storageKey,
+                Verb = HttpVerb.GET,
+                Expires = DateTime.UtcNow.Add(expiration ?? _options.DefaultUrlExpiration),
+                Protocol = Protocol.HTTP
+            };
+
+            return await _s3Client.GetPreSignedURLAsync(urlRequest);
         }
 
         /// <inheritdoc/>
@@ -702,38 +678,26 @@ namespace ConduitLLM.Core.Services
 
             try
             {
-                _logger.LogInformation("Checking if bucket {BucketName} exists at {ServiceUrl}, IsR2: {IsR2}", 
+                _logger.LogInformation("Checking if bucket {BucketName} exists at {ServiceUrl}, IsR2: {IsR2}",
                     _bucketName, _options.ServiceUrl ?? "default endpoint", _options.IsR2);
-                
+
                 // For R2, skip bucket existence check as it may cause signature issues
                 if (_options.IsR2)
                 {
                     _logger.LogInformation("Skipping bucket existence check for R2 compatibility");
                     return;
                 }
-                
+
                 await _s3Client.HeadBucketAsync(new HeadBucketRequest { BucketName = _bucketName });
                 _logger.LogInformation("Bucket {BucketName} exists", _bucketName);
             }
             catch (AmazonS3Exception ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
-                try
-                {
-                    _logger.LogInformation("Bucket {BucketName} not found. Creating new bucket...", _bucketName);
-                    await _s3Client.PutBucketAsync(new PutBucketRequest { BucketName = _bucketName });
-                    _logger.LogInformation("Successfully created bucket {BucketName}", _bucketName);
-                }
-                catch (Exception createEx)
-                {
-                    _logger.LogError(createEx, "Failed to create bucket {BucketName}. Error: {ErrorMessage}", _bucketName, createEx.Message);
-                    throw; // Re-throw to fail fast during startup
-                }
+                _logger.LogInformation("Bucket {BucketName} not found. Creating new bucket...", _bucketName);
+                await _s3Client.PutBucketAsync(new PutBucketRequest { BucketName = _bucketName });
+                _logger.LogInformation("Successfully created bucket {BucketName}", _bucketName);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking bucket {BucketName} existence. Error: {ErrorMessage}", _bucketName, ex.Message);
-                throw; // Re-throw to fail fast during startup
-            }
+
 
             // Configure CORS after ensuring bucket exists
             await ConfigureBucketCorsAsync();

@@ -38,32 +38,20 @@ namespace ConduitLLM.Gateway.EventHandlers
                 message.ChangeType,
                 message.ParametersChanged);
 
-            try
-            {
-                await _discoveryCacheService.InvalidateAllDiscoveryAsync();
-                await _modelCapabilityService.RefreshCacheAsync();
+            await _discoveryCacheService.InvalidateAllDiscoveryAsync();
+            await _modelCapabilityService.RefreshCacheAsync();
 
+            _logger.LogInformation(
+                "Invalidated all discovery cache entries after {ChangeType} of model {ModelName} (ID: {ModelId})",
+                message.ChangeType,
+                message.ModelName,
+                message.ModelId);
+
+            if (message.ParametersChanged)
+            {
                 _logger.LogInformation(
-                    "Invalidated all discovery cache entries after {ChangeType} of model {ModelName} (ID: {ModelId})",
-                    message.ChangeType,
-                    message.ModelName,
-                    message.ModelId);
-
-                if (message.ParametersChanged)
-                {
-                    _logger.LogInformation(
-                        "Model parameters were updated for {ModelName} - UI components will reflect new parameter definitions",
-                        message.ModelName);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to invalidate discovery cache after {ChangeType} of model {ModelName} (ID: {ModelId})",
-                    message.ChangeType,
-                    message.ModelName,
-                    message.ModelId);
-                throw; // Re-throw to trigger transport retry logic
+                    "Model parameters were updated for {ModelName} - UI components will reflect new parameter definitions",
+                    message.ModelName);
             }
         }
     }

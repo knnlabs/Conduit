@@ -33,23 +33,11 @@ namespace ConduitLLM.Core.Consumers
                 message.SettingId,
                 message.ChangeType);
 
-            try
-            {
-                await _cacheService.InvalidateSettingAsync(message.SettingKey);
+            await _cacheService.InvalidateSettingAsync(message.SettingKey);
 
-                _logger.LogInformation(
-                    "Successfully invalidated cache for setting '{SettingKey}'",
-                    message.SettingKey);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Failed to invalidate cache for setting '{SettingKey}' (ID: {SettingId})",
-                    message.SettingKey,
-                    message.SettingId);
-                throw; // Re-throw to trigger transport retry logic
-            }
+            _logger.LogInformation(
+                "Successfully invalidated cache for setting '{SettingKey}'",
+                message.SettingKey);
         }
     }
 }

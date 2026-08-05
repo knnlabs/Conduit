@@ -162,13 +162,7 @@ namespace ConduitLLM.Core.Services
                     "Leader {InstanceId} completed warming for {ServiceType}. Signal published.",
                     _instanceId, _serviceType);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Leader warming failed for {ServiceType}. Other instances may timeout waiting.",
-                    _serviceType);
-                throw;
-            }
+
             finally
             {
                 try

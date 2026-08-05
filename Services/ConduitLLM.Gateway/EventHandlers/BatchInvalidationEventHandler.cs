@@ -30,42 +30,32 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// </summary>
         public async Task HandleAsync(TEvent message, IEventContext context)
         {
-            try
-            {
-                var requests = ExtractInvalidationRequests(message);
+            var requests = ExtractInvalidationRequests(message);
 
-                if (requests.Any())
+            if (requests.Any())
+            {
+                // Group by cache type for efficient processing
+                var groupedRequests = requests.GroupBy(r => GetCacheType(r));
+
+                foreach (var group in groupedRequests)
                 {
-                    // Group by cache type for efficient processing
-                    var groupedRequests = requests.GroupBy(r => GetCacheType(r));
+                    var cacheType = group.Key;
+                    var keys = group.Select(r => r.EntityId).ToArray();
 
-                    foreach (var group in groupedRequests)
+                    // Queue bulk invalidation for this cache type
+                    if (message is DomainEvent domainEvent)
                     {
-                        var cacheType = group.Key;
-                        var keys = group.Select(r => r.EntityId).ToArray();
-
-                        // Queue bulk invalidation for this cache type
-                        if (message is DomainEvent domainEvent)
-                        {
-                            await _batchService.QueueBulkInvalidationAsync(
-                                keys, 
-                                domainEvent, 
-                                cacheType);
-                        }
+                        await _batchService.QueueBulkInvalidationAsync(
+                            keys,
+                            domainEvent,
+                            cacheType);
                     }
-                    
-                    _logger.LogDebug(
-                        "Enqueued {Count} cache invalidation requests from {EventType}",
-                        requests.Count(),
-                        nameof(TEvent));
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to process cache invalidation for {EventType}",
+
+                _logger.LogDebug(
+                    "Enqueued {Count} cache invalidation requests from {EventType}",
+                    requests.Count(),
                     nameof(TEvent));
-                throw; // Let the event bus handle retry
             }
         }
 
@@ -109,17 +99,17 @@ namespace ConduitLLM.Gateway.EventHandlers
                 // Critical - Security/billing related
                 VirtualKeyDeleted => InvalidationPriority.Critical,
                 SpendThresholdExceeded => InvalidationPriority.Critical,
-                
+
                 // High - Affects active operations
                 VirtualKeyUpdated e when e.ChangedProperties.Contains("IsEnabled") => InvalidationPriority.High,
                 VirtualKeyUpdated e when e.ChangedProperties.Contains("MaxBudget") => InvalidationPriority.High,
                 SpendUpdated => InvalidationPriority.High,
-                
+
                 // Normal - Regular updates
                 ModelCostChanged => InvalidationPriority.Normal,
                 VirtualKeyCreated => InvalidationPriority.Normal,
                 VirtualKeyUpdated => InvalidationPriority.Normal,
-                
+
                 // Default
                 _ => InvalidationPriority.Normal
             };

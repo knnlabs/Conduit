@@ -16,142 +16,117 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<MultipartUploadSession> InitiateMultipartUploadAsync(VideoMediaMetadata metadata)
         {
-            try
+            // Generate storage key
+            var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+            var storageKey = MediaStorageKeys.GenerateDatePartitioned(
+                Guid.NewGuid().ToString(),
+                MediaType.Video,
+                extension,
+                DateTime.UtcNow);
+
+            var initiateRequest = new InitiateMultipartUploadRequest
             {
-                // Generate storage key
-                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
-                var storageKey = MediaStorageKeys.GenerateDatePartitioned(
-                    Guid.NewGuid().ToString(),
-                    MediaType.Video,
-                    extension,
-                    DateTime.UtcNow);
-                
-                var initiateRequest = new InitiateMultipartUploadRequest
-                {
-                    BucketName = _bucketName,
-                    Key = storageKey,
-                    ContentType = metadata.ContentType
-                    // Removed ServerSideEncryptionMethod for R2 compatibility
-                };
+                BucketName = _bucketName,
+                Key = storageKey,
+                ContentType = metadata.ContentType
+                // Removed ServerSideEncryptionMethod for R2 compatibility
+            };
 
-                // Add metadata
-                initiateRequest.Metadata.Add("content-type", metadata.ContentType);
-                initiateRequest.Metadata.Add("media-type", MediaType.Video.ToString());
-                initiateRequest.Metadata.Add("duration", metadata.Duration.ToString());
-                initiateRequest.Metadata.Add("resolution", metadata.Resolution);
-                
-                if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
-                    initiateRequest.Metadata.Add("generated-by-model", metadata.GeneratedByModel);
+            // Add metadata
+            initiateRequest.Metadata.Add("content-type", metadata.ContentType);
+            initiateRequest.Metadata.Add("media-type", MediaType.Video.ToString());
+            initiateRequest.Metadata.Add("duration", metadata.Duration.ToString());
+            initiateRequest.Metadata.Add("resolution", metadata.Resolution);
 
-                var response = await _s3Client.InitiateMultipartUploadAsync(initiateRequest);
-                
-                var now = _timeProvider.GetUtcNow().UtcDateTime;
-                var session = new MultipartUploadSession
-                {
-                    SessionId = Guid.NewGuid().ToString(),
-                    StorageKey = storageKey,
-                    S3UploadId = response.UploadId,
-                    CreatedAt = now,
-                    ExpiresAt = now.Add(MultipartSessionLifetime),
-                    MinimumPartSize = _options.MultipartChunkSizeBytes,
-                    MaxParts = 10000 // S3 limit
-                };
+            if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
+                initiateRequest.Metadata.Add("generated-by-model", metadata.GeneratedByModel);
 
-                _multipartUploads[session.SessionId] = new MultipartUploadState(response, session.ExpiresAt);
-                
-                _logger.LogInformation("Initiated multipart upload session {SessionId} for key {StorageKey}", 
-                    session.SessionId, storageKey);
-                
-                return session;
-            }
-            catch (Exception ex)
+            var response = await _s3Client.InitiateMultipartUploadAsync(initiateRequest);
+
+            var now = _timeProvider.GetUtcNow().UtcDateTime;
+            var session = new MultipartUploadSession
             {
-                _logger.LogError(ex, "Failed to initiate multipart upload");
-                throw;
-            }
+                SessionId = Guid.NewGuid().ToString(),
+                StorageKey = storageKey,
+                S3UploadId = response.UploadId,
+                CreatedAt = now,
+                ExpiresAt = now.Add(MultipartSessionLifetime),
+                MinimumPartSize = _options.MultipartChunkSizeBytes,
+                MaxParts = 10000 // S3 limit
+            };
+
+            _multipartUploads[session.SessionId] = new MultipartUploadState(response, session.ExpiresAt);
+
+            _logger.LogInformation("Initiated multipart upload session {SessionId} for key {StorageKey}",
+                session.SessionId, storageKey);
+
+            return session;
         }
 
         /// <inheritdoc/>
         public async Task<PartUploadResult> UploadPartAsync(string sessionId, int partNumber, Stream content)
         {
-            try
+            if (!_multipartUploads.TryGetValue(sessionId, out var uploadState))
             {
-                if (!_multipartUploads.TryGetValue(sessionId, out var uploadState))
-                {
-                    throw new InvalidOperationException($"Upload session {sessionId} not found");
-                }
-
-                var uploadInfo = uploadState.Upload;
-
-                var uploadRequest = new UploadPartRequest
-                {
-                    BucketName = _bucketName,
-                    Key = uploadInfo.Key,
-                    UploadId = uploadInfo.UploadId,
-                    PartNumber = partNumber,
-                    InputStream = content
-                };
-
-                var response = await _s3Client.UploadPartAsync(uploadRequest);
-                
-                _logger.LogDebug("Uploaded part {PartNumber} for session {SessionId}", partNumber, sessionId);
-                
-                return new PartUploadResult
-                {
-                    PartNumber = partNumber,
-                    ETag = response.ETag,
-                    SizeBytes = content.Length
-                };
+                throw new InvalidOperationException($"Upload session {sessionId} not found");
             }
-            catch (Exception ex)
+
+            var uploadInfo = uploadState.Upload;
+
+            var uploadRequest = new UploadPartRequest
             {
-                _logger.LogError(ex, "Failed to upload part {PartNumber} for session {SessionId}", 
-                    partNumber, sessionId);
-                throw;
-            }
+                BucketName = _bucketName,
+                Key = uploadInfo.Key,
+                UploadId = uploadInfo.UploadId,
+                PartNumber = partNumber,
+                InputStream = content
+            };
+
+            var response = await _s3Client.UploadPartAsync(uploadRequest);
+
+            _logger.LogDebug("Uploaded part {PartNumber} for session {SessionId}", partNumber, sessionId);
+
+            return new PartUploadResult
+            {
+                PartNumber = partNumber,
+                ETag = response.ETag,
+                SizeBytes = content.Length
+            };
         }
 
         /// <inheritdoc/>
         public async Task<MediaStorageResult> CompleteMultipartUploadAsync(string sessionId, List<PartUploadResult> parts)
         {
-            try
+            if (!_multipartUploads.TryRemove(sessionId, out var uploadState))
             {
-                if (!_multipartUploads.TryRemove(sessionId, out var uploadState))
-                {
-                    throw new InvalidOperationException($"Upload session {sessionId} not found");
-                }
-
-                var uploadInfo = uploadState.Upload;
-
-                var completeRequest = new CompleteMultipartUploadRequest
-                {
-                    BucketName = _bucketName,
-                    Key = uploadInfo.Key,
-                    UploadId = uploadInfo.UploadId,
-                    PartETags = parts.Select(p => new PartETag(p.PartNumber, p.ETag)).ToList()
-                };
-
-                var response = await _s3Client.CompleteMultipartUploadAsync(completeRequest);
-                
-                _logger.LogInformation("Completed multipart upload for key {StorageKey}", uploadInfo.Key);
-                
-                // Generate URL
-                var url = await GenerateUrlAsync(uploadInfo.Key, _options.DefaultUrlExpiration);
-                
-                return new MediaStorageResult
-                {
-                    StorageKey = uploadInfo.Key,
-                    Url = url,
-                    SizeBytes = parts.Sum(p => p.SizeBytes),
-                    ContentHash = response.ETag,
-                    CreatedAt = DateTime.UtcNow
-                };
+                throw new InvalidOperationException($"Upload session {sessionId} not found");
             }
-            catch (Exception ex)
+
+            var uploadInfo = uploadState.Upload;
+
+            var completeRequest = new CompleteMultipartUploadRequest
             {
-                _logger.LogError(ex, "Failed to complete multipart upload for session {SessionId}", sessionId);
-                throw;
-            }
+                BucketName = _bucketName,
+                Key = uploadInfo.Key,
+                UploadId = uploadInfo.UploadId,
+                PartETags = parts.Select(p => new PartETag(p.PartNumber, p.ETag)).ToList()
+            };
+
+            var response = await _s3Client.CompleteMultipartUploadAsync(completeRequest);
+
+            _logger.LogInformation("Completed multipart upload for key {StorageKey}", uploadInfo.Key);
+
+            // Generate URL
+            var url = await GenerateUrlAsync(uploadInfo.Key, _options.DefaultUrlExpiration);
+
+            return new MediaStorageResult
+            {
+                StorageKey = uploadInfo.Key,
+                Url = url,
+                SizeBytes = parts.Sum(p => p.SizeBytes),
+                ContentHash = response.ETag,
+                CreatedAt = DateTime.UtcNow
+            };
         }
 
         /// <inheritdoc/>
@@ -175,7 +150,7 @@ namespace ConduitLLM.Core.Services
                 };
 
                 await _s3Client.AbortMultipartUploadAsync(abortRequest);
-                
+
                 _logger.LogInformation("Aborted multipart upload session {SessionId}", sessionId);
             }
             catch (Exception ex)

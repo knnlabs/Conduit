@@ -34,17 +34,9 @@ public class ImageDownloadService : IImageDownloadService
     /// <inheritdoc />
     public async Task<byte[]> DownloadImageAsync(string url, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            _logger.LogDebug("Downloading image from {Url}", url);
-            return await ImageUtility.DownloadImageAsync(
-                url, _httpClientFactory.CreateClient(HttpClientName), cancellationToken);
-        }
-        catch (IOException ex)
-        {
-            _logger.LogError(ex, "Failed to download image from {Url}", url);
-            throw;
-        }
+        _logger.LogDebug("Downloading image from {Url}", url);
+        return await ImageUtility.DownloadImageAsync(
+            url, _httpClientFactory.CreateClient(HttpClientName), cancellationToken);
     }
 
     /// <inheritdoc />

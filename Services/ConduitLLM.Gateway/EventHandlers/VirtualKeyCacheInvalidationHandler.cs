@@ -58,27 +58,17 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             var @event = message;
 
-            try
-            {
-                // Use batch service for invalidation
-                await _batchService.QueueInvalidationAsync(
-                    @event.KeyHash,
-                    @event,
-                    CacheType.VirtualKey);
-                    
-                _logger.LogInformation(
-                    "Queued cache invalidation for newly created key {KeyId} (name: {KeyName}, hash: {KeyHash})",
-                    @event.KeyId, 
-                    @event.KeyName,
-                    @event.KeyHash);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, 
-                    "Failed to queue cache invalidation for newly created key {KeyId} (hash: {KeyHash})", 
-                    @event.KeyId, @event.KeyHash);
-                throw; // Re-throw to trigger the event bus retry policy
-            }
+            // Use batch service for invalidation
+            await _batchService.QueueInvalidationAsync(
+                @event.KeyHash,
+                @event,
+                CacheType.VirtualKey);
+
+            _logger.LogInformation(
+                "Queued cache invalidation for newly created key {KeyId} (name: {KeyName}, hash: {KeyHash})",
+                @event.KeyId,
+                @event.KeyName,
+                @event.KeyHash);
         }
 
         // VirtualKeyUpdated is handled by the base class
@@ -92,26 +82,16 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             var @event = message;
 
-            try
-            {
-                // Use batch service for invalidation with critical priority
-                await _batchService.QueueInvalidationAsync(
-                    @event.KeyHash,
-                    @event,
-                    CacheType.VirtualKey);
-                    
-                _logger.LogInformation(
-                    "Queued critical cache invalidation for deleted key {KeyId} (name: {KeyName})",
-                    @event.KeyId, 
-                    @event.KeyName);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, 
-                    "Failed to queue cache invalidation for deleted key {KeyId} (hash: {KeyHash})", 
-                    @event.KeyId, @event.KeyHash);
-                throw; // Re-throw to trigger the event bus retry policy
-            }
+            // Use batch service for invalidation with critical priority
+            await _batchService.QueueInvalidationAsync(
+                @event.KeyHash,
+                @event,
+                CacheType.VirtualKey);
+
+            _logger.LogInformation(
+                "Queued critical cache invalidation for deleted key {KeyId} (name: {KeyName})",
+                @event.KeyId,
+                @event.KeyName);
         }
 
         /// <summary>
@@ -123,26 +103,16 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             var @event = message;
 
-            try
-            {
-                // Use batch service for invalidation with high priority
-                await _batchService.QueueInvalidationAsync(
-                    @event.KeyHash,
-                    @event,
-                    CacheType.VirtualKey);
-                    
-                _logger.LogInformation(
-                    "Queued high-priority cache invalidation after spend update for key {KeyId} - new total: {NewTotalSpend}",
-                    @event.KeyId, 
-                    @event.NewTotalSpend);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, 
-                    "Failed to queue cache invalidation after spend update for key {KeyId} (hash: {KeyHash})", 
-                    @event.KeyId, @event.KeyHash);
-                throw; // Re-throw to trigger the event bus retry policy
-            }
+            // Use batch service for invalidation with high priority
+            await _batchService.QueueInvalidationAsync(
+                @event.KeyHash,
+                @event,
+                CacheType.VirtualKey);
+
+            _logger.LogInformation(
+                "Queued high-priority cache invalidation after spend update for key {KeyId} - new total: {NewTotalSpend}",
+                @event.KeyId,
+                @event.NewTotalSpend);
         }
     }
 }

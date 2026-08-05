@@ -38,35 +38,25 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             var @event = message;
 
-            try
-            {
-                _logger.LogInformation(
-                    "Provider credential updated: Provider ID {ProviderId}, enabled: {IsEnabled}, changed properties: {ChangedProperties}",
-                    @event.ProviderId, @event.IsEnabled, string.Join(", ", @event.ChangedProperties));
+            _logger.LogInformation(
+                "Provider credential updated: Provider ID {ProviderId}, enabled: {IsEnabled}, changed properties: {ChangedProperties}",
+                @event.ProviderId, @event.IsEnabled, string.Join(", ", @event.ChangedProperties));
 
-                // Create a scope to get services
-                using var scope = _serviceScopeFactory.CreateScope();
-                
-                // Try to get provider credential cache from service provider
-                var ProviderCache = scope.ServiceProvider.GetService<IProviderCache>();
-                
-                // Invalidate provider credential cache if available
-                if (ProviderCache != null)
-                {
-                    await ProviderCache.InvalidateProviderAsync(@event.ProviderId);
-                    _logger.LogDebug("Provider credential cache invalidated for provider {ProviderId}", @event.ProviderId);
-                }
+            // Create a scope to get services
+            using var scope = _serviceScopeFactory.CreateScope();
 
-                // Provider discovery service removed - model capabilities are now managed through ModelProviderMapping
-                _logger.LogDebug("Provider credential updated for provider ID {ProviderId}", @event.ProviderId);
-            }
-            catch (Exception ex)
+            // Try to get provider credential cache from service provider
+            var ProviderCache = scope.ServiceProvider.GetService<IProviderCache>();
+
+            // Invalidate provider credential cache if available
+            if (ProviderCache != null)
             {
-                _logger.LogError(ex, 
-                    "Error handling provider credential update for provider ID {ProviderId}", 
-                    @event.ProviderId);
-                throw; // Re-throw to trigger the event bus retry policy
+                await ProviderCache.InvalidateProviderAsync(@event.ProviderId);
+                _logger.LogDebug("Provider credential cache invalidated for provider {ProviderId}", @event.ProviderId);
             }
+
+            // Provider discovery service removed - model capabilities are now managed through ModelProviderMapping
+            _logger.LogDebug("Provider credential updated for provider ID {ProviderId}", @event.ProviderId);
         }
 
         /// <summary>
@@ -79,36 +69,26 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             var @event = message;
 
-            try
-            {
-                _logger.LogInformation(
-                    "Provider credential deleted: Provider ID {ProviderId}",
-                    @event.ProviderId);
+            _logger.LogInformation(
+                "Provider credential deleted: Provider ID {ProviderId}",
+                @event.ProviderId);
 
-                // Create a scope to get services
-                using var scope = _serviceScopeFactory.CreateScope();
-                
-                // Try to get provider credential cache from service provider
-                var ProviderCache = scope.ServiceProvider.GetService<IProviderCache>();
-                
-                // Clean up provider-related caches if available
-                if (ProviderCache != null)
-                {
-                    await ProviderCache.InvalidateProviderAsync(@event.ProviderId);
-                    _logger.LogDebug("Provider credential cache invalidated for deleted provider {ProviderId}", @event.ProviderId);
-                }
+            // Create a scope to get services
+            using var scope = _serviceScopeFactory.CreateScope();
 
-                _logger.LogDebug("Cache cleanup completed for deleted provider ID {ProviderId}", 
-                    @event.ProviderId);
-                    
-            }
-            catch (Exception ex)
+            // Try to get provider credential cache from service provider
+            var ProviderCache = scope.ServiceProvider.GetService<IProviderCache>();
+
+            // Clean up provider-related caches if available
+            if (ProviderCache != null)
             {
-                _logger.LogError(ex, 
-                    "Error handling provider credential deletion for provider ID {ProviderId}", 
-                    @event.ProviderId);
-                throw; // Re-throw to trigger the event bus retry policy
+                await ProviderCache.InvalidateProviderAsync(@event.ProviderId);
+                _logger.LogDebug("Provider credential cache invalidated for deleted provider {ProviderId}", @event.ProviderId);
             }
+
+            _logger.LogDebug("Cache cleanup completed for deleted provider ID {ProviderId}",
+                @event.ProviderId);
+
         }
     }
 }

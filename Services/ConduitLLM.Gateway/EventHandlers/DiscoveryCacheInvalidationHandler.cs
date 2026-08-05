@@ -28,27 +28,17 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// </summary>
         public async Task HandleAsync(DiscoveryCacheInvalidationRequested message, IEventContext context)
         {
-            try
-            {
-                _logger.LogInformation(
-                    "Processing discovery cache invalidation request. Reason: {Reason}, Requested by: {RequestedBy}",
-                    message.Reason,
-                    message.RequestedBy);
+            _logger.LogInformation(
+                "Processing discovery cache invalidation request. Reason: {Reason}, Requested by: {RequestedBy}",
+                message.Reason,
+                message.RequestedBy);
 
-                // Invalidate all discovery cache entries
-                await _discoveryCacheService.InvalidateAllDiscoveryAsync();
+            // Invalidate all discovery cache entries
+            await _discoveryCacheService.InvalidateAllDiscoveryAsync();
 
-                _logger.LogInformation(
-                    "Successfully invalidated all discovery cache entries. Reason: {Reason}",
-                    message.Reason);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to invalidate discovery cache. Reason: {Reason}",
-                    message.Reason);
-                throw; // Re-throw to trigger transport retry logic
-            }
+            _logger.LogInformation(
+                "Successfully invalidated all discovery cache entries. Reason: {Reason}",
+                message.Reason);
         }
     }
 }

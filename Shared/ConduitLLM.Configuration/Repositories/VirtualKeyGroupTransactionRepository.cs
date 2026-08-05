@@ -56,42 +56,26 @@ public class VirtualKeyGroupTransactionRepository : RepositoryBase<VirtualKeyGro
     /// <inheritdoc/>
     public async Task<List<VirtualKeyGroupTransaction>> GetByGroupIdAsync(int groupId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(t => t.VirtualKeyGroupId == groupId && !t.IsDeleted)
-                    .OrderByDescending(t => t.CreatedAt)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting transactions for virtual key group with ID {GroupId}", groupId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(t => t.VirtualKeyGroupId == groupId && !t.IsDeleted)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<List<VirtualKeyGroupTransaction>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Include(t => t.VirtualKeyGroup)
-                    .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate && !t.IsDeleted)
-                    .OrderByDescending(t => t.CreatedAt)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting transactions for date range {StartDate} to {EndDate}", startDate, endDate);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Include(t => t.VirtualKeyGroup)
+                .Where(t => t.CreatedAt >= startDate && t.CreatedAt <= endDate && !t.IsDeleted)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -101,57 +85,32 @@ public class VirtualKeyGroupTransactionRepository : RepositoryBase<VirtualKeyGro
         DateTime endDate,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(t => t.VirtualKeyGroupId == groupId && t.CreatedAt >= startDate && t.CreatedAt <= endDate && !t.IsDeleted)
-                    .OrderByDescending(t => t.CreatedAt)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting transactions for virtual key group {GroupId} and date range {StartDate} to {EndDate}",
-                groupId, startDate, endDate);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(t => t.VirtualKeyGroupId == groupId && t.CreatedAt >= startDate && t.CreatedAt <= endDate && !t.IsDeleted)
+                .OrderByDescending(t => t.CreatedAt)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<decimal> GetTotalCreditsAsync(int groupId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .Where(t => t.VirtualKeyGroupId == groupId && t.TransactionType == TransactionType.Credit && !t.IsDeleted)
-                    .SumAsync(t => t.Amount, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting total credits for virtual key group {GroupId}", groupId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Where(t => t.VirtualKeyGroupId == groupId && t.TransactionType == TransactionType.Credit && !t.IsDeleted)
+                .SumAsync(t => t.Amount, cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<decimal> GetTotalDebitsAsync(int groupId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .Where(t => t.VirtualKeyGroupId == groupId && t.TransactionType == TransactionType.Debit && !t.IsDeleted)
-                    .SumAsync(t => t.Amount, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting total debits for virtual key group {GroupId}", groupId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Where(t => t.VirtualKeyGroupId == groupId && t.TransactionType == TransactionType.Debit && !t.IsDeleted)
+                .SumAsync(t => t.Amount, cancellationToken),
+            cancellationToken);
     }
 }

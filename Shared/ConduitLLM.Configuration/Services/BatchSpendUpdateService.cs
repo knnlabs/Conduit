@@ -76,7 +76,7 @@ namespace ConduitLLM.Configuration.Services
             _logger = logger;
             _alertingService = alertingService;
             _circuitBreaker = circuitBreaker;
-            
+
             // Validate and apply configuration
             var validationResult = _options.Validate();
             if (validationResult != null)
@@ -84,13 +84,13 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogError("Invalid BatchSpending configuration: {ValidationError}", validationResult.ErrorMessage);
                 throw new InvalidOperationException($"Invalid BatchSpending configuration: {validationResult.ErrorMessage}");
             }
-            
+
             _flushInterval = _options.GetValidatedFlushInterval();
             _reservationTtl = _options.GetRedisTtl();
             _logger.LogInformation(
                 "BatchSpendUpdateService configured with flush interval: {FlushInterval}; pending billing keys do not expire",
                 _flushInterval);
-            
+
             // Create timer for periodic flushing (in addition to background service)
             _flushTimer = new Timer(FlushPendingUpdatesCallback, null, _flushInterval, _flushInterval);
         }
@@ -167,7 +167,7 @@ namespace ConduitLLM.Configuration.Services
         {
             var redis = await _redisConnectionFactory.GetConnectionAsync();
             var db = redis.GetDatabase();
-            
+
             // Use group ID for accumulation
             var costUnits = ToSpendUnits(cost);
             var windowToken = billingWindowStartUtc.ToString("yyyyMMddHH", CultureInfo.InvariantCulture);
@@ -183,7 +183,7 @@ namespace ConduitLLM.Configuration.Services
                 script,
                 new RedisKey[] { key, $"{_windowedPendingTotalUnitsPrefix}{groupId}", keyUsageKey },
                 new RedisValue[] { costUnits });
-            
+
             // Billing data must never have a TTL. It is acknowledged only after the
             // corresponding database debit commits; expiry would silently lose revenue
             // during a prolonged database outage or an extended service shutdown.
@@ -551,153 +551,145 @@ namespace ConduitLLM.Configuration.Services
         /// <returns>Number of groups updated</returns>
         public async Task<int> FlushPendingUpdatesAsync()
         {
-            try
+            var redis = await _redisConnectionFactory.GetConnectionAsync();
+            var db = redis.GetDatabase();
+            var server = redis.GetServer(redis.GetEndPoints()[0]);
+
+            // Recover durable claims left by a database failure or process crash first,
+            // then atomically move current pending amounts into new claims. New usage
+            // can continue accumulating under the original pending keys while a claim
+            // is written to PostgreSQL.
+            var claims = await GetProcessingClaimsAsync(server, db);
+            claims.AddRange(await ClaimPendingSpendAsync(server, db));
+
+            if (claims.Count == 0)
             {
-                var redis = await _redisConnectionFactory.GetConnectionAsync();
-                var db = redis.GetDatabase();
-                var server = redis.GetServer(redis.GetEndPoints()[0]);
+                _logger.LogDebug("No pending spend updates to flush");
+                return 0;
+            }
 
-                // Recover durable claims left by a database failure or process crash first,
-                // then atomically move current pending amounts into new claims. New usage
-                // can continue accumulating under the original pending keys while a claim
-                // is written to PostgreSQL.
-                var claims = await GetProcessingClaimsAsync(server, db);
-                claims.AddRange(await ClaimPendingSpendAsync(server, db));
+            _logger.LogDebug("Flushing {PendingCount} durable spend claims from Redis", claims.Count);
 
-                if (claims.Count == 0)
+            using var scope = _serviceScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
+            var groupRepository = scope.ServiceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
+
+            // Process each group
+            var updatedKeyHashes = new List<string>();
+            var flushStopwatch = System.Diagnostics.Stopwatch.StartNew();
+            var processedCount = 0;
+            decimal totalSpend = 0;
+
+            foreach (var claim in claims)
+            {
+                // Create a description that includes which keys were used
+                var description = BuildUsageDescription(claim.KeyUsageByKeyId);
+
+                // The claim ID is persisted on the ledger row in the same transaction as
+                // the debit. If the process dies after the DB commit but before deleting
+                // the Redis claim, recovery observes Applied=false and only acknowledges
+                // the already-recorded claim.
+                var result = claim.BillingWindowStartUtc.HasValue
+                    ? await groupRepository.AdjustBalanceIdempotentAsync(
+                        claim.GroupId, -claim.TotalCost, $"batch-spend:{claim.ClaimId}",
+                        description, "System", ReferenceType.System, claim.ClaimId,
+                        claim.BillingWindowStartUtc.Value)
+                    : await groupRepository.AdjustBalanceIdempotentAsync(
+                        claim.GroupId, -claim.TotalCost, $"batch-spend:{claim.ClaimId}",
+                        description, "System", ReferenceType.System, claim.ClaimId);
+
+                // Acknowledge only after the database commit (or idempotent duplicate
+                // confirmation). Until this delete succeeds, the claim remains durable
+                // and retryable in Redis.
+                await DeleteClaimAsync(db, claim);
+
+                processedCount++;
+                totalSpend += result.Applied ? claim.TotalCost : 0;
+                _logger.LogDebug(
+                    "Batch flush: finalized claim {ClaimId} for group {GroupId} — amount {Cost:C}, new balance: {NewBalance:C}, applied: {Applied} ({Processed}/{Total})",
+                    claim.ClaimId, claim.GroupId, claim.TotalCost, result.NewBalance, result.Applied, processedCount, claims.Count);
+
+                // Note: We don't need to create additional transaction records here
+                // because AdjustBalanceIdempotentAsync already creates one with the correct balance.
+                // The individual key usage tracking is already handled in the description.
+
+                // Get keys in this group for cache invalidation
+                var groupKeys = await context.VirtualKeys
+                    .AsNoTracking()
+                    .Where(vk => vk.VirtualKeyGroupId == claim.GroupId)
+                    .Select(vk => new { vk.Id, vk.KeyHash })
+                    .ToListAsync();
+
+                updatedKeyHashes.AddRange(groupKeys.Select(k => k.KeyHash));
+            }
+
+            flushStopwatch.Stop();
+            _logger.LogInformation(
+                "Batch flush completed: {ClaimCount} claims, total newly deducted: {TotalSpend:C}, affected keys: {KeyCount}, elapsed: {ElapsedMs}ms",
+                processedCount, totalSpend, updatedKeyHashes.Count, flushStopwatch.ElapsedMilliseconds);
+
+            // Drain in-memory fallback queue
+            var fallbackCount = 0;
+            while (_fallbackQueue.TryDequeue(out var fallbackItem))
+            {
+                try
                 {
-                    _logger.LogDebug("No pending spend updates to flush");
-                    return 0;
-                }
+                    var fallbackKey = await context.VirtualKeys
+                        .Where(vk => vk.Id == fallbackItem.VirtualKeyId)
+                        .Select(vk => new { vk.VirtualKeyGroupId, vk.KeyHash })
+                        .FirstOrDefaultAsync();
 
-                _logger.LogDebug("Flushing {PendingCount} durable spend claims from Redis", claims.Count);
-
-                using var scope = _serviceScopeFactory.CreateScope();
-                var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
-                var groupRepository = scope.ServiceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
-
-                // Process each group
-                var updatedKeyHashes = new List<string>();
-                var flushStopwatch = System.Diagnostics.Stopwatch.StartNew();
-                var processedCount = 0;
-                decimal totalSpend = 0;
-
-                foreach (var claim in claims)
-                {
-                    // Create a description that includes which keys were used
-                    var description = BuildUsageDescription(claim.KeyUsageByKeyId);
-
-                    // The claim ID is persisted on the ledger row in the same transaction as
-                    // the debit. If the process dies after the DB commit but before deleting
-                    // the Redis claim, recovery observes Applied=false and only acknowledges
-                    // the already-recorded claim.
-                    var result = claim.BillingWindowStartUtc.HasValue
-                        ? await groupRepository.AdjustBalanceIdempotentAsync(
-                            claim.GroupId, -claim.TotalCost, $"batch-spend:{claim.ClaimId}",
-                            description, "System", ReferenceType.System, claim.ClaimId,
-                            claim.BillingWindowStartUtc.Value)
-                        : await groupRepository.AdjustBalanceIdempotentAsync(
-                            claim.GroupId, -claim.TotalCost, $"batch-spend:{claim.ClaimId}",
-                            description, "System", ReferenceType.System, claim.ClaimId);
-
-                    // Acknowledge only after the database commit (or idempotent duplicate
-                    // confirmation). Until this delete succeeds, the claim remains durable
-                    // and retryable in Redis.
-                    await DeleteClaimAsync(db, claim);
-
-                    processedCount++;
-                    totalSpend += result.Applied ? claim.TotalCost : 0;
-                    _logger.LogDebug(
-                        "Batch flush: finalized claim {ClaimId} for group {GroupId} — amount {Cost:C}, new balance: {NewBalance:C}, applied: {Applied} ({Processed}/{Total})",
-                        claim.ClaimId, claim.GroupId, claim.TotalCost, result.NewBalance, result.Applied, processedCount, claims.Count);
-
-                    // Note: We don't need to create additional transaction records here
-                    // because AdjustBalanceIdempotentAsync already creates one with the correct balance.
-                    // The individual key usage tracking is already handled in the description.
-
-                    // Get keys in this group for cache invalidation
-                    var groupKeys = await context.VirtualKeys
-                        .AsNoTracking()
-                        .Where(vk => vk.VirtualKeyGroupId == claim.GroupId)
-                        .Select(vk => new { vk.Id, vk.KeyHash })
-                        .ToListAsync();
-
-                    updatedKeyHashes.AddRange(groupKeys.Select(k => k.KeyHash));
-                }
-
-                flushStopwatch.Stop();
-                _logger.LogInformation(
-                    "Batch flush completed: {ClaimCount} claims, total newly deducted: {TotalSpend:C}, affected keys: {KeyCount}, elapsed: {ElapsedMs}ms",
-                    processedCount, totalSpend, updatedKeyHashes.Count, flushStopwatch.ElapsedMilliseconds);
-
-                // Drain in-memory fallback queue
-                var fallbackCount = 0;
-                while (_fallbackQueue.TryDequeue(out var fallbackItem))
-                {
-                    try
+                    if (fallbackKey != null)
                     {
-                        var fallbackKey = await context.VirtualKeys
-                            .Where(vk => vk.Id == fallbackItem.VirtualKeyId)
-                            .Select(vk => new { vk.VirtualKeyGroupId, vk.KeyHash })
-                            .FirstOrDefaultAsync();
-
-                        if (fallbackKey != null)
-                        {
-                            await groupRepository.AdjustBalanceAsync(
-                                fallbackKey.VirtualKeyGroupId,
-                                -fallbackItem.Cost,
-                                $"API usage by virtual key #{fallbackItem.VirtualKeyId} (recovered from fallback queue)",
-                                "System",
-                                ReferenceType.System,
-                                fallbackItem.VirtualKeyId.ToString(CultureInfo.InvariantCulture),
-                                fallbackItem.BillingWindowStartUtc);
-                            updatedKeyHashes.Add(fallbackKey.KeyHash);
-                            fallbackCount++;
-                        }
-                        else
-                        {
-                            _logger.LogWarning("Virtual Key {VirtualKeyId} from fallback queue not found — spend update lost",
-                                fallbackItem.VirtualKeyId);
-                        }
+                        await groupRepository.AdjustBalanceAsync(
+                            fallbackKey.VirtualKeyGroupId,
+                            -fallbackItem.Cost,
+                            $"API usage by virtual key #{fallbackItem.VirtualKeyId} (recovered from fallback queue)",
+                            "System",
+                            ReferenceType.System,
+                            fallbackItem.VirtualKeyId.ToString(CultureInfo.InvariantCulture),
+                            fallbackItem.BillingWindowStartUtc);
+                        updatedKeyHashes.Add(fallbackKey.KeyHash);
+                        fallbackCount++;
                     }
-                    catch (Exception fallbackEx)
+                    else
                     {
-                        _logger.LogError(fallbackEx,
-                            "Failed to process fallback spend update for Virtual Key {VirtualKeyId}. Re-queuing.",
+                        _logger.LogWarning("Virtual Key {VirtualKeyId} from fallback queue not found — spend update lost",
                             fallbackItem.VirtualKeyId);
-                        // Re-queue for the next flush cycle
-                        _fallbackQueue.Enqueue(fallbackItem);
-                        break; // Stop processing fallback queue on error to avoid infinite loop
                     }
                 }
-
-                if (fallbackCount > 0)
+                catch (Exception fallbackEx)
                 {
-                    _logger.LogInformation("Recovered {Count} spend updates from in-memory fallback queue", fallbackCount);
+                    _logger.LogError(fallbackEx,
+                        "Failed to process fallback spend update for Virtual Key {VirtualKeyId}. Re-queuing.",
+                        fallbackItem.VirtualKeyId);
+                    // Re-queue for the next flush cycle
+                    _fallbackQueue.Enqueue(fallbackItem);
+                    break; // Stop processing fallback queue on error to avoid infinite loop
                 }
-
-                // Raise event for cache invalidation (if any subscribers)
-                if (updatedKeyHashes.Any() && SpendUpdatesCompleted != null)
-                {
-                    try
-                    {
-                        SpendUpdatesCompleted.Invoke(updatedKeyHashes.ToArray());
-                        _logger.LogDebug("Raised SpendUpdatesCompleted event for {Count} Virtual Keys", updatedKeyHashes.Count());
-                    }
-                    catch (Exception eventEx)
-                    {
-                        _logger.LogWarning(eventEx, "Error in SpendUpdatesCompleted event handler");
-                        // Don't fail the operation if event handler fails
-                    }
-                }
-
-                return processedCount;
             }
-            catch (Exception ex)
+
+            if (fallbackCount > 0)
             {
-                _logger.LogError(ex, "Error during batch spend update");
-                throw;
+                _logger.LogInformation("Recovered {Count} spend updates from in-memory fallback queue", fallbackCount);
             }
+
+            // Raise event for cache invalidation (if any subscribers)
+            if (updatedKeyHashes.Any() && SpendUpdatesCompleted != null)
+            {
+                try
+                {
+                    SpendUpdatesCompleted.Invoke(updatedKeyHashes.ToArray());
+                    _logger.LogDebug("Raised SpendUpdatesCompleted event for {Count} Virtual Keys", updatedKeyHashes.Count());
+                }
+                catch (Exception eventEx)
+                {
+                    _logger.LogWarning(eventEx, "Error in SpendUpdatesCompleted event handler");
+                    // Don't fail the operation if event handler fails
+                }
+            }
+
+            return processedCount;
         }
 
         private async Task<List<SpendClaim>> ClaimPendingSpendAsync(IServer server, IDatabase db)
@@ -1174,7 +1166,7 @@ namespace ConduitLLM.Configuration.Services
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in BatchSpendUpdateService background execution");
-                    
+
                     // Continue running even if there's an error
                     await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
                 }
@@ -1237,7 +1229,7 @@ namespace ConduitLLM.Configuration.Services
                 var redis = await _redisConnectionFactory.GetConnectionAsync();
                 var db = redis.GetDatabase();
                 var server = redis.GetServer(redis.GetEndPoints()[0]);
-                
+
                 // One total key is maintained per group by the current windowed write path.
                 var pattern = $"{_windowedPendingTotalUnitsPrefix}*";
                 var keys = server.Keys(pattern: pattern).ToList();
@@ -1245,7 +1237,7 @@ namespace ConduitLLM.Configuration.Services
                     ? Array.Empty<RedisValue>()
                     : await db.StringGetAsync(keys.ToArray());
                 var totalPending = values.Sum(ParseRedisUnits);
-                
+
                 return new Dictionary<string, object>
                 {
                     ["PendingUpdates"] = keys.Count(),

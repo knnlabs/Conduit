@@ -73,65 +73,41 @@ namespace ConduitLLM.Gateway.Consumers
 
         private async Task InvalidateModelMappingCacheAsync(ModelMappingChanged @event)
         {
-            try
+            var keysToRemove = new List<string>();
+
+            // Always invalidate the ID-based key
+            keysToRemove.Add(CacheKeys.ModelMapping.ById(@event.MappingId));
+
+            // Invalidate alias-based key (primary lookup path for most operations)
+            if (!string.IsNullOrEmpty(@event.ModelAlias))
             {
-                var keysToRemove = new List<string>();
-
-                // Always invalidate the ID-based key
-                keysToRemove.Add(CacheKeys.ModelMapping.ById(@event.MappingId));
-
-                // Invalidate alias-based key (primary lookup path for most operations)
-                if (!string.IsNullOrEmpty(@event.ModelAlias))
-                {
-                    keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(@event.ModelAlias));
-                }
-
-                // Invalidate the "all mappings" cache
-                keysToRemove.Add(CacheKeys.ModelMapping.AllMappings);
-
-                // Perform cache invalidation
-                var removed = await _cacheManager.RemoveManyAsync(keysToRemove, Region);
-
-                _logger.LogInformation(
-                    "Invalidated {Count} model mapping cache entries for {ChangeType} of {ModelAlias} (MappingId={MappingId})",
-                    removed,
-                    @event.ChangeType,
-                    @event.ModelAlias,
-                    @event.MappingId);
+                keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(@event.ModelAlias));
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to invalidate model mapping cache: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",
-                    @event.MappingId,
-                    @event.ModelAlias,
-                    @event.ChangeType);
-                throw;
-            }
+
+            // Invalidate the "all mappings" cache
+            keysToRemove.Add(CacheKeys.ModelMapping.AllMappings);
+
+            // Perform cache invalidation
+            var removed = await _cacheManager.RemoveManyAsync(keysToRemove, Region);
+
+            _logger.LogInformation(
+                "Invalidated {Count} model mapping cache entries for {ChangeType} of {ModelAlias} (MappingId={MappingId})",
+                removed,
+                @event.ChangeType,
+                @event.ModelAlias,
+                @event.MappingId);
         }
 
         private async Task InvalidateDiscoveryCacheAsync(ModelMappingChanged @event)
         {
-            try
-            {
-                // Invalidate all discovery cache entries since model availability may have changed
-                // This covers all capability-filtered queries (chat, vision, image_generation, etc.)
-                await _discoveryCacheService.InvalidateAllDiscoveryAsync();
+            // Invalidate all discovery cache entries since model availability may have changed
+            // This covers all capability-filtered queries (chat, vision, image_generation, etc.)
+            await _discoveryCacheService.InvalidateAllDiscoveryAsync();
 
-                _logger.LogInformation(
-                    "Invalidated discovery cache after {ChangeType} of {ModelAlias}",
-                    @event.ChangeType,
-                    @event.ModelAlias);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to invalidate discovery cache: MappingId={MappingId}, ModelAlias={ModelAlias}, ChangeType={ChangeType}",
-                    @event.MappingId,
-                    @event.ModelAlias,
-                    @event.ChangeType);
-                throw;
-            }
+            _logger.LogInformation(
+                "Invalidated discovery cache after {ChangeType} of {ModelAlias}",
+                @event.ChangeType,
+                @event.ModelAlias);
         }
     }
 }

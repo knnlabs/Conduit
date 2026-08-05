@@ -56,20 +56,20 @@ namespace ConduitLLM.Core.Services.Strategies
             try
             {
                 using var httpClient = CreateHttpClient(context.MediaType);
-                
+
                 // Use ResponseHeadersRead for streaming
                 using var response = await httpClient.GetAsync(
                     url,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
-                
+
                 downloadStopwatch.Stop();
 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("Failed to download {MediaType} from {Url}: {StatusCode}",
                         context.MediaType, url, response.StatusCode);
-                    
+
                     // Return original URL as fallback
                     return new ProcessedMediaItem
                     {
@@ -92,9 +92,9 @@ namespace ConduitLLM.Core.Services.Strategies
 
                 // Stream directly to storage
                 using var mediaStream = await response.Content.ReadAsStreamAsync();
-                
+
                 var storageStopwatch = Stopwatch.StartNew();
-                
+
                 // Create progress callback for video uploads
                 Action<long>? progressCallback = null;
                 if (context.MediaType == MediaType.Video)
@@ -104,7 +104,7 @@ namespace ConduitLLM.Core.Services.Strategies
                         var percentage = contentLength > 0
                             ? (int)((bytesProcessed * 100) / contentLength)
                             : -1;
-                        
+
                         _logger.LogDebug("{MediaType} upload progress: {BytesProcessed} bytes ({Percentage}%)",
                             context.MediaType, bytesProcessed, percentage);
                     };
@@ -114,12 +114,12 @@ namespace ConduitLLM.Core.Services.Strategies
                 var storageResult = context.MediaType == MediaType.Video
                     ? await _storageService.StoreVideoAsync(mediaStream, metadata as VideoMediaMetadata ?? new VideoMediaMetadata(), progressCallback)
                     : await _storageService.StoreAsync(mediaStream, metadata);
-                
+
                 storageStopwatch.Stop();
 
                 _logger.LogInformation("Downloaded and stored {MediaType} from {OriginalUrl} to {StorageUrl} (Download: {DownloadMs}ms, Storage: {StorageMs}ms)",
-                    context.MediaType, url, storageResult.Url, 
-                    downloadStopwatch.ElapsedMilliseconds, 
+                    context.MediaType, url, storageResult.Url,
+                    downloadStopwatch.ElapsedMilliseconds,
                     storageStopwatch.ElapsedMilliseconds);
 
                 // Publish media generation completed event
@@ -141,10 +141,10 @@ namespace ConduitLLM.Core.Services.Strategies
                     }
                 };
             }
+
             catch (TaskCanceledException)
             {
-                _logger.LogInformation("{MediaType} download cancelled for URL: {Url}", 
-                    context.MediaType, url);
+                // Cancellation is not a recoverable media-download failure.
                 throw;
             }
             catch (RateLimitExceededException)
@@ -155,7 +155,7 @@ namespace ConduitLLM.Core.Services.Strategies
             {
                 _logger.LogError(ex, "Failed to download and store {MediaType} from URL: {Url}",
                     context.MediaType, url);
-                
+
                 // Return original URL as fallback
                 return new ProcessedMediaItem
                 {
@@ -182,12 +182,12 @@ namespace ConduitLLM.Core.Services.Strategies
         {
             var clientName = mediaType == MediaType.Video ? "VideoDownload" : "ImageDownload";
             var httpClient = _httpClientFactory.CreateClient(clientName);
-            
+
             // Set appropriate timeout based on media type
             httpClient.Timeout = mediaType == MediaType.Video
                 ? TimeSpan.FromMinutes(15)  // Videos need longer timeout
                 : TimeSpan.FromSeconds(60); // Images can be faster
-            
+
             return httpClient;
         }
 
@@ -205,12 +205,12 @@ namespace ConduitLLM.Core.Services.Strategies
             {
                 return "image/jpeg";
             }
-            
+
             if (url.Contains(".png", StringComparison.OrdinalIgnoreCase))
             {
                 return "image/png";
             }
-            
+
             if (url.Contains(".mp4", StringComparison.OrdinalIgnoreCase))
             {
                 return "video/mp4";
@@ -231,7 +231,7 @@ namespace ConduitLLM.Core.Services.Strategies
             string originalUrl)
         {
             var extension = GetFileExtension(contentType, context.MediaType);
-            
+
             var metadata = new MediaMetadata
             {
                 ContentType = contentType,

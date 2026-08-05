@@ -85,29 +85,16 @@ namespace ConduitLLM.Configuration.Repositories
         {
             ArgumentNullException.ThrowIfNull(entity);
 
-            try
-            {
-                await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+            await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
 
-                OnBeforeUpdate(entity);
+            OnBeforeUpdate(entity);
 
-                // Attach only the root entity — never the detached navigation graph.
-                context.Entry(entity).State = EntityState.Modified;
-                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
+            // Attach only the root entity — never the detached navigation graph.
+            context.Entry(entity).State = EntityState.Modified;
+            int rowsAffected = await context.SaveChangesAsync(cancellationToken);
 
-                return rowsAffected > 0;
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                Logger.LogWarning(ex, "Concurrency conflict updating {EntityType} with ID {Id} — another process modified this entity",
-                    EntityTypeName, entity.Id);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error updating {EntityType} with ID {Id}", EntityTypeName, entity.Id);
-                throw;
-            }
+            return rowsAffected > 0;
+
         }
 
         /// <inheritdoc/>

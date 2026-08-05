@@ -157,23 +157,15 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public async Task InvalidateVirtualKeysAsync(string[] keyHashes)
         {
-            try
+            var tasks = new Task[keyHashes.Length];
+            for (int i = 0; i < keyHashes.Length; i++)
             {
-                var tasks = new Task[keyHashes.Length];
-                for (int i = 0; i < keyHashes.Length; i++)
-                {
-                    tasks[i] = InvalidateVirtualKeyAsync(keyHashes[i]);
-                }
-
-                await Task.WhenAll(tasks);
-
-                Logger.LogInformation("Bulk invalidated {Count} Virtual Keys", keyHashes.Length);
+                tasks[i] = InvalidateVirtualKeyAsync(keyHashes[i]);
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error in bulk Virtual Key invalidation");
-                throw;
-            }
+
+            await Task.WhenAll(tasks);
+
+            Logger.LogInformation("Bulk invalidated {Count} Virtual Keys", keyHashes.Length);
         }
 
         /// <summary>

@@ -28,55 +28,44 @@ namespace ConduitLLM.Gateway.EventHandlers
         {
             var @event = message;
 
-            try
+            _logger.LogInformation(
+                "Processing MediaGenerationCompleted event: {MediaType} for VirtualKey {VirtualKeyId} at {MediaUrl}",
+                @event.MediaType,
+                @event.VirtualKeyId,
+                @event.MediaUrl);
+
+            // Create metadata for the media lifecycle service
+            var metadata = new MediaLifecycleMetadata
+            {
+                ContentType = @event.ContentType,
+                SizeBytes = @event.FileSizeBytes,
+                Provider = ResolveMetadataValue(@event.Provider, @event.Metadata, "provider"),
+                Model = ResolveMetadataValue(@event.GeneratedByModel, @event.Metadata, "model"),
+                Prompt = @event.GenerationPrompt,
+                StorageUrl = @event.MediaUrl,
+                ExpiresAt = @event.ExpiresAt
+            };
+
+            // Track the media using the service (writes to MediaRecords table)
+            var mediaRecord = await _mediaLifecycleService.TrackMediaAsync(
+                @event.VirtualKeyId,
+                @event.StorageKey,
+                @event.MediaType.ToString(),
+                metadata);
+
+            _logger.LogInformation(
+                "Successfully recorded {MediaType} lifecycle entry for VirtualKey {VirtualKeyId}: {StorageKey} ({FileSize} bytes)",
+                @event.MediaType,
+                @event.VirtualKeyId,
+                @event.StorageKey,
+                @event.FileSizeBytes);
+
+            if (@event.ExpiresAt.HasValue)
             {
                 _logger.LogInformation(
-                    "Processing MediaGenerationCompleted event: {MediaType} for VirtualKey {VirtualKeyId} at {MediaUrl}",
-                    @event.MediaType,
-                    @event.VirtualKeyId,
-                    @event.MediaUrl);
-
-                // Create metadata for the media lifecycle service
-                var metadata = new MediaLifecycleMetadata
-                {
-                    ContentType = @event.ContentType,
-                    SizeBytes = @event.FileSizeBytes,
-                    Provider = ResolveMetadataValue(@event.Provider, @event.Metadata, "provider"),
-                    Model = ResolveMetadataValue(@event.GeneratedByModel, @event.Metadata, "model"),
-                    Prompt = @event.GenerationPrompt,
-                    StorageUrl = @event.MediaUrl,
-                    ExpiresAt = @event.ExpiresAt
-                };
-
-                // Track the media using the service (writes to MediaRecords table)
-                var mediaRecord = await _mediaLifecycleService.TrackMediaAsync(
-                    @event.VirtualKeyId,
+                    "Media {StorageKey} is set to expire at {ExpiresAt}",
                     @event.StorageKey,
-                    @event.MediaType.ToString(),
-                    metadata);
-                
-                _logger.LogInformation(
-                    "Successfully recorded {MediaType} lifecycle entry for VirtualKey {VirtualKeyId}: {StorageKey} ({FileSize} bytes)",
-                    @event.MediaType,
-                    @event.VirtualKeyId,
-                    @event.StorageKey,
-                    @event.FileSizeBytes);
-
-                if (@event.ExpiresAt.HasValue)
-                {
-                    _logger.LogInformation(
-                        "Media {StorageKey} is set to expire at {ExpiresAt}",
-                        @event.StorageKey,
-                        @event.ExpiresAt.Value);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, 
-                    "Failed to record media lifecycle for {MediaType} at {StorageKey}", 
-                    @event.MediaType,
-                    @event.StorageKey);
-                throw; // Re-throw to trigger the event bus retry policy
+                    @event.ExpiresAt.Value);
             }
         }
 

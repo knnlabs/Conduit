@@ -34,17 +34,17 @@ namespace ConduitLLM.Core.Services
 
         /// <inheritdoc/>
         public async Task<MediaRecord> TrackMediaAsync(
-            int virtualKeyId, 
-            string storageKey, 
-            string mediaType, 
+            int virtualKeyId,
+            string storageKey,
+            string mediaType,
             MediaLifecycleMetadata metadata)
         {
             if (virtualKeyId <= 0)
                 throw new ArgumentException("Virtual key ID must be positive", nameof(virtualKeyId));
-            
+
             if (string.IsNullOrWhiteSpace(storageKey))
                 throw new ArgumentException("Storage key cannot be empty", nameof(storageKey));
-            
+
             if (string.IsNullOrWhiteSpace(mediaType))
                 throw new ArgumentException("Media type cannot be empty", nameof(mediaType));
 
@@ -100,85 +100,61 @@ namespace ConduitLLM.Core.Services
         /// <inheritdoc/>
         public async Task<MediaStorageStats> GetStorageStatsByVirtualKeyAsync(int virtualKeyId)
         {
-            try
+            var mediaRecords = await _mediaRepository.GetByVirtualKeyIdAsync(virtualKeyId);
+
+            var stats = new MediaStorageStats
             {
-                var mediaRecords = await _mediaRepository.GetByVirtualKeyIdAsync(virtualKeyId);
-                
-                var stats = new MediaStorageStats
+                VirtualKeyId = virtualKeyId,
+                TotalFiles = mediaRecords.Count,
+                TotalSizeBytes = mediaRecords.Sum(m => m.SizeBytes ?? 0)
+            };
+
+            // Group by media type
+            var typeGroups = mediaRecords.GroupBy(m => m.MediaType);
+            foreach (var group in typeGroups)
+            {
+                stats.ByMediaType[group.Key] = new MediaTypeStats
                 {
-                    VirtualKeyId = virtualKeyId,
-                    TotalFiles = mediaRecords.Count,
-                    TotalSizeBytes = mediaRecords.Sum(m => m.SizeBytes ?? 0)
+                    FileCount = group.Count(),
+                    SizeBytes = group.Sum(m => m.SizeBytes ?? 0)
                 };
-
-                // Group by media type
-                var typeGroups = mediaRecords.GroupBy(m => m.MediaType);
-                foreach (var group in typeGroups)
-                {
-                    stats.ByMediaType[group.Key] = new MediaTypeStats
-                    {
-                        FileCount = group.Count(),
-                        SizeBytes = group.Sum(m => m.SizeBytes ?? 0)
-                    };
-                }
-
-                return stats;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting storage stats for virtual key {VirtualKeyId}", virtualKeyId);
-                throw;
-            }
+
+            return stats;
         }
 
         /// <inheritdoc/>
         public async Task<OverallMediaStorageStats> GetOverallStorageStatsAsync(int? virtualKeyGroupId = null)
         {
-            try
+            var aggregate = await _mediaRepository.GetAggregateStorageStatsAsync(
+                virtualKeyGroupId,
+                VirtualKeyStatsLimit);
+            return new OverallMediaStorageStats
             {
-                var aggregate = await _mediaRepository.GetAggregateStorageStatsAsync(
-                    virtualKeyGroupId,
-                    VirtualKeyStatsLimit);
-                return new OverallMediaStorageStats
-                {
-                    TotalSizeBytes = aggregate.TotalSizeBytes,
-                    TotalFiles = aggregate.TotalFiles,
-                    OrphanedFiles = 0,
-                    ByProvider = aggregate.ByProvider.ToDictionary(),
-                    ByMediaType = aggregate.ByMediaType.ToDictionary(
-                        row => row.MediaType,
-                        row => new MediaTypeStats
-                        {
-                            FileCount = row.FileCount,
-                            SizeBytes = row.SizeBytes
-                        }),
-                    StorageByVirtualKey = aggregate.TopVirtualKeys.ToDictionary(
-                        row => row.VirtualKeyId.ToString(),
-                        row => row.SizeBytes),
-                    GroupQuotaUsage = _mediaQuotaService == null
-                        ? Array.Empty<MediaGroupQuotaUsage>()
-                        : await _mediaQuotaService.GetGroupUsagesAsync(virtualKeyGroupId)
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting overall storage stats");
-                throw;
-            }
+                TotalSizeBytes = aggregate.TotalSizeBytes,
+                TotalFiles = aggregate.TotalFiles,
+                OrphanedFiles = 0,
+                ByProvider = aggregate.ByProvider.ToDictionary(),
+                ByMediaType = aggregate.ByMediaType.ToDictionary(
+                    row => row.MediaType,
+                    row => new MediaTypeStats
+                    {
+                        FileCount = row.FileCount,
+                        SizeBytes = row.SizeBytes
+                    }),
+                StorageByVirtualKey = aggregate.TopVirtualKeys.ToDictionary(
+                    row => row.VirtualKeyId.ToString(),
+                    row => row.SizeBytes),
+                GroupQuotaUsage = _mediaQuotaService == null
+                    ? Array.Empty<MediaGroupQuotaUsage>()
+                    : await _mediaQuotaService.GetGroupUsagesAsync(virtualKeyGroupId)
+            };
         }
 
         /// <inheritdoc/>
         public async Task<List<MediaRecord>> GetMediaByVirtualKeyAsync(int virtualKeyId)
         {
-            try
-            {
-                return await _mediaRepository.GetByVirtualKeyIdAsync(virtualKeyId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting media for virtual key {VirtualKeyId}", virtualKeyId);
-                throw;
-            }
+            return await _mediaRepository.GetByVirtualKeyIdAsync(virtualKeyId);
         }
     }
 

@@ -63,40 +63,24 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
     /// <inheritdoc/>
     public async Task<ProviderKeyCredential?> GetPrimaryKeyAsync(int providerId)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(k => k.ProviderId == providerId
-                        && k.IsPrimary
-                        && k.IsEnabled));
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting primary key for provider {ProviderId}", providerId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(k => k.ProviderId == providerId
+                    && k.IsPrimary
+                    && k.IsEnabled));
     }
 
     /// <inheritdoc/>
     public async Task<List<ProviderKeyCredential>> GetEnabledKeysByProviderIdAsync(int providerId)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(k => k.ProviderId == providerId && k.IsEnabled)
-                    .OrderByDescending(k => k.IsPrimary)
-                    .ThenBy(k => k.ProviderAccountGroup)
-                    .ToListAsync());
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting enabled keys for provider {ProviderId}", providerId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(k => k.ProviderId == providerId && k.IsEnabled)
+                .OrderByDescending(k => k.IsPrimary)
+                .ThenBy(k => k.ProviderAccountGroup)
+                .ToListAsync());
     }
 
     /// <summary>
@@ -220,117 +204,84 @@ public class ProviderKeyCredentialRepository : RepositoryBase<ProviderKeyCredent
     /// </summary>
     public override async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
-            {
-                var keyCredential = await GetDbSet(context)
-                    .FirstOrDefaultAsync(k => k.Id == id, cancellationToken);
+            var keyCredential = await GetDbSet(context)
+                .FirstOrDefaultAsync(k => k.Id == id, cancellationToken);
 
-                if (keyCredential == null)
-                    return false;
+            if (keyCredential == null)
+                return false;
 
-                GetDbSet(context).Remove(keyCredential);
-                await context.SaveChangesAsync(cancellationToken);
+            GetDbSet(context).Remove(keyCredential);
+            await context.SaveChangesAsync(cancellationToken);
 
-                Logger.LogInformation("Deleted key credential {KeyId} for provider {ProviderId}",
-                    id, keyCredential.ProviderId);
+            Logger.LogInformation("Deleted key credential {KeyId} for provider {ProviderId}",
+                id, keyCredential.ProviderId);
 
-                return true;
-            }, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error deleting key credential {KeyId}", id);
-            throw;
-        }
+            return true;
+        }, cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<bool> SetPrimaryKeyAsync(int providerId, int keyId)
     {
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            // Runs through the execution strategy (EnableRetryOnFailure): the whole
+            // delegate re-runs on transient failure, so it re-reads before writing.
+            return await context.ExecuteInTransactionAsync(async _ =>
             {
-                // Runs through the execution strategy (EnableRetryOnFailure): the whole
-                // delegate re-runs on transient failure, so it re-reads before writing.
-                return await context.ExecuteInTransactionAsync(async _ =>
+                // Validate the target before changing the current primary. A missing
+                // or wrong-provider key is a no-op and must not clear a valid primary.
+                var newPrimaryKey = await GetDbSet(context)
+                    .FirstOrDefaultAsync(k => k.Id == keyId && k.ProviderId == providerId);
+
+                if (newPrimaryKey == null)
+                    return false;
+
+                // First, unset any existing primary keys
+                var existingPrimaryKeys = await GetDbSet(context)
+                    .Where(k => k.ProviderId == providerId && k.IsPrimary)
+                    .ToListAsync();
+
+                foreach (var key in existingPrimaryKeys)
                 {
-                    // Validate the target before changing the current primary. A missing
-                    // or wrong-provider key is a no-op and must not clear a valid primary.
-                    var newPrimaryKey = await GetDbSet(context)
-                        .FirstOrDefaultAsync(k => k.Id == keyId && k.ProviderId == providerId);
+                    key.IsPrimary = false;
+                    key.UpdatedAt = DateTime.UtcNow;
+                }
 
-                    if (newPrimaryKey == null)
-                        return false;
-
-                    // First, unset any existing primary keys
-                    var existingPrimaryKeys = await GetDbSet(context)
-                        .Where(k => k.ProviderId == providerId && k.IsPrimary)
-                        .ToListAsync();
-
-                    foreach (var key in existingPrimaryKeys)
-                    {
-                        key.IsPrimary = false;
-                        key.UpdatedAt = DateTime.UtcNow;
-                    }
-
-                    // Save changes to unset primary keys first to avoid constraint violation
-                    if (existingPrimaryKeys.Count > 0)
-                    {
-                        await context.SaveChangesAsync();
-                    }
-
-                    newPrimaryKey.IsPrimary = true;
-                    newPrimaryKey.UpdatedAt = DateTime.UtcNow;
-
+                // Save changes to unset primary keys first to avoid constraint violation
+                if (existingPrimaryKeys.Count > 0)
+                {
                     await context.SaveChangesAsync();
+                }
 
-                    Logger.LogInformation("Set key {KeyId} as primary for provider {ProviderId}",
-                        keyId, providerId);
+                newPrimaryKey.IsPrimary = true;
+                newPrimaryKey.UpdatedAt = DateTime.UtcNow;
 
-                    return true;
-                });
+                await context.SaveChangesAsync();
+
+                Logger.LogInformation("Set key {KeyId} as primary for provider {ProviderId}",
+                    keyId, providerId);
+
+                return true;
             });
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Failed to set primary key {KeyId} for provider {ProviderId}",
-                keyId, providerId);
-            throw;
-        }
+        });
     }
 
     /// <inheritdoc/>
     public async Task<bool> HasKeyCredentialsAsync(int providerId)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AnyAsync(k => k.ProviderId == providerId));
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error checking if provider {ProviderId} has key credentials", providerId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AnyAsync(k => k.ProviderId == providerId));
     }
 
     /// <inheritdoc/>
     public async Task<int> CountByProviderIdAsync(int providerId)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .CountAsync(k => k.ProviderId == providerId));
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error counting key credentials for provider {ProviderId}", providerId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .CountAsync(k => k.ProviderId == providerId));
     }
 }

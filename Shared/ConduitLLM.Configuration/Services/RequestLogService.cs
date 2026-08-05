@@ -43,23 +43,11 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
     /// <inheritdoc/>
     public async Task LogRequestAsync(LogRequestDto request)
     {
-        try
-        {
-            var log = MapToRequestLog(request);
-            await LogEventAsync(log);
+        var log = MapToRequestLog(request);
+        await LogEventAsync(log);
 
-            Logger.LogDebug("Request logged for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}, queued for batch write",
-                request.VirtualKeyId, request.Cost, request.ProviderId);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex,
-                "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
-                request.VirtualKeyId,
-                LoggingSanitizer.S(request.ModelName),
-                LoggingSanitizer.S(request.RequestType));
-            throw;
-        }
+        Logger.LogDebug("Request logged for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}, queued for batch write",
+            request.VirtualKeyId, request.Cost, request.ProviderId);
     }
 
     /// <summary>
@@ -69,26 +57,14 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
     /// <param name="batchSpendService">Batch spend update service</param>
     public async Task LogRequestWithBatchedSpendAsync(LogRequestDto request, BatchSpendUpdateService batchSpendService)
     {
-        try
-        {
-            var log = MapToRequestLog(request);
-            await LogEventAsync(log);
+        var log = MapToRequestLog(request);
+        await LogEventAsync(log);
 
-            // Queue spend update for batching instead of immediate database write
-            await batchSpendService.QueueSpendUpdateAsync(request.VirtualKeyId, request.Cost, request.BilledAtUtc ?? request.Timestamp);
+        // Queue spend update for batching instead of immediate database write
+        await batchSpendService.QueueSpendUpdateAsync(request.VirtualKeyId, request.Cost, request.BilledAtUtc ?? request.Timestamp);
 
-            Logger.LogDebug("Request logged and spend update queued for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}",
-                request.VirtualKeyId, request.Cost, request.ProviderId);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex,
-                "Error logging request for VirtualKeyId={VirtualKeyId}, Model={Model}, RequestType={RequestType}",
-                request.VirtualKeyId,
-                LoggingSanitizer.S(request.ModelName),
-                LoggingSanitizer.S(request.RequestType));
-            throw;
-        }
+        Logger.LogDebug("Request logged and spend update queued for VirtualKeyId={VirtualKeyId}, Cost={Cost:C}, ProviderId={ProviderId}",
+            request.VirtualKeyId, request.Cost, request.ProviderId);
     }
 
     private static RequestLog MapToRequestLog(LogRequestDto request) => new()
@@ -252,162 +228,134 @@ public class RequestLogService : BatchAuditServiceBase<RequestLog>, IRequestLogS
         int pageNumber = 1,
         int pageSize = 20)
     {
-        try
+        using var scope = ServiceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+
+        var query = context.RequestLogs
+            .AsNoTracking()
+            .Include(r => r.VirtualKey)
+            .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
+
+        // Apply optional filters
+        if (virtualKeyId.HasValue)
         {
-            using var scope = ServiceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
-
-            var query = context.RequestLogs
-                .AsNoTracking()
-                .Include(r => r.VirtualKey)
-                .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate);
-
-            // Apply optional filters
-            if (virtualKeyId.HasValue)
-            {
-                query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
-            }
-
-            if (!string.IsNullOrWhiteSpace(modelFilter))
-            {
-                query = query.Where(r => r.ModelName.Contains(modelFilter));
-            }
-
-            if (statusCode.HasValue)
-            {
-                query = query.Where(r => r.StatusCode == statusCode.Value);
-            }
-
-            // Get total count before pagination
-            var totalCount = await query.CountAsync();
-
-            // Apply sorting and pagination
-            var logs = await query
-                .OrderByDescending(r => r.Timestamp)
-                .Skip((pageNumber - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
-
-            return (logs, totalCount);
+            query = query.Where(r => r.VirtualKeyId == virtualKeyId.Value);
         }
-        catch (Exception ex)
+
+        if (!string.IsNullOrWhiteSpace(modelFilter))
         {
-            Logger.LogError(ex,
-                "Error searching request logs with filters: VirtualKeyId={VirtualKeyId}, ModelFilter={ModelFilter}, " +
-                "StatusCode={StatusCode}, StartDate={StartDate}, EndDate={EndDate}",
-                virtualKeyId, modelFilter, statusCode, startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
-            throw;
+            query = query.Where(r => r.ModelName.Contains(modelFilter));
         }
+
+        if (statusCode.HasValue)
+        {
+            query = query.Where(r => r.StatusCode == statusCode.Value);
+        }
+
+        // Get total count before pagination
+        var totalCount = await query.CountAsync();
+
+        // Apply sorting and pagination
+        var logs = await query
+            .OrderByDescending(r => r.Timestamp)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (logs, totalCount);
     }
 
     /// <inheritdoc/>
     public async Task<LogsSummaryDto> GetLogsSummaryAsync(DateTime startDate, DateTime endDate)
     {
-        try
+        using var scope = ServiceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+
+        var logs = await context.RequestLogs
+            .AsNoTracking()
+            .Include(r => r.VirtualKey)
+            .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
+            .ToListAsync();
+
+        var summary = new LogsSummaryDto
         {
-            using var scope = ServiceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+            TotalRequests = logs.Count,
+            EstimatedCost = logs.Sum(r => r.Cost),
+            InputTokens = logs.Sum(r => r.InputTokens),
+            OutputTokens = logs.Sum(r => r.OutputTokens),
+            AverageResponseTime = logs.Count > 0 ? logs.Average(r => r.ResponseTimeMs) : 0,
+            LastRequestDate = logs.Count > 0 ? logs.Max(r => r.Timestamp) : null
+        };
 
-            var logs = await context.RequestLogs
-                .AsNoTracking()
-                .Include(r => r.VirtualKey)
-                .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
-                .ToListAsync();
-
-            var summary = new LogsSummaryDto
+        // Group by model
+        var modelGroups = logs
+            .GroupBy(r => r.ModelName)
+            .Select(g => new
             {
-                TotalRequests = logs.Count,
-                EstimatedCost = logs.Sum(r => r.Cost),
-                InputTokens = logs.Sum(r => r.InputTokens),
-                OutputTokens = logs.Sum(r => r.OutputTokens),
-                AverageResponseTime = logs.Count > 0 ? logs.Average(r => r.ResponseTimeMs) : 0,
-                LastRequestDate = logs.Count > 0 ? logs.Max(r => r.Timestamp) : null
-            };
+                ModelName = g.Key,
+                RequestCount = g.Count(),
+                TotalCost = g.Sum(r => r.Cost),
+                InputTokens = g.Sum(r => r.InputTokens),
+                OutputTokens = g.Sum(r => r.OutputTokens)
+            })
+            .OrderByDescending(g => g.RequestCount)
+            .ToList();
 
-            // Group by model
-            var modelGroups = logs
-                .GroupBy(r => r.ModelName)
-                .Select(g => new
-                {
-                    ModelName = g.Key,
-                    RequestCount = g.Count(),
-                    TotalCost = g.Sum(r => r.Cost),
-                    InputTokens = g.Sum(r => r.InputTokens),
-                    OutputTokens = g.Sum(r => r.OutputTokens)
-                })
-                .OrderByDescending(g => g.RequestCount)
-                .ToList();
-
-            foreach (var model in modelGroups)
-            {
-                summary.RequestsByModel[model.ModelName] = model.RequestCount;
-                summary.CostByModel[model.ModelName] = model.TotalCost;
-            }
-
-            // Calculate success and failure counts
-            summary.SuccessfulRequests = logs.Count(r => r.StatusCode.HasValue && r.StatusCode >= 200 && r.StatusCode < 300);
-            summary.FailedRequests = logs.Count(r => r.StatusCode.HasValue && (r.StatusCode < 200 || r.StatusCode >= 300));
-
-            // Group by status
-            var statusGroups = logs
-                .Where(r => r.StatusCode.HasValue)
-                .GroupBy(r => r.StatusCode!.Value)
-                .Select(g => new { StatusCode = g.Key, Count = g.Count() })
-                .ToList();
-
-            foreach (var status in statusGroups)
-            {
-                summary.RequestsByStatus[status.StatusCode] = status.Count;
-            }
-
-            // Group by day and model for daily stats
-            var dailyStats = logs
-                .GroupBy(r => new { Date = r.Timestamp.Date, Model = r.ModelName })
-                .Select(g => new DailyUsageStatsDto
-                {
-                    Date = g.Key.Date,
-                    ModelId = g.Key.Model,
-                    RequestCount = g.Count(),
-                    InputTokens = g.Sum(r => r.InputTokens),
-                    OutputTokens = g.Sum(r => r.OutputTokens),
-                    Cost = g.Sum(r => r.Cost)
-                })
-                .OrderBy(s => s.Date)
-                .ThenBy(s => s.ModelId)
-                .ToList();
-
-            summary.DailyStats = dailyStats;
-
-            return summary;
-        }
-        catch (Exception ex)
+        foreach (var model in modelGroups)
         {
-            Logger.LogError(ex, "Error getting logs summary for period {StartDate} to {EndDate}",
-                startDate.ToString("yyyy-MM-dd"), endDate.ToString("yyyy-MM-dd"));
-            throw;
+            summary.RequestsByModel[model.ModelName] = model.RequestCount;
+            summary.CostByModel[model.ModelName] = model.TotalCost;
         }
+
+        // Calculate success and failure counts
+        summary.SuccessfulRequests = logs.Count(r => r.StatusCode.HasValue && r.StatusCode >= 200 && r.StatusCode < 300);
+        summary.FailedRequests = logs.Count(r => r.StatusCode.HasValue && (r.StatusCode < 200 || r.StatusCode >= 300));
+
+        // Group by status
+        var statusGroups = logs
+            .Where(r => r.StatusCode.HasValue)
+            .GroupBy(r => r.StatusCode!.Value)
+            .Select(g => new { StatusCode = g.Key, Count = g.Count() })
+            .ToList();
+
+        foreach (var status in statusGroups)
+        {
+            summary.RequestsByStatus[status.StatusCode] = status.Count;
+        }
+
+        // Group by day and model for daily stats
+        var dailyStats = logs
+            .GroupBy(r => new { Date = r.Timestamp.Date, Model = r.ModelName })
+            .Select(g => new DailyUsageStatsDto
+            {
+                Date = g.Key.Date,
+                ModelId = g.Key.Model,
+                RequestCount = g.Count(),
+                InputTokens = g.Sum(r => r.InputTokens),
+                OutputTokens = g.Sum(r => r.OutputTokens),
+                Cost = g.Sum(r => r.Cost)
+            })
+            .OrderBy(s => s.Date)
+            .ThenBy(s => s.ModelId)
+            .ToList();
+
+        summary.DailyStats = dailyStats;
+
+        return summary;
     }
 
     /// <inheritdoc/>
     public async Task<List<string>> GetDistinctModelsAsync()
     {
-        try
-        {
-            using var scope = ServiceProvider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
+        using var scope = ServiceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
 
-            return await context.RequestLogs
-                .AsNoTracking()
-                .Select(r => r.ModelName)
-                .Distinct()
-                .OrderBy(m => m)
-                .ToListAsync();
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error retrieving distinct model names from request logs");
-            throw;
-        }
+        return await context.RequestLogs
+            .AsNoTracking()
+            .Select(r => r.ModelName)
+            .Distinct()
+            .OrderBy(m => m)
+            .ToListAsync();
     }
 
     #endregion

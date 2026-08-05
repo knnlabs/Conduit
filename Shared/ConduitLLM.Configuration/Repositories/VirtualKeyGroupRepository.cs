@@ -52,47 +52,35 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
     {
         ArgumentNullException.ThrowIfNull(entity);
 
-        try
+        return await ExecuteAsync(async context =>
         {
-            return await ExecuteAsync(async context =>
+            OnBeforeCreate(entity);
+
+            GetDbSet(context).Add(entity);
+            await context.SaveChangesAsync(cancellationToken);
+
+            // If group was created with initial balance, create a transaction record
+            if (entity.Balance > 0)
             {
-                OnBeforeCreate(entity);
+                var transaction = CreateTransaction(
+                    entity.Id,
+                    entity.Balance,
+                    entity.Balance,
+                    TransactionType.Credit,
+                    ReferenceType.Initial,
+                    "Initial balance"
+                );
 
-                GetDbSet(context).Add(entity);
+                context.VirtualKeyGroupTransactions.Add(transaction);
                 await context.SaveChangesAsync(cancellationToken);
+            }
 
-                // If group was created with initial balance, create a transaction record
-                if (entity.Balance > 0)
-                {
-                    var transaction = CreateTransaction(
-                        entity.Id,
-                        entity.Balance,
-                        entity.Balance,
-                        TransactionType.Credit,
-                        ReferenceType.Initial,
-                        "Initial balance"
-                    );
+            Logger.LogInformation("Created virtual key group {GroupId} with name {GroupName}",
+                entity.Id, entity.GroupName);
 
-                    context.VirtualKeyGroupTransactions.Add(transaction);
-                    await context.SaveChangesAsync(cancellationToken);
-                }
+            return entity.Id;
+        }, cancellationToken);
 
-                Logger.LogInformation("Created virtual key group {GroupId} with name {GroupName}",
-                    entity.Id, entity.GroupName);
-
-                return entity.Id;
-            }, cancellationToken);
-        }
-        catch (DbUpdateException ex)
-        {
-            Logger.LogError(ex, "Database error creating virtual key group");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error creating virtual key group");
-            throw;
-        }
     }
 
     /// <summary>
@@ -185,11 +173,7 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         {
             throw;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error adjusting balance for virtual key group {GroupId}", groupId);
-            throw;
-        }
+
     }
 
     /// <inheritdoc />
@@ -295,11 +279,7 @@ public class VirtualKeyGroupRepository : RepositoryBase<VirtualKeyGroup, int>, I
         {
             throw;
         }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error adjusting balance idempotently for virtual key group {GroupId}", groupId);
-            throw;
-        }
+
     }
 
     /// <summary>

@@ -12,66 +12,58 @@ namespace ConduitLLM.Core.Services
     {
         /// <inheritdoc/>
         public async Task<MediaStorageResult> StoreVideoAsync(
-            Stream content, 
+            Stream content,
             VideoMediaMetadata metadata,
             Action<long>? progressCallback = null)
         {
-            try
+            // For large videos, we might want to use multipart upload
+            if (content.CanSeek && content.Length > 100 * 1024 * 1024) // 100MB
             {
-                // For large videos, we might want to use multipart upload
-                if (content.CanSeek && content.Length > 100 * 1024 * 1024) // 100MB
+                if (_quotaGuard != null)
                 {
-                    if (_quotaGuard != null)
-                    {
-                        await _quotaGuard.EnsureCanStoreAsync(
-                            metadata.CreatedBy,
-                            Math.Max(0, content.Length - content.Position));
-                    }
-                    return await StoreVideoMultipartAsync(content, metadata, progressCallback);
+                    await _quotaGuard.EnsureCanStoreAsync(
+                        metadata.CreatedBy,
+                        Math.Max(0, content.Length - content.Position));
                 }
-
-                // Convert Action<long> callback to IProgress<long> if needed
-                IProgress<long>? progress = progressCallback != null 
-                    ? new Progress<long>(progressCallback) 
-                    : null;
-                
-                // Set metadata with video-specific information
-                var baseMetadata = new MediaMetadata
-                {
-                    ContentType = metadata.ContentType,
-                    FileName = metadata.FileName,
-                    MediaType = MediaType.Video,
-                    CustomMetadata = metadata.CustomMetadata,
-                    CreatedBy = metadata.CreatedBy,
-                    ExpiresAt = metadata.ExpiresAt
-                };
-
-                // Add video-specific metadata
-                baseMetadata.CustomMetadata["duration"] = metadata.Duration.ToString();
-                baseMetadata.CustomMetadata["resolution"] = metadata.Resolution;
-                baseMetadata.CustomMetadata["width"] = metadata.Width.ToString();
-                baseMetadata.CustomMetadata["height"] = metadata.Height.ToString();
-                baseMetadata.CustomMetadata["framerate"] = metadata.FrameRate.ToString();
-                
-                if (!string.IsNullOrEmpty(metadata.Codec))
-                    baseMetadata.CustomMetadata["codec"] = metadata.Codec;
-                
-                if (metadata.Bitrate.HasValue)
-                    baseMetadata.CustomMetadata["bitrate"] = metadata.Bitrate.Value.ToString();
-                
-                if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
-                    baseMetadata.CustomMetadata["generated-by-model"] = metadata.GeneratedByModel;
-                
-                if (!string.IsNullOrEmpty(metadata.GenerationPrompt))
-                    baseMetadata.CustomMetadata["generation-prompt"] = metadata.GenerationPrompt;
-
-                return await StoreAsync(content, baseMetadata, progress);
+                return await StoreVideoMultipartAsync(content, metadata, progressCallback);
             }
-            catch (Exception ex)
+
+            // Convert Action<long> callback to IProgress<long> if needed
+            IProgress<long>? progress = progressCallback != null
+                ? new Progress<long>(progressCallback)
+                : null;
+
+            // Set metadata with video-specific information
+            var baseMetadata = new MediaMetadata
             {
-                _logger.LogError(ex, "Failed to store video");
-                throw;
-            }
+                ContentType = metadata.ContentType,
+                FileName = metadata.FileName,
+                MediaType = MediaType.Video,
+                CustomMetadata = metadata.CustomMetadata,
+                CreatedBy = metadata.CreatedBy,
+                ExpiresAt = metadata.ExpiresAt
+            };
+
+            // Add video-specific metadata
+            baseMetadata.CustomMetadata["duration"] = metadata.Duration.ToString();
+            baseMetadata.CustomMetadata["resolution"] = metadata.Resolution;
+            baseMetadata.CustomMetadata["width"] = metadata.Width.ToString();
+            baseMetadata.CustomMetadata["height"] = metadata.Height.ToString();
+            baseMetadata.CustomMetadata["framerate"] = metadata.FrameRate.ToString();
+
+            if (!string.IsNullOrEmpty(metadata.Codec))
+                baseMetadata.CustomMetadata["codec"] = metadata.Codec;
+
+            if (metadata.Bitrate.HasValue)
+                baseMetadata.CustomMetadata["bitrate"] = metadata.Bitrate.Value.ToString();
+
+            if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
+                baseMetadata.CustomMetadata["generated-by-model"] = metadata.GeneratedByModel;
+
+            if (!string.IsNullOrEmpty(metadata.GenerationPrompt))
+                baseMetadata.CustomMetadata["generation-prompt"] = metadata.GenerationPrompt;
+
+            return await StoreAsync(content, baseMetadata, progress);
         }
 
         /// <inheritdoc/>
@@ -99,7 +91,7 @@ namespace ConduitLLM.Core.Services
                 // Calculate actual range
                 var start = rangeStart ?? 0;
                 var end = rangeEnd ?? totalSize - 1;
-                
+
                 // Ensure range is valid
                 start = Math.Max(0, Math.Min(start, totalSize - 1));
                 end = Math.Max(start, Math.Min(end, totalSize - 1));
@@ -125,72 +117,60 @@ namespace ConduitLLM.Core.Services
                 _logger.LogWarning("Video with key {StorageKey} not found", storageKey);
                 return null;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to get video stream for {StorageKey}", storageKey);
-                throw;
-            }
+
         }
 
         /// <inheritdoc/>
         public async Task<PresignedUploadUrl> GeneratePresignedUploadUrlAsync(VideoMediaMetadata metadata, TimeSpan expiration)
         {
-            try
+            // Generate storage key
+            var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
+            var storageKey = MediaStorageKeys.GenerateDatePartitioned(
+                Guid.NewGuid().ToString(),
+                MediaType.Video,
+                extension,
+                DateTime.UtcNow);
+
+            var presignRequest = new GetPreSignedUrlRequest
             {
-                // Generate storage key
-                var extension = MediaContentTypes.GetExtension(metadata.ContentType) ?? "";
-                var storageKey = MediaStorageKeys.GenerateDatePartitioned(
-                    Guid.NewGuid().ToString(),
-                    MediaType.Video,
-                    extension,
-                    DateTime.UtcNow);
+                BucketName = _bucketName,
+                Key = storageKey,
+                Verb = HttpVerb.PUT,
+                Expires = DateTime.UtcNow.Add(expiration),
+                Protocol = Protocol.HTTPS,
+                ContentType = metadata.ContentType
+            };
 
-                var presignRequest = new GetPreSignedUrlRequest
-                {
-                    BucketName = _bucketName,
-                    Key = storageKey,
-                    Verb = HttpVerb.PUT,
-                    Expires = DateTime.UtcNow.Add(expiration),
-                    Protocol = Protocol.HTTPS,
-                    ContentType = metadata.ContentType
-                };
+            // Add headers that must be included in the upload
+            // Note: Server-side encryption removed for MinIO compatibility
 
-                // Add headers that must be included in the upload
-                // Note: Server-side encryption removed for MinIO compatibility
-                
-                // Add metadata as headers
-                presignRequest.Headers["x-amz-meta-media-type"] = MediaType.Video.ToString();
-                presignRequest.Headers["x-amz-meta-duration"] = metadata.Duration.ToString();
-                presignRequest.Headers["x-amz-meta-resolution"] = metadata.Resolution;
-                
-                if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
-                    presignRequest.Headers["x-amz-meta-generated-by-model"] = metadata.GeneratedByModel;
+            // Add metadata as headers
+            presignRequest.Headers["x-amz-meta-media-type"] = MediaType.Video.ToString();
+            presignRequest.Headers["x-amz-meta-duration"] = metadata.Duration.ToString();
+            presignRequest.Headers["x-amz-meta-resolution"] = metadata.Resolution;
 
-                var url = await _s3Client.GetPreSignedURLAsync(presignRequest);
+            if (!string.IsNullOrEmpty(metadata.GeneratedByModel))
+                presignRequest.Headers["x-amz-meta-generated-by-model"] = metadata.GeneratedByModel;
 
-                return new PresignedUploadUrl
-                {
-                    Url = url,
-                    HttpMethod = "PUT",
-                    RequiredHeaders = new Dictionary<string, string>
-                    {
-                        ["Content-Type"] = metadata.ContentType,
-                        ["x-amz-server-side-encryption"] = ServerSideEncryptionMethod.AES256.Value
-                    },
-                    ExpiresAt = DateTime.UtcNow.Add(expiration),
-                    StorageKey = storageKey,
-                    MaxFileSizeBytes = 5L * 1024 * 1024 * 1024 // 5GB max
-                };
-            }
-            catch (Exception ex)
+            var url = await _s3Client.GetPreSignedURLAsync(presignRequest);
+
+            return new PresignedUploadUrl
             {
-                _logger.LogError(ex, "Failed to generate presigned upload URL");
-                throw;
-            }
+                Url = url,
+                HttpMethod = "PUT",
+                RequiredHeaders = new Dictionary<string, string>
+                {
+                    ["Content-Type"] = metadata.ContentType,
+                    ["x-amz-server-side-encryption"] = ServerSideEncryptionMethod.AES256.Value
+                },
+                ExpiresAt = DateTime.UtcNow.Add(expiration),
+                StorageKey = storageKey,
+                MaxFileSizeBytes = 5L * 1024 * 1024 * 1024 // 5GB max
+            };
         }
 
         private async Task<MediaStorageResult> StoreVideoMultipartAsync(
-            Stream content, 
+            Stream content,
             VideoMediaMetadata metadata,
             Action<long>? progressCallback)
         {
@@ -214,7 +194,7 @@ namespace ConduitLLM.Core.Services
                     using var partStream = new MemoryStream(buffer, 0, bytesRead);
                     var partResult = await UploadPartAsync(session.SessionId, partNumber++, partStream);
                     parts.Add(partResult);
-                    
+
                     totalBytesUploaded += bytesRead;
                     progressCallback?.Invoke(totalBytesUploaded);
                 }

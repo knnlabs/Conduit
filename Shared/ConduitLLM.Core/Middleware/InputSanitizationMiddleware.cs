@@ -19,11 +19,11 @@ namespace ConduitLLM.Core.Middleware
     {
         private readonly RequestDelegate _next;
         private readonly ILogger<InputSanitizationMiddleware> _logger;
-        
+
         // Regex patterns for dangerous characters
         private static readonly Regex CrlfPattern = new(@"[\r\n]", RegexOptions.Compiled);
         private static readonly Regex ControlCharPattern = new(@"[\x00-\x1F\x7F]", RegexOptions.Compiled);
-        
+
         // Maximum length for input values
         private const int MaxInputLength = 1000;
 
@@ -44,24 +44,16 @@ namespace ConduitLLM.Core.Middleware
         /// <param name="context">The HTTP context.</param>
         public async Task InvokeAsync(HttpContext context)
         {
-            try
-            {
-                // Sanitize route values
-                SanitizeRouteValues(context);
+            // Sanitize route values
+            SanitizeRouteValues(context);
 
-                // Sanitize query string
-                SanitizeQueryString(context);
+            // Sanitize query string
+            SanitizeQueryString(context);
 
-                // Sanitize headers (only specific headers that might be logged)
-                SanitizeHeaders(context);
+            // Sanitize headers (only specific headers that might be logged)
+            SanitizeHeaders(context);
 
-                await _next(context);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in input sanitization middleware");
-                throw;
-            }
+            await _next(context);
         }
 
         private void SanitizeRouteValues(HttpContext context)

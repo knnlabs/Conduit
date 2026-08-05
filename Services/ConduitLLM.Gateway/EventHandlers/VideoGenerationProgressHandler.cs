@@ -36,68 +36,60 @@ namespace ConduitLLM.Gateway.EventHandlers
             _logger.LogDebug("Video generation progress for request {RequestId}: {Progress}% - {Status}",
                 message.RequestId, message.ProgressPercentage, message.Status);
 
-            try
+            // Update progress cache for real-time queries
+            var cacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
+            var progressData = new
             {
-                // Update progress cache for real-time queries
-                var cacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
-                var progressData = new
+                RequestId = message.RequestId,
+                Status = message.Status,
+                ProgressPercentage = message.ProgressPercentage,
+                Message = message.Message,
+                FramesCompleted = message.FramesCompleted,
+                TotalFrames = message.TotalFrames,
+                LastUpdated = DateTime.UtcNow
+            };
+
+            // Cache progress for 1 hour (long-running tasks)
+            _progressCache.Set(cacheKey, progressData, TimeSpan.FromHours(1));
+
+            // Update task status with progress info
+            var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.RequestId, context.CancellationToken);
+            if (taskStatus != null)
+            {
+                // Update progress percentage and message
+                taskStatus.Progress = message.ProgressPercentage;
+                taskStatus.ProgressMessage = message.Message ?? message.Status;
+
+                // Update metadata with detailed progress info
+                if (taskStatus.Result is IDictionary<string, object> resultDict)
                 {
-                    RequestId = message.RequestId,
-                    Status = message.Status,
-                    ProgressPercentage = message.ProgressPercentage,
-                    Message = message.Message,
-                    FramesCompleted = message.FramesCompleted,
-                    TotalFrames = message.TotalFrames,
-                    LastUpdated = DateTime.UtcNow
-                };
-
-                // Cache progress for 1 hour (long-running tasks)
-                _progressCache.Set(cacheKey, progressData, TimeSpan.FromHours(1));
-
-                // Update task status with progress info
-                var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.RequestId, context.CancellationToken);
-                if (taskStatus != null)
+                    resultDict["progress"] = progressData;
+                }
+                else if (taskStatus.Result == null)
                 {
-                    // Update progress percentage and message
-                    taskStatus.Progress = message.ProgressPercentage;
-                    taskStatus.ProgressMessage = message.Message ?? message.Status;
-
-                    // Update metadata with detailed progress info
-                    if (taskStatus.Result is IDictionary<string, object> resultDict)
-                    {
-                        resultDict["progress"] = progressData;
-                    }
-                    else if (taskStatus.Result == null)
-                    {
-                        taskStatus.Result = new Dictionary<string, object> { ["progress"] = progressData };
-                    }
-
-                    await _asyncTaskService.UpdateTaskStatusAsync(
-                        message.RequestId,
-                        TaskState.Processing,
-                        progress: message.ProgressPercentage,
-                        result: taskStatus.Result,
-                        error: null,
-                        cancellationToken: context.CancellationToken);
+                    taskStatus.Result = new Dictionary<string, object> { ["progress"] = progressData };
                 }
 
-                // Log significant progress milestones
-                LogProgressMilestone(message);
-
-                // Send real-time updates to WebAdmin via notification service
-                await _notificationService.NotifyVideoGenerationProgressAsync(
+                await _asyncTaskService.UpdateTaskStatusAsync(
                     message.RequestId,
-                    message.ProgressPercentage,
-                    message.Status,
-                    message.Message,
-                    message.FramesCompleted,
-                    message.TotalFrames);
+                    TaskState.Processing,
+                    progress: message.ProgressPercentage,
+                    result: taskStatus.Result,
+                    error: null,
+                    cancellationToken: context.CancellationToken);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error handling video generation progress for request {RequestId}", message.RequestId);
-                throw; // Let the endpoint retry policy handle it
-            }
+
+            // Log significant progress milestones
+            LogProgressMilestone(message);
+
+            // Send real-time updates to WebAdmin via notification service
+            await _notificationService.NotifyVideoGenerationProgressAsync(
+                message.RequestId,
+                message.ProgressPercentage,
+                message.Status,
+                message.Message,
+                message.FramesCompleted,
+                message.TotalFrames);
         }
 
         private void LogProgressMilestone(VideoGenerationProgress progress)

@@ -81,34 +81,22 @@ namespace ConduitLLM.Configuration.Repositories
                 Logger.LogError(ex, "Concurrency error updating virtual key with ID {KeyId}", LoggingSanitizer.S(virtualKey.Id));
 
                 // Handle concurrency issues by reloading and reapplying changes if needed
-                try
+                await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
+                var existingEntity = await context.VirtualKeys.FindAsync(new object[] { virtualKey.Id }, cancellationToken);
+
+                if (existingEntity == null)
                 {
-                    await using var context = await DbContextFactory.CreateDbContextAsync(cancellationToken);
-                    var existingEntity = await context.VirtualKeys.FindAsync(new object[] { virtualKey.Id }, cancellationToken);
-
-                    if (existingEntity == null)
-                    {
-                        return false;
-                    }
-
-                    // Update properties
-                    context.Entry(existingEntity).CurrentValues.SetValues(virtualKey);
-                    existingEntity.UpdatedAt = DateTime.UtcNow;
-
-                    int rowsAffected = await context.SaveChangesAsync(cancellationToken);
-                    return rowsAffected > 0;
+                    return false;
                 }
-                catch (Exception retryEx)
-                {
-                    Logger.LogError(retryEx, "Error during retry of virtual key update with ID {KeyId}", LoggingSanitizer.S(virtualKey.Id));
-                    throw;
-                }
+
+                // Update properties
+                context.Entry(existingEntity).CurrentValues.SetValues(virtualKey);
+                existingEntity.UpdatedAt = DateTime.UtcNow;
+
+                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
+                return rowsAffected > 0;
             }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Error updating virtual key with ID {KeyId}", LoggingSanitizer.S(virtualKey.Id));
-                throw;
-            }
+
         }
 
         /// <inheritdoc/>

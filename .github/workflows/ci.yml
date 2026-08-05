@@ -138,6 +138,10 @@ jobs:
         shell: pwsh
         run: ./scripts/test/verify-admin-media-rdg.ps1 -NoRestore
 
+      - name: Exception logging ownership guard
+        shell: pwsh
+        run: ./scripts/test/verify-exception-logging.ps1
+
       # Regenerate every registered handler adapter and fail on tracked, deleted,
       # or newly untracked output. The compiler dependency is generation-only.
       - name: Wolverine static codegen drift check

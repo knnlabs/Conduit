@@ -55,42 +55,26 @@ public class VirtualKeySpendHistoryRepository : RepositoryBase<VirtualKeySpendHi
     /// <inheritdoc/>
     public async Task<List<VirtualKeySpendHistory>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(h => h.VirtualKeyId == virtualKeyId)
-                    .OrderByDescending(h => h.Timestamp)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting spend history for virtual key with ID {VirtualKeyId}", virtualKeyId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(h => h.VirtualKeyId == virtualKeyId)
+                .OrderByDescending(h => h.Timestamp)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<List<VirtualKeySpendHistory>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Include(h => h.VirtualKey)
-                    .Where(h => h.Timestamp >= startDate && h.Timestamp <= endDate)
-                    .OrderByDescending(h => h.Timestamp)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting spend history for date range {StartDate} to {EndDate}", startDate, endDate);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Include(h => h.VirtualKey)
+                .Where(h => h.Timestamp >= startDate && h.Timestamp <= endDate)
+                .OrderByDescending(h => h.Timestamp)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -100,39 +84,22 @@ public class VirtualKeySpendHistoryRepository : RepositoryBase<VirtualKeySpendHi
         DateTime endDate,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .AsNoTracking()
-                    .Where(h => h.VirtualKeyId == virtualKeyId && h.Timestamp >= startDate && h.Timestamp <= endDate)
-                    .OrderByDescending(h => h.Timestamp)
-                    .ToListAsync(cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting spend history for virtual key {VirtualKeyId} and date range {StartDate} to {EndDate}",
-                virtualKeyId, startDate, endDate);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .AsNoTracking()
+                .Where(h => h.VirtualKeyId == virtualKeyId && h.Timestamp >= startDate && h.Timestamp <= endDate)
+                .OrderByDescending(h => h.Timestamp)
+                .ToListAsync(cancellationToken),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
     public async Task<decimal> GetTotalSpendAsync(int virtualKeyId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await ExecuteAsync(async context =>
-                await GetDbSet(context)
-                    .Where(h => h.VirtualKeyId == virtualKeyId)
-                    .SumAsync(h => h.Amount, cancellationToken),
-                cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "Error getting total spend for virtual key {VirtualKeyId}", virtualKeyId);
-            throw;
-        }
+        return await ExecuteAsync(async context =>
+            await GetDbSet(context)
+                .Where(h => h.VirtualKeyId == virtualKeyId)
+                .SumAsync(h => h.Amount, cancellationToken),
+            cancellationToken);
     }
 }

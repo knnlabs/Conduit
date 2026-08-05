@@ -187,7 +187,7 @@ namespace ConduitLLM.Tests.Core.Consumers
         #region Error Handling Tests
 
         [Fact]
-        public async Task Consume_WhenInvalidationFails_LogsError()
+        public async Task Consume_WhenInvalidationFails_DefersErrorLoggingToMessagingBoundary()
         {
             // Arrange
             var @event = new GlobalSettingChanged
@@ -210,12 +210,10 @@ namespace ConduitLLM.Tests.Core.Consumers
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) =>
-                        o.ToString()!.Contains("Failed to invalidate cache") &&
-                        o.ToString()!.Contains("failing_setting")),
-                    exception,
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                Times.Never);
         }
 
         [Fact]
