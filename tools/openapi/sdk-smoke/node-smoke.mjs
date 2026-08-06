@@ -6,6 +6,8 @@ if (!baseURL) throw new Error('CONDUIT_SMOKE_BASE_URL is required.');
 const client = new OpenAI({
   apiKey: process.env.CONDUIT_SMOKE_API_KEY ?? 'smoke-key',
   baseURL,
+  maxRetries: 0,
+  timeout: 10_000,
 });
 
 const chatModel = process.env.CONDUIT_SMOKE_CHAT_MODEL ?? 'chat-model';
@@ -21,7 +23,7 @@ const chat = await client.chat.completions.create({
   model: chatModel,
   messages: [{ role: 'user', content: 'SDK smoke test' }],
 });
-if (!chat.choices.length) throw new Error('Chat completion had no choices.');
+if (chat.choices[0]?.message?.content !== 'ok') throw new Error('Chat completion text was incorrect.');
 
 const modelResponse = await client.responses.create({
   model: chatModel,
@@ -45,8 +47,9 @@ if (streamedResponseText !== 'ok') throw new Error('Responses stream output text
 const embedding = await client.embeddings.create({
   model: embeddingModel,
   input: 'SDK smoke test',
+  encoding_format: 'float',
 });
-if (!embedding.data.length) throw new Error('Embedding response had no data.');
+if (!embedding.data[0]?.embedding?.length) throw new Error('Embedding response had no vector.');
 
 const image = await client.images.generate({
   model: imageModel,

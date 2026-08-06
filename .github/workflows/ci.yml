@@ -123,6 +123,11 @@ jobs:
           cache-dependency-path: |
             tools/openapi/package-lock.json
             WebAdmin/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
       
       - name: .NET Build & Test
         run: |
@@ -199,6 +204,12 @@ jobs:
           fi
         env:
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+
+      - name: Official OpenAI SDK smoke against Gateway
+        run: |
+          python -m pip install -r tools/openapi/sdk-smoke/requirements.txt
+          cd tools/openapi
+          npm run test:sdk-smoke
 
       - name: WebAdmin Lint, Type Check & Tests
         run: |

@@ -10,6 +10,8 @@ if not base_url:
 client = OpenAI(
     api_key=os.environ.get("CONDUIT_SMOKE_API_KEY", "smoke-key"),
     base_url=base_url,
+    max_retries=0,
+    timeout=10.0,
 )
 
 chat_model = os.environ.get("CONDUIT_SMOKE_CHAT_MODEL", "chat-model")
@@ -26,8 +28,8 @@ chat = client.chat.completions.create(
     model=chat_model,
     messages=[{"role": "user", "content": "SDK smoke test"}],
 )
-if not chat.choices:
-    raise RuntimeError("Chat completion had no choices.")
+if not chat.choices or chat.choices[0].message.content != "ok":
+    raise RuntimeError("Chat completion text was incorrect.")
 
 model_response = client.responses.create(
     model=chat_model,
@@ -52,9 +54,10 @@ if streamed_response_text != "ok":
 embedding = client.embeddings.create(
     model=embedding_model,
     input="SDK smoke test",
+    encoding_format="float",
 )
-if not embedding.data:
-    raise RuntimeError("Embedding response had no data.")
+if not embedding.data or not embedding.data[0].embedding:
+    raise RuntimeError("Embedding response had no vector.")
 
 image = client.images.generate(
     model=image_model,
