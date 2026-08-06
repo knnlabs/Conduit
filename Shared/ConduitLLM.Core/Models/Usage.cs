@@ -95,6 +95,18 @@ public class Usage
     public int? CachedInputTokens { get; set; }
 
     /// <summary>
+    /// Indicates whether <see cref="CachedInputTokens"/> is already included in
+    /// <see cref="PromptTokens"/>.
+    /// </summary>
+    /// <remarks>
+    /// OpenAI-style usage includes cached tokens in the prompt total, while Anthropic's
+    /// <c>input_tokens</c> count excludes cache-read tokens. The default preserves the
+    /// OpenAI convention for existing callers.
+    /// </remarks>
+    [JsonIgnore]
+    public bool CachedInputTokensIncludedInPrompt { get; set; } = true;
+
+    /// <summary>
     /// Number of tokens written to the cache.
     /// </summary>
     /// <remarks>
@@ -105,6 +117,10 @@ public class Usage
     [JsonPropertyName("cached_write_tokens")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? CachedWriteTokens { get; set; }
+
+    /// <summary>Whether cache-write tokens are already included in <see cref="PromptTokens"/>.</summary>
+    [JsonIgnore]
+    public bool CachedWriteTokensIncludedInPrompt { get; set; } = true;
 
     /// <summary>
     /// Number of search units consumed (for rerank operations).
@@ -144,7 +160,8 @@ public class Usage
     /// Number of reasoning tokens used (o1 models and other reasoning models).
     /// </summary>
     /// <remarks>
-    /// These represent the model's internal reasoning process tokens.
+    /// These represent the model's internal reasoning process tokens and are a subset of
+    /// <see cref="CompletionTokens"/>, following the OpenAI usage convention.
     /// Used by models like OpenAI o1, DeepSeek-R1, Claude with thinking mode, 
     /// Gemini 2.5 with thinking, and Qwen QwQ.
     /// These tokens are typically billed at output token rates.
@@ -152,6 +169,20 @@ public class Usage
     [JsonPropertyName("reasoning_tokens")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? ReasoningTokens { get; set; }
+
+    /// <summary>
+    /// Duration of transcribed audio in seconds (speech-to-text). Billed per minute.
+    /// </summary>
+    [JsonPropertyName("audio_duration_seconds")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public double? AudioDurationSeconds { get; set; }
+
+    /// <summary>
+    /// Number of input characters synthesized (text-to-speech). Billed per thousand characters.
+    /// </summary>
+    [JsonPropertyName("tts_characters")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? TtsCharacters { get; set; }
 
     /// <summary>
     /// Optional metadata for provider-specific usage information.
@@ -183,6 +214,37 @@ public class Usage
     [JsonPropertyName("pricing_parameters")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, object>? PricingParameters { get; set; }
+
+    /// <summary>
+    /// Cost in USD reported by the provider for this request (e.g. OpenRouter's usage.cost — the
+    /// actual credits the operator was charged).
+    /// </summary>
+    /// <remarks>
+    /// Server-only: captured for billing but never serialized to API clients (exposing it would
+    /// leak the operator's upstream cost). It is set programmatically by the provider client's usage
+    /// mapping, not by JSON binding. When present and the provider is configured as trusted,
+    /// <see cref="ProviderCostPolicy"/> makes it authoritative for spend calculation.
+    /// </remarks>
+    [JsonIgnore]
+    public decimal? ProviderReportedCostUsd { get; set; }
+
+    /// <summary>
+    /// Billing policy stamped by the Gateway before cost calculation. Never serialized.
+    /// </summary>
+    /// <remarks>
+    /// When <see cref="ProviderCostBillingPolicy.TrustProviderReportedCost"/> is true and
+    /// <see cref="ProviderReportedCostUsd"/> is present, the cost calculator bills
+    /// <c>ProviderReportedCostUsd * MarkupMultiplier</c> instead of computing from ModelCost.
+    /// </remarks>
+    [JsonIgnore]
+    public ProviderCostBillingPolicy? ProviderCostPolicy { get; set; }
+
+    /// <summary>
+    /// Describes a conservative pricing fallback used when the provider's reported usage did not
+    /// exactly match a configured rate. Server-only; used to emit a billing audit event.
+    /// </summary>
+    [JsonIgnore]
+    public string? PricingFallbackReason { get; set; }
 
     /// <summary>
     /// Extension data to capture additional provider-specific fields not defined in the model.

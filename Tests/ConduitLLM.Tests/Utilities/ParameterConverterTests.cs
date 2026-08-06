@@ -1,62 +1,10 @@
+using AwesomeAssertions;
 using ConduitLLM.Providers.Utilities;
 
 namespace ConduitLLM.Tests.Utilities
 {
     public class ParameterConverterTests
     {
-        #region ToFloat Tests
-
-        [Fact]
-        public void ToFloat_WithNullValue_ReturnsNull()
-        {
-            // Act
-            var result = ParameterConverter.ToFloat(null);
-
-            // Assert
-            Assert.Null(result);
-        }
-
-        [Fact]
-        public void ToFloat_WithValidValue_ReturnsFloat()
-        {
-            // Arrange
-            double input = 1.5;
-
-            // Act
-            var result = ParameterConverter.ToFloat(input);
-
-            // Assert
-            Assert.Equal(1.5f, result);
-        }
-
-        [Fact]
-        public void ToFloat_WithMaxValue_ReturnsFloatMaxValue()
-        {
-            // Arrange
-            double input = double.MaxValue;
-
-            // Act
-            var result = ParameterConverter.ToFloat(input);
-
-            // Assert
-            Assert.Equal(float.MaxValue, result);
-        }
-
-        [Fact]
-        public void ToFloat_WithMinValue_ReturnsFloatMinValue()
-        {
-            // Arrange
-            double input = double.MinValue;
-
-            // Act
-            var result = ParameterConverter.ToFloat(input);
-
-            // Assert
-            Assert.Equal(float.MinValue, result);
-        }
-
-        #endregion
-
         #region ConvertLogitBias Tests
 
         [Fact]
@@ -142,7 +90,7 @@ namespace ConduitLLM.Tests.Utilities
             var result = ParameterConverter.ConvertStopSequences(input);
 
             // Assert
-            Assert.IsType<string>(result);
+            result.Should().BeOfType<string>();
             Assert.Equal("stop1", result);
         }
 
@@ -156,8 +104,7 @@ namespace ConduitLLM.Tests.Utilities
             var result = ParameterConverter.ConvertStopSequences(input);
 
             // Assert
-            Assert.IsType<List<string>>(result);
-            var resultList = (List<string>)result;
+            var resultList = result.Should().BeOfType<List<string>>().Subject;
             Assert.Equal(3, resultList.Count);
             Assert.Equal("stop1", resultList[0]);
             Assert.Equal("stop2", resultList[1]);
@@ -303,19 +250,6 @@ namespace ConduitLLM.Tests.Utilities
         #endregion
 
         #region Edge Cases and Precision Tests
-
-        [Fact]
-        public void ToFloat_WithVerySmallValue_MaintainsPrecision()
-        {
-            // Arrange
-            double input = 0.000001;
-
-            // Act
-            var result = ParameterConverter.ToFloat(input);
-
-            // Assert
-            Assert.Equal(0.000001f, result.Value, 7); // 7 decimal places precision
-        }
 
         [Fact]
         public void ToTemperature_WithVeryPreciseValue_MaintainsPrecision()

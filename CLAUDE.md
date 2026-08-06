@@ -2,16 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Table of Contents
-1. [⚠️ CRITICAL: Safety First](#️-critical-safety-first)
-2. [Quick Start Guide](#quick-start-guide)
-3. [Development Environment](#development-environment)
-4. [Build & Verification](#build--verification)
-5. [Code Quality Standards](#code-quality-standards)
-6. [Architecture Essentials](#architecture-essentials)
-7. [Documentation Index](#documentation-index)
-8. [Repository & Collaboration](#repository--collaboration)
-
 ---
 
 # ⚠️ CRITICAL: Safety First
@@ -22,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **These commands break the development container and force a 5+ minute restart:**
 - `npm run build` (anywhere in WebAdmin directory)
 - `cd WebAdmin && npm run build`
-- `./scripts/dev/dev-workflow.sh build-webadmin` (production testing only)
+- `./scripts/dev/dev-workflow.ps1 build-webadmin` (production testing only)
 
 **Why?** The development container uses an isolated `.next` directory. Running npm build on the host corrupts the container's build state.
 
@@ -33,7 +23,7 @@ Use these instead:
 - Hot reloading automatically validates code changes
 
 ### ❌ FORBIDDEN DEVELOPMENT COMMANDS
-- `docker compose up` for development (always use `./scripts/dev/start-dev.sh`)
+- `docker compose up` for development (always use `./scripts/dev.ps1`)
 
 **If you run forbidden commands, you will:**
 1. Break the development environment
@@ -47,30 +37,32 @@ Use these instead:
 ## Starting Development Services
 
 **⚠️ CANONICAL DEVELOPMENT STARTUP:**
-```bash
-./scripts/dev/start-dev.sh
+```powershell
+./scripts/dev.ps1
 ```
 
 ### Available Flags
-```bash
-./scripts/dev/start-dev.sh              # Standard startup
-./scripts/dev/start-dev.sh --webadmin   # Rebuild WebAdmin container
-./scripts/dev/start-dev.sh --clean      # Complete reset (removes all volumes)
-./scripts/dev/start-dev.sh --build      # Force rebuild with --no-cache
-./scripts/dev/start-dev.sh --help       # Show usage
+```powershell
+./scripts/dev.ps1              # Standard startup
+./scripts/dev.ps1 -WebAdmin    # Rebuild WebAdmin container
+./scripts/dev.ps1 -Clean       # Complete reset (removes all volumes)
+./scripts/dev.ps1 -Build       # Force rebuild (uses cache where possible)
+./scripts/dev.ps1 -Rebuild     # Full rebuild with --no-cache (nuclear option)
+./scripts/dev.ps1 -Logs -LogService webadmin  # Show container logs
 ```
 
 **Flag Details:**
-- `--webadmin`: Restarts WebAdmin container (fixes Next.js issues)
-- `--clean`: Removes containers, volumes, node_modules, build artifacts
-- `--build`: Rebuilds containers with `--no-cache` flag
+- `-WebAdmin`: Restarts WebAdmin container (fixes Next.js issues)
+- `-Clean`: Removes containers, volumes, node_modules, build artifacts
+- `-Build`: Rebuilds containers (uses cache where possible)
+- `-Rebuild`: Full rebuild with `--no-cache` flag (nuclear option)
+- `-Logs [-LogService <name>]`: Show container logs for specific service
 
 ## Available Services
 After startup, these services are available:
 - 🌐 **WebAdmin**: http://localhost:3000 (Next.js with hot reloading)
-- 📚 **Gateway API Swagger**: http://localhost:5000/swagger
-- 🔧 **Admin API Swagger**: http://localhost:5002/swagger
-- 🐰 **RabbitMQ Management**: http://localhost:15672 (conduit/conduitpass)
+- 📚 **Gateway API**: http://localhost:5000/scalar/v1
+- 🔧 **Admin API**: http://localhost:5002/scalar/v1
 
 ## Quick Verification
 ```bash
@@ -93,7 +85,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 ### Development vs Production
 
-| Aspect | Development (`start-dev.sh`) | Production (`docker compose up`) |
+| Aspect | Development (`dev.ps1`) | Production (`docker compose up`) |
 |--------|------------------------------|----------------------------------|
 | WebAdmin Container | `node:22-alpine` with mounted source | Built Next.js app in container |
 | Hot Reloading | ✅ Enabled via volume mounts | ❌ Static build |
@@ -104,7 +96,6 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f [service]
 
 **Volume Mounting:**
 - WebAdmin source: `./WebAdmin:/app/WebAdmin`
-- SDKs: `./SDKs:/app/SDKs`
 - Node modules accessible from both host and container
 
 **Permission Handling:**
@@ -121,65 +112,87 @@ export DOCKER_GROUP_ID=$(id -g)
 
 ## Helper Commands
 
-### dev-workflow.sh
-```bash
-./scripts/dev/dev-workflow.sh logs                 # WebAdmin logs (real-time)
-./scripts/dev/dev-workflow.sh shell                # Open shell in container
-./scripts/dev/dev-workflow.sh lint-fix-webadmin    # ESLint with --fix
-./scripts/dev/dev-workflow.sh build-sdks           # Build SDKs
-./scripts/dev/dev-workflow.sh exec [command]       # Execute custom command
+### dev-workflow.ps1
+```powershell
+# Build Commands
+./scripts/dev/dev-workflow.ps1 build-webadmin       # Build WebAdmin application
+
+# Lint/Type Commands
+./scripts/dev/dev-workflow.ps1 lint-webadmin        # Run ESLint on WebAdmin
+./scripts/dev/dev-workflow.ps1 lint-fix-webadmin    # Run ESLint with --fix
+./scripts/dev/dev-workflow.ps1 type-check-webadmin  # Run TypeScript type checking
+
+# NPM Commands
+./scripts/dev/dev-workflow.ps1 npm-install-webadmin # Install WebAdmin dependencies
+
+# Container Commands
+./scripts/dev/dev-workflow.ps1 shell                # Open bash shell in container
+./scripts/dev/dev-workflow.ps1 logs                 # Show WebAdmin container logs
+./scripts/dev/dev-workflow.ps1 restart-webadmin     # Restart WebAdmin container
+./scripts/dev/dev-workflow.ps1 status               # Show container status
+./scripts/dev/dev-workflow.ps1 exec <cmd>           # Execute command in container
+
+# Local Development
+./scripts/dev/dev-workflow.ps1 install-local        # Install all dependencies locally
+./scripts/dev/dev-workflow.ps1 build-local          # Build all TypeScript projects locally
+./scripts/dev/dev-workflow.ps1 clean                # Clean node_modules and build artifacts
 ```
 
 ### Other Helper Scripts
-- `scripts/dev/fix-webadmin-errors.sh` - Automated TypeScript/ESLint fixes
-- `scripts/dev/fix-sdk-errors.sh` - SDK TypeScript compilation fixes
-- `scripts/dev/create-webadmin-key.sh` - Create virtual keys for testing
-- `scripts/test/validate-eslint.sh` - Validate ESLint configuration
+- `scripts/dev/fix-webadmin-errors.ps1` - Automated TypeScript/ESLint fixes
+  - `-LintOnly` - Run linting and fixing only (skip build)
+  - `-BuildOnly` - Run build only (skip linting)
+  - `-CheckOnly` - Check environment and permissions only
+- `scripts/dev/create-test-virtual-key.ps1` - Create virtual keys for testing
+- `scripts/dev/setup-r2-dev.ps1` - Setup Cloudflare R2 development environment
+- `scripts/test/validate-eslint.ps1` - Validate ESLint configuration
+- `scripts/test/validate-eslint-strict.ps1` - Strict ESLint validation (CI/CD)
+- `scripts/migrations/validate-migrations.ps1` - Validate EF Core migrations
 
 ## Troubleshooting
 
 ### Permission Denied Errors
-```bash
+```powershell
 # Symptom: npm EACCES errors, cannot write to node_modules
-./scripts/dev/start-dev.sh --clean
+./scripts/dev.ps1 -Clean
 ```
 
 ### After Adding New Packages
-```bash
-./scripts/dev/start-dev.sh --webadmin
+```powershell
+./scripts/dev.ps1 -WebAdmin
 ```
 
 ### Container Conflicts
-```bash
+```powershell
 # Symptom: Containers already exist or port conflicts
 docker compose down --volumes --remove-orphans
-./scripts/dev/start-dev.sh --clean
+./scripts/dev.ps1 -Clean
 ```
 
 ### Next.js Build Issues / Stale Builds
-```bash
-./scripts/dev/start-dev.sh --webadmin
+```powershell
+./scripts/dev.ps1 -WebAdmin
 ```
 
 ### WebAdmin Not Starting
-```bash
+```powershell
 # Check logs
 docker compose -f docker-compose.yml -f docker-compose.dev.yml logs webadmin
 
 # Common causes:
 # 1. Port 3000 already in use
 # 2. Missing environment variables in .env
-# 3. Node modules corruption (use --clean)
+# 3. Node modules corruption (use -Clean)
 ```
 
 ### Hot Reload Not Working
-```bash
+```powershell
 # Verify file mounting
 docker compose -f docker-compose.yml -f docker-compose.dev.yml exec webadmin ls -la /app/WebAdmin/
 
 # Clean host build artifacts (container has isolated .next)
-rm -rf WebAdmin/.next
-./scripts/dev/start-dev.sh --webadmin
+Remove-Item -Recurse -Force WebAdmin/.next
+./scripts/dev.ps1 -WebAdmin
 ```
 
 ---
@@ -212,10 +225,6 @@ dotnet test --filter "FullyQualifiedName=ConduitLLM.Tests.TestClassName.TestMeth
 dotnet build ConduitLLM.Gateway    # Gateway API
 dotnet build ConduitLLM.Admin   # Admin API
 
-# SDKs
-cd SDKs/Node/Admin && npm run build
-cd SDKs/Node/Core && npm run build
-cd SDKs/Node/Common && npm run build
 ```
 
 ## Incremental Development Rules
@@ -223,7 +232,7 @@ cd SDKs/Node/Common && npm run build
 1. **NEVER make more than 3-5 file changes without verifying**
 2. **ALWAYS verify after ANY changes:**
    - WebAdmin: `npm run lint` and `npm run type-check` ONLY
-   - Backend/SDKs: Use build commands above
+   - Backend: Use build commands above
 3. **Fix ALL errors immediately** - do not accumulate technical debt
 4. **Never commit code that doesn't verify cleanly**
 
@@ -233,7 +242,6 @@ cd SDKs/Node/Common && npm run build
 2. Verify immediately:
    - **WebAdmin**: `npm run lint` && `npm run type-check`
    - **Backend**: `dotnet build`
-   - **SDKs**: `npm run build` in SDK directory
 3. Test changes:
    - API changes: Test with Swagger UI or curl
    - UI changes: Verify in browser with dev tools open
@@ -322,7 +330,16 @@ if (isMetricsData(event.data)) {
 - Use standard EF Core workflow: `dotnet ef migrations add` → `dotnet ef database update`
 - PostgreSQL syntax only (double quotes for identifiers, `true`/`false` booleans)
 - Test tooling first: `dotnet ef --version`
-- See `docs/architecture/patterns/repository-and-data-access.md` for best practices
+- **Expand/contract policy**: migrations must be backward-compatible with the previous
+  release's code; destructive steps (drop/rename) ship one release later, after no
+  deployed code references the old shape
+- Normal services never apply schema changes. The explicit `migrate` CLI verb is
+  the release gate; runtime `CONDUIT_MIGRATION_MODE` supports `Wait` (default) or
+  `Skip` — see
+  [`migration-deployment-strategy.md`](docs/operations/deployment/migration-deployment-strategy.md)
+- Repository interfaces and implementations live in
+  `Shared/ConduitLLM.Configuration/Interfaces/` and
+  `Shared/ConduitLLM.Configuration/Repositories/`; follow the neighboring patterns
 
 ### Common Mistakes
 - ❌ SQL Server syntax: `IsActive = 1`
@@ -345,28 +362,17 @@ if (isMetricsData(event.data)) {
 - **ProviderKeyCredential Entity**: API keys with ProviderAccountGroup for account separation
 - **ModelProviderMapping**: Links model aliases to Provider.Id (NOT ProviderType!)
 - **ModelCost**: Flexible cost configs via ModelCostMapping
+- **Provider key resilience**: Fatal credential/account errors disable keys, not healthy sibling
+  capacity. See [ADR 0003](docs/decisions/0003-provider-key-auto-disable-policy.md) and the
+  [operator runbook](docs/operations/provider-key-auto-disable.md).
 
-### Available Provider Types
-```csharp
-public enum ProviderType
-{
-    OpenAI = 1,
-    Groq = 2,
-    Replicate = 3,
-    Fireworks = 4,
-    OpenAICompatible = 5,
-    MiniMax = 6,
-    Ultravox = 7,
-    ElevenLabs = 8,     // Audio provider
-    Cerebras = 9,       // High-performance inference
-    SambaNova = 10      // Ultra-fast inference
-}
-```
+> Provider types live in the `ProviderType` enum (`Shared/ConduitLLM.Configuration`) — read it for the current set.
 
-**Documentation:**
-- `docs/architecture/provider-system/provider-architecture.md` - Detailed architecture
-- `docs/architecture/provider-system/model-and-cost-mapping.md` - Cost configuration
-- `docs/architecture/provider-system/provider-system-analysis.md` - System analysis
+**References:**
+- [`docs/concepts.md`](docs/concepts.md) - Provider and model mental model
+- [`docs/routing.md`](docs/routing.md) - Provider selection, failover, and session affinity
+- `Shared/ConduitLLM.Configuration/ProviderService.cs` and
+  `Shared/ConduitLLM.Providers/DatabaseAwareLLMClientFactory.cs` - Current implementation
 
 ## Security & Authentication
 
@@ -380,6 +386,15 @@ public enum ProviderType
 - Server-to-server communication only
 - NOT for end-users or client applications
 - Configured on WebAdmin service
+
+### Health Monitoring Key
+**CONDUIT_HEALTH_MONITORING_KEY**:
+- Used by external monitoring services (BetterStack, Pingdom, etc.) to access health endpoints
+- Passed via `X-Conduit-Health-Key` header
+- Private network requests (10.x, 172.16-31.x, 192.168.x, 127.x) don't require this key
+- External requests without valid key receive `404 Not Found`
+- See [`docs/monitoring.md`](docs/monitoring.md#securing-the-health-endpoints) for
+  configuration details
 
 ## WebAdmin API Architecture
 
@@ -397,7 +412,8 @@ public enum ProviderType
 - ❌ **Never** create SDK clients directly with `new ConduitAdminClient()`
 - ❌ **Never** expose master keys to clients
 
-**Full guide:** `docs/development/API-PATTERNS-BEST-PRACTICES.md`
+**Source of truth:** `WebAdmin/src/lib/server/api-client-config.ts` and the route examples
+under `WebAdmin/src/app/api/`
 
 ## Media Storage & Cleanup
 
@@ -407,7 +423,7 @@ public enum ProviderType
 - Development: S3-compatible storage (configure in .env)
 - Production: AWS S3 or Cloudflare R2
 - **MUST** configure storage provider in Admin API for automatic cleanup
-- See `docs/CRITICAL-Media-Cleanup-Configuration.md`
+- See `docs/operations/deployment/media-cleanup-configuration.md`
 
 ### Cloudflare R2 Specifics
 - Automatic detection based on service URL
@@ -418,74 +434,63 @@ public enum ProviderType
 
 ## Event-Driven Architecture
 
-- **MassTransit** for event processing with RabbitMQ
-- Supports in-memory (dev) or RabbitMQ (production)
-- Events ensure cache consistency and eliminate race conditions
-- Virtual Key events partitioned by key ID for ordered processing
+- **Publish/consume through the Conduit-owned `IEventBus` / `IEventHandler<T>` abstraction**
+  (`ConduitLLM.Configuration.Messaging`), NOT transport types directly. Inject `IEventBus`
+  to publish; implement `IEventHandler<TEvent>` (handler context is `IEventContext`) to consume.
+- The abstraction runs on **Wolverine over the PostgreSQL transport + outbox** in both dev and
+  production — it reuses `DATABASE_URL`; there is no separate message broker to run. The former
+  MassTransit/RabbitMQ backend was removed after the Wolverine cutover (epic #909); selecting
+  `MassTransit` fails boot with a pointer to Wolverine (`MessagingBackend.cs`).
+- Events ensure cache consistency and eliminate race conditions; spend ordering uses a
+  strict-ordering listener (one node, sequential handling), webhook retry is scheduled delivery.
+- The 4 tuned endpoints are described as data in `ConduitEndpointPolicies` (retry,
+  circuit-breaker, rate-limit, ordering), translated to Wolverine by `WolverineEndpointPolicy`.
 
-**See:** `docs/architecture/media-generation/async-media-generation.md`
+**See:** `docs/configuration.md` (messaging section) and
+`Shared/ConduitLLM.Configuration/Messaging/`
 
 ## Real-Time Updates
 
 - **SignalR** provides real-time updates via WebSockets
 - Redis backplane for horizontal scaling
 - Falls back to polling if WebSocket fails
-- Hubs: navigation-state, video-generation, image-generation
+- Specialized hubs for content-generation, task-tracking, spend-notifications, virtual-key-management, webhook-delivery, and others
+- Observability hubs (metrics, health-monitoring, security-monitoring, usage-analytics) were removed — Prometheus/Grafana owns that surface
+- Hub source: `Services/ConduitLLM.Gateway/Hubs/`
 
-**See:** `docs/architecture/real-time/streaming-and-websockets.md`
+**See:** [`docs/monitoring.md`](docs/monitoring.md#real-time-event-streams) and
+[`docs/configuration.md`](docs/configuration.md#reliable-signalr-queue-delivery)
 
 ## High-Throughput Configuration
 
-- RabbitMQ: 1,000+ async tasks per minute
-- Settings: 25 prefetch, 30 partitions, 50 concurrent messages
+- Messaging throughput is tuned per endpoint via `ConduitEndpointPolicies` (concurrency
+  limits, partition-key ordering, retries) — queues live in PostgreSQL, no broker to scale
 - HTTP client pooling: 50 connections per server
 - Circuit breakers and rate limiting
-
-**See:** `docs/operations/infrastructure/rabbitmq-scaling.md`
 
 ---
 
 # Documentation Index
 
-## Core Development Guides
-- **[API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)** - WebAdmin API patterns, SDK usage, error handling
-- **[LLM Client Factory Guide](docs/development/llm-client-factory-guide.md)** - Provider client creation patterns
-- **[Development Documentation](docs/development/README.md)** - Development guides index
+The documentation starts at **[docs/README.md](docs/README.md)**. Current entry points:
 
-## Architecture Documentation
-- **[Architecture Overview](docs/architecture/README.md)** - Complete architecture index
-- **[Provider System](docs/architecture/provider-system/provider-architecture.md)** - Provider design, multi-instance support
-- **[Model & Cost Mapping](docs/architecture/provider-system/model-and-cost-mapping.md)** - Cost tracking details
-- **[Streaming & WebSockets](docs/architecture/real-time/streaming-and-websockets.md)** - Real-time communication, SSE
-- **[Webhook Delivery](docs/architecture/real-time/webhook-delivery.md)** - Distributed delivery, circuit breakers
-- **[Async Media Generation](docs/architecture/media-generation/async-media-generation.md)** - Event-driven image/video
-- **[Background Services](docs/architecture/patterns/background-services-and-workers.md)** - Worker patterns, distributed locking
-- **[Repository & Data Access](docs/architecture/patterns/repository-and-data-access.md)** - EF Core best practices
-- **[DTO Guidelines](docs/architecture/data-transfer/dto-guidelines.md)** - Data transfer patterns
-- **[Scaling Architecture](docs/architecture/infrastructure/scaling-architecture.md)** - 10,000+ concurrent sessions
+| Topic | Start Here |
+|-------|------------|
+| Core concepts | [docs/concepts.md](docs/concepts.md) — APIs, core objects, request and spend flow |
+| Configuration | [docs/configuration.md](docs/configuration.md) — Deploy-time and runtime settings |
+| Model routing | [docs/routing.md](docs/routing.md) — Selection, failover, affinity, and controls |
+| Monitoring | [docs/monitoring.md](docs/monitoring.md) — Health, metrics, streams, and alerts |
+| API route maps | [Gateway namespaces](docs/api-guides/gateway-route-namespaces.md) and [Admin routes](docs/api-guides/admin-api-routing-map.md) |
+| Operations | [Provider keys](docs/operations/provider-key-auto-disable.md), [rate limiting](docs/operations/rate-limiting.md), and [messaging](docs/operations/messaging-throughput.md) |
+| Versioning | [docs/Versioning.md](docs/Versioning.md) — Release and package version scheme |
 
-## Operations & Deployment
-- **[Operations Documentation](docs/operations/README.md)** - Operations index
-- **[SignalR Configuration](docs/operations/signalr/configuration.md)** - Real-time updates, Redis backplane
-- **[RabbitMQ Scaling](docs/operations/infrastructure/rabbitmq-scaling.md)** - 1,000+ tasks/min configuration
-- **[Redis Resilience](docs/operations/infrastructure/redis-resilience.md)** - Configuration and failover
-- **[PostgreSQL Scaling](docs/operations/infrastructure/postgresql-scaling.md)** - Database scaling
-- **[HTTP Connection Pooling](docs/operations/infrastructure/http-connection-pooling.md)** - Connection optimization
-- **[Provider Health Monitoring](docs/operations/providers/health-monitoring.md)** - Provider status tracking
-- **[Provider Usage Mappings](docs/operations/providers/usage-mappings.md)** - Usage tracking config
-- **[Deployment Configuration](docs/operations/deployment/DEPLOYMENT-CONFIGURATION.md)** - Production guide
-- **[Docker Optimization](docs/operations/deployment/docker-optimization.md)** - Container optimization
-
-## Media & Storage
-- **[Media Cleanup Configuration](docs/CRITICAL-Media-Cleanup-Configuration.md)** - ⚠️ CRITICAL - S3/R2 cleanup requirements
-
-## API Integration Guides
-- **[API Guides Index](docs/api-guides/README.md)** - API integration documentation
-- **[Gateway API Getting Started](docs/api-guides/core/getting-started.md)** - Gateway API usage
-- **[Admin API Getting Started](docs/api-guides/admin/getting-started.md)** - Admin API usage
-- **[SignalR Getting Started](docs/api-guides/signalr/getting-started.md)** - Real-time integration
-- **[SDK Best Practices](docs/api-guides/sdk/best-practices.md)** - SDK usage patterns
-- **[Next.js Integration](docs/api-guides/sdk/nextjs-integration.md)** - WebAdmin SDK integration
+### Frequently Referenced Docs
+- **[Core Concepts](docs/concepts.md)** — Provider, model, key, mapping, and request flow
+- **[Configuration](docs/configuration.md)** — Environment and Admin-managed settings
+- **[Model Routing](docs/routing.md)** — Candidate selection and failover
+- **[Monitoring](docs/monitoring.md)** — Health endpoints, metrics, streams, and alerting
+- **[Media Cleanup](docs/operations/deployment/media-cleanup-configuration.md)** — S3/R2 cleanup (CRITICAL)
+- **[Messaging Throughput](docs/operations/messaging-throughput.md)** — Queue limits and tuning
 
 ---
 
@@ -514,6 +519,6 @@ public enum ProviderType
 
 ## Repository Information
 
-- **GitHub Repository**: knnlabs/Conduit
-- **Issues URL**: https://github.com/knnlabs/Conduit/issues
-- **Pull Requests URL**: https://github.com/knnlabs/Conduit/pulls
+- **GitHub Repository**: nickna/Conduit
+- **Issues URL**: https://github.com/nickna/Conduit/issues
+- **Pull Requests URL**: https://github.com/nickna/Conduit/pulls

@@ -2,9 +2,13 @@ using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Gateway.Constants;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
+using ConduitLLM.Tests.Http.Middleware.Helpers;
 using Moq;
 using Xunit;
 
@@ -33,7 +37,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.10m); // Base token cost
 
             // Act
-            await Invoker
+            await WithGroqEvidence(new ProviderToolUsageItem
+                {
+                    ToolName = "code_interpreter",
+                    Count = 3
+                })
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -63,7 +71,9 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.15m);
 
             // Act
-            await Invoker
+            await WithGroqEvidence(
+                    new ProviderToolUsageItem { ToolName = "code_interpreter", Count = 2 },
+                    new ProviderToolUsageItem { ToolName = "browser_search", Count = 2 })
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -78,7 +88,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
-        public async Task ProcessResponseAsync_WithMissingToolConfig_LogsWarningEvent()
+        public async Task TypedAccounting_WithMissingToolConfig_MarksRequestIndeterminate()
         {
             // Arrange - No tool configuration in database
             var context = new HttpContextBuilder()
@@ -91,17 +101,21 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0m); // Zero base cost to trigger zero cost path
 
             // Act
-            await Invoker
+            await WithGroqEvidence(new ProviderToolUsageItem
+                {
+                    ToolName = "code_interpreter",
+                    Count = 3
+                })
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
             // Assert
-            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
-            Assert.Equal(BillingAuditEventType.ToolUsageMissingCostConfig, billingEvent.EventType);
-            Assert.NotNull(billingEvent.ToolUsageJson);
-            Assert.Contains("code_interpreter", billingEvent.ToolUsageJson);
-            Assert.Equal(0m, billingEvent.ToolUsageCost);
-            Assert.Contains("Tool usage detected but no cost configuration found", billingEvent.FailureReason);
+            Fixture.BatchSpendService.Verify(
+                service => service.QueueSpendUpdateAsync(It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<DateTime?>()),
+                Times.Never);
+            Assert.True(context.GetRequestAccountingSnapshot()!.IsIndeterminate);
+            Assert.Contains(Fixture.CapturedBillingEvents,
+                billingEvent => billingEvent.EventType == BillingAuditEventType.UnexpectedError);
         }
 
         [Fact]
@@ -118,7 +132,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             Fixture.SetupDefaultCost(0.10m);
 
             // Act
-            await Invoker
+            await WithGroqEvidence()
                 .WithTestResponseBodyDelegate()
                 .InvokeWithRealToolServiceAsync(context);
 
@@ -128,6 +142,86 @@ namespace ConduitLLM.Tests.Http.Middleware
             Assert.Null(billingEvent.ToolUsageJson);
             Assert.Null(billingEvent.ToolUsageCost);
             Assert.Equal(0.10m, billingEvent.CalculatedCost);
+        }
+
+        [Fact]
+        public async Task ProcessResponseAsync_NonStreamingChat_BillsAgenticFunctionCost()
+        {
+            // Arrange - non-streaming chat request where the controller executed agentic functions
+            // (e.g. Exa/Tavily search) and stored the total function cost in HttpContext.Items.
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(123)
+                .AsGroq()
+                .WithItem("ChatFunctionCost", 0.05m)
+                .WithTestResponseBody(CreateGroqResponseWithoutToolUsage())
+                .Build();
+
+            Fixture.SetupDefaultCost(0.10m); // base token cost
+
+            // Act
+            await WithGroqEvidence()
+                .WithTestResponseBodyDelegate()
+                .InvokeWithRealToolServiceAsync(context);
+
+            // Assert - total billed cost must include the function-execution cost (0.10 tokens + 0.05 functions).
+            // Previously the non-streaming path ignored ChatFunctionCost, billing only 0.10.
+            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
+            Assert.Equal(BillingAuditEventType.UsageTracked, billingEvent.EventType);
+            Assert.Equal(0.15m, billingEvent.CalculatedCost);
+        }
+
+        [Fact]
+        public async Task ProcessResponseAsync_NonStreamingChat_WithoutFunctionCost_BillsTokensOnly()
+        {
+            // Arrange - no ChatFunctionCost in Items; billing must be unaffected by the new logic.
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(123)
+                .AsGroq()
+                .WithTestResponseBody(CreateGroqResponseWithoutToolUsage())
+                .Build();
+
+            Fixture.SetupDefaultCost(0.10m);
+
+            // Act
+            await WithGroqEvidence()
+                .WithTestResponseBodyDelegate()
+                .InvokeWithRealToolServiceAsync(context);
+
+            // Assert
+            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
+            Assert.Equal(0.10m, billingEvent.CalculatedCost);
+        }
+
+        [Fact]
+        public async Task ProcessResponseAsync_AgenticChat_PricesEachProviderCallSeparately()
+        {
+            var providerCalls = new List<ProviderCallUsage>
+            {
+                new() { Iteration = 1, Usage = new Usage { PromptTokens = 100 } },
+                new() { Iteration = 2, Usage = new Usage { PromptTokens = 250 } }
+            };
+            var context = new HttpContextBuilder()
+                .ForChatCompletions()
+                .WithVirtualKey(123)
+                .AsGroq()
+                .WithItem("ChatProviderCalls", providerCalls)
+                .WithTestResponseBody(CreateGroqResponseWithoutToolUsage())
+                .Build();
+
+            Fixture.CostService
+                .Setup(service => service.CalculateCostAsync(
+                    It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((string _, Usage usage, CancellationToken _) =>
+                    usage.PromptTokens.GetValueOrDefault() / 1000m);
+
+            await WithGroqEvidence().WithTestResponseBodyDelegate().InvokeWithRealToolServiceAsync(context);
+
+            var billingEvent = UsageTrackingAssertions.VerifySingleBillingEvent(Fixture.CapturedBillingEvents);
+            Assert.Equal(0.35m, billingEvent.CalculatedCost);
+            Fixture.CostService.Verify(service => service.CalculateCostAsync(
+                It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
 
         [Fact]
@@ -176,6 +270,20 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         #region Helper Methods for Tool Usage Tests
+
+        private MiddlewareInvoker WithGroqEvidence(params ProviderToolUsageItem[] tools)
+        {
+            var invoker = Invoker.WithProviderUsage(
+                "llama-3.1-70b-versatile",
+                new Usage
+                {
+                    PromptTokens = 100,
+                    CompletionTokens = 50,
+                    TotalTokens = 150
+                });
+
+            return tools.Length == 0 ? invoker : invoker.WithProviderToolUsage(tools);
+        }
 
         private static string CreateGroqResponseWithToolUsage(string toolName, int count)
         {

@@ -1,6 +1,6 @@
 using System.Net;
 using ConduitLLM.Core.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace ConduitLLM.Tests.Providers
@@ -40,12 +40,14 @@ namespace ConduitLLM.Tests.Providers
         }
 
         [Fact]
-        public void ErrorThresholdConfiguration_InvalidApiKey_HasImmediateDisable()
+        public void ErrorThresholdConfiguration_InvalidApiKey_RequiresTwoDistinctRequests()
         {
-            // Verify InvalidApiKey has immediate disable policy
+            // A single provider auth incident must not permanently disable a valid key.
             var policy = ErrorThresholdConfiguration.FatalErrorPolicies[ProviderErrorType.InvalidApiKey];
             
-            policy.DisableImmediately.Should().BeTrue();
+            policy.DisableImmediately.Should().BeFalse();
+            policy.RequiredOccurrences.Should().Be(2);
+            policy.TimeWindow.Should().Be(System.TimeSpan.FromSeconds(60));
             policy.RequiresManualReenable.Should().BeTrue();
         }
 

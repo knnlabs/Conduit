@@ -42,8 +42,19 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         public string AppVersion { get; set; } = string.Empty;
 
         /// <summary>
-        /// Build date
+        /// Source commit used for the build.
         /// </summary>
+        public string CommitSha { get; set; } = "dev";
+
+        /// <summary>
+        /// UTC build timestamp, or <c>unknown</c> for a local development build.
+        /// </summary>
+        public string BuildTimestamp { get; set; } = "unknown";
+
+        /// <summary>
+        /// Legacy parsed build date. Prefer <see cref="BuildTimestamp"/>.
+        /// </summary>
+        [Obsolete("Use BuildTimestamp.")]
         public DateTime? BuildDate { get; set; }
     }
 
@@ -99,9 +110,9 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         public string Size { get; set; } = string.Empty;
 
         /// <summary>
-        /// Number of tables in the database
+        /// Number of tables in the database, or null when it could not be determined
         /// </summary>
-        public int TableCount { get; set; }
+        public int? TableCount { get; set; }
     }
 
     /// <summary>
@@ -123,6 +134,12 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         /// Total process uptime
         /// </summary>
         public TimeSpan Uptime { get; set; }
+
+        /// <summary>
+        /// Customer error visibility mode (CONDUIT_CUSTOMER_MODE): "Internal" exposes raw
+        /// provider error details to API clients, "External" (default) sanitizes them.
+        /// </summary>
+        public string CustomerMode { get; set; } = "External";
     }
 
     /// <summary>
@@ -138,7 +155,10 @@ namespace ConduitLLM.Configuration.DTOs.Monitoring
         /// <summary>
         /// Number of request logs
         /// </summary>
-        public int Requests { get; set; }
+        [Obsolete("Request log counting is intentionally omitted because it is expensive.")]
+        [System.Text.Json.Serialization.JsonIgnore(
+            Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        public int? Requests { get; set; }
 
         /// <summary>
         /// Number of global settings

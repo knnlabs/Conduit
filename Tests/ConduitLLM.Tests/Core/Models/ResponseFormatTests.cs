@@ -2,7 +2,7 @@ using System.Text.Json;
 
 using ConduitLLM.Core.Models;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Xunit.Abstractions;
 
@@ -208,6 +208,53 @@ namespace ConduitLLM.Tests.Core.Models
             // Assert
             json.Should().Contain("\"type\":\"test\"");
             json.Should().NotContain("\"Type\"");
+        }
+
+        [Fact]
+        public void WithJsonSchema_FactoryMethod_CreatesJsonSchemaFormat()
+        {
+            // Arrange
+            var schema = JsonDocument.Parse("{\"type\":\"object\"}").RootElement;
+
+            // Act
+            var format = ResponseFormat.WithJsonSchema("my_schema", schema, strict: true);
+
+            // Assert
+            format.Type.Should().Be("json_schema");
+            format.JsonSchema.Should().NotBeNull();
+            format.JsonSchema!.Name.Should().Be("my_schema");
+            format.JsonSchema.Strict.Should().BeTrue();
+        }
+
+        [Fact]
+        public void JsonSerialization_WithJsonSchema_ProducesSchemaPayload()
+        {
+            // Arrange
+            var schema = JsonDocument.Parse("{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"number\"}}}").RootElement;
+            var format = ResponseFormat.WithJsonSchema("my_schema", schema, strict: true);
+
+            // Act
+            var json = JsonSerializer.Serialize(format);
+
+            // Assert
+            json.Should().Contain("\"type\":\"json_schema\"");
+            json.Should().Contain("\"json_schema\":{");
+            json.Should().Contain("\"name\":\"my_schema\"");
+            json.Should().Contain("\"strict\":true");
+            json.Should().Contain("\"schema\":{");
+        }
+
+        [Fact]
+        public void JsonSerialization_WithoutJsonSchema_OmitsJsonSchemaKey()
+        {
+            // Arrange — a plain json_object format has no schema payload
+            var format = ResponseFormat.Json();
+
+            // Act
+            var json = JsonSerializer.Serialize(format);
+
+            // Assert
+            json.Should().NotContain("json_schema");
         }
     }
 }

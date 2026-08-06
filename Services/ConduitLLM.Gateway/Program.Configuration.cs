@@ -1,7 +1,6 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ConduitLLM.Configuration;
-using ConduitLLM.Core.Converters;
+using ConduitLLM.Gateway.Options;
+using Microsoft.Extensions.Options;
 
 public partial class Program
 {
@@ -11,35 +10,39 @@ public partial class Program
         builder.Configuration.Sources.Clear();
         builder.Configuration.AddEnvironmentVariables();
 
-        // Database initialization strategy
-        // We use a flexible approach that works for both development and production
-        bool skipDatabaseInit = Environment.GetEnvironmentVariable("CONDUIT_SKIP_DATABASE_INIT") == "true";
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            GatewayJsonOptions.Configure(options.SerializerOptions));
 
-        if (skipDatabaseInit)
-        {
-            Console.WriteLine("[Conduit] WARNING: Skipping database initialization. Ensure database schema is up to date.");
-        }
-        else
-        {
-            Console.WriteLine("[Conduit] Database will be initialized automatically.");
-        }
-
-        // Configure JSON options for snake_case serialization (OpenAI compatibility)
-        var jsonSerializerOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            Converters = { new UtcDateTimeConverter(), new NullableUtcDateTimeConverter() }
-        };
-
-        // Store JsonSerializerOptions in the builder's services for later use
-        builder.Services.AddSingleton(jsonSerializerOptions);
+        // Surface request-binding failures as BadHttpRequestException so OpenAIErrorMiddleware can
+        // answer with the OpenAI error envelope. Without this, a malformed or incomplete body returns
+        // a bare 400 with an empty body, which is not a valid OpenAI-compatible error response (#1191).
+        builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
+        builder.Services.AddSingleton(services =>
+            services
+                .GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>()
+                .Value
+                .SerializerOptions);
 
         // 1. Configure Conduit Settings
         builder.Services.AddOptions<ConduitSettings>()
             .Bind(builder.Configuration.GetSection("Conduit"))
             .ValidateDataAnnotations(); // Add validation if using DataAnnotations in settings classes
 
-        // Database settings loading removed - provider configuration is now entirely database-driven
+        builder.Services.AddOptions<UsageTrackingOptions>()
+            .Bind(builder.Configuration.GetSection("UsageTracking"))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        builder.Services.Configure<HostOptions>(options =>
+        {
+            var shutdownSeconds = builder.Configuration.GetValue<int?>(
+                "UsageTracking:GracefulShutdownSeconds") ?? 45;
+            options.ShutdownTimeout = TimeSpan.FromSeconds(shutdownSeconds);
+        });
+
+        builder.Services.AddOptions<BillingAdmissionOptions>()
+            .Bind(builder.Configuration.GetSection(BillingAdmissionOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
     }
 }

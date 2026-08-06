@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Table,
   ScrollArea,
@@ -30,13 +31,11 @@ import {
   IconStairs,
   IconVideo,
   IconPhoto,
-  IconMicrophone,
-  IconLetterT,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { useModelCostsApi } from '../hooks/useModelCostsApi';
+import { fetchModelCostById, fetchModelCosts, useDeleteModelCost } from '../hooks/useModelCostsApi';
 import { ModelCost } from '../types/modelCost';
-import { PricingModel, ModelType } from '@knn_labs/conduit-admin-client';
+import { PricingModel, ModelType } from '@/lib/admin-api';
 import { EditModelCostModalV2 } from './EditModelCostModalV2';
 import { ViewModelCostModal } from './ViewModelCostModal';
 import { formatters } from '@/lib/utils/formatters';
@@ -50,18 +49,25 @@ interface ModelCostsTableProps {
 }
 
 export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: ModelCostsTableProps) {
-  const queryClient = useQueryClient();
-  const { fetchModelCosts, deleteModelCost } = useModelCostsApi();
-  
+  const deleteMutation = useDeleteModelCost();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedCostId = useMemo(() => {
+    const value = searchParams.get('view');
+    if (!value) return null;
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
+
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
-  
+
   // Filter state
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<string | null>('true');
   const [modelTypeFilter, setModelTypeFilter] = useState<ModelType | null>(null);
-  
+
   // Modal state
   const [editingCost, setEditingCost] = useState<ModelCost | null>(null);
   const [viewingCost, setViewingCost] = useState<ModelCost | null>(null);
@@ -78,19 +84,32 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       modelType: modelTypeFilter ?? undefined,
     }),
   });
-
-  // Delete mutation
-  const deleteMutation = useMutation({
-    mutationFn: deleteModelCost,
-    onSuccess: () => {
-      // Invalidate all model-costs queries regardless of their parameters
-      void queryClient.invalidateQueries({ 
-        queryKey: ['model-costs'],
-        exact: false 
-      });
-      onRefresh?.();
+  const { data: requestedCost } = useQuery({
+    queryKey: ['model-costs', 'detail', requestedCostId],
+    queryFn: () => {
+      if (requestedCostId === null) {
+        throw new Error('A model cost ID is required');
+      }
+      return fetchModelCostById(requestedCostId);
     },
+    enabled: requestedCostId !== null,
   });
+
+  useEffect(() => {
+    if (requestedCost) {
+      setViewingCost(requestedCost);
+    }
+  }, [requestedCost]);
+
+  const closeViewingCost = () => {
+    setViewingCost(null);
+    if (requestedCostId !== null) {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.delete('view');
+      const queryString = nextParams.toString();
+      router.replace(queryString ? `/model-costs?${queryString}` : '/model-costs', { scroll: false });
+    }
+  };
 
   // Enrich model costs with provider information
   const { enrichedCosts, isLoading: enrichmentLoading } = useEnrichedModelCosts(data?.items);
@@ -148,8 +167,6 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
       [PricingModel.InferenceSteps]: { label: 'Steps', color: 'teal', icon: <IconStairs size={14} /> },
       [PricingModel.TieredTokens]: { label: 'Tiered', color: 'orange' },
       [PricingModel.PerImage]: { label: 'Per Image', color: 'pink', icon: <IconPhoto size={14} /> },
-      [PricingModel.PerMinuteAudio]: { label: 'Per Minute', color: 'cyan', icon: <IconMicrophone size={14} /> },
-      [PricingModel.PerThousandCharacters]: { label: 'Per 1K Chars', color: 'lime', icon: <IconLetterT size={14} /> },
       [PricingModel.RulesBased]: { label: 'Rules-Based', color: 'blue', icon: <IconAdjustments size={14} /> },
     };
     
@@ -187,27 +204,9 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
         </Stack>
       );
     }
-    if (cost.imageCostPerImage !== undefined) {
-      const hasMultipliers = cost.imageQualityMultipliers && 
-        cost.imageQualityMultipliers !== '{}';
-      
-      return (
-        <Group gap="xs">
-          <Text size="xs">{formatters.currency(cost.imageCostPerImage, { currency: 'USD' })}/image</Text>
-          {hasMultipliers && (
-            <Tooltip label="Has quality multipliers">
-              <IconAdjustments size={14} />
-            </Tooltip>
-          )}
-        </Group>
-      );
-    }
-    if (cost.imageCostPerImage !== undefined) {
-      return <Text size="xs">{formatters.currency(cost.imageCostPerImage, { currency: 'USD' })}/image</Text>;
-    }
-    if (cost.videoCostPerSecond !== undefined) {
-      return <Text size="xs">{formatters.currency(cost.videoCostPerSecond, { currency: 'USD' })}/second</Text>;
-    }
+    // Image, video, and inference-step pricing were removed from ModelCostDto as flat fields in
+    // #1038 (now carried in pricingConfiguration, which this table does not parse). Those summary
+    // branches are dropped; the pricingConfiguration fallback below flags such rows as configured.
     if (cost.costPerSearchUnit !== undefined) {
       return (
         <Stack gap={2}>
@@ -218,17 +217,8 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
         </Stack>
       );
     }
-    if (cost.costPerInferenceStep !== undefined) {
-      return (
-        <Stack gap={2}>
-          <Text size="xs">
-            Steps: {formatters.currency(cost.costPerInferenceStep, { currency: 'USD', precision: 4 })}/step
-          </Text>
-          {cost.defaultInferenceSteps && (
-            <Badge size="xs" variant="light" color="teal">Default: {cost.defaultInferenceSteps} steps</Badge>
-          )}
-        </Stack>
-      );
+    if (cost.pricingConfiguration && cost.pricingConfiguration !== '{}') {
+      return <Badge size="xs" variant="light" color="teal">Configured</Badge>;
     }
     return <Text size="xs" c="dimmed">No pricing set</Text>;
   };
@@ -383,11 +373,8 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
                               <IconSearch size={14} style={{ opacity: 0.7 }} />
                             </Tooltip>
                           )}
-                          {cost.costPerInferenceStep && (
-                            <Tooltip label="Step-based pricing">
-                              <IconStairs size={14} style={{ opacity: 0.7 }} />
-                            </Tooltip>
-                          )}
+                          {/* Step-based pricing indicator removed: costPerInferenceStep is no longer
+                              a flat field on ModelCostDto (#1038); it lives in pricingConfiguration. */}
                         </Group>
                       </Table.Td>
                       <Table.Td>
@@ -488,7 +475,7 @@ export function ModelCostsTable({ onRefresh, hasProviders, hasModelMappings }: M
         <ViewModelCostModal
           isOpen={!!viewingCost}
           modelCost={viewingCost}
-          onClose={() => setViewingCost(null)}
+          onClose={closeViewingCost}
         />
       )}
     </>

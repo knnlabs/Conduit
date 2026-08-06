@@ -44,7 +44,7 @@ namespace ConduitLLM.Core.Models
         /// Some providers also support other formats like "base64" or "integer".
         /// </remarks>
         [JsonPropertyName("encoding_format")]
-        public required string EncodingFormat { get; set; } = "float";
+        public string? EncodingFormat { get; set; } = "float";
 
         /// <summary>
         /// The number of dimensions the resulting output embeddings should have.

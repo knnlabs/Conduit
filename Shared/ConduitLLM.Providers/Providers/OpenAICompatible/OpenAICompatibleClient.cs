@@ -1,5 +1,7 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Exceptions;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 // Use aliases to avoid ambiguities
@@ -52,11 +54,19 @@ namespace ConduitLLM.Providers.OpenAICompatible
             ILogger logger,
             IHttpClientFactory? httpClientFactory = null,
             string? providerName = null,
-            string? baseUrl = null,
-            ProviderDefaultModels? defaultModels = null)
-            : base(provider, primaryKeyCredential, providerModelId, logger, httpClientFactory, providerName, defaultModels)
+            string? baseUrl = null)
+            : base(provider, primaryKeyCredential, providerModelId, logger, httpClientFactory, providerName)
         {
-            BaseUrl = baseUrl ?? "https://api.openai.com/v1";
+            BaseUrl = baseUrl ?? ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.OpenAICompatible)!;
+        }
+
+        protected override void ValidateCredentials()
+        {
+            if (string.IsNullOrWhiteSpace(PrimaryKeyCredential.ApiKey))
+            {
+                throw new ConfigurationException(
+                    $"API key is missing for provider '{ProviderName}'");
+            }
         }
     }
 }

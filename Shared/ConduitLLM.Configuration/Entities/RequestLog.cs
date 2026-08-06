@@ -1,12 +1,15 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+using ConduitLLM.Functions.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
 /// Represents a log of API requests made using a virtual key
 /// </summary>
-public class RequestLog
+public class RequestLog : IEntity<int>, IAuditEvent
 {
     /// <summary>
     /// Unique identifier for the request log
@@ -45,6 +48,16 @@ public class RequestLog
     [MaxLength(50)]
     public string? ProviderType { get; set; }
 
+    public int? ModelProviderMappingId { get; set; }
+    public bool PromptCachingEligible { get; set; }
+    public bool PromptCachingPolicyApplied { get; set; }
+    [Column(TypeName = "decimal(18, 8)")] public decimal CachedReadSavings { get; set; }
+    [Column(TypeName = "decimal(18, 8)")] public decimal CacheWritePremium { get; set; }
+    [NotMapped] public decimal PromptCachingNetSavings => CachedReadSavings - CacheWritePremium;
+    public bool RoutingAffinityUsed { get; set; }
+    [MaxLength(50)] public string? RoutingDecisionReason { get; set; }
+    public int RoutingFailoverCount { get; set; }
+
     /// <summary>
     /// Type of the request (chat, completion, embedding, etc.)
     /// </summary>
@@ -63,10 +76,47 @@ public class RequestLog
     public int OutputTokens { get; set; }
 
     /// <summary>
+    /// Number of input tokens read from cache. Null if caching was not used.
+    /// </summary>
+    public int? CachedInputTokens { get; set; }
+
+    /// <summary>
+    /// Number of tokens written to cache. Null if caching was not used.
+    /// </summary>
+    public int? CachedWriteTokens { get; set; }
+
+    /// <summary>
     /// Cost of the request
     /// </summary>
     [Column(TypeName = "decimal(10, 6)")]
     public decimal Cost { get; set; }
+
+    /// <summary>
+    /// How <see cref="Cost"/> was determined. Null (or ModelCost) means it was computed from the
+    /// configured ModelCost rates; ProviderReportedCost means it was billed from the provider's
+    /// reported per-request cost (times markup), which changes how refunds are calculated.
+    /// </summary>
+    public Enums.RequestBillingMethod? BillingMethod { get; set; }
+
+    /// <summary>
+    /// The raw provider-reported cost (USD, pre-markup) when the request was billed from provider
+    /// cost. Recorded for reconciliation/margin analysis; null for ModelCost-billed requests.
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? ProviderReportedCostUsd { get; set; }
+
+    /// <summary>
+    /// The provider-cost markup multiplier applied to <see cref="ProviderReportedCostUsd"/>.
+    /// Snapshotted at billing time so later provider configuration changes do not alter reconciliation.
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? ProviderCostMarkupMultiplier { get; set; }
+
+    /// <summary>
+    /// When the charge represented by this row occurred. Unlike <see cref="Timestamp"/>, this is
+    /// updated when an asynchronous operation is billed on completion and is null for unbilled rows.
+    /// </summary>
+    public DateTime? BilledAtUtc { get; set; }
 
     /// <summary>
     /// Response time in milliseconds

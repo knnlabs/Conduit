@@ -44,7 +44,5 @@ namespace ConduitLLM.Core.Exceptions
             ModelName = modelName;
         }
 
-        // TODO: Future enhancement - Add GetSimilarModels() method for suggestions using Levenshtein distance
-        // TODO: Future enhancement - Cache model list for faster validation
     }
 }

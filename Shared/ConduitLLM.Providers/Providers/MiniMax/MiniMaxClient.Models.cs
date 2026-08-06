@@ -246,10 +246,6 @@ namespace ConduitLLM.Providers.MiniMax
 
             [System.Text.Json.Serialization.JsonPropertyName("prompt_optimizer")]
             public bool PromptOptimizer { get; set; } = true;
-
-            [System.Text.Json.Serialization.JsonPropertyName("subject_reference")]
-            [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-            public List<object>? SubjectReference { get; set; }
         }
 
         private class MiniMaxImageGenerationResponse
@@ -322,21 +318,6 @@ namespace ConduitLLM.Providers.MiniMax
 
             [System.Text.Json.Serialization.JsonPropertyName("arguments")]
             public string Arguments { get; set; } = string.Empty;
-        }
-
-        private class MiniMaxVideoGenerationRequest
-        {
-            [System.Text.Json.Serialization.JsonPropertyName("model")]
-            public string Model { get; set; } = "video-01";
-
-            [System.Text.Json.Serialization.JsonPropertyName("prompt")]
-            public string Prompt { get; set; } = string.Empty;
-
-            [System.Text.Json.Serialization.JsonPropertyName("video_length")]
-            public int VideoLength { get; set; } = 6;
-
-            [System.Text.Json.Serialization.JsonPropertyName("resolution")]
-            public string Resolution { get; set; } = "1280x720";
         }
 
         private class MiniMaxVideoGenerationResponse

@@ -16,7 +16,14 @@
       "inputPricePerMillion": 0.05,
       "outputPricePerMillion": 0.08,
       "speedTokensPerSec": 560,
-      "notes": "Fast inference, 131K context window"
+      "notes": "Fast inference, 131K context window",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "llama-3.3-70b-versatile": {
       "name": "llama-3.3-70b-versatile",
@@ -34,7 +41,14 @@
       "inputPricePerMillion": 0.59,
       "outputPricePerMillion": 0.79,
       "speedTokensPerSec": 280,
-      "notes": "Versatile 70B model with 131K context"
+      "notes": "Versatile 70B model with 131K context",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "meta-llama/llama-guard-4-12b": {
       "name": "llama-guard-4-12b",
@@ -49,10 +63,18 @@
       "supportsVision": true,
       "supportsFunctionCalling": false,
       "supportsEmbeddings": false,
-      "inputPricePerMillion": 0.20,
-      "outputPricePerMillion": 0.20,
+      "inputPricePerMillion": 0.2,
+      "outputPricePerMillion": 0.2,
       "speedTokensPerSec": 1200,
-      "notes": "Multimodal content moderation, supports text and images (up to 5 images), max 20MB file size"
+      "notes": "Multimodal content moderation, supports text and images (up to 5 images), max 20MB file size",
+      "inputModalities": [
+        "text",
+        "image"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "openai/gpt-oss-120b": {
       "name": "gpt-oss-120b",
@@ -68,9 +90,16 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "inputPricePerMillion": 0.15,
-      "outputPricePerMillion": 0.60,
+      "outputPricePerMillion": 0.6,
       "speedTokensPerSec": 500,
-      "notes": "Browser search, code execution, reasoning capabilities"
+      "notes": "Browser search, code execution, reasoning capabilities",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "openai/gpt-oss-20b": {
       "name": "gpt-oss-20b",
@@ -86,9 +115,16 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "inputPricePerMillion": 0.075,
-      "outputPricePerMillion": 0.30,
+      "outputPricePerMillion": 0.3,
       "speedTokensPerSec": 1000,
-      "notes": "Faster, smaller variant with same capabilities"
+      "notes": "Faster, smaller variant with same capabilities",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "meta-llama/llama-4-maverick-17b-128e-instruct": {
       "name": "llama-4-maverick-17b-128e-instruct",
@@ -103,10 +139,18 @@
       "supportsVision": true,
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
-      "inputPricePerMillion": 0.20,
-      "outputPricePerMillion": 0.60,
+      "inputPricePerMillion": 0.2,
+      "outputPricePerMillion": 0.6,
       "speedTokensPerSec": 600,
-      "notes": "Preview: Multimodal MoE model, 17B parameters, 128 experts, vision support (up to 5 images)"
+      "notes": "Preview: Multimodal MoE model, 17B parameters, 128 experts, vision support (up to 5 images)",
+      "inputModalities": [
+        "text",
+        "image"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "meta-llama/llama-4-scout-17b-16e-instruct": {
       "name": "llama-4-scout-17b-16e-instruct",
@@ -124,7 +168,15 @@
       "inputPricePerMillion": 0.11,
       "outputPricePerMillion": 0.34,
       "speedTokensPerSec": 750,
-      "notes": "Preview: Multimodal MoE model, 17B parameters, 16 experts, vision support (up to 5 images)"
+      "notes": "Preview: Multimodal MoE model, 17B parameters, 16 experts, vision support (up to 5 images)",
+      "inputModalities": [
+        "text",
+        "image"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "meta-llama/llama-prompt-guard-2-22m": {
       "name": "llama-prompt-guard-2-22m",
@@ -142,7 +194,14 @@
       "inputPricePerMillion": 0.03,
       "outputPricePerMillion": 0.03,
       "speedTokensPerSec": null,
-      "notes": "Preview: Prompt injection and jailbreak detection, 22M parameters, multilingual"
+      "notes": "Preview: Prompt injection and jailbreak detection, 22M parameters, multilingual",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "meta-llama/llama-prompt-guard-2-86m": {
       "name": "llama-prompt-guard-2-86m",
@@ -160,7 +219,14 @@
       "inputPricePerMillion": 0.04,
       "outputPricePerMillion": 0.04,
       "speedTokensPerSec": null,
-      "notes": "Preview: Prompt injection and jailbreak detection, 86M parameters, 99.8% AUC jailbreak detection"
+      "notes": "Preview: Prompt injection and jailbreak detection, 86M parameters, 99.8% AUC jailbreak detection",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "moonshotai/kimi-k2-instruct-0905": {
       "name": "kimi-k2-instruct-0905",
@@ -175,10 +241,17 @@
       "supportsVision": false,
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
-      "inputPricePerMillion": 1.00,
-      "outputPricePerMillion": 3.00,
+      "inputPricePerMillion": 1,
+      "outputPricePerMillion": 3,
       "speedTokensPerSec": 200,
-      "notes": "Preview: 1T total parameters, 32B active, 256K context, MoE with 384 experts"
+      "notes": "Preview: 1T total parameters, 32B active, 256K context, MoE with 384 experts",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "openai/gpt-oss-safeguard-20b": {
       "name": "gpt-oss-safeguard-20b",
@@ -194,9 +267,16 @@
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
       "inputPricePerMillion": 0.075,
-      "outputPricePerMillion": 0.30,
+      "outputPricePerMillion": 0.3,
       "speedTokensPerSec": 1000,
-      "notes": "Preview: Safety classification specialist with reasoning, browser search, code execution"
+      "notes": "Preview: Safety classification specialist with reasoning, browser search, code execution",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "qwen/qwen3-32b": {
       "name": "qwen3-32b",
@@ -214,7 +294,14 @@
       "inputPricePerMillion": 0.29,
       "outputPricePerMillion": 0.59,
       "speedTokensPerSec": 400,
-      "notes": "Preview: Dual-mode reasoning (thinking/non-thinking), 32B parameters"
+      "notes": "Preview: Dual-mode reasoning (thinking/non-thinking), 32B parameters",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     }
   }
 }

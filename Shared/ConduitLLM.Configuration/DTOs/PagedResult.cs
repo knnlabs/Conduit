@@ -7,58 +7,69 @@ namespace ConduitLLM.Configuration.DTOs
     public class PagedResult<T>
     {
         /// <summary>
-        /// List of items for the current page
+        /// Items for the current page.
         /// </summary>
-        public List<T> Items { get; set; } = new List<T>();
+        public List<T> Data { get; set; } = new();
 
         /// <summary>
-        /// Total number of items across all pages
+        /// Pagination metadata.
         /// </summary>
-        public int TotalCount { get; set; }
+        public PaginationMetadata Pagination { get; set; } = new();
 
-        /// <summary>
-        /// Current page number (1-based)
-        /// </summary>
-        public int CurrentPage { get; set; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public List<T> Items { get => Data; set => Data = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int CurrentPage { get => Pagination.Page; set => Pagination.Page = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int PageSize { get => Pagination.PageSize; set => Pagination.PageSize = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int TotalCount { get => Pagination.TotalItems; set => Pagination.TotalItems = value; }
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int TotalPages { get => Pagination.TotalPages; set => Pagination.TotalPages = value; }
+    }
 
-        /// <summary>
-        /// Number of items per page
-        /// </summary>
+    /// <summary>
+    /// Canonical Admin API pagination metadata.
+    /// </summary>
+    public class PaginationMetadata
+    {
+        public int Page { get; set; }
         public int PageSize { get; set; }
-
-        /// <summary>
-        /// Total number of pages
-        /// </summary>
+        public int TotalItems { get; set; }
         public int TotalPages { get; set; }
 
         /// <summary>
-        /// Whether there is a previous page
+        /// Creates metadata for a page, computing <see cref="TotalPages"/> from the item count.
         /// </summary>
-        public bool HasPreviousPage => CurrentPage > 1;
-
-        /// <summary>
-        /// Whether there is a next page
-        /// </summary>
-        public bool HasNextPage => CurrentPage < TotalPages;
-
-        // Backwards compatibility properties
-
-        /// <summary>
-        /// Alias for CurrentPage for backwards compatibility
-        /// </summary>
-        public int Page
+        public static PaginationMetadata Create(int page, int pageSize, int totalItems) => new()
         {
-            get => CurrentPage;
-            set => CurrentPage = value;
-        }
+            Page = page,
+            PageSize = pageSize,
+            TotalItems = totalItems,
+            TotalPages = pageSize > 0 ? (int)Math.Ceiling(totalItems / (double)pageSize) : 0
+        };
+    }
 
-        /// <summary>
-        /// Alias for TotalCount for backwards compatibility
-        /// </summary>
-        public int TotalItems
+    /// <summary>Canonical normalization for one-based Admin API pagination.</summary>
+    public static class Pagination
+    {
+        public const int DefaultPageSize = 50;
+        public const int DefaultMaxPageSize = 100;
+
+        public static (int Page, int PageSize) Normalize(
+            int page,
+            int pageSize,
+            int maxPageSize = DefaultMaxPageSize,
+            int defaultPageSize = DefaultPageSize)
         {
-            get => TotalCount;
-            set => TotalCount = value;
+            if (maxPageSize < 1)
+                throw new ArgumentOutOfRangeException(nameof(maxPageSize));
+            if (defaultPageSize < 1 || defaultPageSize > maxPageSize)
+                throw new ArgumentOutOfRangeException(nameof(defaultPageSize));
+
+            return (
+                Math.Max(1, page),
+                pageSize < 1 ? defaultPageSize : Math.Min(pageSize, maxPageSize));
         }
     }
 }

@@ -74,17 +74,16 @@ namespace ConduitLLM.Configuration.DTOs
     /// </summary>
     public class UpdateGlobalSettingDto
     {
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Id { get; set; }
         /// <summary>
         /// Unique identifier for the setting
         /// </summary>
-        public int Id { get; set; }
-
         /// <summary>
         /// Setting value
         /// </summary>
-        [Required]
         [MaxLength(2000)]
-        public string Value { get; set; } = string.Empty;
+        public string? Value { get; set; }
 
         /// <summary>
         /// Optional description of the setting
@@ -119,44 +118,4 @@ namespace ConduitLLM.Configuration.DTOs
         public string? Description { get; set; }
     }
 
-    /// <summary>
-    /// Data transfer object for global settings cache statistics
-    /// </summary>
-    public class GlobalSettingCacheStatsDto
-    {
-        /// <summary>
-        /// Number of settings currently in cache
-        /// </summary>
-        public int CacheSize { get; set; }
-
-        /// <summary>
-        /// Total number of cache hits
-        /// </summary>
-        public long CacheHits { get; set; }
-
-        /// <summary>
-        /// Total number of cache misses
-        /// </summary>
-        public long CacheMisses { get; set; }
-
-        /// <summary>
-        /// Total number of cache invalidations
-        /// </summary>
-        public long Invalidations { get; set; }
-
-        /// <summary>
-        /// Cache hit rate as a percentage (0-100)
-        /// </summary>
-        public double HitRate { get; set; }
-
-        /// <summary>
-        /// Timestamp of when the cache was last loaded from database
-        /// </summary>
-        public DateTime LastLoadTime { get; set; }
-
-        /// <summary>
-        /// List of all keys currently cached
-        /// </summary>
-        public List<string> CachedKeys { get; set; } = new();
-    }
 }

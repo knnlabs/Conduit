@@ -1,10 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Configuration.Options;
-using ConduitLLM.Gateway.Services;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Services;
-using MassTransit;
-using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Gateway.Authentication
 {
@@ -14,26 +12,20 @@ namespace ConduitLLM.Gateway.Authentication
     /// </summary>
     public class VirtualKeySignalRRateLimitFilter : IHubFilter
     {
-        private readonly VirtualKeyRateLimitCache _rateLimitCache;
         private readonly ISignalRRateLimitService _signalRRateLimitService;
         private readonly ILogger<VirtualKeySignalRRateLimitFilter> _logger;
-        private readonly IServiceProvider _serviceProvider;
         private readonly SignalRConnectionOptions _connectionOptions;
 
         /// <summary>
         /// Initializes a new instance of VirtualKeySignalRRateLimitFilter
         /// </summary>
         public VirtualKeySignalRRateLimitFilter(
-            VirtualKeyRateLimitCache rateLimitCache,
             ISignalRRateLimitService signalRRateLimitService,
             ILogger<VirtualKeySignalRRateLimitFilter> logger,
-            IServiceProvider serviceProvider,
             IOptions<SignalRConnectionOptions> connectionOptions)
         {
-            _rateLimitCache = rateLimitCache;
             _signalRRateLimitService = signalRRateLimitService ?? throw new ArgumentNullException(nameof(signalRRateLimitService));
             _logger = logger;
-            _serviceProvider = serviceProvider;
             _connectionOptions = connectionOptions?.Value ?? new SignalRConnectionOptions();
         }
 
@@ -52,9 +44,12 @@ namespace ConduitLLM.Gateway.Authentication
                 return await next(invocationContext);
             }
 
-            // Get rate limits from cache
-            var rateLimits = _rateLimitCache.GetRateLimits(virtualKeyHash);
-            if (rateLimits == null || (!rateLimits.RateLimitRpm.HasValue && !rateLimits.RateLimitRpd.HasValue))
+            // VirtualKeyHubFilter loads the authoritative limits during authentication and stores
+            // them on the connection context. Keeping the values with the authenticated connection
+            // avoids a second, independently populated rate-limit configuration cache.
+            var rpmLimit = GetRateLimit(invocationContext.Context, "VirtualKey.RateLimitRpm");
+            var rpdLimit = GetRateLimit(invocationContext.Context, "VirtualKey.RateLimitRpd");
+            if (!rpmLimit.HasValue && !rpdLimit.HasValue)
             {
                 // No rate limits configured
                 return await next(invocationContext);
@@ -63,31 +58,15 @@ namespace ConduitLLM.Gateway.Authentication
             // Check rate limits using Redis service for distributed tracking
             var result = await _signalRRateLimitService.CheckMethodInvocationAsync(
                 virtualKeyHash, 
-                rateLimits.RateLimitRpm, 
-                rateLimits.RateLimitRpd);
+                rpmLimit,
+                rpdLimit);
 
             if (!result.IsAllowed)
             {
                 _logger.LogWarning("Virtual Key {KeyHash} exceeded {LimitType} limit for SignalR method {Method}. " +
                     "Current: {Current}/{Limit}, Connections: {Connections}",
-                    virtualKeyHash, result.LimitType, invocationContext.HubMethodName,
+                    LoggingSanitizer.S(virtualKeyHash), result.LimitType, invocationContext.HubMethodName,
                     result.Limit - result.RequestsRemaining, result.Limit, result.ActiveConnections);
-                
-                // Publish rate limit exceeded event
-                var virtualKeyId = 0;
-                if (invocationContext.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
-                {
-                    virtualKeyId = keyId;
-                }
-                
-                PublishRateLimitExceeded(
-                    virtualKeyHash, 
-                    result.LimitType, 
-                    result.Limit, 
-                    result.Limit - result.RequestsRemaining,
-                    result.LimitType == "RPM" ? "minute" : "day",
-                    result.ResetsAt,
-                    invocationContext);
                 
                 throw new HubException(result.DenialReason);
             }
@@ -104,10 +83,12 @@ namespace ConduitLLM.Gateway.Authentication
 
             if (!string.IsNullOrEmpty(virtualKeyHash))
             {
-                // Check connection limit FIRST (before incrementing)
                 if (_connectionOptions.EnforceLimits)
                 {
-                    var limitResult = await _signalRRateLimitService.CheckConnectionLimitAsync(
+                    // Admission and the increment are one atomic operation. Checking first and
+                    // incrementing after let a simultaneous burst of connections all read the
+                    // same count and be admitted together, overshooting the ceiling.
+                    var limitResult = await _signalRRateLimitService.TryAcquireConnectionAsync(
                         virtualKeyHash,
                         _connectionOptions.MaxConnectionsPerVirtualKey);
 
@@ -115,19 +96,22 @@ namespace ConduitLLM.Gateway.Authentication
                     {
                         _logger.LogWarning(
                             "Virtual Key {KeyHash} connection rejected: {Reason}. Current: {Current}/{Max}",
-                            virtualKeyHash, limitResult.DenialReason,
+                            LoggingSanitizer.S(virtualKeyHash), limitResult.DenialReason,
                             limitResult.CurrentConnections, limitResult.MaxConnections);
 
-                        PublishConnectionLimitExceeded(virtualKeyHash, limitResult, context);
                         throw new HubException(limitResult.DenialReason);
                     }
+
+                    _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
+                        LoggingSanitizer.S(virtualKeyHash), limitResult.CurrentConnections);
                 }
+                else
+                {
+                    var connectionCount = await _signalRRateLimitService.IncrementConnectionCountAsync(virtualKeyHash);
 
-                // Use Redis service to track connections across all instances
-                var connectionCount = await _signalRRateLimitService.IncrementConnectionCountAsync(virtualKeyHash);
-
-                _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
-                    virtualKeyHash, connectionCount);
+                    _logger.LogDebug("Virtual Key {KeyHash} connected. Active connections across all instances: {Count}",
+                        LoggingSanitizer.S(virtualKeyHash), connectionCount);
+                }
             }
 
             await next(context);
@@ -149,7 +133,7 @@ namespace ConduitLLM.Gateway.Authentication
                 var connectionCount = await _signalRRateLimitService.DecrementConnectionCountAsync(virtualKeyHash);
                 
                 _logger.LogDebug("Virtual Key {KeyHash} disconnected. Active connections across all instances: {Count}",
-                    virtualKeyHash, connectionCount);
+                    LoggingSanitizer.S(virtualKeyHash), connectionCount);
                 
                 // Clean up stale connections if needed
                 if (connectionCount == 0)
@@ -176,99 +160,13 @@ namespace ConduitLLM.Gateway.Authentication
             var claim = context.User?.FindFirst("VirtualKeyHash");
             return claim?.Value;
         }
+
+        private static int? GetRateLimit(HubCallerContext context, string itemKey)
+        {
+            return context.Items.TryGetValue(itemKey, out var value) && value is int limit
+                ? limit
+                : null;
+        }
         
-        /// <summary>
-        /// Publishes a rate limit exceeded event
-        /// </summary>
-        private void PublishRateLimitExceeded(string virtualKeyHash, string limitType, int limitValue, 
-            int currentUsage, string timeWindow, DateTime resetsAt, HubInvocationContext context)
-        {
-            // Try to get virtual key ID from context
-            var virtualKeyId = 0;
-            if (context.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
-            {
-                virtualKeyId = keyId;
-            }
-            
-            // Get IP address if available
-            var ipAddress = context.Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString();
-            
-            // Fire and forget - don't block the request
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
-                    
-                    if (publishEndpoint != null)
-                    {
-                        await publishEndpoint.Publish(new RateLimitExceeded
-                        {
-                            VirtualKeyId = virtualKeyId,
-                            VirtualKeyHash = virtualKeyHash,
-                            LimitType = limitType,
-                            LimitValue = limitValue,
-                            CurrentUsage = currentUsage,
-                            TimeWindow = timeWindow,
-                            ResetsAt = resetsAt,
-                            IpAddress = ipAddress,
-                            RequestedModel = null, // Not applicable for SignalR
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to publish RateLimitExceeded event for key {KeyHash}", virtualKeyHash);
-                }
-            });
-        }
-
-        /// <summary>
-        /// Publishes a connection limit exceeded event
-        /// </summary>
-        private void PublishConnectionLimitExceeded(
-            string virtualKeyHash,
-            ConnectionLimitResult limitResult,
-            HubLifetimeContext context)
-        {
-            var virtualKeyId = 0;
-            if (context.Context.Items.TryGetValue("VirtualKeyId", out var keyIdObj) && keyIdObj is int keyId)
-            {
-                virtualKeyId = keyId;
-            }
-
-            var ipAddress = context.Context.GetHttpContext()?.Connection?.RemoteIpAddress?.ToString();
-            var hubName = context.Hub?.GetType().Name;
-
-            // Fire and forget - don't block the connection rejection
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var publishEndpoint = scope.ServiceProvider.GetService<IPublishEndpoint>();
-
-                    if (publishEndpoint != null)
-                    {
-                        await publishEndpoint.Publish(new ConnectionLimitExceeded
-                        {
-                            VirtualKeyId = virtualKeyId,
-                            VirtualKeyHash = virtualKeyHash,
-                            CurrentConnections = limitResult.CurrentConnections,
-                            MaxConnections = limitResult.MaxConnections,
-                            HubName = hubName,
-                            IpAddress = ipAddress,
-                            CorrelationId = Guid.NewGuid().ToString()
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to publish ConnectionLimitExceeded event for key {KeyHash}", virtualKeyHash);
-                }
-            });
-        }
     }
 }

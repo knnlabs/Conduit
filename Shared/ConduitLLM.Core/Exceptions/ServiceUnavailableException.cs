@@ -79,6 +79,5 @@ namespace ConduitLLM.Core.Exceptions
         {
         }
 
-        // TODO: Future enhancement - Circuit breaker pattern for provider failures
     }
 }

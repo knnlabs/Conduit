@@ -6,6 +6,7 @@ import {
   IconDatabase
 } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { formatters } from '@/lib/utils/formatters';
 import { COST_THRESHOLDS, type CheckResult, type ConfigData } from './types';
 
 // Pure functions for checks - no side effects
@@ -212,7 +213,7 @@ export async function checkS3Configuration(): Promise<CheckResult> {
       details: [
         'Successfully connected to media storage service',
         `Total files: ${stats.totalFiles}`,
-        `Total size: ${Math.round(stats.totalSizeBytes / 1024 / 1024)} MB`
+        `Total size: ${formatters.fileSize(stats.totalSizeBytes, { binary: true })}`
       ],
       icon: IconDatabase
     };

@@ -3,7 +3,6 @@
 import {
   Modal,
   TextInput,
-  NumberInput,
   Switch,
   Button,
   Text,
@@ -21,9 +20,10 @@ import { useForm } from '@mantine/form';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { useState, useEffect } from 'react';
 import { validators } from '@/lib/utils/form-validators';
-import { notifications } from '@mantine/notifications';
-import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import { notify } from '@/lib/notifications';
+import type { VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { RateLimitFields } from './RateLimitFields';
 
 interface CreateVirtualKeyModalProps {
   opened: boolean;
@@ -35,7 +35,10 @@ interface CreateVirtualKeyForm {
   keyName: string;
   description?: string;
   virtualKeyGroupId?: number;
-  rateLimitPerMinute?: number;
+  rateLimitRpm?: number;
+  rateLimitRpd?: number;
+  rateLimitTpm?: number;
+  maxParallelRequests?: number;
   isEnabled: boolean;
   allowedModels: string[];
   allowedEndpoints: string[];
@@ -52,18 +55,7 @@ const ENDPOINT_OPTIONS = [
   { value: '/v1/audio/translations', label: 'Audio Translation' },
   { value: '/v1/audio/speech', label: 'Text to Speech' },
   { value: '/v1/moderations', label: 'Moderations' },
-  { value: '/v1/videos/generations', label: 'Video Generation' },
-];
-
-// Common models - hardcoded for now since we removed SDK
-const MODEL_OPTIONS = [
-  { value: '*', label: 'All Models' },
-  { value: 'gpt-4', label: 'gpt-4' },
-  { value: 'gpt-4-turbo', label: 'gpt-4-turbo' },
-  { value: 'gpt-3.5-turbo', label: 'gpt-3.5-turbo' },
-  { value: 'claude-3-opus', label: 'claude-3-opus' },
-  { value: 'claude-3-sonnet', label: 'claude-3-sonnet' },
-  { value: 'claude-3-haiku', label: 'claude-3-haiku' },
+  { value: '/v1/conduit/videos/generations', label: 'Video Generation' },
 ];
 
 export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirtualKeyModalProps) {
@@ -71,26 +63,46 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [groups, setGroups] = useState<VirtualKeyGroupDto[]>([]);
   const [isLoadingGroups, setIsLoadingGroups] = useState(false);
+  const [modelOptions, setModelOptions] = useState<{ value: string; label: string }[]>([
+    { value: '*', label: 'All Models' },
+  ]);
 
-  // Fetch groups when modal opens
+  // Fetch groups and the deployment's actual model aliases when the modal opens
   useEffect(() => {
     const fetchGroups = async () => {
       if (!opened) return;
-      
+
       try {
         setIsLoadingGroups(true);
-        const data = await withAdminClient(client => 
+        const data = await withAdminClient(client =>
           client.virtualKeyGroups.list()
         );
-        setGroups(data);
+        setGroups(data.data ?? []);
       } catch (error) {
         console.warn('Failed to fetch virtual key groups:', error);
       } finally {
         setIsLoadingGroups(false);
       }
     };
-    
+
+    const fetchModels = async () => {
+      if (!opened) return;
+
+      try {
+        const mappings = await withAdminClient(client => client.modelMappings.list());
+        const aliases = [...new Set(mappings.map(m => m.modelAlias))].sort();
+        setModelOptions([
+          { value: '*', label: 'All Models' },
+          ...aliases.map(alias => ({ value: alias, label: alias })),
+        ]);
+      } catch (error) {
+        // Leave only the "All Models" wildcard rather than offering a made-up list
+        console.warn('Failed to fetch model mappings:', error);
+      }
+    };
+
     void fetchGroups();
+    void fetchModels();
   }, [opened]);
 
   const form = useForm<CreateVirtualKeyForm>({
@@ -98,7 +110,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
       keyName: '',
       description: '',
       virtualKeyGroupId: undefined,
-      rateLimitPerMinute: undefined,
+      rateLimitRpm: undefined,
+      rateLimitRpd: undefined,
+      rateLimitTpm: undefined,
+      maxParallelRequests: undefined,
       isEnabled: true,
       allowedModels: ['*'], // Default to all models
       allowedEndpoints: ['/v1/chat/completions'],
@@ -122,7 +137,10 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         if (!value) return 'Virtual Key Group is required';
         return null;
       },
-      rateLimitPerMinute: validators.minValue('Rate limit', 1),
+      rateLimitRpm: validators.minValue('Requests per minute', 1),
+      rateLimitRpd: validators.minValue('Requests per day', 1),
+      rateLimitTpm: validators.minValue('Tokens per minute', 1),
+      maxParallelRequests: validators.minValue('Max parallel requests', 1),
       allowedModels: validators.arrayMinLength('model', 1),
       allowedEndpoints: validators.arrayMinLength('endpoint', 1),
       allowedIpAddresses: validators.ipAddresses,
@@ -142,9 +160,12 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         keyName: values.keyName.trim(),
         description: values.description?.trim() ?? undefined,
         virtualKeyGroupId: values.virtualKeyGroupId, // Now guaranteed to be number
-        rateLimitRpm: values.rateLimitPerMinute ?? undefined,
-        allowedModels: values.allowedModels.length > 0 ? values.allowedModels.join(',') : undefined,
-        metadata: values.metadata?.trim() ? values.metadata : undefined,
+        rateLimitRpm: values.rateLimitRpm ?? undefined,
+        rateLimitRpd: values.rateLimitRpd ?? undefined,
+        rateLimitTpm: values.rateLimitTpm ?? undefined,
+        maxParallelRequests: values.maxParallelRequests ?? undefined,
+        allowedModels: values.allowedModels.length > 0 ? values.allowedModels : undefined,
+        metadata: values.metadata?.trim() ? JSON.parse(values.metadata) as Record<string, unknown> : undefined,
         isEnabled: values.isEnabled,
       };
 
@@ -152,22 +173,14 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         client.virtualKeys.create(payload)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Virtual key created successfully',
-        color: 'green',
-      });
+      notify.success('Virtual key created successfully');
       
       handleClose();
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to create virtual key',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to create virtual key');
     } finally {
       setIsSubmitting(false);
     }
@@ -248,18 +261,21 @@ export function CreateVirtualKeyModal({ opened, onClose, onSuccess }: CreateVirt
         <>
           <Divider mb="md" />
 
-          <NumberInput
-            label="Rate Limit"
-            description="Maximum requests per minute"
-            placeholder="No limit"
-            min={1}
-            {...form.getInputProps('rateLimitPerMinute')}
+          <Text size="sm" fw={500}>Rate limits</Text>
+          <RateLimitFields
+            values={{
+              rateLimitRpm: form.values.rateLimitRpm,
+              rateLimitRpd: form.values.rateLimitRpd,
+              rateLimitTpm: form.values.rateLimitTpm,
+              maxParallelRequests: form.values.maxParallelRequests,
+            }}
+            onChange={(field, value) => form.setFieldValue(field, value)}
           />
 
           <MultiSelect
             label="Allowed Models"
             description="Models this key can access"
-            data={MODEL_OPTIONS}
+            data={modelOptions}
             placeholder="Select models"
             searchable
             clearable

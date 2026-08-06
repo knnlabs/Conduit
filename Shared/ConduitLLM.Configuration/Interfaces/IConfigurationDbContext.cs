@@ -26,10 +26,15 @@ namespace ConduitLLM.Configuration.Interfaces
         /// </summary>
         DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; }
 
+        DbSet<RefundIdempotencyRecord> RefundIdempotencyRecords { get; }
+
         /// <summary>
         /// Database set for request logs
         /// </summary>
         DbSet<RequestLog> RequestLogs { get; }
+
+        /// <summary>Database set for billing reconciliation checkpoints.</summary>
+        DbSet<BillingReconciliationCheckpoint> BillingReconciliationCheckpoints { get; }
 
         /// <summary>
         /// Database set for virtual key spend history
@@ -61,6 +66,11 @@ namespace ConduitLLM.Configuration.Interfaces
         /// Database set for media records
         /// </summary>
         DbSet<MediaRecord> MediaRecords { get; }
+
+        /// <summary>
+        /// Durable approvals for large scheduled media cleanup scopes.
+        /// </summary>
+        DbSet<MediaCleanupApproval> MediaCleanupApprovals { get; }
 
         /// <summary>
         /// Database set for media retention policies

@@ -1,176 +1,100 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Interfaces;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-using ConduitLLM.Configuration.Interfaces;
-namespace ConduitLLM.Configuration.Repositories
+namespace ConduitLLM.Configuration.Repositories;
+
+/// <summary>
+/// Repository implementation for notifications using Entity Framework Core.
+/// Inherits common CRUD operations from RepositoryBase.
+/// </summary>
+public class NotificationRepository : RepositoryBase<Notification, int>, INotificationRepository
 {
     /// <summary>
-    /// Repository implementation for notifications using Entity Framework Core
+    /// Creates a new instance of the repository.
     /// </summary>
-    public class NotificationRepository : INotificationRepository
+    /// <param name="dbContextFactory">The database context factory</param>
+    /// <param name="logger">The logger</param>
+    public NotificationRepository(
+        IDbContextFactory<ConduitDbContext> dbContextFactory,
+        ILogger<NotificationRepository> logger)
+        : base(dbContextFactory, logger)
     {
-        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-        private readonly ILogger<NotificationRepository> _logger;
+    }
 
-        /// <summary>
-        /// Creates a new instance of the repository
-        /// </summary>
-        /// <param name="dbContextFactory">The database context factory</param>
-        /// <param name="logger">The logger</param>
-        public NotificationRepository(
-            IDbContextFactory<ConduitDbContext> dbContextFactory,
-            ILogger<NotificationRepository> logger)
+    /// <inheritdoc/>
+    protected override DbSet<Notification> GetDbSet(ConduitDbContext context) => context.Notifications;
+
+    /// <inheritdoc/>
+    protected override IQueryable<Notification> ApplyDefaultOrdering(IQueryable<Notification> query)
+    {
+        return query.OrderByDescending(n => n.CreatedAt);
+    }
+
+    /// <summary>
+    /// Override to set CreatedAt for Notification (which only has CreatedAt, not UpdatedAt).
+    /// </summary>
+    protected override void OnBeforeCreate(Notification entity)
+    {
+        entity.CreatedAt = DateTime.UtcNow;
+    }
+
+    /// <inheritdoc/>
+    public async Task<(List<Notification> Items, int TotalCount)> GetUnreadPaginatedAsync(
+        int pageNumber,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        return await GetFilteredPaginatedAsync(
+            n => !n.IsRead,
+            pageNumber,
+            pageSize,
+            q => q.OrderByDescending(n => n.CreatedAt),
+            cancellationToken,
+            "getting unread notifications");
+    }
+
+    /// <inheritdoc/>
+    public async Task<List<Notification>> GetUnreadByVirtualKeyIdAsync(
+        int virtualKeyId,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .Where(n => !n.IsRead && n.VirtualKeyId == virtualKeyId)
+                .OrderByDescending(n => n.CreatedAt)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken);
+    }
 
-        /// <inheritdoc/>
-        public async Task<Notification?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public async Task<List<Notification>> GetUnreadByVirtualKeyAndTypeAsync(
+        int virtualKeyId,
+        NotificationType notificationType,
+        CancellationToken cancellationToken = default)
+    {
+        return await ExecuteAsync(async context =>
         {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.Notifications
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(n => n.Id == id, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting notification with ID {NotificationId}", id);
-                throw;
-            }
-        }
+            return await GetDbSet(context)
+                .AsNoTracking()
+                .Where(n => !n.IsRead && n.VirtualKeyId == virtualKeyId && n.Type == notificationType)
+                .OrderByDescending(n => n.CreatedAt)
+                .ToListAsync(cancellationToken);
+        }, cancellationToken);
+    }
 
-        /// <inheritdoc/>
-        public async Task<List<Notification>> GetAllAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public async Task<bool> MarkAsReadAsync(int id, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.Notifications
-                    .AsNoTracking()
-                    .OrderByDescending(n => n.CreatedAt)
-                    .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all notifications");
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<List<Notification>> GetUnreadAsync(CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.Notifications
-                    .AsNoTracking()
-                    .Where(n => !n.IsRead)
-                    .OrderByDescending(n => n.CreatedAt)
-                    .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting unread notifications");
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<int> CreateAsync(Notification notification, CancellationToken cancellationToken = default)
-        {
-            if (notification == null)
-            {
-                throw new ArgumentNullException(nameof(notification));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Set created timestamp
-                notification.CreatedAt = DateTime.UtcNow;
-
-                dbContext.Notifications.Add(notification);
-                await dbContext.SaveChangesAsync(cancellationToken);
-                return notification.Id;
-            }
-            catch (DbUpdateException ex)
-            {
-                _logger.LogError(ex, "Database error creating notification '{NotificationType}'", notification.Type);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating notification '{NotificationType}'", notification.Type);
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<bool> UpdateAsync(Notification notification, CancellationToken cancellationToken = default)
-        {
-            if (notification == null)
-            {
-                throw new ArgumentNullException(nameof(notification));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Ensure the entity is tracked
-                dbContext.Notifications.Update(notification);
-
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                return rowsAffected > 0;
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                _logger.LogError(ex, "Concurrency error updating notification with ID {NotificationId}", notification.Id);
-
-                // Handle concurrency issues by reloading and reapplying changes if needed
-                try
-                {
-                    using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                    var existingEntity = await dbContext.Notifications.FindAsync(new object[] { notification.Id }, cancellationToken);
-
-                    if (existingEntity == null)
-                    {
-                        return false;
-                    }
-
-                    // Update properties
-                    dbContext.Entry(existingEntity).CurrentValues.SetValues(notification);
-
-                    int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                    return rowsAffected > 0;
-                }
-                catch (Exception retryEx)
-                {
-                    _logger.LogError(retryEx, "Error during retry of notification update with ID {NotificationId}", notification.Id);
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating notification with ID {NotificationId}", notification.Id);
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<bool> MarkAsReadAsync(int id, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                var notification = await dbContext.Notifications.FindAsync(new object[] { id }, cancellationToken);
+                var notification = await GetDbSet(context).FindAsync(new object[] { id }, cancellationToken);
 
                 if (notification == null)
                 {
@@ -178,65 +102,63 @@ namespace ConduitLLM.Configuration.Repositories
                 }
 
                 notification.IsRead = true;
-
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
+                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                _logger.LogError(ex, "Concurrency error marking notification with ID {NotificationId} as read", id);
-
-                // Handle concurrency issues by retrying
-                try
-                {
-                    using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                    var notification = await dbContext.Notifications.FindAsync(new object[] { id }, cancellationToken);
-
-                    if (notification == null)
-                    {
-                        return false;
-                    }
-
-                    notification.IsRead = true;
-
-                    int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                    return rowsAffected > 0;
-                }
-                catch (Exception retryEx)
-                {
-                    _logger.LogError(retryEx, "Error during retry of marking notification with ID {NotificationId} as read", id);
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error marking notification with ID {NotificationId} as read", id);
-                throw;
-            }
+            }, cancellationToken);
         }
-
-        /// <inheritdoc/>
-        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+        catch (DbUpdateConcurrencyException ex)
         {
-            try
+            Logger.LogError(ex, "Concurrency error marking notification with ID {NotificationId} as read", id);
+
+            // Handle concurrency issues by retrying
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                var notification = await dbContext.Notifications.FindAsync(new object[] { id }, cancellationToken);
+                var notification = await GetDbSet(context).FindAsync(new object[] { id }, cancellationToken);
 
                 if (notification == null)
                 {
                     return false;
                 }
 
-                dbContext.Notifications.Remove(notification);
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
+                notification.IsRead = true;
+                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
                 return rowsAffected > 0;
-            }
-            catch (Exception ex)
+            }, cancellationToken);
+        }
+
+    }
+
+    /// <summary>
+    /// Override UpdateAsync to include concurrency retry logic.
+    /// </summary>
+    public override async Task<bool> UpdateAsync(Notification entity, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(entity);
+
+        try
+        {
+            return await base.UpdateAsync(entity, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            Logger.LogError(ex, "Concurrency error updating notification with ID {NotificationId}", entity.Id);
+
+            // Handle concurrency issues by reloading and reapplying changes
+            return await ExecuteAsync(async context =>
             {
-                _logger.LogError(ex, "Error deleting notification with ID {NotificationId}", id);
-                throw;
-            }
+                var existingEntity = await GetDbSet(context).FindAsync(new object[] { entity.Id }, cancellationToken);
+
+                if (existingEntity == null)
+                {
+                    return false;
+                }
+
+                // Update properties
+                context.Entry(existingEntity).CurrentValues.SetValues(entity);
+
+                int rowsAffected = await context.SaveChangesAsync(cancellationToken);
+                return rowsAffected > 0;
+            }, cancellationToken);
         }
     }
 }

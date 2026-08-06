@@ -25,34 +25,26 @@ namespace ConduitLLM.Providers.OpenAICompatible
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteApiRequestAsync(async () =>
             {
-                return await ExecuteApiRequestAsync(async () =>
-                {
-                    using var client = CreateHttpClient(apiKey);
+                using var client = CreateHttpClient(apiKey);
 
-                    var endpoint = GetModelsEndpoint();
+                var endpoint = GetModelsEndpoint();
 
-                    Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
+                Logger.LogDebug("Getting available models from {Provider} at {Endpoint}", ProviderName, endpoint);
 
-                    var response = await CoreUtils.HttpClientHelper.GetJsonAsync<ListModelsResponse>(
-                        client,
-                        endpoint,
-                        CreateStandardHeaders(apiKey),
-                        DefaultJsonOptions,
-                        Logger,
-                        cancellationToken);
+                var response = await CoreUtils.HttpClientHelper.GetJsonAsync<ListModelsResponse>(
+                    client,
+                    endpoint,
+                    CreateStandardHeaders(apiKey),
+                    DefaultJsonOptions,
+                    Logger,
+                    cancellationToken);
 
-                    return response.Data
-                        .Select(m => InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
-                        .ToList();
-                }, "GetModels", cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "Failed to retrieve models from {Provider} API.", ProviderName);
-                throw;
-            }
+                return response.Data
+                    .Select(m => InternalModels.ExtendedModelInfo.Create(m.Id, ProviderName, m.Id))
+                    .ToList();
+            }, "GetModels", cancellationToken);
         }
     }
 }

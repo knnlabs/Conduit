@@ -14,7 +14,7 @@ import {
   Collapse,
 } from '@mantine/core';
 import { IconInfoCircle, IconShieldCheck } from '@tabler/icons-react';
-import type { PricingConstraints, PricingType } from '@knn_labs/conduit-admin-client';
+import type { PricingConstraints, PricingType } from '@/lib/admin-api';
 
 interface ConstraintsEditorProps {
   constraints?: PricingConstraints;

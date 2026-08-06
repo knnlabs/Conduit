@@ -1,0 +1,7 @@
+{
+  "State": "Open",
+  "OpenedAt": "2026-07-27T12:34:56Z",
+  "HalfOpenTestAt": null,
+  "FailureCount": 5,
+  "WebhookUrl": "https://hooks.example.test/events"
+}

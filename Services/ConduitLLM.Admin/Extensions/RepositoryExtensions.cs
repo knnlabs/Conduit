@@ -1,7 +1,8 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
-
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Functions.Utilities;
 namespace ConduitLLM.Admin.Extensions
 {
     /// <summary>
@@ -10,7 +11,8 @@ namespace ConduitLLM.Admin.Extensions
     public static class RepositoryExtensions
     {
         /// <summary>
-        /// Gets daily costs from request logs within a specified date range
+        /// Gets daily costs from request logs within a specified date range.
+        /// Uses database-level aggregation instead of loading all logs into memory.
         /// </summary>
         /// <param name="repository">The request log repository</param>
         /// <param name="startDate">The start date (inclusive)</param>
@@ -23,18 +25,10 @@ namespace ConduitLLM.Admin.Extensions
             DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            // Get the logs for the date range
-            var logs = await repository.GetByDateRangeAsync(startDate, endDate, cancellationToken);
-
-            // Group by date and calculate daily costs
-            var dailyCosts = logs
-                .GroupBy(l => l.Timestamp.Date)
-                .Select(g => new { Date = g.Key, Cost = g.Sum(l => l.Cost) })
-                .OrderBy(d => d.Date)
-                .Select(d => (d.Date, d.Cost))
+            var aggregations = await repository.GetCostsByDateAsync(startDate, endDate, cancellationToken);
+            return aggregations
+                .Select(a => (a.Date, a.TotalCost))
                 .ToList();
-
-            return dailyCosts;
         }
 
         /// <summary>
@@ -49,12 +43,14 @@ namespace ConduitLLM.Admin.Extensions
             string keyName,
             CancellationToken cancellationToken = default)
         {
-            var keys = await repository.GetAllAsync(cancellationToken);
+            var keys = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                repository.GetPaginatedAsync, cancellationToken: cancellationToken);
             return keys.FirstOrDefault(k => k.KeyName.Equals(keyName, StringComparison.OrdinalIgnoreCase));
         }
 
         /// <summary>
-        /// Gets the spend history for a virtual key within a date range
+        /// Gets the spend history for a virtual key within a date range.
+        /// Delegates to the repository's database-level filtered query.
         /// </summary>
         /// <param name="repository">The spend history repository</param>
         /// <param name="virtualKeyId">The ID of the virtual key</param>
@@ -69,85 +65,10 @@ namespace ConduitLLM.Admin.Extensions
             DateTime endDate,
             CancellationToken cancellationToken = default)
         {
-            var history = await repository.GetByVirtualKeyIdAsync(virtualKeyId, cancellationToken);
-            return history
-                .Where(h => h.Timestamp >= startDate && h.Timestamp <= endDate)
-                .OrderBy(h => h.Timestamp)
-                .ToList();
+            // Use the repository's DB-level filtered query instead of loading all history then filtering in memory
+            var history = await repository.GetByVirtualKeyAndDateRangeAsync(virtualKeyId, startDate, endDate, cancellationToken);
+            return history.OrderBy(h => h.Timestamp).ToList();
         }
-
-        /// <summary>
-        /// Maps a ModelProviderMapping entity to a ModelProviderMappingDto
-        /// </summary>
-        /// <param name="mapping">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        public static ModelProviderMappingDto ToDto(this ConduitLLM.Configuration.Entities.ModelProviderMapping mapping)
-        {
-            if (mapping == null)
-            {
-                throw new ArgumentNullException(nameof(mapping));
-            }
-
-            return new ConduitLLM.Configuration.DTOs.ModelProviderMappingDto
-            {
-                Id = mapping.Id,
-                ModelAlias = mapping.ModelAlias,
-                ProviderModelId = mapping.ProviderModelId,
-                ProviderId = mapping.ProviderId,
-                Provider = mapping.Provider != null ? new ProviderReferenceDto
-                {
-                    Id = mapping.Provider.Id,
-                    ProviderType = mapping.Provider.ProviderType,
-                    DisplayName = mapping.Provider.ProviderName,
-                    IsEnabled = mapping.Provider.IsEnabled
-                } : null,
-                ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
-                Priority = 0, // Default priority if not available in entity
-                IsEnabled = mapping.IsEnabled,
-                CreatedAt = mapping.CreatedAt,
-                UpdatedAt = mapping.UpdatedAt,
-                Notes = null, // Not available in entity
-                Capabilities = mapping.ModelProviderTypeAssociation?.Model != null ? new ConduitLLM.Configuration.DTOs.ModelCapabilitiesDto
-                {
-                    SupportsVision = mapping.ModelProviderTypeAssociation.Model.SupportsVision,
-                    SupportsImageGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsImageGeneration,
-                    SupportsVideoGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsVideoGeneration,
-                    SupportsEmbeddings = mapping.ModelProviderTypeAssociation.Model.SupportsEmbeddings,
-                    SupportsChat = mapping.ModelProviderTypeAssociation.Model.SupportsChat,
-                    SupportsFunctionCalling = mapping.ModelProviderTypeAssociation.Model.SupportsFunctionCalling,
-                    SupportsStreaming = mapping.ModelProviderTypeAssociation.Model.SupportsStreaming,
-                    MaxInputTokens = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens,
-                    MaxOutputTokens = mapping.ModelProviderTypeAssociation.Model.MaxOutputTokens
-                } : null
-            };
-        }
-
-        /// <summary>
-        /// Maps a ModelProviderMappingDto to a ModelProviderMapping entity
-        /// </summary>
-        /// <param name="dto">The DTO to map</param>
-        /// <returns>The mapped entity</returns>
-        public static ConduitLLM.Configuration.Entities.ModelProviderMapping ToEntity(this ModelProviderMappingDto dto)
-        {
-            if (dto == null)
-            {
-                throw new ArgumentNullException(nameof(dto));
-            }
-
-            return new ConduitLLM.Configuration.Entities.ModelProviderMapping
-            {
-                Id = dto.Id,
-                ModelAlias = dto.ModelAlias,
-                ProviderModelId = dto.ProviderModelId,
-                ProviderId = dto.ProviderId,
-                ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId,
-                IsEnabled = dto.IsEnabled,
-                CreatedAt = dto.CreatedAt,
-                UpdatedAt = dto.UpdatedAt
-            };
-        }
-
-
 
 
 
@@ -169,6 +90,8 @@ namespace ConduitLLM.Admin.Extensions
                 Id = notification.Id,
                 VirtualKeyId = notification.VirtualKeyId,
                 VirtualKeyName = virtualKeyName ?? notification.VirtualKey?.KeyName,
+                ProviderId = notification.ProviderId,
+                ProviderKeyCredentialId = notification.ProviderKeyCredentialId,
                 Type = notification.Type,
                 Severity = notification.Severity,
                 Message = notification.Message,
@@ -262,8 +185,8 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            entity.Value = dto.Value;
-            entity.Description = dto.Description;
+            if (dto.Value is not null) entity.Value = dto.Value;
+            if (dto.Description is not null) entity.Description = dto.Description;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;
@@ -291,16 +214,22 @@ namespace ConduitLLM.Admin.Extensions
                     .Select(mpta => mpta.Identifier)
                     .Where(identifier => !string.IsNullOrEmpty(identifier))
                     .ToList() ?? new List<string>(),
+                ModelProviderTypeAssociationIds = modelCost.ModelProviderTypeAssociations?
+                    .Select(mpta => mpta.Id)
+                    .ToList() ?? new List<int>(),
                 PricingModel = modelCost.PricingModel,
-                PricingConfiguration = modelCost.PricingConfiguration,
+                PricingConfiguration = StructuredJson.ParseObject(modelCost.PricingConfiguration),
                 InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                ReasoningCostPerMillionTokens = modelCost.ReasoningCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
                 BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
                 SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
                 CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
                 CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = modelCost.CostPerSearchUnit,
+                AudioCostPerMinute = modelCost.AudioCostPerMinute,
+                AudioCostPerThousandCharacters = modelCost.AudioCostPerThousandCharacters,
                 CreatedAt = modelCost.CreatedAt,
                 UpdatedAt = modelCost.UpdatedAt,
                 ModelType = modelCost.ModelType,
@@ -328,15 +257,22 @@ namespace ConduitLLM.Admin.Extensions
             {
                 CostName = dto.CostName,
                 PricingModel = dto.PricingModel,
-                PricingConfiguration = dto.PricingConfiguration,
+                PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration),
                 InputCostPerMillionTokens = dto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens,
+                ReasoningCostPerMillionTokens = dto.ReasoningCostPerMillionTokens,
                 EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens,
                 BatchProcessingMultiplier = dto.BatchProcessingMultiplier,
                 SupportsBatchProcessing = dto.SupportsBatchProcessing,
                 CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens,
                 CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens,
                 CostPerSearchUnit = dto.CostPerSearchUnit,
+                AudioCostPerMinute = dto.AudioCostPerMinute,
+                AudioCostPerThousandCharacters = dto.AudioCostPerThousandCharacters,
+                ModelType = dto.ModelType,
+                IsActive = dto.IsActive,
+                Description = dto.Description,
+                Priority = dto.Priority,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -360,17 +296,34 @@ namespace ConduitLLM.Admin.Extensions
                 throw new ArgumentNullException(nameof(dto));
             }
 
-            entity.CostName = dto.CostName;
-            entity.PricingModel = dto.PricingModel;
-            entity.PricingConfiguration = dto.PricingConfiguration;
-            entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens;
-            entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens;
-            entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
-            entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
-            entity.SupportsBatchProcessing = dto.SupportsBatchProcessing;
-            entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
-            entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
-            entity.CostPerSearchUnit = dto.CostPerSearchUnit;
+            if (dto.CostName is not null) entity.CostName = dto.CostName;
+            if (dto.PricingModel.HasValue) entity.PricingModel = dto.PricingModel.Value;
+            if (dto.PricingConfiguration is not null)
+                entity.PricingConfiguration = StructuredJson.SerializeObject(dto.PricingConfiguration);
+            if (dto.ModelType is not null) entity.ModelType = dto.ModelType;
+            if (dto.IsActive.HasValue) entity.IsActive = dto.IsActive.Value;
+            if (dto.Priority.HasValue) entity.Priority = dto.Priority.Value;
+            if (dto.Description is not null) entity.Description = dto.Description;
+            if (dto.InputCostPerMillionTokens.HasValue)
+                entity.InputCostPerMillionTokens = dto.InputCostPerMillionTokens.Value;
+            if (dto.OutputCostPerMillionTokens.HasValue)
+                entity.OutputCostPerMillionTokens = dto.OutputCostPerMillionTokens.Value;
+            if (dto.ReasoningCostPerMillionTokens.HasValue)
+                entity.ReasoningCostPerMillionTokens = dto.ReasoningCostPerMillionTokens;
+            if (dto.EmbeddingCostPerMillionTokens.HasValue)
+                entity.EmbeddingCostPerMillionTokens = dto.EmbeddingCostPerMillionTokens;
+            if (dto.BatchProcessingMultiplier.HasValue)
+                entity.BatchProcessingMultiplier = dto.BatchProcessingMultiplier;
+            if (dto.SupportsBatchProcessing.HasValue)
+                entity.SupportsBatchProcessing = dto.SupportsBatchProcessing.Value;
+            if (dto.CachedInputCostPerMillionTokens.HasValue)
+                entity.CachedInputCostPerMillionTokens = dto.CachedInputCostPerMillionTokens;
+            if (dto.CachedInputWriteCostPerMillionTokens.HasValue)
+                entity.CachedInputWriteCostPerMillionTokens = dto.CachedInputWriteCostPerMillionTokens;
+            if (dto.CostPerSearchUnit.HasValue) entity.CostPerSearchUnit = dto.CostPerSearchUnit;
+            if (dto.AudioCostPerMinute.HasValue) entity.AudioCostPerMinute = dto.AudioCostPerMinute;
+            if (dto.AudioCostPerThousandCharacters.HasValue)
+                entity.AudioCostPerThousandCharacters = dto.AudioCostPerThousandCharacters;
             entity.UpdatedAt = DateTime.UtcNow;
 
             return entity;

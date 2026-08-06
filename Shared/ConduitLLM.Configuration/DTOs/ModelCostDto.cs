@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -38,7 +39,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// - InferenceSteps: {"costPerStep": 0.00013, "defaultSteps": 30}
         /// - TieredTokens: {"tiers": [{"maxContext": 200000, "inputCost": 400}]}
         /// </remarks>
-        public string? PricingConfiguration { get; set; }
+        public Dictionary<string, JsonElement>? PricingConfiguration { get; set; }
 
         /// <summary>
         /// List of model aliases that use this cost configuration
@@ -48,6 +49,9 @@ namespace ConduitLLM.Configuration.DTOs
         /// Shows which models are associated with this cost configuration.
         /// </remarks>
         public List<string> AssociatedModelAliases { get; set; } = new List<string>();
+
+        /// <summary>IDs of the model/provider associations that use this cost.</summary>
+        public List<int> ModelProviderTypeAssociationIds { get; set; } = new List<int>();
 
         /// <summary>
         /// Cost per million input tokens for chat/completion requests in USD
@@ -60,6 +64,12 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         [Range(0, double.MaxValue)]
         public decimal OutputCostPerMillionTokens { get; set; } = 0;
+
+        /// <summary>
+        /// Cost per million reasoning tokens in USD. When omitted, billing uses the output-token rate.
+        /// </summary>
+        [Range(0, double.MaxValue)]
+        public decimal? ReasoningCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per million tokens for embedding requests in USD, if applicable
@@ -163,6 +173,12 @@ namespace ConduitLLM.Configuration.DTOs
         /// Documents over 500 tokens are split into chunks, each counting as a separate document.
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
+
+        /// <summary>Cost per minute of transcribed audio (speech-to-text).</summary>
+        public decimal? AudioCostPerMinute { get; set; }
+
+        /// <summary>Cost per thousand input characters synthesized (text-to-speech).</summary>
+        public decimal? AudioCostPerThousandCharacters { get; set; }
 
     }
 }

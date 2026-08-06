@@ -18,9 +18,7 @@ deleteRules:
   - orgId: 1
     uid: conduit-redis-memory
   - orgId: 1
-    uid: conduit-rabbitmq-queue-backup
-  - orgId: 1
-    uid: conduit-rabbitmq-no-consumers
+    uid: conduit-indeterminate-media-task
 
 groups:
   - orgId: 1
@@ -245,6 +243,74 @@ groups:
           severity: warning
           service: conduit
 
+      # Indeterminate media tasks require provider reconciliation before retry.
+      - uid: conduit-indeterminate-media-task
+        title: Indeterminate Media Task
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(media_task_indeterminate_total[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: A media provider outcome is unknown
+          description: "Do not retry blindly. Follow docs/operations/indeterminate-media-tasks.md and reconcile the provider outcome first."
+        labels:
+          severity: critical
+          service: conduit
+
   - orgId: 1
     name: Conduit Warning Alerts
     folder: Conduit Alerts
@@ -458,139 +524,3 @@ groups:
         labels:
           severity: warning
           service: redis
-
-      # RabbitMQ Queue Backup
-      - uid: conduit-rabbitmq-queue-backup
-        title: RabbitMQ Queue Backup
-        condition: C
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: prometheus
-            model:
-              expr: sum(rabbitmq_queue_messages_ready)
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: B
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: __expr__
-            model:
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: A
-              intervalMs: 1000
-              maxDataPoints: 43200
-              reducer: last
-              refId: B
-              type: reduce
-          - refId: C
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: __expr__
-            model:
-              conditions:
-                - evaluator:
-                    params:
-                      - 1000
-                    type: gt
-                  operator:
-                    type: and
-                  query:
-                    params:
-                      - C
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: B
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: C
-              type: threshold
-        noDataState: NoData
-        execErrState: Error
-        for: 5m
-        annotations:
-          summary: RabbitMQ queue backup detected
-          description: "RabbitMQ has more than 1000 messages waiting. Current: {{ $values.B.Value }} messages"
-        labels:
-          severity: critical
-          service: rabbitmq
-
-      # No Consumers
-      - uid: conduit-rabbitmq-no-consumers
-        title: RabbitMQ No Consumers
-        condition: C
-        data:
-          - refId: A
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: prometheus
-            model:
-              expr: sum(rabbitmq_queue_consumers)
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: A
-          - refId: B
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: __expr__
-            model:
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: A
-              intervalMs: 1000
-              maxDataPoints: 43200
-              reducer: last
-              refId: B
-              type: reduce
-          - refId: C
-            relativeTimeRange:
-              from: 300
-              to: 0
-            datasourceUid: __expr__
-            model:
-              conditions:
-                - evaluator:
-                    params:
-                      - 1
-                    type: lt
-                  operator:
-                    type: and
-                  query:
-                    params:
-                      - C
-                  reducer:
-                    params: []
-                    type: last
-                  type: query
-              datasource:
-                type: __expr__
-                uid: __expr__
-              expression: B
-              intervalMs: 1000
-              maxDataPoints: 43200
-              refId: C
-              type: threshold
-        noDataState: NoData
-        execErrState: Error
-        for: 2m
-        annotations:
-          summary: No RabbitMQ consumers active
-          description: There are no active consumers for RabbitMQ queues - messages will not be processed
-        labels:
-          severity: critical
-          service: rabbitmq

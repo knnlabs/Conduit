@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 
 using ConduitLLM.Core.Exceptions;
 
@@ -12,13 +13,13 @@ namespace ConduitLLM.Core.Utilities
     /// Helper class for common HTTP client operations used across the application.
     /// Provides standardized methods for request/response handling and error processing.
     /// </summary>
+    /// <remarks>
+    /// Debug diagnostics may emit header names for troubleshooting, but must never emit
+    /// request or response header values because they can contain provider credentials.
+    /// </remarks>
     public static class HttpClientHelper
     {
-        private static readonly JsonSerializerOptions DefaultJsonOptions = new()
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
+        private static readonly JsonSerializerOptions DefaultJsonOptions = Serialization.ConduitJsonOptions.Wire;
 
         /// <summary>
         /// Sends a request with JSON content and deserializes the response.
@@ -33,6 +34,7 @@ namespace ConduitLLM.Core.Utilities
         /// <param name="jsonOptions">Optional JSON serialization options.</param>
         /// <param name="logger">Optional logger for request/response logging.</param>
         /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <param name="errorTranslator">Optional provider-specific HTTP error translator.</param>
         /// <returns>The deserialized response object.</returns>
         /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
         public static async Task<TResponse> SendJsonRequestAsync<TRequest, TResponse>(
@@ -43,17 +45,24 @@ namespace ConduitLLM.Core.Utilities
             IDictionary<string, string>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
             ILogger? logger = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            Func<HttpResponseMessage, string, Exception?>? errorTranslator = null)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
 
             try
             {
                 var request = CreateJsonRequest(method, endpoint, requestData, headers, options, logger);
+                LogRequestHeaderNames(request, logger);
                 logger?.LogDebug("Sending {Method} request to {Endpoint}", method, endpoint);
 
                 using var response = await client.SendAsync(request, cancellationToken);
-                return await ProcessResponseAsync<TResponse>(response, options, logger, cancellationToken);
+                return await ProcessResponseAsync<TResponse>(
+                    response,
+                    options,
+                    logger,
+                    cancellationToken,
+                    errorTranslator);
             }
             catch (HttpRequestException ex)
             {
@@ -75,7 +84,11 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "JSON error processing response from {Endpoint}", endpoint);
                 throw new LLMCommunicationException("Error processing response", ex);
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelNotFoundException &&
+                ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
@@ -116,7 +129,8 @@ namespace ConduitLLM.Core.Utilities
                         request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                     }
                 }
-                
+
+                LogRequestHeaderNames(request, logger);
                 logger?.LogDebug("Sending GET request to {Endpoint}", endpoint);
 
                 using var response = await client.SendAsync(request, cancellationToken);
@@ -142,7 +156,74 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "Failed to deserialize JSON response from {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Failed to deserialize response: {ex.Message}", ex);
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelNotFoundException &&
+                ex is not ValidationException)
+            {
+                logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Sends a GET request and deserializes the response with source-generated metadata.
+        /// </summary>
+        public static async Task<TResponse> GetJsonAsync<TResponse>(
+            HttpClient client,
+            string endpoint,
+            JsonTypeInfo<TResponse> responseTypeInfo,
+            IDictionary<string, string>? headers = null,
+            ILogger? logger = null,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
+                if (headers != null)
+                {
+                    foreach (var header in headers)
+                    {
+                        request.Headers.TryAddWithoutValidation(header.Key, header.Value);
+                    }
+                }
+
+                LogRequestHeaderNames(request, logger);
+                logger?.LogDebug("Sending GET request to {Endpoint}", endpoint);
+
+                using var response = await client.SendAsync(request, cancellationToken);
+                return await ProcessResponseAsync(
+                    response,
+                    responseTypeInfo,
+                    logger,
+                    cancellationToken);
+            }
+            catch (HttpRequestException ex)
+            {
+                logger?.LogError(ex, "HTTP request error communicating with API at {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"HTTP request error: {ex.Message}", ex);
+            }
+            catch (TaskCanceledException ex) when (cancellationToken.IsCancellationRequested)
+            {
+                logger?.LogWarning("Request to {Endpoint} was cancelled", endpoint);
+                throw new LLMCommunicationException("Request was cancelled", ex);
+            }
+            catch (TaskCanceledException ex)
+            {
+                logger?.LogError(ex, "Request to {Endpoint} timed out", endpoint);
+                throw new LLMCommunicationException("Request timed out", ex);
+            }
+            catch (JsonException ex)
+            {
+                logger?.LogError(ex, "Failed to deserialize JSON response from {Endpoint}", endpoint);
+                throw new LLMCommunicationException($"Failed to deserialize response: {ex.Message}", ex);
+            }
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelNotFoundException &&
+                ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during API communication with {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Unexpected error: {ex.Message}", ex);
@@ -166,7 +247,7 @@ namespace ConduitLLM.Core.Utilities
             if (requestData != null)
             {
                 var requestJson = JsonSerializer.Serialize(requestData, options);
-                logger?.LogDebug("Sending JSON request: {Json}", requestJson);
+                logger?.LogDebug("Prepared JSON request body ({BodyLength} bytes)", Encoding.UTF8.GetByteCount(requestJson));
                 request.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
             }
 
@@ -180,26 +261,27 @@ namespace ConduitLLM.Core.Utilities
                     request.Headers.TryAddWithoutValidation(header.Key, header.Value);
                 }
             }
-            
-            // Log all headers for debugging (especially for authentication issues)
-            if (logger != null && logger.IsEnabled(LogLevel.Debug))
-            {
-                var allHeaders = new List<string>();
-                foreach (var header in request.Headers)
-                {
-                    allHeaders.Add($"{header.Key}: {string.Join(", ", header.Value)}");
-                }
-                if (request.Content?.Headers != null)
-                {
-                    foreach (var header in request.Content.Headers)
-                    {
-                        allHeaders.Add($"{header.Key}: {string.Join(", ", header.Value)}");
-                    }
-                }
-                logger.LogDebug("Request headers: {Headers}", string.Join("; ", allHeaders));
-            }
 
             return request;
+        }
+
+        /// <summary>
+        /// Logs request header names without emitting any header values.
+        /// </summary>
+        private static void LogRequestHeaderNames(HttpRequestMessage request, ILogger? logger)
+        {
+            if (logger?.IsEnabled(LogLevel.Debug) != true)
+            {
+                return;
+            }
+
+            var headerNames = request.Headers
+                .Select(header => header.Key)
+                .Concat(request.Content?.Headers.Select(header => header.Key) ?? Enumerable.Empty<string>())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name, StringComparer.OrdinalIgnoreCase);
+
+            logger.LogDebug("Request header names: {HeaderNames}", string.Join("; ", headerNames));
         }
 
         /// <summary>
@@ -209,7 +291,8 @@ namespace ConduitLLM.Core.Utilities
             HttpResponseMessage response,
             JsonSerializerOptions options,
             ILogger? logger,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            Func<HttpResponseMessage, string, Exception?>? errorTranslator = null)
         {
             if (!response.IsSuccessStatusCode)
             {
@@ -221,26 +304,20 @@ namespace ConduitLLM.Core.Utilities
                 {
                     logger?.LogWarning("Detected possible OpenAI quota/billing issue - image generation errors with null messages often indicate insufficient quota");
                     throw new LLMCommunicationException(
-                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your OpenAI account status. Raw error: {errorContent}",
+                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your provider account status.",
                         response.StatusCode,
                         errorContent,
                         null);
                 }
-                
-                // Check for Anthropic authentication errors
-                if (errorContent.Contains("invalid bearer token", StringComparison.OrdinalIgnoreCase) ||
-                    errorContent.Contains("bearer", StringComparison.OrdinalIgnoreCase) && errorContent.Contains("anthropic", StringComparison.OrdinalIgnoreCase))
+
+                var translatedError = errorTranslator?.Invoke(response, errorContent);
+                if (translatedError != null)
                 {
-                    logger?.LogWarning("Detected Anthropic authentication error - Bearer token used instead of x-api-key");
-                    throw new LLMCommunicationException(
-                        "Anthropic authentication error: Invalid API key or authentication method. Anthropic requires 'x-api-key' header, not Bearer tokens. Please verify your API key is valid and starts with 'sk-ant-'.",
-                        response.StatusCode,
-                        errorContent,
-                        null);
+                    throw translatedError;
                 }
-                
+
                 throw new LLMCommunicationException(
-                    $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",
+                    $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {SensitiveDataRedactor.Redact(errorContent)}",
                     response.StatusCode,
                     errorContent,
                     null);
@@ -254,7 +331,8 @@ namespace ConduitLLM.Core.Utilities
             // Log the first 500 chars of the response for debugging
             if (logger?.IsEnabled(LogLevel.Debug) == true)
             {
-                var preview = responseContent.Length > 500 ? responseContent.Substring(0, 500) + "..." : responseContent;
+                var safeContent = SensitiveDataRedactor.Redact(responseContent);
+                var preview = safeContent.Length > 500 ? safeContent.Substring(0, 500) + "..." : safeContent;
                 logger.LogDebug("Response content preview: {Content}", preview);
             }
             
@@ -267,7 +345,64 @@ namespace ConduitLLM.Core.Utilities
             catch (JsonException ex)
             {
                 // Log the full response on error for debugging
-                logger?.LogError(ex, "Failed to deserialize response. Full content: {Content}", responseContent);
+                logger?.LogError(ex, "Failed to deserialize response. Redacted content: {Content}",
+                    SensitiveDataRedactor.Redact(responseContent));
+                throw;
+            }
+        }
+
+        private static async Task<TResponse> ProcessResponseAsync<TResponse>(
+            HttpResponseMessage response,
+            JsonTypeInfo<TResponse> responseTypeInfo,
+            ILogger? logger,
+            CancellationToken cancellationToken)
+        {
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await ReadErrorContentAsync(response, cancellationToken);
+                logger?.LogError("API error: {StatusCode} - {Content}", response.StatusCode, errorContent);
+
+                // Preserve the existing provider-specific diagnostic used by the options-based path.
+                if (errorContent.Contains("\"message\": null") &&
+                    errorContent.Contains("image_generation_user_error"))
+                {
+                    logger?.LogWarning(
+                        "Detected possible OpenAI quota/billing issue - image generation errors with null messages often indicate insufficient quota");
+                    throw new LLMCommunicationException(
+                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - Possible quota/billing issue. Please check your provider account status.",
+                        response.StatusCode,
+                        errorContent,
+                        null);
+                }
+
+                throw new LLMCommunicationException(
+                    $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {SensitiveDataRedactor.Redact(errorContent)}",
+                    response.StatusCode,
+                    errorContent,
+                    null);
+            }
+
+            logger?.LogDebug("Received successful response with status code {StatusCode}", response.StatusCode);
+            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (logger?.IsEnabled(LogLevel.Debug) == true)
+            {
+                var safeContent = SensitiveDataRedactor.Redact(responseContent);
+                var preview = safeContent.Length > 500 ? safeContent[..500] + "..." : safeContent;
+                logger.LogDebug("Response content preview: {Content}", preview);
+            }
+
+            try
+            {
+                return JsonSerializer.Deserialize(responseContent, responseTypeInfo)
+                    ?? throw new LLMCommunicationException("Failed to deserialize response - result was null");
+            }
+            catch (JsonException ex)
+            {
+                logger?.LogError(
+                    ex,
+                    "Failed to deserialize response. Redacted content: {Content}",
+                    SensitiveDataRedactor.Redact(responseContent));
                 throw;
             }
         }
@@ -303,6 +438,7 @@ namespace ConduitLLM.Core.Utilities
         /// <param name="jsonOptions">Optional JSON serialization options.</param>
         /// <param name="logger">Optional logger for request/response logging.</param>
         /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+        /// <param name="errorTranslator">Optional provider-specific HTTP error translator.</param>
         /// <returns>The HttpResponseMessage for further processing.</returns>
         /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the API.</exception>
         public static async Task<HttpResponseMessage> SendStreamingRequestAsync<TRequest>(
@@ -313,7 +449,8 @@ namespace ConduitLLM.Core.Utilities
             IDictionary<string, string>? headers = null,
             JsonSerializerOptions? jsonOptions = null,
             ILogger? logger = null,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            Func<HttpResponseMessage, string, Exception?>? errorTranslator = null)
         {
             var options = jsonOptions ?? DefaultJsonOptions;
 
@@ -326,31 +463,26 @@ namespace ConduitLLM.Core.Utilities
                 {
                     request.Headers.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
                 }
-                
+
+                LogRequestHeaderNames(request, logger);
                 logger?.LogDebug("Sending streaming {Method} request to {Endpoint}", method, endpoint);
-                logger?.LogDebug("Request headers: {Headers}", request.Headers.ToString());
 
                 var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                 {
                     var errorContent = await ReadErrorContentAsync(response, cancellationToken);
-                    logger?.LogError("API streaming error: {StatusCode} - {Content}", response.StatusCode, errorContent);
-                    
-                    // Check for Anthropic authentication errors
-                    if (errorContent.Contains("invalid bearer token", StringComparison.OrdinalIgnoreCase) ||
-                        errorContent.Contains("bearer", StringComparison.OrdinalIgnoreCase) && errorContent.Contains("anthropic", StringComparison.OrdinalIgnoreCase))
+                    logger?.LogError("API streaming error: {StatusCode} - {Content}", response.StatusCode,
+                        SensitiveDataRedactor.Redact(errorContent));
+
+                    var translatedError = errorTranslator?.Invoke(response, errorContent);
+                    if (translatedError != null)
                     {
-                        logger?.LogWarning("Detected Anthropic authentication error - Bearer token used instead of x-api-key");
-                        throw new LLMCommunicationException(
-                            "Anthropic authentication error: Invalid API key or authentication method. Anthropic requires 'x-api-key' header, not Bearer tokens. Please verify your API key is valid and starts with 'sk-ant-'.",
-                            response.StatusCode,
-                            errorContent,
-                            null);
+                        throw translatedError;
                     }
-                    
+
                     throw new LLMCommunicationException(
-                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {errorContent}",
+                        $"API returned an error: {(int)response.StatusCode} {response.StatusCode} - {SensitiveDataRedactor.Redact(errorContent)}",
                         response.StatusCode,
                         errorContent,
                         null);
@@ -374,7 +506,11 @@ namespace ConduitLLM.Core.Utilities
                 logger?.LogError(ex, "Streaming request to {Endpoint} timed out", endpoint);
                 throw new LLMCommunicationException("Streaming request timed out", ex);
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelNotFoundException &&
+                ex is not ValidationException)
             {
                 logger?.LogError(ex, "Unexpected error during streaming API communication with {Endpoint}", endpoint);
                 throw new LLMCommunicationException($"Unexpected streaming error: {ex.Message}", ex);

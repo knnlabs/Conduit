@@ -5,25 +5,19 @@ import { Container, Title, Text, Button, Group, Stack } from '@mantine/core';
 import { IconPlus, IconRefresh } from '@tabler/icons-react';
 import { ProviderToolsTable } from '@/components/provider-tools/ProviderToolsTable';
 import { CreateProviderToolModal } from '@/components/provider-tools/CreateProviderToolModal';
-import { notifications } from '@mantine/notifications';
+import { ImportProviderToolsModal } from '@/components/provider-tools/ImportProviderToolsModal';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { downloadBlob } from '@/lib/utils/export';
 
 export default function ProviderToolsPage() {
   const { executeWithAdmin } = useAdminClient();
   const [refreshKey, setRefreshKey] = useState(0);
   const [createToolOpen, setCreateToolOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   const handleRefresh = () => {
     setRefreshKey(prev => prev + 1);
-  };
-
-  const handleImport = async () => {
-    // TODO: Implement import functionality
-    notifications.show({
-      title: 'Import Coming Soon',
-      message: 'Bulk import functionality will be available soon',
-      color: 'blue',
-    });
   };
 
   const handleExport = async () => {
@@ -33,25 +27,13 @@ export default function ProviderToolsPage() {
       );
       
       const blob = new Blob([JSON.stringify(tools, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `provider-tools-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      
-      notifications.show({
-        title: 'Export Successful',
-        message: `Exported ${(tools as unknown[]).length} provider tools`,
-        color: 'green',
-      });
+      downloadBlob(blob, `provider-tools-${new Date().toISOString().split('T')[0]}.json`);
+
+
+      notify.success(`Exported ${(tools as unknown[]).length} provider tools`, 'Export Successful');
     } catch (error) {
       console.error('Failed to export tools:', error);
-      notifications.show({
-        title: 'Export Failed',
-        message: error instanceof Error ? error.message : 'Failed to export provider tools',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to export provider tools');
     }
   };
 
@@ -74,7 +56,7 @@ export default function ProviderToolsPage() {
             </Button>
             <Button
               variant="subtle"
-              onClick={() => void handleImport()}
+              onClick={() => setImportOpen(true)}
             >
               Import
             </Button>
@@ -107,6 +89,12 @@ export default function ProviderToolsPage() {
           setCreateToolOpen(false);
           handleRefresh();
         }}
+      />
+
+      <ImportProviderToolsModal
+        isOpen={importOpen}
+        onClose={() => setImportOpen(false)}
+        onSuccess={handleRefresh}
       />
     </Container>
   );

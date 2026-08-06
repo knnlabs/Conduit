@@ -26,6 +26,11 @@ namespace ConduitLLM.Configuration.Events
         /// Type of error that caused the disable
         /// </summary>
         public string ErrorType { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Raw provider error text, truncated by consumers before display.
+        /// </summary>
+        public string ErrorMessage { get; set; } = string.Empty;
         
         /// <summary>
         /// When the key was disabled
@@ -36,6 +41,16 @@ namespace ConduitLLM.Configuration.Events
         /// Whether this was an automatic disable
         /// </summary>
         public bool IsAutomatic { get; set; } = true;
+
+        /// <summary>
+        /// All key IDs affected by this operation. Contains KeyId for a single-key disable.
+        /// </summary>
+        public IReadOnlyList<int> AffectedKeyIds { get; set; } = Array.Empty<int>();
+
+        /// <summary>
+        /// Shared provider account group, or 0 for an ungrouped key.
+        /// </summary>
+        public short ProviderAccountGroup { get; set; }
     }
     
     /// <summary>
@@ -67,51 +82,15 @@ namespace ConduitLLM.Configuration.Events
         /// When the key was re-enabled
         /// </summary>
         public DateTime ReenabledAt { get; set; } = DateTime.UtcNow;
-    }
-    
-    /// <summary>
-    /// Event raised when provider errors exceed alert thresholds
-    /// </summary>
-    public class ProviderErrorAlertEvent
-    {
+
         /// <summary>
-        /// ID of the provider
+        /// All key IDs restored by this operation.
         /// </summary>
-        public int ProviderId { get; set; }
-        
+        public IReadOnlyList<int> AffectedKeyIds { get; set; } = Array.Empty<int>();
+
         /// <summary>
-        /// Name of the provider
+        /// Shared provider account group, or 0 for an ungrouped key.
         /// </summary>
-        public string ProviderName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Type of error that triggered the alert
-        /// </summary>
-        public string ErrorType { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Number of errors
-        /// </summary>
-        public int ErrorCount { get; set; }
-        
-        /// <summary>
-        /// Time window for the error count
-        /// </summary>
-        public TimeSpan TimeWindow { get; set; }
-        
-        /// <summary>
-        /// Alert message
-        /// </summary>
-        public string AlertMessage { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// When the alert was triggered
-        /// </summary>
-        public DateTime AlertedAt { get; set; } = DateTime.UtcNow;
-        
-        /// <summary>
-        /// Severity level (Warning, Error, Critical)
-        /// </summary>
-        public string Severity { get; set; } = "Warning";
+        public short ProviderAccountGroup { get; set; }
     }
 }

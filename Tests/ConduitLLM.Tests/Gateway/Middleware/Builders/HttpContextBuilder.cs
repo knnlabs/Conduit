@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Gateway.UsageTracking;
 
 namespace ConduitLLM.Tests.Http.Middleware.Builders
 {
@@ -26,6 +27,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         private DateTime? _requestStartTime;
         private string? _testResponseBody;
         private readonly Dictionary<string, object> _additionalItems = new();
+        private IUsageContext? _usageContext;
 
         /// <summary>
         /// Initializes a new HttpContext builder with default settings.
@@ -69,7 +71,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         /// <summary>
         /// Configures for video generations endpoint.
         /// </summary>
-        public HttpContextBuilder ForVideoGenerations() => WithPath("/v1/videos/generations");
+        public HttpContextBuilder ForVideoGenerations() => WithPath("/v1/conduit/videos/generations");
 
         /// <summary>
         /// Configures for embeddings endpoint.
@@ -89,12 +91,12 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
         /// <summary>
         /// Configures for functions endpoint.
         /// </summary>
-        public HttpContextBuilder ForFunctions() => WithPath("/v1/functions");
+        public HttpContextBuilder ForFunctions() => WithPath("/v1/conduit/functions");
 
         /// <summary>
         /// Configures for a polling endpoint (excluded from usage tracking).
         /// </summary>
-        public HttpContextBuilder ForPolling() => WithPath("/v1/videos/tasks/123/status");
+        public HttpContextBuilder ForPolling() => WithPath("/v1/conduit/videos/tasks/123/status");
 
         /// <summary>
         /// Configures for a non-API path (excluded from usage tracking).
@@ -265,10 +267,13 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             string size = "1024x1024",
             int n = 1)
         {
-            _additionalItems["ImageRequestModel"] = model;
-            _additionalItems["ImageRequestQuality"] = quality;
-            _additionalItems["ImageRequestSize"] = size;
-            _additionalItems["ImageRequestN"] = n;
+            _usageContext = new ImageUsageContext
+            {
+                Model = model,
+                Quality = quality,
+                Size = size,
+                N = n
+            };
             return this;
         }
 
@@ -285,12 +290,13 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             string? size = null,
             int n = 1)
         {
-            _additionalItems["VideoRequestModel"] = model;
-            if (duration.HasValue)
-                _additionalItems["VideoRequestDuration"] = duration.Value;
-            if (size != null)
-                _additionalItems["VideoRequestSize"] = size;
-            _additionalItems["VideoRequestN"] = n;
+            _usageContext = new VideoUsageContext
+            {
+                Model = model,
+                Duration = duration,
+                Size = size,
+                N = n
+            };
             return this;
         }
 
@@ -341,12 +347,22 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
             if (_isStreaming)
             {
                 _context.Items["IsStreamingRequest"] = true;
-                if (_streamingUsage != null)
-                    _context.Items["StreamingUsage"] = _streamingUsage;
-                if (_streamingModel != null)
-                    _context.Items["StreamingModel"] = _streamingModel;
+                var accounting = _context.GetOrCreateRequestAccountingContext();
+                accounting.SetOperation(RequestOperation.ChatCompletion, _virtualKeyId, _streamingModel);
+                if (_streamingUsage != null && !string.IsNullOrWhiteSpace(_streamingModel))
+                    accounting.RecordProviderUsage(_streamingUsage, _streamingModel, UsageEvidenceSource.Provider);
                 if (_streamingToolUsage != null)
-                    _context.Items["StreamingToolUsage"] = _streamingToolUsage;
+                {
+                    accounting.RecordProviderToolUsage(new ProviderToolUsage
+                    {
+                        Tools = _streamingToolUsage.Tools.Select(tool => new ProviderToolUsageItem
+                        {
+                            ToolName = tool.ToolName,
+                            Count = tool.Count,
+                            DurationSeconds = tool.DurationSeconds
+                        }).ToList()
+                    });
+                }
             }
 
             if (_requestStartTime.HasValue)
@@ -357,6 +373,9 @@ namespace ConduitLLM.Tests.Http.Middleware.Builders
 
             foreach (var item in _additionalItems)
                 _context.Items[item.Key] = item.Value;
+
+            if (_usageContext != null)
+                _context.SetUsageContext(_usageContext);
 
             return _context;
         }

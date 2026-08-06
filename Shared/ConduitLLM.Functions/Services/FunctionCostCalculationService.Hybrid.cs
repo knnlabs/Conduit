@@ -40,50 +40,66 @@ public partial class FunctionCostCalculationService
         // Parse hybrid pricing configuration
         if (string.IsNullOrWhiteSpace(functionCost.PricingConfiguration))
         {
-            _logger.LogWarning("Hybrid pricing model configured but PricingConfiguration JSON is null/empty for cost {CostName}. Returning 0.",
+            _logger.LogError("Hybrid pricing model configured but PricingConfiguration JSON is null/empty for cost {CostName}.",
                 functionCost.CostName);
-            return 0m;
+            throw new InvalidOperationException(
+                $"Hybrid pricing configuration is required for cost '{functionCost.CostName}'.");
         }
 
-        // Try to detect configuration type from structure
-        // Try Exa format first
+        // Provider type is the discriminator. Structural trial deserialization is unsafe:
+        // a config with optional/default members can accept an unrelated JSON shape.
         try
         {
-            var exaConfig = JsonSerializer.Deserialize<ExaHybridPricingConfig>(functionCost.PricingConfiguration);
-            if (exaConfig != null)
+            return functionCost.ProviderType switch
             {
-                return CalculateExaHybridCost(exaConfig, usage);
-            }
+                FunctionProviderType.Exa => CalculateExaHybridCost(
+                    DeserializeHybridConfig<ExaHybridPricingConfig>(functionCost), usage),
+                FunctionProviderType.Tavily => CalculateTavilySearchCost(
+                    DeserializeHybridConfig<TavilySearchPricingConfig>(functionCost), usage),
+                FunctionProviderType.Perplexity => CalculatePerplexityHybridCost(
+                    DeserializeHybridConfig<PerplexityHybridPricingConfig>(functionCost), usage),
+                _ => throw new InvalidOperationException(
+                    $"Hybrid pricing is not supported for provider {functionCost.ProviderType} on cost '{functionCost.CostName}'.")
+            };
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
-            // Not Exa format, try next
-            _logger.LogDebug("Failed to parse as Exa hybrid pricing config, trying Tavily format...");
+            _logger.LogError(exception,
+                "Invalid {ProviderType} hybrid pricing configuration for cost {CostName}.",
+                functionCost.ProviderType, functionCost.CostName);
+            throw new InvalidOperationException(
+                $"Invalid {functionCost.ProviderType} hybrid pricing configuration for cost '{functionCost.CostName}'.",
+                exception);
+        }
+    }
+
+    private static T DeserializeHybridConfig<T>(FunctionCost functionCost)
+    {
+        return JsonSerializer.Deserialize<T>(functionCost.PricingConfiguration!)
+            ?? throw new JsonException($"Hybrid pricing configuration for '{functionCost.CostName}' deserialized to null.");
+    }
+
+    private decimal CalculatePerplexityHybridCost(
+        PerplexityHybridPricingConfig config,
+        FunctionExecutionUsage usage)
+    {
+        decimal tokenCost;
+
+        if (usage.InputTokensConsumed.HasValue || usage.OutputTokensConsumed.HasValue)
+        {
+            tokenCost = ((usage.InputTokensConsumed ?? 0) * config.InputTokenCostPerMillion
+                + (usage.OutputTokensConsumed ?? 0) * config.OutputTokenCostPerMillion) / 1_000_000m;
+        }
+        else
+        {
+            // Older clients only report a combined count. Charge it at the higher rate so
+            // incomplete usage data cannot turn into an undercharge.
+            tokenCost = (usage.TokensConsumed ?? 0)
+                * Math.Max(config.InputTokenCostPerMillion, config.OutputTokenCostPerMillion)
+                / 1_000_000m;
         }
 
-        // Try Tavily format
-        try
-        {
-            var tavilyConfig = JsonSerializer.Deserialize<TavilySearchPricingConfig>(functionCost.PricingConfiguration);
-            if (tavilyConfig != null)
-            {
-                return CalculateTavilySearchCost(tavilyConfig, usage);
-            }
-        }
-        catch (JsonException)
-        {
-            // Not Tavily format either
-            _logger.LogDebug("Failed to parse as Tavily pricing config, trying generic hybrid format...");
-        }
-
-        // Future: Add other hybrid pricing formats here as needed
-        // For example:
-        // - Perplexity hybrid pricing (base + tokens + citations)
-        // - Custom RAG pricing (storage + retrieval + embeddings)
-
-        _logger.LogWarning("Could not parse hybrid pricing configuration for cost {CostName}. Unknown format. Returning 0.",
-            functionCost.CostName);
-        return 0m;
+        return config.BaseRequestCost + tokenCost;
     }
 
     /// <summary>
@@ -107,18 +123,21 @@ public partial class FunctionCostCalculationService
     /// </remarks>
     private decimal CalculateExaHybridCost(ExaHybridPricingConfig config, FunctionExecutionUsage usage)
     {
-        decimal totalCost = 0m;
+        var isContentRetrieval = usage.Metadata?.TryGetValue("operation", out var operation) == true
+            && string.Equals(operation?.ToString(), "contents", StringComparison.OrdinalIgnoreCase);
 
-        // 1. Calculate search cost
-        decimal searchCost = CalculateExaSearchCost(config, usage);
-        totalCost += searchCost;
+        // Search and get-contents are distinct billable operations. A contents response
+        // has no resolved search type because no search request was made.
+        decimal requestCost = isContentRetrieval
+            ? CalculateExaContentRetrievalCost(config, usage)
+            : CalculateExaSearchCost(config, usage);
 
-        // 2. Calculate content extraction costs
+        // Both operations may also request text, highlights, or summaries.
         decimal contentCost = CalculateExaContentExtractionCost(config, usage);
-        totalCost += contentCost;
+        decimal totalCost = requestCost + contentCost;
 
-        _logger.LogDebug("Exa hybrid cost breakdown: Search=${SearchCost}, Content=${ContentCost}, Total=${TotalCost}",
-            searchCost, contentCost, totalCost);
+        _logger.LogDebug("Exa hybrid cost breakdown: Request=${RequestCost}, Content=${ContentCost}, Total=${TotalCost}",
+            requestCost, contentCost, totalCost);
 
         return totalCost;
     }
@@ -130,12 +149,6 @@ public partial class FunctionCostCalculationService
     {
         var searchType = usage.SearchType?.ToLowerInvariant() ?? "auto";
         var resultCount = usage.ResultCount ?? 0;
-
-        if (resultCount == 0)
-        {
-            _logger.LogDebug("No results returned, search cost = 0");
-            return 0m;
-        }
 
         decimal searchCost;
 
@@ -184,6 +197,21 @@ public partial class FunctionCostCalculationService
         }
 
         return searchCost;
+    }
+
+    /// <summary>
+    /// Calculates Exa get-contents cost based on the number of returned pages.
+    /// </summary>
+    private decimal CalculateExaContentRetrievalCost(ExaHybridPricingConfig config, FunctionExecutionUsage usage)
+    {
+        var pages = Math.Max(usage.ResultCount ?? 0, 0);
+        var costPer1000Pages = config.ContentRetrievalCosts?.CostPer1000Pages ?? 0m;
+        var retrievalCost = pages * costPer1000Pages / 1_000m;
+
+        _logger.LogDebug("Content retrieval: {Pages} pages × ${CostPer1000Pages}/1000 = ${Cost}",
+            pages, costPer1000Pages, retrievalCost);
+
+        return retrievalCost;
     }
 
     /// <summary>

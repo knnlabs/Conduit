@@ -1,3 +1,6 @@
+using ConduitLLM.Configuration.Models;
+using System.Text.Json;
+
 namespace ConduitLLM.Admin.Models.Models
 {
     /// <summary>
@@ -6,13 +9,12 @@ namespace ConduitLLM.Admin.Models.Models
     /// <remarks>
     /// This DTO contains the minimum required information to register a new model.
     /// When creating a model, you must specify its canonical name, the series it belongs to,
-    /// and its capabilities configuration. The model will inherit characteristics from
-    /// its series and capabilities.
+    /// and its capabilities. Capability metadata is stored directly on the canonical
+    /// model and inherits only model-series characteristics.
     /// 
     /// Before creating a model, ensure that:
     /// 1. The ModelSeries exists (or create it first)
-    /// 2. The ModelCapabilities configuration exists (or create it first)
-    /// 3. The model name is unique within the system
+    /// 2. The model name is unique within the system
     /// 
     /// Models created through this DTO will need ModelProviderMappings to be actually
     /// usable by the system, as the mappings connect the canonical model to specific
@@ -47,6 +49,18 @@ namespace ConduitLLM.Admin.Models.Models
         public int ModelSeriesId { get; set; }
 
         // Capability fields embedded directly in CreateModelDto
+
+        /// <summary>Modalities accepted by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Modalities produced by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Where the supplied directional metadata originated.</summary>
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+
+        /// <summary>When the supplied directional metadata was last verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
         
         /// <summary>
         /// Gets or sets whether the model supports chat/conversation interactions.
@@ -77,6 +91,15 @@ namespace ConduitLLM.Admin.Models.Models
         /// Gets or sets whether the model supports video generation.
         /// </summary>
         public bool SupportsVideoGeneration { get; set; }
+
+        /// <summary>Whether the model supports speech-to-text transcription.</summary>
+        public bool SupportsSpeechToText { get; set; }
+
+        /// <summary>Whether the model supports text-to-speech synthesis.</summary>
+        public bool SupportsTextToSpeech { get; set; }
+
+        /// <summary>Whether the model supports document reranking.</summary>
+        public bool SupportsRerank { get; set; }
 
         /// <summary>
         /// Gets or sets whether the model supports text embeddings generation.
@@ -122,6 +145,6 @@ namespace ConduitLLM.Admin.Models.Models
         /// like sliders, selects, and inputs for model-specific parameters.
         /// </remarks>
         /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
-        public string? ModelParameters { get; set; }
+        public Dictionary<string, JsonElement>? ModelParameters { get; set; }
     }
 }

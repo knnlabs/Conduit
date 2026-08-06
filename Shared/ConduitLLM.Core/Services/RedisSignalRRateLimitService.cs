@@ -1,3 +1,4 @@
+using ConduitLLM.Core.Constants;
 using Microsoft.Extensions.Logging;
 using StackExchange.Redis;
 
@@ -34,9 +35,11 @@ namespace ConduitLLM.Core.Services
         Task CleanupStaleConnectionsAsync(string virtualKeyHash);
 
         /// <summary>
-        /// Checks if a connection would exceed the limit (without incrementing)
+        /// Atomically admits a connection when the key is under its ceiling, or reports that it
+        /// is not. Check and increment are one operation: doing them separately let a burst of
+        /// simultaneous connections all observe the same pre-increment count and be admitted.
         /// </summary>
-        Task<ConnectionLimitResult> CheckConnectionLimitAsync(string virtualKeyHash, int maxConnections);
+        Task<ConnectionLimitResult> TryAcquireConnectionAsync(string virtualKeyHash, int maxConnections);
     }
     
     /// <summary>
@@ -70,169 +73,151 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public class RedisSignalRRateLimitService : ISignalRRateLimitService
     {
+        private const int MinuteWindowMs = 60_000;
+        private const int DayWindowMs = 86_400_000;
+        private const int ConnectionTtlSeconds = 86_400;
+
+        // Admit-if-under-ceiling, in one round trip.
+        //   KEYS[1] = the key's connection hash
+        //   ARGV[1] = max connections, ARGV[2] = now (unix seconds), ARGV[3] = hash TTL
+        // Returns {admitted (0/1), count}
+        private const string AcquireConnectionScript = @"
+            local current = tonumber(redis.call('HGET', KEYS[1], 'count') or '0')
+            if current < 0 then
+                current = 0
+            end
+
+            if current >= tonumber(ARGV[1]) then
+                return {0, current}
+            end
+
+            current = redis.call('HINCRBY', KEYS[1], 'count', 1)
+            redis.call('HSET', KEYS[1], 'last_connected', ARGV[2])
+            redis.call('EXPIRE', KEYS[1], ARGV[3])
+            return {1, current}
+        ";
+
+        // Decrement clamped at zero, so a disconnect with no matching connect — a node that died
+        // holding connections, a replayed lifetime event — cannot drive the count negative and
+        // silently hand the key extra capacity.
+        private const string ReleaseConnectionScript = @"
+            local current = tonumber(redis.call('HGET', KEYS[1], 'count') or '0')
+            if current <= 0 then
+                redis.call('HSET', KEYS[1], 'count', 0)
+                return 0
+            end
+
+            return redis.call('HINCRBY', KEYS[1], 'count', -1)
+        ";
+
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisSignalRRateLimitService> _logger;
-        
-        private const string KEY_PREFIX = "signalr:vk:";
-        private const string CONN_SUFFIX = ":connections";
-        private const string RPM_SUFFIX = ":rpm";
-        private const string RPD_SUFFIX = ":rpd";
-        
-        // Lua script for atomic rate limit check with sliding window
-        private const string CHECK_AND_INCREMENT_SCRIPT = @"
-            local key = KEYS[1]
-            local now = tonumber(ARGV[1])
-            local window = tonumber(ARGV[2])
-            local limit = tonumber(ARGV[3])
-            
-            -- Clean old entries
-            redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
-            
-            -- Count current requests
-            local current = redis.call('ZCARD', key)
-            
-            -- Check limit
-            if current >= limit then
-                return {0, current, limit}
-            end
-            
-            -- Add new request
-            local id = redis.call('INCR', key .. ':seq')
-            redis.call('ZADD', key, now, now .. ':' .. id)
-            redis.call('EXPIRE', key, window / 1000 + 60)
-            
-            return {1, current + 1, limit}
-        ";
-        
+        private readonly ISlidingWindowRateLimiter _slidingWindow;
+
         public RedisSignalRRateLimitService(
             IConnectionMultiplexer redis,
             ILogger<RedisSignalRRateLimitService> logger)
+            : this(redis, logger, new SlidingWindowRateLimiter(
+                redis ?? throw new ArgumentNullException(nameof(redis)),
+                logger ?? throw new ArgumentNullException(nameof(logger))))
+        {
+        }
+
+        /// <summary>
+        /// Test seam: lets unit tests drive the RPM/RPD matrix through a fake window.
+        /// </summary>
+        internal RedisSignalRRateLimitService(
+            IConnectionMultiplexer redis,
+            ILogger<RedisSignalRRateLimitService> logger,
+            ISlidingWindowRateLimiter slidingWindow)
         {
             _redis = redis ?? throw new ArgumentNullException(nameof(redis));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _slidingWindow = slidingWindow ?? throw new ArgumentNullException(nameof(slidingWindow));
         }
-        
+
+        /// <summary>
+        /// Checks a SignalR method invocation against both the per-minute and per-day windows.
+        /// </summary>
+        /// <remarks>
+        /// Both windows are evaluated before either is written, so an invocation rejected by the
+        /// daily ceiling does not consume a minute slot. When both allow, the reported limit is
+        /// whichever has the fewest invocations left, and the reset instant is when that window
+        /// genuinely frees room rather than a calendar boundary.
+        /// </remarks>
         public async Task<SignalRRateLimitResult> CheckMethodInvocationAsync(
-            string virtualKeyHash, 
-            int? rpmLimit, 
+            string virtualKeyHash,
+            int? rpmLimit,
             int? rpdLimit)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
             {
                 return new SignalRRateLimitResult { IsAllowed = true };
             }
-            
-            var db = _redis.GetDatabase();
-            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            
+
+            var windows = new List<RateLimitWindow>(2);
+
+            if (HasLimit(rpmLimit))
+            {
+                windows.Add(new RateLimitWindow(
+                    RedisKeys.SignalRRateLimit.Rpm(virtualKeyHash), "RPM", MinuteWindowMs, rpmLimit!.Value));
+            }
+
+            // The daily window is evaluated even when an RPM limit is configured — these are
+            // independent, and a key under its per-minute ceiling can still be over its daily one.
+            if (HasLimit(rpdLimit))
+            {
+                windows.Add(new RateLimitWindow(
+                    RedisKeys.SignalRRateLimit.Rpd(virtualKeyHash), "RPD", DayWindowMs, rpdLimit!.Value));
+            }
+
             // Get current connection count
             var connectionCount = await GetConnectionCountAsync(virtualKeyHash);
-            
-            // Check RPM limit first (more restrictive)
-            if (rpmLimit.HasValue && rpmLimit.Value > 0)
+
+            if (windows.Count == 0)
             {
-                var rpmKey = $"{KEY_PREFIX}{virtualKeyHash}{RPM_SUFFIX}";
-                var rpmResult = await CheckAndIncrementAsync(db, rpmKey, now, 60000, rpmLimit.Value);
-                
-                if (!rpmResult.IsAllowed)
-                {
-                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPM limit: {Current}/{Limit}", 
-                        virtualKeyHash, rpmResult.Current, rpmLimit.Value);
-                    
-                    return new SignalRRateLimitResult
-                    {
-                        IsAllowed = false,
-                        DenialReason = "Rate limit exceeded. Please try again later.",
-                        RequestsRemaining = 0,
-                        Limit = rpmLimit.Value,
-                        ResetsAt = DateTime.UtcNow.AddMinutes(1),
-                        LimitType = "RPM",
-                        ActiveConnections = connectionCount
-                    };
-                }
-                
                 return new SignalRRateLimitResult
                 {
                     IsAllowed = true,
-                    RequestsRemaining = Math.Max(0, rpmLimit.Value - rpmResult.Current),
-                    Limit = rpmLimit.Value,
-                    ResetsAt = DateTime.UtcNow.AddMinutes(1),
-                    LimitType = "RPM",
                     ActiveConnections = connectionCount
                 };
             }
-            
-            // Check RPD limit
-            if (rpdLimit.HasValue && rpdLimit.Value > 0)
+
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var result = await _slidingWindow.CheckAsync(windows, now);
+
+            if (!result.IsAllowed && result.DeniedWindow is { } denied)
             {
-                var rpdKey = $"{KEY_PREFIX}{virtualKeyHash}{RPD_SUFFIX}";
-                var rpdResult = await CheckAndIncrementAsync(db, rpdKey, now, 86400000, rpdLimit.Value);
-                
-                if (!rpdResult.IsAllowed)
-                {
-                    _logger.LogWarning("SignalR virtual key {KeyHash} exceeded RPD limit: {Current}/{Limit}", 
-                        virtualKeyHash, rpdResult.Current, rpdLimit.Value);
-                    
-                    return new SignalRRateLimitResult
-                    {
-                        IsAllowed = false,
-                        DenialReason = "Daily rate limit exceeded. Please try again tomorrow.",
-                        RequestsRemaining = 0,
-                        Limit = rpdLimit.Value,
-                        ResetsAt = DateTime.UtcNow.Date.AddDays(1),
-                        LimitType = "RPD",
-                        ActiveConnections = connectionCount
-                    };
-                }
-                
+                _logger.LogWarning("SignalR virtual key {KeyHash} exceeded {LimitType} limit: {Current}/{Limit}",
+                    virtualKeyHash, denied.Scope, denied.Current, denied.Limit);
+
                 return new SignalRRateLimitResult
                 {
-                    IsAllowed = true,
-                    RequestsRemaining = Math.Max(0, rpdLimit.Value - rpdResult.Current),
-                    Limit = rpdLimit.Value,
-                    ResetsAt = DateTime.UtcNow.Date.AddDays(1),
-                    LimitType = "RPD",
+                    IsAllowed = false,
+                    DenialReason = denied.Scope == "RPD"
+                        ? "Daily rate limit exceeded. Please try again tomorrow."
+                        : "Rate limit exceeded. Please try again later.",
+                    RequestsRemaining = 0,
+                    Limit = (int)denied.Limit,
+                    ResetsAt = denied.ResetsAt,
+                    LimitType = denied.Scope,
                     ActiveConnections = connectionCount
                 };
             }
-            
-            // No limits
+
+            var tightest = result.TightestWindow;
             return new SignalRRateLimitResult
             {
                 IsAllowed = true,
+                RequestsRemaining = tightest is null ? 0 : (int)Math.Min(int.MaxValue, tightest.Remaining),
+                Limit = tightest is null ? 0 : (int)tightest.Limit,
+                ResetsAt = tightest?.ResetsAt ?? DateTime.UtcNow.AddMinutes(1),
+                LimitType = tightest?.Scope ?? "",
                 ActiveConnections = connectionCount
             };
         }
-        
-        private async Task<RateLimitResult> CheckAndIncrementAsync(
-            IDatabase db, 
-            string key, 
-            long now, 
-            int windowMs, 
-            int limit)
-        {
-            try
-            {
-                var result = await db.ScriptEvaluateAsync(
-                    CHECK_AND_INCREMENT_SCRIPT,
-                    new RedisKey[] { key },
-                    new RedisValue[] { now, windowMs, limit });
-                
-                var array = (RedisValue[])result!;
-                return new RateLimitResult
-                {
-                    IsAllowed = (int)array[0] == 1,
-                    Current = (int)array[1],
-                    Limit = (int)array[2]
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking SignalR rate limit for key {Key}", key);
-                // Allow on error to prevent total failure
-                return new RateLimitResult { IsAllowed = true, Current = 0, Limit = limit };
-            }
-        }
+
+        private static bool HasLimit(int? limit) => limit.HasValue && limit.Value > 0;
         
         public async Task<int> IncrementConnectionCountAsync(string virtualKeyHash)
         {
@@ -242,7 +227,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashIncrementAsync(key, "count");
                 await db.HashSetAsync(key, "last_connected", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
@@ -260,6 +245,58 @@ namespace ConduitLLM.Core.Services
             }
         }
         
+        /// <inheritdoc />
+        public async Task<ConnectionLimitResult> TryAcquireConnectionAsync(string virtualKeyHash, int maxConnections)
+        {
+            if (string.IsNullOrEmpty(virtualKeyHash))
+            {
+                return new ConnectionLimitResult { IsAllowed = true, MaxConnections = maxConnections };
+            }
+
+            try
+            {
+                var db = _redis.GetDatabase();
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
+
+                var raw = await db.ScriptEvaluateAsync(
+                    AcquireConnectionScript,
+                    new RedisKey[] { key },
+                    new RedisValue[] { maxConnections, DateTimeOffset.UtcNow.ToUnixTimeSeconds(), ConnectionTtlSeconds });
+
+                var result = (RedisValue[])raw!;
+                var admitted = (int)result[0] == 1;
+                var current = (int)result[1];
+
+                if (!admitted)
+                {
+                    return new ConnectionLimitResult
+                    {
+                        IsAllowed = false,
+                        CurrentConnections = current,
+                        MaxConnections = maxConnections,
+                        DenialReason = $"Connection limit exceeded ({current}/{maxConnections}). Please close existing connections before opening new ones."
+                    };
+                }
+
+                _logger.LogDebug("Virtual key {KeyHash} connected. Active connections: {Count}",
+                    virtualKeyHash, current);
+
+                return new ConnectionLimitResult
+                {
+                    IsAllowed = true,
+                    CurrentConnections = current,
+                    MaxConnections = maxConnections
+                };
+            }
+            catch (Exception ex)
+            {
+                // Fail open, consistent with the other limiters: a Redis outage must not stop
+                // clients connecting.
+                _logger.LogError(ex, "Error acquiring a connection slot for {KeyHash}; allowing the connection", virtualKeyHash);
+                return new ConnectionLimitResult { IsAllowed = true, MaxConnections = maxConnections };
+            }
+        }
+
         public async Task<int> DecrementConnectionCountAsync(string virtualKeyHash)
         {
             if (string.IsNullOrEmpty(virtualKeyHash))
@@ -268,16 +305,13 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
-                var count = await db.HashDecrementAsync(key, "count");
-                
-                // Ensure count doesn't go negative
-                if (count < 0)
-                {
-                    await db.HashSetAsync(key, "count", 0);
-                    count = 0;
-                }
+                // Clamping inside the script keeps the read and the correction atomic. Doing it
+                // in two steps let a concurrent connect observe the transient negative value and
+                // admit past the ceiling.
+                var raw = await db.ScriptEvaluateAsync(ReleaseConnectionScript, new RedisKey[] { key });
+                var count = (long)raw!;
                 
                 await db.HashSetAsync(key, "last_disconnected", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
                 
@@ -307,7 +341,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var count = await db.HashGetAsync(key, "count");
                 return count.HasValue ? (int)count : 0;
@@ -327,7 +361,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var db = _redis.GetDatabase();
-                var key = $"{KEY_PREFIX}{virtualKeyHash}{CONN_SUFFIX}";
+                var key = RedisKeys.SignalRRateLimit.Connections(virtualKeyHash);
                 
                 var lastActivity = await db.HashGetAsync(key, "last_disconnected");
                 if (lastActivity.HasValue)
@@ -347,39 +381,5 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        public async Task<ConnectionLimitResult> CheckConnectionLimitAsync(string virtualKeyHash, int maxConnections)
-        {
-            if (string.IsNullOrEmpty(virtualKeyHash))
-            {
-                return new ConnectionLimitResult { IsAllowed = true, MaxConnections = maxConnections };
-            }
-
-            var currentCount = await GetConnectionCountAsync(virtualKeyHash);
-
-            if (currentCount >= maxConnections)
-            {
-                return new ConnectionLimitResult
-                {
-                    IsAllowed = false,
-                    CurrentConnections = currentCount,
-                    MaxConnections = maxConnections,
-                    DenialReason = $"Connection limit exceeded ({currentCount}/{maxConnections}). Please close existing connections before opening new ones."
-                };
-            }
-
-            return new ConnectionLimitResult
-            {
-                IsAllowed = true,
-                CurrentConnections = currentCount,
-                MaxConnections = maxConnections
-            };
-        }
-
-        private class RateLimitResult
-        {
-            public bool IsAllowed { get; set; }
-            public int Current { get; set; }
-            public int Limit { get; set; }
-        }
     }
 }

@@ -1,7 +1,6 @@
+using ConduitLLM.Core.Constants;
 using ConduitLLM.Core.Interfaces;
-
 using Microsoft.Extensions.Logging;
-
 using StackExchange.Redis;
 
 namespace ConduitLLM.Core.Services
@@ -13,7 +12,6 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IConnectionMultiplexer _redis;
         private readonly ILogger<RedisDistributedLockService> _logger;
-        private const string LOCK_PREFIX = "lock:";
 
         public RedisDistributedLockService(
             IConnectionMultiplexer redis,
@@ -25,71 +23,35 @@ namespace ConduitLLM.Core.Services
 
         /// <inheritdoc/>
         public async Task<IDistributedLock?> AcquireLockAsync(
-            string key, 
-            TimeSpan expiry, 
+            string key,
+            TimeSpan expiry,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Lock key cannot be null or empty", nameof(key));
 
-            var lockKey = $"{LOCK_PREFIX}{key}";
+            var lockKey = RedisKeys.Lock.For(key);
             var lockValue = Guid.NewGuid().ToString();
             var db = _redis.GetDatabase();
 
-            try
-            {
-                // Use SET NX EX for atomic lock acquisition
-                var acquired = await db.StringSetAsync(
-                    lockKey, 
-                    lockValue, 
-                    expiry, 
-                    When.NotExists);
+            // Use SET NX EX for atomic lock acquisition
+            var acquired = await db.StringSetAsync(
+                lockKey,
+                lockValue,
+                expiry,
+                When.NotExists);
 
-                if (acquired)
-                {
-                    _logger.LogDebug("Acquired distributed lock for key {Key} with value {Value}", key, lockValue);
-                    return new RedisDistributedLock(db, lockKey, lockValue, DateTime.UtcNow.Add(expiry), _logger);
-                }
-
-                _logger.LogDebug("Failed to acquire distributed lock for key {Key} - lock already held", key);
-                return null;
-            }
-            catch (Exception ex)
+            if (acquired)
             {
-                _logger.LogError(ex, "Error acquiring distributed lock for key {Key}", key);
-                throw;
+                _logger.LogDebug("Acquired distributed lock for key {Key} with value {Value}", key, lockValue);
+                return new RedisDistributedLock(db, lockKey, lockValue, DateTime.UtcNow.Add(expiry), _logger);
             }
+
+            _logger.LogDebug("Failed to acquire distributed lock for key {Key} - lock already held", key);
+            return null;
         }
 
         /// <inheritdoc/>
-        public async Task<IDistributedLock> AcquireLockWithRetryAsync(
-            string key, 
-            TimeSpan expiry, 
-            TimeSpan timeout,
-            TimeSpan retryDelay,
-            CancellationToken cancellationToken = default)
-        {
-            var endTime = DateTime.UtcNow.Add(timeout);
-
-            while (DateTime.UtcNow < endTime && !cancellationToken.IsCancellationRequested)
-            {
-                var lockHandle = await AcquireLockAsync(key, expiry, cancellationToken);
-                if (lockHandle != null)
-                {
-                    return lockHandle;
-                }
-
-                var remainingTime = endTime - DateTime.UtcNow;
-                var delay = remainingTime < retryDelay ? remainingTime : retryDelay;
-                
-                if (delay > TimeSpan.Zero)
-                {
-                    await Task.Delay(delay, cancellationToken);
-                }
-            }
-
-            throw new TimeoutException($"Failed to acquire lock for key '{key}' within timeout period of {timeout}");
-        }
 
         /// <inheritdoc/>
         public async Task<bool> IsLockedAsync(string key, CancellationToken cancellationToken = default)
@@ -97,18 +59,10 @@ namespace ConduitLLM.Core.Services
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Lock key cannot be null or empty", nameof(key));
 
-            var lockKey = $"{LOCK_PREFIX}{key}";
+            var lockKey = RedisKeys.Lock.For(key);
             var db = _redis.GetDatabase();
 
-            try
-            {
-                return await db.KeyExistsAsync(lockKey);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking lock status for key {Key}", key);
-                throw;
-            }
+            return await db.KeyExistsAsync(lockKey);
         }
 
         /// <inheritdoc/>
@@ -120,44 +74,36 @@ namespace ConduitLLM.Core.Services
             var db = _redis.GetDatabase();
             var lockKey = @lock.Key;
 
-            try
-            {
-                // Use Lua script to atomically check lock ownership and extend
-                var script = @"
-                    local key = KEYS[1]
-                    local value = ARGV[1]
-                    local ttl = ARGV[2]
-                    
-                    if redis.call('GET', key) == value then
-                        return redis.call('PEXPIRE', key, ttl)
-                    else
-                        return 0
-                    end
-                ";
+            // Use Lua script to atomically check lock ownership and extend
+            var script = @"
+                local key = KEYS[1]
+                local value = ARGV[1]
+                local ttl = ARGV[2]
 
-                var result = await db.ScriptEvaluateAsync(
-                    script,
-                    new RedisKey[] { lockKey },
-                    new RedisValue[] { @lock.LockValue, (long)extension.TotalMilliseconds });
-
-                var extended = (long)result == 1;
-                
-                if (extended)
-                {
-                    _logger.LogDebug("Extended lock for key {Key} by {Extension}ms", @lock.Key, extension.TotalMilliseconds);
-                }
+                if redis.call('GET', key) == value then
+                    return redis.call('PEXPIRE', key, ttl)
                 else
-                {
-                    _logger.LogWarning("Failed to extend lock for key {Key} - lock not owned or expired", @lock.Key);
-                }
+                    return 0
+                end
+            ";
 
-                return extended;
-            }
-            catch (Exception ex)
+            var result = await db.ScriptEvaluateAsync(
+                script,
+                new RedisKey[] { lockKey },
+                new RedisValue[] { @lock.LockValue, (long)extension.TotalMilliseconds });
+
+            var extended = (long)result == 1;
+
+            if (extended)
             {
-                _logger.LogError(ex, "Error extending lock for key {Key}", @lock.Key);
-                throw;
+                _logger.LogDebug("Extended lock for key {Key} by {Extension}ms", @lock.Key, extension.TotalMilliseconds);
             }
+            else
+            {
+                _logger.LogWarning("Failed to extend lock for key {Key} - lock not owned or expired", @lock.Key);
+            }
+
+            return extended;
         }
 
         /// <summary>
@@ -175,9 +121,9 @@ namespace ConduitLLM.Core.Services
             public bool IsValid => !_disposed && DateTime.UtcNow < ExpiryTime;
 
             public RedisDistributedLock(
-                IDatabase db, 
-                string key, 
-                string lockValue, 
+                IDatabase db,
+                string key,
+                string lockValue,
                 DateTime expiryTime,
                 ILogger logger)
             {
@@ -199,7 +145,7 @@ namespace ConduitLLM.Core.Services
                     var script = @"
                         local key = KEYS[1]
                         local value = ARGV[1]
-                        
+
                         if redis.call('GET', key) == value then
                             return redis.call('DEL', key)
                         else
@@ -229,6 +175,11 @@ namespace ConduitLLM.Core.Services
                 {
                     _disposed = true;
                 }
+            }
+
+            public async ValueTask DisposeAsync()
+            {
+                await ReleaseAsync().ConfigureAwait(false);
             }
 
             public void Dispose()

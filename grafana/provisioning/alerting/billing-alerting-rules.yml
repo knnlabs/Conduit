@@ -1,0 +1,239 @@
+apiVersion: 1
+
+deleteRules:
+  - orgId: 1
+    uid: conduit-token-count-degraded
+  - orgId: 1
+    uid: conduit-billing-revenue-loss
+  - orgId: 1
+    uid: conduit-billing-zero-cost
+  - orgId: 1
+    uid: conduit-billing-canary-failed
+  - orgId: 1
+    uid: conduit-billing-canary-stale
+
+groups:
+  - orgId: 1
+    name: Conduit Billing Correctness Alerts
+    folder: Conduit Alerts
+    interval: 1m
+    rules:
+      - uid: conduit-billing-revenue-loss
+        title: Billing Revenue Loss Event
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(conduit_billing_revenue_loss_dollars_total[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Billing recorded potential revenue loss
+          description: "One or more revenue-loss events occurred in the last five minutes. Inspect BillingAuditEvents before reconciling spend."
+          runbook_url: "https://github.com/nickna/Conduit/blob/main/docs/billing-alerting.md"
+        labels: { severity: critical, service: conduit-billing }
+
+      - uid: conduit-billing-zero-cost
+        title: Unexpected Zero-Cost Billing
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(conduit_billing_zero_cost_total[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: A request with positive usage was billed at zero
+          description: "A zero-cost billing event occurred in the last five minutes. Check the model and reason labels and the billing audit log."
+          runbook_url: "https://github.com/nickna/Conduit/blob/main/docs/billing-alerting.md"
+        labels: { severity: warning, service: conduit-billing }
+
+      - uid: conduit-token-count-degraded
+        title: Token Counting Degraded to Character Heuristic
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: sum(increase(conduit_token_count_estimates_total{fidelity="character_heuristic"}[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: Token counts are falling back to the chars/4 heuristic
+          description: "Tokenizer vocabulary data is unavailable, so spend reservations and fallback billing are running on character-based estimates. Check Gateway logs for 'Failed to load encoding'."
+          runbook_url: "https://github.com/nickna/Conduit/blob/main/docs/billing-alerting.md"
+        labels: { severity: warning, service: conduit-billing }
+
+      - uid: conduit-billing-canary-failed
+        title: Model Cost Canary Failed
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: max(conduit_billing_cost_canary_failed_models)
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator: { params: [0], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: Alerting
+        execErrState: Error
+        for: 0s
+        annotations:
+          summary: At least one active model cannot produce a positive synthetic cost
+          description: "Inspect conduit_billing_cost_canary_status for the affected model and the ModelCostCanaryFailed billing-audit event."
+          runbook_url: "https://github.com/nickna/Conduit/blob/main/docs/billing-alerting.md"
+        labels: { severity: critical, service: conduit-billing }
+
+      - uid: conduit-billing-canary-stale
+        title: Model Cost Canary Stale
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 1200, to: 0 }
+            datasourceUid: prometheus
+            model:
+              expr: time() - max(conduit_billing_cost_canary_last_run_timestamp_seconds)
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: A
+          - refId: B
+            relativeTimeRange: { from: 1200, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: A
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            relativeTimeRange: { from: 1200, to: 0 }
+            datasourceUid: __expr__
+            model:
+              datasource: { type: __expr__, uid: __expr__ }
+              expression: B
+              refId: C
+              type: threshold
+              conditions:
+                - evaluator: { params: [900], type: gt }
+                  operator: { type: and }
+                  query: { params: [C] }
+                  reducer: { params: [], type: last }
+                  type: query
+        noDataState: Alerting
+        execErrState: Error
+        for: 1m
+        annotations:
+          summary: The model cost canary has not completed recently
+          description: "No canary run completed in 15 minutes. Check the Admin service, leader election, database connectivity, and BillingCostCanary configuration."
+          runbook_url: "https://github.com/nickna/Conduit/blob/main/docs/billing-alerting.md"
+        labels: { severity: critical, service: conduit-billing }

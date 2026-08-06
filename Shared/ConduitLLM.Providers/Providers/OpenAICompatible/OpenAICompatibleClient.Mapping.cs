@@ -24,7 +24,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
         {
             // Map tools if present
             List<object>? openAiTools = null;
-            if (request.Tools != null && request.Tools.Count() > 0)
+            if (request.Tools != null && request.Tools.Any())
             {
                 openAiTools = request.Tools.Select(t => new
                 {
@@ -52,9 +52,11 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 return new OpenAIMessage
                 {
                     Role = m.Role,
-                    Content = ProviderHelpers.ContentHelper.IsTextOnly(m.Content)
-                        ? ProviderHelpers.ContentHelper.GetContentAsString(m.Content)
-                        : MapMultimodalContent(m.Content),
+                    Content = ProviderHelpers.ContentHelper.ShouldPreserveAsArray(m.Content)
+                        ? PassThroughContentArray(m.Content)
+                        : ProviderHelpers.ContentHelper.IsTextOnly(m.Content)
+                            ? ProviderHelpers.ContentHelper.GetContentAsString(m.Content)
+                            : MapMultimodalContent(m.Content),
                     Name = m.Name,
                     ToolCalls = m.ToolCalls?.Select(tc => new
                     {
@@ -66,7 +68,15 @@ namespace ConduitLLM.Providers.OpenAICompatible
                             arguments = tc.Function?.Arguments
                         }
                     }).Cast<object>().ToList(),
-                    ToolCallId = m.ToolCallId
+                    ToolCallId = m.ToolCallId,
+                    Annotations = m.Annotations is null
+                        ? null
+                        : System.Text.Json.JsonSerializer.SerializeToElement(m.Annotations, DefaultJsonOptions),
+                    Audio = m.Audio,
+                    Images = m.Images,
+                    ReasoningDetails = m.ReasoningDetails,
+                    Reasoning = m.Reasoning,
+                    ExtensionData = m.ExtensionData
                 };
             }).ToList();
 
@@ -80,6 +90,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Add optional standard parameters
             if (request.MaxTokens != null)
                 openAiRequest["max_tokens"] = request.MaxTokens;
+            if (request.MaxCompletionTokens != null)
+                openAiRequest["max_completion_tokens"] = request.MaxCompletionTokens;
             if (request.Temperature != null)
                 openAiRequest["temperature"] = ParameterConverter.ToTemperature(request.Temperature);
             if (request.TopP != null)
@@ -98,14 +110,64 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 openAiRequest["user"] = request.User;
             if (request.Seed != null)
                 openAiRequest["seed"] = request.Seed;
+            if (request.ReasoningEffort != null)
+                openAiRequest["reasoning_effort"] = request.ReasoningEffort;
+            if (request.ParallelToolCalls != null)
+                openAiRequest["parallel_tool_calls"] = request.ParallelToolCalls;
+            if (request.Modalities != null)
+                openAiRequest["modalities"] = request.Modalities;
+            if (request.Audio != null)
+                openAiRequest["audio"] = request.Audio;
+            if (request.Prediction != null)
+                openAiRequest["prediction"] = request.Prediction;
+            if (request.Logprobs != null)
+                openAiRequest["logprobs"] = request.Logprobs;
+            if (request.TopLogprobs != null)
+                openAiRequest["top_logprobs"] = request.TopLogprobs;
+            if (request.ServiceTier != null)
+                openAiRequest["service_tier"] = request.ServiceTier;
+            if (request.Store != null)
+                openAiRequest["store"] = request.Store;
+            if (request.Metadata != null)
+                openAiRequest["metadata"] = request.Metadata;
+            if (request.SafetyIdentifier != null)
+                openAiRequest["safety_identifier"] = request.SafetyIdentifier;
+            if (request.Verbosity != null)
+                openAiRequest["verbosity"] = request.Verbosity;
+            if (request.Moderation != null)
+                openAiRequest["moderation"] = request.Moderation;
+            if (request.PromptCacheKey != null)
+                openAiRequest["prompt_cache_key"] = request.PromptCacheKey;
+            if (request.PromptCacheOptions != null)
+                openAiRequest["prompt_cache_options"] = request.PromptCacheOptions;
+            if (request.PromptCacheRetention != null)
+                openAiRequest["prompt_cache_retention"] = request.PromptCacheRetention;
+            if (request.WebSearchOptions != null)
+                openAiRequest["web_search_options"] = request.WebSearchOptions;
             if (openAiTools != null)
                 openAiRequest["tools"] = openAiTools;
             if (openAiToolChoice != null)
                 openAiRequest["tool_choice"] = openAiToolChoice;
+            if (request.Functions != null)
+                openAiRequest["functions"] = request.Functions;
+            if (request.FunctionCall != null)
+                openAiRequest["function_call"] = request.FunctionCall;
             // Only send ResponseFormat if explicitly requested and not "text" (default)
             // Some providers like SambaNova don't support response_format with type "text"
             if (request.ResponseFormat != null && request.ResponseFormat.Type != "text")
-                openAiRequest["response_format"] = new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            {
+                // For json_schema, forward the Core ResponseFormat as-is so the schema payload
+                // ({ type, json_schema: { name, strict, schema } }) reaches the provider. For other
+                // types (e.g. json_object) send only { type } to match providers that reject extras.
+                openAiRequest["response_format"] =
+                    request.ResponseFormat.Type == "json_schema" && request.ResponseFormat.JsonSchema != null
+                        ? (object)request.ResponseFormat
+                        : new ResponseFormat { Type = request.ResponseFormat.Type ?? "text" };
+            }
+            // Unified reasoning config — only forwarded when the caller set it (providers that don't
+            // support it simply ignore/return an error, same as any explicit unsupported parameter).
+            if (request.Reasoning != null)
+                openAiRequest["reasoning"] = request.Reasoning;
             if (request.Stream != null)
                 openAiRequest["stream"] = request.Stream;
             if (request.StreamOptions != null)
@@ -114,26 +176,16 @@ namespace ConduitLLM.Providers.OpenAICompatible
             // Pass through any extension data (model-specific parameters)
             if (request.ExtensionData != null)
             {
-                Logger.LogWarning("ExtensionData has {Count} items", request.ExtensionData.Count);
+                Logger.LogDebug("Forwarding {Count} extension data parameters", request.ExtensionData.Count);
                 foreach (var kvp in request.ExtensionData)
                 {
-                    Logger.LogWarning("ExtensionData contains: {Key} = {Value} (Type: {Type})", 
-                        kvp.Key, kvp.Value.ToString(), kvp.Value.ValueKind);
-                    
                     // Don't override standard parameters
                     if (!openAiRequest.ContainsKey(kvp.Key))
                     {
                         // Convert JsonElement to actual value for proper serialization
-                        var converted = ConvertJsonElement(kvp.Value);
-                        openAiRequest[kvp.Key] = converted;
-                        Logger.LogWarning("Added to request: {Key} = {Value} (Type: {Type})", 
-                            kvp.Key, converted, converted?.GetType().Name ?? "null");
+                        openAiRequest[kvp.Key] = ConvertJsonElement(kvp.Value);
                     }
                 }
-            }
-            else
-            {
-                Logger.LogWarning("ExtensionData is NULL");
             }
             
             return openAiRequest;
@@ -184,11 +236,96 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 });
             }
 
+            foreach (var videoUrl in ProviderHelpers.ContentHelper.ExtractVideoUrls(content))
+            {
+                contentParts.Add(new
+                {
+                    type = "video_url",
+                    video_url = new
+                    {
+                        url = videoUrl.Url,
+                        detail = videoUrl.Detail,
+                        max_frames = videoUrl.MaxFrames,
+                        sample_rate = videoUrl.SampleRate,
+                        start_time = videoUrl.StartTime,
+                        end_time = videoUrl.EndTime
+                    }
+                });
+            }
+
             // If no parts were added, return an empty string
             if (contentParts.Count == 0)
                 return "";
 
             return contentParts;
+        }
+
+        /// <summary>
+        /// Passes through content array elements preserving all properties (including cache_control).
+        /// </summary>
+        /// <param name="content">The content object which should be a JSON array</param>
+        /// <returns>A list of dictionaries preserving all properties on each content block</returns>
+        protected virtual object PassThroughContentArray(object? content)
+        {
+            if (content == null)
+                return "";
+
+            if (content is System.Text.Json.JsonElement jsonElement && jsonElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                // Convert each array element to a dictionary preserving all properties
+                var contentParts = new List<object>();
+                foreach (var element in jsonElement.EnumerateArray())
+                {
+                    if (element.ValueKind == System.Text.Json.JsonValueKind.Object)
+                    {
+                        var dict = new Dictionary<string, object?>();
+                        foreach (var prop in element.EnumerateObject())
+                        {
+                            dict[prop.Name] = ConvertJsonElement(prop.Value);
+                        }
+                        contentParts.Add(dict);
+                    }
+                }
+                return contentParts.Count > 0 ? contentParts : (object)"";
+            }
+
+            // Handle IEnumerable<object> of dictionaries (from PromptCacheInjectionService)
+            if (content is IEnumerable<object> contentList)
+            {
+                var parts = new List<object>();
+                foreach (var item in contentList)
+                {
+                    if (item is IDictionary<string, object?> dictNullable)
+                    {
+                        parts.Add(dictNullable);
+                    }
+                    else if (item is IDictionary<string, object> dictNonNull)
+                    {
+                        parts.Add(dictNonNull);
+                    }
+                    else
+                    {
+                        parts.Add(item);
+                    }
+                }
+                if (parts.Count > 0)
+                    return parts;
+            }
+
+            // Fallback: try serialize/deserialize to preserve structure
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(content);
+                var list = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(json);
+                if (list != null && list.Count > 0)
+                    return list;
+            }
+            catch
+            {
+                // Fall through to MapMultimodalContent
+            }
+
+            return MapMultimodalContent(content);
         }
 
         /// <summary>
@@ -223,7 +360,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
             try
             {
                 // Map the strongly-typed response
-                return new CoreModels.ChatCompletionResponse
+                var mapped = new CoreModels.ChatCompletionResponse
                 {
                     Id = response.Id ?? Guid.NewGuid().ToString(),
                     Object = response.Object ?? "chat.completion",
@@ -242,29 +379,158 @@ namespace ConduitLLM.Providers.OpenAICompatible
                                 ? System.Text.Json.JsonSerializer.Deserialize<List<CoreModels.ToolCall>>(
                                     System.Text.Json.JsonSerializer.Serialize(c.Message.ToolCalls))
                                 : null,
-                            ToolCallId = c.Message.ToolCallId
+                            ToolCallId = c.Message.ToolCallId,
+                            Annotations = c.Message.Annotations is { ValueKind: System.Text.Json.JsonValueKind.Array } annotations
+                                ? annotations.EnumerateArray().Select(annotation => annotation.Clone()).ToList()
+                                : null,
+                            Audio = c.Message.Audio,
+                            Images = c.Message.Images,
+                            ReasoningDetails = c.Message.ReasoningDetails,
+                            Reasoning = c.Message.Reasoning,
+                            ExtensionData = c.Message.ExtensionData
                         } : new CoreModels.Message
                         {
                             Role = "assistant",
                             Content = null
                         }
                     }).ToList() ?? new List<CoreModels.Choice>(),
-                    Usage = response.Usage != null ? new CoreModels.Usage
-                    {
-                        PromptTokens = response.Usage.PromptTokens,
-                        CompletionTokens = response.Usage.CompletionTokens,
-                        TotalTokens = response.Usage.TotalTokens,
-                        ReasoningTokens = response.Usage.ReasoningTokens
-                    } : null,
+                    Usage = response.Usage != null ? MapUsageFromOpenAI(response.Usage) : null,
                     SystemFingerprint = response.SystemFingerprint,
+                    ServiceTier = response.ServiceTier,
+                    Moderation = response.Moderation,
                     Seed = response.Seed,
-                    OriginalModelAlias = originalModelAlias
+                    OriginalModelAlias = originalModelAlias,
+                    ExtensionData = response.ExtensionData
                 };
+                mapped.ProviderToolUsage = MapGroqHostedToolUsage(response.GroqExtension);
+                return mapped;
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Error mapping OpenAI response: {Message}", ex.Message);
                 return CreateEmptyResponse(originalModelAlias);
+            }
+        }
+
+        internal static CoreModels.ProviderToolUsage? MapGroqHostedToolUsage(
+            System.Text.Json.JsonElement? groqExtension)
+        {
+            if (groqExtension is not { ValueKind: System.Text.Json.JsonValueKind.Object } extension ||
+                !extension.TryGetProperty("usage", out var usage) ||
+                usage.ValueKind != System.Text.Json.JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var tools = new List<CoreModels.ProviderToolUsageItem>();
+            foreach (var toolName in new[] { "code_interpreter", "browser_search", "python" })
+            {
+                if (!usage.TryGetProperty(toolName, out var countElement) ||
+                    !countElement.TryGetInt32(out var count) || count <= 0)
+                {
+                    continue;
+                }
+
+                decimal? durationSeconds = null;
+                var durationName = $"{toolName}_duration_seconds";
+                if (usage.TryGetProperty(durationName, out var durationElement) &&
+                    durationElement.TryGetDecimal(out var duration))
+                {
+                    durationSeconds = duration;
+                }
+
+                tools.Add(new CoreModels.ProviderToolUsageItem
+                {
+                    ToolName = toolName == "python" ? "code_interpreter" : toolName,
+                    Count = count,
+                    DurationSeconds = durationSeconds
+                });
+            }
+
+            return tools.Count == 0 ? null : new CoreModels.ProviderToolUsage { Tools = tools };
+        }
+
+        /// <summary>
+        /// Maps an OpenAIUsage record to the provider-agnostic Usage model,
+        /// extracting cached token counts from provider-specific extension data.
+        /// </summary>
+        /// <param name="openAiUsage">The OpenAI usage data.</param>
+        /// <returns>A provider-agnostic Usage object with cached token fields populated.</returns>
+        private static CoreModels.Usage MapUsageFromOpenAI(OpenAIUsage openAiUsage)
+        {
+            var usage = new CoreModels.Usage
+            {
+                PromptTokens = openAiUsage.PromptTokens,
+                CompletionTokens = openAiUsage.CompletionTokens,
+                TotalTokens = openAiUsage.TotalTokens,
+                ReasoningTokens = openAiUsage.ReasoningTokens
+            };
+
+            if (openAiUsage.ExtensionData != null)
+            {
+                PopulateProviderUsageFields(openAiUsage.ExtensionData, usage);
+            }
+
+            return usage;
+        }
+
+        /// <summary>
+        /// Populates provider-agnostic <see cref="CoreModels.Usage"/> fields (cached tokens,
+        /// cache-write tokens, and provider-reported cost) from a provider usage extension-data
+        /// dictionary. Shared by the non-streaming mapper (<see cref="MapUsageFromOpenAI"/>) and the
+        /// streaming post-processor so both paths capture the same provider-specific fields.
+        /// </summary>
+        /// <remarks>
+        /// Uses null-coalescing assignment so the first non-null value wins; callers pass a freshly
+        /// constructed usage on the non-streaming path, so this is equivalent to plain assignment there.
+        /// </remarks>
+        private static void PopulateProviderUsageFields(
+            IDictionary<string, System.Text.Json.JsonElement> extensionData,
+            CoreModels.Usage usage)
+        {
+            // OpenAI / OpenRouter format: prompt_tokens_details.{cached_tokens, cache_write_tokens}
+            if (extensionData.TryGetValue("prompt_tokens_details", out var promptDetails) &&
+                promptDetails.ValueKind == System.Text.Json.JsonValueKind.Object)
+            {
+                if (promptDetails.TryGetProperty("cached_tokens", out var cachedTokens) &&
+                    cachedTokens.TryGetInt32(out var cached))
+                {
+                    usage.CachedInputTokens ??= cached;
+                }
+
+                if (promptDetails.TryGetProperty("cache_write_tokens", out var cacheWriteTokens) &&
+                    cacheWriteTokens.TryGetInt32(out var cacheWritten))
+                {
+                    usage.CachedWriteTokens ??= cacheWritten;
+                }
+            }
+
+            // Anthropic format: cache_read_input_tokens / cache_creation_input_tokens
+            if (extensionData.TryGetValue("cache_read_input_tokens", out var cacheRead) &&
+                cacheRead.TryGetInt32(out var cacheReadCount))
+            {
+                usage.CachedInputTokens ??= cacheReadCount;
+            }
+
+            if (extensionData.TryGetValue("cache_creation_input_tokens", out var cacheWrite) &&
+                cacheWrite.TryGetInt32(out var cacheWriteCount))
+            {
+                usage.CachedWriteTokens ??= cacheWriteCount;
+            }
+
+            // Deepseek format: prompt_cache_hit_tokens
+            if (extensionData.TryGetValue("prompt_cache_hit_tokens", out var cacheHit) &&
+                cacheHit.TryGetInt32(out var cacheHitCount))
+            {
+                usage.CachedInputTokens ??= cacheHitCount;
+            }
+
+            // OpenRouter (and compatible): usage.cost = actual credits charged (USD).
+            if (extensionData.TryGetValue("cost", out var cost) &&
+                cost.ValueKind == System.Text.Json.JsonValueKind.Number &&
+                cost.TryGetDecimal(out var costValue))
+            {
+                usage.ProviderReportedCostUsd ??= costValue;
             }
         }
 
@@ -287,43 +553,27 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         /// <summary>
-        /// Converts a JsonElement to its actual .NET value for proper serialization.
+        /// Post-processes a deserialized Usage object to extract cached token counts and the
+        /// provider-reported cost from provider-specific extension data, then strips the raw
+        /// <c>cost</c> key so it is never re-serialized back to API clients.
+        /// Call this after deserializing a Usage object from provider JSON (e.g. streaming chunks).
         /// </summary>
-        /// <param name="element">The JsonElement to convert.</param>
-        /// <returns>The converted value as a proper .NET type.</returns>
-        private static object? ConvertJsonElement(System.Text.Json.JsonElement element)
+        /// <param name="usage">The deserialized Usage object to post-process.</param>
+        internal static void ExtractProviderUsageFromExtensionData(CoreModels.Usage? usage)
         {
-            switch (element.ValueKind)
-            {
-                case System.Text.Json.JsonValueKind.String:
-                    return element.GetString();
-                case System.Text.Json.JsonValueKind.Number:
-                    if (element.TryGetInt32(out var intValue))
-                        return intValue;
-                    if (element.TryGetInt64(out var longValue))
-                        return longValue;
-                    return element.GetDouble();
-                case System.Text.Json.JsonValueKind.True:
-                    return true;
-                case System.Text.Json.JsonValueKind.False:
-                    return false;
-                case System.Text.Json.JsonValueKind.Null:
-                    return null;
-                case System.Text.Json.JsonValueKind.Array:
-                    return element.EnumerateArray()
-                        .Select(e => ConvertJsonElement(e))
-                        .ToList();
-                case System.Text.Json.JsonValueKind.Object:
-                    var dict = new Dictionary<string, object?>();
-                    foreach (var property in element.EnumerateObject())
-                    {
-                        dict[property.Name] = ConvertJsonElement(property.Value);
-                    }
-                    return dict;
-                default:
-                    return element.ToString();
-            }
+            if (usage?.ExtensionData == null)
+                return;
+
+            PopulateProviderUsageFields(usage.ExtensionData, usage);
+
+            // The provider-reported cost is captured onto ProviderReportedCostUsd (server-only) above.
+            // Remove it from ExtensionData so the operator's upstream cost is never leaked back to API
+            // clients when the chunk/response is re-serialized.
+            usage.ExtensionData.Remove("cost");
         }
+
+        private static object? ConvertJsonElement(System.Text.Json.JsonElement element) =>
+            ConduitLLM.Functions.Utilities.JsonElementConverter.ConvertJsonElement(element);
 
     }
 }

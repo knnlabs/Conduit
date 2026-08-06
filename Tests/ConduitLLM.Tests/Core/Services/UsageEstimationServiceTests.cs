@@ -36,9 +36,9 @@ namespace ConduitLLM.Tests.Core.Services
             
             // Mock token counts (raw, without buffer)
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages))
-                .ReturnsAsync(10);
+                .ReturnsAsync(new TokenCount(10, TokenCountFidelity.Exact));
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent))
-                .ReturnsAsync(15);
+                .ReturnsAsync(new TokenCount(15, TokenCountFidelity.Exact));
 
             // Act
             var result = await _service.EstimateUsageFromStreamingResponseAsync(
@@ -103,9 +103,9 @@ namespace ConduitLLM.Tests.Core.Services
             var outputText = "The capital of France is Paris.";
             
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputText))
-                .ReturnsAsync(8);
+                .ReturnsAsync(new TokenCount(8, TokenCountFidelity.Exact));
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, outputText))
-                .ReturnsAsync(7);
+                .ReturnsAsync(new TokenCount(7, TokenCountFidelity.Exact));
 
             // Act
             var result = await _service.EstimateUsageFromTextAsync(modelId, inputText, outputText);
@@ -167,11 +167,11 @@ namespace ConduitLLM.Tests.Core.Services
             var streamedContent = "The image shows a beautiful sunset over the ocean.";
             
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages))
-                .ReturnsAsync(100); // Including image tokens
+                .ReturnsAsync(new TokenCount(100, TokenCountFidelity.Exact)); // Including image tokens
             _mockImageTokenCalculator.Setup(x => x.CalculateImageTokensAsync(It.IsAny<ImageUrl>()))
                 .ReturnsAsync(850); // Standard high-res image tokens
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent))
-                .ReturnsAsync(12);
+                .ReturnsAsync(new TokenCount(12, TokenCountFidelity.Exact));
 
             // Act
             var result = await _service.EstimateUsageFromStreamingResponseAsync(
@@ -203,9 +203,9 @@ namespace ConduitLLM.Tests.Core.Services
             }
             
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages))
-                .ReturnsAsync(50);
+                .ReturnsAsync(new TokenCount(50, TokenCountFidelity.Exact));
             _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent.ToString()))
-                .ReturnsAsync(2000);
+                .ReturnsAsync(new TokenCount(2000, TokenCountFidelity.Exact));
 
             // Act
             var result = await _service.EstimateUsageFromStreamingResponseAsync(
@@ -218,6 +218,73 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.InRange(result.PromptTokens!.Value, 55, 56);
             Assert.Equal(2200, result.CompletionTokens);
             Assert.InRange(result.TotalTokens!.Value, 2255, 2256);
+        }
+
+        [Fact]
+        public async Task EstimateUsageFromStreamingResponseAsync_ToolDefinitions_ReachTheCounter()
+        {
+            // Tool schemas are part of the billed prompt; the fallback estimate must include them
+            // or agentic streams without provider usage are under-billed (#1229).
+            var modelId = "gpt-4";
+            var inputMessages = new List<Message> { new Message { Role = "user", Content = "hello" } };
+            var streamedContent = "response";
+            var tools = new List<Tool> { new() { Function = new FunctionDefinition { Name = "get_weather" } } };
+
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages, tools))
+                .ReturnsAsync(new TokenCount(300, TokenCountFidelity.Exact));
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent))
+                .ReturnsAsync(new TokenCount(10, TokenCountFidelity.Exact));
+
+            var result = await _service.EstimateUsageFromStreamingResponseAsync(
+                modelId, inputMessages, streamedContent, tools);
+
+            // 300 * 1.1 = 330: the tools-inclusive count is what gets buffered and billed.
+            Assert.Equal(330, result.PromptTokens);
+            _mockTokenCounter.Verify(x => x.EstimateTokenCountAsync(modelId, inputMessages, tools), Times.Once);
+        }
+
+        [Fact]
+        public async Task EstimateUsageFromStreamingResponseAsync_ApproximateVocabulary_AppliesLargerBuffer()
+        {
+            // Arrange: a Claude-style model whose counts come from a stand-in vocabulary.
+            var modelId = "claude-model";
+            var inputMessages = new List<Message> { new Message { Role = "user", Content = "hello" } };
+            var streamedContent = "response";
+
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages))
+                .ReturnsAsync(new TokenCount(100, TokenCountFidelity.ApproximateVocabulary));
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent))
+                .ReturnsAsync(new TokenCount(200, TokenCountFidelity.ApproximateVocabulary));
+
+            // Act
+            var result = await _service.EstimateUsageFromStreamingResponseAsync(
+                modelId, inputMessages, streamedContent);
+
+            // Assert: 20% buffer for the approximate-vocabulary tier
+            Assert.Equal(120, result.PromptTokens);
+            Assert.Equal(240, result.CompletionTokens);
+        }
+
+        [Fact]
+        public async Task EstimateUsageFromStreamingResponseAsync_CharacterHeuristic_AppliesLargestBuffer()
+        {
+            // Arrange: counts that came from the chars/4 fallback (broken vocabulary data).
+            var modelId = "degraded-model";
+            var inputMessages = new List<Message> { new Message { Role = "user", Content = "hello" } };
+            var streamedContent = "response";
+
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, inputMessages))
+                .ReturnsAsync(new TokenCount(100, TokenCountFidelity.CharacterHeuristic));
+            _mockTokenCounter.Setup(x => x.EstimateTokenCountAsync(modelId, streamedContent))
+                .ReturnsAsync(new TokenCount(200, TokenCountFidelity.CharacterHeuristic));
+
+            // Act
+            var result = await _service.EstimateUsageFromStreamingResponseAsync(
+                modelId, inputMessages, streamedContent);
+
+            // Assert: 40% buffer for the character-heuristic tier, which under-counts by 20-40%
+            Assert.Equal(140, result.PromptTokens);
+            Assert.Equal(280, result.CompletionTokens);
         }
     }
 }

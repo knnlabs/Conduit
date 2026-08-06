@@ -278,9 +278,9 @@ All configuration supports environment variable substitution and validation.
 - **AWSSDK.S3** (4.0.5) - AWS S3 integration for model artifacts
 - **Polly** (8.6.2) - Resilience patterns and circuit breakers
 - **prometheus-net** (8.2.1) - Metrics collection and monitoring
-- **MassTransit** (8.5.1) - Message queuing and async processing
-- **MassTransit.Redis** (8.5.1) - Redis transport for MassTransit
-- **TiktokenSharp** (1.1.7) - Token counting and optimization
+- **MassTransit** (8.5.6) - Message queuing and async processing
+- **Microsoft.ML.Tokenizers** (2.0.0) - Token counting; vocabulary data is bundled via
+  Microsoft.ML.Tokenizers.Data.* packages, so tokenization needs no network access
 
 ### Project Dependencies
 - **ConduitLLM.Configuration** - Shared configuration models and validation

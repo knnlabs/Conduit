@@ -1,3 +1,5 @@
+using ConduitLLM.Core.Models;
+
 namespace ConduitLLM.Configuration.Interfaces;
 
 /// <summary>
@@ -37,17 +39,15 @@ public interface IGlobalSettingsCacheService
     Task<bool> GetDefaultAgenticModeEnabledAsync();
 
     /// <summary>
-    /// Gets whether LLM response caching is enabled.
-    /// This setting can be toggled at runtime via the Admin API.
+    /// Gets a raw setting value by key from the cache.
+    /// Returns null if the key does not exist.
     /// </summary>
-    /// <returns>
-    /// The configured LLM caching enabled state from GlobalSettings,
-    /// or the default value of false (disabled) if the setting doesn't exist.
-    /// </returns>
-    Task<bool> GetLLMCachingEnabledAsync();
+    /// <param name="key">The setting key to retrieve.</param>
+    /// <returns>The setting value, or null if not found.</returns>
+    Task<string?> GetSettingValueAsync(string key);
 
     /// <summary>
-    /// Invalidates a specific cached setting, forcing it to be reloaded from the database on next access.
+    /// Invalidates and immediately reloads a specific setting from the database.
     /// </summary>
     /// <param name="settingKey">The key of the setting to invalidate.</param>
     Task InvalidateSettingAsync(string settingKey);
@@ -58,8 +58,14 @@ public interface IGlobalSettingsCacheService
     Task ReloadAllSettingsAsync();
 
     /// <summary>
+    /// Broadcasts a full reload to every process-local cache. Redis pub/sub is used when
+    /// configured; a Redis-less development process reloads itself.
+    /// </summary>
+    Task PublishReloadAsync(string requestId);
+
+    /// <summary>
     /// Gets cache statistics for monitoring and debugging.
     /// </summary>
-    /// <returns>Dictionary containing cache hit/miss counts and other metrics.</returns>
-    Task<Dictionary<string, object>> GetCacheStatsAsync();
+    /// <returns>Strongly typed cache hit/miss counts and other metrics.</returns>
+    Task<CacheStats> GetCacheStatsAsync();
 }

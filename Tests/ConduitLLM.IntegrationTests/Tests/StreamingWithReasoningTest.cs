@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -105,7 +105,7 @@ public class StreamingWithReasoningTest : ProviderIntegrationTestBase
             reportGenerated = true;
 
             // Check if there were errors
-            if (_context.Errors.Count() > 0)
+            if (_context.Errors.Any())
             {
                 var errorMessage = string.Join("; ", _context.Errors);
                 _specificLogger.LogError("Test completed with errors: {Errors}", errorMessage);
@@ -166,9 +166,10 @@ public class StreamingWithReasoningTest : ProviderIntegrationTestBase
 
         string? currentEventType = null;
 
-        while (!reader.EndOfStream)
+        while (true)
         {
             var line = await reader.ReadLineAsync();
+            if (line is null) break;
             if (string.IsNullOrWhiteSpace(line)) continue;
 
             if (line.StartsWith("event:"))

@@ -5,6 +5,8 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
 
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Gateway.Metrics;
+using ConduitLLM.Security.Cryptography;
 
 namespace ConduitLLM.Gateway.Authentication
 {
@@ -33,12 +35,14 @@ namespace ConduitLLM.Gateway.Authentication
             if (string.IsNullOrEmpty(_backendAuthKey))
             {
                 Logger.LogWarning("Backend authentication key is not configured");
+                GatewayAuthMetrics.RecordFailure("Backend", "not_configured");
                 return Task.FromResult(AuthenticateResult.Fail("Backend authentication not configured"));
             }
 
             // Check for the Authorization header
             if (!Request.Headers.ContainsKey("Authorization"))
             {
+                GatewayAuthMetrics.RecordNoResult("Backend");
                 return Task.FromResult(AuthenticateResult.Fail("Missing Authorization header"));
             }
 
@@ -48,13 +52,15 @@ namespace ConduitLLM.Gateway.Authentication
 
             if (string.IsNullOrEmpty(providedKey))
             {
+                GatewayAuthMetrics.RecordFailure("Backend", "invalid_format");
                 return Task.FromResult(AuthenticateResult.Fail("Invalid Authorization header format"));
             }
 
             // Validate the key
-            if (providedKey != _backendAuthKey)
+            if (!ConstantTimeComparer.Equals(providedKey, _backendAuthKey))
             {
                 Logger.LogWarning("Invalid backend authentication key provided");
+                GatewayAuthMetrics.RecordFailure("Backend", "invalid_key");
                 return Task.FromResult(AuthenticateResult.Fail("Invalid authentication key"));
             }
 
@@ -70,6 +76,7 @@ namespace ConduitLLM.Gateway.Authentication
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, Scheme.Name);
 
+            GatewayAuthMetrics.RecordSuccess("Backend");
             return Task.FromResult(AuthenticateResult.Success(ticket));
         }
     }

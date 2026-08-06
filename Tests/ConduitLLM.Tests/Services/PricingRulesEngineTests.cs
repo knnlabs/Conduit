@@ -6,7 +6,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
 using ConduitLLM.Core.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -121,6 +121,49 @@ namespace ConduitLLM.Tests.Services
             result.UsedDefaultRate.Should().BeTrue();
             result.Rate.Should().Be(0.015m);
             result.Cost.Should().Be(0.15m); // 10 * 0.015
+        }
+
+        [Fact]
+        public void Evaluate_NoMatchingRuleAndZeroDefault_Throws()
+        {
+            var config = new PricingRulesConfig
+            {
+                PricingType = "per_second",
+                DefaultRate = 0,
+                UnitField = "VideoDurationSeconds",
+                Rules = new List<PricingRule>
+                {
+                    new()
+                    {
+                        Conditions = new Dictionary<string, object> { ["resolution"] = "1080p" },
+                        Rate = 0.06m
+                    }
+                }
+            };
+
+            var act = () => _evaluator.Evaluate(
+                config,
+                new Dictionary<string, object> { ["resolution"] = "720p" },
+                new Usage { VideoDurationSeconds = 10 });
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*no positive default rate*");
+        }
+
+        [Fact]
+        public void Evaluate_MissingRequiredQuantity_Throws()
+        {
+            var config = new PricingRulesConfig
+            {
+                PricingType = "per_second",
+                DefaultRate = 0.025m,
+                UnitField = "VideoDurationSeconds"
+            };
+
+            var act = () => _evaluator.Evaluate(config, new Dictionary<string, object>(), new Usage());
+
+            act.Should().Throw<InvalidOperationException>()
+                .WithMessage("*positive quantity*");
         }
 
         #endregion

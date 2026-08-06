@@ -33,13 +33,13 @@ import {
 import { usePerformanceSettings } from '../hooks/usePerformanceSettings';
 import { useChatStore } from '../hooks/useChatStore';
 import { useDiscoveryModels } from '../hooks/useDiscoveryModels';
-import { ModelCapability } from '@knn_labs/conduit-gateway-client';
+import { ModelCapability } from '@/lib/gateway-api';
 import { useChatStreamingLogic } from './ChatStreamingLogic';
 import { DynamicParameters } from '@/components/parameters/DynamicParameters';
 import { useParameterState } from '@/components/parameters/hooks/useParameterState';
 import Link from 'next/link';
 import { useAdminClient } from '@/lib/client/adminClient';
-import type { FunctionConfigurationDto } from '@knn_labs/conduit-admin-client';
+import type { FunctionConfigurationDto } from '@/lib/admin-api';
 import { useChatLayout } from '../hooks/useChatLayout';
 
 export function ChatInterface() {
@@ -154,7 +154,7 @@ export function ChatInterface() {
         // Remove the error message before retrying
         setMessages(prev => prev.filter(m => m.id !== errorMessageId));
         // Resend the user message
-        void sendMessage(userMessage.content, userMessage.images);
+        void sendMessage(userMessage.content, userMessage.attachments ?? userMessage.images);
         return;
       }
     }
@@ -229,16 +229,19 @@ export function ChatInterface() {
               />
               {currentDiscoveryModel?.capabilities?.vision && (
                 <Badge variant="light" color="blue">
-                  Vision Enabled
+                  Image Input
+                </Badge>
+              )}
+              {currentDiscoveryModel?.capabilities?.video_input && (
+                <Badge variant="light" color="grape">
+                  Video Input
                 </Badge>
               )}
               {!chatLayout.compactMode && currentDiscoveryModel && (
                 <TokenCounter
                   messages={messages}
                   maxTokens={maxContextTokens}
-                  modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
                   compact={true}
-                  showCost={false}
                   currentInputText={currentInputText}
                   currentInputImages={currentInputImages}
                 />
@@ -306,11 +309,11 @@ export function ChatInterface() {
         {/* Input Section */}
         <Paper p="md" withBorder>
           <ChatInput
-            onSendMessage={(message, images) => {
+            onSendMessage={(message, attachments) => {
               // Clear input state when message is sent
               setCurrentInputText('');
               setCurrentInputImages(0);
-              void sendMessage(message, images);
+              void sendMessage(message, attachments);
             }}
             isStreaming={isLoading}
             onStopStreaming={() => {}}
@@ -319,7 +322,12 @@ export function ChatInterface() {
               id: currentDiscoveryModel.id,
               providerId: '',
               displayName: currentDiscoveryModel.display_name ?? currentDiscoveryModel.id,
-              supportsVision: currentDiscoveryModel.capabilities?.vision === true
+              supportsVision: currentDiscoveryModel.capabilities?.image_input === true
+                || currentDiscoveryModel.capabilities?.vision === true,
+              supportsVideoInput: currentDiscoveryModel.capabilities?.video_input === true,
+              supportsAudioInput: currentDiscoveryModel.capabilities?.audio_input === true,
+              supportsFileInput: currentDiscoveryModel.capabilities?.file_input === true,
+              supportsPdfInput: currentDiscoveryModel.capabilities?.pdf_input === true
             } : undefined}
             onInputChange={setCurrentInputText}
             onImagesChange={setCurrentInputImages}
@@ -364,9 +372,7 @@ export function ChatInterface() {
               <TokenCounter
                 messages={messages}
                 maxTokens={maxContextTokens}
-                modelName={currentDiscoveryModel.display_name ?? currentDiscoveryModel.id}
                 compact={false}
-                showCost={false}
                 currentInputText={currentInputText}
                 currentInputImages={currentInputImages}
               />

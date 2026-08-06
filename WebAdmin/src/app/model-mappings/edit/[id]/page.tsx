@@ -15,55 +15,27 @@ import {
   Stack, 
   LoadingOverlay, 
   Alert, 
-  Textarea,
   Badge,
   Text,
   Card,
   Divider
 } from '@mantine/core';
 import { IconAlertCircle, IconRobot, IconBolt, IconStar } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { formatScore, formatTokenLimit } from '@/utils/modelHelpers';
 import type { 
   ModelProviderMappingDto, 
   UpdateModelProviderMappingDto,
-  ConduitAdminClient 
-} from '@knn_labs/conduit-admin-client';
+  ConduitAdminClient,
+  ModelProviderAvailabilityDto,
+} from '@/lib/admin-api';
 
-interface AvailableProvider {
-  associationId: number;
-  identifier: string;
-  provider: string | null;
-  providerVariation: string | null;
-  maxInputTokens: number | null;
-  maxOutputTokens: number | null;
-  speedScore: number | null;
-  qualityScore: number | null;
-  isPrimary: boolean;
-  availableProviders: Array<{
-    providerId: number;
-    providerName: string;
-    providerType: string;
-  }>;
-}
+type AvailableProvider = ModelProviderAvailabilityDto;
 
-interface AssociationDetails {
-  associationId: number;
-  identifier: string;
-  provider: string | null;
-  providerVariation: string | null;
-  maxInputTokens: number | null;
-  maxOutputTokens: number | null;
-  speedScore: number | null;
-  qualityScore: number | null;
-  isPrimary: boolean;
+interface AssociationDetails extends ModelProviderAvailabilityDto {
   modelId: number;
   modelName: string;
-  availableProviders: Array<{
-    providerId: number;
-    providerName: string;
-    providerType: string;
-  }>;
 }
 
 export default function EditModelMappingPage({ params }: { params: Promise<{ id: string }> }) {
@@ -76,8 +48,8 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
   const [modelAlias, setModelAlias] = useState<string>('');
   const [providerId, setProviderId] = useState<string>('');
   const [priority, setPriority] = useState<number>(100);
+  const [weight, setWeight] = useState<number>(1);
   const [isEnabled, setIsEnabled] = useState<boolean>(true);
-  const [notes, setNotes] = useState<string>('');
   
   // Data state
   const [currentMapping, setCurrentMapping] = useState<ModelProviderMappingDto | null>(null);
@@ -155,8 +127,8 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       setModelAlias(mappingData.modelAlias);
       setProviderId(mappingData.providerId.toString());
       setPriority(mappingData.priority ?? 100);
+      setWeight(mappingData.weight ?? 1);
       setIsEnabled(mappingData.isEnabled);
-      setNotes(mappingData.notes ?? '');
 
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -173,11 +145,11 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
     }
     
     const duplicate = existingMappings.find(m => 
-      m.modelAlias === value && m.id !== mappingId
+      m.modelAlias === value && m.providerId.toString() === providerId && m.id !== mappingId
     );
     
     if (duplicate) {
-      setModelAliasError('Model alias already exists');
+      setModelAliasError('This alias/provider candidate already exists');
       return false;
     }
     
@@ -191,11 +163,12 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
     if (!validateModelAlias(modelAlias)) return;
     
     if (!providerId) {
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please select a provider',
-        color: 'red',
-      });
+      notify.error('Please select a provider');
+      return;
+    }
+
+    if (!currentMapping) {
+      notify.error('The current model mapping is unavailable');
       return;
     }
     
@@ -206,11 +179,7 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       );
       
       if (!validProvider) {
-        notifications.show({
-          title: 'Invalid Provider',
-          message: 'The selected provider is not valid for this model association',
-          color: 'red',
-        });
+        notify.error('The selected provider is not valid for this model association');
         return;
       }
     }
@@ -221,57 +190,26 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
       const updateData: UpdateModelProviderMappingDto = {
         modelAlias,
         providerId: parseInt(providerId, 10),
-        providerModelId: associationDetails?.identifier ?? currentMapping?.providerModelId ?? '',
-        modelProviderTypeAssociationId: currentMapping?.modelProviderTypeAssociationId,
+        providerModelId: associationDetails?.identifier ?? currentMapping.providerModelId,
+        modelProviderTypeAssociationId: currentMapping.modelProviderTypeAssociationId,
         priority,
+        weight,
         isEnabled,
-        notes: notes || undefined,
       };
 
       await withAdminClient((client: ConduitAdminClient) => 
         client.modelMappings.update(mappingId, updateData)
       );
 
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping updated successfully',
-        color: 'green',
-      });
+      notify.success('Model mapping updated successfully');
 
       router.push('/model-mappings');
     } catch (err) {
       console.error('Error updating mapping:', err);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update model mapping',
-        color: 'red',
-      });
+      notify.error('Failed to update model mapping');
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const formatTokenLimit = (tokens: number | null) => {
-    if (!tokens) return 'Default';
-    if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
-    if (tokens >= 1000) return `${(tokens / 1000).toFixed(0)}K`;
-    return tokens.toString();
-  };
-
-  const formatScore = (score: number | null, type: 'speed' | 'quality') => {
-    if (!score) return null;
-    
-    if (type === 'speed') {
-      if (score >= 2) return `${score.toFixed(1)}x faster`;
-      if (score === 1) return 'Standard speed';
-      return `${(1 / score).toFixed(1)}x slower`;
-    }
-    
-    // Quality score
-    const percentage = (score * 100).toFixed(0);
-    if (score >= 0.95) return `${percentage}% quality`;
-    if (score >= 0.9) return `${percentage}% quality`;
-    return `${percentage}% quality (degraded)`;
   };
 
   // Handle invalid ID case
@@ -411,13 +349,15 @@ export default function EditModelMappingPage({ params }: { params: Promise<{ id:
               onChange={(val) => setPriority(Number(val) || 100)}
             />
 
-            <Textarea
-              label="Notes"
-              description="Additional notes about this mapping"
-              placeholder="Optional notes..."
-              value={notes}
-              onChange={(e) => setNotes(e.currentTarget.value)}
-              rows={3}
+            <NumberInput
+              label="Balanced score weight"
+              description="Multiplier applied after cost, speed, and quality scoring (0.1–2.0)"
+              min={0.1}
+              max={2}
+              step={0.1}
+              decimalScale={2}
+              value={weight}
+              onChange={(val) => setWeight(Number(val) || 1)}
             />
 
             <Switch

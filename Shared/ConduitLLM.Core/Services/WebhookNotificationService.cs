@@ -24,7 +24,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<bool> SendTaskCompletionWebhookAsync(
+        public async Task<WebhookSendResult> SendTaskCompletionWebhookAsync(
             string webhookUrl,
             object payload,
             Dictionary<string, string>? headers = null,
@@ -34,7 +34,7 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc/>
-        public async Task<bool> SendTaskProgressWebhookAsync(
+        public async Task<WebhookSendResult> SendTaskProgressWebhookAsync(
             string webhookUrl,
             object payload,
             Dictionary<string, string>? headers = null,
@@ -46,7 +46,7 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Sends a webhook with custom timeout support.
         /// </summary>
-        public async Task<bool> SendWebhookAsync(
+        public async Task<WebhookSendResult> SendWebhookAsync(
             string webhookUrl,
             object payload,
             Dictionary<string, string>? headers = null,
@@ -56,7 +56,7 @@ namespace ConduitLLM.Core.Services
             return await SendWebhookAsync(webhookUrl, payload, headers, "custom", customTimeout, cancellationToken);
         }
 
-        private async Task<bool> SendWebhookAsync(
+        private async Task<WebhookSendResult> SendWebhookAsync(
             string webhookUrl,
             object payload,
             Dictionary<string, string>? headers,
@@ -104,38 +104,40 @@ namespace ConduitLLM.Core.Services
                 {
                     _logger.LogInformation("Successfully sent {WebhookType} webhook to {WebhookUrl} with status {StatusCode}",
                         webhookType, webhookUrl, response.StatusCode);
-                    return true;
+                    return WebhookSendResult.Ok((int)response.StatusCode);
                 }
                 else
                 {
                     _logger.LogWarning("Failed to send {WebhookType} webhook to {WebhookUrl}. Status: {StatusCode}, Reason: {ReasonPhrase}",
                         webhookType, webhookUrl, response.StatusCode, response.ReasonPhrase);
-                    return false;
+                    return WebhookSendResult.Failed(
+                        (int)response.StatusCode,
+                        $"Endpoint returned {(int)response.StatusCode} {response.ReasonPhrase}");
                 }
             }
             catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException || customTimeout.HasValue)
             {
                 var timeoutDuration = customTimeout?.TotalSeconds ?? _httpClient.Timeout.TotalSeconds;
-                _logger.LogWarning("Webhook request to {WebhookUrl} timed out after {Timeout}s", 
+                _logger.LogWarning("Webhook request to {WebhookUrl} timed out after {Timeout}s",
                     webhookUrl, timeoutDuration);
-                return false;
+                return WebhookSendResult.Failed(null, $"Request timed out after {timeoutDuration}s");
             }
             catch (TaskCanceledException)
             {
                 _logger.LogInformation("Webhook request to {WebhookUrl} was cancelled", webhookUrl);
-                return false;
+                return WebhookSendResult.Failed(null, "Request was cancelled");
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "HTTP error sending {WebhookType} webhook to {WebhookUrl}. Error: {ErrorMessage}", 
+                _logger.LogError(ex, "HTTP error sending {WebhookType} webhook to {WebhookUrl}. Error: {ErrorMessage}",
                     webhookType, webhookUrl, ex.Message);
-                return false;
+                return WebhookSendResult.Failed(null, ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error sending {WebhookType} webhook to {WebhookUrl}", 
+                _logger.LogError(ex, "Unexpected error sending {WebhookType} webhook to {WebhookUrl}",
                     webhookType, webhookUrl);
-                return false;
+                return WebhookSendResult.Failed(null, ex.Message);
             }
         }
     }

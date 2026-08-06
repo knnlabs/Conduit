@@ -18,7 +18,7 @@ namespace ConduitLLM.Tests.Admin.Services
             var request = new CreateVirtualKeyRequestDto
             {
                 KeyName = "Test API Key",
-                AllowedModels = "gpt-4,claude-3",
+                AllowedModels = ["gpt-4", "claude-3"],
                 ExpiresAt = DateTime.UtcNow.AddDays(30),
                 RateLimitRpm = 60,
                 RateLimitRpd = 1000,
@@ -39,7 +39,7 @@ namespace ConduitLLM.Tests.Admin.Services
                     KeyName = request.KeyName,
                     KeyHash = "someHash",
                     IsEnabled = true,
-                    AllowedModels = request.AllowedModels,
+                    AllowedModels = string.Join(',', request.AllowedModels),
                     VirtualKeyGroupId = 1,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
@@ -57,7 +57,7 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.Equal("Test API Key", result.KeyInfo.KeyName);
 
             // Verify event was published
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyCreated>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 /**
@@ -11,10 +11,26 @@ export interface RequestLogEntry {
   id: number;
   virtualKeyId: number;
   modelName: string;
+  providerId: number | null;
+  providerType: string | null;
+  modelProviderMappingId: number | null;
+  promptCachingEligible: boolean;
+  promptCachingPolicyApplied: boolean;
+  cachedReadSavings: number;
+  cacheWritePremium: number;
+  routingAffinityUsed: boolean;
+  routingDecisionReason: string | null;
+  routingFailoverCount: number;
   requestType: string;
   inputTokens: number;
   outputTokens: number;
+  cachedInputTokens: number | null;
+  cachedWriteTokens: number | null;
   cost: number;
+  billingMethod: number | null;
+  providerReportedCostUsd: number | null;
+  providerCostMarkupMultiplier: number | null;
+  billedAtUtc: string | null;
   responseTimeMs: number;
   userId: string | null;
   clientIp: string | null;
@@ -50,6 +66,7 @@ export interface FunctionCallResult {
  * Parsed metadata for different request types
  */
 export interface RequestLogMetadata {
+  [key: string]: unknown;
   type?: string;
   // Function-specific (for /functions/execute endpoint)
   functionConfigurationId?: number;
@@ -95,7 +112,7 @@ export interface RequestLogPageResult {
 /**
  * Filter options for request logs
  */
-export interface RequestLogFilters {
+export interface RequestLogFormFilters {
   startDate?: Date;
   endDate?: Date;
   model?: string;
@@ -118,7 +135,7 @@ export interface RequestLogStats {
 interface UseRequestLogsOptions {
   page: number;
   pageSize: number;
-  filters?: RequestLogFilters;
+  filters?: RequestLogFormFilters;
   autoRefresh?: boolean;
   refreshInterval?: number;
 }
@@ -134,6 +151,22 @@ interface UseRequestLogsResult {
   refetch: () => Promise<void>;
 }
 
+export function requestLogFiltersToApiParams(
+  filters: RequestLogFormFilters | undefined,
+  page: number,
+  pageSize: number,
+) {
+  return {
+    page,
+    pageSize,
+    startDate: filters?.startDate?.toISOString(),
+    endDate: filters?.endDate?.toISOString(),
+    model: filters?.model,
+    virtualKeyId: filters?.virtualKeyId?.toString(),
+    statusCode: filters?.status,
+  };
+}
+
 /**
  * Hook for fetching paginated request logs with filtering
  */
@@ -144,70 +177,51 @@ export function useRequestLogs({
   autoRefresh = false,
   refreshInterval = 30000,
 }: UseRequestLogsOptions): UseRequestLogsResult {
-  const [logs, setLogs] = useState<RequestLogEntry[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const [stats, setStats] = useState<RequestLogStats | null>(null);
-
-  const fetchLogs = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Build query parameters
-      const params: Record<string, string> = {
-        page: page.toString(),
-        pageSize: pageSize.toString(),
-      };
-
-      if (filters?.startDate) {
-        params.startDate = filters.startDate.toISOString();
-      }
-      if (filters?.endDate) {
-        params.endDate = filters.endDate.toISOString();
-      }
-      if (filters?.model) {
-        params.model = filters.model;
-      }
-      if (filters?.virtualKeyId !== undefined) {
-        params.virtualKeyId = filters.virtualKeyId.toString();
-      }
-      if (filters?.status !== undefined) {
-        params.status = filters.status.toString();
-      }
-
+  const query = useQuery({
+    queryKey: [
+      'request-logs',
+      page,
+      pageSize,
+      filters?.startDate?.toISOString(),
+      filters?.endDate?.toISOString(),
+      filters?.model,
+      filters?.virtualKeyId,
+      filters?.status,
+    ],
+    queryFn: async () => {
       const result = await withAdminClient(async (client) => {
-        // Use the analytics service getRequestLogs method
-        const response = await client.analytics.getRequestLogs({
-          page,
-          pageSize,
-          startDate: filters?.startDate?.toISOString(),
-          endDate: filters?.endDate?.toISOString(),
-          model: filters?.model,
-          virtualKeyId: filters?.virtualKeyId?.toString(),
-          statusCode: filters?.status,
-        });
-        return response;
+        return client.analytics.getRequestLogs(
+          requestLogFiltersToApiParams(filters, page, pageSize),
+        );
       });
 
-      // Map the response to our interface
-      // The SDK returns items with slightly different field names
-      // Using type assertion to handle SDK/backend type differences
       const items = result.items ?? [];
       const mappedLogs: RequestLogEntry[] = items.map((item) => {
-        // Cast to unknown first to safely access properties that may have different names
         const rawItem = item as unknown as {
           id?: number | string;
           virtualKeyId?: number;
           model?: string;
           modelName?: string;
+          providerId?: number | null;
+          providerType?: string | null;
+          modelProviderMappingId?: number | null;
+          promptCachingEligible?: boolean;
+          promptCachingPolicyApplied?: boolean;
+          cachedReadSavings?: number;
+          cacheWritePremium?: number;
+          routingAffinityUsed?: boolean;
+          routingDecisionReason?: string | null;
+          routingFailoverCount?: number;
           requestType?: string;
           inputTokens?: number;
           outputTokens?: number;
+          cachedInputTokens?: number | null;
+          cachedWriteTokens?: number | null;
           cost?: number;
+          billingMethod?: number | null;
+          providerReportedCostUsd?: number | null;
+          providerCostMarkupMultiplier?: number | null;
+          billedAtUtc?: string | null;
           duration?: number;
           responseTimeMs?: number;
           userId?: string | null;
@@ -223,10 +237,26 @@ export function useRequestLogs({
           id: typeof rawItem.id === 'string' ? parseInt(rawItem.id, 10) : (rawItem.id ?? 0),
           virtualKeyId: rawItem.virtualKeyId ?? 0,
           modelName: rawItem.model ?? rawItem.modelName ?? '',
+          providerId: rawItem.providerId ?? null,
+          providerType: rawItem.providerType ?? null,
+          modelProviderMappingId: rawItem.modelProviderMappingId ?? null,
+          promptCachingEligible: rawItem.promptCachingEligible ?? false,
+          promptCachingPolicyApplied: rawItem.promptCachingPolicyApplied ?? false,
+          cachedReadSavings: rawItem.cachedReadSavings ?? 0,
+          cacheWritePremium: rawItem.cacheWritePremium ?? 0,
+          routingAffinityUsed: rawItem.routingAffinityUsed ?? false,
+          routingDecisionReason: rawItem.routingDecisionReason ?? null,
+          routingFailoverCount: rawItem.routingFailoverCount ?? 0,
           requestType: rawItem.requestType ?? '',
           inputTokens: rawItem.inputTokens ?? 0,
           outputTokens: rawItem.outputTokens ?? 0,
+          cachedInputTokens: rawItem.cachedInputTokens ?? null,
+          cachedWriteTokens: rawItem.cachedWriteTokens ?? null,
           cost: rawItem.cost ?? 0,
+          billingMethod: rawItem.billingMethod ?? null,
+          providerReportedCostUsd: rawItem.providerReportedCostUsd ?? null,
+          providerCostMarkupMultiplier: rawItem.providerCostMarkupMultiplier ?? null,
+          billedAtUtc: rawItem.billedAtUtc ?? null,
           responseTimeMs: rawItem.duration ?? rawItem.responseTimeMs ?? 0,
           userId: rawItem.userId ?? null,
           clientIp: rawItem.clientIp ?? rawItem.ipAddress ?? null,
@@ -237,13 +267,7 @@ export function useRequestLogs({
         };
       });
 
-      setLogs(mappedLogs);
-      setTotalCount(result.totalCount ?? 0);
-      setTotalPages(result.totalPages ?? Math.ceil((result.totalCount ?? 0) / pageSize));
-      setCurrentPage(result.page ?? page);
-
-      // Calculate stats from current page (for display purposes)
-      // In a real scenario, you might want to fetch stats from a separate endpoint
+      let stats: RequestLogStats;
       if (mappedLogs.length > 0) {
         const successCount = mappedLogs.filter(
           (log) => log.statusCode === null || (log.statusCode >= 200 && log.statusCode < 400)
@@ -255,61 +279,54 @@ export function useRequestLogs({
         const avgLatency =
           mappedLogs.reduce((sum, log) => sum + log.responseTimeMs, 0) / mappedLogs.length;
 
-        setStats({
+        stats = {
           totalRequests: result.totalCount ?? mappedLogs.length,
           successCount,
           errorCount,
           totalCost,
           avgLatency,
-          successRate: mappedLogs.length > 0 ? (successCount / mappedLogs.length) * 100 : 0,
-        });
+          successRate: (successCount / mappedLogs.length) * 100,
+        };
       } else {
-        setStats({
-          totalRequests: 0,
+        stats = {
+          totalRequests: result.totalCount ?? 0,
           successCount: 0,
           errorCount: 0,
           totalCost: 0,
           avgLatency: 0,
           successRate: 0,
-        });
+        };
       }
-    } catch (err) {
-      console.error('Error fetching request logs:', err);
-      setError(err instanceof Error ? err : new Error('Failed to fetch request logs'));
-      setLogs([]);
-      setTotalCount(0);
-      setTotalPages(0);
-      setStats(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [page, pageSize, filters]);
 
-  // Initial fetch and refetch on dependency changes
-  useEffect(() => {
-    void fetchLogs();
-  }, [fetchLogs]);
+      return {
+        logs: mappedLogs,
+        totalCount: result.totalCount ?? 0,
+        totalPages: result.totalPages ?? Math.ceil((result.totalCount ?? 0) / pageSize),
+        currentPage: result.page ?? page,
+        stats,
+      };
+    },
+    refetchInterval: autoRefresh ? refreshInterval : false,
+  });
 
-  // Auto-refresh if enabled
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const intervalId = setInterval(() => {
-      void fetchLogs();
-    }, refreshInterval);
-
-    return () => clearInterval(intervalId);
-  }, [autoRefresh, refreshInterval, fetchLogs]);
+  let queryError: Error | null = null;
+  if (query.error) {
+    queryError = query.error instanceof Error
+      ? query.error
+      : new Error('Failed to fetch request logs');
+  }
 
   return {
-    logs,
-    totalCount,
-    totalPages,
-    currentPage,
-    isLoading,
-    error,
-    stats,
-    refetch: fetchLogs,
+    logs: query.data?.logs ?? [],
+    totalCount: query.data?.totalCount ?? 0,
+    totalPages: query.data?.totalPages ?? 0,
+    currentPage: query.data?.currentPage ?? page,
+    isLoading: query.isFetching,
+    error: queryError,
+    stats: query.data?.stats ?? null,
+    refetch: async () => {
+      await query.refetch();
+    },
   };
 }
 
@@ -317,49 +334,28 @@ export function useRequestLogs({
  * Hook for fetching distinct model names for filter dropdown
  */
 export function useDistinctModels() {
-  const [models, setModels] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const query = useQuery({
+    queryKey: ['request-log-models'],
+    queryFn: async () => {
+      const result = await withAdminClient(client =>
+        client.analytics.getRequestLogs({ page: 1, pageSize: 100 })
+      );
+      return [
+        ...new Set(
+          (result.items ?? [])
+            .map(item => {
+              const rawItem = item as unknown as { model?: string; modelName?: string };
+              return rawItem.model ?? rawItem.modelName ?? '';
+            })
+            .filter(model => model !== '')
+        ),
+      ].sort();
+    },
+  });
 
-  useEffect(() => {
-    const fetchModels = async () => {
-      try {
-        setIsLoading(true);
-        // The SDK doesn't have a direct method for this, so we'll use a workaround
-        // by fetching logs and extracting unique models, or call the endpoint directly
-        const result = await withAdminClient(async (client) => {
-          // Try to get distinct models from the logs endpoint
-          // This is a temporary solution - ideally the SDK would have this method
-          const response = await client.analytics.getRequestLogs({
-            page: 1,
-            pageSize: 100,
-          });
-          return response;
-        });
-
-        // Extract unique model names
-        const items = result.items ?? [];
-        const uniqueModels = [
-          ...new Set(
-            items
-              .map((item) => {
-                const rawItem = item as unknown as { model?: string; modelName?: string };
-                return rawItem.model ?? rawItem.modelName ?? '';
-              })
-              .filter((model) => model !== '')
-          ),
-        ];
-        setModels(uniqueModels.sort());
-      } catch (err) {
-        console.error('Error fetching distinct models:', err);
-        setError(err instanceof Error ? err : new Error('Failed to fetch models'));
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    void fetchModels();
-  }, []);
-
-  return { models, isLoading, error };
+  return {
+    models: query.data ?? [],
+    isLoading: query.isFetching,
+    error: query.error instanceof Error ? query.error : null,
+  };
 }

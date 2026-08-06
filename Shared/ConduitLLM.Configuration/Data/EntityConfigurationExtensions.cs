@@ -34,6 +34,17 @@ namespace ConduitLLM.Configuration.Data
                     .IsRequired(false); // Nullable during transition
             });
 
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.ModelRoutePolicy>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => e.ModelAlias).IsUnique();
+                entity.ToTable(table =>
+                {
+                    table.HasCheckConstraint("CK_ModelRoutePolicy_Weights", "\"CostWeight\" >= 0 AND \"SpeedWeight\" >= 0 AND \"QualityWeight\" >= 0");
+                    table.HasCheckConstraint("CK_ModelRoutePolicy_Affinity", "\"AffinityTtlSeconds\" > 0 AND \"MaxAffinityScorePenalty\" >= 0");
+                });
+            });
+
             // Configure Provider entity
             modelBuilder.Entity<ConduitLLM.Configuration.Entities.Provider>(entity =>
             {
@@ -82,6 +93,23 @@ namespace ConduitLLM.Configuration.Data
                         "\"ProviderAccountGroup\" >= 0 AND \"ProviderAccountGroup\" <= 32"
                     );
                 });
+            });
+
+            // Provider-related notification references are nullable so notification history
+            // survives provider or key deletion (expand phase of the schema change).
+            modelBuilder.Entity<ConduitLLM.Configuration.Entities.Notification>(entity =>
+            {
+                entity.HasOne(e => e.Provider)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProviderId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
+
+                entity.HasOne(e => e.ProviderKeyCredential)
+                    .WithMany()
+                    .HasForeignKey(e => e.ProviderKeyCredentialId)
+                    .OnDelete(DeleteBehavior.SetNull)
+                    .IsRequired(false);
             });
 
 

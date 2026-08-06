@@ -8,7 +8,6 @@ using Xunit.Abstractions;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Authentication;
-using ConduitLLM.Gateway.Services;
 
 namespace ConduitLLM.Tests.Gateway.Authentication
 {
@@ -20,16 +19,12 @@ namespace ConduitLLM.Tests.Gateway.Authentication
     [Trait("Feature", "ConnectionLimiting")]
     public class VirtualKeySignalRRateLimitFilterConnectionLimitTests : TestBase
     {
-        private readonly Mock<VirtualKeyRateLimitCache> _mockRateLimitCache;
         private readonly Mock<ISignalRRateLimitService> _mockSignalRRateLimitService;
         private readonly Mock<IServiceProvider> _mockServiceProvider;
         private readonly Mock<ILogger<VirtualKeySignalRRateLimitFilter>> _mockLogger;
 
         public VirtualKeySignalRRateLimitFilterConnectionLimitTests(ITestOutputHelper output) : base(output)
         {
-            _mockRateLimitCache = new Mock<VirtualKeyRateLimitCache>(
-                Mock.Of<IServiceProvider>(),
-                Mock.Of<ILogger<VirtualKeyRateLimitCache>>());
             _mockSignalRRateLimitService = new Mock<ISignalRRateLimitService>();
             _mockServiceProvider = new Mock<IServiceProvider>();
             _mockLogger = CreateLogger<VirtualKeySignalRRateLimitFilter>();
@@ -48,10 +43,8 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             mockOptions.Setup(x => x.Value).Returns(options);
 
             return new VirtualKeySignalRRateLimitFilter(
-                _mockRateLimitCache.Object,
                 _mockSignalRRateLimitService.Object,
                 _mockLogger.Object,
-                _mockServiceProvider.Object,
                 mockOptions.Object);
         }
 
@@ -92,7 +85,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             var nextCalled = false;
 
             _mockSignalRRateLimitService
-                .Setup(x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()))
+                .Setup(x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(new ConnectionLimitResult
                 {
                     IsAllowed = true,
@@ -113,9 +106,15 @@ namespace ConduitLLM.Tests.Gateway.Authentication
 
             // Assert
             Assert.True(nextCalled, "next() should have been called");
+
+            // Admission and the increment are one atomic operation now, so there is no
+            // separate increment to make — a second one would double-count the connection.
+            _mockSignalRRateLimitService.Verify(
+                x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()),
+                Times.Once);
             _mockSignalRRateLimitService.Verify(
                 x => x.IncrementConnectionCountAsync(It.IsAny<string>()),
-                Times.Once);
+                Times.Never);
         }
 
         [Fact]
@@ -126,7 +125,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             var (_, context) = CreateHubContext();
 
             _mockSignalRRateLimitService
-                .Setup(x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()))
+                .Setup(x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(new ConnectionLimitResult
                 {
                     IsAllowed = false,
@@ -150,7 +149,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             var (_, context) = CreateHubContext();
 
             _mockSignalRRateLimitService
-                .Setup(x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()))
+                .Setup(x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(new ConnectionLimitResult
                 {
                     IsAllowed = false,
@@ -202,9 +201,9 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             // Assert
             Assert.True(nextCalled, "next() should have been called when EnforceLimits is false");
 
-            // CheckConnectionLimitAsync should NOT be called when enforcement is disabled
+            // TryAcquireConnectionAsync should NOT be called when enforcement is disabled
             _mockSignalRRateLimitService.Verify(
-                x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()),
+                x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()),
                 Times.Never);
         }
 
@@ -228,7 +227,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
 
             // No rate limit service calls should be made
             _mockSignalRRateLimitService.Verify(
-                x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()),
+                x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()),
                 Times.Never);
             _mockSignalRRateLimitService.Verify(
                 x => x.IncrementConnectionCountAsync(It.IsAny<string>()),
@@ -236,30 +235,28 @@ namespace ConduitLLM.Tests.Gateway.Authentication
         }
 
         [Fact]
-        public async Task OnConnectedAsync_CallsCheckLimitBeforeIncrement()
+        public async Task OnConnectedAsync_AdmitsAndCountsInASingleOperation()
         {
-            // Arrange
+            // The limit used to be checked and the counter incremented in two calls, which let
+            // a burst of simultaneous connections all observe the same pre-increment count and
+            // be admitted together. There is now exactly one call, and it does both.
             var filter = CreateFilter();
             var (_, context) = CreateHubContext();
-            var callOrder = new List<string>();
+            var calls = new List<string>();
 
             _mockSignalRRateLimitService
-                .Setup(x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()))
-                .Callback(() => callOrder.Add("CheckLimit"))
-                .ReturnsAsync(new ConnectionLimitResult { IsAllowed = true });
+                .Setup(x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()))
+                .Callback(() => calls.Add("Acquire"))
+                .ReturnsAsync(new ConnectionLimitResult { IsAllowed = true, CurrentConnections = 1 });
 
             _mockSignalRRateLimitService
                 .Setup(x => x.IncrementConnectionCountAsync(It.IsAny<string>()))
-                .Callback(() => callOrder.Add("Increment"))
+                .Callback(() => calls.Add("Increment"))
                 .ReturnsAsync(1);
 
-            // Act
             await filter.OnConnectedAsync(context, ctx => Task.CompletedTask);
 
-            // Assert - Check should happen before increment
-            Assert.Equal(2, callOrder.Count);
-            Assert.Equal("CheckLimit", callOrder[0]);
-            Assert.Equal("Increment", callOrder[1]);
+            Assert.Equal(new[] { "Acquire" }, calls);
         }
 
         [Fact]
@@ -276,7 +273,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             var (_, context) = CreateHubContext();
 
             _mockSignalRRateLimitService
-                .Setup(x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()))
+                .Setup(x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(new ConnectionLimitResult { IsAllowed = true });
 
             _mockSignalRRateLimitService
@@ -288,7 +285,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
 
             // Assert - Verify the configured max was passed to the service
             _mockSignalRRateLimitService.Verify(
-                x => x.CheckConnectionLimitAsync(It.IsAny<string>(), configuredMax),
+                x => x.TryAcquireConnectionAsync(It.IsAny<string>(), configuredMax),
                 Times.Once);
         }
 
@@ -301,7 +298,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             var nextCalled = false;
 
             _mockSignalRRateLimitService
-                .Setup(x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()))
+                .Setup(x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(new ConnectionLimitResult
                 {
                     IsAllowed = false,
@@ -335,7 +332,7 @@ namespace ConduitLLM.Tests.Gateway.Authentication
             var (_, context) = CreateHubContext(virtualKeyHash: expectedHash);
 
             _mockSignalRRateLimitService
-                .Setup(x => x.CheckConnectionLimitAsync(It.IsAny<string>(), It.IsAny<int>()))
+                .Setup(x => x.TryAcquireConnectionAsync(It.IsAny<string>(), It.IsAny<int>()))
                 .ReturnsAsync(new ConnectionLimitResult { IsAllowed = true });
 
             _mockSignalRRateLimitService
@@ -347,11 +344,11 @@ namespace ConduitLLM.Tests.Gateway.Authentication
 
             // Assert
             _mockSignalRRateLimitService.Verify(
-                x => x.CheckConnectionLimitAsync(expectedHash, It.IsAny<int>()),
+                x => x.TryAcquireConnectionAsync(expectedHash, It.IsAny<int>()),
                 Times.Once);
 
             _mockSignalRRateLimitService.Verify(
-                x => x.IncrementConnectionCountAsync(expectedHash),
+                x => x.TryAcquireConnectionAsync(expectedHash, It.IsAny<int>()),
                 Times.Once);
         }
     }

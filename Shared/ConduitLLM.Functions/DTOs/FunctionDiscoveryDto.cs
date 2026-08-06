@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace ConduitLLM.Functions.DTOs;
 
 /// <summary>
@@ -45,6 +47,11 @@ public class FunctionDiscoveryDto
     /// Maximum execution timeout in seconds (null = no timeout).
     /// </summary>
     public int? TimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// JSON Schema object describing accepted execution input.
+    /// </summary>
+    public Dictionary<string, JsonElement> ParameterSchema { get; set; } = new();
 }
 
 /// <summary>

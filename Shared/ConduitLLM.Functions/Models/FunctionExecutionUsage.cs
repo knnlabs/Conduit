@@ -36,6 +36,20 @@ public class FunctionExecutionUsage
     public int? TokensConsumed { get; set; }
 
     /// <summary>
+    /// Number of input tokens consumed when the provider reports token types separately.
+    /// </summary>
+    [JsonPropertyName("input_tokens_consumed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? InputTokensConsumed { get; set; }
+
+    /// <summary>
+    /// Number of output tokens consumed when the provider reports token types separately.
+    /// </summary>
+    [JsonPropertyName("output_tokens_consumed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? OutputTokensConsumed { get; set; }
+
+    /// <summary>
     /// Duration of the function execution.
     /// </summary>
     /// <remarks>
@@ -127,11 +141,11 @@ public class FunctionExecutionUsage
     public Dictionary<string, object>? Metadata { get; set; }
 
     /// <summary>
-    /// Provider-reported cost (if available) for comparison with Conduit's calculation.
+    /// Provider-reported cost (if available) used as the authoritative execution cost.
     /// </summary>
     /// <remarks>
     /// Some providers (like Exa) return their own cost calculation in the response.
-    /// This field stores that value for reconciliation and audit purposes.
+    /// This field stores that value for billing, reconciliation, and audit purposes.
     /// Stored in USD.
     /// </remarks>
     [JsonPropertyName("provider_reported_cost")]

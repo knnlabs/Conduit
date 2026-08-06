@@ -24,27 +24,19 @@ import {
   IconX,
   IconInfoCircle,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
-import { FunctionConfigurationDto } from '@/app/functions/types';
+import {
+  FunctionConfigurationDto,
+  getExecutionStateBadgeColor,
+} from '@/app/functions/types';
+import type { FunctionExecutionResponse } from '@/lib/gateway-api/types';
+import { formatCost, formatDuration } from '@/lib/utils/formatters';
 
 interface TestFunctionModalProps {
   opened: boolean;
   onClose: () => void;
   configuration: FunctionConfigurationDto;
-}
-
-interface FunctionExecutionResponse {
-  executionId: string;
-  functionConfigurationId: number;
-  state: string;
-  result?: Record<string, unknown>;
-  errorMessage?: string;
-  estimatedCost?: number;
-  actualCost?: number;
-  startedAt?: string;
-  completedAt?: string;
-  duration?: number;
 }
 
 const validateJson = (value: string) => {
@@ -77,8 +69,8 @@ const validateParameters = (value: string) => {
 };
 
 function getStateIcon(state: string): React.ReactNode {
-  if (state === 'Completed') return <IconCheck size={16} />;
-  if (state === 'Failed') return <IconX size={16} />;
+  if (state.toLowerCase() === 'completed') return <IconCheck size={16} />;
+  if (state.toLowerCase() === 'failed') return <IconX size={16} />;
   return null;
 }
 
@@ -142,43 +134,40 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
 
       // Execute the function
       const response = await coreClient.functions.execute({
-        functionConfigurationId: configuration.id,
+        function_configuration_id: configuration.id,
         parameters,
         metadata,
-        idempotencyKey: values.idempotencyKey || undefined,
-      });
+      }, values.idempotencyKey || undefined);
 
-      setTestResult(response as FunctionExecutionResponse);
+      setTestResult(response);
 
       // Auto-switch to result tab
       setActiveTab('result');
 
       // Show success notification
-      notifications.show({
-        title: 'Function executed',
-        message: `Execution completed in ${formatDuration(response.duration ?? 0)}`,
-        color: response.state === 'Completed' ? 'green' : 'yellow',
-      });
+      if (response.status.toLowerCase() === 'completed') {
+        notify.success(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
+      } else {
+        notify.warning(`Execution completed in ${formatDuration(response.durationMs ?? 0)}`, 'Function executed');
+      }
     } catch (error) {
       console.warn('Error executing function:', error);
 
       // Show error in result
       const errorMessage = error instanceof Error ? error.message : 'Failed to execute function';
       setTestResult({
-        executionId: '',
-        functionConfigurationId: configuration.id,
-        state: 'Failed',
-        errorMessage,
+        id: '',
+        functionId: configuration.id,
+        status: 'failed',
+        error: errorMessage,
+        createdAt: new Date().toISOString(),
+        cost: { currency: 'USD' },
       });
 
       // Auto-switch to result tab
       setActiveTab('result');
 
-      notifications.show({
-        title: 'Execution failed',
-        message: errorMessage,
-        color: 'red',
-      });
+      notify.error(new Error(errorMessage));
     } finally {
       setIsLoading(false);
     }
@@ -195,32 +184,6 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
     setActiveTab('parameters');
     setLoadingSchema(false);
     onClose();
-  };
-
-  const formatDuration = (ms: number): string => {
-    if (ms < 1000) {
-      return `${ms.toFixed(0)}ms`;
-    }
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
-
-  const formatCost = (cost: number): string => {
-    return `$${cost.toFixed(6)}`;
-  };
-
-  const getStateColor = (state: string): string => {
-    switch (state) {
-      case 'Completed':
-        return 'green';
-      case 'Failed':
-        return 'red';
-      case 'Running':
-        return 'blue';
-      case 'Pending':
-        return 'yellow';
-      default:
-        return 'gray';
-    }
   };
 
   return (
@@ -289,45 +252,46 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
           </Tabs.Panel>
 
           <Tabs.Panel value="result" pt="md">
-            {isLoading ? (
+            {isLoading && (
               <Stack align="center" py="xl">
                 <Loader size="lg" />
                 <Text c="dimmed">Executing function...</Text>
               </Stack>
-            ) : testResult ? (
+            )}
+            {!isLoading && testResult && (
               <Stack gap="md">
                 <Group justify="space-between">
                   <Badge
-                    color={getStateColor(testResult.state)}
+                    color={getExecutionStateBadgeColor(testResult.status)}
                     variant="filled"
                     size="lg"
-                    leftSection={getStateIcon(testResult.state)}
+                    leftSection={getStateIcon(testResult.status)}
                   >
-                    {testResult.state}
+                    {testResult.status}
                   </Badge>
-                  {testResult.duration !== null && testResult.duration !== undefined && (
+                  {testResult.durationMs !== null && testResult.durationMs !== undefined && (
                     <Text size="sm" c="dimmed">
-                      Duration: {formatDuration(testResult.duration)}
+                      Duration: {formatDuration(testResult.durationMs)}
                     </Text>
                   )}
                 </Group>
 
-                {testResult.errorMessage && (
+                {testResult.error && (
                   <Alert icon={<IconAlertCircle size={16} />} color="red" variant="filled">
                     <Text size="sm" fw={500}>
                       Error
                     </Text>
-                    <Text size="sm">{testResult.errorMessage}</Text>
+                    <Text size="sm">{testResult.error}</Text>
                   </Alert>
                 )}
 
-                {testResult.result && (
+                {testResult.output && (
                   <div>
                     <Text size="sm" fw={500} mb="xs">
                       Response Data:
                     </Text>
                     <Code block style={{ maxHeight: '400px', overflow: 'auto' }}>
-                      {JSON.stringify(testResult.result, null, 2)}
+                      {JSON.stringify(testResult.output, null, 2)}
                     </Code>
                   </div>
                 )}
@@ -337,7 +301,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                     Execution Details
                   </Text>
                   <Grid>
-                    {testResult.executionId && (
+                    {testResult.id && (
                       <>
                         <Grid.Col span={4}>
                           <Text size="xs" c="dimmed">
@@ -346,7 +310,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                         </Grid.Col>
                         <Grid.Col span={8}>
                           <Text size="xs" style={{ fontFamily: 'monospace' }}>
-                            {testResult.executionId}
+                            {testResult.id}
                           </Text>
                         </Grid.Col>
                       </>
@@ -379,7 +343,7 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                         </Grid.Col>
                       </>
                     )}
-                    {testResult.estimatedCost !== null && testResult.estimatedCost !== undefined && (
+                    {testResult.cost.estimated !== null && testResult.cost.estimated !== undefined && (
                       <>
                         <Grid.Col span={4}>
                           <Text size="xs" c="dimmed">
@@ -387,11 +351,11 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatCost(testResult.estimatedCost)}</Text>
+                          <Text size="xs">{formatCost(testResult.cost.estimated)}</Text>
                         </Grid.Col>
                       </>
                     )}
-                    {testResult.actualCost !== null && testResult.actualCost !== undefined && (
+                    {testResult.cost.actual !== null && testResult.cost.actual !== undefined && (
                       <>
                         <Grid.Col span={4}>
                           <Text size="xs" c="dimmed">
@@ -399,14 +363,14 @@ export function TestFunctionModal({ opened, onClose, configuration }: TestFuncti
                           </Text>
                         </Grid.Col>
                         <Grid.Col span={8}>
-                          <Text size="xs">{formatCost(testResult.actualCost)}</Text>
+                          <Text size="xs">{formatCost(testResult.cost.actual)}</Text>
                         </Grid.Col>
                       </>
                     )}
                   </Grid>
                 </Card>
               </Stack>
-            ) : null}
+            )}
           </Tabs.Panel>
         </Tabs>
 

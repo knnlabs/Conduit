@@ -15,10 +15,24 @@ namespace ConduitLLM.Core.Services
         private readonly ILogger<UsageEstimationService> _logger;
         
         /// <summary>
-        /// Buffer percentage to add to estimated tokens to ensure we don't undercharge.
-        /// Default is 10% overhead for conservative estimation.
+        /// Buffer percentage added to estimated tokens to ensure we don't undercharge, sized by
+        /// how the count was produced (#1233).
         /// </summary>
-        private const double ConservativeBufferPercentage = 0.10;
+        /// <remarks>
+        /// An exact count keeps the historical 10% — the per-message overhead arithmetic is still
+        /// an estimate. A stand-in vocabulary (Claude counted with cl100k_base, ...) is typically
+        /// 10-30% off, and the chars/4 heuristic under-counts English prose by 20-40% and CJK by
+        /// far more, so those tiers carry proportionally larger buffers.
+        /// </remarks>
+        private static double BufferFor(TokenCountFidelity fidelity) => fidelity switch
+        {
+            TokenCountFidelity.Exact => 0.10,
+            TokenCountFidelity.ApproximateVocabulary => 0.20,
+            _ => 0.40,
+        };
+
+        /// <summary>Buffer applied on the character-based fallback paths below.</summary>
+        private const double CharacterHeuristicBuffer = 0.40;
 
         public UsageEstimationService(
             ITokenCounter tokenCounter,
@@ -35,6 +49,7 @@ namespace ConduitLLM.Core.Services
             string modelId,
             List<Message> inputMessages,
             string streamedContent,
+            IReadOnlyList<Tool>? tools = null,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(modelId))
@@ -49,16 +64,16 @@ namespace ConduitLLM.Core.Services
                 _logger.LogInformation("Estimating usage for model {Model} with {MessageCount} input messages and {OutputLength} characters of output",
                     modelId, inputMessages.Count, streamedContent.Length);
 
-                // Estimate prompt tokens from input messages
-                var promptTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, inputMessages);
-                
+                // Estimate prompt tokens from input messages, including tool definitions
+                var promptTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, inputMessages, tools);
+
                 // Estimate completion tokens from streamed content
                 var completionTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, streamedContent);
-                
-                // Apply conservative buffer to avoid undercharging
-                var bufferedPromptTokens = (int)Math.Ceiling(promptTokens * (1 + ConservativeBufferPercentage));
-                var bufferedCompletionTokens = (int)Math.Ceiling(completionTokens * (1 + ConservativeBufferPercentage));
-                
+
+                // Apply a fidelity-sized buffer to avoid undercharging
+                var bufferedPromptTokens = (int)Math.Ceiling(promptTokens.Tokens * (1 + BufferFor(promptTokens.Fidelity)));
+                var bufferedCompletionTokens = (int)Math.Ceiling(completionTokens.Tokens * (1 + BufferFor(completionTokens.Fidelity)));
+
                 var usage = new Usage
                 {
                     PromptTokens = bufferedPromptTokens,
@@ -67,11 +82,11 @@ namespace ConduitLLM.Core.Services
                 };
 
                 _logger.LogInformation(
-                    "Estimated usage for model {Model}: Prompt={PromptTokens} (raw={RawPrompt}), " +
-                    "Completion={CompletionTokens} (raw={RawCompletion}), Total={TotalTokens}, Buffer={Buffer:P0}",
-                    modelId, usage.PromptTokens, promptTokens, 
-                    usage.CompletionTokens, completionTokens, 
-                    usage.TotalTokens, ConservativeBufferPercentage);
+                    "Estimated usage for model {Model}: Prompt={PromptTokens} (raw={RawPrompt}, {PromptFidelity}), " +
+                    "Completion={CompletionTokens} (raw={RawCompletion}, {CompletionFidelity}), Total={TotalTokens}",
+                    modelId, usage.PromptTokens, promptTokens.Tokens, promptTokens.Fidelity,
+                    usage.CompletionTokens, completionTokens.Tokens, completionTokens.Fidelity,
+                    usage.TotalTokens);
 
                 return usage;
             }
@@ -83,10 +98,10 @@ namespace ConduitLLM.Core.Services
                 // Using conservative 4 characters per token estimate
                 var fallbackPromptTokens = EstimateTokensFromCharacters(await GetTotalCharacterCountAsync(inputMessages));
                 var fallbackCompletionTokens = EstimateTokensFromCharacters(streamedContent.Length);
-                
-                // Apply conservative buffer
-                var bufferedPromptTokens = (int)Math.Ceiling(fallbackPromptTokens * (1 + ConservativeBufferPercentage));
-                var bufferedCompletionTokens = (int)Math.Ceiling(fallbackCompletionTokens * (1 + ConservativeBufferPercentage));
+
+                // This path is character-heuristic by construction, so it gets that tier's buffer
+                var bufferedPromptTokens = (int)Math.Ceiling(fallbackPromptTokens * (1 + CharacterHeuristicBuffer));
+                var bufferedCompletionTokens = (int)Math.Ceiling(fallbackCompletionTokens * (1 + CharacterHeuristicBuffer));
                 
                 var fallbackUsage = new Usage
                 {
@@ -126,10 +141,10 @@ namespace ConduitLLM.Core.Services
                 // Estimate tokens for input and output
                 var promptTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, inputText);
                 var completionTokens = await _tokenCounter.EstimateTokenCountAsync(modelId, outputText);
-                
-                // Apply conservative buffer
-                var bufferedPromptTokens = (int)Math.Ceiling(promptTokens * (1 + ConservativeBufferPercentage));
-                var bufferedCompletionTokens = (int)Math.Ceiling(completionTokens * (1 + ConservativeBufferPercentage));
+
+                // Apply a fidelity-sized buffer
+                var bufferedPromptTokens = (int)Math.Ceiling(promptTokens.Tokens * (1 + BufferFor(promptTokens.Fidelity)));
+                var bufferedCompletionTokens = (int)Math.Ceiling(completionTokens.Tokens * (1 + BufferFor(completionTokens.Fidelity)));
                 
                 var usage = new Usage
                 {
@@ -151,10 +166,10 @@ namespace ConduitLLM.Core.Services
                 // Fallback to character-based estimation
                 var fallbackPromptTokens = EstimateTokensFromCharacters(inputText.Length);
                 var fallbackCompletionTokens = EstimateTokensFromCharacters(outputText.Length);
-                
-                // Apply conservative buffer
-                var bufferedPromptTokens = (int)Math.Ceiling(fallbackPromptTokens * (1 + ConservativeBufferPercentage));
-                var bufferedCompletionTokens = (int)Math.Ceiling(fallbackCompletionTokens * (1 + ConservativeBufferPercentage));
+
+                // This path is character-heuristic by construction, so it gets that tier's buffer
+                var bufferedPromptTokens = (int)Math.Ceiling(fallbackPromptTokens * (1 + CharacterHeuristicBuffer));
+                var bufferedCompletionTokens = (int)Math.Ceiling(fallbackCompletionTokens * (1 + CharacterHeuristicBuffer));
                 
                 return new Usage
                 {

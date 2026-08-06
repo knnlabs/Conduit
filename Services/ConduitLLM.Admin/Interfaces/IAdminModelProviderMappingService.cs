@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.DTOs;
 
 namespace ConduitLLM.Admin.Interfaces;
 
@@ -62,9 +63,17 @@ public interface IAdminModelProviderMappingService
     Task<IEnumerable<Provider>> GetProvidersAsync();
 
     /// <summary>
-    /// Creates multiple model provider mappings in a single operation
+    /// Resolves associations and conflicts for discovered provider models.
     /// </summary>
-    /// <param name="mappings">The mappings to create</param>
-    /// <returns>A tuple containing successfully created mappings and any errors</returns>
-    Task<(IEnumerable<ModelProviderMapping> created, IEnumerable<string> errors)> CreateBulkMappingsAsync(IEnumerable<ModelProviderMapping> mappings);
+    Task<BulkModelMappingPreviewResponse> PreviewBulkMappingsAsync(
+        BulkModelMappingPreviewRequest request,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resolves and creates discovered provider model mappings using partial-success semantics.
+    /// Equivalent existing mappings are returned as successful idempotent results.
+    /// </summary>
+    Task<BulkModelMappingCreateResponse> CreateBulkMappingsAsync(
+        BulkModelMappingCreateRequest request,
+        CancellationToken cancellationToken = default);
 }

@@ -1,5 +1,6 @@
-using System.Security.Cryptography;
 using System.Text;
+
+using ConduitLLM.Configuration.Utilities;
 
 namespace ConduitLLM.Core.Utilities
 {
@@ -104,9 +105,7 @@ namespace ConduitLLM.Core.Utilities
         /// <returns>A SHA-256 hash of the image data as a hex string</returns>
         public static string CalculateImageHash(byte[] imageData)
         {
-            using var sha256 = SHA256.Create();
-            byte[] hashBytes = sha256.ComputeHash(imageData);
-            return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+            return Sha256Hash.LowerHex(imageData);
         }
 
         /// <summary>
@@ -120,17 +119,17 @@ namespace ConduitLLM.Core.Utilities
             if (string.IsNullOrEmpty(url))
                 return false;
 
-            // Data URLs are always valid
-            if (url.StartsWith("data:image/"))
-                return true;
+            if (DataUrl.IsDataUrl(url))
+            {
+                return DataUrl.TryParse(url, out var dataUrl) &&
+                       dataUrl.IsBase64 &&
+                       dataUrl.MediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+            }
 
-            // Check if it's a valid URI
-            if (!Uri.TryCreate(url, UriKind.Absolute, out Uri? uri))
+            if (!UrlBuilder.IsValidUrl(url))
                 return false;
 
-            // Only allow HTTP and HTTPS
-            if (uri.Scheme != "http" && uri.Scheme != "https")
-                return false;
+            var uri = new Uri(url, UriKind.Absolute);
 
             // If allowed domains are specified, check against them
             if (allowedDomains != null)
@@ -162,29 +161,18 @@ namespace ConduitLLM.Core.Utilities
         {
             mimeType = null;
 
-            if (!dataUrl.StartsWith("data:"))
+            if (!DataUrl.TryParse(dataUrl, out var parsed) ||
+                !parsed.IsBase64 ||
+                !parsed.MediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
                 return null;
-
-            int mimeTypeStart = dataUrl.IndexOf(':') + 1;
-            int mimeTypeEnd = dataUrl.IndexOf(';', mimeTypeStart);
-
-            if (mimeTypeEnd < 0)
-                return null;
-
-            mimeType = dataUrl.Substring(mimeTypeStart, mimeTypeEnd - mimeTypeStart);
-
-            if (!mimeType.StartsWith("image/"))
-                return null;
-
-            if (!dataUrl.Substring(mimeTypeEnd + 1).StartsWith("base64,"))
-                return null;
-
-            int dataStart = dataUrl.IndexOf("base64,") + 7;
-            string base64Data = dataUrl.Substring(dataStart);
+            }
 
             try
             {
-                return Convert.FromBase64String(base64Data);
+                var imageData = Convert.FromBase64String(parsed.Data);
+                mimeType = parsed.MediaType;
+                return imageData;
             }
             catch (FormatException)
             {
@@ -196,13 +184,18 @@ namespace ConduitLLM.Core.Utilities
         /// Downloads an image from a URL asynchronously.
         /// </summary>
         /// <param name="url">The URL of the image to download</param>
+        /// <param name="httpClient">The HttpClient instance to use for downloading (should be from IHttpClientFactory)</param>
+        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
         /// <returns>The image data as a byte array</returns>
-        public static async Task<byte[]> DownloadImageAsync(string url)
+        public static async Task<byte[]> DownloadImageAsync(string url, HttpClient httpClient, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(url))
                 throw new ArgumentException("URL cannot be null or empty", nameof(url));
 
-            if (url.StartsWith("data:"))
+            if (httpClient == null)
+                throw new ArgumentNullException(nameof(httpClient));
+
+            if (DataUrl.IsDataUrl(url))
             {
                 byte[]? imageData = ExtractImageDataFromDataUrl(url, out _);
                 if (imageData == null)
@@ -211,17 +204,33 @@ namespace ConduitLLM.Core.Utilities
                 return imageData;
             }
 
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(30); // Set a reasonable timeout
-
             try
             {
-                return await httpClient.GetByteArrayAsync(url);
+                return await httpClient.GetByteArrayAsync(url, cancellationToken);
             }
             catch (HttpRequestException ex)
             {
                 throw new IOException($"Failed to download image from URL: {ex.Message}", ex);
             }
+        }
+
+        /// <summary>
+        /// Downloads an image from a URL asynchronously.
+        /// </summary>
+        /// <param name="url">The URL of the image to download</param>
+        /// <returns>The image data as a byte array</returns>
+        /// <remarks>
+        /// This method is no longer supported. Use the overload that accepts an HttpClient from IHttpClientFactory,
+        /// or use IImageDownloadService to properly manage HTTP connections and avoid socket exhaustion.
+        /// </remarks>
+        /// <exception cref="NotSupportedException">Always thrown. Use the overload that accepts an HttpClient parameter.</exception>
+        [Obsolete("Use the overload that accepts an HttpClient from IHttpClientFactory, or use IImageDownloadService. This method is no longer supported.", error: true)]
+        public static Task<byte[]> DownloadImageAsync(string url)
+        {
+            throw new NotSupportedException(
+                "This method is no longer supported due to socket exhaustion risks. " +
+                "Use DownloadImageAsync(url, httpClient, cancellationToken) with an HttpClient from IHttpClientFactory, " +
+                "or use IImageDownloadService.");
         }
 
         /// <summary>

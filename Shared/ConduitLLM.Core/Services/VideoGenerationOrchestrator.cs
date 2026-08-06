@@ -12,10 +12,10 @@ using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Core.Validation;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -29,8 +29,7 @@ namespace ConduitLLM.Core.Services
         VideoGenerationRequest,
         VideoGenerationResponse,
         VideoGenerationRequested>,
-        IConsumer<VideoGenerationRequested>,
-        IConsumer<VideoGenerationCancelled>
+        IEventHandler<VideoGenerationCancelled>
     {
         private readonly VideoGenerationRetryConfiguration _retryConfiguration;
         private readonly IMediaProcessingStrategy<VideoData> _base64Processor;
@@ -38,8 +37,8 @@ namespace ConduitLLM.Core.Services
 
         // Implement abstract property accessors
         protected override string GetRequestId(VideoGenerationRequested request) => request.RequestId;
-        protected override string GetModel(VideoGenerationRequested request) => request.Model;
-        protected override string GetPrompt(VideoGenerationRequested request) => request.Prompt;
+        protected override string GetModel(VideoGenerationRequested request) => request.ResolveRequest().Model;
+        protected override string GetPrompt(VideoGenerationRequested request) => request.ResolveRequest().Prompt;
         protected override string GetVirtualKeyId(VideoGenerationRequested request) => request.VirtualKeyId;
         protected override string? GetWebhookUrl(VideoGenerationRequested request) => request.WebhookUrl;
         protected override string? GetCorrelationId(VideoGenerationRequested request) => request.CorrelationId;
@@ -49,7 +48,7 @@ namespace ConduitLLM.Core.Services
             ILLMClientFactory clientFactory,
             IAsyncTaskService taskService,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
@@ -59,17 +58,21 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
-            ILogger<VideoGenerationOrchestrator> logger)
-            : base(clientFactory, taskService, storageService, publishEndpoint,
+            IProviderErrorTrackingService errorTrackingService,
+            ILogger<VideoGenerationOrchestrator> logger,
+            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null,
+            IProviderErrorTranslator? providerErrorTranslator = null)
+            : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics,
+                   errorTrackingService, logger, batchSpendService, providerErrorTranslator)
         {
             _retryConfiguration = retryConfiguration?.Value ?? new VideoGenerationRetryConfiguration();
-            
+
             // Initialize processing strategies
-            _base64Processor = new Base64MediaProcessor(storageService, publishEndpoint,
+            _base64Processor = new Base64MediaProcessor(storageService, eventBus,
                 logger as ILogger<Base64MediaProcessor> ?? new NullLogger<Base64MediaProcessor>());
-            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, publishEndpoint,
+            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, eventBus,
                 logger as ILogger<UrlMediaProcessor> ?? new NullLogger<UrlMediaProcessor>());
         }
 
@@ -86,65 +89,72 @@ namespace ConduitLLM.Core.Services
             VirtualKey virtualKey,
             CancellationToken cancellationToken)
         {
-            // Get the client for the model
-            var client = _clientFactory.GetClient(modelInfo.ModelAlias);
+            // Get the client via the already-resolved provider instead of re-resolving the alias
+            var client = await _clientFactory.GetClientByProviderIdAsync(modelInfo.ProviderId, modelInfo.ModelId, cancellationToken);
             if (client == null)
             {
                 throw new NotSupportedException($"No provider available for model {modelInfo.ModelAlias}");
             }
 
-            // Check if client supports video generation using reflection
-            var clientType = client.GetType();
-            
-            // Handle decorators by getting inner client
-            object clientToCheck = client;
-            if (clientType.FullName?.Contains("Decorator") == true || 
-                clientType.FullName?.Contains("PerformanceTracking") == true)
+            // Video generation is not part of ILLMClient — only specific provider clients
+            // implement CreateVideoAsync. Unwrap the decorator chain to the innermost provider
+            // client to check the capability; decorators would otherwise hide it (issue #976).
+            var innermostClient = client.UnwrapInnermost();
+            var innermostType = innermostClient.GetType();
+
+            var supportsVideo = innermostType.GetMethods()
+                .Any(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+
+            if (!supportsVideo)
             {
-                var innerClientField = clientType.GetField("_innerClient",
-                    BindingFlags.NonPublic | BindingFlags.Instance);
-                if (innerClientField != null)
-                {
-                    var innerClient = innerClientField.GetValue(client);
-                    if (innerClient != null)
-                    {
-                        clientToCheck = innerClient;
-                        clientType = innerClient.GetType();
-                    }
-                }
+                throw new NotSupportedException($"Provider for model {modelInfo.ModelAlias} does not support video generation");
             }
 
-            // Find CreateVideoAsync method
-            var createVideoMethod = clientType.GetMethods()
-                .FirstOrDefault(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+            // Set up the progress callback for any provider client that exposes SetProgressCallback
+            // (e.g. MiniMax, OpenRouter), not just MiniMax by name.
+            if (innermostType.GetMethod("SetProgressCallback") != null)
+            {
+                SetupProgressCallback(innermostClient, request.Model, cancellationToken);
+            }
+
+            // Invoke through the outermost client in the chain that exposes CreateVideoAsync so
+            // decorators (e.g. ContextAwareLLMClient's key context and error tracking) still run.
+            object invocationTarget = innermostClient;
+            MethodInfo? createVideoMethod = null;
+            for (ILLMClient? current = client; current != null;
+                 current = (current as ILLMClientDecorator)?.InnerClient)
+            {
+                var method = current.GetType().GetMethods()
+                    .FirstOrDefault(m => m.Name == "CreateVideoAsync" && m.GetParameters().Length == 3);
+                if (method != null)
+                {
+                    invocationTarget = current;
+                    createVideoMethod = method;
+                    break;
+                }
+            }
 
             if (createVideoMethod == null)
             {
                 throw new NotSupportedException($"Provider for model {modelInfo.ModelAlias} does not support video generation");
             }
 
-            // Set up progress callback if the client is MiniMax
-            if (clientType.Name == "MiniMaxClient")
-            {
-                SetupMiniMaxProgressCallback(clientToCheck, request.Model, cancellationToken);
-            }
-
             // Invoke video generation
-            var task = createVideoMethod.Invoke(clientToCheck, new object?[] { request, null, cancellationToken }) 
+            var task = createVideoMethod.Invoke(invocationTarget, new object?[] { request, null, cancellationToken })
                 as Task<VideoGenerationResponse>;
-            
+
             if (task == null)
             {
-                throw new InvalidOperationException($"CreateVideoAsync method on {clientType.Name} did not return expected Task<VideoGenerationResponse>");
+                throw new InvalidOperationException($"CreateVideoAsync method on {invocationTarget.GetType().Name} did not return expected Task<VideoGenerationResponse>");
             }
 
             return await task;
         }
 
-        private void SetupMiniMaxProgressCallback(object client, string requestId, CancellationToken cancellationToken)
+        private void SetupProgressCallback(object client, string requestId, CancellationToken cancellationToken)
         {
             var clientType = client.GetType();
-            var setCallbackMethod = clientType.GetMethod("SetVideoProgressCallback");
+            var setCallbackMethod = clientType.GetMethod("SetProgressCallback");
             if (setCallbackMethod != null)
             {
                 Func<string, string, int, Task> progressCallback = async (taskId, status, progressPercentage) =>
@@ -159,7 +169,7 @@ namespace ConduitLLM.Core.Services
                         progress: progressPercentage);
 
                     // Publish progress event
-                    await _publishEndpoint.Publish(new VideoGenerationProgress
+                    await _eventBus.PublishAsync(new VideoGenerationProgress
                     {
                         RequestId = requestId,
                         ProgressPercentage = progressPercentage,
@@ -196,7 +206,7 @@ namespace ConduitLLM.Core.Services
                     MediaType = MediaType.Video,
                     Index = index,
                     ModelInfo = modelInfo,
-                    Prompt = request.Prompt,
+                    Prompt = request.ResolveRequest().Prompt,
                     VirtualKeyId = virtualKey.Id,
                     RequestId = request.RequestId,
                     CorrelationId = request.CorrelationId
@@ -228,6 +238,10 @@ namespace ConduitLLM.Core.Services
                     }
                     return null;
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to process video");
@@ -237,6 +251,33 @@ namespace ConduitLLM.Core.Services
 
             var results = await Task.WhenAll(tasks);
             processedMedia.Items = results.Where(r => r != null).ToList()!;
+
+            // Preserve provider-reported output metadata after media processing. The storage
+            // strategies add operational metadata but do not carry VideoData.Metadata forward;
+            // billing and completion events need the delivered values rather than request defaults.
+            foreach (var item in processedMedia.Items)
+            {
+                var providerMetadata = response.Data.ElementAtOrDefault(item.Index)?.Metadata;
+                if (providerMetadata == null)
+                {
+                    continue;
+                }
+
+                if (providerMetadata.Duration > 0)
+                {
+                    item.Metadata["duration"] = providerMetadata.Duration;
+                }
+
+                if (providerMetadata.Width > 0 && providerMetadata.Height > 0)
+                {
+                    item.Metadata["resolution"] = $"{providerMetadata.Width}x{providerMetadata.Height}";
+                }
+
+                if (providerMetadata.FileSizeBytes > 0)
+                {
+                    item.Metadata["fileSize"] = providerMetadata.FileSizeBytes;
+                }
+            }
 
             // Set primary URL to first video
             if (processedMedia.Items.Any())
@@ -256,6 +297,13 @@ namespace ConduitLLM.Core.Services
             VideoGenerationRequested request,
             GenerationModelInfo modelInfo)
         {
+            var eventRequest = request.ResolveRequest();
+            if (!string.IsNullOrWhiteSpace(eventRequest.Prompt))
+            {
+                eventRequest.Model = modelInfo.ModelId;
+                return eventRequest;
+            }
+
             // Extract request from task metadata if available
             var taskStatus = await _taskService.GetTaskStatusAsync(request.RequestId);
             if (taskStatus?.Metadata is TaskMetadata taskMetadata && taskMetadata.ExtensionData != null)
@@ -284,10 +332,10 @@ namespace ConduitLLM.Core.Services
             return new VideoGenerationRequest
             {
                 Model = modelInfo.ModelId,
-                Prompt = request.Prompt,
-                Duration = request.Parameters?.Duration,
-                Size = request.Parameters?.Size,
-                Fps = request.Parameters?.Fps,
+                Prompt = eventRequest.Prompt,
+                Duration = eventRequest.Duration,
+                Size = eventRequest.Size,
+                Fps = eventRequest.Fps,
                 N = 1
             };
         }
@@ -299,33 +347,41 @@ namespace ConduitLLM.Core.Services
             // For now, we'll pass through
         }
 
-        protected override Usage CreateUsageObject(VideoGenerationRequested request, ProcessedMedia media)
+        protected override Usage CreateUsageObject(VideoGenerationRequested request, VideoGenerationResponse response)
         {
-            var resolution = request.Parameters?.Size ?? "1280x720";
-            var duration = request.Parameters?.Duration ?? 5;
+            var generationRequest = request.ResolveRequest();
+            var providerMetadata = response.Data?.FirstOrDefault()?.Metadata;
+            var resolution = providerMetadata is { Width: > 0, Height: > 0 }
+                ? $"{providerMetadata.Width}x{providerMetadata.Height}"
+                : generationRequest.Size ?? "1280x720";
+            var duration = providerMetadata?.Duration > 0
+                ? providerMetadata.Duration
+                : response.Usage?.TotalDurationSeconds > 0
+                    ? response.Usage.TotalDurationSeconds
+                    : generationRequest.Duration ?? 5;
 
             // Build pricing parameters for rules-based pricing
             var pricingParameters = new Dictionary<string, object>
             {
-                ["resolution"] = NormalizeResolution(resolution),
+                ["resolution"] = Utilities.VideoUtils.NormalizeResolution(resolution),
                 ["duration"] = duration
             };
 
             // Add optional parameters that may affect pricing
-            if (request.Parameters?.Fps.HasValue == true)
+            if (generationRequest.Fps.HasValue)
             {
-                pricingParameters["fps"] = request.Parameters.Fps.Value;
+                pricingParameters["fps"] = generationRequest.Fps.Value;
             }
 
-            if (!string.IsNullOrEmpty(request.Parameters?.Style))
+            if (!string.IsNullOrEmpty(generationRequest.Style))
             {
-                pricingParameters["style"] = request.Parameters.Style;
+                pricingParameters["style"] = generationRequest.Style;
             }
 
             // Include provider-specific options that may affect pricing (e.g., audio, aspect_ratio)
-            if (request.Parameters?.ProviderOptions != null)
+            if (generationRequest.ExtensionData != null)
             {
-                foreach (var option in request.Parameters.ProviderOptions)
+                foreach (var option in generationRequest.ExtensionData)
                 {
                     // Copy pricing-relevant options
                     var key = option.Key.ToLowerInvariant();
@@ -347,31 +403,14 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        /// <summary>
-        /// Normalizes video resolution to standard format (e.g., "1920x1080" -> "1080p").
-        /// </summary>
-        private static string NormalizeResolution(string resolution)
+        protected override Usage CreateEstimatedUsageObject(VideoGenerationRequested request)
         {
-            if (string.IsNullOrEmpty(resolution))
-                return resolution;
-
-            // Already normalized (e.g., "1080p", "720p")
-            if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
-                return resolution.ToLowerInvariant();
-
-            // Parse "WIDTHxHEIGHT" format
-            var parts = resolution.ToLowerInvariant().Split('x');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
-            {
-                return $"{height}p";
-            }
-
-            return resolution;
+            return CreateUsageObject(request, new VideoGenerationResponse());
         }
 
         protected override async Task PublishStartedEventAsync(VideoGenerationRequested request)
         {
-            await _publishEndpoint.Publish(new VideoGenerationStarted
+            await _eventBus.PublishAsync(new VideoGenerationStarted
             {
                 RequestId = request.RequestId,
                 Provider = "pending",
@@ -388,9 +427,10 @@ namespace ConduitLLM.Core.Services
             GenerationModelInfo modelInfo,
             TimeSpan duration)
         {
-            // Get video duration from request parameters (default to 5 if not specified)
-            var videoDuration = request.Parameters?.Duration ?? 5;
-            var resolution = request.Parameters?.Size ?? "1280x720";
+            // Fall back to request values only when the provider did not report delivered metadata.
+            var generationRequest = request.ResolveRequest();
+            double videoDuration = generationRequest.Duration ?? 5;
+            var resolution = generationRequest.Size ?? "1280x720";
 
             // Extract file size from processed media metadata if available
             long fileSize = 0;
@@ -398,6 +438,16 @@ namespace ConduitLLM.Core.Services
             if (media.Items?.Any() == true)
             {
                 var firstItem = media.Items.First();
+                if (firstItem.Metadata.TryGetValue("duration", out var durationObj) &&
+                    durationObj is double actualDuration && actualDuration > 0)
+                {
+                    videoDuration = actualDuration;
+                }
+                if (firstItem.Metadata.TryGetValue("resolution", out var resolutionObj) &&
+                    resolutionObj is string actualResolution && !string.IsNullOrWhiteSpace(actualResolution))
+                {
+                    resolution = actualResolution;
+                }
                 if (firstItem.Metadata.TryGetValue("fileSize", out var fileSizeObj) && fileSizeObj is long fs)
                 {
                     fileSize = fs;
@@ -408,7 +458,7 @@ namespace ConduitLLM.Core.Services
                 }
             }
 
-            await _publishEndpoint.Publish(new VideoGenerationCompleted
+            await _eventBus.PublishAsync(new VideoGenerationCompleted
             {
                 RequestId = request.RequestId,
                 VideoUrl = media.Url ?? string.Empty,
@@ -419,7 +469,7 @@ namespace ConduitLLM.Core.Services
                 GenerationDuration = duration,
                 Cost = cost,
                 Provider = modelInfo.ProviderName,
-                Model = request.Model,
+                Model = generationRequest.Model,
                 CompletedAt = DateTime.UtcNow,
                 CorrelationId = request.CorrelationId
             });
@@ -427,7 +477,7 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishFailedEventAsync(
             VideoGenerationRequested request,
-            Exception ex,
+            CustomerFacingProviderError customerError,
             bool isRetryable,
             int retryCount,
             int maxRetries)
@@ -439,11 +489,11 @@ namespace ConduitLLM.Core.Services
                 nextRetryAt = DateTime.UtcNow.AddSeconds(delaySeconds);
             }
 
-            await _publishEndpoint.Publish(new VideoGenerationFailed
+            await _eventBus.PublishAsync(new VideoGenerationFailed
             {
                 RequestId = request.RequestId,
-                Error = ex.Message,
-                ErrorCode = ex.GetType().Name,
+                Error = customerError.Message,
+                ErrorCode = customerError.ErrorCode,
                 IsRetryable = isRetryable,
                 RetryCount = retryCount,
                 MaxRetries = maxRetries,
@@ -459,7 +509,7 @@ namespace ConduitLLM.Core.Services
             int total,
             string status)
         {
-            await _publishEndpoint.Publish(new VideoGenerationProgress
+            await _eventBus.PublishAsync(new VideoGenerationProgress
             {
                 RequestId = request.RequestId,
                 ProgressPercentage = total > 0 ? (current * 100 / total) : 0,
@@ -476,14 +526,15 @@ namespace ConduitLLM.Core.Services
             string status,
             string? error = null)
         {
+            var generationRequest = request.ResolveRequest();
             return new VideoCompletionWebhookPayload
             {
                 TaskId = request.RequestId,
                 Status = status,
                 VideoUrl = media.Url,
                 GenerationDurationSeconds = duration.TotalSeconds,
-                Model = request.Model,
-                Prompt = request.Prompt,
+                Model = generationRequest.Model,
+                Prompt = generationRequest.Prompt,
                 Error = error
             };
         }
@@ -495,19 +546,22 @@ namespace ConduitLLM.Core.Services
             GenerationModelInfo modelInfo,
             VideoGenerationRequest generationRequest)
         {
+            var eventRequest = request.ResolveRequest();
             _logger.LogInformation(
                 "Video generation request prepared: TaskId={TaskId}, Model={Model}, Provider={Provider}, " +
                 "Duration={Duration}, Resolution={Resolution}, FPS={FPS}, PromptLength={PromptLength}",
                 request.RequestId,
-                request.Model,
+                eventRequest.Model,
                 modelInfo.ProviderName,
                 generationRequest.Duration,
                 generationRequest.Size,
                 generationRequest.Fps,
-                request.Prompt?.Length ?? 0);
+                eventRequest.Prompt.Length);
         }
 
-        protected override bool IsRetryableError(Exception ex)
+        protected override bool IsRetryableError(
+            Exception ex,
+            CancellationToken callerToken)
         {
             // Use retry configuration settings
             if (!_retryConfiguration.EnableRetries)
@@ -515,16 +569,15 @@ namespace ConduitLLM.Core.Services
                 return false;
             }
 
-            return base.IsRetryableError(ex);
+            return base.IsRetryableError(ex, callerToken);
         }
 
         /// <summary>
         /// Handles video generation cancellation events.
         /// </summary>
-        public async Task Consume(ConsumeContext<VideoGenerationCancelled> context)
+        public async Task HandleAsync(VideoGenerationCancelled cancellationEvent, IEventContext context)
         {
-            var cancellationEvent = context.Message;
-            _logger.LogInformation("Received cancellation request for video generation task {RequestId}", 
+            _logger.LogInformation("Received cancellation request for video generation task {RequestId}",
                 cancellationEvent.RequestId);
 
             // Cancel the task using the task registry
@@ -542,7 +595,7 @@ namespace ConduitLLM.Core.Services
                     error: "Task cancelled by user request");
                 
                 // Publish cancellation completed event
-                await _publishEndpoint.Publish(new VideoGenerationProgress
+                await _eventBus.PublishAsync(new VideoGenerationProgress
                 {
                     RequestId = cancellationEvent.RequestId,
                     Status = "cancelled",

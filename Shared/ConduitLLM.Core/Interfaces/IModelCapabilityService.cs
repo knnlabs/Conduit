@@ -13,6 +13,13 @@ namespace ConduitLLM.Core.Interfaces
         /// <returns>True if the model supports vision inputs, false otherwise.</returns>
         Task<bool> SupportsVisionAsync(string model);
 
+        /// <summary>
+        /// Determines if a model accepts video as an input modality.
+        /// This is independent from video generation support.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model accepts video input, false otherwise.</returns>
+        Task<bool> SupportsVideoInputAsync(string model);
 
         /// <summary>
         /// Determines if a model supports video generation.
@@ -20,6 +27,27 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="model">The model identifier to check.</param>
         /// <returns>True if the model supports video generation, false otherwise.</returns>
         Task<bool> SupportsVideoGenerationAsync(string model);
+
+        /// <summary>
+        /// Determines if a model supports speech-to-text transcription.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports speech-to-text, false otherwise.</returns>
+        Task<bool> SupportsSpeechToTextAsync(string model);
+
+        /// <summary>
+        /// Determines if a model supports text-to-speech synthesis.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports text-to-speech, false otherwise.</returns>
+        Task<bool> SupportsTextToSpeechAsync(string model);
+
+        /// <summary>
+        /// Determines if a model supports document reranking.
+        /// </summary>
+        /// <param name="model">The model identifier to check.</param>
+        /// <returns>True if the model supports reranking, false otherwise.</returns>
+        Task<bool> SupportsRerankAsync(string model);
 
         /// <summary>
         /// Gets the tokenizer type for a model.

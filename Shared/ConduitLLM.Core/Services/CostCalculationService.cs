@@ -75,7 +75,8 @@ public partial class CostCalculationService : ICostCalculationService
     ///   <item><description>For image generation: imageCount * imageGenerationCost</description></item>
     /// </list>
     /// <para>
-    /// If cost information is not found for the specified model, the method returns 0.
+    /// If cost information is not found for the specified model, the method throws so the
+    /// calling billing pipeline can preserve the usage for reconciliation.
     /// </para>
     /// </remarks>
     public async Task<decimal> CalculateCostAsync(string modelId, Usage usage, CancellationToken cancellationToken = default)
@@ -92,16 +93,24 @@ public partial class CostCalculationService : ICostCalculationService
             return 0m;
         }
 
+        // Provider-reported cost is authoritative when the provider is configured as trusted.
+        // Checked before the ModelCost lookup so a missing/stale ModelCost row still bills correctly.
+        if (TryBillProviderReportedCost(usage, modelId, out var providerBilledCost))
+        {
+            return providerBilledCost;
+        }
+
         var modelCost = await _modelCostService.GetCostForModelAsync(modelId, cancellationToken);
 
         if (modelCost == null)
         {
-            _logger.LogWarning(
-                "Cost information not found for model {ModelId}. Returning 0 cost. " +
-                "This may indicate a missing cost configuration or cache lookup failure. " +
+            _logger.LogError(
+                "BILLING ALERT: Cost information not found for model {ModelId}. " +
+                "The usage must be reconciled before it can be billed. " +
                 "Usage details: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}",
                 modelId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount);
-            return 0m;
+            throw new InvalidOperationException(
+                $"No active model cost configuration was found for model '{modelId}'.");
         }
 
         decimal calculatedCost = 0m;
@@ -176,16 +185,24 @@ public partial class CostCalculationService : ICostCalculationService
             return 0m;
         }
 
+        // Provider-reported cost is authoritative when the provider is configured as trusted.
+        // Checked before the ModelCost lookup so a missing/stale ModelCost row still bills correctly.
+        if (TryBillProviderReportedCost(usage, $"ModelCostId:{modelCostId}", out var providerBilledCost))
+        {
+            return providerBilledCost;
+        }
+
         var modelCost = await _modelCostService.GetCostByIdAsync(modelCostId, cancellationToken);
 
         if (modelCost == null)
         {
-            _logger.LogWarning(
-                "Cost information not found for ModelCostId {ModelCostId}. Returning 0 cost. " +
-                "This may indicate the cost record was deleted or a cache lookup failure. " +
+            _logger.LogError(
+                "BILLING ALERT: Cost information not found for ModelCostId {ModelCostId}. " +
+                "The cost record may be missing, inactive, not yet effective, or expired. " +
                 "Usage details: PromptTokens={PromptTokens}, CompletionTokens={CompletionTokens}, ImageCount={ImageCount}",
                 modelCostId, usage.PromptTokens, usage.CompletionTokens, usage.ImageCount);
-            return 0m;
+            throw new InvalidOperationException(
+                $"No active model cost configuration was found for ModelCostId {modelCostId}.");
         }
 
         // Use the cost name as the model identifier for logging purposes
@@ -253,5 +270,37 @@ public partial class CostCalculationService : ICostCalculationService
         }
 
         return calculatedCost;
+    }
+
+    /// <summary>
+    /// When the usage carries a trusted provider-reported cost, computes the authoritative billed
+    /// amount (provider cost times the configured markup) and returns true, bypassing ModelCost
+    /// calculation. Returns false when the provider is not trusted or reported no cost.
+    /// </summary>
+    /// <remarks>
+    /// The batch-processing multiplier is deliberately NOT applied here: the provider-reported cost
+    /// is the actual amount the operator was charged, so applying the list-price batch discount on
+    /// top would double-discount. A trusted cost of 0 (e.g. free model variants) bills as 0.
+    /// </remarks>
+    private bool TryBillProviderReportedCost(Usage usage, string modelIdentifier, out decimal billedCost)
+    {
+        billedCost = 0m;
+
+        if (usage.ProviderCostPolicy is not { TrustProviderReportedCost: true } policy ||
+            usage.ProviderReportedCostUsd is not decimal providerCost ||
+            providerCost < 0m)
+        {
+            return false;
+        }
+
+        var markup = policy.MarkupMultiplier > 0m ? policy.MarkupMultiplier : 1.0m;
+        billedCost = providerCost * markup;
+
+        _logger.LogInformation(
+            "Billing provider-reported cost for {ModelIdentifier}: provider cost {ProviderCost}, " +
+            "markup {Markup}, billed {BilledCost}. ModelCost calculation bypassed.",
+            modelIdentifier, providerCost, markup, billedCost);
+
+        return true;
     }
 }

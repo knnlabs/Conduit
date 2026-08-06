@@ -1,7 +1,10 @@
 using System.Diagnostics;
+using System.Text.Json;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Core.Extensions;
+using ConduitLLM.Configuration.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -15,17 +18,20 @@ namespace ConduitLLM.Gateway.Services
         private readonly IServiceProvider _serviceProvider;
         private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly DiscoveryCacheOptions _options;
+        private readonly JsonSerializerOptions _wireJsonOptions;
         private readonly ILogger<DiscoveryCacheWarmingService> _logger;
 
         public DiscoveryCacheWarmingService(
             IServiceProvider serviceProvider,
             IDiscoveryCacheService discoveryCacheService,
             IOptions<DiscoveryCacheOptions> options,
+            JsonSerializerOptions wireJsonOptions,
             ILogger<DiscoveryCacheWarmingService> logger)
         {
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
             _options = options.Value ?? throw new ArgumentNullException(nameof(options));
+            _wireJsonOptions = wireJsonOptions ?? throw new ArgumentNullException(nameof(wireJsonOptions));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -39,51 +45,46 @@ namespace ConduitLLM.Gateway.Services
 
             // Wait for the application to fully start using configurable delay
             var startupDelay = TimeSpan.FromSeconds(_options.WarmupStartupDelaySeconds);
-            _logger.LogInformation("Waiting {Seconds} seconds before starting cache warming", _options.WarmupStartupDelaySeconds);
+            _logger.LogDebug("Waiting {Seconds} seconds before starting cache warming", _options.WarmupStartupDelaySeconds);
             await Task.Delay(startupDelay, stoppingToken);
 
-            // Try to acquire distributed lock if enabled
-            IDistributedLock? distributedLock = null;
-            if (_options.UseDistributedLockForWarming)
+            if (!_options.UseDistributedLockForWarming)
             {
-                try
-                {
-                    using var scope = _serviceProvider.CreateScope();
-                    var lockService = scope.ServiceProvider.GetService<IDistributedLockService>();
-                    
-                    if (lockService != null)
-                    {
-                        _logger.LogInformation("Attempting to acquire distributed lock for cache warming");
-                        
-                        var lockTimeout = TimeSpan.FromSeconds(_options.DistributedLockTimeoutSeconds);
-                        distributedLock = await lockService.AcquireLockWithRetryAsync(
-                            "discovery:cache:warming",
-                            TimeSpan.FromMinutes(5), // Lock expiry time
-                            lockTimeout,
-                            TimeSpan.FromSeconds(1), // Retry delay
-                            stoppingToken);
-                        
-                        if (distributedLock != null)
-                        {
-                            _logger.LogInformation("Acquired distributed lock for cache warming");
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Distributed lock service not available, proceeding without coordination");
-                    }
-                }
-                catch (TimeoutException)
-                {
-                    _logger.LogInformation("Another instance is performing cache warming, skipping");
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to acquire distributed lock, proceeding without coordination");
-                }
+                await WarmCachesAsync(stoppingToken);
+                return;
             }
 
+            using var lockScope = _serviceProvider.CreateScope();
+            var lockService = lockScope.ServiceProvider.GetService<IDistributedLockService>();
+            _logger.LogDebug("Attempting to acquire distributed lock for cache warming");
+
+            var result = await lockService.RunWithOptionalLockAsync(
+                "discovery:cache:warming",
+                TimeSpan.FromMinutes(5),
+                TimeSpan.FromSeconds(_options.DistributedLockTimeoutSeconds),
+                TimeSpan.FromSeconds(1),
+                async lockAcquired =>
+                {
+                    if (lockAcquired)
+                    {
+                        _logger.LogDebug("Acquired distributed lock for cache warming");
+                    }
+
+                    await WarmCachesAsync(stoppingToken);
+                    return true;
+                },
+                _logger,
+                stoppingToken,
+                skipOnTimeout: true);
+
+            if (!result.Executed)
+            {
+                _logger.LogInformation("Another instance is performing cache warming, skipping");
+            }
+        }
+
+        private async Task WarmCachesAsync(CancellationToken stoppingToken)
+        {
             try
             {
                 _logger.LogInformation("Starting discovery cache warming");
@@ -95,7 +96,8 @@ namespace ConduitLLM.Gateway.Services
                 // Warm cache for common capability filters
                 var commonCapabilities = _options.WarmupCapabilities ?? new List<string> 
                 { 
-                    "chat", "vision", "image_generation", "video_generation" 
+                    "chat", "image_input", "video_input", "audio_input", "file_input",
+                    "image_generation", "video_generation"
                 };
 
                 // First, warm the cache with all models (no filter)
@@ -128,25 +130,9 @@ namespace ConduitLLM.Gateway.Services
                 // Log error but don't throw - we don't want cache warming failures to prevent startup
                 _logger.LogError(ex, "Error during discovery cache warming - application will continue without warmed cache");
             }
-            finally
-            {
-                // Release the distributed lock if we acquired one
-                if (distributedLock != null)
-                {
-                    try
-                    {
-                        await distributedLock.ReleaseAsync();
-                        _logger.LogDebug("Released distributed lock for cache warming");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error releasing distributed lock");
-                    }
-                }
-            }
         }
 
-        private async Task WarmCacheForCapability(
+        internal async Task WarmCacheForCapability(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             string? capability,
             CancellationToken cancellationToken)
@@ -155,92 +141,20 @@ namespace ConduitLLM.Gateway.Services
             {
                 using var context = await dbContextFactory.CreateDbContextAsync(cancellationToken);
                 
-                // Get all enabled model mappings with their related data
-                var modelMappings = await context.ModelProviderMappings
-                    .Include(m => m.Provider)
-                    .Include(m => m.ModelProviderTypeAssociation)
-                        .ThenInclude(mpta => mpta.Model)
-                            .ThenInclude(m => m.Series)
-                    .Where(m => m.IsEnabled && m.Provider != null && m.Provider.IsEnabled)
-                    .ToListAsync(cancellationToken);
-
-                var models = new List<object>();
-
-                foreach (var mapping in modelMappings)
-                {
-                    // Skip if model is missing
-                    if (mapping.ModelProviderTypeAssociation?.Model == null)
-                    {
-                        continue;
-                    }
-
-                    var caps = mapping.ModelProviderTypeAssociation.Model;
-
-                    // Apply capability filter if specified
-                    if (!string.IsNullOrEmpty(capability))
-                    {
-                        var capabilityKey = capability.Replace("-", "_").ToLowerInvariant();
-                        bool hasCapability = capabilityKey switch
-                        {
-                            "chat" => caps.SupportsChat,
-                            "streaming" or "chat_stream" => caps.SupportsStreaming,
-                            "vision" => caps.SupportsVision,
-                            "video_generation" => caps.SupportsVideoGeneration,
-                            "image_generation" => caps.SupportsImageGeneration,
-                            "embeddings" => caps.SupportsEmbeddings,
-                            "function_calling" => caps.SupportsFunctionCalling,
-                            _ => false
-                        };
-
-                        if (!hasCapability)
-                        {
-                            continue;
-                        }
-                    }
-
-                    // Use overrides from association first, then fall back to model defaults
-                    var maxInputTokens = mapping.ModelProviderTypeAssociation.MaxInputTokens ?? caps.MaxInputTokens ?? 0;
-                    var maxOutputTokens = mapping.ModelProviderTypeAssociation.MaxOutputTokens ?? caps.MaxOutputTokens ?? 0;
-
-                    models.Add(new
-                    {
-                        // Identity
-                        id = mapping.ModelAlias,
-                        provider = mapping.Provider?.ProviderType.ToString().ToLowerInvariant(),
-                        display_name = mapping.ModelAlias,
-
-                        // Metadata
-                        description = mapping.ModelProviderTypeAssociation?.Model?.Description ?? string.Empty,
-                        model_card_url = mapping.ModelProviderTypeAssociation?.Model?.ModelCardUrl ?? string.Empty,
-                        max_tokens = maxInputTokens + maxOutputTokens, // Total context window size
-                        max_input_tokens = maxInputTokens,
-                        max_output_tokens = maxOutputTokens,
-                        tokenizer_type = caps.TokenizerType.ToString().ToLowerInvariant(),
-
-                        // UI Parameters from Model or Series
-                        parameters = mapping.ModelProviderTypeAssociation?.Model?.ModelParameters ?? mapping.ModelProviderTypeAssociation?.Model?.Series?.Parameters ?? "{}",
-
-                        // Capabilities (nested object as expected by SDK)
-                        capabilities = new
-                        {
-                            chat = caps.SupportsChat,
-                            chat_stream = caps.SupportsStreaming,
-                            embeddings = caps.SupportsEmbeddings,
-                            image_generation = caps.SupportsImageGeneration,
-                            vision = caps.SupportsVision,
-                            video_generation = caps.SupportsVideoGeneration,
-                            video_understanding = false, // Not yet supported
-                            function_calling = caps.SupportsFunctionCalling,
-                            tool_use = caps.SupportsFunctionCalling, // Same as function calling for now
-                            json_mode = false, // Not yet tracked
-                            max_tokens = maxInputTokens + maxOutputTokens,
-                            max_output_tokens = maxOutputTokens
-                        }
-                    });
-                }
+                var projectedModels = await DiscoveryModelProjector.ProjectAsync(
+                    context,
+                    capability,
+                    _options.ExposePricing,
+                    _logger,
+                    cancellationToken);
+                var models = projectedModels
+                    .Select(model => JsonSerializer.SerializeToElement(model, _wireJsonOptions))
+                    .ToList();
 
                 // Cache the results
-                var cacheKey = DiscoveryCacheService.BuildCacheKey(capability);
+                var cacheKey = DiscoveryCacheService.BuildCacheKey(
+                    capability,
+                    includePricing: _options.ExposePricing);
                 var discoveryResult = new DiscoveryModelsResult
                 {
                     Data = models,

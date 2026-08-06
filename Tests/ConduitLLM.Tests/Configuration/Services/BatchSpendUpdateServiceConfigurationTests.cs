@@ -23,6 +23,8 @@ namespace ConduitLLM.Tests.Configuration.Services
         private readonly Mock<IServiceScopeFactory> _mockScopeFactory;
         private readonly Mock<ILogger<BatchSpendUpdateService>> _mockLogger;
         private readonly Mock<IBillingAlertingService> _mockAlertingService;
+        private readonly Mock<IDatabase> _mockRedisDb;
+        private readonly Mock<IServer> _mockRedisServer;
         private readonly TestRedisConnectionFactory _testRedisFactory;
 
         public BatchSpendUpdateServiceConfigurationTests()
@@ -32,20 +34,20 @@ namespace ConduitLLM.Tests.Configuration.Services
             _mockAlertingService = new Mock<IBillingAlertingService>();
             
             var mockRedisConnection = new Mock<IConnectionMultiplexer>();
-            var mockRedisDb = new Mock<IDatabase>();
-            var mockRedisServer = new Mock<IServer>();
+            _mockRedisDb = new Mock<IDatabase>();
+            _mockRedisServer = new Mock<IServer>();
             
             // Setup basic Redis mocks for GetStatisticsAsync
             var endPoint = new System.Net.DnsEndPoint("localhost", 6379);
             mockRedisConnection.Setup(x => x.GetDatabase(It.IsAny<int>(), It.IsAny<object>()))
-                .Returns(mockRedisDb.Object);
+                .Returns(_mockRedisDb.Object);
             mockRedisConnection.Setup(x => x.GetServer(It.IsAny<System.Net.EndPoint>(), It.IsAny<object>()))
-                .Returns(mockRedisServer.Object);
+                .Returns(_mockRedisServer.Object);
             mockRedisConnection.Setup(x => x.GetEndPoints(It.IsAny<bool>()))
                 .Returns(new[] { endPoint });
             
             // Setup server.Keys to return empty for statistics
-            mockRedisServer.Setup(x => x.Keys(
+            _mockRedisServer.Setup(x => x.Keys(
                 It.IsAny<int>(), 
                 It.IsAny<RedisValue>(), 
                 It.IsAny<int>(), 
@@ -80,6 +82,34 @@ namespace ConduitLLM.Tests.Configuration.Services
             // IsHealthy will be false until the service starts (ExecuteAsync is called)
             // For unit tests, we just verify construction succeeded
             Assert.NotNull(service);
+        }
+
+        [Fact]
+        public async Task IsHealthy_WhenRedisCircuitOpens_ShouldBecomeFalse()
+        {
+            // Arrange
+            var circuitOpen = false;
+            var circuitBreaker = new Mock<IRedisCircuitBreaker>();
+            circuitBreaker.SetupGet(x => x.IsOpen).Returns(() => circuitOpen);
+            var options = Microsoft.Extensions.Options.Options.Create(new BatchSpendingOptions());
+
+            await using var service = new BatchSpendUpdateService(
+                _mockScopeFactory.Object,
+                _testRedisFactory,
+                options,
+                _mockLogger.Object,
+                _mockAlertingService.Object,
+                circuitBreaker.Object);
+            await service.StartAsync(CancellationToken.None);
+
+            // Act & Assert
+            await Task.Delay(50);
+            Assert.True(service.IsHealthy);
+
+            circuitOpen = true;
+            Assert.False(service.IsHealthy);
+
+            await service.StopAsync(CancellationToken.None);
         }
 
         [Fact]
@@ -225,6 +255,47 @@ namespace ConduitLLM.Tests.Configuration.Services
             Assert.Equal(1, statistics["MinimumInterval"]);
             Assert.Equal(3600, statistics["MaximumInterval"]);
             Assert.Equal(48.0, statistics["RedisTtlHours"]);
+        }
+
+        [Fact]
+        public async Task GetStatisticsAsync_ReadsWindowedPendingTotalsAsSpendUnits()
+        {
+            RedisKey[] keys =
+            [
+                "pending_spend_window_total_units:group:10",
+                "pending_spend_window_total_units:group:20"
+            ];
+            _mockRedisServer.Setup(x => x.Keys(
+                    It.IsAny<int>(),
+                    It.Is<RedisValue>(pattern => pattern.ToString() == "pending_spend_window_total_units:group:*"),
+                    It.IsAny<int>(),
+                    It.IsAny<long>(),
+                    It.IsAny<int>(),
+                    It.IsAny<CommandFlags>()))
+                .Returns(keys);
+            _mockRedisDb.Setup(x => x.StringGetAsync(
+                    It.Is<RedisKey[]>(requested => requested.SequenceEqual(keys)),
+                    It.IsAny<CommandFlags>()))
+                .ReturnsAsync([(RedisValue)125_000_000L, (RedisValue)250_000_000L]);
+
+            using var service = new BatchSpendUpdateService(
+                _mockScopeFactory.Object,
+                _testRedisFactory,
+                Microsoft.Extensions.Options.Options.Create(new BatchSpendingOptions()),
+                _mockLogger.Object,
+                _mockAlertingService.Object);
+
+            var statistics = await service.GetStatisticsAsync();
+
+            Assert.Equal(2, statistics["PendingUpdates"]);
+            Assert.Equal(3.75m, statistics["TotalPendingCost"]);
+            _mockRedisServer.Verify(x => x.Keys(
+                It.IsAny<int>(),
+                It.Is<RedisValue>(pattern => pattern.ToString() == "pending_spend:group:*"),
+                It.IsAny<int>(),
+                It.IsAny<long>(),
+                It.IsAny<int>(),
+                It.IsAny<CommandFlags>()), Times.Never);
         }
 
         [Fact]

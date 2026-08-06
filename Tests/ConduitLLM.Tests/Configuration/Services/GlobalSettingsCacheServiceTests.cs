@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -59,29 +59,29 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 3, Key = "setting3", Value = "value3" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
 
             // Act
             await _service.StartAsync(CancellationToken.None);
 
             // Assert
             var stats = await _service.GetCacheStatsAsync();
-            stats["CacheSize"].Should().Be(3);
-            ((List<string>)stats["CachedKeys"]).Should().Contain(new[] { "setting1", "setting2", "setting3" });
+            stats.EntryCount.Should().Be(3);
+            stats.CachedKeys.Should().Contain(new[] { "setting1", "setting2", "setting3" });
         }
 
         [Fact]
         public async Task StartAsync_WithNoSettings_LoadsEmptyCache()
         {
             // Arrange
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<GlobalSetting>());
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<GlobalSetting>());
 
             // Act
             await _service.StartAsync(CancellationToken.None);
 
             // Assert
             var stats = await _service.GetCacheStatsAsync();
-            stats["CacheSize"].Should().Be(0);
+            stats.EntryCount.Should().Be(0);
         }
 
         [Fact]
@@ -93,7 +93,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "setting1", Value = "value1" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
 
             // Act
             await _service.StartAsync(CancellationToken.None);
@@ -125,7 +125,7 @@ namespace ConduitLLM.Tests.Configuration.Services
         {
             // Arrange
             var exception = new InvalidOperationException("Database unavailable");
-            _mockRepository.Setup(x => x.GetAllAsync()).ThrowsAsync(exception);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ThrowsAsync(exception);
 
             // Act
             await _service.StartAsync(CancellationToken.None);
@@ -149,7 +149,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 .Select(i => new GlobalSetting { Id = i, Key = $"setting{i}", Value = $"value{i}" })
                 .ToList();
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
 
             var cts = new CancellationTokenSource();
             cts.Cancel();
@@ -160,7 +160,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             // Assert - Should handle cancellation gracefully
             var stats = await _service.GetCacheStatsAsync();
             // Cache size might be less than 100 if cancellation was honored
-            ((int)stats["CacheSize"]).Should().BeLessThanOrEqualTo(100);
+            stats.EntryCount.Should().BeLessThanOrEqualTo(100);
         }
 
         #endregion
@@ -176,19 +176,19 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "setting1", Value = "value1" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Verify cache has data
             var statsBefore = await _service.GetCacheStatsAsync();
-            statsBefore["CacheSize"].Should().Be(1);
+            statsBefore.EntryCount.Should().Be(1);
 
             // Act
             await _service.StopAsync(CancellationToken.None);
 
             // Assert
             var statsAfter = await _service.GetCacheStatsAsync();
-            statsAfter["CacheSize"].Should().Be(0);
+            statsAfter.EntryCount.Should().Be(0);
         }
 
         [Fact]
@@ -221,7 +221,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "Agentic.MaxIterations", Value = "10" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -235,7 +235,7 @@ namespace ConduitLLM.Tests.Configuration.Services
         public async Task GetMaxAgenticIterationsAsync_WhenSettingNotFound_ReturnsDefault()
         {
             // Arrange
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<GlobalSetting>());
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<GlobalSetting>());
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -254,7 +254,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "Agentic.MaxIterations", Value = "not_a_number" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -266,7 +266,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse max agentic iterations")),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse Max agentic iterations")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -287,7 +287,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "Agentic.MaxIterations", Value = value }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -310,7 +310,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "Agentic.MinIterations", Value = "3" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -324,7 +324,7 @@ namespace ConduitLLM.Tests.Configuration.Services
         public async Task GetMinAgenticIterationsAsync_WhenSettingNotFound_ReturnsDefault()
         {
             // Arrange
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<GlobalSetting>());
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<GlobalSetting>());
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -363,7 +363,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "Agentic.DefaultEnabled", Value = value }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -377,7 +377,7 @@ namespace ConduitLLM.Tests.Configuration.Services
         public async Task GetDefaultAgenticModeEnabledAsync_WhenSettingNotFound_ReturnsDefault()
         {
             // Arrange
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<GlobalSetting>());
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<GlobalSetting>());
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -396,7 +396,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "Agentic.DefaultEnabled", Value = "maybe" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -408,7 +408,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 x => x.Log(
                     LogLevel.Warning,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse default agentic enabled")),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Failed to parse Default agentic enabled")),
                     It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -427,7 +427,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "test_setting", Value = "old_value" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             var updatedSetting = new GlobalSetting { Id = 1, Key = "test_setting", Value = "new_value" };
@@ -451,23 +451,19 @@ namespace ConduitLLM.Tests.Configuration.Services
         }
 
         [Fact]
-        public async Task InvalidateSettingAsync_WithNonExistentSetting_LogsDebugMessage()
+        public async Task InvalidateSettingAsync_WithNewlyCreatedSetting_LoadsItIntoCache()
         {
-            // Arrange
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<GlobalSetting>());
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new List<GlobalSetting>());
             await _service.StartAsync(CancellationToken.None);
+            _mockRepository
+                .Setup(x => x.GetByKeyAsync("new_setting", It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new GlobalSetting { Id = 42, Key = "new_setting", Value = "enabled" });
 
-            // Act
-            await _service.InvalidateSettingAsync("non_existent_key");
+            await _service.InvalidateSettingAsync("new_setting");
 
-            // Assert
-            _mockLogger.Verify(
-                x => x.Log(
-                    LogLevel.Debug,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Attempted to invalidate non-cached setting")),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            (await _service.GetSettingValueAsync("new_setting")).Should().Be("enabled");
+            _mockRepository.Verify(
+                x => x.GetByKeyAsync("new_setting", It.IsAny<CancellationToken>()),
                 Times.Once);
         }
 
@@ -480,7 +476,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "test", Value = "value" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act
@@ -501,7 +497,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "failing_setting", Value = "value" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             var exception = new InvalidOperationException("Database error");
@@ -530,11 +526,11 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "stat_test", Value = "value" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             var statsBefore = await _service.GetCacheStatsAsync();
-            var invalidationsBefore = (long)statsBefore["Invalidations"];
+            var invalidationsBefore = statsBefore.InvalidationCount;
 
             _mockRepository.Setup(x => x.GetByKeyAsync("stat_test", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new GlobalSetting { Id = 1, Key = "stat_test", Value = "new_value" });
@@ -544,7 +540,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert
             var statsAfter = await _service.GetCacheStatsAsync();
-            var invalidationsAfter = (long)statsAfter["Invalidations"];
+            var invalidationsAfter = statsAfter.InvalidationCount;
             invalidationsAfter.Should().Be(invalidationsBefore + 1);
         }
 
@@ -561,7 +557,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "setting1", Value = "value1" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(initialSettings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(initialSettings);
             await _service.StartAsync(CancellationToken.None);
 
             var newSettings = new List<GlobalSetting>
@@ -570,15 +566,15 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 3, Key = "setting3", Value = "value3" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(newSettings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(newSettings);
 
             // Act
             await _service.ReloadAllSettingsAsync();
 
             // Assert
             var stats = await _service.GetCacheStatsAsync();
-            stats["CacheSize"].Should().Be(2);
-            var cachedKeys = (List<string>)stats["CachedKeys"];
+            stats.EntryCount.Should().Be(2);
+            var cachedKeys = stats.CachedKeys;
             cachedKeys.Should().Contain("setting2");
             cachedKeys.Should().Contain("setting3");
             cachedKeys.Should().NotContain("setting1");
@@ -588,12 +584,31 @@ namespace ConduitLLM.Tests.Configuration.Services
         public async Task ReloadAllSettingsAsync_WhenRepositoryThrows_RethrowsException()
         {
             // Arrange
-            _mockRepository.Setup(x => x.GetAllAsync())
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new InvalidOperationException("Database error"));
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(
                 async () => await _service.ReloadAllSettingsAsync());
+        }
+
+        [Fact]
+        public async Task PublishReloadAsync_WithoutRedis_ReloadsOncePerRequest()
+        {
+            _mockRepository
+                .SetupSequence(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync([new GlobalSetting { Id = 1, Key = "old", Value = "1" }])
+                .ReturnsAsync([new GlobalSetting { Id = 2, Key = "new", Value = "2" }]);
+            await _service.StartAsync(CancellationToken.None);
+
+            await _service.PublishReloadAsync("reload-1");
+            await _service.PublishReloadAsync("reload-1");
+
+            var stats = await _service.GetCacheStatsAsync();
+            stats.CachedKeys.Should().ContainSingle("new");
+            _mockRepository.Verify(
+                repository => repository.GetAllUnboundedAsync(It.IsAny<CancellationToken>()),
+                Times.Exactly(2));
         }
 
         #endregion
@@ -610,7 +625,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 2, Key = "test_setting", Value = "value" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Generate some cache hits and misses
@@ -621,13 +636,13 @@ namespace ConduitLLM.Tests.Configuration.Services
             var stats = await _service.GetCacheStatsAsync();
 
             // Assert
-            stats["CacheSize"].Should().Be(2);
-            ((long)stats["CacheHits"]).Should().BeGreaterThan(0);
-            stats.Should().ContainKey("CacheMisses");
-            stats.Should().ContainKey("Invalidations");
-            stats.Should().ContainKey("HitRate");
-            stats.Should().ContainKey("LastLoadTime");
-            stats.Should().ContainKey("CachedKeys");
+            stats.EntryCount.Should().Be(2);
+            stats.HitCount.Should().BeGreaterThan(0);
+            stats.MissCount.Should().BeGreaterThanOrEqualTo(0);
+            stats.InvalidationCount.Should().BeGreaterThanOrEqualTo(0);
+            stats.HitRate.Should().BeInRange(0, 1);
+            stats.LastResetTime.Should().NotBe(default);
+            stats.CachedKeys.Should().HaveCount(2);
         }
 
         [Fact]
@@ -639,7 +654,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 1, Key = "Agentic.MaxIterations", Value = "10" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Generate 3 hits and 1 miss
@@ -652,8 +667,7 @@ namespace ConduitLLM.Tests.Configuration.Services
             var stats = await _service.GetCacheStatsAsync();
 
             // Assert
-            var hitRate = (double)stats["HitRate"];
-            hitRate.Should().BeApproximately(75.0, 0.1); // 3 hits / 4 total = 75%
+            stats.HitRate.Should().BeApproximately(0.75, 0.001); // 3 hits / 4 total
         }
 
         #endregion
@@ -668,7 +682,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 .Select(i => new GlobalSetting { Id = i, Key = $"setting{i}", Value = $"value{i}" })
                 .ToList();
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             _mockRepository.Setup(x => x.GetByKeyAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -683,7 +697,7 @@ namespace ConduitLLM.Tests.Configuration.Services
 
             // Assert - All invalidations should complete successfully
             var stats = await _service.GetCacheStatsAsync();
-            ((long)stats["Invalidations"]).Should().Be(10);
+            stats.InvalidationCount.Should().Be(10);
         }
 
         [Fact]
@@ -697,7 +711,7 @@ namespace ConduitLLM.Tests.Configuration.Services
                 new() { Id = 3, Key = "Agentic.DefaultEnabled", Value = "true" }
             };
 
-            _mockRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(settings);
+            _mockRepository.Setup(x => x.GetAllUnboundedAsync(It.IsAny<CancellationToken>())).ReturnsAsync(settings);
             await _service.StartAsync(CancellationToken.None);
 
             // Act - Read settings concurrently

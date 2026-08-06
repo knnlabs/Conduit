@@ -1,4 +1,4 @@
-using ConduitLLM.Providers.Helpers;
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Tests.Providers.Helpers
 {
@@ -98,32 +98,6 @@ namespace ConduitLLM.Tests.Providers.Helpers
 
         #endregion
 
-        #region EnsureSegment Tests
-
-        [Theory]
-        [InlineData("https://api.example.com", "/v1", "https://api.example.com/v1")]
-        [InlineData("https://api.example.com/v1", "/v1", "https://api.example.com/v1")]
-        [InlineData("https://api.example.com/v1/models", "/v1", "https://api.example.com/v1/models")]
-        [InlineData("https://api.example.com", "v1beta", "https://api.example.com/v1beta")]
-        [InlineData("https://api.example.com/other", "/v1", "https://api.example.com/other/v1")]
-        public void EnsureSegment_ValidInputs_ReturnsUrlWithSegment(string url, string segment, string expected)
-        {
-            // Act
-            var result = UrlBuilder.EnsureSegment(url, segment);
-
-            // Assert
-            Assert.Equal(expected, result);
-        }
-
-        [Fact]
-        public void EnsureSegment_NullUrl_ThrowsArgumentException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => UrlBuilder.EnsureSegment(null, "/v1"));
-        }
-
-        #endregion
-
         #region IsValidUrl Tests
 
         [Theory]
@@ -142,42 +116,6 @@ namespace ConduitLLM.Tests.Providers.Helpers
 
             // Assert
             Assert.Equal(expected, result);
-        }
-
-        #endregion
-
-        #region ToWebSocketUrl Tests
-
-        [Theory]
-        [InlineData("https://api.example.com", "wss://api.example.com")]
-        [InlineData("http://localhost:8080", "ws://localhost:8080")]
-        [InlineData("HTTPS://API.EXAMPLE.COM", "wss://API.EXAMPLE.COM")]
-        [InlineData("wss://api.example.com", "wss://api.example.com")]
-        [InlineData("ws://localhost", "ws://localhost")]
-        public void ToWebSocketUrl_ValidUrls_ReturnsWebSocketUrl(string input, string expected)
-        {
-            // Act
-            var result = UrlBuilder.ToWebSocketUrl(input);
-
-            // Assert
-            Assert.Equal(expected, result);
-        }
-
-        [Theory]
-        [InlineData("ftp://example.com")]
-        [InlineData("not-a-url")]
-        [InlineData("example.com")]
-        public void ToWebSocketUrl_InvalidUrls_ThrowsArgumentException(string input)
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => UrlBuilder.ToWebSocketUrl(input));
-        }
-
-        [Fact]
-        public void ToWebSocketUrl_NullUrl_ThrowsArgumentException()
-        {
-            // Act & Assert
-            Assert.Throws<ArgumentException>(() => UrlBuilder.ToWebSocketUrl(null));
         }
 
         #endregion

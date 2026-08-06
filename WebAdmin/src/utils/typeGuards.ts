@@ -2,7 +2,11 @@
  * Type guards for runtime type checking and type narrowing
  */
 
-import type { ModelDto } from '@knn_labs/conduit-admin-client';
+import type { ModelDto } from '@/lib/admin-api';
+import {
+  getErrorMessage as getCanonicalErrorMessage,
+  isErrorLike,
+} from '@/lib/conduit-common';
 
 // Removed capabilities-related type guards as capabilities are now embedded directly in ModelDto
 
@@ -42,6 +46,13 @@ export function extractCapabilities(model: ModelDto) {
   return {
     supportsChat: model.supportsChat ?? false,
     supportsVision: model.supportsVision ?? false,
+    supportsImageInput: model.supportsImageInput ?? false,
+    supportsVideoInput: model.supportsVideoInput ?? false,
+    supportsAudioInput: model.supportsAudioInput ?? false,
+    supportsFileInput: model.supportsFileInput ?? false,
+    supportsVideoUnderstanding: model.supportsVideoUnderstanding ?? false,
+    inputModalities: model.inputModalities ?? null,
+    outputModalities: model.outputModalities ?? null,
     supportsImageGeneration: model.supportsImageGeneration ?? false,
     supportsVideoGeneration: model.supportsVideoGeneration ?? false,
     supportsEmbeddings: model.supportsEmbeddings ?? false,
@@ -61,27 +72,9 @@ export function isValidModelId(id: unknown): id is number {
 
 /**
  * Type guard to check if error has a message property
+ * (alias of the canonical `isErrorLike` in conduit-common)
  */
-export function isErrorWithMessage(error: unknown): error is { message: string } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof (error as Record<string, unknown>).message === 'string'
-  );
-}
+export const isErrorWithMessage = isErrorLike;
 
-/**
- * Get error message from unknown error type
- */
-export function getErrorMessage(error: unknown): string {
-  if (isErrorWithMessage(error)) {
-    return error.message;
-  }
-  
-  if (typeof error === 'string') {
-    return error;
-  }
-  
-  return 'An unknown error occurred';
-}
+/** Canonical error-message extraction shared by all API clients. */
+export const getErrorMessage = getCanonicalErrorMessage;

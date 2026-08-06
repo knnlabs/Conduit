@@ -1,0 +1,26 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props" />
+
+  <PropertyGroup>
+    <IsConduitTestProject Condition="'$(MSBuildProjectName)' == 'ConduitLLM.Tests' Or
+                                     '$(MSBuildProjectName)' == 'ConduitLLM.IntegrationTests' Or
+                                     '$(MSBuildProjectName)' == 'ConduitLLM.FaultInjectionTests' Or
+                                     '$(MSBuildProjectName)' == 'ConduitLLM.BillingInvariantTests' Or
+                                     '$(MSBuildProjectName)' == 'ConduitLLM.SerializationTests'">true</IsConduitTestProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsConduitTestProject)' == 'true'">
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsConduitTestProject)' == 'true'">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

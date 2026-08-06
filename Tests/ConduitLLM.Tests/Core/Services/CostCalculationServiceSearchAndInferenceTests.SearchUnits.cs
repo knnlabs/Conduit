@@ -1,5 +1,5 @@
 using ConduitLLM.Core.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Moq;
 using ConduitLLM.Configuration.Entities;
 

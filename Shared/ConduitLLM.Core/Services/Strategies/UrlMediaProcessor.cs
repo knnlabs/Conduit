@@ -4,10 +4,12 @@ using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using MassTransit;
+using ConduitLLM.Core.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services.Strategies
@@ -19,18 +21,18 @@ namespace ConduitLLM.Core.Services.Strategies
     {
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly IMediaStorageService _storageService;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<UrlMediaProcessor> _logger;
 
         public UrlMediaProcessor(
             IHttpClientFactory httpClientFactory,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<UrlMediaProcessor> logger)
         {
             _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -41,7 +43,7 @@ namespace ConduitLLM.Core.Services.Strategies
         {
             // Extract URL from the media object
             string? url = ExtractUrl(mediaData);
-            if (string.IsNullOrEmpty(url) || !IsValidUrl(url))
+            if (string.IsNullOrEmpty(url) || !UrlBuilder.IsValidUrl(url))
             {
                 throw new InvalidOperationException($"Invalid or missing URL in media data");
             }
@@ -54,20 +56,20 @@ namespace ConduitLLM.Core.Services.Strategies
             try
             {
                 using var httpClient = CreateHttpClient(context.MediaType);
-                
+
                 // Use ResponseHeadersRead for streaming
                 using var response = await httpClient.GetAsync(
                     url,
                     HttpCompletionOption.ResponseHeadersRead,
                     cancellationToken);
-                
+
                 downloadStopwatch.Stop();
 
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogWarning("Failed to download {MediaType} from {Url}: {StatusCode}",
                         context.MediaType, url, response.StatusCode);
-                    
+
                     // Return original URL as fallback
                     return new ProcessedMediaItem
                     {
@@ -90,9 +92,9 @@ namespace ConduitLLM.Core.Services.Strategies
 
                 // Stream directly to storage
                 using var mediaStream = await response.Content.ReadAsStreamAsync();
-                
+
                 var storageStopwatch = Stopwatch.StartNew();
-                
+
                 // Create progress callback for video uploads
                 Action<long>? progressCallback = null;
                 if (context.MediaType == MediaType.Video)
@@ -102,7 +104,7 @@ namespace ConduitLLM.Core.Services.Strategies
                         var percentage = contentLength > 0
                             ? (int)((bytesProcessed * 100) / contentLength)
                             : -1;
-                        
+
                         _logger.LogDebug("{MediaType} upload progress: {BytesProcessed} bytes ({Percentage}%)",
                             context.MediaType, bytesProcessed, percentage);
                     };
@@ -112,12 +114,12 @@ namespace ConduitLLM.Core.Services.Strategies
                 var storageResult = context.MediaType == MediaType.Video
                     ? await _storageService.StoreVideoAsync(mediaStream, metadata as VideoMediaMetadata ?? new VideoMediaMetadata(), progressCallback)
                     : await _storageService.StoreAsync(mediaStream, metadata);
-                
+
                 storageStopwatch.Stop();
 
                 _logger.LogInformation("Downloaded and stored {MediaType} from {OriginalUrl} to {StorageUrl} (Download: {DownloadMs}ms, Storage: {StorageMs}ms)",
-                    context.MediaType, url, storageResult.Url, 
-                    downloadStopwatch.ElapsedMilliseconds, 
+                    context.MediaType, url, storageResult.Url,
+                    downloadStopwatch.ElapsedMilliseconds,
                     storageStopwatch.ElapsedMilliseconds);
 
                 // Publish media generation completed event
@@ -139,17 +141,21 @@ namespace ConduitLLM.Core.Services.Strategies
                     }
                 };
             }
+
             catch (TaskCanceledException)
             {
-                _logger.LogInformation("{MediaType} download cancelled for URL: {Url}", 
-                    context.MediaType, url);
+                // Cancellation is not a recoverable media-download failure.
+                throw;
+            }
+            catch (RateLimitExceededException)
+            {
                 throw;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to download and store {MediaType} from URL: {Url}",
                     context.MediaType, url);
-                
+
                 // Return original URL as fallback
                 return new ProcessedMediaItem
                 {
@@ -172,22 +178,16 @@ namespace ConduitLLM.Core.Services.Strategies
             return urlProperty?.GetValue(mediaData) as string;
         }
 
-        private bool IsValidUrl(string url)
-        {
-            return url.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
-                   url.StartsWith("https://", StringComparison.OrdinalIgnoreCase);
-        }
-
         private HttpClient CreateHttpClient(MediaType mediaType)
         {
             var clientName = mediaType == MediaType.Video ? "VideoDownload" : "ImageDownload";
             var httpClient = _httpClientFactory.CreateClient(clientName);
-            
+
             // Set appropriate timeout based on media type
             httpClient.Timeout = mediaType == MediaType.Video
                 ? TimeSpan.FromMinutes(15)  // Videos need longer timeout
                 : TimeSpan.FromSeconds(60); // Images can be faster
-            
+
             return httpClient;
         }
 
@@ -205,12 +205,12 @@ namespace ConduitLLM.Core.Services.Strategies
             {
                 return "image/jpeg";
             }
-            
+
             if (url.Contains(".png", StringComparison.OrdinalIgnoreCase))
             {
                 return "image/png";
             }
-            
+
             if (url.Contains(".mp4", StringComparison.OrdinalIgnoreCase))
             {
                 return "video/mp4";
@@ -231,7 +231,7 @@ namespace ConduitLLM.Core.Services.Strategies
             string originalUrl)
         {
             var extension = GetFileExtension(contentType, context.MediaType);
-            
+
             var metadata = new MediaMetadata
             {
                 ContentType = contentType,
@@ -247,10 +247,8 @@ namespace ConduitLLM.Core.Services.Strategies
             };
 
             // Add CreatedBy if we have virtual key info
-            if (context.VirtualKeyId > 0)
-            {
-                metadata.CreatedBy = context.VirtualKeyId.ToString();
-            }
+            metadata.CreatedBy = context.CreatedBy ??
+                (context.VirtualKeyId > 0 ? context.VirtualKeyId.ToString() : null);
 
             // For video, create VideoMediaMetadata with additional properties
             if (context.MediaType == MediaType.Video)
@@ -279,16 +277,9 @@ namespace ConduitLLM.Core.Services.Strategies
 
         private string GetFileExtension(string contentType, MediaType mediaType)
         {
-            return contentType switch
-            {
-                "image/jpeg" => "jpg",
-                "image/png" => "png",
-                "image/gif" => "gif",
-                "image/webp" => "webp",
-                "video/mp4" => "mp4",
-                "video/webm" => "webm",
-                _ => mediaType == MediaType.Video ? "mp4" : "png"
-            };
+            // Shared map returns a leading dot; this processor uses dotless extensions.
+            return Utilities.MediaContentTypes.GetExtension(contentType)?.TrimStart('.')
+                ?? (mediaType == MediaType.Video ? "mp4" : "png");
         }
 
         private async Task PublishMediaCompletedEvent(
@@ -314,7 +305,7 @@ namespace ConduitLLM.Core.Services.Strategies
                 eventMetadata["resolution"] = videoMetadata.Resolution;
             }
 
-            await _publishEndpoint.Publish(new MediaGenerationCompleted
+            await _eventBus.PublishAsync(new MediaGenerationCompleted
             {
                 MediaType = context.MediaType,
                 VirtualKeyId = context.VirtualKeyId,
@@ -323,6 +314,7 @@ namespace ConduitLLM.Core.Services.Strategies
                 FileSizeBytes = contentLength,
                 ContentType = metadata.ContentType,
                 GeneratedByModel = context.ModelInfo?.ModelId ?? "",
+                Provider = context.ModelInfo?.ProviderName ?? "",
                 GenerationPrompt = context.Prompt,
                 GeneratedAt = DateTime.UtcNow,
                 Metadata = eventMetadata,

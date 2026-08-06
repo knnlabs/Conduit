@@ -2,6 +2,7 @@ using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Xunit;
 
@@ -14,8 +15,8 @@ namespace ConduitLLM.Tests.Http.Middleware
     public partial class UsageTrackingMiddlewareTests
     {
         [Theory]
-        [InlineData("/v1/videos/generations/async", true)]
-        [InlineData("/v1/videos/generations", true)]
+        [InlineData("/v1/conduit/videos/generations/async", true)]
+        [InlineData("/v1/conduit/videos/generations", true)]
         [InlineData("/v1/images/generations", true)]
         [InlineData("/v1/chat/completions", true)]
         [InlineData("/v1/completions", true)]
@@ -49,12 +50,12 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Theory]
-        [InlineData("/v1/videos/generations/tasks/task_abc123")]
-        [InlineData("/v1/videos/generations/tasks/task_xyz789")]
+        [InlineData("/v1/conduit/videos/generations/tasks/task_abc123")]
+        [InlineData("/v1/conduit/videos/generations/tasks/task_xyz789")]
         [InlineData("/v1/images/generations/tasks/task_def456")]
         [InlineData("/v1/images/status/task_ghi789")]
-        [InlineData("/v1/tasks/some-task-id")]
-        [InlineData("/v1/videos/status")]
+        [InlineData("/v1/conduit/tasks/some-task-id")]
+        [InlineData("/v1/conduit/videos/status")]
         public async Task ShouldTrackUsage_ForPollingEndpoints_ReturnsFalse(string path)
         {
             // Arrange
@@ -115,11 +116,10 @@ namespace ConduitLLM.Tests.Http.Middleware
         [InlineData(503)]
         public async Task ShouldTrackUsage_WithErrorStatusCode_ReturnsFalse(int statusCode)
         {
-            // Arrange
+            // Arrange - the status is set downstream, as it is in the production pipeline.
             var context = new HttpContextBuilder()
                 .ForChatCompletions()
                 .WithVirtualKey(1)
-                .AsError(statusCode)
                 .Build();
 
             var response = new
@@ -129,11 +129,46 @@ namespace ConduitLLM.Tests.Http.Middleware
 
             // Act
             await Invoker
-                .WithResponse(response)
+                .WithNextDelegate(async responseContext =>
+                {
+                    responseContext.Response.StatusCode = statusCode;
+                    await responseContext.Response.WriteAsJsonAsync(response);
+                })
                 .InvokeAsync(context);
 
             // Assert - Should NOT track usage for error responses
             UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == ConduitLLM.Configuration.Entities.BillingAuditEventType.ErrorResponseSkipped &&
+                billingEvent.HttpStatusCode == statusCode);
+        }
+
+        [Theory]
+        [InlineData("/v1/images/generations")]
+        [InlineData("/v1/conduit/videos/generations")]
+        public async Task ShouldTrackUsage_WithDownstreamMediaError_DoesNotSynthesizeUsage(string path)
+        {
+            var context = new HttpContextBuilder()
+                .WithPath(path)
+                .WithVirtualKey(1)
+                .WithImageRequest("test-model", "standard", "1024x1024", 2)
+                .WithVideoRequest("test-model", duration: 10, size: "1280x720")
+                .Build();
+
+            await Invoker
+                .WithNextDelegate(async responseContext =>
+                {
+                    responseContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                    await responseContext.Response.WriteAsJsonAsync(new { error = "provider failure" });
+                })
+                .InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifyNoCostCalculation(Fixture.CostService);
+            UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
+            UsageTrackingAssertions.VerifyNoRequestLogged(Fixture.RequestLogService);
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == ConduitLLM.Configuration.Entities.BillingAuditEventType.ErrorResponseSkipped &&
+                billingEvent.HttpStatusCode == StatusCodes.Status500InternalServerError);
         }
 
         [Fact]

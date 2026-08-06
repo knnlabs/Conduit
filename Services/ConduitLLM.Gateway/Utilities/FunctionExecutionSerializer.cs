@@ -1,5 +1,7 @@
 using System.Text.Json;
-using ConduitLLM.Gateway.Controllers;
+using System.Text.Json.Serialization;
+
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Gateway.Utilities;
 
@@ -8,7 +10,7 @@ namespace ConduitLLM.Gateway.Utilities;
 /// </summary>
 public static class FunctionExecutionSerializer
 {
-    private static readonly JsonSerializerOptions DefaultOptions = new() { WriteIndented = false };
+    private static readonly JsonSerializerOptions DefaultOptions = CreateOptions();
 
     /// <summary>
     /// Serializes function execution results to JSON for request log metadata.
@@ -17,7 +19,7 @@ public static class FunctionExecutionSerializer
     /// </summary>
     /// <param name="results">The list of function execution results to serialize.</param>
     /// <returns>JSON string representation of the function execution results.</returns>
-    public static string SerializeFunctionExecutionResults(List<FunctionExecutionResultForLogging> results)
+    public static string SerializeFunctionExecutionResults(IReadOnlyList<ToolExecutionEvent> results)
     {
         ArgumentNullException.ThrowIfNull(results);
 
@@ -28,15 +30,7 @@ public static class FunctionExecutionSerializer
             totalCost = results.Sum(r => r.Cost ?? 0m),
             successCount = results.Count(r => r.Status == "completed"),
             failedCount = results.Count(r => r.Status == "failed"),
-            functionCalls = results.Select(r => new
-            {
-                toolCallId = r.ToolCallId,
-                functionName = r.FunctionName,
-                status = r.Status,
-                cost = r.Cost,
-                errorMessage = r.ErrorMessage,
-                functionExecutionId = r.FunctionExecutionId
-            })
+            functionCalls = results
         }, DefaultOptions);
     }
 
@@ -59,6 +53,13 @@ public static class FunctionExecutionSerializer
         {
             return null;
         }
+    }
+
+    private static JsonSerializerOptions CreateOptions()
+    {
+        var options = new JsonSerializerOptions { WriteIndented = false };
+        options.Converters.Add(new ToolExecutionEventMetadataConverter());
+        return options;
     }
 }
 
@@ -101,47 +102,99 @@ public class FunctionExecutionMetadata
     /// List of individual function call details.
     /// </summary>
     [System.Text.Json.Serialization.JsonPropertyName("functionCalls")]
-    public List<FunctionCallMetadata>? FunctionCalls { get; set; }
+    public List<ToolExecutionEvent>? FunctionCalls { get; set; }
 }
 
 /// <summary>
-/// Represents metadata for a single function call.
+/// Reads legacy camelCase request-log entries and writes the canonical snake_case
+/// <see cref="ToolExecutionEvent"/> shape.
 /// </summary>
-public class FunctionCallMetadata
+internal sealed class ToolExecutionEventMetadataConverter : JsonConverter<ToolExecutionEvent>
 {
-    /// <summary>
-    /// The tool call ID from the LLM response.
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("toolCallId")]
-    public string? ToolCallId { get; set; }
+    public override ToolExecutionEvent Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.StartObject)
+        {
+            throw new JsonException("Expected a function execution object.");
+        }
 
-    /// <summary>
-    /// Name of the function that was executed.
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("functionName")]
-    public string? FunctionName { get; set; }
+        var result = new ToolExecutionEvent { Status = string.Empty };
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
+        {
+            if (reader.TokenType != JsonTokenType.PropertyName)
+            {
+                throw new JsonException("Expected a function execution property.");
+            }
 
-    /// <summary>
-    /// Execution status: "completed" or "failed".
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("status")]
-    public string? Status { get; set; }
+            var propertyName = reader.GetString();
+            if (!reader.Read())
+            {
+                throw new JsonException("Unexpected end of function execution metadata.");
+            }
 
-    /// <summary>
-    /// Cost of the function execution.
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("cost")]
-    public decimal? Cost { get; set; }
+            switch (propertyName)
+            {
+                case "tool_call_id":
+                case "toolCallId":
+                    result.ToolCallId = reader.TokenType == JsonTokenType.Null ? null : reader.GetString();
+                    break;
+                case "function_name":
+                case "functionName":
+                    result.FunctionName = reader.TokenType == JsonTokenType.Null ? null : reader.GetString();
+                    break;
+                case "status":
+                    result.Status = reader.TokenType == JsonTokenType.Null ? string.Empty : reader.GetString() ?? string.Empty;
+                    break;
+                case "cost":
+                    result.Cost = reader.TokenType == JsonTokenType.Null ? null : reader.GetDecimal();
+                    break;
+                case "error_message":
+                case "errorMessage":
+                    result.ErrorMessage = reader.TokenType == JsonTokenType.Null ? null : reader.GetString();
+                    break;
+                case "function_execution_id":
+                case "functionExecutionId":
+                    result.FunctionExecutionId = reader.TokenType == JsonTokenType.Null ? null : reader.GetGuid();
+                    break;
+                default:
+                    reader.Skip();
+                    break;
+            }
+        }
 
-    /// <summary>
-    /// Error message if the function failed.
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("errorMessage")]
-    public string? ErrorMessage { get; set; }
+        return result;
+    }
 
-    /// <summary>
-    /// ID of the FunctionExecution record for audit/drill-down.
-    /// </summary>
-    [System.Text.Json.Serialization.JsonPropertyName("functionExecutionId")]
-    public Guid? FunctionExecutionId { get; set; }
+    public override void Write(
+        Utf8JsonWriter writer,
+        ToolExecutionEvent value,
+        JsonSerializerOptions options)
+    {
+        writer.WriteStartObject();
+        if (value.ToolCallId is not null)
+        {
+            writer.WriteString("tool_call_id", value.ToolCallId);
+        }
+        if (value.FunctionName is not null)
+        {
+            writer.WriteString("function_name", value.FunctionName);
+        }
+        writer.WriteString("status", value.Status);
+        if (value.Cost.HasValue)
+        {
+            writer.WriteNumber("cost", value.Cost.Value);
+        }
+        if (value.ErrorMessage is not null)
+        {
+            writer.WriteString("error_message", value.ErrorMessage);
+        }
+        if (value.FunctionExecutionId.HasValue)
+        {
+            writer.WriteString("function_execution_id", value.FunctionExecutionId.Value);
+        }
+        writer.WriteEndObject();
+    }
 }

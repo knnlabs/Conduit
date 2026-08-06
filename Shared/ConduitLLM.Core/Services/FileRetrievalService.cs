@@ -6,22 +6,30 @@ namespace ConduitLLM.Core.Services
     /// <summary>
     /// Service for retrieving and downloading generated content files.
     /// </summary>
+    /// <remarks>
+    /// This service uses a typed HttpClient configured with retry policies for resilience
+    /// when fetching files from external URLs. The retry policy handles transient HTTP errors
+    /// and rate limiting (HTTP 429) with exponential backoff.
+    /// </remarks>
     public class FileRetrievalService : IFileRetrievalService
     {
         private readonly IMediaStorageService _storageService;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly HttpClient _httpClient;
         private readonly ILogger<FileRetrievalService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="FileRetrievalService"/> class.
         /// </summary>
+        /// <param name="storageService">The media storage service for local storage operations.</param>
+        /// <param name="httpClient">The typed HTTP client configured with retry policies.</param>
+        /// <param name="logger">The logger instance.</param>
         public FileRetrievalService(
             IMediaStorageService storageService,
-            IHttpClientFactory httpClientFactory,
+            HttpClient httpClient,
             ILogger<FileRetrievalService> logger)
         {
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -224,57 +232,64 @@ namespace ConduitLLM.Core.Services
 
         private async Task<FileRetrievalResult?> RetrieveFromUrlAsync(string url, CancellationToken cancellationToken)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            
-            var response = await httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-            if (!response.IsSuccessStatusCode)
+            HttpResponseMessage? response = null;
+            try
             {
-                _logger.LogWarning("Failed to retrieve URL {Url}: {StatusCode}", url, response.StatusCode);
-                response.Dispose();
-                return null;
-            }
-
-            var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
-            var contentLength = response.Content.Headers.ContentLength ?? 0;
-            var lastModified = response.Content.Headers.LastModified?.DateTime;
-            var etag = response.Headers.ETag?.Tag;
-
-            // Extract filename from Content-Disposition header if available
-            string? fileName = null;
-            if (response.Content.Headers.ContentDisposition?.FileName != null)
-            {
-                fileName = response.Content.Headers.ContentDisposition.FileName.Trim('"');
-            }
-            else
-            {
-                // Try to extract from URL
-                fileName = Path.GetFileName(new Uri(url).LocalPath);
-            }
-
-            var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-
-            return new FileRetrievalResult
-            {
-                ContentStream = stream,
-                Metadata = new FileMetadata
+                response = await _httpClient.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+                if (!response.IsSuccessStatusCode)
                 {
-                    FileName = fileName,
-                    ContentType = contentType,
-                    SizeBytes = contentLength,
-                    ModifiedAt = lastModified,
-                    StorageProvider = "url",
-                    ETag = etag,
-                    SupportsRangeRequests = response.Headers.AcceptRanges?.Contains("bytes") == true
+                    _logger.LogWarning("Failed to retrieve URL {Url}: {StatusCode}", url, response.StatusCode);
+                    return null;
                 }
-            };
+
+                var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+                var contentLength = response.Content.Headers.ContentLength ?? 0;
+                var lastModified = response.Content.Headers.LastModified?.DateTime;
+                var etag = response.Headers.ETag?.Tag;
+
+                // Extract filename from Content-Disposition header if available
+                string? fileName = null;
+                if (response.Content.Headers.ContentDisposition?.FileName != null)
+                {
+                    fileName = response.Content.Headers.ContentDisposition.FileName.Trim('"');
+                }
+                else
+                {
+                    // Try to extract from URL
+                    fileName = Path.GetFileName(new Uri(url).LocalPath);
+                }
+
+                var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
+
+                var result = new FileRetrievalResult
+                {
+                    ContentStream = stream,
+                    Metadata = new FileMetadata
+                    {
+                        FileName = fileName,
+                        ContentType = contentType,
+                        SizeBytes = contentLength,
+                        ModifiedAt = lastModified,
+                        StorageProvider = "url",
+                        ETag = etag,
+                        SupportsRangeRequests = response.Headers.AcceptRanges?.Contains("bytes") == true
+                    },
+                    // Transfer ownership: result.Dispose() will dispose both the stream and the response.
+                    Owner = response
+                };
+                response = null;
+                return result;
+            }
+            finally
+            {
+                response?.Dispose();
+            }
         }
 
         private async Task<FileMetadata?> GetUrlMetadataAsync(string url, CancellationToken cancellationToken)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
-            using var response = await httpClient.SendAsync(request, cancellationToken);
+            using var response = await _httpClient.SendAsync(request, cancellationToken);
             
             if (!response.IsSuccessStatusCode)
             {
@@ -310,16 +325,15 @@ namespace ConduitLLM.Core.Services
 
         private async Task<bool> CheckUrlExistsAsync(string url, CancellationToken cancellationToken)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-            
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Head, url);
-                using var response = await httpClient.SendAsync(request, cancellationToken);
+                using var response = await _httpClient.SendAsync(request, cancellationToken);
                 return response.IsSuccessStatusCode;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogDebug(ex, "URL existence check failed for {Url}", url);
                 return false;
             }
         }

@@ -1,5 +1,5 @@
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { ProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderKeyCredentialDto } from '@/lib/admin-api';
 import type { ConfigData } from './types';
 
 // Standalone data fetch function
@@ -12,7 +12,7 @@ export async function fetchConfigData(): Promise<ConfigData> {
     withAdminClient(client => client.settings.getGlobalSettings())
   ]);
 
-  const providers = providersResponse.items;
+  const providers = providersResponse.data ?? [];
   const modelCosts = modelCostsResponse.items || [];
   const settings = settingsResponse.settings;
 

@@ -1,43 +1,51 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
-using MassTransit;
+using ConfigurationModelCostService = ConduitLLM.Configuration.Interfaces.IModelCostService;
+
 
 namespace ConduitLLM.Gateway.Consumers
 {
     /// <summary>
     /// Handles ModelCostChanged events for cache invalidation.
-    /// Invalidates both the model cost cache and pricing rules cache.
+    /// Invalidates the model cost cache, the pricing rules cache, and the discovery
+    /// cache (discovery responses embed pricing, see #1238).
     /// </summary>
-    public class ModelCostCacheInvalidationHandler : IConsumer<ModelCostChanged>
+    public class ModelCostCacheInvalidationHandler : IEventHandler<ModelCostChanged>
     {
-        private readonly IModelCostCache? _modelCostCache;
+        private readonly ConfigurationModelCostService _modelCostService;
         private readonly ICachedPricingRulesService? _pricingRulesCache;
+        private readonly IDiscoveryCacheService _discoveryCacheService;
         private readonly ILogger<ModelCostCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the ModelCostCacheInvalidationHandler
         /// </summary>
-        /// <param name="modelCostCache">Optional model cost cache</param>
+        /// <param name="modelCostService">The model cost service used by the billing path</param>
         /// <param name="pricingRulesCache">Optional pricing rules cache</param>
+        /// <param name="discoveryCacheService">Discovery cache holding pricing-bearing model payloads</param>
         /// <param name="logger">Logger for diagnostics</param>
         public ModelCostCacheInvalidationHandler(
-            IModelCostCache? modelCostCache,
+            ConfigurationModelCostService modelCostService,
             ICachedPricingRulesService? pricingRulesCache,
+            IDiscoveryCacheService discoveryCacheService,
             ILogger<ModelCostCacheInvalidationHandler> logger)
         {
-            _modelCostCache = modelCostCache;
+            _modelCostService = modelCostService ?? throw new ArgumentNullException(nameof(modelCostService));
             _pricingRulesCache = pricingRulesCache;
-            _logger = logger;
+            _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
         /// Consumes ModelCostChanged events and logs them for monitoring
         /// </summary>
+        /// <param name="message">The model cost change event</param>
         /// <param name="context">The consume context containing the event</param>
-        public async Task Consume(ConsumeContext<ModelCostChanged> context)
+        public async Task HandleAsync(ModelCostChanged message, IEventContext context)
         {
-            var @event = context.Message;
+            var @event = message;
 
             _logger.LogInformation(
                 "ModelCostChanged event received - ModelCostId: {ModelCostId}, CostName: {CostName}, ChangeType: {ChangeType}",
@@ -53,8 +61,8 @@ namespace ConduitLLM.Gateway.Consumers
             }
 
             // Log warning for cost changes that might affect billing
-            if (@event.ChangeType == "Updated" && 
-                (@event.ChangedProperties?.Contains("InputCost") == true || 
+            if (@event.ChangeType == "Updated" &&
+                (@event.ChangedProperties?.Contains("InputCost") == true ||
                  @event.ChangedProperties?.Contains("OutputCost") == true ||
                  @event.ChangedProperties?.Contains("Cost") == true))
             {
@@ -63,35 +71,24 @@ namespace ConduitLLM.Gateway.Consumers
                     @event.CostName);
             }
 
-            // Invalidate model cost cache if available
-            if (_modelCostCache != null)
-            {
-                try
-                {
-                    // Clear all model costs to ensure cache consistency
-                    await _modelCostCache.ClearAllModelCostsAsync();
-                    _logger.LogInformation("Model cost cache cleared due to cost change event");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error invalidating model cost cache");
-                }
-            }
+            // Clear the cache used by CostCalculationService. ModelCostChanged only contains
+            // the database cost ID, while lookups are also cached by provider model identifier,
+            // so the whole region must be invalidated to cover every affected mapping.
+            await _modelCostService.ClearCacheAsync(context.CancellationToken);
+            _logger.LogInformation("Billing model cost cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
+
+            // Discovery responses embed pricing from ModelCost, so a repricing must also
+            // drop cached discovery payloads or clients keep seeing the old rates until TTL.
+            await _discoveryCacheService.InvalidateAllDiscoveryAsync(context.CancellationToken);
+            _logger.LogInformation("Discovery cache invalidated for ModelCostId: {ModelCostId}", @event.ModelCostId);
 
             // Invalidate pricing rules cache if available
             if (_pricingRulesCache != null && @event.ModelCostId > 0)
             {
-                try
-                {
-                    _pricingRulesCache.InvalidateCache(@event.ModelCostId);
-                    _logger.LogInformation(
-                        "Pricing rules cache invalidated for ModelCostId: {ModelCostId}",
-                        @event.ModelCostId);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error invalidating pricing rules cache for ModelCostId: {ModelCostId}", @event.ModelCostId);
-                }
+                await _pricingRulesCache.InvalidateCacheAsync(@event.ModelCostId);
+                _logger.LogInformation(
+                    "Pricing rules cache invalidated for ModelCostId: {ModelCostId}",
+                    @event.ModelCostId);
             }
         }
     }

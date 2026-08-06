@@ -11,8 +11,14 @@ import { STORAGE_CONFIG, IMAGE_CONFIG } from '@/app/config/mediaGeneration';
 import { 
   createToastErrorHandler, 
   shouldShowBalanceWarning
-} from '@knn_labs/conduit-gateway-client';
+} from '@/lib/gateway-api';
+// Needs raw notifications API: .show is passed as callback to SDK's createToastErrorHandler
 import { notifications } from '@mantine/notifications';
+import {
+  ConduitError,
+  InsufficientBalanceError,
+  ValidationError,
+} from '@/lib/conduit-common';
 
 const LOCAL_STORAGE_KEY = 'conduit-image-generation';
 
@@ -21,8 +27,6 @@ const imageStoreConfig = createMediaStore<ImageTask, ImageGenerationSettings>({
   name: LOCAL_STORAGE_KEY,
   initialSettings: {
     model: '',
-    quality: 'standard',
-    style: 'vivid',
   },
   persistHistory: true,
   partializeState: (state) => ({
@@ -71,12 +75,18 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
     const { prompt, settings } = state;
     
     if (!prompt.trim()) {
-      set({ error: 'Please enter a prompt for image generation', status: MediaGenerationStatus.Failed });
+      set({
+        error: new ValidationError('Please enter a prompt for image generation'),
+        status: MediaGenerationStatus.Failed,
+      });
       return;
     }
 
     if (!settings.model) {
-      set({ error: 'Please select a model for image generation', status: MediaGenerationStatus.Failed });
+      set({
+        error: new ValidationError('Please select a model for image generation'),
+        status: MediaGenerationStatus.Failed,
+      });
       return;
     }
 
@@ -110,8 +120,6 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
       const result = await client.images.generate({
         prompt,
         model: settings.model,
-        quality: settings.quality,
-        style: settings.style,
         n: IMAGE_CONFIG.DEFAULTS.N,
         response_format: 'url',  // Always use URL for CDN storage
         // Include dynamic parameters if provided (overrides defaults)
@@ -140,16 +148,21 @@ export const useImageStore = create<ImageStore>()((set, get, api) => ({
         error: errorMessage,
       });
       
-      set({ 
+      const displayError = error instanceof Error
+        ? error
+        : new ConduitError(errorMessage, 500, 'IMAGE_GENERATION_ERROR');
+      set({
         status: MediaGenerationStatus.Failed, 
-        error: errorMessage,
+        error: displayError,
         currentResults: []
       });
       
       // Special handling for balance errors
       if (shouldShowBalanceWarning(error)) {
         set({ 
-          error: 'Please add credits to your account to generate images.'
+          error: new InsufficientBalanceError(
+            'Please add credits to your account to generate images.',
+          ),
         });
       }
     }

@@ -1,3 +1,4 @@
+#!/bin/sh
 # Pre-push hook to prevent pushing code with lint errors
 
 echo "🔍 Running pre-push lint checks..."
@@ -9,18 +10,27 @@ if [ "$CI" = "true" ]; then
 fi
 
 # Run the STRICT validation script (same as CI/CD)
-./scripts/test/validate-eslint-strict.sh
+# Check which PowerShell command is available
+lint_exit=0
+if command -v pwsh &> /dev/null; then
+  pwsh -NoProfile -Command "& ./scripts/test/validate-eslint-strict.ps1" || lint_exit=$?
+elif command -v powershell.exe &> /dev/null; then
+  powershell.exe -NoProfile -Command "& ./scripts/test/validate-eslint-strict.ps1" || lint_exit=$?
+else
+  echo "⚠️  PowerShell not found, skipping lint check"
+  exit 0
+fi
 
-if [ $? -ne 0 ]; then
+if [ "$lint_exit" -ne 0 ]; then
   echo ""
   echo "❌ PUSH BLOCKED: ESLint errors detected!"
   echo ""
   echo "⚠️  You cannot push code with lint errors. This causes CI/CD failures."
   echo ""
   echo "To fix:"
-  echo "1. Run './scripts/dev/fix-webadmin-errors.sh' to automatically fix what's possible"
+  echo "1. Run './scripts/dev/fix-webadmin-errors.ps1' to automatically fix lint errors"
   echo "2. Manually fix any remaining errors"
-  echo "3. Test locally with './scripts/test/validate-eslint.sh'"
+  echo "3. Test locally with './scripts/test/validate-eslint-strict.ps1'"
   echo ""
   echo "To bypass (NOT RECOMMENDED):"
   echo "git push --no-verify"

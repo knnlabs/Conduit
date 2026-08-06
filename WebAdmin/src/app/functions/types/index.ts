@@ -1,22 +1,19 @@
 /**
  * Function management types
- * Re-exported from Admin SDK for WebAdmin usage
+ * Re-exported from the local Admin API boundary for WebAdmin usage
  */
 
-// Re-export all function types from SDK
+// Re-export all function types from the local Admin API boundary
 export type {
   // Function Configuration
   FunctionConfigurationDto,
   CreateFunctionConfigurationDto,
   UpdateFunctionConfigurationDto,
-  FunctionConfigurationListResponse,
-  FunctionConfigurationFilters,
 
   // Function Credentials
   FunctionCredentialDto,
   CreateFunctionCredentialDto,
   UpdateFunctionCredentialDto,
-  FunctionCredentialListResponse,
   TestCredentialRequestDto,
   TestCredentialResponseDto,
 
@@ -24,18 +21,9 @@ export type {
   FunctionCostDto,
   CreateFunctionCostDto,
   UpdateFunctionCostDto,
-  FunctionCostListResponse,
-  FunctionCostFilters,
-
-  // Function Cost Mappings
-  FunctionCostMappingDto,
-  CreateFunctionCostMappingDto,
-  UpdateFunctionCostMappingDto,
 
   // Function Executions
   FunctionExecutionDto,
-  FunctionExecutionListResponse,
-  FunctionExecutionFilters,
 
   // Pricing Configuration Types
   BasePricingConfig,
@@ -46,7 +34,7 @@ export type {
   TieredPricingConfig,
   ExaHybridPricingConfig,
   FunctionPricingConfig,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 // Re-export enum values for runtime usage
 import {
@@ -55,7 +43,7 @@ import {
   FunctionExecutionMode,
   ExecutionState,
   FunctionPricingModel,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 export {
   FunctionProviderType,
@@ -65,7 +53,7 @@ export {
   FunctionPricingModel,
 };
 
-// Re-export function provider registry utilities from SDK
+// Re-export function provider registry utilities from the local Admin API boundary
 export {
   getAvailableFunctionProviders,
   getFunctionProviderMetadata,
@@ -73,13 +61,13 @@ export {
   normalizeFunctionProviderType,
   isValidFunctionProviderType,
   FUNCTION_PROVIDER_REGISTRY,
-} from '@knn_labs/conduit-admin-client';
-export type { FunctionProviderMetadata } from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
+export type { FunctionProviderMetadata } from '@/lib/admin-api';
 
 // Helper functions for enum display
-// Note: getProviderTypeName is now provided by SDK (getFunctionProviderTypeName)
+// Note: getProviderTypeName is provided as getFunctionProviderTypeName.
 // Re-export with original name for backwards compatibility
-export { getFunctionProviderTypeName as getProviderTypeName } from '@knn_labs/conduit-admin-client';
+export { getFunctionProviderTypeName as getProviderTypeName } from '@/lib/admin-api';
 
 export function getPurposeName(purpose: FunctionPurpose): string {
   switch (purpose) {
@@ -107,42 +95,62 @@ export function getExecutionModeName(mode: FunctionExecutionMode): string {
   }
 }
 
+const EXECUTION_STATE_PRESENTATION: Record<
+  ExecutionState,
+  { label: string; badgeColor: string; className: string }
+> = {
+  [ExecutionState.Pending]: {
+    label: 'Pending',
+    badgeColor: 'yellow',
+    className: 'text-yellow-600 bg-yellow-50',
+  },
+  [ExecutionState.Running]: {
+    label: 'Running',
+    badgeColor: 'blue',
+    className: 'text-blue-600 bg-blue-50',
+  },
+  [ExecutionState.Completed]: {
+    label: 'Completed',
+    badgeColor: 'green',
+    className: 'text-green-600 bg-green-50',
+  },
+  [ExecutionState.Failed]: {
+    label: 'Failed',
+    badgeColor: 'red',
+    className: 'text-red-600 bg-red-50',
+  },
+  [ExecutionState.Cancelled]: {
+    label: 'Cancelled',
+    badgeColor: 'gray',
+    className: 'text-gray-600 bg-gray-50',
+  },
+  [ExecutionState.TimedOut]: {
+    label: 'Timed Out',
+    badgeColor: 'orange',
+    className: 'text-orange-600 bg-orange-50',
+  },
+};
+
 export function getExecutionStateName(state: ExecutionState): string {
-  switch (state) {
-    case ExecutionState.Pending:
-      return 'Pending';
-    case ExecutionState.Running:
-      return 'Running';
-    case ExecutionState.Completed:
-      return 'Completed';
-    case ExecutionState.Failed:
-      return 'Failed';
-    case ExecutionState.Cancelled:
-      return 'Cancelled';
-    case ExecutionState.TimedOut:
-      return 'Timed Out';
-    default:
-      return `Unknown (${String(state)})`;
-  }
+  return EXECUTION_STATE_PRESENTATION[state]?.label ?? `Unknown (${String(state)})`;
 }
 
 export function getExecutionStateColor(state: ExecutionState): string {
-  switch (state) {
-    case ExecutionState.Pending:
-      return 'text-yellow-600 bg-yellow-50';
-    case ExecutionState.Running:
-      return 'text-blue-600 bg-blue-50';
-    case ExecutionState.Completed:
-      return 'text-green-600 bg-green-50';
-    case ExecutionState.Failed:
-      return 'text-red-600 bg-red-50';
-    case ExecutionState.Cancelled:
-      return 'text-gray-600 bg-gray-50';
-    case ExecutionState.TimedOut:
-      return 'text-orange-600 bg-orange-50';
-    default:
-      return 'text-gray-600 bg-gray-50';
-  }
+  return EXECUTION_STATE_PRESENTATION[state]?.className ?? 'text-gray-600 bg-gray-50';
+}
+
+export function getExecutionStateBadgeColor(state: string): string {
+  const normalized = normalizeExecutionState(state);
+  return normalized
+    ? EXECUTION_STATE_PRESENTATION[normalized].badgeColor
+    : 'gray';
+}
+
+function normalizeExecutionState(state: string): ExecutionState | undefined {
+  const normalized = state.toLowerCase().replace(/[_\s-]/g, '');
+  return Object.values(ExecutionState).find(
+    candidate => candidate.toLowerCase() === normalized,
+  );
 }
 
 export function getPricingModelName(model: FunctionPricingModel): string {
@@ -173,7 +181,7 @@ export interface FunctionConfigurationFormData {
   defaultExecutionMode?: FunctionExecutionMode;
   timeoutSeconds?: number;
   isEnabled?: boolean;
-  metadata?: string;
+  providerSettings?: string;
 }
 
 export interface FunctionCostFormData {

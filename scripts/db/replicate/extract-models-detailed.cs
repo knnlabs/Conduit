@@ -1433,6 +1433,25 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         var tokenizerTypeEnum = MapTokenizerTypeToEnum(tokenLimit?.TokenizerType ?? model.TokenizerType);
         var maxInputTokens = tokenLimit?.MaxInputTokens ?? model.MaxInputTokens;
         var maxOutputTokens = model.MaxOutputTokens ?? tokenLimit?.MaxInputTokens; // Fallback to input if output not available
+        var inputModalities = model.ModelType switch
+        {
+            "image" or "video" => "'[\"text\",\"image\"]'::jsonb",
+            _ => "'[\"text\"]'::jsonb"
+        };
+        var outputModalities = model.ModelType switch
+        {
+            "image" => "'[\"image\"]'::jsonb",
+            "video" => "'[\"video\"]'::jsonb",
+            _ => "'[\"text\"]'::jsonb"
+        };
+        var operationalCapabilities =
+            $"'{{\"supportsChat\":{FormatBool(model.Capabilities.SupportsChat)}," +
+            $"\"supportsStreaming\":{FormatBool(model.Capabilities.SupportsStreaming)}," +
+            $"\"supportsVision\":{FormatBool(model.Capabilities.SupportsVision)}," +
+            $"\"supportsImageGeneration\":{FormatBool(model.Capabilities.SupportsImageGeneration)}," +
+            $"\"supportsVideoGeneration\":{FormatBool(model.Capabilities.SupportsVideoGeneration)}," +
+            $"\"supportsEmbeddings\":{FormatBool(model.Capabilities.SupportsEmbeddings)}," +
+            $"\"supportsFunctionCalling\":{FormatBool(model.Capabilities.SupportsFunctionCalling)}}}'::jsonb";
 
         sql.AppendLine($"-- Model: {model.ReplicateIdentifier}");
         sql.AppendLine();
@@ -1469,6 +1488,8 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"    \"Name\", \"Version\", \"Description\", \"ModelCardUrl\", \"ModelSeriesId\",");
         sql.AppendLine($"    \"SupportsVision\", \"SupportsImageGeneration\", \"SupportsVideoGeneration\",");
         sql.AppendLine($"    \"SupportsEmbeddings\", \"SupportsChat\", \"SupportsFunctionCalling\", \"SupportsStreaming\",");
+        sql.AppendLine($"    \"SupportsSpeechToText\", \"SupportsTextToSpeech\", \"SupportsRerank\",");
+        sql.AppendLine($"    \"InputModalities\", \"OutputModalities\", \"CapabilitySource\", \"CapabilitiesLastVerifiedAt\",");
         sql.AppendLine($"    \"TokenizerType\", \"MaxInputTokens\", \"MaxOutputTokens\",");
         sql.AppendLine($"    \"IsActive\", \"Parameters\", \"CreatedAt\", \"UpdatedAt\"");
         sql.AppendLine($"  )");
@@ -1485,6 +1506,8 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"    {FormatBool(model.Capabilities.SupportsChat)},");
         sql.AppendLine($"    {FormatBool(model.Capabilities.SupportsFunctionCalling)},");
         sql.AppendLine($"    {FormatBool(model.Capabilities.SupportsStreaming)},");
+        sql.AppendLine($"    false, false, false,");
+        sql.AppendLine($"    {inputModalities}, {outputModalities}, 3, NOW(),");
         sql.AppendLine($"    {tokenizerTypeEnum},");
         sql.AppendLine($"    {FormatNullableInt(maxInputTokens)},");
         sql.AppendLine($"    {FormatNullableInt(maxOutputTokens)},");
@@ -1493,7 +1516,11 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"    NOW(),");
         sql.AppendLine($"    NOW()");
         sql.AppendLine($"  FROM series WHERE series.\"Name\" = '{EscapeSqlString(model.SeriesName)}'");
-        sql.AppendLine($"  ON CONFLICT DO NOTHING");
+        sql.AppendLine($"  ON CONFLICT (\"Name\") DO UPDATE SET");
+        sql.AppendLine($"    \"InputModalities\" = CASE WHEN \"Models\".\"CapabilitySource\" IN (0, 1, 3) THEN EXCLUDED.\"InputModalities\" ELSE \"Models\".\"InputModalities\" END,");
+        sql.AppendLine($"    \"OutputModalities\" = CASE WHEN \"Models\".\"CapabilitySource\" IN (0, 1, 3) THEN EXCLUDED.\"OutputModalities\" ELSE \"Models\".\"OutputModalities\" END,");
+        sql.AppendLine($"    \"CapabilitySource\" = CASE WHEN \"Models\".\"CapabilitySource\" IN (0, 1, 3) THEN 3 ELSE \"Models\".\"CapabilitySource\" END,");
+        sql.AppendLine($"    \"CapabilitiesLastVerifiedAt\" = CASE WHEN \"Models\".\"CapabilitySource\" IN (0, 1, 3) THEN NOW() ELSE \"Models\".\"CapabilitiesLastVerifiedAt\" END");
         sql.AppendLine($"  RETURNING \"Id\", \"Name\"");
         sql.AppendLine($"),");
         sql.AppendLine();
@@ -1545,6 +1572,7 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"INSERT INTO \"ModelIdentifiers\" (");
         sql.AppendLine($"  \"ModelId\", \"Identifier\", \"Provider\", \"IsEnabled\",");
         sql.AppendLine($"  \"MaxInputTokens\", \"MaxOutputTokens\", \"IsPrimary\", \"ModelCostId\"");
+        sql.AppendLine($"  , \"InputModalities\", \"OutputModalities\", \"OperationalCapabilities\", \"CapabilitySource\", \"CapabilitiesLastVerifiedAt\"");
         sql.AppendLine($")");
         sql.AppendLine($"SELECT");
         sql.AppendLine($"  model.\"Id\",");
@@ -1554,9 +1582,15 @@ static async Task GenerateSQLOutput(List<DetailedModel> models, string modelType
         sql.AppendLine($"  {FormatNullableInt(maxInputTokens)},");
         sql.AppendLine($"  {FormatNullableInt(maxOutputTokens)},");
         sql.AppendLine($"  true,");
-        sql.AppendLine($"  modelcost.\"Id\"");
+        sql.AppendLine($"  modelcost.\"Id\",");
+        sql.AppendLine($"  {inputModalities}, {outputModalities}, {operationalCapabilities}, 3, NOW()");
         sql.AppendLine($"FROM model, modelcost WHERE model.\"Name\" = '{EscapeSqlString(model.ModelName)}'");
-        sql.AppendLine($"ON CONFLICT (\"Provider\", \"Identifier\") DO NOTHING;");
+        sql.AppendLine($"ON CONFLICT (\"Provider\", \"Identifier\") DO UPDATE SET");
+        sql.AppendLine($"  \"InputModalities\" = EXCLUDED.\"InputModalities\",");
+        sql.AppendLine($"  \"OutputModalities\" = EXCLUDED.\"OutputModalities\",");
+        sql.AppendLine($"  \"OperationalCapabilities\" = EXCLUDED.\"OperationalCapabilities\",");
+        sql.AppendLine($"  \"CapabilitySource\" = EXCLUDED.\"CapabilitySource\",");
+        sql.AppendLine($"  \"CapabilitiesLastVerifiedAt\" = EXCLUDED.\"CapabilitiesLastVerifiedAt\";");
         sql.AppendLine();
     }
 

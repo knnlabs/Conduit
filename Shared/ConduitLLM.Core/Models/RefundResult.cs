@@ -26,9 +26,18 @@ namespace ConduitLLM.Core.Models
         public decimal RefundAmount { get; set; }
 
         /// <summary>
-        /// Gets or sets the original transaction ID if provided.
+        /// Gets or sets the original transaction ID if provided. This preserves the caller-supplied
+        /// linkage to the charge being refunded and is never overwritten with the refund's own id.
         /// </summary>
         public string? OriginalTransactionId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the id of the transaction record created for this refund (0 until persisted).
+        /// </summary>
+        public long RefundTransactionId { get; set; }
+
+        /// <summary>Balance immediately after the refund was committed.</summary>
+        public decimal BalanceAfter { get; set; }
 
         /// <summary>
         /// Gets or sets the reason for the refund.

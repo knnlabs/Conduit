@@ -213,7 +213,7 @@ namespace ConduitLLM.Tests.TestHelpers
         public static Mock<IHttpContextAccessor> SetupWithCorrelationId(this Mock<IHttpContextAccessor> mock,
             string correlationId)
         {
-            return mock.SetupWithHeaders(("X-Correlation-ID", correlationId));
+            return mock.SetupWithHeaders(("x-request-id", correlationId));
         }
 
         #endregion

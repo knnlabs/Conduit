@@ -22,8 +22,9 @@ import { useCreateModelMapping, useModelMappings } from '@/hooks/useModelMapping
 import { useModels } from '@/hooks/useModelsApi';
 import { useModelAssociations } from '@/hooks/useModelAssociations';
 import { AssociationProviderSelect } from './AssociationProviderSelect';
-import { notifications } from '@mantine/notifications';
-import type { CreateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { notify } from '@/lib/notifications';
+import type { CreateModelProviderMappingDto } from '@/lib/admin-api';
+import { createMappingFormValidation } from './mappingFormValidation';
 
 interface CreateModelMappingModalProps {
   isOpen: boolean;
@@ -37,7 +38,6 @@ interface FormValues {
   associationProviderId: string | null; // Format: "associationId:providerId"
   priority: number;
   isEnabled: boolean;
-  notes?: string;
 }
 
 export function CreateModelMappingModal({ 
@@ -56,26 +56,11 @@ export function CreateModelMappingModal({
       associationProviderId: null,
       priority: 100,
       isEnabled: true,
-      notes: undefined,
     },
     validate: {
-      modelAlias: (value) => {
-        if (!value?.trim()) return 'Model alias is required';
-        
-        // Check for duplicate aliases
-        const duplicate = mappings.find(m => 
-          m.modelAlias.toLowerCase() === value.trim().toLowerCase()
-        );
-        
-        if (duplicate) {
-          return `Model alias '${value}' already exists`;
-        }
-        
-        return null;
-      },
+      ...createMappingFormValidation(mappings),
       modelId: (value) => !value ? 'Model selection is required' : null,
       associationProviderId: (value) => !value ? 'Provider configuration is required' : null,
-      priority: (value) => value < 0 || value > 1000 ? 'Priority must be between 0 and 1000' : null,
     },
   });
 
@@ -91,11 +76,7 @@ export function CreateModelMappingModal({
     const validationErrors = form.validate();
     if (validationErrors.hasErrors) {
       // Show notification about validation errors
-      notifications.show({
-        title: 'Validation Error',
-        message: 'Please fill in all required fields correctly',
-        color: 'red',
-      });
+      notify.error(new Error('Please fill in all required fields correctly'));
       return;
     }
 
@@ -106,48 +87,25 @@ export function CreateModelMappingModal({
       const [associationId, providerId] = values.associationProviderId.split(':').map(Number);
       
       if (!associationId || !providerId) {
-        notifications.show({
-          title: 'Configuration Error',
-          message: 'Invalid provider configuration selected',
-          color: 'red',
-        });
+        notify.error(new Error('Invalid provider configuration selected'));
         return;
       }
 
       // Find the selected association to get the identifier
       const selectedAssociation = associations?.find(a => a.associationId === associationId);
       if (!selectedAssociation) {
-        notifications.show({
-          title: 'Configuration Error',
-          message: 'Selected configuration not found',
-          color: 'red',
-        });
+        notify.error(new Error('Selected configuration not found'));
         return;
       }
       
-      // Validate that the same association+provider combo isn't already mapped
-      const duplicateMapping = mappings.find(m => 
-        m.modelProviderTypeAssociationId === associationId &&
-        m.providerId === providerId
-      );
-      
-      if (duplicateMapping) {
-        notifications.show({
-          title: 'Duplicate Mapping',
-          message: `This provider configuration is already mapped as '${duplicateMapping.modelAlias}'`,
-          color: 'red',
-        });
-        return;
-      }
-
       const createData: CreateModelProviderMappingDto = {
         modelAlias: values.modelAlias,
         providerId: providerId,
         providerModelId: selectedAssociation.identifier, // Use the identifier from the association
         modelProviderTypeAssociationId: associationId,
         priority: values.priority,
+        weight: 1,
         isEnabled: values.isEnabled,
-        notes: values.notes,
       };
 
       await createMapping.mutateAsync(createData);
@@ -215,9 +173,10 @@ export function CreateModelMappingModal({
                   <Text size="xs" fw={500} mb="xs">Model Capabilities:</Text>
                   <Flex gap="xs" wrap="wrap">
                     {selectedModel.supportsChat && <Badge size="sm" leftSection={<IconRobot size={12} />}>Chat</Badge>}
-                    {selectedModel.supportsVision && <Badge size="sm" leftSection={<IconEye size={12} />}>Vision</Badge>}
+                    {selectedModel.supportsImageInput && <Badge size="sm" leftSection={<IconEye size={12} />}>Image Input</Badge>}
+                    {selectedModel.supportsVideoInput && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video Input</Badge>}
                     {selectedModel.supportsImageGeneration && <Badge size="sm" leftSection={<IconBrush size={12} />}>Images</Badge>}
-                    {selectedModel.supportsVideoGeneration && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video</Badge>}
+                    {selectedModel.supportsVideoGeneration && <Badge size="sm" leftSection={<IconVideo size={12} />}>Video Gen</Badge>}
                     {selectedModel.supportsEmbeddings && <Badge size="sm" leftSection={<IconBrain size={12} />}>Embeddings</Badge>}
                   </Flex>
                   <Text size="xs" mt="xs">Max Input Tokens: {selectedModel.maxInputTokens?.toLocaleString()}</Text>
@@ -267,20 +226,6 @@ export function CreateModelMappingModal({
               </Stack>
             </Paper>
           )}
-
-          {/* Optional Settings */}
-          <Paper p="md" withBorder>
-            <Stack gap="sm">
-              <Text fw={600} size="sm">Optional Settings</Text>
-              
-
-              <TextInput
-                label="Notes"
-                placeholder="Optional notes about this mapping"
-                {...form.getInputProps('notes')}
-              />
-            </Stack>
-          </Paper>
 
           <Alert icon={<IconAlertCircle size={16} />} color="blue">
             <Text size="sm" fw={500} mb="xs">Three-Layer Architecture:</Text>

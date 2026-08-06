@@ -1,78 +1,10 @@
-using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace ConduitLLM.Providers.OpenAI
 {
     // Internal models mirroring OpenAI's /v1/chat/completions structure
     // See: https://platform.openai.com/docs/api-reference/chat/create
-
-    internal record OpenAIChatCompletionRequest
-    {
-        [JsonPropertyName("model")]
-        public required string Model { get; init; }
-
-        [JsonPropertyName("messages")]
-        public required IEnumerable<OpenAIMessage> Messages { get; init; }
-
-        // Add other parameters as needed (temperature, max_tokens, etc.)
-        // For simplicity, starting with the basics.
-        [JsonPropertyName("temperature")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public float? Temperature { get; init; }
-
-        [JsonPropertyName("max_tokens")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? MaxTokens { get; init; }
-
-        [JsonPropertyName("stream")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] // Don't include if false (default)
-        public bool Stream { get; init; } = false;
-
-        // Tool/function calling support
-        [JsonPropertyName("tools")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public List<object>? Tools { get; init; }
-
-        [JsonPropertyName("tool_choice")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public object? ToolChoice { get; init; }
-
-        [JsonPropertyName("response_format")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public ResponseFormat? ResponseFormat { get; init; }
-
-        [JsonPropertyName("seed")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? Seed { get; init; }
-
-        [JsonPropertyName("top_p")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public float? TopP { get; init; } // Nucleus sampling, between 0 and 1
-
-        [JsonPropertyName("n")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? N { get; init; } // Number of completions to generate
-
-        [JsonPropertyName("stop")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public object? Stop { get; init; } // Can be string or array of strings
-
-        [JsonPropertyName("presence_penalty")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public float? PresencePenalty { get; init; } // Between -2.0 and 2.0
-
-        [JsonPropertyName("frequency_penalty")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public float? FrequencyPenalty { get; init; } // Between -2.0 and 2.0
-
-        [JsonPropertyName("logit_bias")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public Dictionary<string, float>? LogitBias { get; init; } // Map of token IDs to bias values
-
-        [JsonPropertyName("user")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? User { get; init; } // Unique identifier for the end-user
-    }
 
     internal record OpenAIMessage
     {
@@ -94,6 +26,29 @@ namespace ConduitLLM.Providers.OpenAI
         [JsonPropertyName("tool_call_id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ToolCallId { get; init; }
+
+        [JsonPropertyName("annotations")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? Annotations { get; init; }
+
+        [JsonPropertyName("audio")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? Audio { get; init; }
+
+        [JsonPropertyName("images")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? Images { get; init; }
+
+        [JsonPropertyName("reasoning_details")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? ReasoningDetails { get; init; }
+
+        [JsonPropertyName("reasoning")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? Reasoning { get; init; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? ExtensionData { get; init; }
     }
 
     internal record OpenAIChatCompletionResponse
@@ -120,8 +75,20 @@ namespace ConduitLLM.Providers.OpenAI
         [JsonPropertyName("system_fingerprint")]
         public string? SystemFingerprint { get; init; }
 
+        [JsonPropertyName("service_tier")]
+        public string? ServiceTier { get; init; }
+
+        [JsonPropertyName("moderation")]
+        public System.Text.Json.JsonElement? Moderation { get; init; }
+
         [JsonPropertyName("seed")]
         public int? Seed { get; init; }
+
+        [JsonPropertyName("x_groq")]
+        public System.Text.Json.JsonElement? GroqExtension { get; init; }
+
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement>? ExtensionData { get; init; }
     }
 
     internal record OpenAIChoice
@@ -152,140 +119,19 @@ namespace ConduitLLM.Providers.OpenAI
         [JsonPropertyName("reasoning_tokens")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public int? ReasoningTokens { get; init; }
-    }
 
-    // --- Internal Models for Streaming Chunks ---
-    // See: https://platform.openai.com/docs/api-reference/chat/streaming
-
-    internal record OpenAIChatCompletionChunk
-    {
-        [JsonPropertyName("id")]
-        public string? Id { get; init; }
-
-        [JsonPropertyName("object")]
-        public string? Object { get; init; } // e.g., "chat.completion.chunk"
-
-        [JsonPropertyName("created")]
-        public long? Created { get; init; } // Unix timestamp
-
-        [JsonPropertyName("model")]
-        public string? Model { get; init; } // Model used
-
-        [JsonPropertyName("choices")]
-        public List<OpenAIStreamingChoice>? Choices { get; init; }
-
-        [JsonPropertyName("system_fingerprint")]
-        public string? SystemFingerprint { get; init; }
-
-        // Usage is typically not included in chunks
-    }
-
-    internal record OpenAIStreamingChoice
-    {
-        [JsonPropertyName("index")]
-        public int Index { get; init; }
-
-        [JsonPropertyName("delta")]
-        public OpenAIDeltaContent? Delta { get; init; }
-
-        [JsonPropertyName("finish_reason")]
-        public string? FinishReason { get; init; } // e.g., "stop", "length", "tool_calls"
-
-        // Optional logprobs field
-    }
-
-    internal record OpenAIDeltaContent
-    {
-        [JsonPropertyName("role")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Role { get; init; } // Usually only present in the first chunk for a choice
-
-        [JsonPropertyName("content")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Content { get; init; } // The actual token(s)
-
-        [JsonPropertyName("tool_calls")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public List<ToolCallChunk>? ToolCalls { get; init; }
-    }
-
-    // --- Internal Models for Tool Calling ---
-    internal record Tool
-    {
-        [JsonPropertyName("name")]
-        public required string Name { get; init; }
-
-        [JsonPropertyName("description")]
-        public string? Description { get; init; }
-
-        [JsonPropertyName("metadata")]
-        public JsonNode? Metadata { get; init; }
-
-        [JsonPropertyName("availability")]
-        public ToolAvailability? Availability { get; init; }
-    }
-
-    internal record ToolCall
-    {
-        [JsonPropertyName("tool")]
-        public required string Tool { get; init; }
-
-        [JsonPropertyName("name")]
-        public string? Name { get; init; }
-
-        [JsonPropertyName("user_message")]
-        public string? UserMessage { get; init; }
-
-        [JsonPropertyName("metadata")]
-        public JsonNode? Metadata { get; init; }
-
-        [JsonPropertyName("user_id")]
-        public string? UserId { get; init; }
-    }
-
-    internal record ToolCallChunk
-    {
-        [JsonPropertyName("index")]
-        public int Index { get; init; }
-
-        [JsonPropertyName("id")]
-        public string? Id { get; init; }
-
-        [JsonPropertyName("type")]
-        public string? Type { get; init; }
-
-        [JsonPropertyName("function")]
-        public ToolCallFunction? Function { get; init; }
-    }
-
-    internal record ToolCallFunction
-    {
-        [JsonPropertyName("name")]
-        public string? Name { get; init; }
-
-        [JsonPropertyName("arguments")]
-        public string? Arguments { get; init; }
-    }
-
-    internal record ToolAvailability
-    {
-        [JsonPropertyName("availability")]
-        public required string Availability { get; init; }
+        /// <summary>
+        /// Captures provider-specific usage fields not explicitly modeled
+        /// (e.g., prompt_tokens_details, cache_creation_input_tokens, prompt_cache_hit_tokens).
+        /// </summary>
+        [JsonExtensionData]
+        public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; init; }
     }
 
     // --- Internal Models for Model Listing ---
     // See: https://platform.openai.com/docs/api-reference/models/list
 
     internal record ListModelsResponse
-    {
-        [JsonPropertyName("object")]
-        public string Object { get; init; } = "list"; // Expected value
-
-        [JsonPropertyName("data")]
-        public required List<OpenAIModelData> Data { get; init; }
-    }
-
-    internal record OpenAIModelListResponse
     {
         [JsonPropertyName("object")]
         public string Object { get; init; } = "list"; // Expected value
@@ -362,39 +208,6 @@ namespace ConduitLLM.Providers.OpenAI
 
     // --- Internal Models for Image Generation ---
     // See: https://platform.openai.com/docs/api-reference/images/create
-
-    internal record ImageGenerationRequest
-    {
-        [JsonPropertyName("model")]
-        public string? Model { get; init; }
-
-        [JsonPropertyName("prompt")]
-        public required string Prompt { get; init; }
-
-        [JsonPropertyName("n")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public int? N { get; init; }
-
-        [JsonPropertyName("size")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Size { get; init; }
-
-        [JsonPropertyName("quality")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Quality { get; init; }
-
-        [JsonPropertyName("style")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? Style { get; init; }
-
-        [JsonPropertyName("response_format")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? ResponseFormat { get; init; }
-
-        [JsonPropertyName("user")]
-        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public string? User { get; init; }
-    }
 
     internal record ImageGenerationResponse
     {

@@ -1,7 +1,145 @@
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using ConduitLLM.Admin.Models.ModelSeries;
+using ConduitLLM.Configuration.Models;
+using System.Text.Json;
 
 namespace ConduitLLM.Admin.Models.Models
 {
+    /// <summary>
+    /// Lightweight DTO for a model's provider type association (identifier).
+    /// </summary>
+    public class ModelIdentifierDto
+    {
+        /// <summary>Gets or sets the unique identifier for this model-provider association.</summary>
+        [Required]
+        public int Id { get; set; }
+
+        /// <summary>Gets or sets the provider-specific model identifier string (e.g., "gpt-4-turbo" for OpenAI).</summary>
+        [Required]
+        public string Identifier { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the provider ID that offers this model, or null if unassigned.</summary>
+        [Required]
+        public int? Provider { get; set; }
+
+        /// <summary>Gets or sets whether this is the primary (preferred) provider for the model.</summary>
+        [Required]
+        public bool IsPrimary { get; set; }
+
+        /// <summary>Gets or sets provider-specific metadata.</summary>
+        public Dictionary<string, JsonElement>? Metadata { get; set; }
+
+        /// <summary>Gets or sets the maximum input token limit for this provider's offering, or null if unknown.</summary>
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>Gets or sets the maximum output token limit for this provider's offering, or null if unknown.</summary>
+        public int? MaxOutputTokens { get; set; }
+
+        /// <summary>Gets or sets the relative speed score for this provider's offering, used for routing decisions.</summary>
+        public decimal? SpeedScore { get; set; }
+
+        /// <summary>Gets or sets the relative quality score for this provider's offering, used for routing decisions.</summary>
+        public decimal? QualityScore { get; set; }
+
+        /// <summary>Gets or sets the provider-specific variation label (e.g., "turbo", "mini") if applicable.</summary>
+        public string? ProviderVariation { get; set; }
+
+        /// <summary>Gets or sets the associated model cost configuration ID, or null if no cost tracking is configured.</summary>
+        public int? ModelCostId { get; set; }
+
+        /// <summary>Provider-specific accepted modality override; null inherits the model.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Provider-specific output modality override; null inherits the model.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Provider-specific operation overrides; null members inherit the model.</summary>
+        public ProviderOperationalCapabilities? OperationalCapabilities { get; set; }
+
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
+    }
+
+    /// <summary>
+    /// A configured provider instance that can serve a model identifier.
+    /// </summary>
+    public class AvailableProviderDto
+    {
+        /// <summary>Gets or sets the provider instance ID.</summary>
+        [Required]
+        public int ProviderId { get; set; }
+
+        /// <summary>Gets or sets the provider instance display name.</summary>
+        [Required]
+        public string ProviderName { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the provider type name.</summary>
+        [Required]
+        public string ProviderType { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// A model-provider association together with the configured provider instances that can serve it.
+    /// </summary>
+    public class ModelProviderAvailabilityDto
+    {
+        /// <summary>Gets or sets the model-provider association ID.</summary>
+        [Required]
+        public int AssociationId { get; set; }
+
+        /// <summary>Gets or sets the provider-specific model identifier.</summary>
+        [Required]
+        public string Identifier { get; set; } = string.Empty;
+
+        /// <summary>Gets or sets the numeric provider type, or null when unassigned.</summary>
+        [Required]
+        public int? Provider { get; set; }
+
+        /// <summary>Gets or sets the provider-specific variation label.</summary>
+        [Required]
+        public string? ProviderVariation { get; set; }
+
+        /// <summary>Gets or sets the provider-specific maximum input token count.</summary>
+        [Required]
+        public int? MaxInputTokens { get; set; }
+
+        /// <summary>Gets or sets the provider-specific maximum output token count.</summary>
+        [Required]
+        public int? MaxOutputTokens { get; set; }
+
+        /// <summary>Gets or sets the relative speed score.</summary>
+        [Required]
+        public decimal? SpeedScore { get; set; }
+
+        /// <summary>Gets or sets the relative quality score.</summary>
+        [Required]
+        public decimal? QualityScore { get; set; }
+
+        /// <summary>Gets or sets whether this association is primary.</summary>
+        [Required]
+        public bool IsPrimary { get; set; }
+
+        /// <summary>Provider-specific input modality override; null inherits the canonical model.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Provider-specific output modality override; null inherits the canonical model.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Provider-specific operation overrides.</summary>
+        public ProviderOperationalCapabilities? OperationalCapabilities { get; set; }
+
+        /// <summary>Source of provider-specific capability metadata.</summary>
+        public ModelCapabilitySource? CapabilitySource { get; set; }
+
+        /// <summary>When provider-specific capability metadata was last verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
+
+        /// <summary>Gets or sets configured provider instances matching this association.</summary>
+        [Required]
+        public List<AvailableProviderDto> AvailableProviders { get; set; } = new();
+    }
+
     /// <summary>
     /// Data transfer object representing a canonical AI model in the system.
     /// </summary>
@@ -46,6 +184,33 @@ namespace ConduitLLM.Admin.Models.Models
         public int ModelSeriesId { get; set; }
 
         // Capability fields embedded directly in ModelDto
+
+        /// <summary>Modalities accepted by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? InputModalities { get; set; }
+
+        /// <summary>Modalities produced by the model, or null when unknown.</summary>
+        public IReadOnlyList<string>? OutputModalities { get; set; }
+
+        /// <summary>Where the directional capability metadata originated.</summary>
+        public ModelCapabilitySource CapabilitySource { get; set; }
+
+        /// <summary>When the directional capability metadata was last verified.</summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
+
+        /// <summary>Whether image input is explicitly supported.</summary>
+        public bool SupportsImageInput { get; set; }
+
+        /// <summary>Whether video input is explicitly supported.</summary>
+        public bool SupportsVideoInput { get; set; }
+
+        /// <summary>Whether audio input is explicitly supported.</summary>
+        public bool SupportsAudioInput { get; set; }
+
+        /// <summary>Whether file input is explicitly supported.</summary>
+        public bool SupportsFileInput { get; set; }
+
+        /// <summary>Whether the model can accept video and produce a text response.</summary>
+        public bool SupportsVideoUnderstanding { get; set; }
         
         /// <summary>
         /// Gets or sets whether the model supports chat/conversation interactions.
@@ -76,6 +241,15 @@ namespace ConduitLLM.Admin.Models.Models
         /// Gets or sets whether the model supports video generation.
         /// </summary>
         public bool SupportsVideoGeneration { get; set; }
+
+        /// <summary>Whether the model supports speech-to-text transcription.</summary>
+        public bool SupportsSpeechToText { get; set; }
+
+        /// <summary>Whether the model supports text-to-speech synthesis.</summary>
+        public bool SupportsTextToSpeech { get; set; }
+
+        /// <summary>Whether the model supports document reranking.</summary>
+        public bool SupportsRerank { get; set; }
 
         /// <summary>
         /// Gets or sets whether the model supports text embeddings generation.
@@ -148,6 +322,16 @@ namespace ConduitLLM.Admin.Models.Models
         /// This allows for model-specific customization while maintaining series defaults.
         /// </remarks>
         /// <value>JSON string containing parameter definitions, or null to use series defaults.</value>
-        public string? ModelParameters { get; set; }
+        public Dictionary<string, JsonElement>? ModelParameters { get; set; }
+
+        /// <summary>
+        /// Gets or sets the provider type associations (identifiers) for this model.
+        /// </summary>
+        /// <remarks>
+        /// Included when the model is fetched with details. Each identifier represents
+        /// a provider-specific mapping showing which providers offer this model and under
+        /// what identifier string.
+        /// </remarks>
+        public List<ModelIdentifierDto>? Identifiers { get; set; }
     }
 }

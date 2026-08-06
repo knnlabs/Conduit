@@ -1,22 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { handleSDKError } from '@/lib/errors/sdk-errors';
-
-interface EphemeralMasterKeyRequest {
-  purpose?: string; // Optional purpose for logging/tracking
-}
-
-interface EphemeralMasterKeyResponse {
-  ephemeralMasterKey: string;
-  expiresAt: string;
-  expiresInSeconds: number;
-  adminApiUrl: string; // Include the Admin API URL for direct connection
-}
+import { NextResponse } from 'next/server';
+import createClient from 'openapi-fetch';
+import { toApiErrorResponse } from '@/lib/errors/api-errors';
+import type { paths as AdminPaths } from '@/generated/admin-api';
+import {
+  adminEphemeralKeySchema,
+  parseCriticalResponse,
+} from '@/lib/api-transport/critical-response-validation';
+import type { WebAdminEphemeralMasterKeyResponse } from '@/lib/api-transport/contracts';
+import { ADMIN_CONTRACT_ROUTES } from '@/lib/api-transport/contract-routes';
+import { getRequestConstructor } from '@/lib/api-transport/request-constructor';
 
 // POST /api/auth/ephemeral-master-key - Generate an ephemeral master key for direct API access
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const body = await request.json() as EphemeralMasterKeyRequest;
-    
     // Get master key from environment
     const masterKey = process.env.CONDUIT_API_TO_API_BACKEND_AUTH_KEY;
     if (!masterKey) {
@@ -27,12 +23,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get request metadata for tracking
-    const sourceIP = request.headers.get('x-forwarded-for') ?? 
-                     request.headers.get('x-real-ip') ?? 
-                     'unknown';
-    const userAgent = request.headers.get('user-agent') ?? 'unknown';
-    
     // In development mode with CLERK_AUTH_ENABLED=false,
     // we return the master key directly without calling the Admin API
     // In production, this would call the Admin API to generate a real ephemeral key
@@ -41,52 +31,48 @@ export async function POST(request: NextRequest) {
     
     if (isDevelopment) {
       // Development mode: return the master key directly
-      const result: EphemeralMasterKeyResponse = {
+      const result = {
         ephemeralMasterKey: masterKey,
         expiresAt: new Date(Date.now() + 3600000).toISOString(), // 1 hour from now
         expiresInSeconds: 3600,
         adminApiUrl: process.env.CONDUIT_ADMIN_API_EXTERNAL_URL ?? 'http://localhost:5002',
-      };
+      } satisfies WebAdminEphemeralMasterKeyResponse;
       
       return NextResponse.json(result);
     }
     
     // Production mode: call the Admin API's ephemeral master key endpoint
     const adminApiUrl = process.env.CONDUIT_ADMIN_API_BASE_URL ?? 'http://admin-api:5002';
-    const masterKeyHeader = 'X-Master-Key';
-    const ephemeralKeyResponse = await fetch(`${adminApiUrl}/api/admin/auth/ephemeral-master-key`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        [masterKeyHeader]: masterKey,
-      },
-      body: JSON.stringify({
-        metadata: {
-          sourceIP,
-          userAgent,
-          purpose: body.purpose ?? 'web-ui-request'
-        }
-      }),
+    const adminClient = createClient<AdminPaths>({
+      baseUrl: adminApiUrl,
+      headers: { 'X-Master-Key': masterKey },
+      Request: getRequestConstructor(),
     });
+    const { data, error: apiError, response: apiResponse } = await adminClient.POST(
+      ADMIN_CONTRACT_ROUTES.ephemeralMasterKey,
+    );
 
-    if (!ephemeralKeyResponse.ok) {
-      const errorText = await ephemeralKeyResponse.text();
-      console.error('Failed to generate ephemeral master key:', errorText);
-      throw new Error(`Failed to generate ephemeral master key: ${ephemeralKeyResponse.status}`);
+    if (apiError !== undefined || !apiResponse.ok) {
+      console.error('Failed to generate ephemeral master key:', apiError);
+      throw new Error(`Failed to generate ephemeral master key: ${apiResponse.status}`);
     }
 
-    const response = await ephemeralKeyResponse.json() as EphemeralMasterKeyResponse;
+    const response = parseCriticalResponse(
+      adminEphemeralKeySchema,
+      data,
+      'Admin ephemeral master-key issuance',
+    );
     
     // Return the ephemeral master key with Admin API URL
     // Use the external URL that the browser can access
-    const result: EphemeralMasterKeyResponse = {
+    const result = {
       ...response,
       adminApiUrl: process.env.CONDUIT_ADMIN_API_EXTERNAL_URL ?? 'http://localhost:5002',
-    };
+    } satisfies WebAdminEphemeralMasterKeyResponse;
     
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error generating ephemeral master key:', error);
-    return handleSDKError(error);
+    return toApiErrorResponse(error);
   }
 }

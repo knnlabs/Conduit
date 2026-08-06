@@ -6,6 +6,21 @@ namespace ConduitLLM.Core.Interfaces
     public interface IMediaDeletionBudgetService
     {
         /// <summary>
+        /// Human-readable backend name for operational status.
+        /// </summary>
+        string BackendName { get; }
+
+        /// <summary>
+        /// Whether counters survive restarts and are shared across instances.
+        /// </summary>
+        bool IsPersistent { get; }
+
+        /// <summary>
+        /// Most recent backend failure observed by this process.
+        /// </summary>
+        DateTime? LastFailureAtUtc { get; }
+
+        /// <summary>
         /// Gets the current month's deletion count.
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
@@ -36,5 +51,24 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Number of deletions remaining in budget</returns>
         Task<long> GetRemainingBudgetAsync(int budget, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Atomically reserves up to the requested number of storage delete operations.
+        /// The granted count never exceeds the remaining monthly allowance.
+        /// </summary>
+        Task<MediaDeletionBudgetReservation> ReserveAsync(
+            int requestedDeletions,
+            int budget,
+            CancellationToken cancellationToken = default);
     }
+
+    /// <summary>
+    /// Result of atomically claiming media-delete budget before storage operations.
+    /// </summary>
+    public sealed record MediaDeletionBudgetReservation(
+        int Requested,
+        int Granted,
+        long NewMonthlyTotal,
+        bool StoreFailed = false,
+        string? FailureMode = null);
 }

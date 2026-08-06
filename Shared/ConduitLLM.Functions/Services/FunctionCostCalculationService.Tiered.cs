@@ -72,36 +72,37 @@ public partial class FunctionCostCalculationService
 
         // Calculate cost across tiers
         decimal totalCost = 0m;
-        int remainingUnits = unitCount;
+        // Null minima depend on the preceding tier, so their declaration order
+        // is significant. Fully explicit configurations can still be normalized.
+        var sortedTiers = config.Tiers.Any(t => !t.MinThreshold.HasValue)
+            ? config.Tiers
+            : config.Tiers.OrderBy(t => t.MinThreshold).ToList();
 
-        // Sort tiers by min threshold to ensure proper calculation
-        var sortedTiers = config.Tiers
-            .OrderBy(t => t.MinThreshold ?? 0)
-            .ToList();
+        int nextInferredMin = 1;
 
         foreach (var tier in sortedTiers)
         {
-            if (remainingUnits <= 0)
-            {
-                break;
-            }
-
-            // Determine range for this tier
-            int tierMin = tier.MinThreshold ?? 1;
+            // An omitted minimum continues after the preceding tier. Explicit
+            // minima are preserved so that gaps in a configuration are not
+            // silently charged at the following tier's rate.
+            int tierMin = tier.MinThreshold ?? nextInferredMin;
             int tierMax = tier.MaxThreshold ?? int.MaxValue;
 
-            // Calculate how many units fall into this tier
-            int unitsInTier = 0;
-
-            if (unitCount >= tierMin)
+            if (tier.MaxThreshold.HasValue)
             {
-                // How many units from remainingUnits fit in this tier?
-                int tierCapacity = tierMax - tierMin + 1;
-                unitsInTier = Math.Min(remainingUnits, tierCapacity);
+                nextInferredMin = tierMax == int.MaxValue ? int.MaxValue : tierMax + 1;
+            }
+
+            // Usage is a count, so its first billable unit is 1 even when a
+            // configuration explicitly uses a zero-based lower threshold.
+            int firstBillableUnit = Math.Max(1, tierMin);
+            int lastBillableUnit = Math.Min(unitCount, tierMax);
+            if (lastBillableUnit >= firstBillableUnit)
+            {
+                int unitsInTier = lastBillableUnit - firstBillableUnit + 1;
 
                 decimal tierCost = unitsInTier * tier.CostPerUnit;
                 totalCost += tierCost;
-                remainingUnits -= unitsInTier;
 
                 _logger.LogDebug("Tier [{Min}-{Max}]: {UnitsInTier} units × ${CostPerUnit} = ${TierCost}",
                     tierMin, tierMax == int.MaxValue ? "∞" : tierMax.ToString(),

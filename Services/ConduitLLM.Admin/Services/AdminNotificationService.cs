@@ -1,7 +1,8 @@
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
-
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Admin.Services
 {
@@ -33,273 +34,232 @@ namespace ConduitLLM.Admin.Services
         /// <inheritdoc />
         public async Task<IEnumerable<NotificationDto>> GetAllNotificationsAsync()
         {
-            try
-            {
-                _logger.LogInformation("Getting all notifications");
+            _logger.LogDebug("Getting all notifications");
 
-                var notifications = await _notificationRepository.GetAllAsync();
-                var virtualKeyIds = notifications
-                    .Where(n => n.VirtualKeyId.HasValue)
-                    .Select(n => n.VirtualKeyId!.Value)
-                    .Distinct()
-                    .ToList();
+            var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _notificationRepository.GetPaginatedAsync);
+            var virtualKeyIds = notifications
+                .Where(n => n.VirtualKeyId.HasValue)
+                .Select(n => n.VirtualKeyId!.Value)
+                .Distinct()
+                .ToList();
 
-                // Get virtual key names for the notifications
-                var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Count() > 0)
+            // Get virtual key names for the notifications using efficient lookup
+            var virtualKeys = virtualKeyIds.Count != 0
+                ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                : new Dictionary<int, string>();
+
+            // Map to DTOs with virtual key names
+            var result = notifications
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n =>
                 {
-                    var keys = await _virtualKeyRepository.GetAllAsync();
-                    virtualKeys = keys
-                        .Where(k => virtualKeyIds.Contains(k.Id))
-                        .ToDictionary(k => k.Id, k => k.KeyName);
-                }
-
-                // Map to DTOs with virtual key names
-                var result = notifications
-                    .OrderByDescending(n => n.CreatedAt)
-                    .Select(n =>
+                    string? keyName = null;
+                    if (n.VirtualKeyId.HasValue && virtualKeys.TryGetValue(n.VirtualKeyId.Value, out var name))
                     {
-                        string? keyName = null;
-                        if (n.VirtualKeyId.HasValue && virtualKeys.TryGetValue(n.VirtualKeyId.Value, out var name))
-                        {
-                            keyName = name;
-                        }
+                        keyName = name;
+                    }
 
-                        return n.ToDto(keyName);
-                    })
-                    .ToList();
+                    return n.ToDto(keyName);
+                })
+                .ToList();
 
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all notifications");
-                throw;
-            }
+            return result;
         }
 
         /// <inheritdoc />
         public async Task<IEnumerable<NotificationDto>> GetUnreadNotificationsAsync()
         {
-            try
-            {
-                _logger.LogInformation("Getting unread notifications");
+            _logger.LogDebug("Getting unread notifications");
 
-                var notifications = await _notificationRepository.GetUnreadAsync();
-                var virtualKeyIds = notifications
-                    .Where(n => n.VirtualKeyId.HasValue)
-                    .Select(n => n.VirtualKeyId!.Value)
-                    .Distinct()
-                    .ToList();
+            var notifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _notificationRepository.GetUnreadPaginatedAsync);
+            var virtualKeyIds = notifications
+                .Where(n => n.VirtualKeyId.HasValue)
+                .Select(n => n.VirtualKeyId!.Value)
+                .Distinct()
+                .ToList();
 
-                // Get virtual key names for the notifications
-                var virtualKeys = new Dictionary<int, string>();
-                if (virtualKeyIds.Count() > 0)
+            // Get virtual key names for the notifications using efficient lookup
+            var virtualKeys = virtualKeyIds.Count != 0
+                ? await _virtualKeyRepository.GetKeyNamesByIdsAsync(virtualKeyIds)
+                : new Dictionary<int, string>();
+
+            // Map to DTOs with virtual key names
+            var result = notifications
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n =>
                 {
-                    var keys = await _virtualKeyRepository.GetAllAsync();
-                    virtualKeys = keys
-                        .Where(k => virtualKeyIds.Contains(k.Id))
-                        .ToDictionary(k => k.Id, k => k.KeyName);
-                }
-
-                // Map to DTOs with virtual key names
-                var result = notifications
-                    .OrderByDescending(n => n.CreatedAt)
-                    .Select(n =>
+                    string? keyName = null;
+                    if (n.VirtualKeyId.HasValue && virtualKeys.TryGetValue(n.VirtualKeyId.Value, out var name))
                     {
-                        string? keyName = null;
-                        if (n.VirtualKeyId.HasValue && virtualKeys.TryGetValue(n.VirtualKeyId.Value, out var name))
-                        {
-                            keyName = name;
-                        }
+                        keyName = name;
+                    }
 
-                        return n.ToDto(keyName);
-                    })
-                    .ToList();
+                    return n.ToDto(keyName);
+                })
+                .ToList();
 
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting unread notifications");
-                throw;
-            }
+            return result;
         }
 
         /// <inheritdoc />
         public async Task<NotificationDto?> GetNotificationByIdAsync(int id)
         {
-            try
+            _logger.LogDebug("Getting notification with ID: {Id}", id);
+
+            var notification = await _notificationRepository.GetByIdAsync(id);
+            if (notification == null)
             {
-                _logger.LogInformation("Getting notification with ID: {Id}", id);
-
-                var notification = await _notificationRepository.GetByIdAsync(id);
-                if (notification == null)
-                {
-                    _logger.LogWarning("Notification with ID {Id} not found", id);
-                    return null;
-                }
-
-                // Get virtual key name if applicable
-                string? keyName = null;
-                if (notification.VirtualKeyId.HasValue)
-                {
-                    var key = await _virtualKeyRepository.GetByIdAsync(notification.VirtualKeyId.Value);
-                    keyName = key?.KeyName;
-                }
-
-                return notification.ToDto(keyName);
+                _logger.LogWarning("Notification with ID {Id} not found", id);
+                return null;
             }
-            catch (Exception ex)
+
+            // Get virtual key name if applicable
+            string? keyName = null;
+            if (notification.VirtualKeyId.HasValue)
             {
-                _logger.LogError(ex, "Error getting notification with ID {Id}", id);
-                throw;
+                var key = await _virtualKeyRepository.GetByIdAsync(notification.VirtualKeyId.Value);
+                keyName = key?.KeyName;
             }
+
+            return notification.ToDto(keyName);
         }
 
         /// <inheritdoc />
         public async Task<NotificationDto> CreateNotificationAsync(CreateNotificationDto notification)
         {
-            try
+            _logger.LogDebug("Creating new notification");
+
+            // Validate virtual key ID if provided
+            if (notification.VirtualKeyId.HasValue)
             {
-                _logger.LogInformation("Creating new notification");
-
-                // Validate virtual key ID if provided
-                if (notification.VirtualKeyId.HasValue)
+                var key = await _virtualKeyRepository.GetByIdAsync(notification.VirtualKeyId.Value);
+                if (key == null)
                 {
-                    var key = await _virtualKeyRepository.GetByIdAsync(notification.VirtualKeyId.Value);
-                    if (key == null)
-                    {
-                        throw new ArgumentException($"Virtual key with ID {notification.VirtualKeyId.Value} not found");
-                    }
+                    throw new ArgumentException($"Virtual key with ID {notification.VirtualKeyId.Value} not found");
                 }
-
-                // Convert to entity
-                var entity = notification.ToEntity();
-
-                // Save to database
-                var id = await _notificationRepository.CreateAsync(entity);
-
-                // Get the created notification
-                var createdNotification = await _notificationRepository.GetByIdAsync(id);
-                if (createdNotification == null)
-                {
-                    throw new InvalidOperationException($"Failed to retrieve newly created notification with ID {id}");
-                }
-
-                // Get virtual key name if applicable
-                string? keyName = null;
-                if (createdNotification.VirtualKeyId.HasValue)
-                {
-                    var key = await _virtualKeyRepository.GetByIdAsync(createdNotification.VirtualKeyId.Value);
-                    keyName = key?.KeyName;
-                }
-
-                return createdNotification.ToDto(keyName);
             }
-            catch (Exception ex)
+
+            // Convert to entity
+            var entity = notification.ToEntity();
+
+            // Save to database
+            var id = await _notificationRepository.CreateAsync(entity);
+
+            // Get the created notification
+            var createdNotification = ConduitLLM.Core.Utilities.ReadBackGuard.RequireCreated(
+                await _notificationRepository.GetByIdAsync(id),
+                "notification",
+                id);
+
+            // Get virtual key name if applicable
+            string? keyName = null;
+            if (createdNotification.VirtualKeyId.HasValue)
             {
-                _logger.LogError(ex, "Error creating notification");
-                throw;
+                var key = await _virtualKeyRepository.GetByIdAsync(createdNotification.VirtualKeyId.Value);
+                keyName = key?.KeyName;
             }
+
+            _logger.LogInformation("Created notification {NotificationId} of type {Type}",
+                createdNotification.Id, createdNotification.Type);
+
+            return createdNotification.ToDto(keyName);
         }
 
         /// <inheritdoc />
-        public async Task<bool> UpdateNotificationAsync(UpdateNotificationDto notification)
+        public async Task<bool> UpdateNotificationAsync(int id, UpdateNotificationDto notification)
         {
-            try
+            _logger.LogDebug("Updating notification with ID: {Id}", id);
+
+            // Get the existing notification
+            var existingNotification = await _notificationRepository.GetByIdAsync(id);
+            if (existingNotification == null)
             {
-                _logger.LogInformation("Updating notification with ID: {Id}", notification.Id);
-
-                // Get the existing notification
-                var existingNotification = await _notificationRepository.GetByIdAsync(notification.Id);
-                if (existingNotification == null)
-                {
-                    _logger.LogWarning("Notification with ID {Id} not found", notification.Id);
-                    return false;
-                }
-
-                // Update properties
-                existingNotification.IsRead = notification.IsRead;
-                if (!string.IsNullOrEmpty(notification.Message))
-                {
-                    existingNotification.Message = notification.Message;
-                }
-
-                // Save changes
-                return await _notificationRepository.UpdateAsync(existingNotification);
+                _logger.LogWarning("Notification with ID {Id} not found", id);
+                return false;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating notification with ID {Id}", notification.Id);
-                throw;
-            }
+
+            if (notification.TryGetPatchedProperty(
+                    nameof(notification.IsRead),
+                    existingNotification.IsRead,
+                    out bool isRead))
+                existingNotification.IsRead = isRead;
+            if (notification.TryGetPatchedProperty(
+                    nameof(notification.Message),
+                    existingNotification.Message,
+                    out string? message))
+                existingNotification.Message = message
+                    ?? throw new InvalidOperationException("message cannot be null.");
+
+            // Save changes
+            return await _notificationRepository.UpdateAsync(existingNotification);
         }
+
+        public Task<bool> UpdateNotificationAsync(UpdateNotificationDto notification) =>
+            UpdateNotificationAsync(notification.Id, notification);
 
         /// <inheritdoc />
         public async Task<bool> MarkNotificationAsReadAsync(int id)
         {
-            try
-            {
-                _logger.LogInformation("Marking notification with ID {Id} as read", id);
+            _logger.LogDebug("Marking notification with ID {Id} as read", id);
 
-                return await _notificationRepository.MarkAsReadAsync(id);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error marking notification with ID {Id} as read", id);
-                throw;
-            }
+            return await _notificationRepository.MarkAsReadAsync(id);
         }
 
         /// <inheritdoc />
         public async Task<int> MarkAllNotificationsAsReadAsync()
         {
-            try
+            _logger.LogDebug("Marking all notifications as read");
+
+            // Get all unread notifications
+            var unreadNotifications = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                _notificationRepository.GetUnreadPaginatedAsync);
+            if (!unreadNotifications.Any())
             {
-                _logger.LogInformation("Marking all notifications as read");
-
-                // Get all unread notifications
-                var unreadNotifications = await _notificationRepository.GetUnreadAsync();
-                if (unreadNotifications.Count() == 0)
-                {
-                    return 0;
-                }
-
-                // Mark each as read
-                int count = 0;
-                foreach (var notification in unreadNotifications)
-                {
-                    var success = await _notificationRepository.MarkAsReadAsync(notification.Id);
-                    if (success)
-                    {
-                        count++;
-                    }
-                }
-
-                return count;
+                return 0;
             }
-            catch (Exception ex)
+
+            // Mark each as read
+            int count = 0;
+            int failed = 0;
+            foreach (var notification in unreadNotifications)
             {
-                _logger.LogError(ex, "Error marking all notifications as read");
-                throw;
+                var success = await _notificationRepository.MarkAsReadAsync(notification.Id);
+                if (success)
+                {
+                    count++;
+                }
+                else
+                {
+                    failed++;
+                }
             }
+
+            if (failed > 0)
+            {
+                _logger.LogWarning("MarkAllNotificationsAsRead: {Marked} marked, {Failed} failed out of {Total}",
+                    count, failed, unreadNotifications.Count);
+            }
+            else if (count > 0)
+            {
+                _logger.LogInformation("Marked {Count} notifications as read", count);
+            }
+
+            return count;
         }
 
         /// <inheritdoc />
         public async Task<bool> DeleteNotificationAsync(int id)
         {
-            try
-            {
-                _logger.LogInformation("Deleting notification with ID: {Id}", id);
+            _logger.LogDebug("Deleting notification with ID: {Id}", id);
 
-                return await _notificationRepository.DeleteAsync(id);
-            }
-            catch (Exception ex)
+            var result = await _notificationRepository.DeleteAsync(id);
+            if (result)
             {
-                _logger.LogError(ex, "Error deleting notification with ID {Id}", id);
-                throw;
+                _logger.LogInformation("Deleted notification {NotificationId}", id);
             }
+            return result;
         }
     }
 }

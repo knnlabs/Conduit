@@ -15,6 +15,10 @@ public interface IFunctionExecutionService
     /// <param name="parameters">Function-specific parameters.</param>
     /// <param name="idempotencyKey">Optional idempotency key to prevent duplicate executions.</param>
     /// <param name="metadata">Optional metadata for tracking.</param>
+    /// <param name="providerToolName">
+    /// For dynamic multi-tool providers (MCP), the provider-native tool name to invoke. Null for
+    /// fixed-schema providers (Exa, Tavily), which map to a single implicit tool.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The function execution result with billing details.</returns>
     /// <exception cref="InvalidOperationException">Thrown when configuration is invalid or balance is insufficient.</exception>
@@ -25,6 +29,7 @@ public interface IFunctionExecutionService
         Dictionary<string, object> parameters,
         string? idempotencyKey = null,
         Dictionary<string, object>? metadata = null,
+        string? providerToolName = null,
         CancellationToken cancellationToken = default);
 
     /// <summary>

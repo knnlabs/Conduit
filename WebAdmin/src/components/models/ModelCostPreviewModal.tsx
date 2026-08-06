@@ -28,7 +28,12 @@ import {
   IconInfoCircle,
   IconShieldCheck,
 } from '@tabler/icons-react';
-import { PricingModel, type ModelDto, type ModelCostDto } from '@knn_labs/conduit-admin-client';
+import {
+  PricingModel,
+  type ModelDto,
+  type ModelCostDto,
+  type PricingRulesConfig,
+} from '@/lib/admin-api';
 import { formatters } from '@/lib/utils/formatters';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { extractCapabilities } from '@/utils/typeGuards';
@@ -125,29 +130,7 @@ function TokenPricingSection({ modelCost }: { modelCost: ModelCostDto }) {
 // Image and video pricing sections removed - now handled via RulesBased pricing configuration
 // Use PricingModel.PerImage, PricingModel.PerVideo, or PricingModel.PerSecondVideo instead
 
-interface PricingRuleConfig {
-  conditions: Record<string, unknown>;
-  rate: number;
-  priority?: number;
-  description?: string;
-}
-
-interface PricingConstraints {
-  minDuration?: number;
-  maxDuration?: number;
-  minSteps?: number;
-  maxSteps?: number;
-  allowedResolutions?: string[];
-}
-
-interface PricingConfiguration {
-  version?: string;
-  pricingType?: string;
-  unitField?: string;
-  defaultRate?: number;
-  rules?: PricingRuleConfig[];
-  constraints?: PricingConstraints;
-}
+type PricingConfiguration = Partial<PricingRulesConfig>;
 
 function RulesBasedPricingSection({ modelCost }: { modelCost: ModelCostDto }) {
   if (!modelCost.pricingConfiguration) {
@@ -200,7 +183,7 @@ function RulesBasedPricingSection({ modelCost }: { modelCost: ModelCostDto }) {
         <Card withBorder>
           <Text size="sm" fw={600} mb="sm">Pricing Rules ({config.rules.length})</Text>
           <Stack gap="xs">
-            {config.rules.map((rule: PricingRuleConfig, index: number) => (
+            {config.rules.map((rule, index) => (
               <Card key={index} withBorder p="sm" bg="var(--mantine-color-default-hover)">
                 <Group justify="space-between" mb="xs">
                   <Text size="sm" fw={500}>

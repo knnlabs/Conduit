@@ -62,7 +62,8 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.Null(metrics.TokensPerSecond);
-            Assert.NotNull(metrics.PromptTokensPerSecond);
+            // Prompt processing speed is not measurable without a streaming tracker
+            Assert.Null(metrics.PromptTokensPerSecond);
         }
     }
 }

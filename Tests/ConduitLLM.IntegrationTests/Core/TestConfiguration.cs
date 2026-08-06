@@ -100,10 +100,17 @@ public class ValidationConfig
 // Test context for sharing state between test steps
 public class TestContext
 {
-    public string TestRunId { get; set; } = $"TEST_{DateTime.UtcNow:yyyyMMdd_HHmmss}";
+    // Second resolution alone is not unique: xUnit constructs a TestContext per test, and two tests
+    // starting within the same second produced the *same* model alias. Because an alias may legitimately
+    // carry several mappings (multi-provider routing), one test's disabled mapping and another's enabled
+    // mapping then collided under one alias and the tests interfered. Milliseconds plus a random suffix
+    // keep every test's provider/key/alias/group names distinct.
+    public string TestRunId { get; set; } =
+        $"TEST_{DateTime.UtcNow:yyyyMMdd_HHmmssfff}_{Guid.NewGuid():N}"[..34];
     public int? ProviderId { get; set; }
     public string? ProviderKeyId { get; set; }
     public int? ModelMappingId { get; set; }
+    public int? ModelProviderTypeAssociationId { get; set; }
     public string? ModelAlias { get; set; }  // Store the unique model alias
     public int? ModelCostId { get; set; }
     public int? VirtualKeyGroupId { get; set; }

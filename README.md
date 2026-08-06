@@ -1,372 +1,207 @@
-![ConduitLLM Logo](docs/assets/conduit.png)
-[![CodeQL](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/codeql-analysis.yml)
-[![Build & Test](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/knnlabs/Conduit/actions/workflows/ci.yml)
+# ConduitLLM
+
+[![CodeQL](https://github.com/nickna/Conduit/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/nickna/Conduit/actions/workflows/codeql-analysis.yml)
+[![Build & Test](https://github.com/nickna/Conduit/actions/workflows/ci.yml/badge.svg)](https://github.com/nickna/Conduit/actions/workflows/ci.yml)
 [![OpenAI Compatible](https://img.shields.io/badge/OpenAI-Compatible-brightgreen.svg)](https://platform.openai.com/docs/api-reference)
 [![Built with .NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker Ready](https://img.shields.io/badge/Docker-Ready-2496ED)](https://www.docker.com/)
 
-> A unified API gateway for multiple LLM providers with OpenAI-compatible endpoints
+> An LLM gateway: one OpenAI-compatible API in front of many upstream providers, with central
+> access control, prepaid billing, and routing and failover.
 
 ## Why ConduitLLM?
 
-Are you juggling multiple LLM provider APIs in your applications? ConduitLLM solves this problem by providing:
+Are you juggling multiple LLM provider APIs in your applications? ConduitLLM gives you:
 
-- **Single Integration Point**: Write your code once, switch LLM providers anytime
-- **Vendor Independence**: Avoid lock-in to any single LLM provider
-- **Simplified API Management**: Centralized key management and usage tracking
-- **Cost Optimization**: Route requests to the most cost-effective or performant models
-- **🚀 Enterprise Scale**: Built to handle **10,000+ concurrent sessions** with a lean, efficient tech stack ([see scaling architecture](docs/Scaling-Architecture.md))
+- **Single integration point**: Write your code once against an OpenAI-compatible API, switch
+  providers anytime
+- **Vendor independence**: Avoid lock-in to any single LLM provider
+- **Central access control**: Virtual API keys (`condt_...`) with spending limits and prepaid
+  balances
+- **Routing and failover**: Map one model alias to many providers, spread load across keys, and
+  fail over automatically
+- **Cost tracking**: Per-request billing against configured model costs, with continuous billing
+  reconciliation and a synthetic cost canary
 
-## Overview
-
-ConduitLLM is a unified, modular, and extensible platform designed to simplify interaction with multiple Large Language Models (LLMs). It provides a single, consistent OpenAI-compatible REST API endpoint, acting as a gateway or "conduit" to various LLM backends such as OpenAI, Anthropic, Azure OpenAI, Google Gemini, Cohere, and others.
-
-Built with .NET and designed for containerization (Docker), ConduitLLM streamlines the development, deployment, and management of LLM-powered applications by abstracting provider-specific complexities.
-
-## 🚧 Project Status
-
-> **Note**: ConduitLLM is actively under development. We recommend using the provided SDKs for the most stable integration experience.
-
-### ✅ **Production Ready Features**
-- **Text Generation**: Fully tested with OpenAI, Anthropic, and MiniMax providers
-- **Image Generation**: Complete implementation with manual testing across multiple providers  
-- **Video Generation**: Feature complete with provider integration
-- **SDKs**: Stable APIs for Node.js and other platforms
-
-### ⚠️ **In Development**
-- **Core & Admin APIs**: May evolve without backward compatibility - use SDKs instead
-
-### 💡 **Recommended Integration**
-```bash
-# Use SDKs for stable integration
-npm install @knn_labs/conduit-gateway-client
-npm install @knn_labs/conduit-admin-client
-```
+A client authenticates with a **virtual key**, sends a request naming a **model alias**, and
+Conduit decides which provider and account actually serves it, calls upstream, streams the result
+back, and bills the request. Start with **[Core concepts](docs/concepts.md)** for the full mental
+model.
 
 ## Key Features
 
-- **OpenAI-Compatible REST API**:
-  - ✅ **100% OpenAI compatible** - drop-in replacement for OpenAI API clients
-  - ✅ **Extended with Conduit features** - optional enhanced events for reasoning, tool execution, and metrics
-  - ✅ **Works with standard clients** - OpenAI SDKs and tools work without any modifications
-  - 📚 For enhanced features, use Conduit SDKs to access real-time tool execution, reasoning events, and performance metrics
-- **Multi-Provider Support**: Interact with various LLM providers through a single interface
-- **Model Routing & Mapping**: Define custom model aliases (e.g., `my-gpt4`) and map them to specific provider models (e.g., `openai/gpt-4`)
-- **Virtual API Key Management**: Create and manage Conduit-specific API keys (`condt_...`) with built-in spend tracking
-- **Streaming Support**: Real-time token streaming with optional enhanced events (reasoning, tool execution progress, metrics)
-- **Web-Based User Interface**: Administrative dashboard for configuration and monitoring
-- **Enterprise Security Features**: IP filtering, rate limiting, failed login protection, and security headers
-- **Security Dashboard**: Real-time monitoring of security events and access attempts
-- **Centralized Configuration**: Flexible configuration via database, environment variables, or JSON files
-- **Extensible Architecture**: Easily add support for new LLM providers
-
-![ConduitLLM Dashboard](docs/assets/dashboard-home.png)
-
-## 📦 Versioning
-
-Conduit uses Semantic Versioning (MAJOR.MINOR.PATCH):
-
-- **Docker Tags**: Images are tagged with semantic versions (e.g., `v1.0.0`), branch names, and the `latest` tag.
-- **Version Checking**: The WebAdmin displays the current version and can check for updates automatically.
-- **Configuration**: Version checking can be controlled via environment variables:
-  ```
-  CONDUIT_VERSION_CHECK_ENABLED=true
-  CONDUIT_VERSION_CHECK_INTERVAL_HOURS=24
-  ```
-
-For detailed information on Conduit's versioning approach, see [Versioning Guide](docs/Versioning.md).
+- **OpenAI-compatible REST API** — a drop-in replacement for the OpenAI API; standard OpenAI SDKs
+  and tools work without modification
+- **Multi-provider, multi-account** — run several providers of the same type side by side
+  (e.g. "Production OpenAI" and "Dev Azure"), each with multiple API keys for load spreading and
+  failover
+- **Model routing** — client-facing model aliases map to concrete provider models; one alias can
+  fan out to many providers with session affinity and a kill switch
+- **Virtual key management** — Conduit-specific API keys with built-in spend tracking, budgets,
+  and prepaid group balances
+- **Multi-modal** — chat, embeddings, image generation, video generation, and audio
+  (speech-to-text and text-to-speech)
+- **Streaming** — real-time SSE token streaming, with optional Conduit-specific events for
+  reasoning, tool execution progress, and performance metrics
+- **Function calling & tool execution** — server-side function execution with configuration
+  management, cost tracking, and agentic mode support
+- **Media generation webhooks** — per-request callbacks with retry logic, circuit breakers, and
+  delivery tracking for async image/video generation
+- **Web-based admin UI** — Next.js dashboard for configuration and monitoring, with real-time
+  updates over SignalR
+- **Observability built in** — Prometheus metrics, bundled Grafana dashboards and alert rules,
+  and multi-layered health checks (see [Monitoring](docs/monitoring.md))
+- **Billing correctness** — reserve-then-settle spend admission, continuous reconciliation, and
+  alerting (see [Billing correctness alerting](docs/billing-alerting.md))
+- **Security features** — IP filtering, rate limiting, failed-auth banning, and security headers
 
 ## 🏗️ Architecture
 
-ConduitLLM follows a modular architecture with distinct components handling specific responsibilities:
+Conduit is two deployable APIs plus an admin UI, backed by a set of shared libraries:
+
+| | Gateway API | Admin API |
+|---|---|---|
+| Purpose | Serving inference (chat, embeddings, images, audio, …) | Configuring the system (providers, keys, mappings, costs, limits) |
+| Who calls it | Your applications and end users | Operators, and the WebAdmin UI |
+| Key | A **virtual key** | The **master key** |
+| Default port | 5000 | 5002 |
 
 ```mermaid
 flowchart LR
-    WebAdmin["WebAdmin(Admin Dashboard)"]
-    AdminAPI["ConduitLLM.Admin(Admin API)"]
-    Http["ConduitLLM.Gateway(API Gateway)"]
-    Core["ConduitLLM.Core(Orchestration)"]
-    Providers["ConduitLLM.Providers(Provider Logic)"]
-    Config["ConduitLLM.Configuration(Entities & DTOs)"]
-    LLM["LLM Backends(OpenAI, Anthropic, etc.)"]
-    
-    WebAdmin -->|Admin API Client| AdminAPI
+    Client["Client App"] -->|virtual key| Gateway["ConduitLLM.Gateway(OpenAI-compatible API)"]
+    WebAdmin["WebAdmin(Next.js admin UI)"] -->|ephemeral keys| AdminAPI["ConduitLLM.Admin(Admin API)"]
+    WebAdmin -->|ephemeral keys| Gateway
+    Gateway --> Core["ConduitLLM.Core(Orchestration & routing)"]
+    Core --> Providers["ConduitLLM.Providers(Provider adapters)"]
+    Providers --> LLM["LLM Backends(OpenAI, Anthropic, etc.)"]
+    Gateway --> Config["ConduitLLM.Configuration(Entities, DTOs, messaging)"]
     AdminAPI --> Config
-    
-    Client["Client App"] --> Http
-    Http --> Core
-    Core --> Providers
-    Providers --> LLM
-    
-    Http --> Config
     Core --> Config
-    Providers --> Config
 ```
 
-### Components
+### Repository layout
 
-- **ConduitLLM.Gateway**: OpenAI-compatible REST API gateway handling authentication and request forwarding
-- **WebAdmin**: Next.js-based admin interface for configuration and monitoring
-- **ConduitLLM.Core**: Central orchestration logic, interfaces, and routing strategies
-- **ConduitLLM.Providers**: Provider-specific implementations for different LLM services
-- **ConduitLLM.Configuration**: Configuration management across various sources
-- **ConduitLLM.Admin**: Administrative API for configuration management
+- **`Services/ConduitLLM.Gateway`** — the OpenAI-compatible REST API gateway (authentication,
+  routing, billing, streaming)
+- **`Services/ConduitLLM.Admin`** — the administrative API (providers, keys, mappings, costs,
+  media lifecycle)
+- **`WebAdmin/`** — the Next.js admin dashboard. Administrators sign in via Clerk; the browser
+  then talks to the Gateway and Admin APIs directly using short-lived ephemeral keys, so nothing
+  else holds the master key
+- **`Shared/ConduitLLM.Core`** — orchestration logic, interfaces, and routing strategies
+- **`Shared/ConduitLLM.Providers`** — provider-specific adapters for the upstream LLM services
+- **`Shared/ConduitLLM.Configuration`** — entities, DTOs, and the messaging abstraction
+- **`Shared/ConduitLLM.Functions`** — server-side function calling and tool execution
+- **`Shared/ConduitLLM.Security`** — IP filtering, rate limiting, and related middleware
+- **`Tests/`**, **`docs/`**, **`grafana/`**, **`nginx/`**, **`scripts/`** — tests, documentation,
+  bundled observability stack, edge proxy config, and dev tooling
 
-### Admin API Client
+### Infrastructure
 
-The Admin API client provides a way for the WebAdmin to interact with the Admin API service without direct project references. This breaks the circular dependency between the projects and improves the architecture.
+Conduit needs exactly two backing services:
 
-To configure the Admin API client in your deployment:
+- **PostgreSQL** (required) — configuration, billing, and the message queue. Async messaging runs
+  on **Wolverine over the PostgreSQL transport with an outbox**; there is no separate message
+  broker to deploy or operate.
+- **Redis** (required for multi-node, recommended always) — caching, rate limiting, and the
+  SignalR backplane for real-time updates.
 
-```yaml
-# Docker Compose environment variables
-environment:
-  CONDUIT_ADMIN_API_URL: http://admin:8080  # URL to the Admin API
-  CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_backend_key  # Backend service authentication
-  CONDUIT_USE_ADMIN_API: "true"             # Enable Admin API client (vs direct DB access)
-  CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
-```
-
-> **Important**: Direct database access mode (`CONDUIT_USE_ADMIN_API=false`) is deprecated and will be removed after October 2025. See [Migration Guide](docs/admin-api-migration-guide.md) for details.
-
-The WebAdmin includes a built-in health check indicator that monitors the connection to the Admin API:
-
-- A green checkmark indicates the Admin API is healthy
-- A red warning icon indicates connection issues
-- Click the icon to view detailed status and troubleshooting options
-
-Key features:
-- **Decoupled Architecture**: WebAdmin and Admin projects are fully decoupled
-- **Flexible Deployment**: Services can be deployed separately in distributed environments
-- **Clean API Contracts**: API contracts explicitly defined through interfaces and DTOs
-- **Configuration Control**: Toggle between direct DB access and API access with a simple flag
-
-### Docker Images: Component Separation
-
-As of May 2025, ConduitLLM is distributed as three separate Docker images:
-
-- **WebAdmin Image**: The Next.js-based admin dashboard (`WebAdmin`)
-- **Admin API Image**: The administrative API service (`ConduitLLM.Admin`) 
-- **Http Image**: The OpenAI-compatible REST API gateway (`ConduitLLM.Gateway`)
-
-Each service is built, tagged, and published as an independent container:
-
-- `ghcr.io/knnlabs/conduit-webadmin:latest` (WebAdmin)
-- `ghcr.io/knnlabs/conduit-admin:latest` (Admin API)
-- `ghcr.io/knnlabs/conduit-http:latest` (API Gateway)
-
-#### Why this architecture?
-- **Separation of concerns**: Each component can be scaled, deployed, and maintained independently
-- **Improved security**: You can isolate components and apply different security policies
-- **Simpler deployments**: Compose, Kubernetes, and cloud-native deployments are easier to manage
-- **Enhanced reliability**: Components can be updated independently without affecting others
-
-#### How to use the new images
-
-With Docker Compose:
-
-```yaml
-docker-compose.yml
-
-services:
-  webadmin:
-    image: ghcr.io/knnlabs/conduit-webadmin:latest
-    ports:
-      - "5001:8080"
-    environment:
-      CONDUIT_ADMIN_API_BASE_URL: http://admin:8080
-      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
-      CONDUIT_USE_ADMIN_API: "true"
-      CONDUIT_DISABLE_DIRECT_DB_ACCESS: "true"  # Completely disable legacy mode
-    depends_on:
-      - admin
-
-  admin:
-    image: ghcr.io/knnlabs/conduit-admin:latest
-    ports:
-      - "5002:8080"
-    environment:
-      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-      CONDUIT_API_TO_API_BACKEND_AUTH_KEY: your_secure_backend_key
-    depends_on:
-      - postgres
-
-  http:
-    image: ghcr.io/knnlabs/conduit-http:latest
-    ports:
-      - "5000:8080"
-    environment:
-      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
-    depends_on:
-      - postgres
-
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_USER: conduit
-      POSTGRES_PASSWORD: conduitpass
-      POSTGRES_DB: conduitdb
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
-```
-
-> **Note:** All CI/CD workflows and deployment scripts should be updated to reference the new image tags. See `.github/workflows/docker-release.yml` for examples.
-
-## Database Configuration (PostgreSQL Only)
-
-Conduit requires PostgreSQL as its database. Configure it via the `DATABASE_URL` environment variable.
-
-- **PostgreSQL (Required):**
-  - Set `DATABASE_URL` in the format:
-    - `postgresql://user:password@host:port/database`
-  - Examples:
-    - `DATABASE_URL=postgresql://postgres:yourpassword@yourhost:5432/yourdb`
-    - `DATABASE_URL=postgres://conduit:conduitpass@localhost:5432/conduitdb`
-
-The application will fail to start if PostgreSQL is not available. Connection retry logic with exponential backoff is implemented to handle temporary connection issues.
-
-For more details, see the per-service README files.
+The bundled Docker Compose stack also runs Prometheus, Grafana (pre-provisioned dashboards and
+alert rules), and an nginx edge proxy that serves the WebAdmin and its embedded Grafana UI from a
+single origin.
 
 ## Quick Start
 
 ### Prerequisites
 
-- .NET 10.0 SDK
-- (Optional) Docker Desktop for containerized deployment
+- Docker Desktop (or a compatible engine) for the containerized stack
+- .NET 10.0 SDK if you want to build or run the services directly
 
-### Installation
+### Run with Docker Compose
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/knnlabs/Conduit.git
-   cd Conduit/WebAdmin
+   git clone https://github.com/nickna/Conduit.git
+   cd Conduit
    ```
 
-2. **Configure LLM Providers**
-   - Add your provider API keys via:
-     - Environment variables (see `docs/Environment-Variables.md`)
-     - Edit `appsettings.json`
-     - Use the WebAdmin after startup
+2. **Configure the environment**
+   - Copy `.env.example` to `.env`.
+   - At minimum, set `CONDUIT_GRAFANA_ADMIN_PASSWORD` to a long random value and
+     `CONDUIT_API_TO_API_BACKEND_AUTH_KEY` to a strong secret.
+   - For production WebAdmin access, configure Clerk keys
+     (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`).
+   - Provider API keys are configured later through the WebAdmin/Admin API, not environment
+     variables.
 
-3. **Start the Services**
+3. **Start the stack**
    ```bash
    docker compose up -d
    ```
+   Compose runs the one-shot `migrate` service first. Gateway and Admin start only
+   after it exits successfully; neither API changes the schema during startup.
 
 4. **Access ConduitLLM**
-   - **Local API**: `http://localhost:5000`
-   - **Local WebAdmin**: `http://localhost:5001`
-   - **Local API Docs**: `http://localhost:5000/swagger` (Development Mode)
-   
-   *Note: When running locally via `./scripts/start-dev.sh`, these are the default ports. When deployed using Docker or other methods, access is typically via an HTTPS reverse proxy. Configure the `CONDUIT_API_BASE_URL` environment variable to the public-facing URL (e.g., `https://conduit.yourdomain.com`) for correct link generation.*
+   - **Gateway API**: `http://localhost:5000` (interactive docs at `/scalar/v1`)
+   - **Admin API**: `http://localhost:5002` (interactive docs at `/scalar/v1`)
+   - **WebAdmin**: `http://localhost:3000` (embedded Grafana at `/grafana/`)
 
-### Docker Installation
+Production deployments should terminate HTTPS in front of the stack and set
+`CONDUIT_API_BASE_URL` / `CONDUIT_GRAFANA_ROOT_URL` to the public-facing URLs.
 
-```bash
-docker pull ghcr.io/knnlabs/conduit:latest
+### Development environment
+
+For day-to-day development use the dev script, which runs the WebAdmin with hot reloading:
+
+```powershell
+./scripts/dev.ps1
 ```
 
-Or use with Docker Compose:
+### Docker images
+
+Each service is published as an independent image on GHCR, tagged per
+[release channel](docs/Versioning.md) (`:latest` for stable, `:beta` for pre-releases, plus
+immutable version tags):
 
 ```bash
-docker compose up -d
+docker pull ghcr.io/nickna/conduit-webadmin:latest
+docker pull ghcr.io/nickna/conduit-admin:latest
+docker pull ghcr.io/nickna/conduit-http:latest
 ```
 
-*Note: The default Docker configuration assumes ConduitLLM runs behind a reverse proxy that handles HTTPS termination. The container exposes HTTP ports only.*
+The checked-in [`docker-compose.yml`](docker-compose.yml) is the reference for wiring them
+together (environment variables, health checks, and the observability stack).
 
-### Environment Variables
+## Configuration
 
-ConduitLLM uses simplified environment variables for easier configuration:
+Configuration lives in two places: **deploy-time environment variables** (connection strings,
+secrets, service URLs) and the **runtime Admin UI/API** (providers, keys, model mappings, costs).
+[`.env.example`](.env.example) is the annotated source of truth for every environment variable;
+[Configuration](docs/configuration.md) explains the shape of each area. The essentials:
 
-#### Redis Cache Configuration
 ```bash
-# New simplified format (recommended)
-REDIS_URL=redis://localhost:6379
-CONDUIT_REDIS_INSTANCE_NAME=conduit:  # Optional, defaults to "conduitllm-cache"
+# PostgreSQL (required) — the app fails to start without it
+DATABASE_URL=postgresql://conduit:conduitpass@postgres:5432/conduitdb
 
-# Legacy format (still supported)
-CONDUIT_REDIS_CONNECTION_STRING=localhost:6379
-CONDUIT_CACHE_ENABLED=true
-CONDUIT_CACHE_TYPE=Redis
+# Redis — providing REDIS_URL enables caching automatically
+REDIS_URL=redis://redis:6379
+
+# Backend service-to-service authentication (WebAdmin backend → APIs)
+CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-backend-key
+
+# WebAdmin admin sign-in (Clerk; users need siteadmin: true in public metadata)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
 ```
 
-When `REDIS_URL` is provided, cache is automatically enabled with type "Redis".
+Authentication is layered:
 
-#### Authentication Configuration
-```bash
-# Gateway API Authentication (uses Virtual Keys)
-# Virtual keys are created via Admin API and used for LLM access
-# Format: condt_your-virtual-key-here
-
-# Admin API Authentication
-CONDUIT_API_TO_API_BACKEND_AUTH_KEY=your-secure-backend-key  # For backend service authentication
-
-# Legacy format (still supported)
-AdminApi__MasterKey=your-secure-master-key
-```
-
-**CRITICAL SECURITY:** Authentication in Conduit:
-- **CONDUIT_API_TO_API_BACKEND_AUTH_KEY**: Used for backend service-to-service authentication between WebAdmin backend and API services
-- **WebAdmin Authentication**: Human administrators authenticate exclusively via Clerk (OAuth/SAML)
-  - Users must have `siteadmin: true` in their Clerk public metadata to access the WebAdmin
-  - Configure with `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`
-- **Virtual Keys**: Used by Gateway API for client LLM access (created via Admin API)
-
-#### Next.js WebAdmin Configuration
-```bash
-# Server-side URLs (for API routes only - never exposed to browser)
-CONDUIT_ADMIN_API_BASE_URL=http://localhost:5002
-CONDUIT_API_BASE_URL=http://localhost:5000
-
-# Session management
-SESSION_SECRET=your-session-secret-key-change-in-production
-
-# SignalR real-time updates
-NEXT_PUBLIC_SIGNALR_AUTO_RECONNECT=true
-NEXT_PUBLIC_SIGNALR_RECONNECT_INTERVAL=5000
-
-# Feature flags
-NEXT_PUBLIC_ENABLE_REAL_TIME_UPDATES=true
-NEXT_PUBLIC_ENABLE_ANALYTICS=true
-NEXT_PUBLIC_ENABLE_DEBUG_MODE=false
-```
-
-#### Security Configuration (WebAdmin)
-```bash
-# IP Filtering
-CONDUIT_IP_FILTERING_ENABLED=true
-CONDUIT_IP_FILTER_MODE=permissive          # or "restrictive"
-CONDUIT_IP_FILTER_ALLOW_PRIVATE=true       # Auto-allow private IPs
-CONDUIT_IP_FILTER_WHITELIST=192.168.1.0/24,10.0.0.0/8
-CONDUIT_IP_FILTER_BLACKLIST=203.0.113.0/24
-
-# Rate Limiting
-CONDUIT_RATE_LIMITING_ENABLED=true
-CONDUIT_RATE_LIMIT_MAX_REQUESTS=100
-CONDUIT_RATE_LIMIT_WINDOW_SECONDS=60
-
-# Failed Login Protection
-CONDUIT_MAX_FAILED_ATTEMPTS=5
-CONDUIT_IP_BAN_DURATION_MINUTES=30
-```
-
-#### WebAdmin Configuration Notes
-
-**Security Architecture:**
-- All API calls are made server-side through Next.js API routes
-- No API keys or sensitive URLs are exposed to the browser
-- WebAdmin authenticates administrators separately from API consumers
-- SignalR connections use server-side authentication
-
-**Required Configuration:**
-1. **Server-side API URLs** - Configure `CONDUIT_ADMIN_API_BASE_URL` and `CONDUIT_API_BASE_URL` for internal communication
-2. **Clerk Authentication** - Configure Clerk publishable and secret keys for WebAdmin authentication
-3. **Session security** - Use a strong `SESSION_SECRET` for production deployments
-
-For a complete migration guide from old to new environment variables, see [Environment Variable Migration Guide](docs/MIGRATION_ENV_VARS.md).
+- **Virtual keys** (`condt_...`) — what your applications use against the Gateway API; created
+  via the Admin API or WebAdmin
+- **Master key** — operator access to the Admin API
+- **Clerk** — human administrators sign in to the WebAdmin; the browser then uses short-lived
+  ephemeral keys, never the master key
+- **`CONDUIT_API_TO_API_BACKEND_AUTH_KEY`** — backend service-to-service calls only
 
 ## Usage
 
@@ -385,17 +220,14 @@ curl http://localhost:5000/v1/chat/completions \
 
 ### Using with OpenAI SDKs
 
-Conduit is **100% compatible with standard OpenAI SDKs** - simply point them to your Conduit instance:
+Conduit is compatible with standard OpenAI SDKs — point them at your Conduit instance:
 
 ```python
-# Python example with OpenAI SDK (fully compatible)
 from openai import OpenAI
 
 client = OpenAI(
     api_key="condt_yourvirtualkey",
-    # Use http://localhost:5000/v1 for local testing,
-    # or your configured CONDUIT_API_BASE_URL for deployed instances
-    base_url="http://localhost:5000/v1"
+    base_url="http://localhost:5000/v1",  # or your deployed CONDUIT_API_BASE_URL
 )
 
 response = client.chat.completions.create(
@@ -404,118 +236,47 @@ response = client.chat.completions.create(
 )
 ```
 
-#### Enhanced Features with Conduit SDKs
+### Integrating beyond OpenAI compatibility
 
-For access to Conduit-specific features like real-time tool execution progress, reasoning events, and performance metrics, use the official Conduit SDKs:
+Both APIs ship authoritative OpenAPI contracts — generate a typed client in your language of
+choice, or explore them interactively at `/scalar/v1` on each service:
 
-```typescript
-// Node.js/TypeScript example with Conduit SDK
-import { ConduitCoreClient } from '@knn_labs/conduit-gateway-client';
-import {
-  isChatCompletionChunk,
-  isToolExecutingEvent,
-  isFinalMetrics
-} from '@knn_labs/conduit-gateway-client';
+- Gateway API: [`Services/ConduitLLM.Gateway/openapi-gateway.json`](Services/ConduitLLM.Gateway/openapi-gateway.json)
+- Admin API: [`Services/ConduitLLM.Admin/openapi-admin.json`](Services/ConduitLLM.Admin/openapi-admin.json)
 
-const client = new ConduitCoreClient({
-  apiKey: 'condt_yourvirtualkey',
-  baseURL: 'http://localhost:5000'
-});
-
-const stream = await client.chat.create({
-  model: 'gpt-4',
-  messages: [{ role: 'user', content: 'What is the weather?' }],
-  stream: true,
-  function_configuration_ids: ['weather-functions']
-});
-
-for await (const event of stream) {
-  if (isChatCompletionChunk(event)) {
-    // Standard OpenAI content
-    const content = event.choices[0]?.delta?.content;
-  }
-  else if (isToolExecutingEvent(event)) {
-    // Conduit extension: real-time tool execution
-    console.log(`Executing ${event.function_name}...`);
-  }
-  else if (isFinalMetrics(event)) {
-    // Conduit extension: performance metrics
-    console.log(`Tokens: ${event.total_tokens}, Speed: ${event.tokens_per_second}`);
-  }
-}
-```
-
-**Key Differences:**
-- **OpenAI SDKs**: ✅ Full compatibility, ignores Conduit extensions
-- **Conduit SDKs**: ✅ Full compatibility + enhanced events (reasoning, tool execution, metrics)
-
-See [Streaming with Tools Guide](docs/api-guides/streaming-with-tools.md) for complete documentation.
-
+Conduit-specific streaming events (reasoning, tool execution progress, metrics) are opt-in
+extensions documented in the Gateway contract; standard OpenAI clients are unaffected.
 
 ## Documentation
 
-See the `docs/` directory for detailed documentation:
+The **[documentation](docs/README.md)** is deliberately small — durable reference that covers the
+system end to end:
 
+| Doc | What it covers |
+|-----|----------------|
+| **[Core concepts](docs/concepts.md)** | The mental model: the objects Conduit is built from and what happens when a request comes in. Read this first. |
+| **[Configuration](docs/configuration.md)** | Where settings live (deploy-time env vs. runtime Admin UI) and the shape of each area |
+| **[Model routing](docs/routing.md)** | How a provider is chosen; failover, session affinity, and the kill switch |
+| **[Monitoring](docs/monitoring.md)** | Health checks, metrics, real-time streams, and alerting |
+| **[Billing correctness alerting](docs/billing-alerting.md)** | The cost canary, alert rules, and incident response |
+| **[Versioning](docs/Versioning.md)** | Semantic versioning, release channels, and version checking |
 
-### Core Documentation
-- [API Reference](docs/API-Reference.md)
-- [Architecture Overview](docs/Architecture-Overview.md)
-  - [Admin API Adapters](docs/Architecture/Admin-API-Adapters.md)
-  - [DTO Standardization](docs/Architecture/DTO-Standardization.md)
-  - [Repository Pattern](docs/Architecture/Repository-Pattern.md)
-- [🚀 Scaling Architecture](docs/Scaling-Architecture.md) - **10,000+ concurrent sessions architecture and roadmap**
-- [Getting Started](docs/Getting-Started.md)
-- [Current Status](docs/Current-Status.md)
+## 📦 Versioning & Releases
 
-### Development Guides
-- [SDK Migration Guide](docs/development/sdk-migration-guide.md)
-- [API Patterns & Best Practices](docs/development/API-PATTERNS-BEST-PRACTICES.md)
-- [SDK Migration Complete](docs/development/SDK-MIGRATION-COMPLETE.md)
-- [Next.js 15 Migration](docs/development/nextjs15-migration.md)
-- [SDK Feature Gaps](docs/development/sdk-gaps.md)
+Conduit uses Semantic Versioning, with two release channels cut from `master` via git tags:
 
-### Deployment & Configuration
-- [Deployment Configuration](docs/deployment/DEPLOYMENT-CONFIGURATION.md)
-- [Docker Optimization](docs/deployment/docker-optimization.md)
-- [Configuration Guide](docs/Configuration-Guide.md)
-- [Environment Variables](docs/Environment-Variables.md)
-- [Cache Configuration](docs/Cache-Configuration.md)
-- [Distributed Cache Statistics](docs/claude/distributed-cache-statistics.md) - **Horizontal Scaling Guide**
+- **Stable** (`v3.0.0`) → Docker `:3.0.0` + `:latest`
+- **Beta** (`v3.0.0-beta.1`, or any pre-release suffix) → Docker `:3.0.0-beta.1` + `:beta`; a
+  beta never moves `:latest`
 
-#### Redis Circuit Breaker (Resilience)
-ConduitLLM includes automatic circuit breaker protection for Redis operations:
-- **Automatic failure detection**: Opens circuit after 5 consecutive failures or 50% failure rate
-- **Service protection**: Returns 503 Service Unavailable when Redis is down (30-second recovery period)
-- **Health monitoring**: Circuit state exposed via `/health` endpoint under `redis_circuit_breaker`
-- **Manual control**: Emergency trip/reset available via environment variable `REDIS_CIRCUIT_BREAKER_ENABLE_MANUAL_CONTROL=true`
-
-### API Reference
-- [API Reference](docs/api-reference/API-REFERENCE.md)
-- [Admin API Migration Guide](docs/admin-api-migration-guide.md)
-
-### Examples & Integration
-- [Integration Examples](docs/examples/INTEGRATION-EXAMPLES.md)
-- [OpenAI Compatible Example](docs/examples/openai-compatible-example.md)
-
-### Troubleshooting
-- [Troubleshooting Guide](docs/troubleshooting/TROUBLESHOOTING-GUIDE.md)
-
-### Feature Documentation
-- [Budget Management](docs/Budget-Management.md)
-- [Dashboard Features](docs/Dashboard-Features.md)
-- [LLM Routing](docs/LLM-Routing.md)
-- [Multimodal Vision Support](docs/Multimodal-Vision-Support.md)
-- [Provider Integration](docs/Provider-Integration.md)
-- [Virtual Keys](docs/Virtual-Keys.md)
-- [WebAdmin Guide](docs/WebAdmin-Guide.md)
-
-### Project Documentation
-- [SDK Integration Epic](docs/epics/sdk-integration.md)
-- [Archived Documentation](docs/archive/webadmin-migration/)
+The WebAdmin displays the current version and can check for updates automatically. See the
+[Versioning Guide](docs/Versioning.md) for details.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Development happens on the `dev` branch — please target pull requests
+there. See [CLAUDE.md](CLAUDE.md) for development environment setup, build verification, and code
+style conventions.
 
 ## License
 

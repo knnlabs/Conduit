@@ -29,46 +29,14 @@ namespace ConduitLLM.Core.Services
                 RetryAttempts = retryAttempts
             };
 
-            // Calculate tokens per second if usage data is available
-            if (response.Usage != null && elapsedTime.TotalSeconds > 0)
+            // Overall tokens per second is the only throughput figure we can measure here.
+            // PromptTokensPerSecond / CompletionTokensPerSecond require a measured
+            // prompt/generation time split, which only the streaming tracker has
+            // (via time-to-first-token) — they stay null on this path.
+            if (response.Usage != null && elapsedTime.TotalSeconds > 0
+                && response.Usage.CompletionTokens > 0)
             {
-                var totalSeconds = elapsedTime.TotalSeconds;
-                
-                // Overall tokens per second (based on completion tokens)
-                if (response.Usage.CompletionTokens > 0)
-                {
-                    metrics.TokensPerSecond = response.Usage.CompletionTokens / totalSeconds;
-                }
-
-                // Prompt processing speed (estimate based on total time)
-                // Note: This is an approximation since we don't have separate timing for prompt processing
-                if (response.Usage.PromptTokens > 0)
-                {
-                    // Assume prompt processing takes a small fraction of total time for non-streaming
-                    // This could be refined with provider-specific data
-                    var promptProcessingTime = streaming ? totalSeconds * 0.1 : totalSeconds * 0.3;
-                    if (promptProcessingTime > 0)
-                    {
-                        metrics.PromptTokensPerSecond = response.Usage.PromptTokens / promptProcessingTime;
-                    }
-                }
-
-                // Completion generation speed
-                if (response.Usage.CompletionTokens > 0)
-                {
-                    if (streaming)
-                    {
-                        // For streaming, most of the time is spent generating tokens
-                        var generationTime = totalSeconds * 0.9; // Assume 90% of time is generation
-                        metrics.CompletionTokensPerSecond = response.Usage.CompletionTokens / generationTime;
-                    }
-                    else
-                    {
-                        // For non-streaming, assume 70% of time is generation (30% prompt processing)
-                        var generationTime = totalSeconds * 0.7;
-                        metrics.CompletionTokensPerSecond = response.Usage.CompletionTokens / generationTime;
-                    }
-                }
+                metrics.TokensPerSecond = response.Usage.CompletionTokens / elapsedTime.TotalSeconds;
             }
 
             return metrics;
@@ -139,7 +107,7 @@ namespace ConduitLLM.Core.Services
                 };
 
                 // Calculate average inter-token latency
-                if (_interTokenLatencies.Count() > 0)
+                if (_interTokenLatencies.Any())
                 {
                     metrics.AvgInterTokenLatencyMs = _interTokenLatencies.Average();
                 }

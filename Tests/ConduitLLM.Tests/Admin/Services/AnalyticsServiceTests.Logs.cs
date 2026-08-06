@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Enums;
 
 using Moq;
 
@@ -32,9 +33,9 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Assert
             Assert.NotNull(result);
-            Assert.Equal(1, result.Page);
+            Assert.Equal(1, result.CurrentPage);
             Assert.Equal(10, result.PageSize);
-            Assert.Equal(25, result.TotalItems);
+            Assert.Equal(25, result.TotalCount);
             Assert.Equal(3, result.TotalPages);
             Assert.Equal(10, result.Items.Count);
         }
@@ -121,6 +122,85 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.NotNull(result);
             Assert.Equal(123, result.Id);
             Assert.Equal("gpt-4", result.ModelName);
+        }
+
+        [Fact]
+        public async Task GetLogByIdAsync_MapsDiagnosticFields()
+        {
+            // Arrange
+            var billedAt = DateTime.UtcNow.AddMinutes(-1);
+            var testLog = new RequestLog
+            {
+                Id = 124,
+                VirtualKeyId = 7,
+                ModelName = "gpt-4",
+                ProviderId = 12,
+                ProviderType = "OpenAI",
+                ModelProviderMappingId = 34,
+                PromptCachingEligible = true,
+                PromptCachingPolicyApplied = true,
+                CachedReadSavings = 0.004m,
+                CacheWritePremium = 0.001m,
+                RoutingAffinityUsed = true,
+                RoutingDecisionReason = "cache-affinity",
+                RoutingFailoverCount = 2,
+                CachedInputTokens = 800,
+                CachedWriteTokens = 100,
+                Cost = 0.05m,
+                BillingMethod = RequestBillingMethod.ProviderReportedCost,
+                ProviderReportedCostUsd = 0.04m,
+                ProviderCostMarkupMultiplier = 1.25m,
+                BilledAtUtc = billedAt,
+                Timestamp = DateTime.UtcNow
+            };
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetByIdAsync(124, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(testLog);
+
+            // Act
+            var result = await _service.GetLogByIdAsync(124);
+
+            // Assert
+            Assert.NotNull(result);
+            Assert.Equal(12, result.ProviderId);
+            Assert.Equal("OpenAI", result.ProviderType);
+            Assert.Equal(34, result.ModelProviderMappingId);
+            Assert.True(result.PromptCachingEligible);
+            Assert.True(result.PromptCachingPolicyApplied);
+            Assert.Equal(0.004m, result.CachedReadSavings);
+            Assert.Equal(0.001m, result.CacheWritePremium);
+            Assert.True(result.RoutingAffinityUsed);
+            Assert.Equal("cache-affinity", result.RoutingDecisionReason);
+            Assert.Equal(2, result.RoutingFailoverCount);
+            Assert.Equal(800, result.CachedInputTokens);
+            Assert.Equal(100, result.CachedWriteTokens);
+            Assert.Equal(RequestBillingMethod.ProviderReportedCost, result.BillingMethod);
+            Assert.Equal(0.04m, result.ProviderReportedCostUsd);
+            Assert.Equal(1.25m, result.ProviderCostMarkupMultiplier);
+            Assert.Equal(billedAt, result.BilledAtUtc);
+        }
+
+        [Fact]
+        public async Task GetLogByIdAsync_IgnoresMalformedHistoricalMetadata()
+        {
+            var testLog = new RequestLog
+            {
+                Id = 125,
+                VirtualKeyId = 7,
+                ModelName = "gpt-4",
+                Metadata = "{not-json",
+                Timestamp = DateTime.UtcNow
+            };
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetByIdAsync(125, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(testLog);
+
+            var result = await _service.GetLogByIdAsync(125);
+
+            Assert.NotNull(result);
+            Assert.Null(result.Metadata);
         }
 
         [Fact]

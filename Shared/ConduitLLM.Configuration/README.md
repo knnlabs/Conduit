@@ -2,7 +2,7 @@
 
 ## Overview
 
-**ConduitLLM.Configuration** is a core library within the [Conduit.sln](../Conduit.sln) solution. Its primary role is to centralize and standardize configuration logic, settings, and extension methods that are shared across the various ConduitLLM projects, such as the API server, WebAdmin, and background services.
+**ConduitLLM.Configuration** is a core library within the [Conduit.slnx](../../Conduit.slnx) solution. Its primary role is to centralize and standardize configuration logic, settings, and extension methods that are shared across the various ConduitLLM projects, such as the API server, WebAdmin, and background services.
 
 By encapsulating configuration concerns in a single project, ConduitLLM.Configuration ensures consistency, maintainability, and ease of deployment for the entire ConduitLLM ecosystem.
 

@@ -13,34 +13,42 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Create Release
+  metadata:
+    name: Release metadata
     runs-on: ubuntu-latest
     permissions:
-      contents: write
-      packages: write
-    
+      contents: read
+
     outputs:
       version: ${{ steps.version.outputs.version }}
-    
+      channel: ${{ steps.version.outputs.channel }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      commit_sha: ${{ steps.version.outputs.commit_sha }}
+      build_timestamp: ${{ steps.version.outputs.build_timestamp }}
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Extract version
+
+      - name: Extract version and channel
         id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-      
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          generate_release_notes: true
-          draft: false
-          prerelease: ${{ contains(github.ref, '-rc') || contains(github.ref, '-beta') || contains(github.ref, '-alpha') }}
+        # A tag is a pre-release iff its name contains a hyphen (SemVer rule).
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "commit_sha=$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          echo "build_timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            echo "channel=beta" >> "$GITHUB_OUTPUT"
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "channel=latest" >> "$GITHUB_OUTPUT"
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
 
   docker:
-    name: Docker - ${{ matrix.service }}
+    name: Build candidate - ${{ matrix.service }}
     runs-on: ubuntu-latest
-    needs: release
+    needs: metadata
     permissions:
       contents: read
       packages: write
@@ -70,69 +78,98 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push candidate
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
           push: true
-          tags: |
-            ${{ env.REGISTRY }}/knnlabs/conduit-${{ matrix.service }}:${{ needs.release.outputs.version }}
-            ${{ env.REGISTRY }}/knnlabs/conduit-${{ matrix.service }}:latest
+          # Candidate tags are not consumed by deployments. Official version/channel
+          # tags are promoted only after the production migration succeeds.
+          tags: ${{ env.REGISTRY }}/nickna/conduit-${{ matrix.service }}:${{ needs.metadata.outputs.version }}-candidate
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
+          build-args: |
+            VERSION=${{ needs.metadata.outputs.version }}
+            COMMIT_SHA=${{ needs.metadata.outputs.commit_sha }}
+            BUILD_TIMESTAMP=${{ needs.metadata.outputs.build_timestamp }}
 
-  npm:
-    name: NPM Release
+  migrate:
+    name: Production migration gate
     runs-on: ubuntu-latest
-    needs: release
-    
+    needs: [metadata, docker]
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    env:
+      DATABASE_URL: ${{ secrets.CONDUIT_RELEASE_DATABASE_URL }}
+
     steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Require release database secret
+        run: test -n "$DATABASE_URL"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
         with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-          cache: npm
-          cache-dependency-path: |
-            SDKs/Node/package-lock.json
-            SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
-            SDKs/Node/Common/package-lock.json
-      
-      - name: Update versions and publish
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply database migrations
+        # A non-zero migrator exit code stops the workflow before any official image
+        # tag or GitHub Release is updated. Re-running the job is idempotent.
         run: |
-          VERSION=${{ needs.release.outputs.version }}
-          
-          cd SDKs/Node
-          
-          # Update Common version first
-          cd Common
-          npm version $VERSION --no-git-tag-version
-          cd ..
-          
-          # Update Admin and Core versions AND their Common dependency
-          cd Admin
-          npm version $VERSION --no-git-tag-version
-          # Update the Common dependency to use the new version
-          npm install @knn_labs/conduit-common@$VERSION --save-exact
-          cd ../Core
-          npm version $VERSION --no-git-tag-version
-          # Update the Common dependency to use the new version
-          npm install @knn_labs/conduit-common@$VERSION --save-exact
-          
-          # Build all packages
-          cd ..
-          npm ci
-          npm run build
-          
-          # Publish with 'latest' tag for stable releases
-          # Publish Common first since others depend on it
-          cd Common && npm publish --tag latest --access public
-          cd ../Admin && npm publish --tag latest --access public
-          cd ../Core && npm publish --tag latest --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          docker run --rm \
+            --env DATABASE_URL \
+            --env CONDUIT_MIGRATION_LOCK_TIMEOUT_SECONDS=600 \
+            --env ConduitLLM__Messaging__Wolverine__AutoProvision=false \
+            "${{ env.REGISTRY }}/nickna/conduit-admin:${{ needs.metadata.outputs.version }}-candidate" \
+            migrate
+
+  promote:
+    name: Promote release images
+    runs-on: ubuntu-latest
+    needs: [metadata, migrate]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Promote candidate tags
+        run: |
+          for SERVICE in webadmin http admin; do
+            SOURCE="${{ env.REGISTRY }}/nickna/conduit-${SERVICE}:${{ needs.metadata.outputs.version }}-candidate"
+            docker buildx imagetools create \
+              --tag "${{ env.REGISTRY }}/nickna/conduit-${SERVICE}:${{ needs.metadata.outputs.version }}" \
+              --tag "${{ env.REGISTRY }}/nickna/conduit-${SERVICE}:${{ needs.metadata.outputs.channel }}" \
+              "$SOURCE"
+          done
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [metadata, promote]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ needs.metadata.outputs.prerelease }}
+          # Only stable releases become the repo's "Latest"; betas never move it.
+          make_latest: ${{ needs.metadata.outputs.channel == 'latest' }}

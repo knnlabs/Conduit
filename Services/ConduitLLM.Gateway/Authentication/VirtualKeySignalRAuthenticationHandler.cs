@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Utilities;
+using ConduitLLM.Security.Options;
+using Microsoft.Extensions.Options;
 
 namespace ConduitLLM.Gateway.Authentication
 {
@@ -13,16 +15,20 @@ namespace ConduitLLM.Gateway.Authentication
     {
         private readonly IVirtualKeyService _virtualKeyService;
         private readonly ILogger<VirtualKeySignalRAuthenticationHandler> _logger;
+        private readonly IReadOnlyList<string> _keyHeaders;
 
         /// <summary>
         /// Initializes a new instance of VirtualKeySignalRAuthenticationHandler
         /// </summary>
         public VirtualKeySignalRAuthenticationHandler(
             IVirtualKeyService virtualKeyService,
-            ILogger<VirtualKeySignalRAuthenticationHandler> logger)
+            ILogger<VirtualKeySignalRAuthenticationHandler> logger,
+            IOptions<GatewaySecurityOptions> securityOptions)
         {
             _virtualKeyService = virtualKeyService;
             _logger = logger;
+            ArgumentNullException.ThrowIfNull(securityOptions);
+            _keyHeaders = securityOptions.Value.VirtualKey.KeyHeaders;
         }
 
         /// <summary>
@@ -57,14 +63,16 @@ namespace ConduitLLM.Gateway.Authentication
                 }
 
                 // Validate the Virtual Key
-                var keyEntity = await _virtualKeyService.ValidateVirtualKeyAsync(virtualKey);
-                if (keyEntity == null || !keyEntity.IsEnabled)
+                var validation = await _virtualKeyService.ValidateVirtualKeyForAuthenticationAsync(virtualKey);
+                if (!validation.IsValid || validation.Key is null)
                 {
-                    _logger.LogWarning("Invalid or disabled Virtual Key in SignalR connection from IP {IP}",
-                        GetClientIpAddress(httpContext));
+                    _logger.LogWarning("Virtual Key validation failed with {FailureCode} in SignalR connection from IP {IP}",
+                        validation.FailureCode ?? "unknown", GetClientIpAddress(httpContext));
                     context.Fail();
                     return;
                 }
+
+                var keyEntity = validation.Key;
 
                 // Create claims for the authenticated connection
                 var claims = new[]
@@ -96,66 +104,17 @@ namespace ConduitLLM.Gateway.Authentication
         /// <summary>
         /// Extracts the Virtual Key from the request
         /// </summary>
-        private string? ExtractVirtualKey(HttpContext context)
-        {
-            // Check query string first (for SignalR JavaScript clients)
-            if (context.Request.Query.TryGetValue("access_token", out var queryToken))
-            {
-                return queryToken.ToString();
-            }
-            
-            // Also check for api_key in query string
-            if (context.Request.Query.TryGetValue("api_key", out var queryKey))
-            {
-                return queryKey.ToString();
-            }
-
-            // Try Authorization header (for .NET clients)
-            var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(authHeader))
-            {
-                var token = SpanHelper.ExtractBearerToken(authHeader);
-                if (!string.IsNullOrEmpty(token))
-                {
-                    return token;
-                }
-            }
-
-            // Try X-API-Key header
-            var apiKeyHeader = context.Request.Headers["X-API-Key"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(apiKeyHeader))
-            {
-                return apiKeyHeader.Trim();
-            }
-
-            return null;
-        }
+        private string? ExtractVirtualKey(HttpContext context) =>
+            VirtualKeyExtractor.Extract(context, _keyHeaders);
 
         /// <summary>
         /// Gets the client IP address from the request
         /// </summary>
         private string GetClientIpAddress(HttpContext context)
         {
-            // Check X-Forwarded-For header first (for reverse proxies)
-            var forwardedFor = context.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(forwardedFor))
-            {
-                var ip = SpanHelper.ExtractFirstSegment(forwardedFor);
-                if (System.Net.IPAddress.TryParse(ip, out _))
-                {
-                    return ip;
-                }
-            }
-
-            // Check X-Real-IP header
-            var realIp = context.Request.Headers["X-Real-IP"].FirstOrDefault();
-            if (!string.IsNullOrEmpty(realIp) && System.Net.IPAddress.TryParse(realIp, out _))
-            {
-                return realIp;
-            }
-
-            // Fall back to direct connection IP
-            return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            // Client IP comes from the trusted-proxy-vetted connection (ForwardedHeadersMiddleware).
+            // Forwarded headers are NOT read here — they are client-controlled and spoofable.
+            return IpAddressHelper.GetClientIpAddress(context);
         }
     }
 

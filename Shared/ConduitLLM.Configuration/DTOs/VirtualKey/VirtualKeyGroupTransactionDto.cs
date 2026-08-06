@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Enums;
+using System.ComponentModel.DataAnnotations;
 
 namespace ConduitLLM.Configuration.DTOs.VirtualKey
 {
@@ -10,32 +11,32 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// Transaction ID
         /// </summary>
-        public long Id { get; set; }
+        [Required] public long Id { get; set; }
 
         /// <summary>
         /// Virtual key group ID
         /// </summary>
-        public int VirtualKeyGroupId { get; set; }
+        [Required] public int VirtualKeyGroupId { get; set; }
 
         /// <summary>
         /// Type of transaction
         /// </summary>
-        public TransactionType TransactionType { get; set; }
+        [Required] public TransactionType TransactionType { get; set; }
 
         /// <summary>
         /// Transaction amount (always positive)
         /// </summary>
-        public decimal Amount { get; set; }
+        [Required] public decimal Amount { get; set; }
 
         /// <summary>
         /// Balance after this transaction
         /// </summary>
-        public decimal BalanceAfter { get; set; }
+        [Required] public decimal BalanceAfter { get; set; }
 
         /// <summary>
         /// Type of reference that triggered this transaction
         /// </summary>
-        public ReferenceType ReferenceType { get; set; }
+        [Required] public ReferenceType ReferenceType { get; set; }
 
         /// <summary>
         /// Reference ID
@@ -50,7 +51,7 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// What initiated this transaction
         /// </summary>
-        public string InitiatedBy { get; set; } = "System";
+        [Required] public string InitiatedBy { get; set; } = "System";
 
         /// <summary>
         /// User ID if initiated by an admin
@@ -60,6 +61,6 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// <summary>
         /// When the transaction was created
         /// </summary>
-        public DateTime CreatedAt { get; set; }
+        [Required] public DateTime CreatedAt { get; set; }
     }
 }

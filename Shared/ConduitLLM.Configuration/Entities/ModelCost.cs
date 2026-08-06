@@ -2,6 +2,8 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities;
 
 /// <summary>
@@ -14,7 +16,7 @@ namespace ConduitLLM.Configuration.Entities;
 /// The pricing information is used to calculate costs for each request processed through the system,
 /// enabling detailed cost reporting and budget management.
 /// </remarks>
-public class ModelCost
+public class ModelCost : IEntity<int>, IAuditableEntity
 {
     /// <summary>
     /// Gets or sets the unique identifier for the model cost entry.
@@ -230,6 +232,20 @@ public class ModelCost
     /// </remarks>
     [Column(TypeName = "decimal(18, 8)")]
     public decimal? CostPerSearchUnit { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per minute of transcribed audio (speech-to-text). Nullable when the
+    /// model is not an STT model. Stored with moderate precision (decimal 18,8).
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? AudioCostPerMinute { get; set; }
+
+    /// <summary>
+    /// Gets or sets the cost per thousand input characters synthesized (text-to-speech). Nullable
+    /// when the model is not a TTS model. Stored with moderate precision (decimal 18,8).
+    /// </summary>
+    [Column(TypeName = "decimal(18, 8)")]
+    public decimal? AudioCostPerThousandCharacters { get; set; }
 
     /// <summary>
     /// Gets or sets the cost per million reasoning tokens for models with reasoning capabilities.

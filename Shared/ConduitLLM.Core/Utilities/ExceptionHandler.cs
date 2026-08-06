@@ -13,43 +13,6 @@ namespace ConduitLLM.Core.Utilities
     public static class ExceptionHandler
     {
         /// <summary>
-        /// Executes a function with standardized exception handling, logging, and error translation.
-        /// </summary>
-        /// <typeparam name="T">The return type of the operation.</typeparam>
-        /// <param name="operation">The operation to execute.</param>
-        /// <param name="logger">The logger to use for error logging.</param>
-        /// <param name="errorMessage">The base error message to use in thrown exceptions.</param>
-        /// <param name="exceptionTransformer">Optional function to transform caught exceptions into specific types.</param>
-        /// <returns>The result of the operation if successful.</returns>
-        /// <exception cref="LLMCommunicationException">Thrown for general communication errors if no transformer is provided.</exception>
-        public static async Task<T> ExecuteWithErrorHandlingAsync<T>(
-            Func<Task<T>> operation,
-            ILogger logger,
-            string errorMessage,
-            Func<Exception, Exception>? exceptionTransformer = null)
-        {
-            try
-            {
-                return await operation();
-            }
-            catch (Exception ex) when (
-                ex is not LLMCommunicationException &&
-                ex is not ConfigurationException &&
-                ex is not ValidationException &&
-                ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, errorMessage);
-
-                if (exceptionTransformer != null)
-                {
-                    throw exceptionTransformer(ex);
-                }
-
-                throw new LLMCommunicationException(errorMessage, ex);
-            }
-        }
-
-        /// <summary>
         /// Executes an operation with specific handling for HTTP-related exceptions.
         /// </summary>
         /// <typeparam name="T">The return type of the operation.</typeparam>
@@ -86,10 +49,15 @@ namespace ConduitLLM.Core.Utilities
             }
             catch (OperationCanceledException ex) when (ex.CancellationToken.IsCancellationRequested)
             {
-                logger.LogWarning("Request to {ServiceName} was canceled by user", serviceName);
-                throw; // Pass cancellation exceptions through unchanged
+                // Pass caller cancellation through unchanged for the outer boundary to handle.
+                throw;
             }
-            catch (Exception ex) when (ex is not LLMCommunicationException)
+
+            catch (Exception ex) when (
+                ex is not LLMCommunicationException &&
+                ex is not ConfigurationException &&
+                ex is not ModelNotFoundException &&
+                ex is not ValidationException)
             {
                 logger.LogError(ex, "Unexpected error during {ServiceName} communication", serviceName);
                 throw new LLMCommunicationException($"Unexpected error during {serviceName} communication: {ex.Message}", ex);
@@ -110,6 +78,15 @@ namespace ConduitLLM.Core.Utilities
             string providerName,
             string modelName)
         {
+            if (ex is LLMCommunicationException or
+                ConfigurationException or
+                ModelNotFoundException or
+                ValidationException)
+            {
+                // Provider-specific translations are already safe for the caller.
+                return ex;
+            }
+
             if (ex is HttpRequestException httpEx)
             {
                 var statusCode = httpEx.StatusCode ?? HttpStatusCode.ServiceUnavailable;
@@ -129,7 +106,10 @@ namespace ConduitLLM.Core.Utilities
                 if (statusCode == HttpStatusCode.NotFound)
                 {
                     logger.LogError(httpEx, "Model {Model} not found for {Provider}", modelName, providerName);
-                    return new ModelUnavailableException($"Model '{modelName}' not found for provider {providerName}", httpEx);
+                    return new ModelNotFoundException(
+                        modelName,
+                        $"Model '{modelName}' not found for provider {providerName}",
+                        httpEx);
                 }
 
                 logger.LogError(httpEx, "HTTP error from {Provider} using model {Model}: {StatusCode}",
@@ -143,91 +123,10 @@ namespace ConduitLLM.Core.Utilities
                 return new LLMCommunicationException($"Request to {providerName} timed out", ex);
             }
 
-            if (ex is ConfigurationException)
-            {
-                // Pass through configuration exceptions
-                return ex;
-            }
-
             // General error handling
             logger.LogError(ex, "Error processing request to {Provider} for model {Model}", providerName, modelName);
             return new LLMCommunicationException($"Error processing request to {providerName}: {ex.Message}", ex);
         }
 
-        /// <summary>
-        /// Handles configuration validation exceptions in a standardized way.
-        /// </summary>
-        /// <param name="operation">The operation to execute.</param>
-        /// <param name="logger">The logger to use for error logging.</param>
-        /// <param name="contextName">The context name for error messages.</param>
-        /// <returns>The result of the operation if successful.</returns>
-        /// <exception cref="ConfigurationException">Thrown with standardized context for configuration issues.</exception>
-        public static async Task<T> HandleConfigValidationAsync<T>(
-            Func<Task<T>> operation,
-            ILogger logger,
-            string contextName)
-        {
-            try
-            {
-                return await operation();
-            }
-            catch (ArgumentException ex)
-            {
-                logger.LogError(ex, "Configuration validation error for {Context}: {Message}", contextName, ex.Message);
-                throw new ConfigurationException($"Invalid configuration for {contextName}: {ex.Message}", ex);
-            }
-            catch (ConfigurationException)
-            {
-                // Pass through existing ConfigurationExceptions
-                throw;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, "Unexpected error validating configuration for {Context}", contextName);
-                throw new ConfigurationException($"Configuration error for {contextName}: {ex.Message}", ex);
-            }
-        }
-
-        /// <summary>
-        /// Logs an exception appropriately based on its type and severity.
-        /// </summary>
-        /// <param name="exception">The exception to log.</param>
-        /// <param name="logger">The logger to use.</param>
-        /// <param name="context">Additional context information to include in the log.</param>
-        public static void LogException(Exception exception, ILogger logger, string context)
-        {
-            if (exception is OperationCanceledException)
-            {
-                logger.LogInformation(exception, "Operation canceled in {Context}", context);
-                return;
-            }
-
-            if (exception is ValidationException)
-            {
-                logger.LogWarning(exception, "Validation error in {Context}: {Message}", context, exception.Message);
-                return;
-            }
-
-            if (exception is ConfigurationException)
-            {
-                logger.LogError(exception, "Configuration error in {Context}: {Message}", context, exception.Message);
-                return;
-            }
-
-            if (exception is ModelUnavailableException)
-            {
-                logger.LogError(exception, "Model unavailable in {Context}: {Message}", context, exception.Message);
-                return;
-            }
-
-            if (exception is LLMCommunicationException)
-            {
-                logger.LogError(exception, "Communication error in {Context}: {Message}", context, exception.Message);
-                return;
-            }
-
-            // Default case for unexpected exceptions
-            logger.LogError(exception, "Unexpected error in {Context}: {Message}", context, exception.Message);
-        }
     }
 }

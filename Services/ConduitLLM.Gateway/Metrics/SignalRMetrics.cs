@@ -10,56 +10,33 @@ namespace ConduitLLM.Gateway.Metrics
     public class SignalRMetrics : ISignalRMetrics
     {
         private readonly Meter _meter;
-        
+
         // ISignalRMetrics properties - Connection metrics
         public Counter<long> ConnectionsTotal { get; }
         public UpDownCounter<long> ActiveConnections { get; }
         public Counter<long> AuthenticationFailures { get; }
         public Counter<long> ConnectionErrors { get; }
-        
+
         // ISignalRMetrics properties - Message metrics
         public Counter<long> MessagesSent { get; }
         public Counter<long> MessagesReceived { get; }
         public Histogram<double> MessageProcessingDuration { get; }
         public Counter<long> MessageErrors { get; }
-        
+
         // ISignalRMetrics properties - Hub operation metrics
         public Counter<long> HubMethodInvocations { get; }
         public Histogram<double> HubMethodDuration { get; }
         public Counter<long> HubErrors { get; }
-        
+
         // ISignalRMetrics properties - Reconnection metrics
         public Counter<long> ReconnectionAttempts { get; }
         public Counter<long> ReconnectionSuccesses { get; }
         public Counter<long> ReconnectionFailures { get; }
-        
+
         // ISignalRMetrics properties - Group management metrics
         public Counter<long> GroupJoins { get; }
         public Counter<long> GroupLeaves { get; }
         public UpDownCounter<long> ActiveGroups { get; }
-        
-        // Additional metrics from new implementation
-        private readonly Counter<long> _messagesDelivered;
-        private readonly Counter<long> _messagesFailed;
-        private readonly Counter<long> _messagesAcknowledged;
-        private readonly Counter<long> _messagesTimedOut;
-        private readonly Counter<long> _messagesQueued;
-        private readonly Counter<long> _messagesBatched;
-        private readonly Counter<long> _batchesSent;
-        
-        // Additional histograms
-        private readonly Histogram<double> _messageDeliveryDuration;
-        private readonly Histogram<double> _messageAcknowledgmentDuration;
-        private readonly Histogram<double> _connectionDuration;
-        private readonly Histogram<double> _batchSize;
-        private readonly Histogram<double> _batchLatency;
-        private readonly Histogram<double> _queueProcessingDuration;
-        
-        // Additional gauges
-        private readonly UpDownCounter<long> _queueDepth;
-        private readonly UpDownCounter<long> _deadLetterQueueDepth;
-        private readonly UpDownCounter<long> _pendingAcknowledgments;
-        private readonly UpDownCounter<long> _pendingBatches;
 
         // Activity source for distributed tracing
         public static readonly ActivitySource ActivitySource = new("ConduitLLM.SignalR", "1.0.0");
@@ -154,93 +131,6 @@ namespace ConduitLLM.Gateway.Metrics
                 "groups",
                 "Number of active groups");
 
-            // Initialize additional counters
-            _messagesDelivered = _meter.CreateCounter<long>(
-                "signalr.messages.delivered",
-                "messages",
-                "Number of messages successfully delivered");
-
-            _messagesFailed = _meter.CreateCounter<long>(
-                "signalr.messages.failed",
-                "messages",
-                "Number of messages that failed delivery");
-
-            _messagesAcknowledged = _meter.CreateCounter<long>(
-                "signalr.messages.acknowledged",
-                "messages",
-                "Number of messages acknowledged by clients");
-
-            _messagesTimedOut = _meter.CreateCounter<long>(
-                "signalr.messages.timed_out",
-                "messages",
-                "Number of messages that timed out waiting for acknowledgment");
-
-            _messagesQueued = _meter.CreateCounter<long>(
-                "signalr.messages.queued",
-                "messages",
-                "Number of messages added to the queue");
-
-            _messagesBatched = _meter.CreateCounter<long>(
-                "signalr.messages.batched",
-                "messages",
-                "Number of messages added to batches");
-
-            _batchesSent = _meter.CreateCounter<long>(
-                "signalr.batches.sent",
-                "batches",
-                "Number of message batches sent");
-
-            // Initialize additional histograms
-            _messageDeliveryDuration = _meter.CreateHistogram<double>(
-                "signalr.message.delivery.duration",
-                "milliseconds",
-                "Duration of message delivery");
-
-            _messageAcknowledgmentDuration = _meter.CreateHistogram<double>(
-                "signalr.message.acknowledgment.duration",
-                "milliseconds",
-                "Duration from message send to acknowledgment");
-
-            _connectionDuration = _meter.CreateHistogram<double>(
-                "signalr.connection.duration",
-                "seconds",
-                "Duration of connections");
-
-            _batchSize = _meter.CreateHistogram<double>(
-                "signalr.batch.size",
-                "messages",
-                "Number of messages per batch");
-
-            _batchLatency = _meter.CreateHistogram<double>(
-                "signalr.batch.latency",
-                "milliseconds",
-                "Time messages spend waiting in batch");
-
-            _queueProcessingDuration = _meter.CreateHistogram<double>(
-                "signalr.queue.processing.duration",
-                "milliseconds",
-                "Duration of queue processing operations");
-
-            // Initialize additional gauges
-            _queueDepth = _meter.CreateUpDownCounter<long>(
-                "signalr.queue.depth",
-                "messages",
-                "Number of messages in the queue");
-
-            _deadLetterQueueDepth = _meter.CreateUpDownCounter<long>(
-                "signalr.queue.dead_letter.depth",
-                "messages",
-                "Number of messages in the dead letter queue");
-
-            _pendingAcknowledgments = _meter.CreateUpDownCounter<long>(
-                "signalr.acknowledgments.pending",
-                "acknowledgments",
-                "Number of pending acknowledgments");
-
-            _pendingBatches = _meter.CreateUpDownCounter<long>(
-                "signalr.batches.pending",
-                "batches",
-                "Number of pending message batches");
         }
 
         /// <summary>
@@ -293,157 +183,6 @@ namespace ConduitLLM.Gateway.Metrics
 
             var stopwatch = Stopwatch.StartNew();
             return new MessageProcessingTimer(this, stopwatch, messageType, direction, protocol);
-        }
-
-        // Additional methods from new implementation
-        public void RecordMessageDelivered(string hub, string method, bool success)
-        {
-            var tags = new TagList
-            {
-                { "hub", hub },
-                { "method", method },
-                { "status", success ? "success" : "failure" }
-            };
-
-            if (success)
-                _messagesDelivered.Add(1, tags);
-            else
-                _messagesFailed.Add(1, tags);
-        }
-
-        public void RecordMessageAcknowledged(string hub, string method)
-        {
-            _messagesAcknowledged.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method } 
-            });
-        }
-
-        public void RecordMessageTimedOut(string hub, string method)
-        {
-            _messagesTimedOut.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method } 
-            });
-        }
-
-        public void RecordConnectionCreated(string hub, bool success)
-        {
-            var tags = new TagList { { "hub", hub } };
-            
-            ConnectionsTotal.Add(1, tags);
-            
-            if (!success)
-                ConnectionErrors.Add(1, tags);
-        }
-
-        public void RecordMessageQueued(string hub, string method, int priority)
-        {
-            _messagesQueued.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method },
-                { "priority", priority.ToString() }
-            });
-        }
-
-        public void RecordMessageBatched(string hub, string method)
-        {
-            _messagesBatched.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method }
-            });
-        }
-
-        public void RecordBatchSent(string hub, string method, int messageCount)
-        {
-            _batchesSent.Add(1, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method }
-            });
-            
-            _batchSize.Record(messageCount, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method }
-            });
-        }
-
-        public void RecordMessageDeliveryDuration(string hub, string method, double durationMs)
-        {
-            _messageDeliveryDuration.Record(durationMs, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method }
-            });
-        }
-
-        public void RecordAcknowledgmentDuration(string hub, string method, double durationMs)
-        {
-            _messageAcknowledgmentDuration.Record(durationMs, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method }
-            });
-        }
-
-        public void RecordConnectionDuration(string hub, double durationSeconds)
-        {
-            _connectionDuration.Record(durationSeconds, new TagList 
-            { 
-                { "hub", hub }
-            });
-        }
-
-        public void RecordBatchLatency(string hub, string method, double latencyMs)
-        {
-            _batchLatency.Record(latencyMs, new TagList 
-            { 
-                { "hub", hub }, 
-                { "method", method }
-            });
-        }
-
-        public void RecordQueueProcessingDuration(double durationMs, int messagesProcessed)
-        {
-            _queueProcessingDuration.Record(durationMs, new TagList 
-            { 
-                { "messages_processed", messagesProcessed.ToString() }
-            });
-        }
-
-        public void UpdateActiveConnections(string hub, int delta)
-        {
-            ActiveConnections.Add(delta, new TagList { { "hub", hub } });
-        }
-
-        public void UpdateActiveGroups(string hub, int delta)
-        {
-            ActiveGroups.Add(delta, new TagList { { "hub", hub } });
-        }
-
-        public void UpdateQueueDepth(int delta)
-        {
-            _queueDepth.Add(delta);
-        }
-
-        public void UpdateDeadLetterQueueDepth(int delta)
-        {
-            _deadLetterQueueDepth.Add(delta);
-        }
-
-        public void UpdatePendingAcknowledgments(int delta)
-        {
-            _pendingAcknowledgments.Add(delta);
-        }
-
-        public void UpdatePendingBatches(int delta)
-        {
-            _pendingBatches.Add(delta);
         }
 
         public static Activity? StartMessageActivity(string operationName, string hub, string method)

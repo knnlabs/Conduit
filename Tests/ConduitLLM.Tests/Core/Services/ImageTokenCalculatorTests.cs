@@ -291,6 +291,84 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(expectedTokens, tokens);
         }
 
+        [Fact]
+        public void EstimateImageTokens_LowDetail_ReturnsFixedTokensWithoutConservativeFlag()
+        {
+            var imageUrl = new ImageUrl { Url = "https://example.com/image.jpg", Detail = "low" };
+
+            var (tokens, isConservativeDefault) = ImageTokenCalculator.EstimateImageTokens(imageUrl);
+
+            Assert.Equal(ImageTokenCalculator.LowDetailTokens, tokens);
+            Assert.False(isConservativeDefault);
+        }
+
+        [Fact]
+        public void EstimateImageTokens_Base64WithReadableDimensions_UsesHighDetailFormula()
+        {
+            var pngBytes = CreatePngHeader(512, 512);
+            var imageUrl = new ImageUrl
+            {
+                Url = $"data:image/png;base64,{Convert.ToBase64String(pngBytes)}",
+                Detail = "high"
+            };
+
+            var (tokens, isConservativeDefault) = ImageTokenCalculator.EstimateImageTokens(imageUrl);
+
+            // 512x512 = 1 tile: 170 + (1 * 170) = 340 tokens
+            Assert.Equal(340, tokens);
+            Assert.False(isConservativeDefault);
+        }
+
+        [Fact]
+        public void EstimateImageTokens_RemoteUrl_ReturnsConservativeDefaultWithoutFetching()
+        {
+            // No HTTP handler is involved: the sync estimator must never touch the network.
+            var imageUrl = new ImageUrl { Url = "https://example.com/image.png", Detail = "high" };
+
+            var (tokens, isConservativeDefault) = ImageTokenCalculator.EstimateImageTokens(imageUrl);
+
+            Assert.Equal(ImageTokenCalculator.ConservativeHighDetailTokens, tokens);
+            Assert.True(isConservativeDefault);
+        }
+
+        [Fact]
+        public void EstimateImageTokens_InvalidBase64_ReturnsConservativeDefault()
+        {
+            var imageUrl = new ImageUrl { Url = "data:image/png;base64,invalid_base64_data", Detail = "high" };
+
+            var (tokens, isConservativeDefault) = ImageTokenCalculator.EstimateImageTokens(imageUrl);
+
+            Assert.Equal(ImageTokenCalculator.ConservativeHighDetailTokens, tokens);
+            Assert.True(isConservativeDefault);
+        }
+
+        [Fact]
+        public void EstimateImageTokens_LargeBase64Payload_ReadsDimensionsFromHeaderOnly()
+        {
+            // A multi-megabyte payload whose header carries the dimensions: the bounded decode
+            // must still find them rather than decoding (or choking on) the whole body.
+            var headerBytes = CreatePngHeader(1024, 1024);
+            var payload = new byte[2 * 1024 * 1024];
+            headerBytes.CopyTo(payload, 0);
+            var imageUrl = new ImageUrl
+            {
+                Url = $"data:image/png;base64,{Convert.ToBase64String(payload)}",
+                Detail = "high"
+            };
+
+            var (tokens, isConservativeDefault) = ImageTokenCalculator.EstimateImageTokens(imageUrl);
+
+            // 1024x1024 scales to 768x768 = 4 tiles: 170 + (4 * 170) = 850 tokens
+            Assert.Equal(850, tokens);
+            Assert.False(isConservativeDefault);
+        }
+
+        [Fact]
+        public void EstimateImageTokens_NullImageUrl_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => ImageTokenCalculator.EstimateImageTokens(null!));
+        }
+
         // Helper methods to create image headers with specific dimensions
 
         private byte[] CreatePngHeader(int width, int height)

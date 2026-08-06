@@ -1,27 +1,14 @@
+using ConduitLLM.Core.Models;
+
 namespace ConduitLLM.Admin.Models
 {
     /// <summary>
     /// Represents data for an ephemeral master key stored in cache
     /// </summary>
-    public class EphemeralMasterKeyData
+    public class EphemeralMasterKeyData : EphemeralKeyDataBase
     {
         /// <summary>
-        /// The ephemeral master key token
-        /// </summary>
-        public string Key { get; set; } = string.Empty;
-
-        /// <summary>
-        /// When the key was created
-        /// </summary>
-        public DateTimeOffset CreatedAt { get; set; }
-
-        /// <summary>
-        /// When the key expires
-        /// </summary>
-        public DateTimeOffset ExpiresAt { get; set; }
-
-        /// <summary>
-        /// Whether the key has been consumed
+        /// Whether the single-use key has been consumed.
         /// </summary>
         public bool IsConsumed { get; set; }
 

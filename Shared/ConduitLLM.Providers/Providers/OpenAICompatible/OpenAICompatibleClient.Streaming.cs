@@ -55,110 +55,94 @@ namespace ConduitLLM.Providers.OpenAICompatible
         }
 
         /// <summary>
-        /// Streams chunks progressively without buffering them into a list
+        /// Transforms the raw JSON of a streaming chunk before deserialization.
+        /// Override in subclasses to perform provider-specific JSON transformations
+        /// (e.g., extracting usage data from vendor-specific fields).
         /// </summary>
-        private async IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
-            CoreModels.ChatCompletionRequest request,
-            string? apiKey = null,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        /// <param name="chunk">The raw JSON element from the SSE stream.</param>
+        /// <returns>The JSON string to deserialize into a ChatCompletionChunk.</returns>
+        protected virtual string TransformChunkJson(JsonElement chunk)
+            => chunk.GetRawText();
+
+        /// <summary>
+        /// Maps a raw provider chunk to the provider-agnostic streaming model.
+        /// Subclasses may override this when server-only metadata must be preserved
+        /// separately from the JSON returned to clients.
+        /// </summary>
+        protected virtual CoreModels.ChatCompletionChunk? MapStreamingChunk(JsonElement chunk)
         {
-            HttpClient? client = null;
-            HttpResponseMessage? response = null;
-            
-            try
-            {
-                client = CreateHttpClient(apiKey);
-                var openAiRequest = PrepareStreamingRequest(request);
-                var endpoint = GetChatCompletionEndpoint();
-
-                Logger.LogDebug("Sending streaming chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
-
-                response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Process the error with enhanced error extraction
-                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
-                Logger.LogError(ex, "Error in streaming chat completion from {Provider}: {Message}", ProviderName, enhancedErrorMessage);
-
-                var error = CoreUtils.ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
-                
-                // Clean up resources
-                response?.Dispose();
-                client?.Dispose();
-                
-                throw error;
-            }
-            
-            // If we get here, we have a response to stream
-            if (response != null)
-            {
-                // Stream chunks progressively using StreamHelper - use JsonElement for raw passthrough
-                await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<System.Text.Json.JsonElement>(
-                    response, Logger, DefaultJsonOptions, cancellationToken))
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        response.Dispose();
-                        client?.Dispose();
-                        yield break;
-                    }
-
-                    // Deserialize the raw JSON directly to our chunk type, preserving ALL fields
-                    var chunkJson = chunk.GetRawText();
-                    var mappedChunk = System.Text.Json.JsonSerializer.Deserialize<CoreModels.ChatCompletionChunk>(
-                        chunkJson, DefaultJsonOptions);
-                    
-                    if (mappedChunk != null)
-                    {
-                        // Preserve the original model alias if provided
-                        if (!string.IsNullOrEmpty(request.Model))
-                        {
-                            mappedChunk.Model = request.Model;
-                            mappedChunk.OriginalModelAlias = request.Model;
-                        }
-                        
-                        yield return mappedChunk;
-                    }
-                }
-                
-                // Clean up after successful streaming
-                response.Dispose();
-                client?.Dispose();
-            }
+            var chunkJson = TransformChunkJson(chunk);
+            return JsonSerializer.Deserialize<CoreModels.ChatCompletionChunk>(chunkJson, DefaultJsonOptions);
         }
 
         /// <summary>
-        /// Helper method to fetch all stream chunks without yielding in a try block
+        /// Streams chunks progressively without buffering them into a list
         /// </summary>
-        private async Task<List<CoreModels.ChatCompletionChunk>> FetchStreamChunksAsync(
+        protected virtual IAsyncEnumerable<CoreModels.ChatCompletionChunk> StreamChunksProgressivelyAsync(
             CoreModels.ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            var chunks = new List<CoreModels.ChatCompletionChunk>();
+            return RunStreamingAsync(
+                ct => ReadOpenAiStreamAsync(request, apiKey, ct),
+                "StreamChatCompletion",
+                request.Model ?? ProviderModelId,
+                cancellationToken);
+        }
 
-            try
+        private async IAsyncEnumerable<CoreModels.ChatCompletionChunk> ReadOpenAiStreamAsync(
+            CoreModels.ChatCompletionRequest request,
+            string? apiKey,
+            [EnumeratorCancellation] CancellationToken cancellationToken)
+        {
+            using var client = CreateHttpClient(apiKey);
+            var openAiRequest = PrepareStreamingRequest(request);
+            var endpoint = GetChatCompletionEndpoint();
+
+            Logger.LogDebug(
+                "Sending streaming chat completion request to {Provider} at {Endpoint}",
+                ProviderName,
+                endpoint);
+
+            using var response = await SendStreamingRequestAsync(
+                client,
+                endpoint,
+                openAiRequest,
+                apiKey,
+                cancellationToken);
+            var reportedUsage = false;
+
+            await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<JsonElement>(
+                response,
+                Logger,
+                DefaultJsonOptions,
+                cancellationToken))
             {
-                using var client = CreateHttpClient(apiKey);
-                var openAiRequest = PrepareStreamingRequest(request);
-                var endpoint = GetChatCompletionEndpoint();
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    yield break;
+                }
 
-                Logger.LogDebug("Sending streaming chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
+                var mappedChunk = MapStreamingChunk(chunk);
+                if (mappedChunk is null)
+                {
+                    continue;
+                }
 
-                var response = await SendStreamingRequestAsync(client, endpoint, openAiRequest, apiKey, cancellationToken);
-                chunks = await ProcessStreamingResponseAsync(response, request.Model, cancellationToken);
+                if (!string.IsNullOrEmpty(request.Model))
+                {
+                    mappedChunk.Model = request.Model;
+                    mappedChunk.OriginalModelAlias = request.Model;
+                }
 
-                return chunks;
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                // Process the error with enhanced error extraction
-                var enhancedErrorMessage = ExtractEnhancedErrorMessage(ex);
-                Logger.LogError(ex, "Error in streaming chat completion from {Provider}: {Message}", ProviderName, enhancedErrorMessage);
+                ExtractProviderUsageFromExtensionData(mappedChunk.Usage);
+                if (!reportedUsage && mappedChunk.Usage != null)
+                {
+                    RecordUsage(mappedChunk.Usage, "StreamChatCompletion");
+                    reportedUsage = true;
+                }
 
-                var error = CoreUtils.ExceptionHandler.HandleLlmException(ex, Logger, ProviderName, request.Model ?? ProviderModelId);
-                throw error;
+                yield return mappedChunk;
             }
         }
 
@@ -176,12 +160,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
             var openAiRequest = MapToOpenAIRequest(request);
 
-            // Force stream parameter to true based on the request's type
-            if (openAiRequest is JsonElement jsonElement)
-            {
-                return ForceStreamParametersInJsonElement(jsonElement);
-            }
-            else if (openAiRequest is Dictionary<string, object> dictObj)
+            // Force stream parameter to true (all MapToOpenAIRequest overrides return a dictionary)
+            if (openAiRequest is Dictionary<string, object> dictObj)
             {
                 dictObj["stream"] = true;
                 // Ensure stream_options is present
@@ -191,38 +171,9 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 }
                 return dictObj;
             }
-            else if (openAiRequest is OpenAIChatCompletionRequest reqObj)
-            {
-                reqObj = reqObj with { Stream = true };
-                return reqObj;
-            }
 
             // If we can't determine the type, return the original request
             return openAiRequest;
-        }
-
-        /// <summary>
-        /// Forces the stream parameter to true and ensures stream_options is set in a JsonElement
-        /// </summary>
-        /// <param name="jsonElement">The JsonElement to modify</param>
-        /// <returns>An object with stream=true and stream_options configured</returns>
-        private object ForceStreamParametersInJsonElement(JsonElement jsonElement)
-        {
-            var jsonObject = jsonElement.GetRawText();
-            var tempObj = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonObject, DefaultJsonOptions);
-            if (tempObj != null)
-            {
-                tempObj["stream"] = true;
-                // Ensure stream_options is present for usage data
-                if (!tempObj.ContainsKey("stream_options"))
-                {
-                    tempObj["stream_options"] = new { include_usage = true };
-                }
-                return tempObj;
-            }
-
-            // If deserialization fails, return the original element
-            return jsonElement;
         }
 
         /// <summary>
@@ -249,36 +200,9 @@ namespace ConduitLLM.Providers.OpenAICompatible
                 CreateStandardHeaders(apiKey),
                 DefaultJsonOptions,
                 Logger,
-                cancellationToken);
+                cancellationToken,
+                TranslateHttpError);
         }
 
-        /// <summary>
-        /// Processes a streaming response and returns a list of chat completion chunks
-        /// </summary>
-        /// <param name="response">The HTTP response message</param>
-        /// <param name="originalModelAlias">The original model alias from the request</param>
-        /// <param name="cancellationToken">A token to monitor for cancellation requests</param>
-        /// <returns>A list of chat completion chunks</returns>
-        private async Task<List<CoreModels.ChatCompletionChunk>> ProcessStreamingResponseAsync(
-            HttpResponseMessage response,
-            string? originalModelAlias,
-            CancellationToken cancellationToken)
-        {
-            var chunks = new List<CoreModels.ChatCompletionChunk>();
-
-            // Use StreamHelper to process the SSE stream
-            await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<OpenAIChatCompletionChunk>(
-                response, Logger, DefaultJsonOptions, cancellationToken))
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                chunks.Add(MapFromOpenAIChunk(chunk, originalModelAlias));
-            }
-
-            return chunks;
-        }
     }
 }

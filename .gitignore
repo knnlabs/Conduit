@@ -50,6 +50,9 @@ artifacts/
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt
 
+# Visual Studio launch settings (developer-specific)
+**/Properties/launchSettings.json
+
 # StyleCop
 StyleCopReport.xml
 
@@ -383,6 +386,9 @@ FodyWeavers.xsd
 *.sln.iml
 .idea/
 
+# Claude Code local settings
+.claude/
+
 # macOS
 .DS_Store
 
@@ -395,11 +401,12 @@ helm/requirements.lock
 uploads/
 usage_tracking*.json
 
+# .NET tool publish output
+/out/
+
 # Node.js build artifacts
 Clients/Node/*/dist/
 Clients/Node/*/node_modules/
-SDKs/Node/*/dist/
-SDKs/Node/*/node_modules/
 
 # Local database files
 *.db
@@ -420,8 +427,18 @@ secrets.json
 *.key
 *.pem
 *.p12
-*credentials*
-*secret*
+# Broad secret-name rules are limited to the repository root and config directory.
+# Extension-bearing rules still protect secret material elsewhere without matching source names.
+/*credentials*
+/config/**/*credentials*
+*credentials*.txt
+*credentials*.json
+*credentials*.env
+/*secret*
+/config/**/*secret*
+*secret*.txt
+*secret*.json
+*secret*.env
 *token*.txt
 *token*.json
 *token*.env
@@ -448,3 +465,4 @@ replicate-text-models.sql
 replicate-video-models.sql
 scripts/db/replicate/replicate-text-models.sql
 scripts/db/replicate/replicate-video-models.sql
+scripts/db/providers/openrouter-models.sql

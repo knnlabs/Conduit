@@ -4,17 +4,10 @@ namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>
     /// Repository interface for managing async tasks.
+    /// Extends IRepositoryBase for standard CRUD operations.
     /// </summary>
-    public interface IAsyncTaskRepository
+    public interface IAsyncTaskRepository : IRepositoryBase<AsyncTask, string>
     {
-        /// <summary>
-        /// Gets a task by its ID.
-        /// </summary>
-        /// <param name="taskId">The task ID.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The task if found, null otherwise.</returns>
-        Task<AsyncTask?> GetByIdAsync(string taskId, CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Gets all tasks for a virtual key.
         /// </summary>
@@ -32,36 +25,15 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<List<AsyncTask>> GetActiveByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Creates a new async task.
-        /// </summary>
-        /// <param name="task">The task to create.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>The created task ID.</returns>
-        Task<string> CreateAsync(AsyncTask task, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Updates an existing async task.
-        /// </summary>
-        /// <param name="task">The task to update.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if updated successfully, false otherwise.</returns>
-        Task<bool> UpdateAsync(AsyncTask task, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Deletes a task by its ID.
-        /// </summary>
-        /// <param name="taskId">The task ID.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if deleted successfully, false otherwise.</returns>
-        Task<bool> DeleteAsync(string taskId, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Archives completed tasks older than the specified timespan.
         /// </summary>
         /// <param name="olderThan">The age threshold for archiving.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The number of tasks archived.</returns>
-        Task<int> ArchiveOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default);
+        Task<int> ArchiveOldTasksAsync(
+            TimeSpan completedOlderThan,
+            TimeSpan? staleActiveOlderThan = null,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets tasks that need to be cleaned up (archived and older than specified timespan).
@@ -88,6 +60,13 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of pending tasks.</returns>
         Task<List<AsyncTask>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default);
+
+        /// <summary>Gets one page of non-archived tasks in the requested state.</summary>
+        Task<(List<AsyncTask> Tasks, int TotalCount)> GetByStateAsync(
+            int state,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Attempts to lease a pending task for processing.
@@ -134,5 +113,70 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>True if updated successfully, false if version mismatch.</returns>
         Task<bool> UpdateWithVersionCheckAsync(AsyncTask task, int expectedVersion, CancellationToken cancellationToken = default);
+
+        /// <summary>Atomically claims a specific pending task for one media consumer.</summary>
+        Task<AsyncTaskClaimResult> TryClaimTaskAsync(
+            string taskId,
+            string workerId,
+            TimeSpan leaseDuration,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Records that the external provider may now have accepted work.</summary>
+        Task<bool> MarkProviderInvocationStartedAsync(
+            string taskId,
+            string workerId,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Records that the provider returned a definitive result.</summary>
+        Task<bool> MarkProviderInvocationCompletedAsync(
+            string taskId,
+            string workerId,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> FailIndeterminateTaskWithoutChargeAsync(
+            string taskId,
+            string reason,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Atomically prepares an indeterminate media task for an operator-approved retry.
+        /// Repeating the same dispatch ID is idempotent so a redelivered reconciliation
+        /// command can safely publish the follow-on generation event.
+        /// </summary>
+        Task<IndeterminateTaskRetryPreparation> PrepareIndeterminateTaskRetryAsync(
+            string taskId,
+            string dispatchId,
+            string reason,
+            CancellationToken cancellationToken = default);
+
+        Task<ExpiredTaskRecoveryResult> RecoverExpiredMediaTasksAsync(
+            CancellationToken cancellationToken = default);
     }
+
+    public enum AsyncTaskClaimResult
+    {
+        Claimed = 0,
+        AlreadyClaimed = 1,
+        Terminal = 2,
+        Missing = 3,
+        Indeterminate = 4
+    }
+
+    public sealed record ExpiredTaskRecoveryResult(int ResetToPending, int MarkedIndeterminate);
+
+    public enum IndeterminateTaskRetryPreparationStatus
+    {
+        Prepared = 0,
+        AlreadyPrepared = 1,
+        Missing = 2,
+        NotIndeterminate = 3,
+        UnsupportedTaskType = 4,
+        RetryLimitExceeded = 5
+    }
+
+    public sealed record IndeterminateTaskRetryPreparation(
+        IndeterminateTaskRetryPreparationStatus Status,
+        AsyncTask? Task = null);
 }

@@ -1,85 +1,43 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
-using ConduitLLM.Core.Interfaces;
-
-using MassTransit;
+using ConduitLLM.Gateway.Interfaces;
 
 namespace ConduitLLM.Gateway.Consumers
 {
     /// <summary>
-    /// Handles IpFilterChanged events for cache invalidation.
-    /// Invalidates the Redis-based IP filter cache when filters are modified.
+    /// Handles <see cref="IpFilterChanged"/> events by invalidating the in-memory IP filter-rules
+    /// cache on this replica. The event bus broadcasts to every replica, so a filter change takes
+    /// effect immediately across the fleet instead of waiting for the 5-minute cache TTL.
     /// </summary>
-    public class IpFilterCacheInvalidationHandler : IConsumer<IpFilterChanged>
+    public class IpFilterCacheInvalidationHandler : IEventHandler<IpFilterChanged>
     {
-        private readonly IIpFilterCache? _ipFilterCache;
+        private readonly IIpFilterService _ipFilterService;
         private readonly ILogger<IpFilterCacheInvalidationHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the IpFilterCacheInvalidationHandler
         /// </summary>
-        /// <param name="ipFilterCache">Optional IP filter cache</param>
-        /// <param name="logger">Logger for diagnostics</param>
         public IpFilterCacheInvalidationHandler(
-            IIpFilterCache? ipFilterCache,
+            IIpFilterService ipFilterService,
             ILogger<IpFilterCacheInvalidationHandler> logger)
         {
-            _ipFilterCache = ipFilterCache;
+            _ipFilterService = ipFilterService;
             _logger = logger;
         }
 
         /// <summary>
-        /// Consumes IpFilterChanged events and logs them for monitoring
+        /// Invalidates the live filter-rules cache when an IP filter (or its settings) changes.
         /// </summary>
-        /// <param name="context">The consume context containing the event</param>
-        public async Task Consume(ConsumeContext<IpFilterChanged> context)
+        public Task HandleAsync(IpFilterChanged message, IEventContext context)
         {
-            var @event = context.Message;
-
             _logger.LogInformation(
-                "IpFilterChanged event received - FilterId: {FilterId}, IP: {IpAddressOrCidr}, ChangeType: {ChangeType}, FilterType: {FilterType}, IsEnabled: {IsEnabled}",
-                @event.FilterId,
-                @event.IpAddressOrCidr,
-                @event.ChangeType,
-                @event.FilterType,
-                @event.IsEnabled);
+                "IpFilterChanged received - FilterId: {FilterId}, ChangeType: {ChangeType}, FilterType: {FilterType}, IsEnabled: {IsEnabled}",
+                message.FilterId, message.ChangeType, message.FilterType, message.IsEnabled);
 
-            // Log warning for global filter changes
-            if (@event.FilterType == "global")
-            {
-                _logger.LogWarning(
-                    "Global IP filter changed - FilterId: {FilterId}, IP: {IpAddressOrCidr}. This affects all API access.",
-                    @event.FilterId,
-                    @event.IpAddressOrCidr);
-            }
+            _ipFilterService.InvalidateCache();
+            _logger.LogInformation("IP filter rules cache invalidated due to filter change event");
 
-            if (!string.IsNullOrEmpty(@event.Description))
-            {
-                _logger.LogDebug(
-                    "IP filter description: {Description}",
-                    @event.Description);
-            }
-
-            if (@event.ChangedProperties?.Length > 0)
-            {
-                _logger.LogDebug(
-                    "IP filter properties changed: {ChangedProperties}",
-                    string.Join(", ", @event.ChangedProperties));
-            }
-
-            // Invalidate cache if available
-            if (_ipFilterCache != null)
-            {
-                try
-                {
-                    // Clear all filters to ensure consistency across global and key-specific caches
-                    await _ipFilterCache.ClearAllFiltersAsync();
-                    _logger.LogInformation("IP filter cache cleared due to filter change event");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error invalidating IP filter cache");
-                }
-            }
+            return Task.CompletedTask;
         }
     }
 }

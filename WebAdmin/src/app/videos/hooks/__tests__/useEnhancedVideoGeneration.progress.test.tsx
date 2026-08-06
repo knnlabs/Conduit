@@ -3,7 +3,7 @@ import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
 import { setupMocks } from './videoTest.helpers';
 import type { VideoTask } from '../../types';
 import * as browserClientModule from '@/lib/client/browserCoreClient';
-import type { VideoProgressCallbacks } from '@knn_labs/conduit-gateway-client';
+import type { VideoProgressCallbacks } from '@/lib/gateway-api';
 import { MediaGenerationStatus } from '@/app/types/media';
 
 // Mock the browser client module
@@ -95,12 +95,8 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
   });
 
   describe('Enhanced video generation with progress tracking', () => {
-    it('should use progress tracking when enabled', async () => {
-      const hook = renderHook(() =>
-        useEnhancedVideoGeneration({
-          fallbackToPolling: true,
-        })
-      );
+    it('should delegate progress tracking to the SDK', async () => {
+      const hook = renderHook(() => useEnhancedVideoGeneration());
 
       await act(async () => {
         await hook.result.current.generateVideo({
@@ -166,7 +162,7 @@ describe('useEnhancedVideoGeneration - Progress Tracking', () => {
       });
 
       expect(hook.result.current.isGenerating).toBe(false);
-      expect(storeMocks.mockSetError).toHaveBeenCalledWith(expect.any(String));
+      expect(storeMocks.mockSetError).toHaveBeenLastCalledWith(expect.any(Error));
     });
 
     it('should handle progress callbacks correctly', async () => {

@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using MassTransit;
 using ConduitLLM.Configuration.Events;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Services;
 
 namespace ConduitLLM.Gateway.EventHandlers
@@ -16,25 +16,25 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// - Handle errors gracefully with proper logging and error reporting
     /// - Maintain audit trail for operational tracking
     /// </summary>
-    public class BatchSpendFlushRequestedHandler : IBatchSpendFlushRequestedConsumer
+    public class BatchSpendFlushRequestedHandler : IEventHandler<BatchSpendFlushRequestedEvent>
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<BatchSpendFlushRequestedHandler> _logger;
 
         /// <summary>
         /// Initializes a new instance of the BatchSpendFlushRequestedHandler.
         /// </summary>
         /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
-        /// <param name="publishEndpoint">MassTransit publish endpoint for publishing completion events</param>
+        /// <param name="eventBus">Event bus for publishing completion events</param>
         /// <param name="logger">Logger instance for operational tracking</param>
         public BatchSpendFlushRequestedHandler(
             IServiceScopeFactory serviceScopeFactory,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<BatchSpendFlushRequestedHandler> logger)
         {
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -48,10 +48,10 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// 4. Publishes a completion event with results
         /// 5. Handles errors gracefully and reports them in completion event
         /// </summary>
-        /// <param name="context">Message context containing the flush request</param>
-        public async Task Consume(ConsumeContext<BatchSpendFlushRequestedEvent> context)
+        /// <param name="request">The flush request</param>
+        /// <param name="context">Delivery context</param>
+        public async Task HandleAsync(BatchSpendFlushRequestedEvent request, IEventContext context)
         {
-            var request = context.Message;
             var stopwatch = Stopwatch.StartNew();
             
             _logger.LogInformation(
@@ -195,7 +195,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             // Always publish completion event for requestor tracking
             try
             {
-                await _publishEndpoint.Publish(completionEvent, cancellationToken: context.CancellationToken);
+                await _eventBus.PublishAsync(completionEvent, context.CancellationToken);
                 
                 _logger.LogDebug("Published BatchSpendFlushCompletedEvent for request {RequestId} (Success: {Success})", 
                     request.RequestId, completionEvent.Success);

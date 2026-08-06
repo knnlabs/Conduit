@@ -20,6 +20,7 @@ namespace ConduitLLM.Admin.Interfaces
         /// <param name="durationSeconds">Duration of the run</param>
         /// <param name="status">Status message (e.g., "Completed", "Partial", "Failed")</param>
         /// <param name="leaderInstanceId">ID of the instance that ran the cleanup</param>
+        /// <param name="triggeredBy">Whether the run was scheduled or manually triggered</param>
         /// <param name="cancellationToken">Cancellation token</param>
         Task RecordRunCompletionAsync(
             int filesDeleted,
@@ -27,6 +28,28 @@ namespace ConduitLLM.Admin.Interfaces
             double durationSeconds,
             string status,
             string leaderInstanceId,
+            string triggeredBy,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Records the completion of one cleanup phase.
+        /// </summary>
+        Task RecordOperationCompletionAsync(
+            string cleanupType,
+            int filesDeleted,
+            long bytesFreed,
+            double durationSeconds,
+            string status,
+            string leaderInstanceId,
+            string triggeredBy,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Records the untracked storage drift remaining after reconciliation.
+        /// </summary>
+        Task RecordReconciliationDriftAsync(
+            int untrackedObjectCount,
+            long untrackedBytes,
             CancellationToken cancellationToken = default);
 
         /// <summary>

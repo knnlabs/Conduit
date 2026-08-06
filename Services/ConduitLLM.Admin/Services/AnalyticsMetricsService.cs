@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -14,7 +15,6 @@ namespace ConduitLLM.Admin.Services
         private readonly ConcurrentDictionary<string, long> _cacheMisses = new();
         private readonly ConcurrentDictionary<string, List<double>> _operationDurations = new();
         private readonly ConcurrentDictionary<string, List<double>> _fetchDurations = new();
-        private long _cacheMemoryUsage;
         private long _totalCacheInvalidations;
         private DateTime _metricsStartTime;
 
@@ -33,7 +33,8 @@ namespace ConduitLLM.Admin.Services
         {
             var key = NormalizeCacheKey(cacheKey);
             _cacheHits.AddOrUpdate(key, 1, (k, v) => v + 1);
-            
+            AdminCacheMetrics.RecordHit(key);
+
             // Log every 100 hits for monitoring
             if (_cacheHits[key] % 100 == 0)
             {
@@ -45,7 +46,14 @@ namespace ConduitLLM.Admin.Services
         public void RecordCacheMiss(string cacheKey)
         {
             var key = NormalizeCacheKey(cacheKey);
-            _cacheMisses.AddOrUpdate(key, 1, (k, v) => v + 1);
+            var newCount = _cacheMisses.AddOrUpdate(key, 1, (k, v) => v + 1);
+            AdminCacheMetrics.RecordMiss(key);
+
+            // Log every 100 misses for monitoring
+            if (newCount % 100 == 0)
+            {
+                _logger.LogDebug("Cache key {CacheKey} has {MissCount} misses", key, newCount);
+            }
         }
 
         /// <inheritdoc/>
@@ -89,18 +97,12 @@ namespace ConduitLLM.Admin.Services
                     }
                     return list;
                 });
-        }
 
-        /// <inheritdoc/>
-        public void RecordCacheMemoryUsage(long sizeBytes)
-        {
-            Interlocked.Exchange(ref _cacheMemoryUsage, sizeBytes);
-            
-            // Log if memory usage is high (> 100MB)
-            if (sizeBytes > 100 * 1024 * 1024)
+            // Log slow fetches
+            if (durationMs > 2000)
             {
-                _logger.LogWarning("High cache memory usage: {SizeMB}MB", 
-                    sizeBytes / (1024 * 1024));
+                _logger.LogWarning("Slow data fetch from {DataSource} took {Duration}ms",
+                    dataSource, durationMs);
             }
         }
 
@@ -108,7 +110,8 @@ namespace ConduitLLM.Admin.Services
         public void RecordCacheInvalidation(string reason, int keysInvalidated)
         {
             Interlocked.Increment(ref _totalCacheInvalidations);
-            _logger.LogInformation("Cache invalidated: {Reason}, {KeyCount} keys cleared", 
+            AdminCacheMetrics.RecordInvalidation("analytics", reason);
+            _logger.LogInformation("Cache invalidated: {Reason}, {KeyCount} keys cleared",
                 reason, keysInvalidated);
         }
 
@@ -126,7 +129,6 @@ namespace ConduitLLM.Admin.Services
                 ["TotalHits"] = totalHits,
                 ["TotalMisses"] = totalMisses,
                 ["HitRate"] = Math.Round(hitRate, 2),
-                ["CacheMemoryMB"] = _cacheMemoryUsage / (1024.0 * 1024.0),
                 ["TotalInvalidations"] = _totalCacheInvalidations,
                 ["UptimeMinutes"] = (DateTime.UtcNow - _metricsStartTime).TotalMinutes,
                 ["TopHitKeys"] = GetTopKeys(_cacheHits, 5),

@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { useVideoStore } from './useVideoStore';
-import { videoSignalRClient } from '@/lib/client/videoSignalRClient';
+import { disconnectVideoSignalRClient } from '@/lib/client/videoSignalRClient';
 import { getBrowserCoreClient } from '@/lib/client/browserCoreClient';
 import type { 
   VideoSettings, 
@@ -8,13 +8,17 @@ import type {
   VideoGenerationResult
 } from '../types';
 import { MediaGenerationStatus, mapLegacyStatus } from '@/app/types/media';
-import { REALTIME_CONFIG } from '@/app/config/mediaGeneration';
-import { 
+import {
   createToastErrorHandler, 
   shouldShowBalanceWarning,
   type VideoProgressCallbacks
-} from '@knn_labs/conduit-gateway-client';
-import { notifications } from '@mantine/notifications';
+} from '@/lib/gateway-api';
+import {
+  ConduitError,
+  InsufficientBalanceError,
+} from '@/lib/conduit-common';
+import { notify } from '@/lib/notifications';
+import { notifications } from '@mantine/notifications'; // Required by createToastErrorHandler SDK callback
 
 interface GenerateVideoParams {
   prompt: string;
@@ -22,48 +26,16 @@ interface GenerateVideoParams {
   dynamicParameters?: Record<string, unknown>;
 }
 
-interface UseEnhancedVideoGenerationOptions {
-  /** Fallback to polling if SignalR fails */
-  fallbackToPolling?: boolean;
-}
-
 /**
- * Enhanced video generation hook that uses the new SDK progress tracking
- * Falls back to polling-based approach if SignalR is not available
+ * Video generation hook that delegates progress transport, including SignalR and polling
+ * fallback behavior, to the SDK's generateWithProgress implementation.
  */
-export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOptions = {}) {
-  const {
-    // fallbackToPolling is reserved for future use
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    fallbackToPolling = true,
-  } = options;
-
+export function useEnhancedVideoGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isRetrying] = useState(false);
-  const [signalRConnected] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { addTask, updateTask, setError } = useVideoStore();
-
-  // Track SignalR connection errors
-  const signalRErrorCount = useRef(0);
-  const maxSignalRErrors = REALTIME_CONFIG.MAX_SIGNALR_ERRORS;
   
   // Create error handler with toast notifications
   const handleError = createToastErrorHandler(notifications.show);
-
-  useEffect(() => {
-    // Store ref in closure to avoid stale closure warning
-    const intervalRef = pollingIntervalRef;
-    
-    // Cleanup on unmount
-    return () => {
-      const intervalId = intervalRef.current;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-      void videoSignalRClient.disconnect();
-    };
-  }, []);
 
   const generateVideo = useCallback(async ({ prompt, settings, dynamicParameters }: GenerateVideoParams) => {
     setIsGenerating(true);
@@ -129,29 +101,24 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
           });
           
           // Show success notification
-          notifications.show({
-            title: 'Video Generated',
-            message: 'Your video has been generated successfully!',
-            color: 'green',
-          });
+          notify.success('Your video has been generated successfully!', 'Video Generated');
         },
         onFailed: (error) => {
           console.error('Video generation failed:', error);
-          
-          const errorMessage = typeof error === 'string' ? error : 'Video generation failed';
-          setError(errorMessage);
-          
+
+          // Use SDK error handler for consistent error extraction and toast display
+          const errorMessage = handleError(error, 'video generation');
+          setError(new ConduitError(
+            errorMessage,
+            500,
+            'VIDEO_GENERATION_ERROR',
+          ));
+
           // Update task status
           updateTask(currentTaskId, {
             status: MediaGenerationStatus.Failed,
             error: errorMessage,
             updatedAt: new Date().toISOString(),
-          });
-          
-          notifications.show({
-            title: 'Video Generation Failed',
-            message: errorMessage,
-            color: 'red',
           });
         },
       };
@@ -170,12 +137,18 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     } catch (error) {
       // Use enhanced error handler with toast notifications
       const errorMessage = handleError(error, 'generate video');
-      setError(errorMessage);
+      setError(
+        error instanceof Error
+          ? error
+          : new ConduitError(errorMessage, 500, 'VIDEO_GENERATION_ERROR'),
+      );
       setIsGenerating(false);
       
       // Special handling for balance errors
       if (shouldShowBalanceWarning(error)) {
-        setError('Please add credits to your account to generate videos.');
+        setError(new InsufficientBalanceError(
+          'Please add credits to your account to generate videos.',
+        ));
       }
     } finally {
       setIsGenerating(false);
@@ -197,13 +170,21 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
 
       updateTask(taskId, { status: MediaGenerationStatus.Cancelled });
       
-      // Disconnect SignalR if connected
-      await videoSignalRClient.disconnect();
+      // Disconnect only this task's SignalR connection.
+      await disconnectVideoSignalRClient(taskId);
       
       setIsGenerating(false);
     } catch (error) {
       console.error('Error cancelling task:', error);
-      setError(error instanceof Error ? error.message : 'Failed to cancel task');
+      setError(
+        error instanceof Error
+          ? error
+          : new ConduitError(
+              'Failed to cancel task',
+              500,
+              'VIDEO_CANCELLATION_ERROR',
+            ),
+      );
     }
   }, [updateTask, setError]);
 
@@ -244,7 +225,11 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
         updatedAt: new Date().toISOString(),
       });
       
-      setError(errorMessage);
+      setError(
+        error instanceof Error
+          ? error
+          : new ConduitError(errorMessage, 500, 'VIDEO_RETRY_ERROR'),
+      );
     }
   }, [generateVideo, updateTask, setError]);
 
@@ -253,8 +238,5 @@ export function useEnhancedVideoGeneration(options: UseEnhancedVideoGenerationOp
     cancelGeneration,
     retryGeneration,
     isGenerating,
-    isRetrying,
-    signalRConnected,
-    isProgressTrackingEnabled: signalRErrorCount.current < maxSignalRErrors,
   };
 }

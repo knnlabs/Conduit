@@ -7,15 +7,79 @@ on:
     branches: [master]
 
 env:
-  REGISTRY: ghcr.io
   DOTNET_VERSION: '10.0.x'
   NODE_VERSION: '22'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
+  source-ignore-guard:
+    name: Source ignore guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ensure source files are not ignored
+        shell: bash
+        run: |
+          ignored_sources="$(
+            {
+              git ls-files --cached --ignored --exclude-standard -- \
+                'Shared/**' 'Services/**' 'Tests/**' 'WebAdmin/src/**'
+              git ls-files --others --ignored --exclude-standard -- \
+                'Shared/**' 'Services/**' 'Tests/**' 'WebAdmin/src/**'
+            } | grep -E '\.(cs|ts|tsx)$' | sort -u || true
+          )"
+
+          if [[ -n "$ignored_sources" ]]; then
+            echo "::error::Source files must not be excluded by .gitignore:"
+            echo "$ignored_sources"
+            exit 1
+          fi
+
+  billing-fault-injection:
+    name: Billing fault injection
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Run billing durability fault tests
+        run: dotnet test Tests/ConduitLLM.FaultInjectionTests/ConduitLLM.FaultInjectionTests.csproj --configuration Release --verbosity normal
+
+  billing-invariants:
+    name: Billing invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Run required billing invariant gate
+        run: dotnet test Tests/ConduitLLM.BillingInvariantTests/ConduitLLM.BillingInvariantTests.csproj --configuration Release --verbosity normal
+
+  signalr-integration:
+    name: SignalR integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Run self-contained SignalR integration tests
+        run: dotnet test Tests/ConduitLLM.IntegrationTests/ConduitLLM.IntegrationTests.csproj --configuration Release --verbosity normal --filter "Component=SignalR"
+
+  # Provider and critical-path integration suites remain manual: they require
+  # already-running Conduit services plus provider credentials. The SignalR
+  # component is self-contained through Testcontainers and is required in CI.
+
   # Quick validation that everything builds
   validate:
     name: Validate
@@ -57,11 +121,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
           cache-dependency-path: |
-            SDKs/Node/package-lock.json
-            SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
-            SDKs/Node/Common/package-lock.json
+            tools/openapi/package-lock.json
             WebAdmin/package-lock.json
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
       
       - name: .NET Build & Test
         run: |
@@ -72,15 +138,80 @@ jobs:
         env:
           TEST_REDIS_CONNECTION: localhost:6379
           DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
-      
-      - name: NPM Build
+
+      - name: Admin media request-delegate generation guard
+        shell: pwsh
+        run: ./scripts/test/verify-admin-media-rdg.ps1 -NoRestore
+
+      - name: Exception logging ownership guard
+        shell: pwsh
+        run: ./scripts/test/verify-exception-logging.ps1
+
+      # Regenerate every registered handler adapter and fail on tracked, deleted,
+      # or newly untracked output. The compiler dependency is generation-only.
+      - name: Wolverine static codegen drift check
+        shell: pwsh
+        run: ./scripts/generate-wolverine-code.ps1 -Verify
+        env:
+          ConduitLLM__Messaging__Backend: Wolverine
+          ConduitLLM__Messaging__Wolverine__Transport: Postgresql
+          CONDUIT_MIGRATION_MODE: Skip
+          ASPNETCORE_ENVIRONMENT: Production
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+          REDIS_URL: redis://localhost:6379
+
+      - name: Wolverine production dependency guard
+        shell: bash
         run: |
-          cd SDKs/Node
+          publish_root="$RUNNER_TEMP/wolverine-static-publish"
+          for service in Gateway Admin; do
+            project="Services/ConduitLLM.$service/ConduitLLM.$service.csproj"
+            output="$publish_root/$service"
+
+            dotnet publish "$project" --configuration Release --output "$output"
+
+            forbidden="$(
+              find "$output" -maxdepth 1 -type f \
+                \( -iname 'Wolverine.RuntimeCompilation*' \
+                   -o -iname 'JasperFx.RuntimeCompiler*' \
+                   -o -iname 'Microsoft.CodeAnalysis*' \) \
+                -printf '%f\n'
+            )"
+
+            if [[ -n "$forbidden" ]]; then
+              echo "::error::$service publish contains runtime compiler artifacts:"
+              echo "$forbidden"
+              exit 1
+            fi
+          done
+
+      - name: OpenAPI contract validation and drift check
+        # Export both contracts without infrastructure, prove generation is byte-stable,
+        # regenerate WebAdmin contract types, validate the contracts, and fail on drift.
+        run: |
+          cd tools/openapi
           npm ci
-          npm run build
-          npm run test:ci
-      
-      - name: WebAdmin Lint & Type Check
+          npm run verify:offline
+          npm run validate:openapi
+          cd "$GITHUB_WORKSPACE"
+          if ! git diff --exit-code -- \
+            Services/ConduitLLM.Admin/openapi-admin.json \
+            Services/ConduitLLM.Gateway/openapi-gateway.json \
+            WebAdmin/src/generated/admin-api.ts \
+            WebAdmin/src/generated/gateway-api.ts; then
+            echo "::error::OpenAPI contracts or generated WebAdmin types are out of date. Run 'npm run generate:offline' in tools/openapi and commit the changes."
+            exit 1
+          fi
+        env:
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+
+      - name: Official OpenAI SDK smoke against Gateway
+        run: |
+          python -m pip install -r tools/openapi/sdk-smoke/requirements.txt
+          cd tools/openapi
+          npm run test:sdk-smoke
+
+      - name: WebAdmin Lint, Type Check & Tests
         run: |
           cd WebAdmin
           npm ci
@@ -88,15 +219,70 @@ jobs:
           rm -rf .next
           npm run lint
           npm run type-check
+          npm run check:api-boundary
+          npm test -- --runInBand
 
-  # Build Docker images (push only from master)
+  # Two-host Wolverine listener assertion (#961): boots the REAL Gateway + Admin hosts
+  # against real Postgres with ConduitLLM:Messaging:Backend=Wolverine and asserts that
+  # each service forms its own node cluster (per-service durability schema) and that the
+  # Gateway starts listeners for all five queues, including the exclusive strict-ordered
+  # spend-update-events / image-generation-events. Guards against W1 from the #929 S1
+  # smoke (shared agent cluster => financial queue dead), which only exists with two
+  # real hosts on real Postgres and is invisible to the in-memory dual-backend tests.
+  wolverine-two-host:
+    name: Wolverine Two-Host Smoke
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduitpass
+          POSTGRES_DB: conduitdb
+        options: >-
+          --health-cmd "pg_isready -U conduit -d conduitdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Build services
+        run: |
+          dotnet build Services/ConduitLLM.Gateway
+          dotnet build Services/ConduitLLM.Admin
+          dotnet build tools/WolverineSmokePublisher
+
+      - name: Two-host listener assertion
+        run: pwsh ./scripts/test/wolverine-two-host-smoke.ps1 -NoBuild
+        env:
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+          REDIS_URL: redis://localhost:6379
+
+  # Build Docker images for validation only — never pushed from CI.
+  # All image publishing happens from `v*` tags in release.yml.
   docker:
     name: Docker - ${{ matrix.service }}
     runs-on: ubuntu-latest
     needs: validate
     permissions:
       contents: read
-      packages: write
     strategy:
       matrix:
         include:
@@ -109,90 +295,23 @@ jobs:
           - service: admin
             context: .
             dockerfile: Services/ConduitLLM.Admin/Dockerfile
-    
+
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/knnlabs/conduit-${{ matrix.service }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Build and push
+
+      # Build-only validation — images are never pushed from CI. This still catches
+      # Dockerfile and production-build breakage (notably WebAdmin's `next build`,
+      # which runs nowhere else in CI) before it can reach a release.
+      - name: Build (validation only, no push)
         uses: docker/build-push-action@v5
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           platforms: linux/amd64
-          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          push: false
+          tags: conduit-${{ matrix.service }}:ci
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,scope=${{ matrix.service }},mode=max
-
-  # Publish NPM packages (only from master)
-  npm-publish:
-    name: NPM Publish
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          registry-url: 'https://registry.npmjs.org'
-          cache: npm
-          cache-dependency-path: |
-            SDKs/Node/package-lock.json
-            SDKs/Node/Admin/package-lock.json
-            SDKs/Node/Core/package-lock.json
-            SDKs/Node/Common/package-lock.json
-      
-      - name: Build and Publish
-        run: |
-          cd SDKs/Node
-          npm ci
-          npm run build
-          
-          # Generate unique timestamp suffix for continuous releases
-          TIMESTAMP=$(date +%s)
-          
-          # Update version and publish Common first (others depend on it)
-          cd Common
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
-          npm publish --tag next --access public
-          
-          # Update version and publish Admin
-          cd ../Admin
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
-          npm publish --tag next --access public
-          
-          # Update version and publish Core
-          cd ../Core
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          npm version "${CURRENT_VERSION}-next.${TIMESTAMP}" --no-git-tag-version
-          npm publish --tag next --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

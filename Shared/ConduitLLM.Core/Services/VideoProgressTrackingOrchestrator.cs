@@ -1,7 +1,6 @@
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-
-using MassTransit;
 
 using Microsoft.Extensions.Logging;
 
@@ -13,32 +12,30 @@ namespace ConduitLLM.Core.Services
     /// Orchestrates video generation progress tracking through event-driven architecture.
     /// Replaces the fire-and-forget anti-pattern with proper event handling.
     /// </summary>
-    public class VideoProgressTrackingOrchestrator : IConsumer<VideoProgressCheckRequested>
+    public class VideoProgressTrackingOrchestrator : IEventHandler<VideoProgressCheckRequested>
     {
         private readonly IAsyncTaskService _taskService;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly IWebhookNotificationService _webhookService;
         private readonly ILogger<VideoProgressTrackingOrchestrator> _logger;
-        
+
         private static readonly int[] ProgressIntervals = { 10, 30, 50, 70, 90 };
         private const int ProgressCheckDelaySeconds = 12; // ~1 minute per 10% progress
 
         public VideoProgressTrackingOrchestrator(
             IAsyncTaskService taskService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IWebhookNotificationService webhookService,
             ILogger<VideoProgressTrackingOrchestrator> logger)
         {
             _taskService = taskService;
-            _publishEndpoint = publishEndpoint;
+            _eventBus = eventBus;
             _webhookService = webhookService;
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<VideoProgressCheckRequested> context)
+        public async Task HandleAsync(VideoProgressCheckRequested request, IEventContext context)
         {
-            var request = context.Message;
-            
             try
             {
                 // Check if task is still running
@@ -54,15 +51,6 @@ namespace ConduitLLM.Core.Services
                 {
                     _logger.LogDebug("Task {RequestId} is no longer processing (state: {State}), stopping progress tracking", 
                         request.RequestId, taskStatus.State);
-                    
-                    // Publish cancellation event for cleanup
-                    await _publishEndpoint.Publish(new VideoProgressTrackingCancelled
-                    {
-                        RequestId = request.RequestId,
-                        VirtualKeyId = request.VirtualKeyId,
-                        Reason = $"Task state changed to {taskStatus.State}",
-                        CorrelationId = request.CorrelationId
-                    });
                     
                     return;
                 }
@@ -84,7 +72,7 @@ namespace ConduitLLM.Core.Services
                         cancellationToken: context.CancellationToken);
                     
                     // Publish progress event
-                    await _publishEndpoint.Publish(new VideoGenerationProgress
+                    await _eventBus.PublishAsync(new VideoGenerationProgress
                     {
                         RequestId = request.RequestId,
                         ProgressPercentage = progress,
@@ -127,7 +115,7 @@ namespace ConduitLLM.Core.Services
                             CorrelationId = request.CorrelationId
                         };
                         
-                        await _publishEndpoint.Publish(nextCheck);
+                        await _eventBus.PublishAsync(nextCheck);
                         _logger.LogDebug("Scheduled next progress check for {RequestId} at interval {IntervalIndex}", 
                             request.RequestId, nextCheck.IntervalIndex);
                     }
@@ -140,7 +128,7 @@ namespace ConduitLLM.Core.Services
                         ScheduledAt = DateTime.UtcNow.AddSeconds(5)
                     };
                     
-                    await _publishEndpoint.Publish(nextCheck);
+                    await _eventBus.PublishAsync(nextCheck);
                     _logger.LogDebug("Rescheduled progress check for {RequestId}, waiting for interval {IntervalIndex}", 
                         request.RequestId, request.IntervalIndex);
                 }
@@ -208,7 +196,7 @@ namespace ConduitLLM.Core.Services
                 }
 
                 // Publish webhook delivery event for scalable processing
-                await _publishEndpoint.Publish(new WebhookDeliveryRequested
+                await _eventBus.PublishAsync(new WebhookDeliveryRequested
                 {
                     TaskId = requestId,
                     TaskType = "video",

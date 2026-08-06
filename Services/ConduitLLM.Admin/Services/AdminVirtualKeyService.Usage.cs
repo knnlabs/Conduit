@@ -1,7 +1,13 @@
+using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
+
+using Microsoft.EntityFrameworkCore;
+
+using VirtualKeyUtilities = ConduitLLM.Configuration.Utilities.VirtualKeyUtilities;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -15,55 +21,41 @@ namespace ConduitLLM.Admin.Services
         {
             _logger.LogInformation("Starting virtual key maintenance tasks");
 
-            // TODO: Media Lifecycle Maintenance - Add the following tasks:
-            // 1. Clean up expired media (based on MediaRecord.ExpiresAt)
-            // 2. Clean up orphaned media (virtual key deleted but media remains)
-            // 3. Prune old media based on retention policy (e.g., >90 days)
-            // 4. Update storage usage statistics per virtual key
-            // See: docs/TODO-Media-Lifecycle-Management.md for implementation plan
+            var now = DateTime.UtcNow;
 
-            try
+            await using var context = await _dbContextFactory.CreateDbContextAsync();
+
+            // Capture identifying fields of the keys we're about to disable so the per-key
+            // audit log lines below have something to reference. Same predicate as the
+            // UPDATE; modulo a tiny race with concurrent disables, the lists agree.
+            var expiredKeys = await context.VirtualKeys
+                .AsNoTracking()
+                .Where(vk => vk.IsEnabled && vk.ExpiresAt != null && vk.ExpiresAt < now)
+                .Select(vk => new { vk.Id, vk.KeyName })
+                .ToListAsync();
+
+            if (expiredKeys.Count == 0)
             {
-                // Get all virtual keys
-                var allKeys = await _virtualKeyRepository.GetAllAsync();
-                _logger.LogInformation("Processing maintenance for {KeyCount} virtual keys", allKeys.Count());
-
-                int keysDisabled = 0;
-
-                foreach (var key in allKeys)
-                {
-                    try
-                    {
-                        // Budget resets are no longer performed in the bank account model
-                        // Only check and disable expired keys
-                        if (key.IsEnabled && key.ExpiresAt.HasValue && key.ExpiresAt.Value < DateTime.UtcNow)
-                        {
-                            key.IsEnabled = false;
-                            key.UpdatedAt = DateTime.UtcNow;
-
-                            var updated = await _virtualKeyRepository.UpdateAsync(key);
-                            if (updated)
-                            {
-                                keysDisabled++;
-                                _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})",
-                                    key.Id, LoggingSanitizer.S(key.KeyName));
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error processing maintenance for virtual key {KeyId}", key.Id);
-                        // Continue processing other keys even if one fails
-                    }
-                }
-
-                _logger.LogInformation("Virtual key maintenance completed. Keys disabled: {KeysDisabled}", keysDisabled);
+                _logger.LogInformation("Virtual key maintenance completed. No expired keys to disable.");
+                return;
             }
-            catch (Exception ex)
+
+            _logger.LogInformation("Processing maintenance for {KeyCount} expired virtual keys", expiredKeys.Count);
+
+            // Disable all matching keys in a single SQL UPDATE rather than N round-trips.
+            var keysDisabled = await context.VirtualKeys
+                .Where(vk => vk.IsEnabled && vk.ExpiresAt != null && vk.ExpiresAt < now)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(vk => vk.IsEnabled, false)
+                    .SetProperty(vk => vk.UpdatedAt, now));
+
+            foreach (var key in expiredKeys)
             {
-                _logger.LogError(ex, "Error during virtual key maintenance");
-                throw;
+                _logger.LogInformation("Disabled expired virtual key {KeyId} ({KeyName})",
+                    key.Id, LoggingSanitizer.S(key.KeyName));
             }
+
+            _logger.LogInformation("Virtual key maintenance completed. Keys disabled: {KeysDisabled}", keysDisabled);
         }
 
         /// <inheritdoc />
@@ -74,7 +66,7 @@ namespace ConduitLLM.Admin.Services
             {
                 return null;
             }
-            return MapToDto(key);
+            return VirtualKeyUtilities.MapToDto(key);
         }
 
         /// <inheritdoc />
@@ -86,18 +78,7 @@ namespace ConduitLLM.Admin.Services
                 return null;
             }
 
-            return new VirtualKeyGroupDto
-            {
-                Id = group.Id,
-                ExternalGroupId = group.ExternalGroupId,
-                GroupName = group.GroupName,
-                Balance = group.Balance,
-                LifetimeCreditsAdded = group.LifetimeCreditsAdded,
-                LifetimeSpent = group.LifetimeSpent,
-                CreatedAt = group.CreatedAt,
-                UpdatedAt = group.UpdatedAt,
-                VirtualKeyCount = group.VirtualKeys?.Count ?? 0
-            };
+            return VirtualKeyGroupDto.FromEntity(group);
         }
 
         /// <inheritdoc />
@@ -116,8 +97,8 @@ namespace ConduitLLM.Admin.Services
             }
 
             // Hash the key for lookup
-            var keyHash = ComputeSha256Hash(keyValue);
-            
+            var keyHash = VirtualKeyUtilities.HashKey(keyValue);
+
             // Get the virtual key by hash
             var virtualKey = await _virtualKeyRepository.GetByKeyHashAsync(keyHash);
             if (virtualKey == null)
@@ -159,52 +140,12 @@ namespace ConduitLLM.Admin.Services
                 LastUsedAt = lastUsedAt,
                 RateLimitRpm = virtualKey.RateLimitRpm,
                 RateLimitRpd = virtualKey.RateLimitRpd,
-                AllowedModels = virtualKey.AllowedModels
+                RateLimitTpm = virtualKey.RateLimitTpm,
+                MaxParallelRequests = virtualKey.MaxParallelRequests,
+                RateLimitPriority = virtualKey.RateLimitPriority,
+                AllowedModels = VirtualKeyUtilities.ParseAllowedModels(virtualKey.AllowedModels)
             };
         }
 
-        /// <summary>
-        /// Maps a VirtualKey entity to a VirtualKeyDto
-        /// </summary>
-        /// <param name="key">The entity to map</param>
-        /// <returns>The mapped DTO</returns>
-        private static VirtualKeyDto MapToDto(VirtualKey key)
-        {
-            return new VirtualKeyDto
-            {
-                Id = key.Id,
-                KeyName = key.KeyName,
-                KeyPrefix = GenerateKeyPrefix(key.KeyHash),
-                AllowedModels = key.AllowedModels,
-                VirtualKeyGroupId = key.VirtualKeyGroupId,
-                IsEnabled = key.IsEnabled,
-                ExpiresAt = key.ExpiresAt,
-                CreatedAt = key.CreatedAt,
-                UpdatedAt = key.UpdatedAt,
-                Metadata = key.Metadata,
-                RateLimitRpm = key.RateLimitRpm,
-                RateLimitRpd = key.RateLimitRpd
-            };
-        }
-
-        /// <summary>
-        /// Generates a key prefix for display purposes
-        /// </summary>
-        /// <param name="keyHash">The key hash</param>
-        /// <returns>A prefix showing part of the key</returns>
-        private static string GenerateKeyPrefix(string keyHash)
-        {
-            // Handle null or empty keyHash to prevent exceptions in tests
-            if (string.IsNullOrEmpty(keyHash))
-            {
-                return "condt_******...";
-            }
-
-            // Generate a prefix like "condt_abc123..." from the hash
-            // This is for display purposes only
-            var prefixLength = Math.Min(6, keyHash.Length);
-            var shortPrefix = keyHash.Substring(0, prefixLength).ToLower();
-            return $"condt_{shortPrefix}...";
-        }
     }
 }

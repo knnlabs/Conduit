@@ -2,7 +2,6 @@ using ConduitLLM.Core.Exceptions;
 
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using CoreUtils = ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
@@ -47,23 +46,20 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
                 var endpoint = GetChatCompletionEndpoint();
 
-                // Log the actual request being sent
-                var requestJson = System.Text.Json.JsonSerializer.Serialize(openAiRequest, DefaultJsonOptions);
-                Logger.LogWarning("FINAL REQUEST JSON: {Json}", requestJson);
-                Logger.LogDebug("Sending chat completion request to {Provider} at {Endpoint}", ProviderName, endpoint);
+                Logger.LogDebug("Sending chat completion request to {Provider} at {Endpoint}",
+                    ProviderName, endpoint);
 
                 // Use our common HTTP client helper to send the request
-                var openAiResponse = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<object, OpenAIChatCompletionResponse>(
+                var openAiResponse = await PostJsonAsync<object, OpenAIChatCompletionResponse>(
                     client,
-                    HttpMethod.Post,
                     endpoint,
                     openAiRequest,
-                    CreateStandardHeaders(apiKey),
-                    DefaultJsonOptions,
-                    Logger,
+                    apiKey,
                     cancellationToken);
 
-                return MapFromOpenAIResponse(openAiResponse, request.Model);
+                var mapped = MapFromOpenAIResponse(openAiResponse, request.Model);
+                RecordUsage(mapped.Usage, "ChatCompletion");
+                return mapped;
             }, "ChatCompletion", cancellationToken);
         }
     }

@@ -21,9 +21,16 @@ namespace ConduitLLM.Core.Services
 
         /// <summary>
         /// Whether caching is enabled
-        /// TEMPORARILY DISABLED: Serialization issue with anonymous objects in DiscoveryModelsResult.Data
         /// </summary>
-        public bool EnableCaching { get; set; } = false; // TODO: Re-enable after fixing serialization
+        public bool EnableCaching { get; set; } = true;
+
+        /// <summary>
+        /// Whether discovery responses include the operator-configured model pricing.
+        /// Virtual keys already observe billed spend in these units, so rates are
+        /// derivable either way; operators that resell access at a markup can set
+        /// this to false (Discovery:ExposePricing) to keep their cost basis private.
+        /// </summary>
+        public bool ExposePricing { get; set; } = true;
 
         /// <summary>
         /// Whether to warm cache on startup
@@ -53,7 +60,17 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Common capability filters to warm
         /// </summary>
-        public List<string> WarmupCapabilities { get; set; } = new() { "chat", "vision", "image_generation", "video_generation" };
+        public List<string> WarmupCapabilities { get; set; } = new()
+        {
+            "chat",
+            "image_input",
+            "video_input",
+            "audio_input",
+            "file_input",
+            "pdf_input",
+            "image_generation",
+            "video_generation"
+        };
     }
 
     /// <summary>
@@ -68,8 +85,8 @@ namespace ConduitLLM.Core.Services
         // Statistics tracking
         private long _totalHits;
         private long _totalMisses;
+        private long _totalInvalidations;
         private DateTime? _lastInvalidation;
-        private DateTime? _lastWarmingTime;
 
         private const CacheRegion DISCOVERY_REGION = CacheRegion.ModelDiscovery;
 
@@ -145,6 +162,7 @@ namespace ConduitLLM.Core.Services
             try
             {
                 _lastInvalidation = DateTime.UtcNow;
+                Interlocked.Increment(ref _totalInvalidations);
 
                 // Use CacheManager's ClearRegionAsync for surgical invalidation
                 // This uses the tracked keys to remove only discovery entries from both memory and Redis
@@ -184,54 +202,18 @@ namespace ConduitLLM.Core.Services
             }
         }
 
-        public async Task WarmDiscoveryCacheAsync(CancellationToken cancellationToken = default)
-        {
-            if (!_options.WarmCacheOnStartup || !_options.EnableCaching)
-            {
-                return;
-            }
-
-            try
-            {
-                _lastWarmingTime = DateTime.UtcNow;
-                _logger.LogInformation("Starting discovery cache warming for {CapabilityCount} capabilities", 
-                    _options.WarmupCapabilities.Count);
-
-                // Note: Actual warming would require calling the discovery service
-                // This is a placeholder for the warming logic
-                foreach (var capability in _options.WarmupCapabilities)
-                {
-                    if (cancellationToken.IsCancellationRequested)
-                        break;
-
-                    _logger.LogDebug("Would warm cache for capability: {Capability}", capability);
-                    // In production: call discovery service and cache results
-                    
-                    await Task.Delay(100, cancellationToken); // Prevent overwhelming
-                }
-
-                _logger.LogInformation("Discovery cache warming completed at {Time}", _lastWarmingTime);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error during discovery cache warming");
-            }
-        }
-
-        public Task<DiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
+        public Task<CacheStats> GetStatisticsAsync(CancellationToken cancellationToken = default)
         {
             var hits = Interlocked.Read(ref _totalHits);
             var misses = Interlocked.Read(ref _totalMisses);
-            var total = hits + misses;
 
-            var stats = new DiscoveryCacheStatistics
+            var stats = new CacheStats
             {
-                Hits = hits,
-                Misses = misses,
-                HitRate = total > 0 ? (double)hits / total * 100 : 0,
-                CachedEntries = 0, // Would require cache key scanning in production
-                LastInvalidation = _lastInvalidation,
-                LastWarmingTime = _lastWarmingTime
+                HitCount = hits,
+                MissCount = misses,
+                InvalidationCount = Interlocked.Read(ref _totalInvalidations),
+                EntryCount = 0, // Would require cache key scanning in production
+                LastInvalidationTime = _lastInvalidation
             };
 
             return Task.FromResult(stats);
@@ -241,18 +223,22 @@ namespace ConduitLLM.Core.Services
         /// Builds cache key for discovery results.
         /// Note: CacheManager handles region prefixing internally, so we only need the logical key.
         /// </summary>
-        public static string BuildCacheKey(string? capability = null, int? virtualKeyId = null)
+        public static string BuildCacheKey(string? capability = null, int? virtualKeyId = null, bool includePricing = false)
         {
+            // Pricing-bearing entries use a distinct key so cached payloads written while
+            // ExposePricing was off (or before pricing existed) are never served as priced.
+            var suffix = includePricing ? ":with_pricing" : string.Empty;
+
             if (virtualKeyId.HasValue)
             {
                 return capability != null
-                    ? $"virtualkey:{virtualKeyId}:capability:{capability}"
-                    : $"virtualkey:{virtualKeyId}";
+                    ? $"virtualkey:{virtualKeyId}:capability:{capability}{suffix}"
+                    : $"virtualkey:{virtualKeyId}{suffix}";
             }
 
             return capability != null
-                ? $"capability:{capability}"
-                : "all";
+                ? $"capability:{capability}{suffix}"
+                : $"all{suffix}";
         }
     }
 }

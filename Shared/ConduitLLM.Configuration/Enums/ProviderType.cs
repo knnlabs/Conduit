@@ -9,6 +9,12 @@ namespace ConduitLLM.Configuration
     public enum ProviderType
     {
         /// <summary>
+        /// Provider information was not captured or is not recognized. This is a reporting
+        /// sentinel and must not be used to configure a provider.
+        /// </summary>
+        Unknown = 0,
+
+        /// <summary>
         /// OpenAI provider (GPT models)
         /// </summary>
         OpenAI = 1,
@@ -61,6 +67,56 @@ namespace ConduitLLM.Configuration
         /// <summary>
         /// DeepInfra (OpenAI-compatible LLM inference platform)
         /// </summary>
-        DeepInfra = 11
+        DeepInfra = 11,
+
+        /// <summary>
+        /// Cloudflare Workers AI (serverless AI inference on Cloudflare's global network)
+        /// </summary>
+        Cloudflare = 12,
+
+        /// <summary>
+        /// OpenRouter (multi-provider routing via OpenAI-compatible API)
+        /// </summary>
+        OpenRouter = 13,
+
+        /// <summary>
+        /// Meta AI (Meta Model API, Muse Spark models)
+        /// </summary>
+        Meta = 14,
+
+        /// <summary>
+        /// Azure OpenAI Service (deployment-scoped OpenAI models on an Azure resource)
+        /// </summary>
+        Azure = 15,
+
+        /// <summary>
+        /// Amazon Bedrock (AWS-hosted foundation models via the Converse API, SigV4 or API-key auth)
+        /// </summary>
+        Bedrock = 16,
+
+        /// <summary>
+        /// Google Vertex AI (Google Cloud-hosted Gemini and Model Garden models)
+        /// </summary>
+        Vertex = 17
+    }
+
+    /// <summary>
+    /// Defines the provider types that can be used for provider configuration.
+    /// </summary>
+    public static class ProviderTypeCatalog
+    {
+        /// <summary>
+        /// All provider types backed by an operational provider adapter.
+        /// </summary>
+        public static IReadOnlyList<ProviderType> ConfigurableTypes { get; } = Array.AsReadOnly(
+            Enum.GetValues<ProviderType>()
+                .Where(providerType => providerType != ProviderType.Unknown)
+                .ToArray());
+
+        /// <summary>
+        /// Returns whether the value identifies a configurable provider adapter.
+        /// </summary>
+        public static bool IsConfigurable(ProviderType providerType) =>
+            providerType != ProviderType.Unknown && Enum.IsDefined(providerType);
     }
 }

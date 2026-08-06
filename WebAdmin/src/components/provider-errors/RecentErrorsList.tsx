@@ -13,9 +13,10 @@ import {
   Code,
 } from '@mantine/core';
 import { IconSearch, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
-import type { components } from '@knn_labs/conduit-admin-client';
+import type { components } from '@/lib/admin-api';
+import { getHttpStatusColor } from '@/components/analytics/formatters';
 
-type ProviderErrorDto = components['schemas']['ConduitLLM.Admin.DTOs.ProviderErrorDto'];
+type ProviderErrorDto = components['schemas']['ProviderErrorDto'];
 
 interface RecentErrorsListProps {
   errors: ProviderErrorDto[];
@@ -56,15 +57,9 @@ export function RecentErrorsList({ errors }: RecentErrorsListProps) {
 
   const getHttpStatusBadge = (statusCode: number | undefined | null) => {
     if (!statusCode) return null;
-    
-    let color = 'gray';
-    if (statusCode >= 500) color = 'red';
-    else if (statusCode >= 400) color = 'orange';
-    else if (statusCode >= 300) color = 'yellow';
-    else if (statusCode >= 200) color = 'green';
-    
+
     return (
-      <Badge size="xs" color={color} variant="dot">
+      <Badge size="xs" color={getHttpStatusColor(statusCode)} variant="dot">
         {statusCode}
       </Badge>
     );

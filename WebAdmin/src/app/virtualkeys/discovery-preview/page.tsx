@@ -32,29 +32,14 @@ import {
   IconCheck,
 } from '@tabler/icons-react';
 import { useState, useEffect, useCallback } from 'react';
-import { notifications } from '@mantine/notifications';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import { notify } from '@/lib/notifications';
+import type { components, VirtualKeyDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useClipboard } from '@mantine/hooks';
 
-interface CapabilityDetails {
-  supported: boolean;
-  supported_languages?: string[];
-  supported_voices?: string[];
-  supported_formats?: string[];
-}
-
-interface DiscoveredModel {
-  id: string;
-  provider?: string;
-  displayName: string;
-  capabilities: Record<string, CapabilityDetails>;
-}
-
-interface DiscoveryPreviewResponse {
-  data: DiscoveredModel[];
-  count: number;
-}
+type DiscoveryPreviewResponse = components['schemas']['DiscoveryModelsResponse'];
+type DiscoveryCapabilityValue =
+  components['schemas']['DiscoveryModelCapabilitiesDto'][keyof components['schemas']['DiscoveryModelCapabilitiesDto']];
 
 const CAPABILITY_FILTERS = [
   { value: '', label: 'All capabilities' },
@@ -106,11 +91,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
     } catch (err) {
       console.error('Error fetching virtual keys:', err);
       setError(err as Error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load virtual keys',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load virtual keys'));
     } finally {
       setIsLoadingKeys(false);
     }
@@ -118,11 +99,7 @@ export default function VirtualKeyDiscoveryPreviewPage() {
 
   const fetchDiscoveryPreview = useCallback(async () => {
     if (!selectedKeyId) {
-      notifications.show({
-        title: 'No key selected',
-        message: 'Please select a virtual key first',
-        color: 'yellow',
-      });
+      notify.warning('Please select a virtual key first', 'No key selected');
       return;
     }
 
@@ -137,15 +114,11 @@ export default function VirtualKeyDiscoveryPreviewPage() {
         )
       );
       
-      setDiscoveryData(data as DiscoveryPreviewResponse);
+      setDiscoveryData(data);
     } catch (err) {
       console.error('Error fetching discovery preview:', err);
       setError(err as Error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load discovery preview',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load discovery preview'));
     } finally {
       setIsLoadingDiscovery(false);
     }
@@ -165,41 +138,24 @@ export default function VirtualKeyDiscoveryPreviewPage() {
   const copyJson = () => {
     if (discoveryData) {
       clipboard.copy(JSON.stringify(discoveryData, null, 2));
-      notifications.show({
-        title: 'Copied',
-        message: 'JSON response copied to clipboard',
-        color: 'green',
-      });
+      notify.success('JSON response copied to clipboard', 'Copied');
     }
   };
 
-  const renderCapability = (name: string, capability: CapabilityDetails) => {
-    if (typeof capability !== 'object' || !capability) return null;
-    
-    const isSupported = capability.supported === true;
-    if (!isSupported) return null;
+  const renderCapability = (name: string, capability: DiscoveryCapabilityValue) => {
+    if (capability !== true) return null;
+
+    const label = name
+      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+      .replace(/_/g, ' ')
+      .toLowerCase();
 
     return (
       <Box key={name}>
         <Group gap="xs" mb="xs">
           <Badge color="blue" variant="light" size="sm">
-            {name.replace(/_/g, ' ')}
+            {label}
           </Badge>
-          {capability.supported_languages && (
-            <Text size="xs" c="dimmed">
-              {capability.supported_languages.length} languages
-            </Text>
-          )}
-          {capability.supported_voices && (
-            <Text size="xs" c="dimmed">
-              {capability.supported_voices.length} voices
-            </Text>
-          )}
-          {capability.supported_formats && (
-            <Text size="xs" c="dimmed">
-              {capability.supported_formats.length} formats
-            </Text>
-          )}
         </Group>
       </Box>
     );

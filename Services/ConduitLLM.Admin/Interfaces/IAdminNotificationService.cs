@@ -36,9 +36,10 @@ namespace ConduitLLM.Admin.Interfaces
         /// <summary>
         /// Updates a notification
         /// </summary>
+        /// <param name="id">The route ID of the notification to update</param>
         /// <param name="notification">The updated notification data</param>
         /// <returns>True if the update was successful, false otherwise</returns>
-        Task<bool> UpdateNotificationAsync(UpdateNotificationDto notification);
+        Task<bool> UpdateNotificationAsync(int id, UpdateNotificationDto notification);
 
         /// <summary>
         /// Marks a notification as read

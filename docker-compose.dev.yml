@@ -1,11 +1,15 @@
-# Development docker-compose with volume mounts for hot reloading
-# Usage: ./scripts/start-dev.sh
-# Features: User ID mapping, Swagger UI enabled, permission-free development
+# Development Docker Compose configuration with Compose Watch hot reloading
+# Usage: ./scripts/dev.ps1
+# Features: Compose Watch hot reload, container-owned dependencies, Swagger UI
 
 services:
   api:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Development defaults to Internal so provider errors are debuggable; override in .env
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-Internal}"
+      # The one-shot migrate service owns EF and Wolverine schema provisioning.
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
       # OpenTelemetry tracing configuration
       Telemetry__OtlpEndpoint: "http://jaeger:4317"
       Telemetry__TracingEnabled: "true"
@@ -19,11 +23,9 @@ services:
       BatchSpending__MinimumIntervalSeconds: "1"
       BatchSpending__MaximumIntervalSeconds: "3600"   # 1 hour max for dev
       BatchSpending__RedisTtlHours: "24"
-      # Health monitoring configuration - API endpoint checks
-      HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
-      HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
-      HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
-      HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
+      BillingAdmission__Mode: "Shadow"
+      UsageTracking__AccountingFinalizationTimeoutSeconds: "10"
+      UsageTracking__GracefulShutdownSeconds: "45"
       # Cloudflare R2 configuration (default for development)
       CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
       CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"
@@ -37,6 +39,10 @@ services:
   admin:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      # Must match the api service — Admin reports this value on the System Info page
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-Internal}"
+      # The one-shot migrate service owns EF and Wolverine schema provisioning.
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
       # OpenTelemetry tracing configuration
       Telemetry__OtlpEndpoint: "http://jaeger:4317"
       Telemetry__TracingEnabled: "true"
@@ -61,23 +67,15 @@ services:
       CONDUIT_S3_PUBLIC_BASE_URL: "${CONDUIT_S3_PUBLIC_BASE_URL}"
 
   webadmin:
-    # Use Node 22 to match host environment
-    image: node:22-alpine
-    # Start as root to fix volume ownership, then switch to user
-    user: root
+    build:
+      target: dev
     volumes:
-      # Mount source code for hot reloading
-      - ./WebAdmin:/app/WebAdmin
-      - ./SDKs:/app/SDKs
-      # Isolate .next directory so host and container builds don't conflict
-      - /app/WebAdmin/.next
+      # Keep Next.js development output in Linux storage across recreations.
+      - webadmin-next:/app/WebAdmin/.next
     environment:
       # Next.js development settings
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: 1
-      WATCHPACK_POLLING: "true"
-      CHOKIDAR_USEPOLLING: "true"
-      CHOKIDAR_INTERVAL: 1000
       FAST_REFRESH: "true"
       PORT: 3000
       # Backend service URLs
@@ -87,53 +85,38 @@ services:
       CONDUIT_API_EXTERNAL_URL: http://localhost:5000
       CONDUIT_ADMIN_API_EXTERNAL_URL: http://localhost:5002
       # Clerk authentication (using the test keys from docker-compose.yml)
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
-      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
       # Development authentication bypass
       CLERK_AUTH_ENABLED: "false"
       # Official Next.js Docker configuration from docs
       HOSTNAME: "0.0.0.0"
     working_dir: /app/WebAdmin
-    # Smarter startup that handles both fresh installs and fast restarts
-    command: |
-      sh -c "
-        echo 'Installing su-exec for user switching...'
-        apk add --no-cache su-exec
-        
-        echo 'Fixing directory ownership...'
-        # Fix ownership of all mounted directories
-        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/WebAdmin || true
-        chown -R ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} /app/SDKs || true
-        
-        # Check if we should skip dependency installation (fast mode)
-        if [ \"\${SKIP_NPM_INSTALL:-false}\" = \"true\" ]; then
-          echo 'FAST MODE: Skipping dependency installation'
-        else
-          # Check if node_modules exists
-          if [ ! -d /app/WebAdmin/node_modules ] || [ \"\${FORCE_NPM_INSTALL:-false}\" = \"true\" ]; then
-            echo 'Installing dependencies (this will be visible on host)...'
-            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
-              cd /app/SDKs/Node/Common && npm install && npm run build
-              cd /app/SDKs/Node/Admin && npm install && npm run build
-              cd /app/SDKs/Node/Core && npm install && npm run build
-              cd /app/WebAdmin && npm install
-            '
-          else
-            echo 'Dependencies already installed, checking for updates...'
-            su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c '
-              cd /app/SDKs/Node/Common && npm install
-              cd /app/SDKs/Node/Admin && npm install
-              cd /app/SDKs/Node/Core && npm install
-              cd /app/WebAdmin && npm install
-            '
-          fi
-        fi
-        
-        echo 'Starting development server...'
-        su-exec ${DOCKER_USER_ID:-1000}:${DOCKER_GROUP_ID:-1000} sh -c 'cd /app/WebAdmin && npm run dev'
-      "
-    ports:
-      - "3000:3000"
+    healthcheck:
+      # Allow Next.js and its first health route compilation to initialize.
+      start_period: 90s
+      start_interval: 10s
+      interval: 30s
+      timeout: 15s
+      retries: 5
+    develop:
+      watch:
+        - action: sync
+          path: ./WebAdmin
+          target: /app/WebAdmin
+          initial_sync: true
+          ignore:
+            - node_modules/
+            - .next/
+            - package.json
+            - package-lock.json
+            - Dockerfile
+        - action: rebuild
+          path: ./WebAdmin/package.json
+        - action: rebuild
+          path: ./WebAdmin/package-lock.json
+        - action: rebuild
+          path: ./WebAdmin/Dockerfile
     depends_on:
       admin:
         condition: service_healthy
@@ -157,3 +140,6 @@ services:
 
 # MinIO services removed - using Cloudflare R2 instead
 # To use MinIO instead of R2, see docker-compose.minio.yml
+
+volumes:
+  webadmin-next:

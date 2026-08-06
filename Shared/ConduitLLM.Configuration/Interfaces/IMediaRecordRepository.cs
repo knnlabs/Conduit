@@ -1,105 +1,144 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
 
 namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>
     /// Repository interface for media record operations.
+    /// Extends IRepositoryBase for standard CRUD operations and adds domain-specific methods.
     /// </summary>
-    public interface IMediaRecordRepository
+    public interface IMediaRecordRepository : IRepositoryBase<MediaRecord, Guid>
     {
-        /// <summary>
-        /// Creates a new media record.
-        /// </summary>
-        /// <param name="mediaRecord">The media record to create.</param>
-        /// <returns>The created media record.</returns>
-        Task<MediaRecord> CreateAsync(MediaRecord mediaRecord);
-
-        /// <summary>
-        /// Gets a media record by its ID.
-        /// </summary>
-        /// <param name="id">The ID of the media record.</param>
-        /// <returns>The media record if found, null otherwise.</returns>
-        Task<MediaRecord?> GetByIdAsync(Guid id);
-
         /// <summary>
         /// Gets a media record by its storage key.
         /// </summary>
         /// <param name="storageKey">The storage key of the media record.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The media record if found, null otherwise.</returns>
-        Task<MediaRecord?> GetByStorageKeyAsync(string storageKey);
+        Task<MediaRecord?> GetByStorageKeyAsync(string storageKey, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets a media record by storage key, including a soft-deleted record.
+        /// </summary>
+        Task<MediaRecord?> GetByStorageKeyIncludingDeletedAsync(
+            string storageKey,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets a media record by ID, including a soft-deleted record.
+        /// </summary>
+        Task<MediaRecord?> GetByIdIncludingDeletedAsync(
+            Guid id,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all media records for a virtual key.
         /// </summary>
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
-        /// <returns>List of media records for the virtual key.</returns>
-        Task<List<MediaRecord>> GetByVirtualKeyIdAsync(int virtualKeyId);
+        /// <param name="includeDeleted">Whether tombstoned records should be returned.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>List of media records for the virtual key ordered by created date descending.</returns>
+        Task<List<MediaRecord>> GetByVirtualKeyIdAsync(
+            int virtualKeyId,
+            bool includeDeleted = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Marks an active media record as soft deleted.
+        /// </summary>
+        Task<bool> TombstoneAsync(
+            Guid id,
+            DateTime deletedAtUtc,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Restores a soft-deleted media record.
+        /// </summary>
+        Task<bool> RestoreAsync(Guid id, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Permanently removes a media record, bypassing the default tombstone filter.
+        /// </summary>
+        Task<bool> HardDeleteAsync(Guid id, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets media records that have expired.
         /// </summary>
         /// <param name="currentTime">The current time to compare against.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of expired media records.</returns>
-        Task<List<MediaRecord>> GetExpiredMediaAsync(DateTime currentTime);
+        Task<List<MediaRecord>> GetExpiredMediaAsync(DateTime currentTime, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets media records older than a specified date.
         /// </summary>
         /// <param name="cutoffDate">The cutoff date.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>List of old media records.</returns>
-        Task<List<MediaRecord>> GetMediaOlderThanAsync(DateTime cutoffDate);
-
-        /// <summary>
-        /// Gets orphaned media records (where virtual key no longer exists).
-        /// </summary>
-        /// <returns>List of orphaned media records.</returns>
-        Task<List<MediaRecord>> GetOrphanedMediaAsync();
+        Task<List<MediaRecord>> GetMediaOlderThanAsync(DateTime cutoffDate, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Updates access statistics for a media record.
         /// </summary>
         /// <param name="id">The ID of the media record.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>True if updated successfully, false otherwise.</returns>
-        Task<bool> UpdateAccessStatsAsync(Guid id);
-
-        /// <summary>
-        /// Deletes a media record.
-        /// </summary>
-        /// <param name="id">The ID of the media record to delete.</param>
-        /// <returns>True if deleted successfully, false otherwise.</returns>
-        Task<bool> DeleteAsync(Guid id);
+        Task<bool> UpdateAccessStatsAsync(Guid id, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Deletes multiple media records.
         /// </summary>
         /// <param name="ids">The IDs of the media records to delete.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Number of records deleted.</returns>
-        Task<int> DeleteManyAsync(IEnumerable<Guid> ids);
+        Task<int> DeleteManyAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets the total storage size used by a virtual key.
         /// </summary>
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Total storage size in bytes.</returns>
-        Task<long> GetTotalStorageSizeByVirtualKeyAsync(int virtualKeyId);
+        Task<long> GetTotalStorageSizeByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets storage statistics grouped by provider.
         /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Dictionary of provider names to total storage size.</returns>
-        Task<Dictionary<string, long>> GetStorageStatsByProviderAsync();
+        Task<Dictionary<string, long>> GetStorageStatsByProviderAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets storage statistics grouped by media type.
         /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Dictionary of media types to total storage size.</returns>
-        Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync();
+        Task<Dictionary<string, long>> GetStorageStatsByMediaTypeAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Computes overall media statistics in the database. The virtual-key breakdown is
+        /// limited to the largest consumers.
+        /// </summary>
+        Task<MediaStorageAggregateStats> GetAggregateStorageStatsAsync(
+            int? virtualKeyGroupId = null,
+            int virtualKeyLimit = 100,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets the count of media records for a virtual key.
         /// </summary>
         /// <param name="virtualKeyId">The ID of the virtual key.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>Count of media records.</returns>
-        Task<int> GetCountByVirtualKeyAsync(int virtualKeyId);
+        Task<int> GetCountByVirtualKeyAsync(int virtualKeyId, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Searches for media records by storage key pattern using database-level filtering.
+        /// </summary>
+        /// <param name="storageKeyPattern">The pattern to match against storage keys (case-insensitive contains).</param>
+        /// <param name="maxResults">Maximum number of results to return. Defaults to 100.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>List of matching media records ordered by created date descending.</returns>
+        Task<List<MediaRecord>> SearchByStorageKeyPatternAsync(string storageKeyPattern, int maxResults = 100, CancellationToken cancellationToken = default);
     }
 }

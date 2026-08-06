@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Caching.Memory;
 using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Extensions;
@@ -15,13 +16,9 @@ public partial class AnalyticsService : IAnalyticsService
     private readonly IRequestLogRepository _requestLogRepository;
     private readonly IVirtualKeyRepository _virtualKeyRepository;
     private readonly IMemoryCache _cache;
+    private readonly AnalyticsCacheInvalidator _cacheInvalidator;
     private readonly ILogger<AnalyticsService> _logger;
     private readonly IAnalyticsMetrics? _metrics;
-
-    // Cache keys
-    private const string CachePrefixSummary = "analytics:summary:";
-    private const string CachePrefixModels = "analytics:models";
-    private const string CachePrefixCostTrend = "analytics:cost:trend:";
     
     // Cache durations
     private static readonly TimeSpan ShortCacheDuration = TimeSpan.FromMinutes(1);
@@ -34,18 +31,21 @@ public partial class AnalyticsService : IAnalyticsService
     /// <param name="requestLogRepository">Repository for request logs</param>
     /// <param name="virtualKeyRepository">Repository for virtual keys</param>
     /// <param name="cache">Memory cache for performance optimization</param>
+    /// <param name="cacheInvalidator">Shared invalidator for analytics cache entries</param>
     /// <param name="logger">Logger instance</param>
     /// <param name="metrics">Optional metrics collection service for monitoring cache performance</param>
     public AnalyticsService(
         IRequestLogRepository requestLogRepository,
         IVirtualKeyRepository virtualKeyRepository,
         IMemoryCache cache,
+        AnalyticsCacheInvalidator cacheInvalidator,
         ILogger<AnalyticsService> logger,
         IAnalyticsMetrics? metrics = null)
     {
         _requestLogRepository = requestLogRepository ?? throw new ArgumentNullException(nameof(requestLogRepository));
         _virtualKeyRepository = virtualKeyRepository ?? throw new ArgumentNullException(nameof(virtualKeyRepository));
         _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _cacheInvalidator = cacheInvalidator ?? throw new ArgumentNullException(nameof(cacheInvalidator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _metrics = metrics;
     }
@@ -66,13 +66,10 @@ public partial class AnalyticsService : IAnalyticsService
         
         try
         {
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "Getting logs - Page: {Page}, PageSize: {PageSize}, Filters: Model={Model}, VirtualKeyId={VirtualKeyId}, Status={Status}",
                 page, pageSize, model ?? "all", virtualKeyId?.ToString() ?? "all", status?.ToString() ?? "all");
 
-            // Validate and normalize parameters
-            page = Math.Max(1, page);
-            pageSize = Math.Clamp(pageSize, 1, 100);
             startDate = startDate.HasValue ? DateTime.SpecifyKind(startDate.Value, DateTimeKind.Utc) : DateTime.UtcNow.AddDays(-7);
             endDate = endDate.HasValue ? DateTime.SpecifyKind(endDate.Value, DateTimeKind.Utc) : DateTime.UtcNow;
 
@@ -112,11 +109,8 @@ public partial class AnalyticsService : IAnalyticsService
 
             return new PagedResult<LogRequestDto>
             {
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = totalCount,
-                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
-                Items = pagedLogs
+                Data = pagedLogs,
+                Pagination = PaginationMetadata.Create(page, pageSize, totalCount)
             };
         }
         catch (Exception ex)
@@ -126,11 +120,14 @@ public partial class AnalyticsService : IAnalyticsService
             
             return new PagedResult<LogRequestDto>
             {
-                Page = page,
-                PageSize = pageSize,
-                TotalItems = 0,
-                TotalPages = 0,
-                Items = new List<LogRequestDto>()
+                Data = new List<LogRequestDto>(),
+                Pagination = new PaginationMetadata
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalItems = 0,
+                    TotalPages = 0
+                }
             };
         }
     }
@@ -140,7 +137,7 @@ public partial class AnalyticsService : IAnalyticsService
     {
         try
         {
-            _logger.LogInformationSecure("Getting log with ID: {LogId}", id);
+            _logger.LogDebugSecure("Getting log with ID: {LogId}", id);
             var log = await _requestLogRepository.GetByIdAsync(id);
             return log != null ? MapToLogRequestDto(log) : null;
         }
@@ -156,35 +153,40 @@ public partial class AnalyticsService : IAnalyticsService
     {
         var stopwatch = Stopwatch.StartNew();
         var cacheHit = false;
-        
-        var result = await _cache.GetOrCreateAsync(CachePrefixModels, async entry =>
+
+        var result = await _cache.GetOrCreateAsync(CacheKeys.Analytics.Models, async entry =>
         {
-            _metrics?.RecordCacheMiss(CachePrefixModels);
+            _cacheInvalidator.TrackEntry(entry, CacheKeys.Analytics.Models);
+            _metrics?.RecordCacheMiss(CacheKeys.Analytics.Models);
             entry.AbsoluteExpirationRelativeToNow = MediumCacheDuration;
-            
-            _logger.LogInformationSecure("Getting distinct models from request logs");
-            
+
+            _logger.LogDebugSecure("Getting distinct models from request logs");
+
             var fetchStopwatch = Stopwatch.StartNew();
-            var logs = await _requestLogRepository.GetAllAsync();
-            _metrics?.RecordFetchDuration("RequestLogRepository.GetAllAsync", fetchStopwatch.ElapsedMilliseconds);
-            
-            return logs
-                .Where(l => !string.IsNullOrEmpty(l.ModelName))
-                .Select(l => l.ModelName)
-                .Distinct()
-                .OrderBy(m => m)
-                .ToList();
+            // Use repository-level DISTINCT query instead of loading all logs into memory
+            var models = await _requestLogRepository.GetDistinctModelsAsync();
+            _metrics?.RecordFetchDuration("RequestLogRepository.GetDistinctModelsAsync", fetchStopwatch.ElapsedMilliseconds);
+
+            return models;
         });
-        
+
         if (!cacheHit && result != null)
         {
             cacheHit = true;
-            _metrics?.RecordCacheHit(CachePrefixModels);
+            _metrics?.RecordCacheHit(CacheKeys.Analytics.Models);
         }
-        
+
         _metrics?.RecordOperationDuration("GetDistinctModelsAsync", stopwatch.ElapsedMilliseconds);
-        
+
         return result ?? Enumerable.Empty<string>();
+    }
+
+    /// <inheritdoc/>
+    public int InvalidateCache()
+    {
+        var keysInvalidated = _cacheInvalidator.Invalidate();
+        _logger.LogInformation("Invalidated {KeyCount} analytics cache keys", keysInvalidated);
+        return keysInvalidated;
     }
 
     #endregion

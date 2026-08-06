@@ -25,22 +25,15 @@ namespace ConduitLLM.Functions.Providers.Tavily;
 /// - Usage tracking for billing
 /// - Authentication verification
 /// </remarks>
-public partial class TavilyClient : IFunctionClient
+public partial class TavilyClient : FunctionClientBase, IFunctionClient
 {
-    private readonly FunctionConfiguration _configuration;
-    private readonly FunctionCredential _credential;
-    private readonly IHttpClientFactory? _httpClientFactory;
-    private readonly ILogger<TavilyClient> _logger;
-    private readonly string _baseUrl;
-    private readonly JsonSerializerOptions _jsonOptions;
-
     private const string DefaultBaseUrl = "https://api.tavily.com";
 
     /// <inheritdoc />
     public FunctionProviderType ProviderType => FunctionProviderType.Tavily;
 
     /// <inheritdoc />
-    public string ProviderName => "Tavily";
+    public override string ProviderName => "Tavily";
 
     /// <summary>
     /// Creates a new instance of the TavilyClient.
@@ -54,81 +47,15 @@ public partial class TavilyClient : IFunctionClient
         FunctionCredential credential,
         IHttpClientFactory? httpClientFactory,
         ILogger<TavilyClient> logger)
+        : base(configuration, credential, httpClientFactory, logger, DefaultBaseUrl)
     {
-        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _credential = credential ?? throw new ArgumentNullException(nameof(credential));
-        _httpClientFactory = httpClientFactory;
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        // Determine base URL (credential > configuration > default)
-        _baseUrl = DetermineBaseUrl();
-
-        _jsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false,
-            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
-        };
     }
 
-    /// <summary>
-    /// Determines the effective base URL for the Tavily API.
-    /// </summary>
-    private string DetermineBaseUrl()
+    /// <inheritdoc />
+    protected override void ApplyAuthHeader(HttpClient client, string apiKey)
     {
-        // Priority: Credential BaseUrl > Configuration BaseUrl > Default
-        if (!string.IsNullOrWhiteSpace(_credential.BaseUrl))
-        {
-            return _credential.BaseUrl.TrimEnd('/');
-        }
-
-        if (!string.IsNullOrWhiteSpace(_configuration.BaseUrl))
-        {
-            return _configuration.BaseUrl.TrimEnd('/');
-        }
-
-        return DefaultBaseUrl;
-    }
-
-    /// <summary>
-    /// Creates an HTTP client instance.
-    /// </summary>
-    protected virtual HttpClient CreateHttpClient(string? apiKey = null)
-    {
-        HttpClient client;
-
-        if (_httpClientFactory != null)
-        {
-            client = _httpClientFactory.CreateClient($"{ProviderName}FunctionClient");
-        }
-        else
-        {
-            client = new HttpClient();
-        }
-
-        ConfigureHttpClient(client, apiKey);
-        return client;
-    }
-
-    /// <summary>
-    /// Configures the HTTP client with headers and authentication.
-    /// </summary>
-    protected virtual void ConfigureHttpClient(HttpClient client, string? apiKey = null)
-    {
-        client.BaseAddress = new Uri(_baseUrl);
-        client.DefaultRequestHeaders.Clear();
-        client.DefaultRequestHeaders.Add("Accept", "application/json");
-        client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM-Functions");
-
         // Tavily uses Bearer token authentication
-        var effectiveApiKey = apiKey ?? _credential.ApiKey;
-        if (!string.IsNullOrWhiteSpace(effectiveApiKey))
-        {
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {effectiveApiKey}");
-        }
-
-        // Default timeout (can be overridden by configuration)
-        client.Timeout = TimeSpan.FromSeconds(_configuration.TimeoutSeconds ?? 30);
+        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
     }
 
     /// <summary>
@@ -195,25 +122,14 @@ public partial class TavilyClient : IFunctionClient
         return request;
     }
 
-    /// <summary>
-    /// Handles HTTP errors and creates appropriate exception messages.
-    /// </summary>
-    protected Exception HandleHttpError(HttpStatusCode statusCode, string? responseBody)
-    {
-        var message = statusCode switch
+    protected override string GetHttpErrorMessage(
+        HttpStatusCode statusCode,
+        string? responseBody) =>
+        statusCode switch
         {
-            HttpStatusCode.Unauthorized => "Invalid API key for Tavily",
-            HttpStatusCode.Forbidden => "Access forbidden - check API key permissions",
             HttpStatusCode.TooManyRequests => "Rate limit exceeded for Tavily API (100 RPM dev, 1000 RPM production)",
-            HttpStatusCode.BadRequest => $"Bad request to Tavily API: {responseBody}",
-            HttpStatusCode.ServiceUnavailable => "Tavily API is temporarily unavailable",
-            HttpStatusCode.GatewayTimeout => "Tavily API request timed out",
             (HttpStatusCode)432 => "Plan usage limit exceeded - monthly API credit limit reached",
             (HttpStatusCode)433 => "Pay-as-you-go limit exceeded - PAYGO spending limit reached",
-            _ => $"Tavily API error: {(int)statusCode} {statusCode}"
+            _ => base.GetHttpErrorMessage(statusCode, responseBody)
         };
-
-        _logger.LogError("Tavily API error: {StatusCode} - {Message}", statusCode, message);
-        return new InvalidOperationException(message);
-    }
 }

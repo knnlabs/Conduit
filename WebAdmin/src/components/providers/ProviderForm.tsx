@@ -11,6 +11,7 @@ import {
   Select,
   PasswordInput,
   Alert,
+  Anchor,
   Divider,
   Stack,
   Card,
@@ -18,12 +19,9 @@ import {
   LoadingOverlay,
   ThemeIcon,
   Switch,
+  NumberInput,
 } from '@mantine/core';
 import { IconAlertCircle, IconInfoCircle, IconCircleCheck, IconArrowLeft, IconServer, IconSparkles, IconEdit } from '@tabler/icons-react';
-import { 
-  ProviderType, 
-  PROVIDER_CONFIG_REQUIREMENTS,
-} from '@knn_labs/conduit-admin-client';
 import { useProviderFormLogic } from './ProviderFormLogic';
 import { useProviderFormHandlers } from './ProviderFormHandlers';
 
@@ -46,6 +44,8 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
     isLoadingProviders,
     providerDisplayName,
     isLoading,
+    settingFields,
+    providerConfiguration,
   } = logic;
 
   const {
@@ -55,33 +55,21 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
     handleCancel,
   } = handlers;
 
-  const getProviderHelp = (providerType: string) => {
-    const providerTypeNum = parseInt(providerType, 10) as ProviderType;
-    const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
-    if (!config?.helpText) {
-      return null;
-    }
-
-    return (
-      <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
-        <Text size="sm">
-          {config.helpUrl ? (
-            <>
-              {config.helpText.split(config.helpUrl)[0]}
-              <Text component="span" fw={600}>{config.helpUrl}</Text>
-              {config.helpText.split(config.helpUrl)[1] ?? ''}
-            </>
-          ) : (
-            config.helpText
-          )}
-        </Text>
-      </Alert>
-    );
-  };
-
-  const providerHelp = getProviderHelp(form.values.providerType);
-  const providerTypeNum = parseInt(form.values.providerType, 10) as ProviderType;
-  const config = PROVIDER_CONFIG_REQUIREMENTS[providerTypeNum];
+  const providerHelp = providerConfiguration?.helpText ? (
+    <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
+      <Text size="sm">{providerConfiguration.helpText}</Text>
+      {providerConfiguration.helpUrl && (
+        <Anchor
+          href={providerConfiguration.helpUrl}
+          target="_blank"
+          rel="noreferrer"
+          size="sm"
+        >
+          Provider documentation
+        </Anchor>
+      )}
+    </Alert>
+  ) : null;
 
   return (
     <Container size="md" py="xl">
@@ -166,13 +154,14 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                 </Group>
                 
                 <Stack gap="md">
-                  {mode === 'edit' ? (
+                  {mode === 'edit' && providerConfiguration?.requiresApiKey !== false && (
                     <Alert icon={<IconInfoCircle size={16} />} color="blue" variant="light">
                       <Text size="sm">
                         API keys cannot be updated here. To manage API keys, use the <Text component="span" fw={600}>Manage Keys</Text> button on the providers list page.
                       </Text>
                     </Alert>
-                  ) : (
+                  )}
+                  {mode === 'add' && providerConfiguration?.requiresApiKey !== false && (
                     <PasswordInput
                       label="API Key"
                       placeholder="Enter API key"
@@ -187,36 +176,41 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     />
                   )}
 
-                  {config && mode === 'add' && (
-                    <>
-                      {config.requiresOrganizationId && (
-                        <TextInput
-                          label="Organization ID"
-                          placeholder={providerTypeNum === ProviderType.OpenAI ? "Optional OpenAI organization ID" : "Enter organization ID"}
-                          required={config.requiresOrganizationId}
-                          autoComplete="off"
-                          aria-autocomplete="none"
-                          list="autocompleteOff"
-                          data-form-type="other"
-                          {...form.getInputProps('organizationId')}
-                          size="md"
-                        />
-                      )}
+                  {/* Structured settings are declared by the backend provider registry and served by
+                      the Admin API, so this form never mirrors the field list. They render in both
+                      modes: these identify the provider account (for example a Cloudflare Account
+                      ID) and must stay editable after creation. Secret-valued settings are excluded
+                      upstream - they live on a key credential, and the key editor renders them. */}
+                  {settingFields.map((field) => (
+                    <TextInput
+                      key={field.key}
+                      label={field.label}
+                      placeholder={field.placeholder ?? ''}
+                      description={field.helpText}
+                      required={field.required}
+                      autoComplete="off"
+                      aria-autocomplete="none"
+                      list="autocompleteOff"
+                      data-form-type="other"
+                      {...form.getInputProps(`settings.${field.key}`)}
+                      size="md"
+                    />
+                  ))}
 
-                      {(config.requiresEndpoint || config.supportsCustomEndpoint) && (
-                        <TextInput
-                          label={config.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
-                          placeholder={config.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
-                          required={config.requiresEndpoint}
-                          autoComplete="off"
-                          aria-autocomplete="none"
-                          list="autocompleteOff"
-                          data-form-type="other"
-                          {...form.getInputProps('apiEndpoint')}
-                          size="md"
-                        />
-                      )}
-                    </>
+                  {providerConfiguration
+                    && (providerConfiguration.requiresEndpoint
+                      || providerConfiguration.supportsCustomEndpoint) && (
+                    <TextInput
+                      label={providerConfiguration.requiresEndpoint ? "API Endpoint" : "Custom API Endpoint"}
+                      placeholder={providerConfiguration.requiresEndpoint ? "https://api.example.com" : "https://api.example.com (optional)"}
+                      required={providerConfiguration.requiresEndpoint}
+                      autoComplete="off"
+                      aria-autocomplete="none"
+                      list="autocompleteOff"
+                      data-form-type="other"
+                      {...form.getInputProps('apiEndpoint')}
+                      size="md"
+                    />
                   )}
 
                   <Switch
@@ -225,6 +219,25 @@ export function ProviderForm({ mode, providerId }: ProviderFormProps) {
                     {...form.getInputProps('isEnabled', { type: 'checkbox' })}
                     size="md"
                   />
+
+                  <Switch
+                    label="Trust provider-reported cost"
+                    description="Bill from the cost this provider reports per request (e.g. OpenRouter usage.cost) instead of the configured ModelCost. Falls back to ModelCost when no cost is reported."
+                    {...form.getInputProps('trustProviderReportedCosts', { type: 'checkbox' })}
+                    size="md"
+                  />
+
+                  {form.values.trustProviderReportedCosts && (
+                    <NumberInput
+                      label="Cost markup multiplier"
+                      description="Multiplier applied to the provider-reported cost when billing (1.0 = pass-through)."
+                      min={0}
+                      step={0.05}
+                      decimalScale={4}
+                      {...form.getInputProps('providerCostMarkupMultiplier')}
+                      size="md"
+                    />
+                  )}
                 </Stack>
               </Card>
 

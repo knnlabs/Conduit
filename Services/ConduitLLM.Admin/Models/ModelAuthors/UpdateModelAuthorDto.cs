@@ -4,15 +4,17 @@ namespace ConduitLLM.Admin.Models.ModelAuthors
     /// Data transfer object for updating an existing model author/organization.
     /// </summary>
     /// <remarks>
-    /// Supports partial updates - only non-null properties will be modified.
+    /// Supports JSON Merge Patch: omitted properties remain unchanged and null clears nullable
+    /// properties. The required name cannot be cleared.
     /// Changes affect the display of the author across all their series and models.
     /// </remarks>
     public class UpdateModelAuthorDto
     {
+        [System.Text.Json.Serialization.JsonIgnore]
+        public int Id { get; set; }
         /// <summary>
         /// Gets or sets the ID of the author to update.
         /// </summary>
-        public int Id { get; set; }
 
         /// <summary>
         /// Gets or sets the new name for the author.
@@ -20,7 +22,7 @@ namespace ConduitLLM.Admin.Models.ModelAuthors
         /// <remarks>
         /// Rename with caution as it affects all references to this author.
         /// The new name must be unique in the system.
-        /// Leave null to keep existing name.
+        /// Omit this member to keep the existing name.
         /// </remarks>
         public string? Name { get; set; }
 
@@ -29,7 +31,7 @@ namespace ConduitLLM.Admin.Models.ModelAuthors
         /// </summary>
         /// <remarks>
         /// Update if the organization changes their website.
-        /// Leave null to keep existing URL.
+        /// Omit this member to keep the existing URL; send null to clear it.
         /// </remarks>
         public string? WebsiteUrl { get; set; }
 
@@ -38,7 +40,7 @@ namespace ConduitLLM.Admin.Models.ModelAuthors
         /// </summary>
         /// <remarks>
         /// Update to reflect new information about the organization.
-        /// Leave null to keep existing description.
+        /// Omit this member to keep the existing description; send null to clear it.
         /// </remarks>
         public string? Description { get; set; }
     }

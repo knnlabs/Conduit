@@ -12,40 +12,14 @@ namespace ConduitLLM.Core.Services
     /// </summary>
     public partial class CacheManager
     {
-        public async Task<CacheRegionStatistics> GetRegionStatisticsAsync(CacheRegion region, CancellationToken cancellationToken = default)
+        public Task<CacheRegionStatistics> GetRegionStatisticsAsync(CacheRegion region, CancellationToken cancellationToken = default)
         {
-            // If we have a statistics collector, prefer its data
-            if (_statisticsCollector != null)
+            // Use GetOrAdd to avoid overwriting accumulated data
+            return Task.FromResult(_statistics.GetOrAdd(region, r => new CacheRegionStatistics
             {
-                try
-                {
-                    var collectorStats = await _statisticsCollector.GetStatisticsAsync(region, cancellationToken);
-                    return new CacheRegionStatistics
-                    {
-                        Region = region,
-                        HitCount = collectorStats.HitCount,
-                        MissCount = collectorStats.MissCount,
-                        SetCount = collectorStats.SetCount,
-                        EvictionCount = collectorStats.EvictionCount,
-                        EntryCount = collectorStats.EntryCount,
-                        TotalSizeBytes = collectorStats.MemoryUsageBytes,
-                        AverageGetTime = collectorStats.AverageGetTime,
-                        AverageSetTime = collectorStats.AverageSetTime,
-                        LastResetTime = collectorStats.StartTime
-                    };
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to get statistics from collector for region {Region}", region);
-                }
-            }
-
-            // Fallback to internal statistics - use GetOrAdd to avoid overwriting accumulated data
-            return _statistics.GetOrAdd(region, r => new CacheRegionStatistics 
-            { 
-                Region = r, 
-                LastResetTime = DateTime.UtcNow 
-            });
+                Region = r,
+                LastResetTime = DateTime.UtcNow
+            }));
         }
 
         public async Task<Dictionary<CacheRegion, CacheRegionStatistics>> GetAllStatisticsAsync(CancellationToken cancellationToken = default)

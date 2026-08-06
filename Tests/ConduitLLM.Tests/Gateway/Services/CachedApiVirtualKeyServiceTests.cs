@@ -4,8 +4,9 @@ using Xunit.Abstractions;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Services;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 
 namespace ConduitLLM.Tests.Http.Services
 {
@@ -18,8 +19,9 @@ namespace ConduitLLM.Tests.Http.Services
         private readonly Mock<IVirtualKeySpendHistoryRepository> _spendHistoryRepositoryMock;
         private readonly Mock<IVirtualKeyGroupRepository> _groupRepositoryMock;
         private readonly Mock<IVirtualKeyCache> _cacheMock;
-        private readonly Mock<IPublishEndpoint> _publishEndpointMock;
+        private readonly Mock<IEventBus> _publishEndpointMock;
         private readonly Mock<ILogger<CachedApiVirtualKeyService>> _loggerMock;
+        private readonly Mock<IBatchSpendUpdateService> _batchSpendServiceMock;
         private readonly CachedApiVirtualKeyService _service;
 
         public CachedApiVirtualKeyServiceTests(ITestOutputHelper output) : base(output)
@@ -28,8 +30,9 @@ namespace ConduitLLM.Tests.Http.Services
             _spendHistoryRepositoryMock = new Mock<IVirtualKeySpendHistoryRepository>();
             _groupRepositoryMock = new Mock<IVirtualKeyGroupRepository>();
             _cacheMock = new Mock<IVirtualKeyCache>();
-            _publishEndpointMock = new Mock<IPublishEndpoint>();
+            _publishEndpointMock = new Mock<IEventBus>();
             _loggerMock = CreateLogger<CachedApiVirtualKeyService>();
+            _batchSpendServiceMock = new Mock<IBatchSpendUpdateService>();
 
             _service = new CachedApiVirtualKeyService(
                 _virtualKeyRepositoryMock.Object,
@@ -37,7 +40,8 @@ namespace ConduitLLM.Tests.Http.Services
                 _groupRepositoryMock.Object,
                 _cacheMock.Object,
                 _publishEndpointMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                _batchSpendServiceMock.Object);
         }
 
         [Fact]
@@ -55,9 +59,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKey.Id, result.Id);
-            Assert.Equal(virtualKey.KeyName, result.KeyName);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
+            Assert.Equal(200, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             
@@ -80,7 +84,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.Null(result);
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.KeyDisabled, result.FailureCode);
+            Assert.Equal(401, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -100,7 +106,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.Null(result);
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.KeyExpired, result.FailureCode);
+            Assert.Equal(401, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -124,7 +132,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyAsync(keyValue);
 
             // Assert
-            Assert.Null(result); // Returns null due to insufficient balance
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.InsufficientBalance, result.FailureCode);
+            Assert.Equal(402, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             _groupRepositoryMock.Verify(g => g.GetByIdAsync(virtualKey.VirtualKeyGroupId), Times.Once);
@@ -152,14 +162,39 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyAsync(keyValue);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKey.Id, result.Id);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             _groupRepositoryMock.Verify(g => g.GetByIdAsync(virtualKey.VirtualKeyGroupId), Times.Once);
             
             // Verify no cache invalidation for valid keys
             _cacheMock.Verify(c => c.InvalidateVirtualKeyAsync(It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task ValidateVirtualKeyAsync_WhenPendingSpendConsumesBalance_ReturnsNull()
+        {
+            // Arrange
+            var keyValue = "condt_pending_spend";
+            var keyHash = ComputeExpectedHash(keyValue);
+            var virtualKey = CreateEnabledVirtualKey();
+
+            _cacheMock.Setup(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>() ))
+                .ReturnsAsync(virtualKey);
+            _groupRepositoryMock.Setup(g => g.GetByIdAsync(virtualKey.VirtualKeyGroupId))
+                .ReturnsAsync(CreateGroupWithBalance(5m));
+            _batchSpendServiceMock.Setup(s => s.GetPendingSpendAsync(virtualKey.Id))
+                .ReturnsAsync(5m);
+
+            // Act
+            var result = await _service.ValidateVirtualKeyAsync(keyValue);
+
+            // Assert
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.InsufficientBalance, result.FailureCode);
+            Assert.Equal(402, result.HttpStatusCode);
+            _batchSpendServiceMock.Verify(s => s.GetPendingSpendAsync(virtualKey.Id), Times.Once);
         }
 
         [Fact]
@@ -178,8 +213,8 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue, requestedModel);
 
             // Assert
-            Assert.NotNull(result); // Should succeed for allowed model
-            Assert.Equal(virtualKey.Id, result.Id);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -200,7 +235,9 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue, requestedModel);
 
             // Assert
-            Assert.Null(result); // Should fail for disallowed model
+            Assert.False(result.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.ModelNotAllowed, result.FailureCode);
+            Assert.Equal(403, result.HttpStatusCode);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
         }
@@ -212,8 +249,10 @@ namespace ConduitLLM.Tests.Http.Services
             var result1 = await _service.ValidateVirtualKeyForAuthenticationAsync("");
             var result2 = await _service.ValidateVirtualKeyForAuthenticationAsync(null);
 
-            Assert.Null(result1);
-            Assert.Null(result2);
+            Assert.False(result1.IsValid);
+            Assert.False(result2.IsValid);
+            Assert.Equal(VirtualKeyValidationFailureCodes.MissingKey, result1.FailureCode);
+            Assert.Equal(VirtualKeyValidationFailureCodes.MissingKey, result2.FailureCode);
             
             // Verify cache was never accessed
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(It.IsAny<string>(), It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Never);
@@ -238,11 +277,100 @@ namespace ConduitLLM.Tests.Http.Services
             var result = await _service.ValidateVirtualKeyForAuthenticationAsync(keyValue);
 
             // Assert
-            Assert.NotNull(result);
-            Assert.Equal(virtualKey.Id, result.Id);
+            Assert.True(result.IsValid);
+            Assert.Same(virtualKey, result.Key);
             
             _cacheMock.Verify(c => c.GetVirtualKeyAsync(keyHash, It.IsAny<Func<string, Task<VirtualKey>>>()), Times.Once);
             _virtualKeyRepositoryMock.Verify(r => r.GetByKeyHashAsync(keyHash, default), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateSpendAsync_WhenPublishSucceeds_ReturnsTrueWithoutDirectWrite()
+        {
+            // Arrange - event bus accepts the publish
+            _publishEndpointMock
+                .Setup(p => p.PublishAsync(It.IsAny<ConduitLLM.Core.Events.SpendUpdateRequested>(), It.IsAny<CancellationToken>()))
+                .Returns(Task.CompletedTask);
+
+            // Act
+            var result = await _service.UpdateSpendAsync(1, 5m);
+
+            // Assert
+            Assert.True(result);
+            _publishEndpointMock.Verify(p => p.PublishAsync(
+                It.Is<ConduitLLM.Core.Events.SpendUpdateRequested>(e => e.KeyId == 1 && e.Amount == 5m),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            // No direct write on the happy path - the SpendUpdateProcessor owns the debit
+            _virtualKeyRepositoryMock.Verify(r => r.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+            _groupRepositoryMock.Verify(g => g.AdjustBalanceIdempotentAsync(
+                It.IsAny<int>(), It.IsAny<decimal>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<ConduitLLM.Configuration.Enums.ReferenceType>(), It.IsAny<string>()), Times.Never);
+        }
+
+        [Fact]
+        public async Task UpdateSpendAsync_WhenPublishFails_FallsBackToIdempotentDirectWrite()
+        {
+            // Arrange - event bus rejects the publish (#927 durability fallback)
+            _publishEndpointMock
+                .Setup(p => p.PublishAsync(It.IsAny<ConduitLLM.Core.Events.SpendUpdateRequested>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("bus unavailable"));
+
+            var virtualKey = CreateEnabledVirtualKey();
+            _virtualKeyRepositoryMock
+                .Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(virtualKey);
+            _groupRepositoryMock
+                .Setup(g => g.GetByKeyIdAsync(1))
+                .ReturnsAsync(CreateGroupWithBalance(100m));
+            _groupRepositoryMock
+                .Setup(g => g.AdjustBalanceIdempotentAsync(
+                    1, -5m, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                    ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1", It.IsAny<DateTime>()))
+                .ReturnsAsync(new BalanceAdjustmentResult(95m, 105m, Applied: true));
+
+            // Act
+            var result = await _service.UpdateSpendAsync(1, 5m);
+
+            // Assert - the charge is applied directly with a RequestId-derived idempotency
+            // key, so a late event delivery cannot double-charge
+            Assert.True(result);
+            _groupRepositoryMock.Verify(g => g.AdjustBalanceIdempotentAsync(
+                1, -5m, It.Is<string>(k => k.StartsWith("spend:")), It.IsAny<string>(), "System",
+                ConduitLLM.Configuration.Enums.ReferenceType.VirtualKey, "1", It.IsAny<DateTime>()), Times.Once);
+            _cacheMock.Verify(c => c.InvalidateVirtualKeyAsync(virtualKey.KeyHash), Times.Once);
+        }
+
+        [Fact]
+        public async Task UpdateSpendAsync_WithoutEventBus_UsesDirectWrite()
+        {
+            // Arrange - service constructed without an event bus
+            var service = new CachedApiVirtualKeyService(
+                _virtualKeyRepositoryMock.Object,
+                _spendHistoryRepositoryMock.Object,
+                _groupRepositoryMock.Object,
+                _cacheMock.Object,
+                eventBus: null,
+                _loggerMock.Object);
+
+            var virtualKey = CreateEnabledVirtualKey();
+            _virtualKeyRepositoryMock
+                .Setup(r => r.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(virtualKey);
+            _groupRepositoryMock
+                .Setup(g => g.GetByKeyIdAsync(1))
+                .ReturnsAsync(CreateGroupWithBalance(100m));
+            _groupRepositoryMock
+                .Setup(g => g.AdjustBalanceAsync(1, -5m))
+                .ReturnsAsync(95m);
+
+            // Act
+            var result = await service.UpdateSpendAsync(1, 5m);
+
+            // Assert
+            Assert.True(result);
+            _groupRepositoryMock.Verify(g => g.AdjustBalanceAsync(1, -5m), Times.Once);
+            _cacheMock.Verify(c => c.InvalidateVirtualKeyAsync(virtualKey.KeyHash), Times.Once);
         }
 
         /// <summary>

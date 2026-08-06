@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj" />
+    <ProjectReference Include="../../../Services/ConduitLLM.Admin/ConduitLLM.Admin.csproj" />
+  </ItemGroup>
+</Project>

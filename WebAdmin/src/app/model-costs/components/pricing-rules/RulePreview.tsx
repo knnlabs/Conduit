@@ -19,14 +19,8 @@ import {
   Alert,
 } from '@mantine/core';
 import { IconPlayerPlay, IconCode, IconTestPipe, IconCurrencyDollar, IconCheck, IconX } from '@tabler/icons-react';
-import type { PricingRulesConfig, PricingRule } from '@knn_labs/conduit-admin-client';
-
-interface ParameterOption {
-  key: string;
-  label: string;
-  type: 'string' | 'number' | 'boolean' | 'enum';
-  options?: string[];
-}
+import type { PricingRulesConfig, PricingRule } from '@/lib/admin-api';
+import type { ParameterOption } from './RuleRow';
 
 interface RulePreviewProps {
   config: PricingRulesConfig;

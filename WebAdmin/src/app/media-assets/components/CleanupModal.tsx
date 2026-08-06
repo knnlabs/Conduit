@@ -1,9 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { Modal, Stack, Text, Button, NumberInput, Alert, Group } from '@mantine/core';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Button, Checkbox, Group, Modal, NumberInput, Stack, Text, TextInput } from '@mantine/core';
 import { IconTrash, IconAlertCircle } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { useConfirmModal } from '@/hooks/useFormModal';
+import { withAdminClient } from '@/lib/client/adminClient';
+import type { MediaCleanupPreview } from '@/lib/admin-api/models/media';
+import { formatters } from '@/lib/utils/formatters';
+
+async function runCleanup(
+  type: 'expired' | 'reconciliation' | 'prune',
+  daysToKeep?: number,
+  force = false
+): Promise<void> {
+  await withAdminClient(client =>
+    client.media.cleanupMedia({
+      type,
+      force,
+      ...(type === 'prune' && { daysToKeep }),
+    })
+  );
+}
 
 interface CleanupModalProps {
   opened: boolean;
@@ -12,45 +29,84 @@ interface CleanupModalProps {
 }
 
 export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModalProps) {
-  const [loading, setLoading] = useState(false);
   const [daysToKeep, setDaysToKeep] = useState(90);
+  const [force, setForce] = useState(false);
+  const [confirmation, setConfirmation] = useState('');
+  const [preview, setPreview] = useState<MediaCleanupPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [dryRunMode, setDryRunMode] = useState(true);
 
-  const handleCleanup = async (type: 'expired' | 'orphaned' | 'prune') => {
-    setLoading(true);
-    try {
-      const response = await fetch('/api/media/cleanup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          type,
-          ...(type === 'prune' && { daysToKeep })
-        }),
+  useEffect(() => {
+    if (!opened) return;
+
+    let active = true;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setConfirmation('');
+
+    void Promise.all([
+      withAdminClient(client => client.media.previewPruneMedia(daysToKeep)),
+      withAdminClient(client => client.media.getCleanupServiceStatus()),
+    ])
+      .then(([nextPreview, status]) => {
+        if (!active) return;
+        setPreview(nextPreview);
+        setDryRunMode(status.isDryRunMode);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setPreview(null);
+        setPreviewError(error instanceof Error ? error.message : 'Unable to load cleanup preview');
+      })
+      .finally(() => {
+        if (active) setPreviewLoading(false);
       });
 
-      if (!response.ok) {
-        throw new Error('Cleanup failed');
-      }
+    return () => {
+      active = false;
+    };
+  }, [daysToKeep, opened]);
 
-      const data = await response.json() as { message: string };
-      
-      notifications.show({
-        title: 'Cleanup Successful',
-        message: data.message,
-        color: 'green',
-      });
+  const { loading: expiredLoading, handleConfirm: handleExpired } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction: () => runCleanup('expired'),
+    successMessage: 'Expired media cleaned up successfully',
+  });
 
-      onSuccess();
-      onClose();
-    } catch {
-      notifications.show({
-        title: 'Cleanup Failed',
-        message: 'An error occurred during cleanup',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { loading: reconciliationLoading, handleConfirm: handleReconciliation } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction: () => runCleanup('reconciliation'),
+    successMessage: 'Storage reconciliation completed successfully',
+  });
+
+  const { loading: pruneLoading, handleConfirm: handlePrune } = useConfirmModal({
+    onClose,
+    onSuccess,
+    confirmAction: () => runCleanup('prune', daysToKeep, force),
+    successMessage: dryRunMode && !force
+      ? `Dry run completed for media older than ${daysToKeep} days`
+      : `Media older than ${daysToKeep} days pruned successfully`,
+  });
+
+  const loading = useMemo(
+    () => expiredLoading || reconciliationLoading || pruneLoading || previewLoading,
+    [expiredLoading, reconciliationLoading, previewLoading, pruneLoading]
+  );
+  const destructivePrune = force || !dryRunMode;
+  const confirmationMatches = !destructivePrune ||
+    (preview !== null && confirmation === preview.confirmationPhrase);
+  let previewMessage = 'No preview is available.';
+  if (previewLoading) {
+    previewMessage = 'Calculating preview…';
+  } else if (preview) {
+    const outcome = destructivePrune
+      ? 'This run will permanently delete them.'
+      : 'This run will be a dry run.';
+    previewMessage = `${preview.fileCount.toLocaleString()} files (${formatters.fileSize(preview.sizeBytes)}) match. ${outcome}`;
+  }
 
   return (
     <Modal
@@ -62,7 +118,8 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
       <Stack>
         <Alert icon={<IconAlertCircle size={16} />} color="orange">
           <Text size="sm">
-            These operations will permanently delete media files. This action cannot be undone.
+            Cleanup respects the configured dry-run mode, monthly deletion budget, and global cleanup lock.
+            A forced prune performs an audited permanent deletion and cannot be undone.
           </Text>
         </Alert>
 
@@ -76,8 +133,9 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
               variant="light"
               color="orange"
               leftSection={<IconTrash size={16} />}
-              onClick={() => void handleCleanup('expired')}
-              loading={loading}
+              onClick={() => void handleExpired()}
+              loading={expiredLoading}
+              disabled={loading && !expiredLoading}
               fullWidth
             >
               Clean Expired Media
@@ -85,19 +143,21 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
           </div>
 
           <div>
-            <Text fw={500} mb="xs">Cleanup Orphaned Media</Text>
+            <Text fw={500} mb="xs">Reconcile Storage</Text>
             <Text size="sm" c="dimmed" mb="sm">
-              Remove media files that belong to deleted virtual keys.
+              Find storage objects without tracking records. Objects newer than the configured
+              safety window are always protected.
             </Text>
             <Button
               variant="light"
               color="orange"
               leftSection={<IconTrash size={16} />}
-              onClick={() => void handleCleanup('orphaned')}
-              loading={loading}
+              onClick={() => void handleReconciliation()}
+              loading={reconciliationLoading}
+              disabled={loading && !reconciliationLoading}
               fullWidth
             >
-              Clean Orphaned Media
+              Reconcile Storage
             </Button>
           </div>
 
@@ -114,15 +174,42 @@ export default function CleanupModal({ opened, onClose, onSuccess }: CleanupModa
               max={365}
               mb="sm"
             />
+            <Checkbox
+              label="Force a real deletion even when dry-run mode is enabled"
+              checked={force}
+              onChange={(event) => {
+                setForce(event.currentTarget.checked);
+                setConfirmation('');
+              }}
+              mb="sm"
+            />
+            {previewError ? (
+              <Alert color="red" mb="sm">
+                {previewError}
+              </Alert>
+            ) : (
+              <Alert color={destructivePrune ? 'red' : 'blue'} mb="sm">
+                {previewMessage}
+              </Alert>
+            )}
+            {destructivePrune && preview && (
+              <TextInput
+                label={`Type ${preview.confirmationPhrase} to confirm`}
+                value={confirmation}
+                onChange={(event) => setConfirmation(event.currentTarget.value)}
+                mb="sm"
+              />
+            )}
             <Button
               variant="light"
               color="red"
               leftSection={<IconTrash size={16} />}
-              onClick={() => void handleCleanup('prune')}
-              loading={loading}
+              onClick={() => void handlePrune()}
+              loading={pruneLoading}
+              disabled={(loading && !pruneLoading) || !preview || !confirmationMatches}
               fullWidth
             >
-              Prune Old Media
+              {destructivePrune ? 'Permanently Prune Old Media' : 'Run Prune Dry Run'}
             </Button>
           </div>
         </Stack>

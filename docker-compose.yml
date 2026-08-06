@@ -15,9 +15,29 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-      
+
+  # One-shot release gate. Both web services wait for this command to succeed and
+  # never mutate EF or Wolverine schemas during their own startup.
+  migrate:
+    build:
+      context: .
+      dockerfile: Services/ConduitLLM.Admin/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
+      ASPNETCORE_ENVIRONMENT: Production
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
+    command: ["migrate"]
+    restart: "no"
+    healthcheck:
+      disable: true
+
   redis:
-    image: redis:alpine
+    # Redis 7.4+ enables per-connection hash-field TTL; older external servers use timer cleanup.
+    image: redis:7.4.2-alpine
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec", "--maxmemory-policy", "noeviction"]
     restart: always
     ports:
       - "6379:6379"
@@ -29,68 +49,32 @@ services:
       timeout: 5s
       retries: 5
       
-  rabbitmq:
-    build: 
-      context: ./docker/rabbitmq
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      RABBITMQ_DEFAULT_USER: conduit
-      RABBITMQ_DEFAULT_PASS: conduitpass
-      RABBITMQ_DEFAULT_VHOST: /
-    ports:
-      - "5672:5672"   # AMQP port
-      - "15672:15672" # Management UI
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   api:
     build:
       context: .
       dockerfile: Services/ConduitLLM.Gateway/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      CONDUIT_MIGRATION_MODE: "Wait"
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
+      # Customer error visibility: External (default, sanitized) or Internal (raw provider detail)
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-External}"
+      # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       # Using new REDIS_URL format (old variables still work for backward compatibility)
       REDIS_URL: "redis://redis:6379"
-      CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       Conduit__PerformanceTracking__Enabled: "true"
       Conduit__PerformanceTracking__IncludeInResponse: "true"
       Conduit__PerformanceTracking__TrackStreamingMetrics: "true"
-      # Media Lifecycle Configuration
-      MediaLifecycle__Enabled: "false"  # Cleanup runs on Admin API, not Gateway API
-      MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
-      MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
-      MediaLifecycle__EnableSoftDelete: "true"
-      MediaLifecycle__SoftDeleteGracePeriodDays: "7"
-      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
-      MediaLifecycle__RequireManualApprovalForLargeBatches: "false"
-      MediaLifecycle__LargeBatchThreshold: "100"
-      MediaLifecycle__MaxBatchSize: "50"
-      MediaLifecycle__DelayBetweenBatchesMs: "500"
-      MediaLifecycle__MaxConcurrentBatches: "2"
-      MediaLifecycle__MonthlyDeleteBudget: "500000"
-      MediaLifecycle__EnableAuditLogging: "true"
-      MediaLifecycle__EnableMetrics: "true"
-      MediaLifecycle__R2OperationTimeoutSeconds: "30"
       Logging__LogLevel__Default: "Information"
       Logging__LogLevel__ConduitLLM: "Information"
       Logging__LogLevel__ConduitLLM__Providers: "Debug"
       Logging__LogLevel__ConduitLLM__Providers__MiniMaxClient: "Debug"
-      # Configure the public base URL for media storage
-      CONDUITLLM__MEDIA_BASE_URL: http://localhost:5000
       # S3/R2 configuration (required for production)
       CONDUIT_MEDIA_STORAGE_TYPE: "${CONDUIT_MEDIA_STORAGE_TYPE:-S3}"
       CONDUIT_S3_ENDPOINT: "${CONDUIT_S3_ENDPOINT}"
@@ -98,14 +82,6 @@ services:
       CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
       CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
       CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
-      # RabbitMQ configuration
-      CONDUITLLM__RABBITMQ__HOST: rabbitmq
-      CONDUITLLM__RABBITMQ__PORT: 5672
-      CONDUITLLM__RABBITMQ__USERNAME: conduit
-      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
-      CONDUITLLM__RABBITMQ__VHOST: /
-      CONDUITLLM__RABBITMQ__PREFETCHCOUNT: 10
-      CONDUITLLM__RABBITMQ__PARTITIONCOUNT: 10
       # Batch Cache Invalidation configuration
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
@@ -126,14 +102,21 @@ services:
       BatchSpending__MinimumIntervalSeconds: "1"
       BatchSpending__MaximumIntervalSeconds: "21600"  # 6 hours
       BatchSpending__RedisTtlHours: "24"
-      # Health monitoring configuration - API endpoint checks
-      HealthMonitoring__ApiEndpoints__0__Name: AdminAPI
-      HealthMonitoring__ApiEndpoints__0__Url: http://admin:8080/health
-      HealthMonitoring__ApiEndpoints__0__TimeoutMs: 5000
-      HealthMonitoring__ApiEndpoints__0__WarningThresholdMs: 1000
+      # Reserve maximum chat spend before provider invocation and settle actual usage atomically.
+      BillingAdmission__Mode: "Enforce"
+      UsageTracking__AccountingFinalizationTimeoutSeconds: "10"
+      UsageTracking__GracefulShutdownSeconds: "45"
+      # Continuous billing reconciliation (#1031)
+      BillingReconciliation__Enabled: "true"
+      BillingReconciliation__WindowHours: "1"
+      BillingReconciliation__GracePeriodMinutes: "15"
+      BillingReconciliation__RelativeThreshold: "0.01"
+      BillingReconciliation__AbsoluteThresholdUsd: "0.01"
+      BillingReconciliation__MaxCatchUpWindowsPerRun: "24"
     ports:
       - "5000:8080"
     restart: on-failure
+    stop_grace_period: 60s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
       interval: 60s
@@ -146,27 +129,23 @@ services:
       context: .
       dockerfile: Services/ConduitLLM.Admin/Dockerfile
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://conduit:conduitpass@postgres:5432/conduitdb
       ASPNETCORE_ENVIRONMENT: Production
+      CONDUIT_MIGRATION_MODE: "Wait"
+      ConduitLLM__Messaging__Wolverine__AutoProvision: "false"
+      # Must match the api service — Admin reports this value on the System Info page
+      CONDUIT_CUSTOMER_MODE: "${CONDUIT_CUSTOMER_MODE:-External}"
+      # Messaging runs on Wolverine (PostgreSQL transport) — the only backend as of #932.
       # API-to-API authentication key for backend services
       CONDUIT_API_TO_API_BACKEND_AUTH_KEY: alpha
       # Redis cache configuration - using new REDIS_URL format
       REDIS_URL: "redis://redis:6379"
-      CONDUIT_REDIS_INSTANCE_NAME: "conduit:"
       AdminApi__AllowedOrigins__0: http://localhost:3000
-      # RabbitMQ configuration
-      CONDUITLLM__RABBITMQ__HOST: rabbitmq
-      CONDUITLLM__RABBITMQ__PORT: 5672
-      CONDUITLLM__RABBITMQ__USERNAME: conduit
-      CONDUITLLM__RABBITMQ__PASSWORD: conduitpass
-      CONDUITLLM__RABBITMQ__VHOST: /
       # Batch Cache Invalidation configuration
       CacheInvalidation__BatchingEnabled: "true"
       CacheInvalidation__BatchWindow: "00:00:00.100"  # 100ms
@@ -176,11 +155,23 @@ services:
       MediaLifecycle__Enabled: "true"  # Enable cleanup on Admin API
       MediaLifecycle__DryRunMode: "true"  # Set to false to enable actual deletions
       MediaLifecycle__ScheduleIntervalMinutes: "5"  # How often to run cleanup
+      MediaLifecycle__EnableExpirationCleanup: "true"
+      MediaLifecycle__EnableReconciliation: "true"
+      MediaLifecycle__ReconciliationMinimumAgeHours: "48"
+      MediaLifecycle__EnableRetentionCleanup: "true"
+      MediaLifecycle__EnableQuotaCleanup: "true"
       MediaLifecycle__EnableSoftDelete: "true"
       MediaLifecycle__SoftDeleteGracePeriodDays: "7"
-      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Test with group ID 1
-      MediaLifecycle__MaxBatchSize: "50"
+      MediaLifecycle__TestVirtualKeyGroups__0: "1"  # Progressive rollout; shown prominently in cleanup status
+      MediaLifecycle__MaxBatchSize: "1000"
+      MediaLifecycle__CleanupPageSize: "1000"
+      MediaLifecycle__MaxRecordsPerRun: "10000"
+      MediaLifecycle__DelayBetweenBatchesMs: "500"
+      MediaLifecycle__DeleteThrottleMaxRetries: "5"
+      MediaLifecycle__DeleteThrottleInitialBackoffMs: "1000"
+      MediaLifecycle__R2OperationTimeoutSeconds: "30"
       MediaLifecycle__MonthlyDeleteBudget: "500000"
+      MediaLifecycle__BudgetAlertThresholdPercent: "90"
       # Discovery Cache configuration
       Discovery__CacheDurationMinutes: "360"  # 6 hours
       Discovery__EnableCaching: "true"
@@ -203,6 +194,9 @@ services:
       CONDUIT_S3_SECRET_KEY: "${CONDUIT_S3_SECRET_KEY}"
       CONDUIT_S3_BUCKET_NAME: "${CONDUIT_S3_BUCKET_NAME:-conduit-media}"
       CONDUIT_S3_REGION: "${CONDUIT_S3_REGION:-us-east-1}"
+      # Synthetic active-model cost validation (#1036)
+      BillingCostCanary__Enabled: "${BillingCostCanary__Enabled:-true}"
+      BillingCostCanary__IntervalMinutes: "${BillingCostCanary__IntervalMinutes:-5}"
       # Disable IP banning for development
       CONDUIT_ADMIN_IP_BANNING_ENABLED: "false"
     ports:
@@ -243,12 +237,18 @@ services:
       # If set, users without proper permissions will be redirected to this URL
       # instead of seeing the access denied page
       # Example: ACCESS_DENIED_REDIRECT: "https://your-main-site.com"
-      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_test_cHJlY2lzZS1yaW5ndGFpbC0zMy5jbGVyay5hY2NvdW50cy5kZXYk"
-      CLERK_SECRET_KEY: "sk_test_oOI6FRt1EhRGaCVUc1zJVyWCNyqf3w1DSJnLZlxEQK"
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:-}"
+      CLERK_SECRET_KEY: "${CLERK_SECRET_KEY:-}"
+      # Optional privacy-safe browser error reporting proxy (disabled when URL is empty)
+      ERROR_REPORTING_URL: "${ERROR_REPORTING_URL:-}"
+      ERROR_REPORTING_TOKEN: "${ERROR_REPORTING_TOKEN:-}"
+      ERROR_REPORTING_SAMPLE_RATE: "${ERROR_REPORTING_SAMPLE_RATE:-1}"
+      ERROR_REPORTING_RELEASE: "${ERROR_REPORTING_RELEASE:-unknown}"
+      ERROR_REPORTING_ENVIRONMENT: "${ERROR_REPORTING_ENVIRONMENT:-development}"
       # Disable Clerk authentication for development
       CLERK_AUTH_ENABLED: "false"
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     restart: on-failure
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"]
@@ -271,28 +271,14 @@ services:
       redis:
         condition: service_healthy
 
-  # RabbitMQ Exporter for Prometheus metrics
-  rabbitmq-exporter:
-    image: kbudde/rabbitmq-exporter:latest
-    restart: always
-    environment:
-      RABBIT_URL: "http://rabbitmq:15672"
-      RABBIT_USER: conduit
-      RABBIT_PASSWORD: conduitpass
-      PUBLISH_PORT: "9419"
-      OUTPUT_FORMAT: "prometheus"
-    ports:
-      - "9419:9419"
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-
   # PostgreSQL Exporter for Prometheus metrics
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
     restart: always
     environment:
-      DATA_SOURCE_NAME: "postgresql://conduit:conduitpass@postgres:5432/conduit?sslmode=disable"
+      # Database name must match POSTGRES_DB above; the exporter cannot connect otherwise
+      # and every pg_* series silently disappears from Prometheus.
+      DATA_SOURCE_NAME: "postgresql://conduit:conduitpass@postgres:5432/conduitdb?sslmode=disable"
     ports:
       - "9187:9187"
     depends_on:
@@ -322,30 +308,42 @@ services:
 
   # Grafana for visualization
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:13.1
     restart: always
-    ports:
-      - "3001:3000"
+    entrypoint: ["/bin/sh", "/etc/grafana/conduit-entrypoint.sh"]
+    expose:
+      - "3000"
     environment:
       - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=conduitadmin
+      - GF_SECURITY_ADMIN_PASSWORD=${CONDUIT_GRAFANA_ADMIN_PASSWORD:?Set CONDUIT_GRAFANA_ADMIN_PASSWORD in .env}
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_SERVER_ROOT_URL=${CONDUIT_GRAFANA_ROOT_URL:-http://localhost:3000/grafana/}
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_INSTALL_PLUGINS=
       - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_VIEWERS_CAN_EDIT=false
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_ANONYMOUS_HIDE_VERSION=true
+      - GF_AUTH_BASIC_ENABLED=false
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - CONDUIT_ALERT_WEBHOOK_URL=${CONDUIT_ALERT_WEBHOOK_URL:-}
       # Enable unified alerting
       - GF_UNIFIED_ALERTING_ENABLED=true
       - GF_ALERTING_ENABLED=false
     volumes:
       - grafana-data:/var/lib/grafana
+      - ./grafana/conduit-entrypoint.sh:/etc/grafana/conduit-entrypoint.sh:ro
       - ./grafana/provisioning/datasources/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
       - ./grafana/provisioning/dashboards/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml:ro
       - ./grafana/provisioning/dashboards/grafana-conduit-overview-dashboard.json:/var/lib/grafana/dashboards/conduit-overview.json:ro
       - ./grafana/provisioning/dashboards/grafana-provider-performance-dashboard.json:/var/lib/grafana/dashboards/provider-performance.json:ro
       - ./grafana/provisioning/dashboards/grafana-virtual-key-analytics-dashboard.json:/var/lib/grafana/dashboards/virtual-key-analytics.json:ro
       - ./grafana/provisioning/dashboards/grafana-request-pipeline-dashboard.json:/var/lib/grafana/dashboards/request-pipeline.json:ro
+      - ./grafana/provisioning/dashboards/grafana-prompt-caching-dashboard.json:/var/lib/grafana/dashboards/prompt-caching.json:ro
       - ./grafana/provisioning/dashboards/grafana-infrastructure-dashboard.json:/var/lib/grafana/dashboards/infrastructure.json:ro
       - ./grafana/provisioning/dashboards/grafana-postgresql-dashboard.json:/var/lib/grafana/dashboards/postgresql.json:ro
-      # Alerting rules - can be enabled once basic setup is verified
-      # - ./grafana/provisioning/alerting/alerting-rules.yml:/etc/grafana/provisioning/alerting/alerting-rules.yml:ro
+      - ./grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
     depends_on:
       prometheus:
         condition: service_healthy
@@ -357,9 +355,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # Single browser-facing entry point for WebAdmin and its embedded Grafana UI.
+  webadmin-proxy:
+    image: nginx:1.28-alpine
+    restart: always
+    ports:
+      - "3000:8080"
+    volumes:
+      - ./nginx/webadmin.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      webadmin:
+        condition: service_healthy
+      grafana:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8080/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
   redis-data:
-  rabbitmq-data:
   prometheus-data:
   grafana-data:

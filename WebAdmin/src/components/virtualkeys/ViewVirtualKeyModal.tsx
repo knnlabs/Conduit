@@ -9,21 +9,32 @@ import {
   Alert,
   Button,
   Card,
+  Code,
 } from '@mantine/core';
 import {
   IconKey,
   IconAlertCircle,
 } from '@tabler/icons-react';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
 import { TimeDisplay } from '@/components/common/TimeDisplay';
 
 interface ViewVirtualKeyModalProps {
   opened: boolean;
   onClose: () => void;
   virtualKey: VirtualKeyDto | null;
+  virtualKeyGroup?: VirtualKeyGroupDto;
 }
 
-export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtualKeyModalProps) {
+function formatMetadata(metadata: Record<string, unknown>): string {
+  return JSON.stringify(metadata, null, 2);
+}
+
+export function ViewVirtualKeyModal({
+  opened,
+  onClose,
+  virtualKey,
+  virtualKeyGroup,
+}: ViewVirtualKeyModalProps) {
   if (!virtualKey) {
     return null;
   }
@@ -50,10 +61,10 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
               <Text fw={500}>{virtualKey.keyName}</Text>
             </Group>
 
-            {virtualKey.metadata && (
+            {virtualKey.description && (
               <Group justify="space-between">
                 <Text size="sm" c="dimmed">Description</Text>
-                <Text size="sm">{JSON.stringify(virtualKey.metadata)}</Text>
+                <Text size="sm" ta="right">{virtualKey.description}</Text>
               </Group>
             )}
 
@@ -63,9 +74,18 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
             </Group>
 
             <Group justify="space-between">
-              <Text size="sm" c="dimmed">Virtual Key Group</Text>
-              <Text size="sm">ID: {virtualKey.virtualKeyGroupId}</Text>
+              <Text size="sm" c="dimmed">Customer</Text>
+              <Text size="sm" ta="right">
+                {virtualKeyGroup?.groupName ?? `Group #${virtualKey.virtualKeyGroupId}`}
+              </Text>
             </Group>
+
+            {virtualKeyGroup?.externalGroupId && (
+              <Group justify="space-between">
+                <Text size="sm" c="dimmed">External Customer ID</Text>
+                <Text size="sm" ff="monospace">{virtualKeyGroup.externalGroupId}</Text>
+              </Group>
+            )}
 
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Status</Text>
@@ -89,7 +109,7 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
         </Card>
 
         {/* Rate Limits */}
-        {(virtualKey.rateLimitRpm ?? virtualKey.rateLimitRpd) && (
+        {(virtualKey.rateLimitRpm ?? virtualKey.rateLimitRpd ?? virtualKey.rateLimitTpm ?? virtualKey.maxParallelRequests) && (
           <Card withBorder>
             <Stack gap="sm">
               <Text size="sm" fw={500}>Rate Limits</Text>
@@ -105,6 +125,29 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
                   <Text size="sm">{virtualKey.rateLimitRpd}</Text>
                 </Group>
               )}
+              {virtualKey.rateLimitTpm && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Tokens per minute</Text>
+                  <Text size="sm">{virtualKey.rateLimitTpm}</Text>
+                </Group>
+              )}
+              {virtualKey.maxParallelRequests && (
+                <Group justify="space-between">
+                  <Text size="sm" c="dimmed">Max parallel requests</Text>
+                  <Text size="sm">{virtualKey.maxParallelRequests}</Text>
+                </Group>
+              )}
+              {virtualKey.modelRateLimits && Object.entries(virtualKey.modelRateLimits).map(([model, limit]) => (
+                <Group justify="space-between" key={model}>
+                  <Text size="sm" c="dimmed">{model}</Text>
+                  <Text size="sm">
+                    {[
+                      limit.rpm ? `${limit.rpm}/min` : null,
+                      limit.tpm ? `${limit.tpm} tokens/min` : null,
+                    ].filter(Boolean).join(' · ')}
+                  </Text>
+                </Group>
+              ))}
             </Stack>
           </Card>
         )}
@@ -119,10 +162,21 @@ export function ViewVirtualKeyModal({ opened, onClose, virtualKey }: ViewVirtual
           </Card>
         )}
 
+        {virtualKey.metadata && (
+          <Card withBorder>
+            <Stack gap="sm">
+              <Text size="sm" fw={500}>Metadata</Text>
+              <Code block style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                {formatMetadata(virtualKey.metadata)}
+              </Code>
+            </Stack>
+          </Card>
+        )}
+
         {/* Info about group-based billing */}
         <Alert icon={<IconAlertCircle size={16} />} color="blue" variant="light">
           <Text size="sm">
-            This key belongs to Virtual Key Group #{virtualKey.virtualKeyGroupId}. 
+            This key belongs to {virtualKeyGroup?.groupName ?? `Virtual Key Group #${virtualKey.virtualKeyGroupId}`}.
             Balance and usage are tracked at the group level.
           </Text>
         </Alert>

@@ -1,0 +1,36 @@
+{
+  "models": {
+    "muse-spark-1.1": {
+      "name": "muse-spark-1.1",
+      "family": "Muse Spark",
+      "series": "Muse Spark Series",
+      "owner": "meta",
+      "maxInputTokens": 1048576,
+      "maxOutputTokens": 131072,
+      "tokenizerType": "LLaMA3",
+      "supportsChat": true,
+      "supportsStreaming": true,
+      "supportsVision": true,
+      "supportsFunctionCalling": true,
+      "supportsEmbeddings": false,
+      "supportsImageGeneration": false,
+      "supportsVideoGeneration": false,
+      "supportsSpeechToText": false,
+      "supportsTextToSpeech": false,
+      "supportsRerank": false,
+      "inputModalities": [
+        "text",
+        "image",
+        "video",
+        "file"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated",
+      "inputPricePerMillion": 1.25,
+      "outputPricePerMillion": 4.25,
+      "notes": "Multimodal reasoning model from Meta Superintelligence Labs, optimized for agentic tool calling and multi-step workflows. 1M-token context, 128K output; text, image, video, and PDF input. Supports parallel tool calling, structured output, and search grounding. Reasoning is always on and bills as output tokens against max_tokens. Tokenizer is undisclosed (server-side counting via POST /v1/responses/input_tokens); LLaMA3 tokenizerType is a client-side estimate. Released July 2026 on the Meta Model API (public preview, US-only)."
+    }
+  }
+}

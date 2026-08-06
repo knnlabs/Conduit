@@ -3,7 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using StackExchange.Redis;
@@ -11,62 +11,110 @@ using Xunit;
 
 namespace ConduitLLM.Tests.Core.Services
 {
+    public sealed class RedisMediaDeletionBudgetFixture : IDisposable
+    {
+        public RedisMediaDeletionBudgetFixture()
+        {
+            var configuredConnectionString = Environment.GetEnvironmentVariable("TEST_REDIS_CONNECTION");
+            IsRequired = !string.IsNullOrWhiteSpace(configuredConnectionString);
+            var connectionString = IsRequired
+                ? configuredConnectionString!
+                : "localhost:6379,allowAdmin=true";
+
+            ConnectionMultiplexer? connection = null;
+
+            try
+            {
+                var options = ConfigurationOptions.Parse(connectionString);
+                options.ConnectTimeout = 5000;
+                options.SyncTimeout = 5000;
+                options.ConnectRetry = 3;
+                options.AbortOnConnectFail = true;
+
+                connection = ConnectionMultiplexer.Connect(options);
+                var database = connection.GetDatabase();
+                database.Ping();
+
+                Redis = connection;
+                Database = database;
+            }
+            catch (Exception exception)
+            {
+                connection?.Dispose();
+                InitializationException = exception;
+
+                if (IsRequired)
+                {
+                    throw new InvalidOperationException(
+                        "Redis is required because TEST_REDIS_CONNECTION is set, but the test connection failed.",
+                        exception);
+                }
+            }
+        }
+
+        public bool IsRequired { get; }
+
+        public ConnectionMultiplexer? Redis { get; }
+
+        public IDatabase? Database { get; }
+
+        public Exception? InitializationException { get; }
+
+        public bool IsAvailable => Redis?.IsConnected == true && Database != null;
+
+        public string GetUnavailableReason()
+        {
+            return InitializationException == null
+                ? "Redis is not connected. Set TEST_REDIS_CONNECTION or ensure local Redis is running."
+                : $"Redis is not available: {InitializationException.GetType().Name}: {InitializationException.Message}";
+        }
+
+        public void Dispose()
+        {
+            Redis?.Dispose();
+        }
+    }
+
     /// <summary>
     /// Integration tests for RedisMediaDeletionBudgetService.
     /// Tests the Redis-backed implementation of media deletion budget tracking.
-    /// NOTE: Requires Redis to be running. Tests will be skipped if Redis is not available.
+    /// Redis is optional for local runs, but required when TEST_REDIS_CONNECTION is set.
     /// </summary>
     [Trait("Category", "Integration")]
     [Trait("Component", "MediaLifecycle")]
-    public class RedisMediaDeletionBudgetServiceTests : IDisposable
+    public class RedisMediaDeletionBudgetServiceTests : IClassFixture<RedisMediaDeletionBudgetFixture>
     {
+        private readonly RedisMediaDeletionBudgetFixture _fixture;
         private readonly ConnectionMultiplexer? _redis;
         private readonly IDatabase? _db;
         private readonly Mock<ILogger<RedisMediaDeletionBudgetService>> _mockLogger;
         private readonly RedisMediaDeletionBudgetService? _service;
-        private readonly string _testKeyPrefix;
 
-        public RedisMediaDeletionBudgetServiceTests()
+        public RedisMediaDeletionBudgetServiceTests(RedisMediaDeletionBudgetFixture fixture)
         {
+            _fixture = fixture;
             _mockLogger = new Mock<ILogger<RedisMediaDeletionBudgetService>>();
-            _testKeyPrefix = $"test:{Guid.NewGuid():N}:";
-
-            // Use environment variable or local Redis for testing
-            var redisConnectionString = Environment.GetEnvironmentVariable("TEST_REDIS_CONNECTION")
-                ?? "localhost:6379,allowAdmin=true";
-
-            try
-            {
-                var options = ConfigurationOptions.Parse(redisConnectionString);
-                options.ConnectTimeout = 1000;
-                options.SyncTimeout = 1000;
-                options.AbortOnConnectFail = false;
-
-                _redis = ConnectionMultiplexer.Connect(options);
-                _db = _redis.GetDatabase();
-
-                // Test connection
-                _db.Ping();
-
-                _service = new RedisMediaDeletionBudgetService(_redis, _mockLogger.Object);
-            }
-            catch (Exception)
-            {
-                // Redis not available - tests will be skipped
-                _redis = null;
-                _db = null;
-                _service = null;
-            }
+            _redis = fixture.Redis;
+            _db = fixture.Database;
+            _service = _redis == null
+                ? null
+                : new RedisMediaDeletionBudgetService(_redis, _mockLogger.Object);
         }
 
         private void SkipIfRedisNotAvailable()
         {
-            if (_redis == null || !_redis.IsConnected || _service == null)
+            if (_fixture.IsAvailable && _service != null)
             {
-                throw new SkipException(
-                    "Redis is not available for testing. " +
-                    "Set TEST_REDIS_CONNECTION environment variable or ensure Redis is running.");
+                return;
             }
+
+            var reason = _fixture.GetUnavailableReason();
+            if (_fixture.IsRequired)
+            {
+                throw new InvalidOperationException(reason, _fixture.InitializationException);
+            }
+
+            Skip.If(true, reason);
         }
 
         #region Constructor Tests
@@ -79,7 +127,7 @@ namespace ConduitLLM.Tests.Core.Services
                 new RedisMediaDeletionBudgetService(null!, _mockLogger.Object));
         }
 
-        [Fact]
+        [SkippableFact]
         public void Constructor_WithNullLogger_ThrowsArgumentNullException()
         {
             SkipIfRedisNotAvailable();
@@ -93,7 +141,7 @@ namespace ConduitLLM.Tests.Core.Services
 
         #region GetMonthlyDeleteCountAsync Tests
 
-        [Fact]
+        [SkippableFact]
         public async Task GetMonthlyDeleteCountAsync_WhenKeyNotExists_ReturnsZero()
         {
             SkipIfRedisNotAvailable();
@@ -105,7 +153,7 @@ namespace ConduitLLM.Tests.Core.Services
             count.Should().BeGreaterThanOrEqualTo(0);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task GetMonthlyDeleteCountAsync_AfterIncrement_ReturnsCorrectCount()
         {
             SkipIfRedisNotAvailable();
@@ -131,7 +179,7 @@ namespace ConduitLLM.Tests.Core.Services
 
         #region IncrementMonthlyDeleteCountAsync Tests
 
-        [Fact]
+        [SkippableFact]
         public async Task IncrementMonthlyDeleteCountAsync_WithPositiveCount_ReturnsNewTotal()
         {
             SkipIfRedisNotAvailable();
@@ -150,7 +198,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _db.KeyDeleteAsync(monthKey);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task IncrementMonthlyDeleteCountAsync_MultipleIncrements_AccumulatesCorrectly()
         {
             SkipIfRedisNotAvailable();
@@ -171,7 +219,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _db.KeyDeleteAsync(monthKey);
         }
 
-        [Theory]
+        [SkippableTheory]
         [InlineData(0)]
         [InlineData(-1)]
         [InlineData(-100)]
@@ -194,7 +242,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _db.KeyDeleteAsync(monthKey);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task IncrementMonthlyDeleteCountAsync_SetsExpiry_OnNewKey()
         {
             SkipIfRedisNotAvailable();
@@ -220,7 +268,7 @@ namespace ConduitLLM.Tests.Core.Services
 
         #region WouldExceedBudgetAsync Tests
 
-        [Fact]
+        [SkippableFact]
         public async Task WouldExceedBudgetAsync_WhenWithinBudget_ReturnsFalse()
         {
             SkipIfRedisNotAvailable();
@@ -240,7 +288,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _db.KeyDeleteAsync(monthKey);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task WouldExceedBudgetAsync_WhenWouldExceedBudget_ReturnsTrue()
         {
             SkipIfRedisNotAvailable();
@@ -264,7 +312,7 @@ namespace ConduitLLM.Tests.Core.Services
 
         #region GetRemainingBudgetAsync Tests
 
-        [Fact]
+        [SkippableFact]
         public async Task GetRemainingBudgetAsync_WhenNoUsage_ReturnsFullBudget()
         {
             SkipIfRedisNotAvailable();
@@ -280,7 +328,7 @@ namespace ConduitLLM.Tests.Core.Services
             result.Should().Be(500_000);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task GetRemainingBudgetAsync_WithPartialUsage_ReturnsCorrectRemaining()
         {
             SkipIfRedisNotAvailable();
@@ -300,7 +348,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _db.KeyDeleteAsync(monthKey);
         }
 
-        [Fact]
+        [SkippableFact]
         public async Task GetRemainingBudgetAsync_WhenOverBudget_ReturnsZero()
         {
             SkipIfRedisNotAvailable();
@@ -324,7 +372,7 @@ namespace ConduitLLM.Tests.Core.Services
 
         #region Distributed Scenarios
 
-        [Fact]
+        [SkippableFact]
         public async Task MultipleInstances_ShareBudgetState()
         {
             SkipIfRedisNotAvailable();
@@ -351,11 +399,29 @@ namespace ConduitLLM.Tests.Core.Services
             await _db.KeyDeleteAsync(monthKey);
         }
 
+        [SkippableFact]
+        public async Task MultipleInstances_ReserveAtomicallyWithoutExceedingBudget()
+        {
+            SkipIfRedisNotAvailable();
+            var monthKey = GetCurrentMonthKey();
+            await _db!.KeyDeleteAsync(monthKey);
+            var service1 = new RedisMediaDeletionBudgetService(_redis!, _mockLogger.Object);
+            var service2 = new RedisMediaDeletionBudgetService(_redis!, _mockLogger.Object);
+
+            var reservations = await Task.WhenAll(
+                service1.ReserveAsync(8, 10),
+                service2.ReserveAsync(8, 10));
+
+            reservations.Sum(item => item.Granted).Should().Be(10);
+            (await service1.GetMonthlyDeleteCountAsync()).Should().Be(10);
+            await _db.KeyDeleteAsync(monthKey);
+        }
+
         #endregion
 
         #region Interface Compliance Tests
 
-        [Fact]
+        [SkippableFact]
         public void Service_ImplementsIMediaDeletionBudgetService()
         {
             SkipIfRedisNotAvailable();
@@ -371,27 +437,5 @@ namespace ConduitLLM.Tests.Core.Services
             return $"media:monthly-deletes:{DateTime.UtcNow:yyyy-MM}";
         }
 
-        public void Dispose()
-        {
-            // Clean up test data
-            if (_redis?.IsConnected == true && _db != null)
-            {
-                try
-                {
-                    var server = _redis.GetServer(_redis.GetEndPoints().First());
-                    var keys = server.Keys(pattern: $"{_testKeyPrefix}*");
-                    foreach (var key in keys)
-                    {
-                        _db.KeyDelete(key);
-                    }
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-
-                _redis.Dispose();
-            }
-        }
     }
 }

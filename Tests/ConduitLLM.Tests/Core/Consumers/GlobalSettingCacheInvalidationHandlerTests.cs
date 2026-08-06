@@ -3,8 +3,8 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Consumers;
 using ConduitLLM.Core.Events;
-using FluentAssertions;
-using MassTransit;
+using ConduitLLM.Tests.Messaging;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
@@ -32,13 +32,6 @@ namespace ConduitLLM.Tests.Core.Consumers
                 _mockLogger.Object);
         }
 
-        private Mock<ConsumeContext<GlobalSettingChanged>> CreateMockContext(GlobalSettingChanged @event)
-        {
-            var mockContext = new Mock<ConsumeContext<GlobalSettingChanged>>();
-            mockContext.Setup(x => x.Message).Returns(@event);
-            return mockContext;
-        }
-
         #region Basic Consumption Tests
 
         [Fact]
@@ -53,14 +46,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangedProperties = new[] { "Value" }
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockCacheService.Verify(
@@ -79,14 +70,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Created"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockLogger.Verify(
@@ -113,14 +102,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Updated"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockLogger.Verify(
@@ -153,14 +140,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = changeType
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockCacheService.Verify(
@@ -179,14 +164,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Created"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockLogger.Verify(
@@ -204,7 +187,7 @@ namespace ConduitLLM.Tests.Core.Consumers
         #region Error Handling Tests
 
         [Fact]
-        public async Task Consume_WhenInvalidationFails_LogsError()
+        public async Task Consume_WhenInvalidationFails_DefersErrorLoggingToMessagingBoundary()
         {
             // Arrange
             var @event = new GlobalSettingChanged
@@ -214,8 +197,6 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Updated"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             var exception = new InvalidOperationException("Cache service unavailable");
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
@@ -223,22 +204,20 @@ namespace ConduitLLM.Tests.Core.Consumers
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await _consumer.Consume(mockContext.Object));
+                async () => await _consumer.HandleAsync(@event, new TestEventContext()));
 
             _mockLogger.Verify(
                 x => x.Log(
                     LogLevel.Error,
                     It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) =>
-                        o.ToString()!.Contains("Failed to invalidate cache") &&
-                        o.ToString()!.Contains("failing_setting")),
-                    exception,
+                    It.IsAny<It.IsAnyType>(),
+                    It.IsAny<Exception>(),
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-                Times.Once);
+                Times.Never);
         }
 
         [Fact]
-        public async Task Consume_WhenInvalidationFails_RethrowsExceptionForMassTransitRetry()
+        public async Task Consume_WhenInvalidationFails_RethrowsExceptionForBusRetry()
         {
             // Arrange
             var @event = new GlobalSettingChanged
@@ -248,8 +227,6 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Updated"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             var exception = new InvalidOperationException("Database connection lost");
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
@@ -257,7 +234,7 @@ namespace ConduitLLM.Tests.Core.Consumers
 
             // Act & Assert
             var thrownException = await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await _consumer.Consume(mockContext.Object));
+                async () => await _consumer.HandleAsync(@event, new TestEventContext()));
 
             thrownException.Should().Be(exception);
         }
@@ -273,8 +250,6 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Updated"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             var exception = new NullReferenceException("Cache service is null");
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
@@ -282,7 +257,7 @@ namespace ConduitLLM.Tests.Core.Consumers
 
             // Act & Assert
             await Assert.ThrowsAsync<NullReferenceException>(
-                async () => await _consumer.Consume(mockContext.Object));
+                async () => await _consumer.HandleAsync(@event, new TestEventContext()));
         }
 
         #endregion
@@ -307,16 +282,13 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Updated"
             };
 
-            var mockContext1 = CreateMockContext(event1);
-            var mockContext2 = CreateMockContext(event2);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext1.Object);
-            await _consumer.Consume(mockContext2.Object);
+            await _consumer.HandleAsync(event1, new TestEventContext());
+            await _consumer.HandleAsync(event2, new TestEventContext());
 
             // Assert
             _mockCacheService.Verify(
@@ -342,16 +314,13 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Created"
             };
 
-            var mockContext1 = CreateMockContext(event1);
-            var mockContext2 = CreateMockContext(event2);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext1.Object);
-            await _consumer.Consume(mockContext2.Object);
+            await _consumer.HandleAsync(event1, new TestEventContext());
+            await _consumer.HandleAsync(event2, new TestEventContext());
 
             // Assert
             _mockCacheService.Verify(x => x.InvalidateSettingAsync("setting_a"), Times.Once);
@@ -373,14 +342,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Updated"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockCacheService.Verify(
@@ -400,14 +367,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangedProperties = Array.Empty<string>()
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(mockContext.Object);
+            await _consumer.HandleAsync(@event, new TestEventContext());
 
             // Assert
             _mockCacheService.Verify(
@@ -426,14 +391,12 @@ namespace ConduitLLM.Tests.Core.Consumers
                 ChangeType = "Updated"
             };
 
-            var mockContext = CreateMockContext(@event);
-
             _mockCacheService
                 .Setup(x => x.InvalidateSettingAsync(It.IsAny<string>()))
                 .Returns(Task.CompletedTask);
 
             // Act
-            var task = _consumer.Consume(mockContext.Object);
+            var task = _consumer.HandleAsync(@event, new TestEventContext());
             await task;
 
             // Assert
@@ -474,9 +437,9 @@ namespace ConduitLLM.Tests.Core.Consumers
                 .Returns(Task.CompletedTask);
 
             // Act
-            await _consumer.Consume(CreateMockContext(createEvent).Object);
-            await _consumer.Consume(CreateMockContext(updateEvent).Object);
-            await _consumer.Consume(CreateMockContext(deleteEvent).Object);
+            await _consumer.HandleAsync(createEvent, new TestEventContext());
+            await _consumer.HandleAsync(updateEvent, new TestEventContext());
+            await _consumer.HandleAsync(deleteEvent, new TestEventContext());
 
             // Assert
             _mockCacheService.Verify(

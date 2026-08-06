@@ -24,7 +24,7 @@ import {
   IconEye,
   IconTrash
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import { useAdminClient } from '@/lib/client/adminClient';
 import {
@@ -32,27 +32,9 @@ import {
   FunctionConfigurationDto,
   ExecutionState,
   getExecutionStateName,
+  getExecutionStateBadgeColor,
 } from '../types';
-
-// Helper function for execution state colors
-function getExecutionStateBadgeColor(state: ExecutionState): string {
-  switch (state) {
-    case ExecutionState.Pending:
-      return 'yellow';
-    case ExecutionState.Running:
-      return 'blue';
-    case ExecutionState.Completed:
-      return 'green';
-    case ExecutionState.Failed:
-      return 'red';
-    case ExecutionState.Cancelled:
-      return 'gray';
-    case ExecutionState.TimedOut:
-      return 'orange';
-    default:
-      return 'gray';
-  }
-}
+import { formatCost, formatDuration } from '@/lib/utils/formatters';
 
 export default function FunctionExecutionsPage() {
   const { executeWithAdmin } = useAdminClient();
@@ -83,27 +65,34 @@ export default function FunctionExecutionsPage() {
       let response;
       if (filterState !== 'all') {
         response = await executeWithAdmin(client =>
-          client.functionExecutions.getByState(Number(filterState) as ExecutionState)
+          client.functionExecutions.getByState(filterState as ExecutionState)
         );
       } else if (filterConfigId !== 'all') {
         response = await executeWithAdmin(client =>
           client.functionExecutions.getByConfiguration(Number(filterConfigId))
         );
       } else {
-        // For demo purposes, get by state Completed to avoid empty list
-        response = await executeWithAdmin(client =>
-          client.functionExecutions.getByState(ExecutionState.Completed)
+        // "All States" means all states: the Admin API has no unfiltered list
+        // endpoint, so fetch every state and merge. Silently showing only
+        // Completed here hid failed/running executions behind an "All States"
+        // filter label.
+        const allStates = Object.values(ExecutionState);
+        const byState = await Promise.all(
+          allStates.map(state =>
+            executeWithAdmin(client => client.functionExecutions.getByState(state))
+          )
         );
+        response = byState
+          .flat()
+          .sort((a, b) =>
+            new Date(b.startedAt ?? 0).getTime() - new Date(a.startedAt ?? 0).getTime()
+          );
       }
 
       setExecutions(response);
     } catch (err) {
       console.warn('Error loading executions:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to load executions',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to load executions');
     } finally {
       setLoading(false);
     }
@@ -148,34 +137,15 @@ export default function FunctionExecutionsPage() {
             const result = await executeWithAdmin(client =>
               client.functionExecutions.cleanup(30)
             );
-            notifications.show({
-              title: 'Success',
-              message: `Deleted ${(result as { deletedCount?: number }).deletedCount ?? 0} executions`,
-              color: 'green',
-            });
+            notify.success(`Deleted ${(result as { deletedCount?: number }).deletedCount ?? 0} executions`);
             await loadExecutions();
           } catch (err) {
             console.warn('Error cleaning up executions:', err);
-            notifications.show({
-              title: 'Error',
-              message: err instanceof Error ? err.message : 'Failed to cleanup executions',
-              color: 'red',
-            });
+            notify.error(err, 'Failed to cleanup executions');
           }
         })();
       },
     });
-  };
-
-  const formatDuration = (ms: number | null | undefined): string => {
-    if (!ms) return '-';
-    if (ms < 1000) return `${Math.round(ms)}ms`;
-    return `${(ms / 1000).toFixed(2)}s`;
-  };
-
-  const formatCost = (cost: number | null | undefined): string => {
-    if (cost === null || cost === undefined) return '-';
-    return `$${cost.toFixed(6)}`;
   };
 
   const getConfigurationName = (configId: number): string => {
@@ -292,24 +262,24 @@ export default function FunctionExecutionsPage() {
                       <Code>{execution.id.substring(0, 8)}...</Code>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{getConfigurationName(execution.functionConfigurationId)}</Text>
+                      <Text size="sm">{getConfigurationName(execution.functionId)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{execution.virtualKeyId}</Text>
+                      <Text size="sm">{execution.admin.virtualKeyId}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Badge color={getExecutionStateBadgeColor(execution.state)} variant="light">
-                        {getExecutionStateName(execution.state)}
+                      <Badge color={getExecutionStateBadgeColor(execution.status)} variant="light">
+                        {getExecutionStateName(execution.status)}
                       </Badge>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatDuration(execution.duration ?? undefined)}</Text>
+                      <Text size="sm">{formatDuration(execution.durationMs)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatCost(execution.estimatedCost ?? undefined)}</Text>
+                      <Text size="sm">{formatCost(execution.cost.estimated)}</Text>
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">{formatCost(execution.actualCost ?? undefined)}</Text>
+                      <Text size="sm">{formatCost(execution.cost.actual)}</Text>
                     </Table.Td>
                     <Table.Td>
                       <Text size="sm" c="dimmed">
@@ -348,27 +318,27 @@ export default function FunctionExecutionsPage() {
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">State</Text>
-                <Badge color={getExecutionStateBadgeColor(selectedExecution.state)} variant="light" mt={4}>
-                  {getExecutionStateName(selectedExecution.state)}
+                <Badge color={getExecutionStateBadgeColor(selectedExecution.status)} variant="light" mt={4}>
+                  {getExecutionStateName(selectedExecution.status)}
                 </Badge>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Configuration</Text>
-                <Text size="sm">{getConfigurationName(selectedExecution.functionConfigurationId)}</Text>
+                <Text size="sm">{getConfigurationName(selectedExecution.functionId)}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Virtual Key</Text>
-                <Text size="sm">{selectedExecution.virtualKeyId}</Text>
+                <Text size="sm">{selectedExecution.admin.virtualKeyId}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Duration</Text>
-                <Text size="sm">{formatDuration(selectedExecution.duration ?? undefined)}</Text>
+                <Text size="sm">{formatDuration(selectedExecution.durationMs)}</Text>
               </Grid.Col>
               <Grid.Col span={6}>
                 <Text size="sm" fw={500} c="dimmed">Costs</Text>
                 <Text size="sm">
-                  Estimated: {formatCost(selectedExecution.estimatedCost ?? undefined)}<br />
-                  Actual: {formatCost(selectedExecution.actualCost ?? undefined)}
+                  Estimated: {formatCost(selectedExecution.cost.estimated)}<br />
+                  Actual: {formatCost(selectedExecution.cost.actual)}
                 </Text>
               </Grid.Col>
               <Grid.Col span={6}>
@@ -385,43 +355,43 @@ export default function FunctionExecutionsPage() {
               </Grid.Col>
             </Grid>
 
-            {selectedExecution.errorMessage && (
+            {selectedExecution.error && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Error Message</Text>
                 <Card withBorder p="md" bg="red.0">
-                  <Text size="sm" c="red.7">{selectedExecution.errorMessage}</Text>
+                  <Text size="sm" c="red.7">{selectedExecution.error}</Text>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.requestJson && (
+            {selectedExecution.input !== undefined && selectedExecution.input !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Request</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(JSON.parse(selectedExecution.requestJson), null, 2)}
+                    {JSON.stringify(selectedExecution.input, null, 2)}
                   </Code>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.responseJson && (
+            {selectedExecution.output !== undefined && selectedExecution.output !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Response</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(JSON.parse(selectedExecution.responseJson), null, 2)}
+                    {JSON.stringify(selectedExecution.output, null, 2)}
                   </Code>
                 </Card>
               </div>
             )}
 
-            {selectedExecution.costCalculationDetails && (
+            {selectedExecution.cost.breakdown !== undefined && selectedExecution.cost.breakdown !== null && (
               <div>
                 <Text size="sm" fw={500} c="dimmed" mb="xs">Cost Calculation Details</Text>
                 <Card withBorder p="md" bg="gray.0">
                   <Code block style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                    {JSON.stringify(JSON.parse(selectedExecution.costCalculationDetails), null, 2)}
+                    {JSON.stringify(selectedExecution.cost.breakdown, null, 2)}
                   </Code>
                 </Card>
               </div>

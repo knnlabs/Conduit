@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleSDKError } from '@/lib/errors/sdk-errors';
-import { getServerAdminClient, getServerCoreClient } from '@/lib/server/sdk-config';
+import { toApiErrorResponse } from '@/lib/errors/api-errors';
+import { getServerAdminClient, getServerCoreClient } from '@/lib/server/api-client-config';
+import type { WebAdminEphemeralKeyResponse } from '@/lib/api-transport/contracts';
 
 interface EphemeralKeyRequest {
   purpose?: string; // Optional purpose for logging/tracking
-}
-
-interface EphemeralKeyResponse {
-  ephemeralKey: string;
-  expiresAt: string;
-  expiresInSeconds: number;
-  coreApiUrl: string; // Include the Gateway API URL for direct connection
 }
 
 // POST /api/auth/ephemeral-key - Generate an ephemeral key for direct API access
@@ -38,7 +32,7 @@ export async function POST(request: NextRequest) {
                      'unknown';
     const userAgent = request.headers.get('user-agent') ?? 'unknown';
     
-    // Use Core SDK to generate ephemeral key
+    // Use the local Gateway boundary to generate an ephemeral key.
     const coreClient = await getServerCoreClient();
     const response = await coreClient.auth.generateEphemeralKey(webAdminVirtualKey, {
       metadata: {
@@ -50,14 +44,14 @@ export async function POST(request: NextRequest) {
     
     // Return the ephemeral key with Gateway API URL
     // Use the external URL that the browser can access
-    const result: EphemeralKeyResponse = {
+    const result = {
       ...response,
       coreApiUrl: process.env.CONDUIT_API_EXTERNAL_URL ?? 'http://localhost:5000',
-    };
+    } satisfies WebAdminEphemeralKeyResponse;
     
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error generating ephemeral key:', error);
-    return handleSDKError(error);
+    return toApiErrorResponse(error);
   }
 }

@@ -9,7 +9,7 @@ namespace ConduitLLM.Core.Decorators
     /// <summary>
     /// Decorator that adds performance tracking to LLM client operations.
     /// </summary>
-    public class PerformanceTrackingLLMClient : ILLMClient, IAuthenticationVerifiable
+    public class PerformanceTrackingLLMClient : ILLMClient, ILLMClientDecorator, IAuthenticationVerifiable
     {
         private readonly ILLMClient _innerClient;
         private readonly IPerformanceMetricsService _metricsService;
@@ -30,6 +30,9 @@ namespace ConduitLLM.Core.Decorators
             _providerName = providerName ?? throw new ArgumentNullException(nameof(providerName));
             _isEnabled = isEnabled;
         }
+
+        /// <inheritdoc />
+        public ILLMClient InnerClient => _innerClient;
 
 
         /// <summary>
@@ -213,21 +216,45 @@ namespace ConduitLLM.Core.Decorators
         }
 
         /// <summary>
+        /// Generates video by forwarding the optional provider capability through this decorator.
+        /// </summary>
+        public async Task<VideoGenerationResponse> CreateVideoAsync(
+            VideoGenerationRequest request,
+            string? apiKey = null,
+            CancellationToken cancellationToken = default)
+        {
+            object target = _innerClient.UnwrapInnermost();
+            System.Reflection.MethodInfo? method = null;
+            for (ILLMClient? current = _innerClient; current != null;
+                 current = (current as ILLMClientDecorator)?.InnerClient)
+            {
+                method = current.GetType().GetMethod(
+                    nameof(CreateVideoAsync),
+                    new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+                if (method != null)
+                {
+                    target = current;
+                    break;
+                }
+            }
+
+            if (method?.Invoke(target, new object?[] { request, apiKey, cancellationToken })
+                is not Task<VideoGenerationResponse> task)
+            {
+                throw new NotSupportedException(
+                    $"The underlying client {target.GetType().Name} does not support video generation");
+            }
+
+            return await task;
+        }
+
+        /// <summary>
         /// Lists available models.
         /// </summary>
         public Task<List<string>> ListModelsAsync(string? apiKey = null, CancellationToken cancellationToken = default)
         {
             // No performance tracking needed for model listing
             return _innerClient.ListModelsAsync(apiKey, cancellationToken);
-        }
-
-        /// <summary>
-        /// Gets the capabilities supported by the provider.
-        /// </summary>
-        public Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
-        {
-            // No performance tracking needed for capabilities
-            return _innerClient.GetCapabilitiesAsync(modelId);
         }
 
         /// <summary>
@@ -238,21 +265,12 @@ namespace ConduitLLM.Core.Decorators
             string? baseUrl = null,
             CancellationToken cancellationToken = default)
         {
-            // Check if the inner client supports authentication verification
-            if (_innerClient is IAuthenticationVerifiable authVerifiable)
-            {
-                // Delegate to the inner client
-                return authVerifiable.VerifyAuthenticationAsync(apiKey, baseUrl, cancellationToken);
-            }
-
-            // If the inner client doesn't support authentication verification,
-            // return a failure result
-            return Task.FromResult(new AuthenticationResult
-            {
-                IsSuccess = false,
-                Message = "Provider does not support authentication verification",
-                ErrorDetails = $"The {_providerName} provider has not implemented authentication verification"
-            });
+            return Utilities.AuthenticationVerificationDelegator.VerifyAsync(
+                _innerClient,
+                _providerName,
+                apiKey,
+                baseUrl,
+                cancellationToken);
         }
 
         /// <summary>
@@ -260,16 +278,7 @@ namespace ConduitLLM.Core.Decorators
         /// </summary>
         public string GetHealthCheckUrl(string? baseUrl = null)
         {
-            // Check if the inner client supports authentication verification
-            if (_innerClient is IAuthenticationVerifiable authVerifiable)
-            {
-                // Delegate to the inner client
-                return authVerifiable.GetHealthCheckUrl(baseUrl);
-            }
-
-            // If the inner client doesn't support authentication verification,
-            // return a default URL (this shouldn't normally happen)
-            return baseUrl ?? "https://api.provider.com/health";
+            return Utilities.AuthenticationVerificationDelegator.GetHealthCheckUrl(_innerClient, baseUrl);
         }
     }
 }

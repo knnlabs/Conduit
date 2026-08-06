@@ -2,24 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { ConduitAdminClient } from '@knn_labs/conduit-admin-client';
+import type { ConduitAdminClient, ModelProviderAvailabilityDto } from '@/lib/admin-api';
 
-export interface AssociationWithProvider {
-  associationId: number;
-  identifier: string;
-  provider: string | null;
-  providerVariation: string | null;
-  maxInputTokens: number | null;
-  maxOutputTokens: number | null;
-  speedScore: number | null;
-  qualityScore: number | null;
-  isPrimary: boolean;
-  availableProviders: Array<{
-    providerId: number;
-    providerName: string;
-    providerType: string;
-  }>;
-}
+export type AssociationWithProvider = ModelProviderAvailabilityDto;
 
 /**
  * Hook to fetch model associations that have configured providers
@@ -36,7 +21,7 @@ export function useModelAssociations(modelId: number | null) {
         client.models.getModelProviders(modelId)
       );
       
-      return response as AssociationWithProvider[];
+      return response;
     },
     enabled: !!modelId,
   });

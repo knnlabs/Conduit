@@ -16,13 +16,14 @@ import {
 import { useForm } from '@mantine/form';
 import { IconAlertCircle, IconCheck, IconX } from '@tabler/icons-react';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { getIpValidationError } from '@/lib/utils/ip-validation';
 
 interface IpTestModalProps {
   opened: boolean;
   onClose: () => void;
 }
 
-interface TestResult {
+interface IpFilterTestResult {
   allowed: boolean;
   matchedRule?: {
     id: string;
@@ -33,27 +34,12 @@ interface TestResult {
   reason?: string;
 }
 
-const validateIpAddress = (value: string) => {
-  const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$/;
-  
-  if (!ipRegex.test(value)) {
-    return 'Invalid IP address format (e.g., 192.168.1.1)';
-  }
-  
-  const parts = value.split('.');
-  for (const part of parts) {
-    const num = parseInt(part, 10);
-    if (num < 0 || num > 255) {
-      return 'Each IP octet must be between 0 and 255';
-    }
-  }
-  
-  return null;
-};
+// Accepts a plain IPv4 or IPv6 address, matching the backend's rules
+const validateIpAddress = (value: string) => getIpValidationError(value);
 
 export function IpTestModal({ opened, onClose }: IpTestModalProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [testResult, setTestResult] = useState<TestResult | null>(null);
+  const [testResult, setTestResult] = useState<IpFilterTestResult | null>(null);
   
   const form = useForm({
     initialValues: {
@@ -73,34 +59,12 @@ export function IpTestModal({ opened, onClose }: IpTestModalProps) {
         client.ipFilters.checkIp(values.ipAddress)
       );
 
-      // Convert IpCheckResult to TestResult format
-      const testResult: TestResult = {
+      // Convert IpCheckResult to the modal result format. The API now returns only allow/deny + reason;
+      // matched-filter enrichment was removed from IpCheckResult in #1038.
+      const testResult: IpFilterTestResult = {
         allowed: result.isAllowed,
         reason: result.deniedReason ?? (result.isAllowed ? 'IP address is allowed' : 'IP address is blocked'),
       };
-
-      // If there's a matched filter, add rule details
-      if (result.matchedFilter && result.matchedFilterId) {
-        try {
-          const filter = await withAdminClient(client =>
-            client.ipFilters.getById(result.matchedFilterId as number)
-          );
-          
-          testResult.matchedRule = {
-            id: filter.id.toString(),
-            ipAddress: filter.ipAddressOrCidr,
-            action: filter.filterType === 'whitelist' ? 'allow' : 'block',
-            description: filter.description,
-          };
-        } catch {
-          // If we can't get the filter details, just use the basic info
-          testResult.matchedRule = {
-            id: result.matchedFilterId.toString(),
-            ipAddress: result.matchedFilter,
-            action: result.filterType === 'whitelist' ? 'allow' : 'block',
-          };
-        }
-      }
 
       setTestResult(testResult);
     } catch (error) {

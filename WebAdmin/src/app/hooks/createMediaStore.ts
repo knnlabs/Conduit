@@ -4,7 +4,7 @@
 
 import { StateCreator } from 'zustand';
 import { persist, PersistOptions } from 'zustand/middleware';
-import { MediaGenerationStatus } from '@/app/types/media';
+import { MediaGenerationStatus, RetryHistoryEntry } from '@/app/types/media';
 import { STORAGE_CONFIG } from '@/app/config/mediaGeneration';
 
 /**
@@ -22,11 +22,8 @@ export interface MediaTask<TResult = unknown> {
   result?: TResult;
   error?: string;
   retryCount: number;
-  retryHistory: Array<{
-    attemptNumber: number;
-    timestamp: string;
-    error: string;
-  }>;
+  lastRetryAt?: string;
+  retryHistory: RetryHistoryEntry[];
 }
 
 /**
@@ -42,7 +39,7 @@ export interface MediaSettings {
  */
 export interface BaseMediaState<TTask extends MediaTask, TSettings extends MediaSettings> {
   // UI State
-  error: string | null;
+  error: Error | string | null;
   
   // Settings
   settings: TSettings;
@@ -64,7 +61,7 @@ export interface BaseMediaActions<TTask extends MediaTask, TSettings extends Med
   updateSettings: (updates: Partial<TSettings>) => void;
   
   // Error handling
-  setError: (error: string | null) => void;
+  setError: (error: Error | string | null) => void;
   
   // Task management
   addTask: (task: TTask) => void;
@@ -135,7 +132,7 @@ export function createMediaStore<
       })),
 
     // Error handling
-    setError: (error: string | null) => set({ error }),
+    setError: (error: Error | string | null) => set({ error }),
 
     // Task management
     addTask: (task: TTask) =>

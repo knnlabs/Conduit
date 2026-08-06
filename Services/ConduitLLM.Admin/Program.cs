@@ -1,21 +1,22 @@
-using System.Reflection;
-
+using ConduitLLM.Admin.Endpoints;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Serialization;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Core.Utilities;
-using ConduitLLM.Providers.Extensions;
+using ConduitLLM.Core.Serialization;
+using ConduitLLM.Security.Extensions;
+using ConduitLLM.Security.Middleware;
 
-using MassTransit; // Added for event bus infrastructure
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
+using JasperFx;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.OpenApi;
 
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-
-using Prometheus;
 using Scalar.AspNetCore;
 
 namespace ConduitLLM.Admin;
@@ -29,27 +30,49 @@ public partial class Program
     /// Application entry point that configures and starts the web application
     /// </summary>
     /// <param name="args">Command line arguments</param>
-    public static async Task Main(string[] args)
+    /// <returns>Process exit code (nonzero when the "migrate" verb fails)</returns>
+    public static async Task<int> Main(string[] args)
     {
+        // "migrate" verb: run the standalone migrator (release-hook entry point)
+        // instead of the web host — e.g. `dotnet ConduitLLM.Admin.dll migrate`.
+        if (MigrationCommand.Matches(args))
+        {
+            return await MigrationCommand.RunAsync();
+        }
+
         var builder = WebApplication.CreateBuilder(args);
 
+        // Create a startup logger for structured logging during service registration
+        using var startupLoggerFactory = LoggerFactory.Create(b => b.AddConsole());
+        var startupLogger = startupLoggerFactory.CreateLogger("ConduitLLM.Admin.Startup");
+
         // Add services to the container
-        builder.Services.AddControllers()
-            .AddJsonOptions(options =>
+        // Keep Minimal API JSON aligned with the established Admin contract.
+        builder.Services.ConfigureHttpJsonOptions(options =>
+            ConfigureAdminJson(options.SerializerOptions));
+        builder.Services.AddProblemDetails(options =>
+            options.CustomizeProblemDetails = context =>
             {
-                // Configure JSON to use camelCase for compatibility with TypeScript clients
-                options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-                options.JsonSerializerOptions.DictionaryKeyPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
-
-                // IMPORTANT: Make JSON deserialization case-insensitive to prevent bugs
-                // This allows the API to accept both "initialBalance" and "InitialBalance"
-                options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
-
-                // Ensure all DateTime values serialize as UTC with 'Z' suffix
-                // Fixes issue where EF Core loses DateTimeKind metadata from PostgreSQL
-                options.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
-                options.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
+                context.ProblemDetails.Extensions["code"] =
+                    AdminErrorCodes.ForStatus(context.ProblemDetails.Status);
+                context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
             });
+
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddScoped<AnalyticsEndpoints>();
+        builder.Services.AddScoped<FunctionConfigurationsEndpoints>();
+        builder.Services.AddScoped<ProviderErrorsEndpoints>();
+        builder.Services.AddScoped<MediaRetentionEndpoints>();
+        builder.Services.AddScoped<ProviderToolsEndpoints>();
+        builder.Services.AddScoped<PricingEndpoints>();
+        builder.Services.AddScoped<ModelProviderMappingEndpoints>();
+        builder.Services.AddScoped<ModelCostsEndpoints>();
+        builder.Services.AddScoped<ProviderCredentialsEndpoints>();
+        builder.Services.AddScoped<ModelEndpoints>();
+        builder.Services.AddScoped<VirtualKeyGroupsEndpoints>();
+        builder.Services.AddScoped<VirtualKeysEndpoints>();
+        builder.Services.AddScoped<IpFilterEndpoints>();
+
         builder.Services.AddEndpointsApiExplorer();
 
         // Add HttpClient factory for provider connection testing
@@ -59,249 +82,96 @@ public partial class Program
         builder.Services.AddOpenApi("v1", options =>
         {
             options.AddDocumentTransformer<ConduitLLM.Admin.OpenApi.AdminApiDocumentTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Core.OpenApi.OperationMetadataTransformer>();
             options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ApiKeySecurityOperationTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ConditionalRequestOperationTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.CollectionPaginationOperationTransformer>();
+            // Tier 2b (#905): document the universal 500 once, so controllers can drop the per-action
+            // per-endpoint 500-response boilerplate.
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.DefaultErrorResponsesOperationTransformer>();
+            options.AddOperationTransformer<ConduitLLM.Admin.OpenApi.ResponseContractOperationTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.NumericSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.TemporalSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.ModelCostResponseSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.GlobalSettingsResponseSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.IpFilterResponseSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.StructuredJsonSchemaTransformer>();
+            options.AddSchemaTransformer<ConduitLLM.Admin.OpenApi.FunctionExecutionSchemaTransformer>();
+            options.AddDocumentTransformer<ConduitLLM.Core.OpenApi.OperationIdValidationDocumentTransformer>();
         });
 
-        // Add leader election service for distributed background service coordination
-        builder.Services.AddLeaderElection();
-        Console.WriteLine("[ConduitLLM.Admin] Leader election service configured for background service coordination");
-
-        // Add Core services
-        builder.Services.AddCoreServices(builder.Configuration);
-
-        // Add Configuration services
-        builder.Services.AddConfigurationServices(builder.Configuration);
-
-        // Add Provider services (needed for ILLMClientFactory)
-        builder.Services.AddProviderServices();
-
-        // Add Admin services
-        builder.Services.AddAdminServices(builder.Configuration);
-
-        // Configure Data Protection with Redis persistence
-        // Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
-
-        if (!string.IsNullOrEmpty(redisUrl))
+        // The build-time exporter needs endpoint metadata, not infrastructure. Avoid Postgres,
+        // Redis, messaging, migrations, and hosted services on this codegen-only path.
+        if (Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_GENERATION") == "true")
         {
-            try
+            builder.Services.AddScoped<ConduitLLM.Configuration.Interfaces.IModelAuthorRepository,
+                ConduitLLM.Configuration.Repositories.ModelAuthorRepository>();
+            builder.Services.AddAuthorization(options =>
+                options.AddPolicy("MasterKeyPolicy", policy => policy.RequireAssertion(_ => true)));
+            var openApiApp = builder.Build();
+            openApiApp.MapModelAuthorEndpoints();
+            openApiApp.MapModelSeriesEndpoints();
+            openApiApp.MapNotificationsEndpoints();
+            openApiApp.MapAdminTasksEndpoints();
+            openApiApp.MapAdminAuthEndpoints();
+            openApiApp.MapSystemInfoEndpoints();
+            openApiApp.MapAdminMetricsEndpoints();
+            openApiApp.MapConfigurationEndpoints();
+            openApiApp.MapBundledModelCatalogEndpoints();
+            openApiApp.MapFunctionExecutionsEndpoints();
+            openApiApp.MapFunctionCostsEndpoints();
+            openApiApp.MapFunctionCredentialsEndpoints();
+            openApiApp.MapBatchSpendingEndpoints();
+            openApiApp.MapPromptCachingEndpoints();
+            openApiApp.MapProviderSyncEndpoints();
+            openApiApp.MapGlobalSettingsEndpoints();
+            openApiApp.MapMediaEndpoints();
+            ProviderCredentialsEndpoints.MapProviderCredentialsEndpoints(openApiApp);
+            ModelEndpoints.MapModelEndpoints(openApiApp);
+            VirtualKeyGroupsEndpoints.MapVirtualKeyGroupsEndpoints(openApiApp);
+            VirtualKeysEndpoints.MapVirtualKeysEndpoints(openApiApp);
+            IpFilterEndpoints.MapIpFilterEndpoints(openApiApp);
+            openApiApp.MapHealthMonitoringEndpoints();
+            AnalyticsEndpoints.MapAnalyticsEndpoints(openApiApp);
+            FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(openApiApp);
+            ProviderErrorsEndpoints.MapProviderErrorsEndpoints(openApiApp);
+            MediaRetentionEndpoints.MapMediaRetentionEndpoints(openApiApp);
+            ProviderToolsEndpoints.MapProviderToolsEndpoints(openApiApp);
+            PricingEndpoints.MapPricingEndpoints(openApiApp);
+            ModelProviderMappingEndpoints.MapModelProviderMappingEndpoints(openApiApp);
+            ModelCostsEndpoints.MapModelCostsEndpoints(openApiApp);
+
+            var outputPath = Environment.GetEnvironmentVariable("CONDUIT_OPENAPI_OUTPUT");
+            if (!string.IsNullOrWhiteSpace(outputPath))
             {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-            }
-        }
-
-        builder.Services.AddRedisDataProtection(redisConnectionString, "Conduit");
-
-        // Add Redis as distributed cache for ephemeral key storage
-        if (!string.IsNullOrEmpty(redisConnectionString))
-        {
-            builder.Services.AddStackExchangeRedisCache(options =>
-            {
-                options.Configuration = redisConnectionString;
-                options.InstanceName = "conduit:";
-            });
-            Console.WriteLine("[ConduitLLM.Admin] Distributed cache configured with Redis");
-        }
-        else
-        {
-            // Fallback to in-memory cache if Redis is not configured
-            builder.Services.AddDistributedMemoryCache();
-            Console.WriteLine("[ConduitLLM.Admin] WARNING: Using in-memory cache - ephemeral keys will not work across instances");
-        }
-
-        // Add SignalR with configuration
-        var signalRBuilder = builder.Services.AddSignalR(options =>
-        {
-            options.EnableDetailedErrors = builder.Environment.IsDevelopment();
-            options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
-            options.KeepAliveInterval = TimeSpan.FromSeconds(30);
-            options.MaximumReceiveMessageSize = 32 * 1024; // 32KB
-            options.StreamBufferCapacity = 10;
-        });
-
-        // Add MessagePack protocol support with LZ4 compression
-        // Enables both JSON (default) and MessagePack protocols for backward compatibility
-        var messagePackEnabled = Environment.GetEnvironmentVariable("SIGNALR_MESSAGEPACK_ENABLED")?.ToLowerInvariant() != "false";
-        if (messagePackEnabled)
-        {
-            signalRBuilder.AddMessagePackProtocol(options =>
-            {
-                // Configure MessagePack with security and compression
-                options.SerializerOptions = MessagePack.MessagePackSerializerOptions.Standard
-                    .WithResolver(MessagePack.Resolvers.StandardResolver.Instance)
-                    .WithSecurity(MessagePack.MessagePackSecurity.UntrustedData) // CVE-2020-5234 protection
-                    .WithCompression(MessagePack.MessagePackCompression.Lz4BlockArray) // Use Lz4BlockArray for GC optimization
-                    .WithCompressionMinLength(256); // Only compress messages > 256 bytes
-            });
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with MessagePack protocol (LZ4 compression enabled)");
-            Console.WriteLine("[ConduitLLM.Admin] SignalR supports both JSON and MessagePack protocols for backward compatibility");
-        }
-        else
-        {
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with JSON protocol only (MessagePack disabled)");
-        }
-
-        // Configure SignalR Redis backplane for horizontal scaling if Redis is configured
-        var signalRRedisConnectionString = builder.Configuration.GetConnectionString("RedisSignalR") ?? redisConnectionString;
-        if (!string.IsNullOrEmpty(signalRRedisConnectionString))
-        {
-            signalRBuilder.AddStackExchangeRedis(signalRRedisConnectionString, options =>
-            {
-                options.Configuration.ChannelPrefix = new StackExchange.Redis.RedisChannel("conduit_admin_signalr:", StackExchange.Redis.RedisChannel.PatternMode.Literal);
-                options.Configuration.DefaultDatabase = 3; // Separate database for Admin SignalR
-            });
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured with Redis backplane for horizontal scaling");
-        }
-        else
-        {
-            Console.WriteLine("[ConduitLLM.Admin] SignalR configured without Redis backplane (single-instance mode)");
-        }
-
-        // Configure RabbitMQ settings
-        var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
-            ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
-
-        // Check if RabbitMQ is configured
-        var useRabbitMq = !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost";
-
-        // Add media lifecycle services (scheduler, storage, distributed locking)
-        builder.Services.AddMediaLifecycleServices(builder.Configuration);
-
-        // Register MassTransit event bus for Admin API
-        builder.Services.AddMassTransit(x =>
-        {
-            // Register consumers for Admin API cache invalidation
-            x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
-
-            // Add Function Discovery Cache invalidation consumers
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
-
-            // Register consumers for Admin API SignalR notifications
-            // Provider health consumer removed
-
-            if (useRabbitMq)
-            {
-                x.UsingRabbitMq((context, cfg) =>
+                openApiApp.Urls.Add("http://127.0.0.1:0");
+                await openApiApp.StartAsync();
+                try
                 {
-                    // Configure RabbitMQ connection with advanced settings
-                    cfg.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}{rabbitMqConfig.VHost}"), h =>
-                    {
-                        h.Username(rabbitMqConfig.Username);
-                        h.Password(rabbitMqConfig.Password);
-                        h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.RequestedHeartbeat));
-                        
-                        // Publisher settings
-                        h.PublisherConfirmation = rabbitMqConfig.PublisherConfirmation;
-                        
-                        // Advanced connection settings for publishers
-                        h.RequestedChannelMax(rabbitMqConfig.ChannelMax);
-                    });
-                    
-                    // Configure retry policy for publishing and consuming
-                    cfg.UseMessageRetry(r => r.Exponential(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(2)));
-                    
-                    // Configure endpoints including consumers
-                    cfg.ConfigureEndpoints(context);
-                });
-                
-                Console.WriteLine($"[ConduitLLM.Admin] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
-                Console.WriteLine("[ConduitLLM.Admin] Event publishing ENABLED - Admin services will publish:");
-                Console.WriteLine("  - VirtualKeyUpdated events (triggers cache invalidation in Gateway API)");
-                Console.WriteLine("  - VirtualKeyDeleted events (triggers cache cleanup in Gateway API)");
-                Console.WriteLine("  - ProviderUpdated events (triggers capability refresh)");
-                Console.WriteLine("  - ProviderDeleted events (triggers cache cleanup)");
-                Console.WriteLine("  - GlobalSettingChanged events (triggers cache invalidation in all instances)");
-                Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
-                Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
-            }
-            else
-            {
-                x.UsingInMemory((context, cfg) =>
+                    await using var output = File.Create(outputPath);
+                    var provider = openApiApp.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+                    var document = await provider.GetOpenApiDocumentAsync(default);
+                    await document.SerializeAsJsonAsync(output, OpenApiSpecVersion.OpenApi3_1, default);
+                }
+                finally
                 {
-                    // NOTE: Using in-memory transport for single-instance deployments
-                    // Configure RabbitMQ environment variables for multi-instance production
-                    
-                    // Configure retry policy for reliability
-                    cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
-                    
-                    // Configure delayed redelivery for failed messages
-                    cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
-                    
-                    // Configure endpoints
-                    cfg.ConfigureEndpoints(context);
-                });
-                
-                Console.WriteLine("[ConduitLLM.Admin] Event bus configured with in-memory transport (single-instance mode)");
-                Console.WriteLine("[ConduitLLM.Admin] Event publishing and consuming ENABLED - Events will be processed locally");
-                Console.WriteLine("[ConduitLLM.Admin] WARNING: For production multi-instance deployments, configure RabbitMQ");
-                Console.WriteLine("  - This ensures Gateway API instances receive cache invalidation events");
-                Console.WriteLine("  - Without RabbitMQ, only the local Gateway API instance will be notified");
-                Console.WriteLine("[ConduitLLM.Admin] Event consuming ENABLED - Admin services will consume:");
-                Console.WriteLine("  - GlobalSettingChanged events (keeps Admin API cache synchronized)");
+                    await openApiApp.StopAsync();
+                }
+                return 0;
             }
-        });
 
-        // Add basic health checks
-        builder.Services.AddHealthChecks();
-        
-        // Add connection pool warmer with coordinated warming to prevent thundering herd during deployments
-        // Unlike leader election, ALL instances warm their pools, but in a staggered manner
-        builder.Services.AddCoordinatedConnectionPoolWarming(builder.Configuration, "AdminAPI");
-
-        // Configure OpenTelemetry metrics and tracing
-        var otlpEndpoint = builder.Configuration["Telemetry:OtlpEndpoint"] ?? "http://localhost:4317";
-        var tracingEnabled = builder.Configuration.GetValue<bool>("Telemetry:TracingEnabled", true);
-
-        var otelBuilder = builder.Services.AddOpenTelemetry()
-            .WithMetrics(meterProviderBuilder =>
-            {
-                meterProviderBuilder
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                        .AddService(serviceName: "ConduitLLM.Admin", serviceVersion: "1.0.0"))
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddMeter("System.Runtime")
-                    .AddMeter("Microsoft.AspNetCore.Hosting")
-                    .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
-                    .AddPrometheusExporter();
-            });
-
-        // Add distributed tracing when enabled
-        if (tracingEnabled)
-        {
-            otelBuilder.WithTracing(tracerProviderBuilder =>
-            {
-                tracerProviderBuilder
-                    .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                        .AddService(serviceName: "ConduitLLM.Admin", serviceVersion: "1.0.0"))
-                    .AddAspNetCoreInstrumentation(options =>
-                    {
-                        // Filter out health check endpoints to reduce noise
-                        options.Filter = httpContext =>
-                            !httpContext.Request.Path.StartsWithSegments("/health") &&
-                            !httpContext.Request.Path.StartsWithSegments("/metrics");
-                    })
-                    .AddHttpClientInstrumentation()
-                    .AddOtlpExporter(options =>
-                    {
-                        options.Endpoint = new Uri(otlpEndpoint);
-                    });
-            });
-            Console.WriteLine($"[ConduitLLM.Admin] OpenTelemetry tracing enabled - exporting to {otlpEndpoint}");
-        }
-        else
-        {
-            Console.WriteLine("[ConduitLLM.Admin] OpenTelemetry tracing disabled (set Telemetry:TracingEnabled=true to enable)");
+            await openApiApp.RunAsync();
+            return 0;
         }
 
-        // Add monitoring services - with leader election
-        builder.Services.AddLeaderElectedHostedService<ConduitLLM.Admin.Services.AdminOperationsMetricsService>("AdminOperationsMetricsService");
+        // Configure services (partial class methods)
+        ConfigureCoreServices(builder, startupLogger);
+        ConfigureMessagingServices(builder, startupLogger);
+        ConfigureMonitoringServices(builder, startupLogger);
+
+        // Configure trusted-proxy forwarded-header processing so the client IP is derived
+        // securely (spoof-resistant). No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.
+        builder.Services.AddTrustedProxyForwardedHeaders(builder.Configuration);
 
         var app = builder.Build();
 
@@ -310,7 +180,7 @@ public partial class Program
         {
             var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
             ConduitLLM.Configuration.Extensions.DeprecationWarnings.LogEnvironmentVariableDeprecations(logger);
-            
+
             // Validate Redis URL if provided
             var envRedisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
             if (!string.IsNullOrEmpty(envRedisUrl))
@@ -319,22 +189,19 @@ public partial class Program
             }
         }
 
-        // Run database migrations
-        await app.RunDatabaseMigrationAsync();
-
-        // Seed default data (e.g., default retention policy)
-        await app.SeedDefaultDataAsync();
+        // Normal startup never mutates the database. MigrationWaitService gates
+        // readiness until the explicit "migrate" release step has completed.
+        // Resolve the real client IP via trusted proxies. Must run before any IP-reading middleware:
+        // HTTPS redirection honors X-Forwarded-Proto, and the /metrics gate reads the client IP.
+        // No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.
+        app.UseTrustedProxyForwardedHeaders();
 
         // Configure the HTTP request pipeline
         if (app.Environment.IsDevelopment())
         {
-            // Map the OpenAPI endpoint
             app.MapOpenApi("/openapi/v1.json");
-
-            // Map Scalar UI for interactive API documentation
             app.MapScalarApiReference();
-
-            Console.WriteLine("[ConduitLLM.Admin] Scalar UI available at /scalar/v1");
+            app.Logger.LogInformation("Scalar UI available at /scalar/v1");
         }
 
         // Only use HTTPS redirection if explicitly enabled
@@ -344,48 +211,89 @@ public partial class Program
             app.UseHttpsRedirection();
         }
 
+        // Add health endpoint authorization (early in pipeline, before authentication)
+        app.UseHealthEndpointAuthorization();
+
         // Add middleware for authentication and request tracking
         app.UseAdminMiddleware();
 
-        // Enable CORS for SignalR
-        app.UseCors("AdminCorsPolicy");
-
         app.UseAuthentication();
+        // Run before authorization so private-network scrapes are not captured by the
+        // authenticated JSON API route at /metrics/.
+        app.UseConduitPrometheusMetricsEndpoint();
         app.UseAuthorization();
 
-        app.MapControllers();
-        
-        // Map SignalR hub with master key authentication (filter applied globally in AddSignalR)
-        app.MapHub<ConduitLLM.Admin.Hubs.AdminNotificationHub>("/hubs/admin-notifications");
 
-        // Map health check endpoints
-        app.MapHealthChecks("/health");
-        app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+        // ModelAuthor is served by Minimal API endpoints.
+        app.MapModelAuthorEndpoints();
+        app.MapModelSeriesEndpoints();
+        app.MapNotificationsEndpoints();
+        app.MapAdminTasksEndpoints();
+        app.MapAdminAuthEndpoints();
+        app.MapSystemInfoEndpoints();
+        app.MapAdminMetricsEndpoints();
+        app.MapConfigurationEndpoints();
+        app.MapBundledModelCatalogEndpoints();
+        app.MapFunctionExecutionsEndpoints();
+        app.MapFunctionCostsEndpoints();
+        app.MapFunctionCredentialsEndpoints();
+        app.MapBatchSpendingEndpoints();
+        app.MapPromptCachingEndpoints();
+        app.MapProviderSyncEndpoints();
+        app.MapGlobalSettingsEndpoints();
+        app.MapMediaEndpoints();
+        ProviderCredentialsEndpoints.MapProviderCredentialsEndpoints(app);
+        ModelEndpoints.MapModelEndpoints(app);
+        VirtualKeyGroupsEndpoints.MapVirtualKeyGroupsEndpoints(app);
+        VirtualKeysEndpoints.MapVirtualKeysEndpoints(app);
+        IpFilterEndpoints.MapIpFilterEndpoints(app);
+        app.MapHealthMonitoringEndpoints();
+        AnalyticsEndpoints.MapAnalyticsEndpoints(app);
+        FunctionConfigurationsEndpoints.MapFunctionConfigurationsEndpoints(app);
+        ProviderErrorsEndpoints.MapProviderErrorsEndpoints(app);
+        MediaRetentionEndpoints.MapMediaRetentionEndpoints(app);
+        ProviderToolsEndpoints.MapProviderToolsEndpoints(app);
+        PricingEndpoints.MapPricingEndpoints(app);
+        ModelProviderMappingEndpoints.MapModelProviderMappingEndpoints(app);
+        ModelCostsEndpoints.MapModelCostsEndpoints(app);
+
+        // Map monitoring endpoints (health, metrics, Prometheus)
+        MapMonitoringEndpoints(app);
+
+        // app.Urls throws when no server is present (e.g. under build-time OpenAPI
+        // document generation, which builds the host without Kestrel) — read the
+        // address feature null-safely instead.
+        var serverAddresses = ((Microsoft.AspNetCore.Builder.IApplicationBuilder)app).ServerFeatures
+            .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>()?.Addresses;
+        app.Logger.LogInformation(
+            "Admin API started — Environment: {Environment}, URLs: {Urls}",
+            app.Environment.EnvironmentName,
+            string.Join(", ", serverAddresses ?? Array.Empty<string>()));
+
+        // JasperFx command-line integration: with no arguments this runs the web host
+        // exactly like app.Run(); the committed Wolverine adapters are regenerated with
+        // `./scripts/generate-wolverine-code.ps1` and verified for drift in CI.
+        return await app.RunJasperFxCommands(args);
+    }
+
+    private static void ConfigureAdminJson(JsonSerializerOptions options)
+    {
+        options.TypeInfoResolverChain.Insert(0, AdminHttpJsonContext.Default);
+        options.TypeInfoResolverChain.Insert(1, CoreHttpJsonContext.Default);
+        if (options.TypeInfoResolverChain.All(static resolver =>
+                resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
         {
-            Predicate = check => check.Tags.Contains("live")
-        });
-        app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-        {
-            Predicate = check => check.Tags.Contains("ready") || check.Tags.Count == 0
-        });
+            options.TypeInfoResolverChain.Add(
+                new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
+        }
 
-        // Map Prometheus metrics endpoint
-        // Allow unauthenticated access from private networks (Docker internal, localhost)
-        // Require authentication for external/public network requests
-        app.UseOpenTelemetryPrometheusScrapingEndpoint(
-            context => context.Request.Path == "/metrics" &&
-                      (IpAddressHelper.IsPrivateNetworkRequest(context) ||
-                       context.User.Identity?.IsAuthenticated == true));
-
-        // For the prometheus-net library metrics
-        app.UseHttpMetrics(options =>
-        {
-            options.ReduceStatusCodeCardinality();
-            options.RequestDuration.Enabled = false; // We're using our custom middleware
-            options.RequestCount.Enabled = false; // We're using our custom middleware
-        });
-
-        app.Run();
+        options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+        options.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
+        options.PropertyNameCaseInsensitive = true;
+        options.Converters.Add(
+            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
+        options.Converters.Add(new UtcDateTimeConverter());
+        options.Converters.Add(new NullableUtcDateTimeConverter());
     }
 }
 

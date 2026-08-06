@@ -1,18 +1,18 @@
+using System.Text.Json;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Security;
 using ConduitLLM.Core.Decorators;
 using ConduitLLM.Core.Exceptions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Services;
-using ConduitLLM.Providers.OpenAI;
-using ConduitLLM.Providers.Groq;
-using ConduitLLM.Providers.Replicate;
-using ConduitLLM.Providers.Fireworks;
-using ConduitLLM.Providers.MiniMax;
-using ConduitLLM.Providers.Cerebras;
-using ConduitLLM.Providers.SambaNova;
-using ConduitLLM.Providers.DeepInfra;
+using ConduitLLM.Providers.Configuration;
+
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Providers
@@ -37,8 +37,9 @@ namespace ConduitLLM.Providers
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly ILogger<DatabaseAwareLLMClientFactory> _logger;
         private readonly IPerformanceMetricsService? _performanceMetricsService;
-        private readonly IModelCapabilityService? _capabilityService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly IDbContextFactory<ConduitDbContext>? _dbContextFactory;
+        private readonly IDistributedCache? _distributedCache;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="DatabaseAwareLLMClientFactory"/> class.
@@ -51,7 +52,8 @@ namespace ConduitLLM.Providers
             ILogger<DatabaseAwareLLMClientFactory> logger,
             IServiceProvider serviceProvider,
             IPerformanceMetricsService? performanceMetricsService = null,
-            IModelCapabilityService? capabilityService = null)
+            IDbContextFactory<ConduitDbContext>? dbContextFactory = null,
+            IDistributedCache? distributedCache = null)
         {
             _credentialService = credentialService ?? throw new ArgumentNullException(nameof(credentialService));
             _mappingService = mappingService ?? throw new ArgumentNullException(nameof(mappingService));
@@ -60,149 +62,190 @@ namespace ConduitLLM.Providers
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _performanceMetricsService = performanceMetricsService;
-            _capabilityService = capabilityService;
+            _dbContextFactory = dbContextFactory;
+            _distributedCache = distributedCache;
+        }
+
+        public async Task<ILLMClient> GetClientForChatAsync(
+            ConduitLLM.Core.Models.ChatCompletionRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var mappings = await _mappingService.GetMappingsByModelAliasAsync(request.Model);
+            if (mappings.Count == 0)
+                throw new ModelNotFoundException(request.Model, ModelUnavailableMessage(request.Model));
+
+            // Administratively disabled routes make the alias unavailable to the client — that is a 404,
+            // not a retryable 503. Only route *health* exhaustion (open circuit below, or no usable
+            // credential further down) is 503. Collapsing both into one 503 was part of #1191.
+            var configured = mappings.Where(mapping => mapping.IsEnabled
+                && mapping.Provider?.IsEnabled == true
+                && mapping.ModelProviderTypeAssociation?.IsEnabled == true).ToList();
+            if (configured.Count == 0)
+                throw new ModelNotFoundException(request.Model, ModelUnavailableMessage(request.Model));
+
+            var settings = _serviceProvider.GetService<IGlobalSettingsCacheService>();
+            var switchValue = settings is null ? null : await settings.GetSettingValueAsync("Routing.Chat.Enabled");
+            var routingEnabled = !bool.TryParse(switchValue, out var enabled) || enabled;
+            var policy = await GetRoutePolicyAsync(request.Model, cancellationToken);
+            if (routingEnabled && _logger.IsEnabled(LogLevel.Debug))
+            {
+                foreach (var mapping in configured.Where(mapping => !RouteCircuitRegistry.IsAvailable(mapping.Id)))
+                {
+                    _logger.LogDebug(
+                        "Excluding provider mapping {MappingId} for model {ModelAlias} because its route circuit is open or a recovery probe is already in progress",
+                        mapping.Id,
+                        request.Model);
+                }
+            }
+            // Both branches route over `configured` so that turning routing off never selects a
+            // mapping an operator has disabled.
+            var scored = routingEnabled ? BalancedRouteScorer.Score(configured, policy) :
+                configured.OrderBy(mapping => mapping.Id).Take(1).Select(mapping => new ScoredRoute(mapping, 0.5m)).ToArray();
+            if (scored.Count == 0)
+                throw new ServiceUnavailableException($"No healthy provider route for model '{request.Model}'.", "Routing");
+
+            var ordered = scored.ToList();
+            if (routingEnabled && policy.CacheAffinityEnabled && _distributedCache is not null &&
+                !string.IsNullOrWhiteSpace(request.RoutingAffinityKey))
+            {
+                var cachedId = await _distributedCache.GetStringAsync(
+                    RoutedChatClient.AffinityCacheKey(request.Model, request.RoutingAffinityKey), cancellationToken);
+                if (int.TryParse(cachedId, out var affinityId))
+                {
+                    var affinity = ordered.FirstOrDefault(route => route.Mapping.Id == affinityId);
+                    if (affinity is not null && ordered[0].Score - affinity.Score <= policy.MaxAffinityScorePenalty)
+                    {
+                        ordered.Remove(affinity); ordered.Insert(0, affinity);
+                        request.RoutingAffinityUsed = true;
+                        request.RoutingDecisionReason = "affinity_reuse";
+                    }
+                }
+            }
+            request.RoutingDecisionReason ??= routingEnabled ? "balanced_score" : "routing_disabled";
+
+            var routes = new List<(ModelProviderMapping, ILLMClient)>();
+            foreach (var route in ordered)
+            {
+                var provider = await _credentialService.GetProviderByIdAsync(route.Mapping.ProviderId);
+                if (provider is null || !provider.IsEnabled) continue;
+                var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+                routes.Add((route.Mapping, CreateClientForProvider(provider, credentials,
+                    route.Mapping.ProviderModelId, route.Mapping.ProviderOptions)));
+            }
+            if (routes.Count == 0)
+                throw new ServiceUnavailableException($"No configured provider credential for model '{request.Model}'.", "Routing");
+            request.SelectedMappingId = routes[0].Item1.Id;
+            return new RoutedChatClient(routes, request, _distributedCache, policy, _logger);
+        }
+
+        /// <summary>
+        /// Client-facing message for an alias that has no route: either it does not exist or every
+        /// route for it is administratively disabled. Deliberately does not distinguish the two, and
+        /// deliberately avoids hinting at server configuration.
+        /// </summary>
+        private static string ModelUnavailableMessage(string modelAlias) =>
+            $"The model '{modelAlias}' does not exist or is not available.";
+
+        private async Task<ModelRoutePolicy> GetRoutePolicyAsync(string alias, CancellationToken cancellationToken)
+        {
+            if (_dbContextFactory is not null)
+            {
+                await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+                var persisted = await context.ModelRoutePolicies.AsNoTracking()
+                    .SingleOrDefaultAsync(policy => policy.ModelAlias == alias, cancellationToken);
+                if (persisted is not null && persisted.IsEnabled) return persisted;
+            }
+            var result = new ModelRoutePolicy { ModelAlias = alias };
+            var settings = _serviceProvider.GetService<IGlobalSettingsCacheService>();
+            var json = settings is null ? null : await settings.GetSettingValueAsync("Routing.Defaults");
+            if (string.IsNullOrWhiteSpace(json)) return result;
+
+            try
+            {
+                using var document = JsonDocument.Parse(json);
+                var root = document.RootElement;
+                if (root.TryGetProperty("costWeight", out var cost)) result.CostWeight = cost.GetDecimal();
+                if (root.TryGetProperty("speedWeight", out var speed)) result.SpeedWeight = speed.GetDecimal();
+                if (root.TryGetProperty("qualityWeight", out var quality)) result.QualityWeight = quality.GetDecimal();
+                if (root.TryGetProperty("cacheAffinityEnabled", out var affinity)) result.CacheAffinityEnabled = affinity.GetBoolean();
+                if (root.TryGetProperty("affinityTtlSeconds", out var ttl)) result.AffinityTtlSeconds = ttl.GetInt32();
+                if (root.TryGetProperty("maxAffinityScorePenalty", out var penalty)) result.MaxAffinityScorePenalty = penalty.GetDecimal();
+            }
+            catch (JsonException exception)
+            {
+                _logger.LogError(exception, "Invalid Routing.Defaults configuration; using built-in defaults");
+            }
+            return result;
         }
 
         /// <inheritdoc />
-        public ILLMClient GetClient(string modelName)
+        public async Task<ILLMClient> GetClientAsync(string modelName, CancellationToken cancellationToken = default)
         {
-            _logger.LogDebug("DatabaseAwareLLMClientFactory.GetClient called for model: {ModelName}", modelName);
-            
+            _logger.LogDebug("DatabaseAwareLLMClientFactory.GetClientAsync called for model: {ModelName}", modelName);
+
             // Get model mapping from database
-            var mapping = Task.Run(async () => 
-                await _mappingService.GetMappingByModelAliasAsync(modelName)).Result;
-            
+            var mapping = await _mappingService.GetMappingByModelAliasAsync(modelName);
+
             if (mapping == null)
             {
                 _logger.LogWarning("No model mapping found in database for alias: {ModelAlias}", modelName);
-                throw new ModelNotFoundException(modelName, $"Model '{modelName}' not found. Please check your model configuration.");
+                throw new ModelNotFoundException(modelName, ModelUnavailableMessage(modelName));
             }
-            
-            _logger.LogDebug("Found mapping in database: {ModelAlias} -> ProviderId:{ProviderId}/{ProviderModelId}", 
+
+            _logger.LogDebug("Found mapping in database: {ModelAlias} -> ProviderId:{ProviderId}/{ProviderModelId}",
                 mapping.ModelAlias, mapping.ProviderId, mapping.ProviderModelId);
-            
+
             // Get the provider from database
-            var provider = Task.Run(async () => 
-                await _credentialService.GetProviderByIdAsync(mapping.ProviderId)).Result;
-            
+            var provider = await _credentialService.GetProviderByIdAsync(mapping.ProviderId);
+
             if (provider == null)
             {
                 _logger.LogWarning("Provider {ProviderId} not found", mapping.ProviderId);
                 throw new ServiceUnavailableException($"Provider for model '{modelName}' is not available.", "Provider");
             }
-            
-            if (!provider.IsEnabled)
-            {
-                _logger.LogWarning("Provider {ProviderId} is disabled", mapping.ProviderId);
-                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
-            }
-            
-            // Get key credentials for this provider
-            var keyCredentials = Task.Run(async () => 
-                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
-            
-            // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
-                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-            
-            if (primaryKey == null)
-            {
-                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
-                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
-            }
-            
-            // Create the appropriate client based on provider type
-            return CreateClientForProvider(provider, primaryKey, mapping.ProviderModelId);
+
+            var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+            return CreateClientForProvider(provider, credentials, mapping.ProviderModelId, mapping.ProviderOptions);
         }
 
-        
         /// <inheritdoc />
-        public ILLMClient GetClientByProviderId(int providerId)
-        {
-            _logger.LogDebug("Getting client for provider ID {ProviderId} using database credentials", providerId);
+        public Task<ILLMClient> GetClientByProviderIdAsync(int providerId, CancellationToken cancellationToken = default)
+            => GetClientByProviderIdAsync(providerId, "default-model-id", cancellationToken);
 
-            // Get provider from database
-            var provider = Task.Run(async () => 
-                await _credentialService.GetProviderByIdAsync(providerId)).Result;
+        /// <inheritdoc />
+        public async Task<ILLMClient> GetClientByProviderIdAsync(int providerId, string providerModelId, CancellationToken cancellationToken = default)
+        {
+            _logger.LogDebug("Getting client for provider ID {ProviderId} and model {ProviderModelId} using database credentials",
+                providerId, providerModelId);
+
+            var provider = await _credentialService.GetProviderByIdAsync(providerId);
 
             if (provider == null)
             {
                 _logger.LogWarning("No provider found for provider ID {ProviderId} in database", providerId);
                 throw new InvalidRequestException($"Provider with ID '{providerId}' not found.", "provider_not_found", "providerId");
             }
-            
-            if (!provider.IsEnabled)
-            {
-                _logger.LogWarning("Provider {ProviderId} is disabled", providerId);
-                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
-            }
-            
-            // Get key credentials for this provider
-            var keyCredentials = Task.Run(async () => 
-                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
-            
-            // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
-                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-            
-            if (primaryKey == null)
-            {
-                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
-                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
-            }
 
-            // Use a default model ID for operations that don't require a specific model
-            return CreateClientForProvider(provider, primaryKey, "default-model-id");
+            var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+            return CreateClientForProvider(provider, credentials, providerModelId);
         }
 
         /// <inheritdoc />
-        public IProviderMetadata? GetProviderMetadata(ProviderType providerType)
-        {
-            // This factory doesn't have access to provider metadata
-            // Return null to indicate metadata is not available through this factory
-            return null;
-        }
-
-        /// <inheritdoc />
-        public ILLMClient GetClientByProviderType(ProviderType providerType)
+        public async Task<ILLMClient> GetClientByProviderTypeAsync(ProviderType providerType, CancellationToken cancellationToken = default)
         {
             _logger.LogDebug("Getting client for provider type {ProviderType} using database credentials", providerType);
 
-            // Get first enabled provider of this type from database
-            var provider = Task.Run(async () => 
-            {
-                var allProviders = await _credentialService.GetAllProvidersAsync();
-                return allProviders.FirstOrDefault(p => p.ProviderType == providerType);
-            }).Result;
+            var allProviders = await _credentialService.GetAllProvidersAsync();
+            var provider = allProviders.FirstOrDefault(p => p.ProviderType == providerType);
 
             if (provider == null)
             {
                 _logger.LogWarning("No provider found for provider type {ProviderType} in database", providerType);
                 throw new InvalidRequestException($"No provider configured for type '{providerType}'.", "provider_type_not_found", "providerType");
             }
-            
-            if (!provider.IsEnabled)
-            {
-                _logger.LogWarning("Provider {ProviderId} of type {ProviderType} is disabled", provider.Id, providerType);
-                throw new ServiceUnavailableException($"Provider '{provider.ProviderName}' of type '{providerType}' is currently disabled.", provider.ProviderName);
-            }
-            
-            // Get key credentials for this provider
-            var keyCredentials = Task.Run(async () => 
-                await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id)).Result;
-            
-            // Find the primary key or use the first enabled one
-            var primaryKey = keyCredentials.FirstOrDefault(k => k.IsPrimary && k.IsEnabled) 
-                ?? keyCredentials.FirstOrDefault(k => k.IsEnabled);
-            
-            if (primaryKey == null)
-            {
-                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
-                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
-            }
 
-            // Use a default model ID for operations that don't require a specific model
-            return CreateClientForProvider(provider, primaryKey, "default-model-id");
+            var credentials = await ValidateProviderAndGetCredentialsAsync(provider);
+            return CreateClientForProvider(provider, credentials, "default-model-id");
         }
 
         /// <inheritdoc />
@@ -218,9 +261,21 @@ namespace ConduitLLM.Providers
                 throw new ArgumentNullException(nameof(keyCredential));
             }
 
-            if (string.IsNullOrWhiteSpace(keyCredential.ApiKey))
+            var configuration = ProviderConfigurationRegistry.GetConfiguration(provider.ProviderType);
+            if (configuration?.AuthenticationStrategy.RequiresApiKey != false
+                && string.IsNullOrWhiteSpace(keyCredential.ApiKey))
             {
                 throw new ArgumentException("API key is required for testing credentials", nameof(keyCredential));
+            }
+
+            var missingSecrets = ProviderConfigurationRegistry.GetMissingRequiredSecrets(
+                provider.ProviderType,
+                keyCredential.SecretSettings);
+            if (missingSecrets.Count > 0)
+            {
+                throw new ArgumentException(
+                    $"{provider.ProviderType} requires: {string.Join(", ", missingSecrets)}.",
+                    nameof(keyCredential));
             }
 
             _logger.LogDebug("Creating test client for provider type: {ProviderType}", provider.ProviderType);
@@ -228,88 +283,169 @@ namespace ConduitLLM.Providers
             // Use a minimal model ID for testing - providers should accept this for auth verification
             const string testModelId = "test-model";
 
-            return CreateClientForProvider(provider, keyCredential, testModelId);
+            return CreateSingleClientForProvider(provider, keyCredential, testModelId);
         }
 
-        private ILLMClient CreateClientForProvider(Provider provider, ProviderKeyCredential keyCredential, string modelId)
+        /// <summary>
+        /// Returns a copy of the credential whose API key and secret settings hold plaintext,
+        /// decrypting stored values at the single seam before provider clients consume them.
+        /// </summary>
+        /// <remarks>
+        /// A copy, not an in-place mutation: the credential can come from a cached or tracked entity,
+        /// and writing plaintext back into it would leak decrypted secrets into that shared instance
+        /// and risk persisting them. A credential with no stored secrets is returned untouched.
+        /// </remarks>
+        private ProviderKeyCredential RevealSecrets(ProviderKeyCredential keyCredential)
+        {
+            if (keyCredential.ApiKey == null && keyCredential.SecretSettings is not { Count: > 0 })
+            {
+                return keyCredential;
+            }
+
+            var protector = _serviceProvider.GetService<IProviderSecretProtector>();
+            if (protector == null)
+            {
+                _logger.LogWarning(
+                    "No provider secret protector is registered; credentials for provider {ProviderId} cannot be decrypted.",
+                    keyCredential.ProviderId);
+                return keyCredential;
+            }
+
+            return new ProviderKeyCredential
+            {
+                Id = keyCredential.Id,
+                ProviderId = keyCredential.ProviderId,
+                ApiKey = protector.Reveal(keyCredential.ApiKey),
+                KeyName = keyCredential.KeyName,
+                BaseUrl = keyCredential.BaseUrl,
+                SecretSettings = protector.RevealAll(keyCredential.SecretSettings),
+                IsPrimary = keyCredential.IsPrimary,
+                IsEnabled = keyCredential.IsEnabled,
+                ProviderAccountGroup = keyCredential.ProviderAccountGroup,
+                CreatedAt = keyCredential.CreatedAt,
+                UpdatedAt = keyCredential.UpdatedAt
+            };
+        }
+
+        /// <summary>
+        /// Validates that a provider is enabled, then retrieves its primary key credential.
+        /// </summary>
+        private async Task<IReadOnlyList<ProviderKeyCredential>> ValidateProviderAndGetCredentialsAsync(Provider provider)
+        {
+            if (!provider.IsEnabled)
+            {
+                _logger.LogWarning("Provider {ProviderId} is disabled", provider.Id);
+                throw new ServiceUnavailableException(
+                    $"Provider '{provider.ProviderName}' is currently disabled.", provider.ProviderName);
+            }
+
+            return await GetEnabledKeyCredentialsAsync(provider);
+        }
+
+        private async Task<IReadOnlyList<ProviderKeyCredential>> GetEnabledKeyCredentialsAsync(Provider provider)
+        {
+            var keyCredentials = await _credentialService.GetKeyCredentialsByProviderIdAsync(provider.Id);
+
+            var enabledKeys = keyCredentials
+                .Where(key => key.IsEnabled)
+                .OrderByDescending(key => key.IsPrimary)
+                .ThenBy(key => key.Id)
+                .ToArray();
+
+            if (enabledKeys.Length == 0)
+            {
+                _logger.LogWarning("No enabled API key found for provider {ProviderId}", provider.Id);
+                throw new ConfigurationException($"No API key configured for provider '{provider.ProviderName}'.");
+            }
+
+            return enabledKeys;
+        }
+
+        private ILLMClient CreateClientForProvider(
+            Provider provider,
+            IReadOnlyList<ProviderKeyCredential> keyCredentials,
+            string modelId,
+            string? providerOptionsJson = null)
+        {
+            var primaryClient = CreateSingleClientForProvider(
+                provider,
+                keyCredentials[0],
+                modelId,
+                providerOptionsJson);
+
+            if (keyCredentials.Count == 1)
+            {
+                return primaryClient;
+            }
+
+            var targets = keyCredentials
+                .Select((credential, index) => new ProviderKeyFailoverTarget(
+                    credential.Id,
+                    credential.ProviderAccountGroup,
+                    index == 0
+                        ? () => primaryClient
+                        : () => CreateSingleClientForProvider(
+                            provider,
+                            credential,
+                            modelId,
+                            providerOptionsJson)))
+                .ToArray();
+
+            return new ProviderKeyFailoverLLMClient(targets, _logger);
+        }
+
+        private ILLMClient CreateSingleClientForProvider(
+            Provider provider,
+            ProviderKeyCredential keyCredential,
+            string modelId,
+            string? providerOptionsJson = null)
         {
             var providerName = provider.ProviderType.ToString().ToLowerInvariant();
-            
-            _logger.LogDebug("Creating client for provider type: {ProviderType}, model: {ModelId}", 
+
+            _logger.LogDebug("Creating client for provider type: {ProviderType}, model: {ModelId}",
                 provider.ProviderType, modelId);
 
-            // TODO: Get default models configuration from somewhere (database?)
-            ProviderDefaultModels? defaultModels = null;
+            keyCredential = RevealSecrets(keyCredential);
 
-            // Create the base client
-            ILLMClient client;
-            
-            // Create clients using the provider type
-            switch (provider.ProviderType)
+            // Create the client creation context with all dependencies
+            var context = new ClientCreationContext
             {
-                case ProviderType.OpenAI:
-                    var openAiLogger = _loggerFactory.CreateLogger<OpenAIClient>();
-                    client = new OpenAIClient(provider, keyCredential, modelId, openAiLogger, 
-                        _httpClientFactory, _capabilityService, defaultModels);
-                    break;
+                LoggerFactory = _loggerFactory,
+                HttpClientFactory = _httpClientFactory,
+                ProviderOptionsJson = providerOptionsJson
+            };
 
-                case ProviderType.Groq:
-                    var groqLogger = _loggerFactory.CreateLogger<GroqClient>();
-                    client = new GroqClient(provider, keyCredential, modelId, groqLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
+            // Create the base client using the registry
+            ILLMClient client;
+            try
+            {
+                client = ClientCreatorRegistry.CreateClient(
+                    provider.ProviderType,
+                    provider,
+                    keyCredential,
+                    modelId,
+                    context);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ConfigurationException($"Unsupported provider type: {provider.ProviderType}", ex);
+            }
 
-                case ProviderType.Replicate:
-                    var replicateLogger = _loggerFactory.CreateLogger<ReplicateClient>();
-                    client = new ReplicateClient(provider, keyCredential, modelId, replicateLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.Fireworks:
-                    var fireworksLogger = _loggerFactory.CreateLogger<FireworksClient>();
-                    client = new FireworksClient(provider, keyCredential, modelId, fireworksLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.OpenAICompatible:
-                    var compatibleLogger = _loggerFactory.CreateLogger<OpenAICompatibleGenericClient>();
-                    client = new OpenAICompatibleGenericClient(provider, keyCredential, modelId, compatibleLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.MiniMax:
-                    var miniMaxLogger = _loggerFactory.CreateLogger<MiniMaxClient>();
-                    client = new MiniMaxClient(provider, keyCredential, modelId, miniMaxLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-
-                case ProviderType.Cerebras:
-                    var cerebrasLogger = _loggerFactory.CreateLogger<CerebrasClient>();
-                    client = new CerebrasClient(provider, keyCredential, modelId, cerebrasLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.SambaNova:
-                    var sambaNovaLogger = _loggerFactory.CreateLogger<SambaNovaClient>();
-                    client = new SambaNovaClient(provider, keyCredential, modelId, sambaNovaLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                case ProviderType.DeepInfra:
-                    var deepInfraLogger = _loggerFactory.CreateLogger<DeepInfraClient>();
-                    client = new DeepInfraClient(provider, keyCredential, modelId, deepInfraLogger, 
-                        _httpClientFactory, defaultModels);
-                    break;
-
-                default:
-                    throw new ConfigurationException($"Unsupported provider type: {provider.ProviderType}");
+            // Apply prompt caching decorator (before context/perf so it modifies request early)
+            var settingsService = _serviceProvider.GetService<IGlobalSettingsCacheService>();
+            if (settingsService != null)
+            {
+                var cachingLogger = _loggerFactory.CreateLogger<PromptCachingLLMClient>();
+                client = new PromptCachingLLMClient(
+                    client, settingsService, cachingLogger, provider.ProviderType.ToString(), modelId);
             }
 
             // Apply context decorator to set provider key context for error tracking
-            _logger.LogDebug("Applying context decorator for KeyId: {KeyId}, ProviderId: {ProviderId}", 
+            _logger.LogDebug("Applying context decorator for KeyId: {KeyId}, ProviderId: {ProviderId}",
                 keyCredential.Id, provider.Id);
-            client = new ContextAwareLLMClient(client, keyCredential.Id, provider.Id, _serviceProvider);
+            client = new ContextAwareLLMClient(
+                client, keyCredential.Id, provider.Id, _serviceProvider,
+                string.IsNullOrWhiteSpace(provider.ProviderName) ? providerName : provider.ProviderName);
 
             // Apply decorators if configured
             if (_performanceMetricsService != null)

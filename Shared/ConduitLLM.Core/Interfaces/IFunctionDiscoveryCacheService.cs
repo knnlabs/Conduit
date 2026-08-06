@@ -58,41 +58,5 @@ public interface IFunctionDiscoveryCacheService
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Cache statistics</returns>
-    Task<FunctionDiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
-}
-
-/// <summary>
-/// Statistics for function discovery cache
-/// </summary>
-public class FunctionDiscoveryCacheStatistics
-{
-    /// <summary>
-    /// Total number of cache hits
-    /// </summary>
-    public long Hits { get; set; }
-
-    /// <summary>
-    /// Total number of cache misses
-    /// </summary>
-    public long Misses { get; set; }
-
-    /// <summary>
-    /// Cache hit rate percentage
-    /// </summary>
-    public double HitRate { get; set; }
-
-    /// <summary>
-    /// Number of cached entries
-    /// </summary>
-    public int CachedEntries { get; set; }
-
-    /// <summary>
-    /// Last cache invalidation time
-    /// </summary>
-    public DateTime? LastInvalidation { get; set; }
-
-    /// <summary>
-    /// Whether caching is currently enabled
-    /// </summary>
-    public bool IsEnabled { get; set; }
+    Task<CacheStats> GetStatisticsAsync(CancellationToken cancellationToken = default);
 }

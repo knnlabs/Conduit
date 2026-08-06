@@ -26,14 +26,15 @@ ConduitLLM.Security/
 ## Key Components
 
 ### Services
-- `SecurityEventMonitoringService` - Monitors and logs security events
-- `ThreatDetectionService` - Analyzes patterns for threat detection
-- `SecurityMetricsService` - Collects and aggregates security metrics
+- `SecurityServiceBase` - Failed-auth tracking, IP bans and rate-limit state shared by
+  the Gateway and Admin security services
+- `FixedWindowCounter` - Counter backing the fixed-window rate limiters
 
 ### Interfaces
-- `ISecurityEventMonitoringService` - Security event monitoring contract
-- `IThreatDetectionService` - Threat detection contract
-- `ISecurityMetricsService` - Security metrics contract
+- `ISecurityService` - Request authorization contract
+
+> Security telemetry is exported as Prometheus metrics and structured logs; dashboards
+> and alerting live in the Grafana stack rather than in this project.
 
 ### Middleware
 - Shared security middleware for authentication and authorization

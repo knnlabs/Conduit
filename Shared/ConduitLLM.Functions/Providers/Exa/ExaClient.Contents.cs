@@ -2,7 +2,9 @@ using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using ConduitLLM.Functions.Interfaces;
+using ConduitLLM.Functions.Exceptions;
 using ConduitLLM.Functions.Providers.Exa.Models;
+using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Functions.Providers.Exa;
 
@@ -99,6 +101,14 @@ public partial class ExaClient
                 }
             };
         }
+        catch (FunctionCommunicationException)
+        {
+            throw;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
             stopwatch.Stop();
@@ -182,86 +192,42 @@ public partial class ExaClient
 
         // Map optional parameters, converting JsonElement to proper types
         if (parameters.TryGetValue("text", out var textObj))
-            request.Text = ConvertJsonElement(textObj);
+            request.Text = JsonElementConverter.ConvertJsonElement(textObj);
 
         if (parameters.TryGetValue("highlights", out var highlightsObj))
-            request.Highlights = ConvertJsonElement(highlightsObj);
+            request.Highlights = JsonElementConverter.ConvertJsonElement(highlightsObj);
 
         if (parameters.TryGetValue("summary", out var summaryObj))
-            request.Summary = ConvertJsonElement(summaryObj);
+            request.Summary = JsonElementConverter.ConvertJsonElement(summaryObj);
 
         if (parameters.TryGetValue("livecrawl", out var livecrawlObj))
         {
-            var converted = ConvertJsonElement(livecrawlObj);
+            var converted = JsonElementConverter.ConvertJsonElement(livecrawlObj);
             request.Livecrawl = converted?.ToString();
         }
 
         if (parameters.TryGetValue("livecrawlTimeout", out var livecrawlTimeoutObj))
         {
-            var converted = ConvertJsonElement(livecrawlTimeoutObj);
+            var converted = JsonElementConverter.ConvertJsonElement(livecrawlTimeoutObj);
             request.LivecrawlTimeout = Convert.ToInt32(converted);
         }
 
         if (parameters.TryGetValue("subpages", out var subpagesObj))
         {
-            var converted = ConvertJsonElement(subpagesObj);
+            var converted = JsonElementConverter.ConvertJsonElement(subpagesObj);
             request.Subpages = Convert.ToInt32(converted);
         }
 
         if (parameters.TryGetValue("subpageTarget", out var subpageTargetObj))
-            request.SubpageTarget = ConvertJsonElement(subpageTargetObj);
+            request.SubpageTarget = JsonElementConverter.ConvertJsonElement(subpageTargetObj);
 
         if (parameters.TryGetValue("extras", out var extrasObj))
-            request.Extras = ConvertJsonElement(extrasObj);
+            request.Extras = JsonElementConverter.ConvertJsonElement(extrasObj);
 
         if (parameters.TryGetValue("context", out var contextObj))
-            request.Context = ConvertJsonElement(contextObj);
+            request.Context = JsonElementConverter.ConvertJsonElement(contextObj);
 
         return request;
-    }
-
-    /// <summary>
-    /// Converts a JsonElement to its actual .NET value for proper serialization.
-    /// </summary>
-    /// <param name="value">The value to convert (may be JsonElement or already converted).</param>
-    /// <returns>The converted value as a proper .NET type.</returns>
-    private static object? ConvertJsonElement(object? value)
-    {
-        if (value is not JsonElement element)
-        {
-            return value;
-        }
-
-        switch (element.ValueKind)
-        {
-            case JsonValueKind.String:
-                return element.GetString();
-            case JsonValueKind.Number:
-                if (element.TryGetInt32(out var intValue))
-                    return intValue;
-                if (element.TryGetInt64(out var longValue))
-                    return longValue;
-                return element.GetDouble();
-            case JsonValueKind.True:
-                return true;
-            case JsonValueKind.False:
-                return false;
-            case JsonValueKind.Null:
-                return null;
-            case JsonValueKind.Array:
-                return element.EnumerateArray()
-                    .Select(e => ConvertJsonElement(e))
-                    .ToList();
-            case JsonValueKind.Object:
-                var dict = new Dictionary<string, object?>();
-                foreach (var property in element.EnumerateObject())
-                {
-                    dict[property.Name] = ConvertJsonElement(property.Value);
-                }
-                return dict;
-            default:
-                return element.ToString();
-        }
     }
 
     /// <summary>

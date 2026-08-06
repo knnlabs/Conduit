@@ -26,6 +26,13 @@ namespace ConduitLLM.Core.Utilities
             if (ipAddress == rule)
                 return true;
 
+            if (!rule.Contains('/') &&
+                IPAddress.TryParse(ipAddress, out var parsedIp) &&
+                IPAddress.TryParse(rule, out var parsedRule))
+            {
+                return NormalizeAddress(parsedIp).Equals(NormalizeAddress(parsedRule));
+            }
+
             // CIDR range check
             if (rule.Contains('/'))
             {
@@ -58,6 +65,17 @@ namespace ConduitLLM.Core.Utilities
 
                 if (!int.TryParse(parts[1], out var prefixLength))
                     return false;
+
+                var baseWasIpv4Mapped = baseAddress.IsIPv4MappedToIPv6;
+                ip = NormalizeAddress(ip);
+                baseAddress = NormalizeAddress(baseAddress);
+                if (baseWasIpv4Mapped)
+                {
+                    if (prefixLength < 96)
+                        return false;
+
+                    prefixLength -= 96;
+                }
 
                 // Ensure both addresses are the same family
                 if (ip.AddressFamily != baseAddress.AddressFamily)
@@ -168,6 +186,9 @@ namespace ConduitLLM.Core.Utilities
 
             return true;
         }
+
+        private static IPAddress NormalizeAddress(IPAddress address) =>
+            address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address;
 
         #endregion
 
@@ -308,57 +329,45 @@ namespace ConduitLLM.Core.Utilities
         #region Client IP Extraction
 
         /// <summary>
-        /// Extracts the client IP address from HTTP headers, accounting for reverse proxies.
-        /// Checks X-Forwarded-For, X-Real-IP headers before falling back to RemoteIpAddress.
+        /// Extracts the client IP address from HTTP headers.
         /// </summary>
-        /// <param name="headers">The HTTP request headers.</param>
-        /// <param name="remoteIpAddress">The direct connection remote IP address.</param>
+        /// <remarks>
+        /// DEPRECATED and no longer trusts forwarded headers. Raw <c>X-Forwarded-For</c>/<c>X-Real-IP</c>
+        /// headers are client-controlled and spoofable; trusting them lets an attacker bypass IP
+        /// filters, evade bans, and poison another IP's rate-limit/ban counters. Trusted-proxy
+        /// resolution is now handled once, up front, by ASP.NET Core's <c>ForwardedHeadersMiddleware</c>
+        /// (configured with an explicit known-proxy allowlist), which rewrites
+        /// <c>Connection.RemoteIpAddress</c> only when the peer is a trusted proxy. This overload
+        /// therefore ignores <paramref name="headers"/> and returns <paramref name="remoteIpAddress"/>.
+        /// </remarks>
+        /// <param name="headers">Ignored. Present only for backwards compatibility.</param>
+        /// <param name="remoteIpAddress">The (already vetted) connection remote IP address.</param>
         /// <returns>The client IP address as a string, or "unknown" if it cannot be determined.</returns>
+        [Obsolete("Forwarded headers are no longer trusted here. Use GetClientIpAddress(HttpContext), which returns the ForwardedHeadersMiddleware-vetted RemoteIpAddress.")]
         public static string GetClientIpAddress(
             IDictionary<string, Microsoft.Extensions.Primitives.StringValues> headers,
             IPAddress? remoteIpAddress)
         {
-            // Check X-Forwarded-For header first (for reverse proxies)
-            if (headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-            {
-                var forwardedForValue = forwardedFor.FirstOrDefault();
-                if (!string.IsNullOrEmpty(forwardedForValue))
-                {
-                    // Take the first IP in the chain (original client)
-                    var ip = forwardedForValue.Split(',').First().Trim();
-                    if (IPAddress.TryParse(ip, out _))
-                    {
-                        return ip;
-                    }
-                }
-            }
-
-            // Check X-Real-IP header
-            if (headers.TryGetValue("X-Real-IP", out var realIp))
-            {
-                var realIpValue = realIp.FirstOrDefault();
-                if (!string.IsNullOrEmpty(realIpValue) && IPAddress.TryParse(realIpValue, out _))
-                {
-                    return realIpValue;
-                }
-            }
-
-            // Fall back to direct connection IP
-            return remoteIpAddress?.ToString() ?? "unknown";
+            // Do NOT read forwarded headers here — they are spoofable. The connection's
+            // RemoteIpAddress has already been vetted by ForwardedHeadersMiddleware.
+            return remoteIpAddress == null ? "unknown" : NormalizeAddress(remoteIpAddress).ToString();
         }
 
         /// <summary>
         /// Extracts the client IP address from an HttpContext.
         /// </summary>
+        /// <remarks>
+        /// Returns <c>Connection.RemoteIpAddress</c>. This is the real client IP when the app sits
+        /// behind a trusted proxy configured via <c>ForwardedHeadersMiddleware</c> (see
+        /// <c>TrustedProxyOptions</c>); otherwise it is the direct socket peer. Forwarded headers are
+        /// intentionally NOT read here, so an untrusted client cannot spoof its source IP.
+        /// </remarks>
         /// <param name="context">The HTTP context.</param>
         /// <returns>The client IP address as a string, or "unknown" if it cannot be determined.</returns>
         public static string GetClientIpAddress(Microsoft.AspNetCore.Http.HttpContext context)
         {
-            return GetClientIpAddress(
-                context.Request.Headers.ToDictionary(
-                    h => h.Key,
-                    h => h.Value),
-                context.Connection.RemoteIpAddress);
+            var remoteIpAddress = context.Connection.RemoteIpAddress;
+            return remoteIpAddress == null ? "unknown" : NormalizeAddress(remoteIpAddress).ToString();
         }
 
         #endregion

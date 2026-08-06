@@ -27,6 +27,14 @@ public enum FunctionProviderType
     Tavily = 4,
 
     /// <summary>
+    /// Model Context Protocol (MCP) server - a remote server exposing an arbitrary,
+    /// dynamically-discovered set of tools over Streamable HTTP / SSE.
+    /// Unlike the fixed-schema providers above, one MCP configuration expands to
+    /// many tools discovered at runtime via <c>tools/list</c>.
+    /// </summary>
+    Mcp = 5,
+
+    /// <summary>
     /// Custom/extensibility provider
     /// </summary>
     Custom = 99

@@ -1,0 +1,135 @@
+using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Extensions;
+using Microsoft.Extensions.Logging;
+
+namespace ConduitLLM.Core.Services
+{
+    /// <summary>
+    /// Implements cache stampede prevention using hybrid local + distributed locking.
+    /// When multiple requests hit a cache miss simultaneously, only one performs the
+    /// database query while others wait for the result.
+    /// </summary>
+    public class DistributedCachePopulator : IDistributedCachePopulator
+    {
+        private readonly IDistributedLockService _lockService;
+        private readonly ILogger<DistributedCachePopulator> _logger;
+
+        // Local striped locks prevent same-instance stampedes without per-key lifecycle races.
+        private readonly StripedAsyncLock _localLocks = new();
+
+        // Configuration
+        private static readonly TimeSpan LockExpiry = TimeSpan.FromSeconds(30);
+        private static readonly TimeSpan LockTimeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan RetryDelay = TimeSpan.FromMilliseconds(50);
+
+        public DistributedCachePopulator(
+            IDistributedLockService lockService,
+            ILogger<DistributedCachePopulator> logger)
+        {
+            _lockService = lockService;
+            _logger = logger;
+        }
+
+        /// <inheritdoc />
+        public async Task<T?> GetOrPopulateAsync<T>(
+            string lockKey,
+            Func<Task<T?>> cacheCheck,
+            Func<Task<T?>> factory,
+            CancellationToken cancellationToken = default) where T : class
+        {
+            // Step 1: Fast path - check cache without any locking
+            try
+            {
+                var cachedValue = await cacheCheck();
+                if (cachedValue != null)
+                {
+                    return cachedValue;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache check failed for key {LockKey}, proceeding to population", lockKey);
+            }
+
+            // Step 2: Acquire local lock to prevent same-instance stampede
+            IDisposable? localLock;
+
+            try
+            {
+                // Wait for local lock with timeout
+                localLock = await _localLocks.TryAcquireAsync(lockKey, LockTimeout, cancellationToken);
+                if (localLock == null)
+                {
+                    _logger.LogWarning("Timeout waiting for local lock on {LockKey}, falling back to factory", lockKey);
+                    return await factory();
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error acquiring local lock for {LockKey}, falling back to factory", lockKey);
+                return await factory();
+            }
+
+            try
+            {
+                // Step 3: Double-check cache after acquiring local lock
+                try
+                {
+                    var cachedValue = await cacheCheck();
+                    if (cachedValue != null)
+                    {
+                        _logger.LogDebug("Cache hit after local lock for {LockKey}", lockKey);
+                        return cachedValue;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Cache double-check failed for {LockKey}", lockKey);
+                }
+
+                // Step 4: Acquire distributed lock to prevent cross-instance stampede
+                var result = await _lockService.RunWithOptionalLockAsync(
+                    lockKey,
+                    LockExpiry,
+                    LockTimeout,
+                    RetryDelay,
+                    async lockAcquired =>
+                {
+                    // Step 5: Triple-check cache after acquiring distributed lock
+                    // Another instance may have populated it while we were waiting
+                    if (lockAcquired)
+                    {
+                        try
+                        {
+                            var cachedValue = await cacheCheck();
+                            if (cachedValue != null)
+                            {
+                                _logger.LogDebug("Cache hit after distributed lock for {LockKey}", lockKey);
+                                return cachedValue;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Cache triple-check failed for {LockKey}", lockKey);
+                        }
+                    }
+
+                    // Step 6: Call factory (database fallback)
+                    _logger.LogDebug("Executing factory for {LockKey}", lockKey);
+                    return await factory();
+                },
+                    _logger,
+                    cancellationToken);
+                return result.Value;
+            }
+            finally
+            {
+                localLock.Dispose();
+            }
+        }
+    }
+}

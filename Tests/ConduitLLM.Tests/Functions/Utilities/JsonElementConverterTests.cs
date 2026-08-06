@@ -1,4 +1,5 @@
 using System.Text.Json;
+using AwesomeAssertions;
 using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Tests.Functions.Utilities
@@ -616,8 +617,7 @@ namespace ConduitLLM.Tests.Functions.Utilities
             var element = CreateJsonElement("[1, 2, 3]");
             var result = JsonElementConverter.ConvertJsonElement(element);
 
-            Assert.IsType<List<object>>(result);
-            var list = (List<object>)result;
+            var list = result.Should().BeOfType<List<object>>().Subject;
             Assert.Equal(3, list.Count);
             Assert.Equal(1, list[0]);
             Assert.Equal(2, list[1]);
@@ -630,8 +630,7 @@ namespace ConduitLLM.Tests.Functions.Utilities
             var element = CreateJsonElement("{\"name\": \"test\", \"value\": 42}");
             var result = JsonElementConverter.ConvertJsonElement(element);
 
-            Assert.IsType<Dictionary<string, object>>(result);
-            var dict = (Dictionary<string, object>)result;
+            var dict = result.Should().BeOfType<Dictionary<string, object>>().Subject;
             Assert.Equal(2, dict.Count);
             Assert.Equal("test", dict["name"]);
             Assert.Equal(42, dict["value"]);
@@ -643,10 +642,8 @@ namespace ConduitLLM.Tests.Functions.Utilities
             var element = CreateJsonElement("{\"outer\": {\"inner\": \"value\"}}");
             var result = JsonElementConverter.ConvertJsonElement(element);
 
-            Assert.IsType<Dictionary<string, object>>(result);
-            var outer = (Dictionary<string, object>)result;
-            Assert.IsType<Dictionary<string, object>>(outer["outer"]);
-            var inner = (Dictionary<string, object>)outer["outer"];
+            var outer = result.Should().BeOfType<Dictionary<string, object>>().Subject;
+            var inner = outer["outer"].Should().BeOfType<Dictionary<string, object>>().Subject;
             Assert.Equal("value", inner["inner"]);
         }
 
@@ -656,8 +653,7 @@ namespace ConduitLLM.Tests.Functions.Utilities
             var element = CreateJsonElement("[\"string\", 42, true, null]");
             var result = JsonElementConverter.ConvertJsonElement(element);
 
-            Assert.IsType<List<object>>(result);
-            var list = (List<object>)result;
+            var list = result.Should().BeOfType<List<object>>().Subject;
             Assert.Equal(4, list.Count);
             Assert.Equal("string", list[0]);
             Assert.Equal(42, list[1]);
@@ -726,8 +722,7 @@ namespace ConduitLLM.Tests.Functions.Utilities
             var element = CreateJsonElement(json);
             var result = JsonElementConverter.ConvertJsonElement(element);
 
-            Assert.IsType<Dictionary<string, object>>(result);
-            var root = (Dictionary<string, object>)result;
+            var root = result.Should().BeOfType<Dictionary<string, object>>().Subject;
             var search = (Dictionary<string, object>)root["search"];
             Assert.Equal("test query", search["query"]);
 

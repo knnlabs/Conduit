@@ -81,8 +81,24 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public int? RateLimitRpd { get; set; }
 
         /// <summary>
+        /// Rate limit in tokens per minute, if set
+        /// </summary>
+        public int? RateLimitTpm { get; set; }
+
+        /// <summary>
+        /// Cap on concurrent in-flight requests, if set
+        /// </summary>
+        public int? MaxParallelRequests { get; set; }
+
+        /// <summary>
+        /// Priority tier for saturation-aware group rate limiting: 0 = low, 1 = normal,
+        /// 2 = high. Null means normal.
+        /// </summary>
+        public int? RateLimitPriority { get; set; }
+
+        /// <summary>
         /// Comma-separated list of allowed model IDs, if restricted
         /// </summary>
-        public string? AllowedModels { get; set; }
+        public List<string>? AllowedModels { get; set; }
     }
 }

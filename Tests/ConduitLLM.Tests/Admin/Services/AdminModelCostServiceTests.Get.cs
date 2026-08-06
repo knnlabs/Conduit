@@ -1,6 +1,6 @@
 using ConduitLLM.Configuration.Entities;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 

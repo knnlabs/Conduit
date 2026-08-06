@@ -58,6 +58,20 @@ namespace ConduitLLM.Tests.Core.Fixtures
             mock.Setup(x => x.DeleteAsync(It.IsAny<string>()))
                 .ReturnsAsync(true);
 
+            mock.Setup(x => x.DeleteManyAsync(
+                    It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync((
+                    IEnumerable<string> keys,
+                    CancellationToken _) => new MediaBulkDeleteResult
+                    {
+                        Items = keys.Select(key => new MediaDeleteItemResult
+                        {
+                            StorageKey = key,
+                            Deleted = true
+                        }).ToList()
+                    });
+
             mock.Setup(x => x.ExistsAsync(It.IsAny<string>()))
                 .ReturnsAsync(true);
 
@@ -105,8 +119,8 @@ namespace ConduitLLM.Tests.Core.Fixtures
         {
             var mock = new Mock<IMediaRecordRepository>();
 
-            mock.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>()))
-                .ReturnsAsync((MediaRecord record) => record);
+            mock.Setup(x => x.CreateAsync(It.IsAny<MediaRecord>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync((MediaRecord record, CancellationToken _) => record.Id == Guid.Empty ? Guid.NewGuid() : record.Id);
 
             mock.Setup(x => x.GetByStorageKeyAsync(It.IsAny<string>()))
                 .ReturnsAsync((string key) => new MediaRecordBuilder()
@@ -128,9 +142,6 @@ namespace ConduitLLM.Tests.Core.Fixtures
             mock.Setup(x => x.GetExpiredMediaAsync(It.IsAny<DateTime>()))
                 .ReturnsAsync(new List<MediaRecord>());
 
-            mock.Setup(x => x.GetOrphanedMediaAsync())
-                .ReturnsAsync(new List<MediaRecord>());
-
             mock.Setup(x => x.GetMediaOlderThanAsync(It.IsAny<DateTime>()))
                 .ReturnsAsync(new List<MediaRecord>());
 
@@ -145,12 +156,12 @@ namespace ConduitLLM.Tests.Core.Fixtures
             var mock = new Mock<ConduitLLM.Core.Interfaces.IVirtualKeyService>();
 
             mock.Setup(x => x.ValidateVirtualKeyAsync(It.IsAny<string>(), It.IsAny<string>()))
-                .ReturnsAsync((string key, string model) => new VirtualKey
+                .ReturnsAsync((string key, string model) => VirtualKeyValidationOutcome.Success(new VirtualKey
                 {
                     Id = 1,
                     KeyName = key,
                     IsEnabled = true
-                });
+                }));
 
             mock.Setup(x => x.UpdateSpendAsync(It.IsAny<int>(), It.IsAny<decimal>()))
                 .ReturnsAsync(true);

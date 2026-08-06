@@ -1,4 +1,7 @@
-import type { ParametersSchema, ParameterDefinition } from '@/types/parameters';
+import type {
+  DynamicParameter,
+  DynamicParametersSchema,
+} from '@/components/parameters/types/parameters';
 
 /**
  * List of parameter names that should be excluded from conversion
@@ -57,7 +60,9 @@ interface ReplicateSchema {
 /**
  * Converts a Replicate model schema to Conduit parameters format
  */
-export function convertReplicateSchemaToParameters(replicateSchema: string | object): ParametersSchema {
+export function convertReplicateSchemaToParameters(
+  replicateSchema: string | object,
+): DynamicParametersSchema {
   let schema: ReplicateSchema;
   
   // Parse if string, otherwise use as-is
@@ -76,7 +81,7 @@ export function convertReplicateSchemaToParameters(replicateSchema: string | obj
     throw new Error('Schema must have a properties object');
   }
 
-  const parameters: ParametersSchema = {};
+  const parameters: DynamicParametersSchema = {};
   const requiredFields = new Set(schema.required ?? []);
 
   // Sort by x-order if available
@@ -104,7 +109,11 @@ export function convertReplicateSchemaToParameters(replicateSchema: string | obj
   return parameters;
 }
 
-function convertProperty(key: string, prop: ReplicateProperty, isRequired: boolean): ParameterDefinition | null {
+function convertProperty(
+  key: string,
+  prop: ReplicateProperty,
+  isRequired: boolean,
+): DynamicParameter | null {
   // Skip properties we can't handle
   if (!prop.type) return null;
 

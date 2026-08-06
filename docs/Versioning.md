@@ -19,10 +19,10 @@ All version numbers are centrally defined in the `Directory.Build.props` file in
 ```xml
 <Project>
   <PropertyGroup>
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0</AssemblyVersion>
-    <FileVersion>1.0.0</FileVersion>
-    <InformationalVersion>1.0.0</InformationalVersion>
+    <Version>3.0.0</Version>
+    <AssemblyVersion>3.0.0</AssemblyVersion>
+    <FileVersion>3.0.0</FileVersion>
+    <InformationalVersion>3.0.0</InformationalVersion>
     <!-- Other properties -->
   </PropertyGroup>
 </Project>
@@ -30,16 +30,16 @@ All version numbers are centrally defined in the `Directory.Build.props` file in
 
 ### Updating Versions
 
+The product version is defined for the .NET services via `Directory.Build.props`.
 When preparing a new release:
 
-1. Edit the `Directory.Build.props` file to increase the version numbers
-2. Commit the change with a message like "Update version to X.Y.Z"
-3. Create a new GitHub release with the same version
+1. Edit `Directory.Build.props` to set the new version number.
+2. Commit the change ("Update version to X.Y.Z") and merge to `master`.
+3. Cut the release by pushing a git tag — see [Release Channels](#release-channels).
 
 The version in `Directory.Build.props` flows through to:
 - Assembly version information
 - Docker image tags
-- NuGet packages (if any)
 - WebAdmin version display
 
 ## Automated Version Checking
@@ -74,17 +74,32 @@ CONDUIT_VERSION_CHECK_INTERVAL_HOURS=24
 
 Users can manually check for updates on the About page in the WebAdmin, which will show the current version and provide a button to check for updates.
 
+## Release Channels
+
+Releases are cut from `master` by pushing a version tag. The tag name selects the
+channel — a tag is a **pre-release** if (and only if) its name contains a hyphen
+(the SemVer rule):
+
+| Tag | Channel | Docker | npm |
+|---|---|---|---|
+| `v3.0.0` | stable | `:3.0.0` + `:latest` | `3.0.0` `@latest` |
+| `v3.0.0-beta.1` | beta | `:3.0.0-beta.1` + `:beta` | `3.0.0-beta.1` `@beta` |
+
+- `:latest` / `@latest` always point at the newest **stable** release; a beta never
+  moves them.
+- `:beta` / `@beta` point at the newest **pre-release**.
+- The exact `:X.Y.Z` image tag and exact npm version are immutable — pin to them for
+  reproducibility.
+
+Merges to `master` do **not** publish anything: CI builds the images only to validate
+them. All publishing happens from `v*` tags.
+
 ## Docker Image Versioning
 
-When building Docker images through GitHub Actions:
-
-1. Images are automatically tagged with:
-   - The semantic version number (when building from a release tag)
-   - The branch name (e.g., `master`, `dev`)
-   - The commit SHA
-   - `latest` tag for the master branch
-
-2. Older versions are retained in the container registry, allowing users to pin to specific versions.
+Images are published only from release tags (see [Release Channels](#release-channels)):
+the exact semantic version (e.g. `:3.0.0`) plus the channel tag (`:latest` or `:beta`).
+Older versions are retained in the container registry, so users can pin to a specific
+version.
 
 ## Version Display
 

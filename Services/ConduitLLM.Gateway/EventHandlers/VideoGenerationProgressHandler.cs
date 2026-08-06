@@ -1,8 +1,8 @@
+using ConduitLLM.Configuration.Constants;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
-using ConduitLLM.Gateway.Hubs;
-
-using MassTransit;
+using ConduitLLM.Gateway.Interfaces;
 
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Caching.Memory;
@@ -12,98 +12,84 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// <summary>
     /// Handles VideoGenerationProgress events to track generation progress and enable real-time updates.
     /// </summary>
-    public class VideoGenerationProgressHandler : IConsumer<VideoGenerationProgress>
+    public class VideoGenerationProgressHandler : IEventHandler<VideoGenerationProgress>
     {
         private readonly IAsyncTaskService _asyncTaskService;
         private readonly IMemoryCache _progressCache;
-        private readonly IHubContext<VideoGenerationHub> _hubContext;
+        private readonly IVideoGenerationNotificationService _notificationService;
         private readonly ILogger<VideoGenerationProgressHandler> _logger;
-        private const string ProgressCacheKeyPrefix = "video_generation_progress_";
 
         public VideoGenerationProgressHandler(
             IAsyncTaskService asyncTaskService,
             IMemoryCache progressCache,
-            IHubContext<VideoGenerationHub> hubContext,
+            IVideoGenerationNotificationService notificationService,
             ILogger<VideoGenerationProgressHandler> logger)
         {
             _asyncTaskService = asyncTaskService;
             _progressCache = progressCache;
-            _hubContext = hubContext;
+            _notificationService = notificationService;
             _logger = logger;
         }
 
-        public async Task Consume(ConsumeContext<VideoGenerationProgress> context)
+        public async Task HandleAsync(VideoGenerationProgress message, IEventContext context)
         {
-            var message = context.Message;
-            
-            _logger.LogDebug("Video generation progress for request {RequestId}: {Progress}% - {Status}", 
+            _logger.LogDebug("Video generation progress for request {RequestId}: {Progress}% - {Status}",
                 message.RequestId, message.ProgressPercentage, message.Status);
 
-            try
+            // Update progress cache for real-time queries
+            var cacheKey = CacheKeys.MediaProgress.VideoProgress(message.RequestId);
+            var progressData = new
             {
-                // Update progress cache for real-time queries
-                var cacheKey = $"{ProgressCacheKeyPrefix}{message.RequestId}";
-                var progressData = new
+                RequestId = message.RequestId,
+                Status = message.Status,
+                ProgressPercentage = message.ProgressPercentage,
+                Message = message.Message,
+                FramesCompleted = message.FramesCompleted,
+                TotalFrames = message.TotalFrames,
+                LastUpdated = DateTime.UtcNow
+            };
+
+            // Cache progress for 1 hour (long-running tasks)
+            _progressCache.Set(cacheKey, progressData, TimeSpan.FromHours(1));
+
+            // Update task status with progress info
+            var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.RequestId, context.CancellationToken);
+            if (taskStatus != null)
+            {
+                // Update progress percentage and message
+                taskStatus.Progress = message.ProgressPercentage;
+                taskStatus.ProgressMessage = message.Message ?? message.Status;
+
+                // Update metadata with detailed progress info
+                if (taskStatus.Result is IDictionary<string, object> resultDict)
                 {
-                    RequestId = message.RequestId,
-                    Status = message.Status,
-                    ProgressPercentage = message.ProgressPercentage,
-                    Message = message.Message,
-                    FramesCompleted = message.FramesCompleted,
-                    TotalFrames = message.TotalFrames,
-                    LastUpdated = DateTime.UtcNow
-                };
-                
-                // Cache progress for 1 hour (long-running tasks)
-                _progressCache.Set(cacheKey, progressData, TimeSpan.FromHours(1));
-                
-                // Update task status with progress info
-                var taskStatus = await _asyncTaskService.GetTaskStatusAsync(message.RequestId, context.CancellationToken);
-                if (taskStatus != null)
-                {
-                    // Update progress percentage and message
-                    taskStatus.Progress = message.ProgressPercentage;
-                    taskStatus.ProgressMessage = message.Message ?? message.Status;
-                    
-                    // Update metadata with detailed progress info
-                    if (taskStatus.Result is IDictionary<string, object> resultDict)
-                    {
-                        resultDict["progress"] = progressData;
-                    }
-                    else if (taskStatus.Result == null)
-                    {
-                        taskStatus.Result = new Dictionary<string, object> { ["progress"] = progressData };
-                    }
-                    
-                    await _asyncTaskService.UpdateTaskStatusAsync(
-                        message.RequestId, 
-                        TaskState.Processing, 
-                        progress: message.ProgressPercentage,
-                        result: taskStatus.Result,
-                        error: null,
-                        cancellationToken: context.CancellationToken);
+                    resultDict["progress"] = progressData;
                 }
-                
-                // Log significant progress milestones
-                LogProgressMilestone(message);
-                
-                // Send real-time updates to WebAdmin via SignalR
-                await _hubContext.Clients.Group($"video-{message.RequestId}").SendAsync("VideoGenerationProgress", new
+                else if (taskStatus.Result == null)
                 {
-                    taskId = message.RequestId,
-                    status = message.Status,
-                    progress = message.ProgressPercentage,
-                    message = message.Message,
-                    framesCompleted = message.FramesCompleted,
-                    totalFrames = message.TotalFrames,
-                    timestamp = DateTime.UtcNow
-                });
+                    taskStatus.Result = new Dictionary<string, object> { ["progress"] = progressData };
+                }
+
+                await _asyncTaskService.UpdateTaskStatusAsync(
+                    message.RequestId,
+                    TaskState.Processing,
+                    progress: message.ProgressPercentage,
+                    result: taskStatus.Result,
+                    error: null,
+                    cancellationToken: context.CancellationToken);
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error handling video generation progress for request {RequestId}", message.RequestId);
-                throw; // Let MassTransit handle retry
-            }
+
+            // Log significant progress milestones
+            LogProgressMilestone(message);
+
+            // Send real-time updates to WebAdmin via notification service
+            await _notificationService.NotifyVideoGenerationProgressAsync(
+                message.RequestId,
+                message.ProgressPercentage,
+                message.Status,
+                message.Message,
+                message.FramesCompleted,
+                message.TotalFrames);
         }
 
         private void LogProgressMilestone(VideoGenerationProgress progress)
@@ -133,7 +119,7 @@ namespace ConduitLLM.Gateway.EventHandlers
             {
                 _logger.LogInformation("Video upload phase for request {RequestId}", progress.RequestId);
             }
-            
+
             // Log frame progress if available
             if (progress.FramesCompleted.HasValue && progress.TotalFrames.HasValue)
             {

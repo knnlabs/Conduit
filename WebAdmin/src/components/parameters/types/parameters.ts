@@ -140,6 +140,8 @@ export type DynamicParameter =
   | ResolutionParameter
   | MediaUploadParameter;
 
+export type DynamicParametersSchema = Record<string, DynamicParameter>;
+
 export type ParameterValues = Record<string, unknown>;
 
 export type ParameterContext = 'chat' | 'image' | 'video' | 'audio';

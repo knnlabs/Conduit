@@ -94,13 +94,6 @@ namespace ConduitLLM.Core.Models
         FunctionDiscovery,
 
         /// <summary>
-        /// LLM completion responses cached for cost optimization.
-        /// Configurable TTL based on use case (typically 15-60 minutes).
-        /// Automatically bypassed for streaming requests.
-        /// </summary>
-        LLMCompletion,
-
-        /// <summary>
         /// Audio stream data for real-time processing.
         /// Temporary storage with streaming requirements.
         /// </summary>
@@ -111,6 +104,12 @@ namespace ConduitLLM.Core.Models
         /// Time-series data with retention policies.
         /// </summary>
         Monitoring,
+
+        /// <summary>
+        /// Parsed pricing rules configurations for model cost billing.
+        /// Reduces JSON parsing overhead by caching deserialized PricingRulesConfig objects.
+        /// </summary>
+        PricingRules,
 
         /// <summary>
         /// Default region for unspecified cache operations.

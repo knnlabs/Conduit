@@ -14,7 +14,7 @@ public interface IAgenticOrchestrationService
     /// </summary>
     /// <param name="toolCalls">List of tool calls from LLM response</param>
     /// <param name="virtualKeyId">Virtual key making the request</param>
-    /// <param name="functionNameToIdMap">Mapping from function names to configuration IDs</param>
+    /// <param name="functionRouteMap">Mapping from function names to their <see cref="FunctionRoute"/></param>
     /// <param name="requestId">Request correlation ID for audit trail</param>
     /// <param name="chatCompletionId">Parent chat completion ID for audit linking</param>
     /// <param name="iterationNumber">Current iteration number in the agentic loop</param>
@@ -23,7 +23,7 @@ public interface IAgenticOrchestrationService
     Task<AgenticExecutionResult> ExecuteToolCallsAsync(
         List<ToolCall> toolCalls,
         int virtualKeyId,
-        Dictionary<string, int> functionNameToIdMap,
+        Dictionary<string, FunctionRoute> functionRouteMap,
         string requestId,
         Guid chatCompletionId,
         int iterationNumber,

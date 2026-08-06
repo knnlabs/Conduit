@@ -29,7 +29,15 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         /// <param name="keyId">ID of the key to disable</param>
         /// <param name="reason">Reason for disabling</param>
-        Task DisableKeyAsync(int keyId, string reason);
+        /// <param name="errorType">Classified provider error type, or Unknown for a manual disable</param>
+        /// <param name="isAutomatic">Whether policy automatically initiated the disable</param>
+        /// <param name="errorMessage">Raw provider error text for operator notification</param>
+        Task DisableKeyAsync(
+            int keyId,
+            string reason,
+            ProviderErrorType errorType = ProviderErrorType.Unknown,
+            bool isAutomatic = false,
+            string? errorMessage = null);
         
         /// <summary>
         /// Get recent errors for monitoring
@@ -55,7 +63,13 @@ namespace ConduitLLM.Core.Interfaces
         /// Clear all errors for a key (used when re-enabling)
         /// </summary>
         /// <param name="keyId">ID of the key to clear errors for</param>
-        Task ClearErrorsForKeyAsync(int keyId);
+        /// <param name="providerId">Optional provider ID to also clean up the provider's disabled keys tracking</param>
+        Task ClearErrorsForKeyAsync(int keyId, int? providerId = null);
+
+        /// <summary>
+        /// Clear the marker recording that all keys automatically disabled a provider.
+        /// </summary>
+        Task ClearProviderDisabledAsync(int providerId);
         
         /// <summary>
         /// Get detailed error information for a specific key
@@ -103,6 +117,7 @@ namespace ConduitLLM.Core.Interfaces
         public DateTime LastSeen { get; set; }
         public string LastErrorMessage { get; set; } = string.Empty;
         public int? LastStatusCode { get; set; }
+        public DateTime? DisabledAt { get; set; }
     }
     
     /// <summary>
@@ -127,6 +142,8 @@ namespace ConduitLLM.Core.Interfaces
         public int Warnings { get; set; }
         public List<int> DisabledKeyIds { get; set; } = new();
         public DateTime? LastError { get; set; }
+        public DateTime? ProviderDisabledAt { get; set; }
+        public string? ProviderDisableReason { get; set; }
     }
     
     /// <summary>

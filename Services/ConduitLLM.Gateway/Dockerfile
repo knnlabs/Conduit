@@ -3,11 +3,9 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # ===== CACHED LAYERS (Keep these fast) =====
-# Copy project files for dependency resolution
-COPY *.sln .
-COPY Directory.Build.props ./
-COPY */*.csproj ./
-RUN find . -name "*.csproj" -exec dirname {} \; | xargs -I {} mkdir -p {}
+# Copy solution-wide restore inputs before project files so package changes
+# invalidate the restore layer consistently.
+COPY Conduit.slnx Directory.Build.props Directory.Packages.props NuGet.Config ./
 
 # Copy project files to correct locations
 COPY Services/ConduitLLM.Gateway/*.csproj ./Services/ConduitLLM.Gateway/
@@ -27,6 +25,9 @@ RUN dotnet restore "Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj"
 # ===== CACHE INVALIDATION POINT =====
 # This argument forces rebuild from here down when .NET code changes
 ARG CACHEBUST=1
+ARG VERSION=3.0.0
+ARG COMMIT_SHA=dev
+ARG BUILD_TIMESTAMP=unknown
 
 # Copy all source code (this and everything after will rebuild)
 COPY . .
@@ -35,6 +36,10 @@ COPY . .
 RUN dotnet publish "Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj" \
     -c Release \
     -o /app/publish \
+    -p:Version="$VERSION" \
+    -p:InformationalVersion="$VERSION" \
+    -p:ConduitCommitSha="$COMMIT_SHA" \
+    -p:ConduitBuildTimestamp="$BUILD_TIMESTAMP" \
     --no-restore
 
 # Runtime stage - Debian-based for reliability

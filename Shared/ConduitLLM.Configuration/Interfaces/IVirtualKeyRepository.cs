@@ -15,33 +15,17 @@ namespace ConduitLLM.Configuration.Interfaces
     /// Key features of the virtual key repository:
     /// </para>
     /// <list type="bullet">
-    ///   <item><description>CRUD operations for virtual key entities</description></item>
+    ///   <item><description>CRUD operations for virtual key entities (inherited from IRepositoryBase)</description></item>
     ///   <item><description>Lookup by ID or key hash for authentication</description></item>
     ///   <item><description>Support for tracking creation and update timestamps</description></item>
     /// </list>
     /// <para>
-    /// This interface follows the repository pattern, abstracting the data access layer
-    /// and providing a clean, domain-focused API for virtual key management.
+    /// This interface extends <see cref="IRepositoryBase{TEntity, TKey}"/> for standard CRUD operations
+    /// and adds domain-specific methods for virtual key management.
     /// </para>
     /// </remarks>
-    public interface IVirtualKeyRepository
+    public interface IVirtualKeyRepository : IRepositoryBase<VirtualKey, int>
     {
-        /// <summary>
-        /// Retrieves a virtual key entity by its unique identifier.
-        /// </summary>
-        /// <param name="id">The unique identifier of the virtual key.</param>
-        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-        /// <returns>
-        /// A task that represents the asynchronous operation. The task result contains the
-        /// virtual key entity if found, or null if no virtual key with the specified ID exists.
-        /// </returns>
-        /// <remarks>
-        /// This method performs a non-tracking query, meaning the entity returned is not
-        /// tracked by the Entity Framework change tracker. This is suitable for read-only
-        /// scenarios and improves performance.
-        /// </remarks>
-        Task<VirtualKey?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Retrieves a virtual key entity by its hashed key value.
         /// </summary>
@@ -67,132 +51,58 @@ namespace ConduitLLM.Configuration.Interfaces
         Task<VirtualKey?> GetByKeyHashAsync(string keyHash, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Retrieves all virtual key entities in the system.
-        /// </summary>
-        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
-        /// <returns>
-        /// A task that represents the asynchronous operation. The task result contains
-        /// a list of all virtual key entities, ordered by key name.
-        /// </returns>
-        /// <remarks>
-        /// <para>
-        /// This method returns all virtual keys sorted alphabetically by their key names.
-        /// It is primarily used by administrative interfaces to display and manage all
-        /// virtual keys in the system.
-        /// </para>
-        /// <para>
-        /// The method performs a non-tracking query, meaning the entities returned are not
-        /// tracked by the Entity Framework change tracker. This is suitable for read-only
-        /// scenarios and improves performance, especially when dealing with potentially
-        /// large numbers of entities.
-        /// </para>
-        /// </remarks>
-        Task<List<VirtualKey>> GetAllAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Retrieves all virtual key entities belonging to a specific group.
+        /// Retrieves virtual key entities belonging to a specific group with pagination.
         /// </summary>
         /// <param name="virtualKeyGroupId">The ID of the virtual key group.</param>
+        /// <param name="pageNumber">The page number (1-based).</param>
+        /// <param name="pageSize">The number of items per page.</param>
         /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
         /// <returns>
         /// A task that represents the asynchronous operation. The task result contains
-        /// a list of virtual key entities belonging to the specified group.
+        /// a tuple with the list of virtual keys and the total count.
         /// </returns>
-        /// <remarks>
-        /// This method is used for filtering virtual keys by their group membership,
-        /// which is useful for organizational and reporting purposes.
-        /// </remarks>
-        Task<List<VirtualKey>> GetByVirtualKeyGroupIdAsync(int virtualKeyGroupId, CancellationToken cancellationToken = default);
+        Task<(List<VirtualKey> Items, int TotalCount)> GetByVirtualKeyGroupIdPaginatedAsync(
+            int virtualKeyGroupId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Creates a new virtual key entity in the database.
+        /// Retrieves key names for a set of virtual key IDs.
         /// </summary>
-        /// <param name="virtualKey">The virtual key entity to create.</param>
+        /// <param name="ids">The virtual key IDs to look up.</param>
         /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
         /// <returns>
         /// A task that represents the asynchronous operation. The task result contains
-        /// the assigned ID of the newly created virtual key entity.
+        /// a dictionary mapping virtual key IDs to their names.
         /// </returns>
         /// <remarks>
-        /// <para>
-        /// When creating a new virtual key, the implementation should ensure that:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>The key name is unique within the system</description></item>
-        ///   <item><description>The key hash represents a securely hashed value of the actual key</description></item>
-        ///   <item><description>Creation and update timestamps are properly set</description></item>
-        /// </list>
-        /// <para>
-        /// The database will assign a unique identifier to the new entity, which is returned by this method.
-        /// This ID can be used for subsequent operations on the virtual key.
-        /// </para>
+        /// This method is optimized for bulk lookups when only the name is needed,
+        /// avoiding the need to load full entities.
         /// </remarks>
-        /// <exception cref="ArgumentNullException">Thrown when the virtualKey parameter is null.</exception>
-        /// <exception cref="DbUpdateException">May be thrown when a database constraint is violated.</exception>
-        Task<int> CreateAsync(VirtualKey virtualKey, CancellationToken cancellationToken = default);
+        Task<Dictionary<int, string>> GetKeyNamesByIdsAsync(
+            IEnumerable<int> ids,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Updates an existing virtual key entity in the database.
+        /// Counts active (enabled and non-expired) virtual keys.
         /// </summary>
-        /// <param name="virtualKey">The virtual key entity with updated values.</param>
         /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
         /// <returns>
-        /// A task that represents the asynchronous operation. The task result is a boolean value
-        /// indicating whether the update was successful (true) or if the entity wasn't found or
-        /// wasn't modified (false).
+        /// A task that represents the asynchronous operation. The task result contains
+        /// the count of active virtual keys.
         /// </returns>
-        /// <remarks>
-        /// <para>
-        /// This method updates all properties of the virtual key entity except for any identity
-        /// or concurrency tokens. The implementation should automatically update the UpdatedAt
-        /// timestamp to reflect when the change occurred.
-        /// </para>
-        /// <para>
-        /// The method should handle concurrency conflicts gracefully, typically by applying a
-        /// last-writer-wins strategy or by providing detailed concurrency exception information.
-        /// </para>
-        /// <para>
-        /// Common properties that might be updated include:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>Key name - the display name for the virtual key</description></item>
-        ///   <item><description>Expiration date - when the key becomes invalid</description></item>
-        ///   <item><description>Token limits - maximum token usage allowed</description></item>
-        ///   <item><description>Rate limits - requests per minute/hour/day</description></item>
-        ///   <item><description>Status - whether the key is enabled or disabled</description></item>
-        /// </list>
-        /// </remarks>
-        /// <exception cref="ArgumentNullException">Thrown when the virtualKey parameter is null.</exception>
-        /// <exception cref="DbUpdateConcurrencyException">May be thrown when a concurrency conflict occurs.</exception>
-        Task<bool> UpdateAsync(VirtualKey virtualKey, CancellationToken cancellationToken = default);
+        Task<int> CountActiveAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Deletes a virtual key entity from the database.
+        /// Counts virtual keys whose expiration timestamp has passed, regardless of enabled state.
         /// </summary>
-        /// <param name="id">The unique identifier of the virtual key to delete.</param>
         /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
         /// <returns>
-        /// A task that represents the asynchronous operation. The task result is a boolean value
-        /// indicating whether the deletion was successful (true) or if the entity wasn't found (false).
+        /// A task that represents the asynchronous operation. The task result contains
+        /// the count of expired virtual keys.
         /// </returns>
-        /// <remarks>
-        /// <para>
-        /// This method completely removes the virtual key entity from the database. This is a
-        /// permanent operation that cannot be undone through the application.
-        /// </para>
-        /// <para>
-        /// The implementation should ensure that any related entities, such as usage history
-        /// or request logs that reference this virtual key, are handled appropriately according
-        /// to the database's referential integrity rules. This might include:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>Cascading deletes to remove related records</description></item>
-        ///   <item><description>Setting null values in foreign key fields of related entities</description></item>
-        ///   <item><description>Preventing deletion if related records exist and require the virtual key</description></item>
-        /// </list>
-        /// </remarks>
-        /// <exception cref="DbUpdateException">May be thrown when a database constraint prevents deletion.</exception>
-        Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
+        Task<int> CountExpiredAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Deletes a virtual key entity from the database by key hash.
@@ -208,6 +118,27 @@ namespace ConduitLLM.Configuration.Interfaces
         /// but not the database ID.
         /// </remarks>
         Task<bool> DeleteAsync(string keyHash, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Retrieves a limited number of enabled virtual key entities, ordered by key name.
+        /// </summary>
+        /// <param name="count">The maximum number of virtual keys to retrieve.</param>
+        /// <param name="cancellationToken">A token to cancel the asynchronous operation.</param>
+        /// <returns>
+        /// A task that represents the asynchronous operation. The task result contains
+        /// a list of up to <paramref name="count"/> enabled virtual key entities.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// This method is optimized for scenarios where only a small subset of enabled keys is needed,
+        /// such as dashboard displays or metrics collection. Unlike <see cref="GetAllAsync"/>, it applies
+        /// filtering and limiting at the database level to avoid loading unnecessary data.
+        /// </para>
+        /// <para>
+        /// The method performs a non-tracking query for optimal read performance.
+        /// </para>
+        /// </remarks>
+        Task<List<VirtualKey>> GetTopEnabledAsync(int count, CancellationToken cancellationToken = default);
 
     }
 }

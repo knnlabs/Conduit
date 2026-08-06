@@ -11,10 +11,10 @@ import {
   Text,
 } from '@mantine/core';
 import { IconAlertCircle, IconCheck, IconPlus } from '@tabler/icons-react';
-import type { PricingRulesConfig } from '@knn_labs/conduit-admin-client';
+import type { PricingRulesConfig } from '@/lib/admin-api';
 import { usePricingRules } from '../../hooks/usePricingRules';
 import { RuleConfigHeader } from './RuleConfigHeader';
-import { RuleRow } from './RuleRow';
+import { RuleRow, type ParameterOption } from './RuleRow';
 import { RulePreview } from './RulePreview';
 import { ConstraintsEditor } from './ConstraintsEditor';
 
@@ -26,12 +26,7 @@ interface PricingRulesEditorProps {
   /** Whether the editor is in read-only mode */
   readOnly?: boolean;
   /** Available parameter options from model series */
-  parameterOptions?: Array<{
-    key: string;
-    label: string;
-    type: 'string' | 'number' | 'boolean' | 'enum';
-    options?: string[];
-  }>;
+  parameterOptions?: ParameterOption[];
 }
 
 /**
@@ -48,8 +43,9 @@ export function PricingRulesEditor({
   if (initialConfig) {
     try {
       parsedInitialConfig = JSON.parse(initialConfig) as PricingRulesConfig;
-    } catch {
-      // Invalid JSON, will use default config
+    } catch (error) {
+      // Fall back to the default config, but surface that stored config is corrupt
+      console.warn('Failed to parse stored pricing rules config; using defaults:', error);
     }
   }
 

@@ -12,12 +12,12 @@ import {
 } from '@mantine/core';
 import { DatePickerInput } from '@mantine/dates';
 import { IconCalendar, IconRefresh, IconX } from '@tabler/icons-react';
-import type { RequestLogFilters } from '@/hooks/useRequestLogs';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { RequestLogFormFilters } from '@/hooks/useRequestLogs';
+import type { VirtualKeyDto } from '@/lib/admin-api';
 
 interface RequestLogsFiltersProps {
-  filters: RequestLogFilters;
-  onFiltersChange: (filters: RequestLogFilters) => void;
+  filters: RequestLogFormFilters;
+  onFiltersChange: (filters: RequestLogFormFilters) => void;
   models: string[];
   virtualKeys: VirtualKeyDto[];
   isLoading?: boolean;

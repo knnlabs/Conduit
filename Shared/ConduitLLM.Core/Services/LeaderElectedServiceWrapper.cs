@@ -134,22 +134,20 @@ namespace ConduitLLM.Core.Services
             if (_wrapperDisposed) return;
             _wrapperDisposed = true;
 
-            // Best-effort synchronous cleanup
+            // Best-effort synchronous cleanup: signal cancellation but do not block on the
+            // inner service's StopAsync. Graceful shutdown happens via DisposeAsync/StopAsync.
             _innerServiceLock.Wait();
             try
             {
                 if (_innerServiceCts != null)
                 {
-                    _innerServiceCts.Cancel();
-
                     try
                     {
-                        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-                        _innerService.StopAsync(cts.Token).GetAwaiter().GetResult();
+                        _innerServiceCts.Cancel();
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error stopping inner service during disposal");
+                        _logger.LogError(ex, "Error cancelling inner service during disposal");
                     }
                     finally
                     {

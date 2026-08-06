@@ -69,58 +69,48 @@ namespace ConduitLLM.Configuration.Services
         {
             return new Lazy<Task<ConnectionMultiplexer>>(async () =>
             {
-                try
+                _logger.LogInformation("Attempting to connect to Redis: {ConnectionString}",
+                    connectionString.Contains("password=") ? connectionString.Replace("password=", "password=******") : connectionString);
+
+                var configOptions = ConfigurationOptions.Parse(connectionString);
+                configOptions.AbortOnConnectFail = false;
+                configOptions.ConnectTimeout = 5000; // 5 second timeout
+                configOptions.SyncTimeout = 5000; // 5 second sync timeout
+
+                // Enable admin mode for Redis INFO command used by metrics collection
+                configOptions.AllowAdmin = true;
+
+                // Add any additional configuration based on _options
+                if (!string.IsNullOrEmpty(_options.RedisInstanceName))
                 {
-                    _logger.LogInformation("Attempting to connect to Redis: {ConnectionString}", 
-                        connectionString.Contains("password=") ? connectionString.Replace("password=", "password=******") : connectionString);
-                    
-                    var configOptions = ConfigurationOptions.Parse(connectionString);
-                    configOptions.AbortOnConnectFail = false;
-                    configOptions.ConnectTimeout = 5000; // 5 second timeout
-                    configOptions.SyncTimeout = 5000; // 5 second sync timeout
-                    
-                    // Enable admin mode for Redis INFO command used by metrics collection
-                    configOptions.AllowAdmin = true;
-
-                    // Add any additional configuration based on _options
-                    if (!string.IsNullOrEmpty(_options.RedisInstanceName))
-                    {
-                        // StackExchange.Redis doesn't have a direct instance name setting like
-                        // Microsoft.Extensions.Caching.Redis, but we could use it in key prefixing
-                    }
-
-                    var connection = await ConnectionMultiplexer.ConnectAsync(configOptions);
-
-                    // Subscribe to connection events for logging and diagnostics
-                    connection.ConnectionFailed += (sender, args) =>
-                    {
-                        _logger.LogError("Redis connection failed. Endpoint: {Endpoint}, Exception: {Exception}",
-                            args.EndPoint, args.Exception?.Message ?? "Unknown error");
-                    };
-
-                    connection.ConnectionRestored += (sender, args) =>
-                    {
-                        _logger.LogInformation("Redis connection restored. Endpoint: {Endpoint}", args.EndPoint);
-                    };
-
-                    connection.ErrorMessage += (sender, args) =>
-                    {
-                        _logger.LogWarning("Redis error message: {Message}", args.Message);
-                    };
-
-                    // lgtm [cs/cleartext-storage-of-sensitive-information]
-                    _logger.LogInformation("Successfully connected to Redis at {ConnectionString}",
-                        connectionString.Replace("password=", "password=******"));
-
-                    return connection;
+                    // StackExchange.Redis doesn't have a direct instance name setting like
+                    // Microsoft.Extensions.Caching.Redis, but we could use it in key prefixing
                 }
-                catch (Exception ex)
+
+                var connection = await ConnectionMultiplexer.ConnectAsync(configOptions);
+
+                // Subscribe to connection events for logging and diagnostics
+                connection.ConnectionFailed += (sender, args) =>
                 {
-                    // lgtm [cs/cleartext-storage-of-sensitive-information]
-                    _logger.LogError(ex, "Failed to connect to Redis at {ConnectionString}",
-                        connectionString.Replace("password=", "password=******"));
-                    throw;
-                }
+                    _logger.LogError("Redis connection failed. Endpoint: {Endpoint}, Exception: {Exception}",
+                        args.EndPoint, args.Exception?.Message ?? "Unknown error");
+                };
+
+                connection.ConnectionRestored += (sender, args) =>
+                {
+                    _logger.LogInformation("Redis connection restored. Endpoint: {Endpoint}", args.EndPoint);
+                };
+
+                connection.ErrorMessage += (sender, args) =>
+                {
+                    _logger.LogWarning("Redis error message: {Message}", args.Message);
+                };
+
+                // lgtm [cs/cleartext-storage-of-sensitive-information]
+                _logger.LogInformation("Successfully connected to Redis at {ConnectionString}",
+                    connectionString.Replace("password=", "password=******"));
+
+                return connection;
             });
         }
 

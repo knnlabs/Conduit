@@ -28,8 +28,12 @@ public interface IFunctionDiscoveryService
     /// </summary>
     /// <param name="functionConfigurationIds">List of function configuration IDs</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Dictionary mapping function names to configuration IDs</returns>
-    Task<Dictionary<string, int>> GetFunctionNameToIdMappingAsync(
+    /// <returns>
+    /// Dictionary mapping each LLM-facing function name to a <see cref="FunctionRoute"/> (owning
+    /// configuration id and, for dynamic multi-tool providers such as MCP, the provider-native tool
+    /// name to invoke).
+    /// </returns>
+    Task<Dictionary<string, FunctionRoute>> GetFunctionNameToIdMappingAsync(
         List<int> functionConfigurationIds,
         CancellationToken cancellationToken = default);
 }

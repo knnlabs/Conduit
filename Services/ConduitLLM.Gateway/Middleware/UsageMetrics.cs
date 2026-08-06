@@ -80,5 +80,6 @@ namespace ConduitLLM.Gateway.Middleware
                 {
                     LabelNames = new[] { "model", "reason" }
                 });
+
     }
 }

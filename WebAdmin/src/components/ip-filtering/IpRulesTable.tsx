@@ -9,7 +9,6 @@ import {
   Tooltip,
   Stack,
   Box,
-  Paper,
   Menu,
   rem,
   Checkbox,
@@ -23,14 +22,17 @@ import {
   IconToggleRight,
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { formatters } from '@/lib/utils/formatters';
 import type { IpRule } from '@/hooks/useSecurityApi';
 
 interface IpRulesTableProps {
   data?: IpRule[];
-  selectedRules: string[];
-  onSelectionChange: (ruleIds: string[]) => void;
+  selectedRules: ReadonlySet<string>;
+  allSelected: boolean;
+  someSelected: boolean;
+  onSelectAll: () => void;
+  onSelectRule: (ruleId: string) => void;
   onEdit?: (rule: IpRule) => void;
   onDelete?: (ruleId: string) => void;
   onToggle?: (ruleId: string, enabled: boolean) => void;
@@ -39,18 +41,17 @@ interface IpRulesTableProps {
 export function IpRulesTable({ 
   data = [], 
   selectedRules,
-  onSelectionChange,
+  allSelected,
+  someSelected,
+  onSelectAll,
+  onSelectRule,
   onEdit, 
   onDelete,
   onToggle 
 }: IpRulesTableProps) {
   const handleCopyIp = (ipAddress: string) => {
     void navigator.clipboard.writeText(ipAddress);
-    notifications.show({
-      title: 'Copied',
-      message: 'IP address copied to clipboard',
-      color: 'green',
-    });
+    notify.success('IP address copied to clipboard', 'Copied');
   };
 
   const handleDelete = (rule: IpRule) => {
@@ -75,25 +76,6 @@ export function IpRulesTable({
     }
   };
 
-  const allSelected = data.length > 0 && selectedRules.length === data.length;
-  const someSelected = selectedRules.length > 0 && selectedRules.length < data.length;
-
-  const handleSelectAll = () => {
-    if (allSelected) {
-      onSelectionChange([]);
-    } else {
-      onSelectionChange(data.filter(r => r.id).map(r => r.id).filter((id): id is string => id !== undefined));
-    }
-  };
-
-  const handleSelectRule = (ruleId: string) => {
-    if (selectedRules.includes(ruleId)) {
-      onSelectionChange(selectedRules.filter(id => id !== ruleId));
-    } else {
-      onSelectionChange([...selectedRules, ruleId]);
-    }
-  };
-
   const getActionBadgeColor = (action: 'allow' | 'block') => {
     return action === 'allow' ? 'green' : 'red';
   };
@@ -104,14 +86,14 @@ export function IpRulesTable({
 
   const rows = data.map((rule) => {
     const isEnabled = rule.isEnabled ?? true;
-    const isSelected = rule.id ? selectedRules.includes(rule.id) : false;
+    const isSelected = rule.id ? selectedRules.has(rule.id) : false;
 
     return (
       <Table.Tr key={rule.id} bg={isSelected ? 'var(--mantine-color-blue-light)' : undefined}>
         <Table.Td>
           <Checkbox
             checked={isSelected}
-            onChange={() => rule.id && handleSelectRule(rule.id)}
+            onChange={() => rule.id && onSelectRule(rule.id)}
             disabled={!rule.id}
           />
         </Table.Td>
@@ -224,41 +206,35 @@ export function IpRulesTable({
 
   if (data.length === 0) {
     return (
-      <Paper withBorder radius="md">
-        <Box p="xl" style={{ textAlign: 'center' }}>
-          <Text c="dimmed">No IP rules found. Add your first IP rule to get started.</Text>
-        </Box>
-      </Paper>
+      <Box p="xl" style={{ textAlign: 'center' }}>
+        <Text c="dimmed">No IP rules found. Add your first IP rule to get started.</Text>
+      </Box>
     );
   }
 
   return (
-    <Paper withBorder radius="md">
-      <Box pos="relative">
-        <Table.ScrollContainer minWidth={900}>
-          <Table verticalSpacing="sm" horizontalSpacing="md">
-            <Table.Thead>
-              <Table.Tr>
-                <Table.Th w={40}>
-                  <Checkbox
-                    checked={allSelected}
-                    indeterminate={someSelected}
-                    onChange={handleSelectAll}
-                  />
-                </Table.Th>
-                <Table.Th>IP Address / CIDR</Table.Th>
-                <Table.Th>Action</Table.Th>
-                <Table.Th>Description</Table.Th>
-                <Table.Th>Status</Table.Th>
-                <Table.Th>Created</Table.Th>
-                <Table.Th>Activity</Table.Th>
-                <Table.Th />
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>{rows}</Table.Tbody>
-          </Table>
-        </Table.ScrollContainer>
-      </Box>
-    </Paper>
+    <Table.ScrollContainer minWidth={900}>
+      <Table verticalSpacing="sm" horizontalSpacing="md">
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th w={40}>
+              <Checkbox
+                checked={allSelected}
+                indeterminate={someSelected}
+                onChange={onSelectAll}
+              />
+            </Table.Th>
+            <Table.Th>IP Address / CIDR</Table.Th>
+            <Table.Th>Action</Table.Th>
+            <Table.Th>Description</Table.Th>
+            <Table.Th>Status</Table.Th>
+            <Table.Th>Created</Table.Th>
+            <Table.Th>Activity</Table.Th>
+            <Table.Th />
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>{rows}</Table.Tbody>
+      </Table>
+    </Table.ScrollContainer>
   );
 }

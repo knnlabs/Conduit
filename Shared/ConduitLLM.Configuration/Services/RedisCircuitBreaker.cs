@@ -128,6 +128,7 @@ namespace ConduitLLM.Configuration.Services
                     }
                     else
                     {
+                        _logger.LogWarning("Redis operation timed out after {TimeoutMs}ms", _options.OperationTimeoutMilliseconds);
                         throw new TimeoutException($"Redis operation timed out after {_options.OperationTimeoutMilliseconds}ms");
                     }
                 });
@@ -248,7 +249,7 @@ namespace ConduitLLM.Configuration.Services
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogDebug("Redis health check failed: {Error}", ex.Message);
+                    _logger.LogWarning("Redis health check failed: {Error}", ex.Message);
                     return false;
                 }
             }
@@ -267,9 +268,11 @@ namespace ConduitLLM.Configuration.Services
             _lastTripReason = reason;
             
             _logger.LogError(
-                "Redis circuit breaker opened due to failures. Duration: {Duration}s. Reason: {Reason}",
+                "Redis circuit breaker opened due to failures. Duration: {Duration}s. Reason: {Reason}. Total failures: {TotalFailures}, Total successes: {TotalSuccesses}",
                 duration.TotalSeconds,
-                reason);
+                reason,
+                Interlocked.Read(ref _totalFailures),
+                Interlocked.Read(ref _totalSuccesses));
 
             // Reset half-open counters
             _halfOpenSuccesses = 0;
@@ -278,8 +281,15 @@ namespace ConduitLLM.Configuration.Services
 
         private void OnCircuitReset()
         {
+            var openDuration = _circuitOpenedAt.HasValue
+                ? (DateTime.UtcNow - _circuitOpenedAt.Value).TotalSeconds
+                : 0;
             _currentPollyState = PollyCircuitState.Closed;
-            _logger.LogInformation("Redis circuit breaker reset to closed state. Service recovered.");
+            _logger.LogInformation(
+                "Redis circuit breaker reset to closed state. Service recovered after {OpenDurationSeconds:F0}s. Half-open successes: {HalfOpenSuccesses}/{HalfOpenAttempts}",
+                openDuration,
+                _halfOpenSuccesses,
+                _halfOpenAttempts);
             _circuitOpenedAt = null;
             _halfOpenSuccesses = 0;
             _halfOpenAttempts = 0;
@@ -320,23 +330,37 @@ namespace ConduitLLM.Configuration.Services
 
         private void OnOperationFailure(Exception ex)
         {
-            Interlocked.Increment(ref _totalFailures);
+            var failures = Interlocked.Increment(ref _totalFailures);
             _lastFailureAt = DateTime.UtcNow;
 
             if (IsHalfOpen)
             {
                 _halfOpenAttempts++;
-                
+
                 _logger.LogWarning(
-                    "Half-open failure. Attempts: {Attempts}/{Max}",
+                    "Half-open failure. Attempts: {Attempts}/{Max}. Error: {ErrorType}: {ErrorMessage}",
                     _halfOpenAttempts,
-                    _options.HalfOpenMaxAttempts);
+                    _options.HalfOpenMaxAttempts,
+                    ex.GetType().Name,
+                    ex.Message);
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "Redis operation failed ({ErrorType}): {ErrorMessage}. Total failures: {TotalFailures}",
+                    ex.GetType().Name,
+                    ex.Message,
+                    failures);
             }
         }
 
         private void OnRequestRejected()
         {
-            Interlocked.Increment(ref _rejectedRequests);
+            var rejected = Interlocked.Increment(ref _rejectedRequests);
+            _logger.LogWarning(
+                "Redis request rejected — circuit breaker is open. Total rejected: {RejectedRequests}. Retry after: {RetryAfter}",
+                rejected,
+                CalculateTimeUntilHalfOpen()?.TotalSeconds.ToString("F0") ?? "unknown");
         }
 
         private TimeSpan? CalculateTimeUntilHalfOpen()

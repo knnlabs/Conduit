@@ -9,13 +9,15 @@ import {
   NumberInput,
   Button,
   Select,
+  JsonInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect } from 'react';
 import { useUpdateModelMapping, useModelMappings } from '@/hooks/useModelMappingsApi';
 import { useProviders } from '@/hooks/useProviderApi';
-import type { ProviderDto, ModelProviderMappingDto, UpdateModelProviderMappingDto } from '@knn_labs/conduit-admin-client';
+import { ProviderType, type ProviderDto, type ModelProviderMappingDto, type UpdateModelProviderMappingDto } from '@/lib/admin-api';
 import { getProviderTypeFromDto, getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
+import { createMappingFormValidation } from './mappingFormValidation';
 
 interface EditModelMappingModalProps {
   isOpen: boolean;
@@ -31,7 +33,7 @@ interface FormValues {
   modelProviderTypeAssociationId?: number;
   priority: number;
   isEnabled: boolean;
-  notes?: string;
+  providerOptions?: string;
 }
 
 export function EditModelMappingModal({
@@ -44,64 +46,39 @@ export function EditModelMappingModal({
   const { providers } = useProviders();
   const { mappings } = useModelMappings();
 
-  const [initialFormValues, setInitialFormValues] = useState<FormValues>(() => ({
-    modelAlias: '',
-    providerId: '',
-    providerModelId: '',
-    modelProviderTypeAssociationId: undefined,
-    priority: 100,
-    isEnabled: true,
-    notes: undefined,
-  }));
-
   const form = useForm<FormValues>({
-    initialValues: initialFormValues,
-    validate: {
-      modelAlias: (value) => {
-        if (!value?.trim()) return 'Model alias is required';
-        
-        // Check for duplicates, but exclude the current mapping being edited
-        const duplicate = mappings.find(m => 
-          m.modelAlias === value && m.id !== (mapping?.id ?? 0)
-        );
-        
-        if (duplicate) {
-          return 'Model alias already exists';
-        }
-        
-        return null;
-      },
+    initialValues: {
+      modelAlias: '',
+      providerId: '',
+      providerModelId: '',
+      modelProviderTypeAssociationId: undefined,
+      priority: 100,
+      isEnabled: true,
+      providerOptions: undefined,
     },
+    validate: createMappingFormValidation(mappings, mapping?.id),
   });
-
-  // Stable callback for form updates
-  const updateForm = useCallback((newFormValues: FormValues) => {
-    setInitialFormValues(newFormValues);
-    form.setValues(newFormValues);
-    form.resetDirty();
-  }, [form]);
 
   // Update form when mapping changes
   useEffect(() => {
-    if (mapping && providers) {
-      
-      // The mapping.providerId is now a numeric ID
-      const providerIdForForm = mapping.providerId?.toString() ?? '';
-      
-      
-      const newFormValues: FormValues = {
+    if (mapping) {
+      form.setValues({
         modelAlias: mapping.modelAlias,
-        providerId: providerIdForForm, // Use the numeric ID for the form
+        providerId: mapping.providerId?.toString() ?? '',
         providerModelId: mapping.providerModelId,
         modelProviderTypeAssociationId: mapping.modelProviderTypeAssociationId,
         priority: mapping.priority ?? 100,
         isEnabled: mapping.isEnabled,
-        notes: mapping.notes,
-      };
-      
-      updateForm(newFormValues);
+        providerOptions: mapping.providerOptions
+          ? JSON.stringify(mapping.providerOptions, null, 2)
+          : undefined,
+      });
+      form.resetDirty();
     }
-  }, [mapping, providers, updateForm]);
+    // The form object is intentionally excluded: Mantine returns a new wrapper while its
+    // setters are stable, and depending on the wrapper causes an initialization render loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapping]);
 
   const handleClose = () => {
     form.reset();
@@ -115,10 +92,13 @@ export function EditModelMappingModal({
       modelAlias: values.modelAlias,
       providerId: parseInt(values.providerId, 10), // Send numeric ID directly
       providerModelId: values.providerModelId,
-      modelProviderTypeAssociationId: values.modelProviderTypeAssociationId,
+      modelProviderTypeAssociationId: values.modelProviderTypeAssociationId ?? mapping.modelProviderTypeAssociationId,
       priority: values.priority,
+      weight: mapping.weight,
       isEnabled: values.isEnabled,
-      notes: values.notes,
+      providerOptions: values.providerOptions?.trim()
+        ? JSON.parse(values.providerOptions) as Record<string, unknown>
+        : {},
     };
 
     try {
@@ -148,6 +128,16 @@ export function EditModelMappingModal({
       };
     }
   }).filter(opt => opt.value !== '') || [];
+
+  const selectedProvider = providers?.find((p: ProviderDto) => p.id?.toString() === form.values.providerId);
+  let isOpenRouter = false;
+  if (selectedProvider) {
+    try {
+      isOpenRouter = getProviderTypeFromDto(selectedProvider) === ProviderType.OpenRouter;
+    } catch {
+      isOpenRouter = false;
+    }
+  }
 
   return (
     <Modal
@@ -197,12 +187,18 @@ export function EditModelMappingModal({
           />
 
 
-          <TextInput
-            label="Notes"
-            placeholder="Optional notes"
-            description="Additional notes about this mapping"
-            {...form.getInputProps('notes')}
-          />
+          {isOpenRouter && (
+            <JsonInput
+              label="Provider request options (JSON)"
+              placeholder='{"provider": {"order": ["anthropic"]}, "plugins": [...]}'
+              description="OpenRouter routing options merged into every request for this mapping (provider, plugins, transforms, models, route). Must be a JSON object; model/messages/stream are not allowed."
+              validationError="Invalid JSON"
+              formatOnBlur
+              autosize
+              minRows={3}
+              {...form.getInputProps('providerOptions')}
+            />
+          )}
 
           <Group justify="flex-end" mt="md">
             <Button variant="subtle" onClick={handleClose}>

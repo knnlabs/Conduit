@@ -1,9 +1,13 @@
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Constants;
+using ConduitLLM.Gateway.UsageTracking;
+using System.Text.Json;
 using ConduitLLM.Tests.Http.Middleware.Builders;
 using ConduitLLM.Tests.Http.Middleware.Assertions;
+using Microsoft.AspNetCore.Http;
 using Moq;
 using Xunit;
 
@@ -133,6 +137,164 @@ namespace ConduitLLM.Tests.Http.Middleware
             {
                 Assert.Equal("dall-e-2", dto.ModelName);
             });
+        }
+
+        [Fact]
+        public async Task AsyncVideoSubmission_Accepted_LogsRequestWithoutBilling()
+        {
+            // Arrange - async video completion is billed by MediaGenerationOrchestrator.
+            var context = new HttpContextBuilder()
+                .WithPath("/v1/conduit/videos/generations/async")
+                .WithVirtualKey(983)
+                .WithVideoRequest("test-video-model", duration: 10, size: "1280x720")
+                .Build();
+
+            Fixture.SetupCostForModel("test-video-model", 0.50m);
+
+            var submissionResponse = new
+            {
+                taskId = "task_video_983",
+                status = "pending",
+                checkStatusUrl = "/v1/conduit/videos/generations/tasks/task_video_983"
+            };
+
+            // Act
+            await Invoker
+                .WithNextDelegate(async responseContext =>
+                {
+                    var accounting = responseContext.GetOrCreateRequestAccountingContext();
+                    accounting.SetOperation(RequestOperation.Video, 983, "test-video-model");
+                    accounting.RecordProviderUsage(new Usage
+                    {
+                        VideoDurationSeconds = 10,
+                        VideoResolution = "1280x720"
+                    }, "test-video-model", UsageEvidenceSource.Estimated);
+                    accounting.RecordMetadata(JsonSerializer.Serialize(new
+                    {
+                        type = "video",
+                        taskId = "task_video_983",
+                        status = "pending"
+                    }));
+                    responseContext.Response.StatusCode = StatusCodes.Status202Accepted;
+                    await responseContext.Response.WriteAsJsonAsync(submissionResponse);
+                })
+                .InvokeAsync(context);
+
+            // Assert - preserve the zero-cost log for completion reconciliation, but do not debit.
+            Fixture.CostService.Verify(x => x.CalculateCostAsync(
+                It.IsAny<string>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()), Times.Never);
+            Fixture.CostService.Verify(x => x.CalculateCostByIdAsync(
+                It.IsAny<int>(), It.IsAny<Usage>(), It.IsAny<CancellationToken>()), Times.Never);
+            UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal("video", dto.RequestType);
+                Assert.Equal("test-video-model", dto.ModelName);
+                Assert.Equal(983, dto.VirtualKeyId);
+                Assert.Equal(0m, dto.Cost);
+                Assert.Equal(202, dto.StatusCode);
+                Assert.NotNull(dto.Metadata);
+                Assert.True(dto.Metadata.TryGetValue("taskId", out var taskId));
+                Assert.Equal("task_video_983", taskId.GetString());
+            });
+        }
+
+        [Fact]
+        public async Task ImageGeneration_PricingFailure_RetainsRequestAndEmitsReconciliationAudit()
+        {
+            var context = new HttpContextBuilder()
+                .ForImageGenerations()
+                .WithVirtualKey(994)
+                .AsOpenAI()
+                .WithImageRequest("broken-pricing-model", "standard", "1024x1024", 1)
+                .Build();
+
+            Fixture.CostService.Setup(x => x.CalculateCostAsync(
+                    "broken-pricing-model", It.IsAny<Usage>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("Invalid per-image pricing configuration"));
+
+            await Invoker
+                .WithResponse(ResponseBuilders.Image()
+                    .WithModel("broken-pricing-model")
+                    .WithImages(1)
+                    .Build())
+                .InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal(994, dto.VirtualKeyId);
+                Assert.Equal("broken-pricing-model", dto.ModelName);
+                Assert.Equal(0m, dto.Cost);
+            });
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == BillingAuditEventType.PricingCalculationFailed &&
+                billingEvent.VirtualKeyId == 994 &&
+                billingEvent.FailureReason!.Contains("Invalid per-image pricing configuration"));
+        }
+
+        [Theory]
+        [InlineData("/v1/images/generations", BillingAuditEventType.MissingUsageData)]
+        [InlineData("/v1/conduit/videos/generations", BillingAuditEventType.MissingUsageData)]
+        public async Task MediaResponse_MalformedJson_EmitsRevenueLossAudit(
+            string path,
+            BillingAuditEventType expectedEventType)
+        {
+            var context = new HttpContextBuilder()
+                .WithPath(path)
+                .WithVirtualKey(1026)
+                .AsOpenAI()
+                .Build();
+
+            await Invoker.WithResponseJson("{not-json").InvokeAsync(context);
+
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == expectedEventType &&
+                billingEvent.VirtualKeyId == 1026 &&
+                billingEvent.RequestPath == path);
+        }
+
+        [Fact]
+        public async Task FunctionResponse_PascalCaseCost_IsBilled()
+        {
+            var context = new HttpContextBuilder()
+                .WithPath("/v1/conduit/functions/execute")
+                .WithVirtualKey(1026)
+                .WithItem("FunctionConfigurationName", "case-test")
+                .Build();
+
+            await Invoker.WithResponse(new
+            {
+                ActualCost = 0.125m,
+                State = "Completed"
+            }).InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifySpendQueued(Fixture.BatchSpendService, 1026, 0.125m);
+            UsageTrackingAssertions.VerifyRequestLogged(Fixture.RequestLogService, dto =>
+            {
+                Assert.Equal("function", dto.RequestType);
+                Assert.Equal("case-test", dto.ModelName);
+                Assert.Equal(0.125m, dto.Cost);
+            });
+        }
+
+        [Fact]
+        public async Task FunctionResponse_InvalidCost_EmitsRevenueLossAuditWithoutBilling()
+        {
+            var context = new HttpContextBuilder()
+                .WithPath("/v1/conduit/functions/execute")
+                .WithVirtualKey(1026)
+                .WithItem("FunctionConfigurationName", "invalid-cost-test")
+                .Build();
+
+            await Invoker.WithResponseJson("{\"actualCost\":\"0.125\",\"state\":\"Completed\"}")
+                .InvokeAsync(context);
+
+            UsageTrackingAssertions.VerifyNoSpendUpdate(Fixture.BatchSpendService, Fixture.VirtualKeyService);
+            Assert.Contains(Fixture.CapturedBillingEvents, billingEvent =>
+                billingEvent.EventType == BillingAuditEventType.MissingUsageData &&
+                billingEvent.VirtualKeyId == 1026 &&
+                billingEvent.FailureReason!.Contains("direct-cost evidence"));
         }
     }
 }

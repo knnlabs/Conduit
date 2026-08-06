@@ -15,9 +15,12 @@ public interface IRefundService
     /// <param name="originalUsage">The original usage data that was charged</param>
     /// <param name="refundUsage">The usage data to be refunded</param>
     /// <param name="refundReason">The reason for the refund</param>
-    /// <param name="originalTransactionId">Optional original transaction ID for audit trail</param>
+    /// <param name="originalTransactionId">ID of the original debit transaction being refunded</param>
+    /// <param name="idempotencyKey">Caller-supplied refund operation identifier</param>
     /// <param name="initiatedBy">User who initiated the refund</param>
     /// <param name="initiatedByUserId">Clerk user ID if initiated by an admin user</param>
+    /// <param name="requestLogId">Optional ID of the original request log, used to prorate refunds of
+    /// provider-cost-billed requests from the amount actually charged.</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>A RefundResult containing the refund details and transaction ID</returns>
     /// <exception cref="InvalidOperationException">Thrown when the virtual key group is not found</exception>
@@ -28,8 +31,10 @@ public interface IRefundService
         Usage originalUsage,
         Usage refundUsage,
         string refundReason,
-        string? originalTransactionId,
+        string originalTransactionId,
+        string idempotencyKey,
         string initiatedBy,
         string? initiatedByUserId,
+        int? requestLogId = null,
         CancellationToken cancellationToken = default);
 }

@@ -18,7 +18,7 @@ import {
   ScrollArea,
   Tooltip,
 } from '@mantine/core';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { 
   IconAlertCircle, 
   IconCheck, 
@@ -28,7 +28,7 @@ import { useProviders } from '@/hooks/useProviderApi';
 import { useBulkDiscoverModels, useBulkCreateMappings } from '@/hooks/useModelMappingsApi';
 import { getProviderTypeFromDto, providerTypeToName } from '@/lib/utils/providerTypeUtils';
 import { CapabilityIcons } from '@/components/common/CapabilityIcons';
-import type { ProviderDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto } from '@/lib/admin-api';
 
 interface BulkMappingModalProps {
   isOpen: boolean;
@@ -40,8 +40,11 @@ interface DiscoveredModel {
   modelId: string;
   displayName: string;
   providerId: string;
+  providerModelId?: string;
   hasConflict: boolean;
   existingMapping: Record<string, unknown> | null;
+  conflictReason: string | null;
+  modelProviderTypeAssociationId: number | null;
   capabilities: {
     supportsVision: boolean;
     supportsImageGeneration: boolean;
@@ -87,16 +90,13 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     const provider = providers?.find((p: ProviderDto) => p.id?.toString() === providerId);
     if (!provider) return;
     
-    console.warn('[BulkMappingModal] Selected provider:', provider);
-    
     try {
       // Ensure providerType exists
       if (!provider.providerType) {
         throw new Error('Provider must have providerType');
       }
-      const providerType = getProviderTypeFromDto(provider as { providerType: number });
+      const providerType = getProviderTypeFromDto(provider);
       const providerName = providerTypeToName(providerType);
-      console.warn('[BulkMappingModal] Provider type:', providerType, 'Name:', providerName);
       const result = await discoverModels(providerId, providerName);
       setDiscoveredModels(result.models.map(model => ({
         ...model,
@@ -113,12 +113,10 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
       setSelectedModels(newSelected);
       
       if (result.conflictCount > 0) {
-        notifications.show({
-          title: 'Conflicts Detected',
-          message: `${result.conflictCount} models already have mappings`,
-          color: 'yellow',
-          icon: <IconAlertCircle />,
-        });
+        notify.warning(
+          `${result.conflictCount} models have conflicts or unresolved associations`,
+          'Conflicts Detected'
+        );
       }
     } catch {
       // Error handled by hook
@@ -154,11 +152,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
     const modelsToCreate = discoveredModels.filter(m => selectedModels.has(m.modelId));
     
     if (modelsToCreate.length === 0) {
-      notifications.show({
-        title: 'No Models Selected',
-        message: 'Please select at least one model to create mappings',
-        color: 'red',
-      });
+      notify.error(new Error('Please select at least one model to create mappings'));
       return;
     }
     
@@ -169,12 +163,18 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
         enableByDefault,
       });
       
-      notifications.show({
-        title: 'Bulk Mapping Complete',
-        message: `Successfully created ${result.created} mappings${result.failed > 0 ? `, ${result.failed} failed` : ''}`,
-        color: result.failed > 0 ? 'yellow' : 'green',
-        icon: result.failed > 0 ? <IconAlertCircle /> : <IconCheck />,
-      });
+      if (result.failed > 0) {
+        notify.warning(
+          `Created ${result.created}, found ${result.existing} existing, and failed ${result.failed} mappings`,
+          'Bulk Mapping Complete'
+        );
+      } else {
+        const existingSummary = result.existing > 0 ? `; ${result.existing} already existed` : '';
+        notify.success(
+          `Successfully created ${result.created} mappings${existingSummary}`,
+          'Bulk Mapping Complete'
+        );
+      }
       
       onSuccess();
     } catch {
@@ -238,7 +238,7 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
             
             {conflictModels.length > 0 && (
               <Alert icon={<IconAlertCircle />} color="yellow">
-                {conflictModels.length} models already have mappings and will be skipped
+                {conflictModels.length} models have conflicts or unresolved associations and will be skipped
               </Alert>
             )}
             
@@ -282,9 +282,12 @@ export function BulkMappingModal({ isOpen, onClose, onSuccess }: BulkMappingModa
                       </Table.Td>
                       <Table.Td>
                         {model.hasConflict ? (
-                          <Tooltip label="Model already has a mapping">
-                            <Badge color="yellow" leftSection={<IconAlertCircle size={12} />}>
-                              Exists
+                          <Tooltip label={model.conflictReason ?? 'Model cannot be mapped'}>
+                            <Badge
+                              color={model.existingMapping ? 'yellow' : 'red'}
+                              leftSection={<IconAlertCircle size={12} />}
+                            >
+                              {model.existingMapping ? 'Exists' : 'Unavailable'}
                             </Badge>
                           </Tooltip>
                         ) : (

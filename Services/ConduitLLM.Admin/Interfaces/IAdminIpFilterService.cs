@@ -27,6 +27,13 @@ public interface IAdminIpFilterService
     Task<IpFilterDto?> GetFilterByIdAsync(int id);
 
     /// <summary>
+    /// Gets the IP filters scoped to a specific virtual key.
+    /// </summary>
+    /// <param name="virtualKeyId">The virtual key ID</param>
+    /// <returns>The virtual key's IP filters</returns>
+    Task<IEnumerable<IpFilterDto>> GetFiltersByVirtualKeyIdAsync(int virtualKeyId);
+
+    /// <summary>
     /// Creates a new IP filter
     /// </summary>
     /// <param name="filter">The filter to create</param>
@@ -36,9 +43,10 @@ public interface IAdminIpFilterService
     /// <summary>
     /// Updates an existing IP filter
     /// </summary>
+    /// <param name="id">The route ID of the filter to update</param>
     /// <param name="filter">The filter to update</param>
     /// <returns>Success result with error message if failed</returns>
-    Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(UpdateIpFilterDto filter);
+    Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(int id, UpdateIpFilterDto filter);
 
     /// <summary>
     /// Deletes an IP filter

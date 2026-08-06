@@ -31,8 +31,9 @@ import {
   IconDots,
   IconTestPipe,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
+import { modals } from '@mantine/modals';
 import {
   FunctionConfigurationDto,
   CreateFunctionConfigurationDto,
@@ -57,6 +58,7 @@ export default function FunctionConfigurationsPage() {
   const [filterPurpose, setFilterPurpose] = useState<string>('all');
   const [testingConfig, setTestingConfig] = useState<FunctionConfigurationDto | null>(null);
   const [showTestModal, setShowTestModal] = useState(false);
+  const [invalidatingCache, setInvalidatingCache] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<CreateFunctionConfigurationDto>({
@@ -67,9 +69,12 @@ export default function FunctionConfigurationsPage() {
     defaultExecutionMode: FunctionExecutionMode.Synchronous,
     timeoutSeconds: 30,
     isEnabled: true,
-    metadata: '',
+    baseUrl: '',
+    providerSettings: '',
     parameterSchema: '',
   });
+
+  const isMcp = formData.providerType === FunctionProviderType.Mcp;
 
   const loadConfigurations = useCallback(async () => {
     try {
@@ -80,11 +85,7 @@ export default function FunctionConfigurationsPage() {
       setConfigurations(response);
     } catch (err) {
       console.warn('Error loading configurations:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to load configurations',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to load configurations');
     } finally {
       setLoading(false);
     }
@@ -99,11 +100,7 @@ export default function FunctionConfigurationsPage() {
       await executeWithAdmin(client =>
         client.functionConfigurations.create(formData)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Configuration created successfully',
-        color: 'green',
-      });
+      notify.success('Configuration created successfully');
       setShowModal(false);
       resetForm();
 
@@ -114,11 +111,7 @@ export default function FunctionConfigurationsPage() {
       await loadConfigurations();
     } catch (err) {
       console.warn('Error creating configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to create configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to create configuration');
     }
   };
 
@@ -127,35 +120,27 @@ export default function FunctionConfigurationsPage() {
 
     try {
       const updateData: UpdateFunctionConfigurationDto = {
-        id: editingConfig.id,
         configurationName: formData.configurationName,
         purpose: formData.purpose,
         description: formData.description,
         defaultExecutionMode: formData.defaultExecutionMode,
         timeoutSeconds: formData.timeoutSeconds,
         isEnabled: formData.isEnabled,
-        metadata: formData.metadata,
+        baseUrl: formData.baseUrl,
+        providerSettings: formData.providerSettings,
         parameterSchema: formData.parameterSchema,
       };
       await executeWithAdmin(client =>
         client.functionConfigurations.update(editingConfig.id, updateData)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Configuration updated successfully',
-        color: 'green',
-      });
+      notify.success('Configuration updated successfully');
       setShowModal(false);
       setEditingConfig(null);
       resetForm();
       await loadConfigurations();
     } catch (err) {
       console.warn('Error updating configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to update configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to update configuration');
     }
   };
 
@@ -164,19 +149,11 @@ export default function FunctionConfigurationsPage() {
       await executeWithAdmin(client =>
         client.functionConfigurations.deleteById(id)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Configuration deleted successfully',
-        color: 'green',
-      });
+      notify.success('Configuration deleted successfully');
       await loadConfigurations();
     } catch (err) {
       console.warn('Error deleting configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to delete configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to delete configuration');
     }
   };
 
@@ -184,23 +161,14 @@ export default function FunctionConfigurationsPage() {
     try {
       await executeWithAdmin(client =>
         client.functionConfigurations.update(config.id, {
-          id: config.id,
           isEnabled: !config.isEnabled,
         })
       );
-      notifications.show({
-        title: 'Success',
-        message: `Configuration ${config.isEnabled ? 'disabled' : 'enabled'}`,
-        color: 'green',
-      });
+      notify.success(`Configuration ${config.isEnabled ? 'disabled' : 'enabled'}`);
       await loadConfigurations();
     } catch (err) {
       console.warn('Error toggling configuration:', err);
-      notifications.show({
-        title: 'Error',
-        message: err instanceof Error ? err.message : 'Failed to toggle configuration',
-        color: 'red',
-      });
+      notify.error(err, 'Failed to toggle configuration');
     }
   };
 
@@ -218,9 +186,10 @@ export default function FunctionConfigurationsPage() {
       purpose: config.purpose,
       description: config.description ?? '',
       defaultExecutionMode: config.defaultExecutionMode,
-      timeoutSeconds: config.timeoutSeconds,
+      timeoutSeconds: config.timeoutSeconds ?? undefined,
       isEnabled: config.isEnabled,
-      metadata: config.metadata ?? '',
+      baseUrl: config.baseUrl ?? '',
+      providerSettings: config.providerSettings ?? '',
       parameterSchema: config.parameterSchema ?? '',
     });
     setShowModal(true);
@@ -240,7 +209,8 @@ export default function FunctionConfigurationsPage() {
       defaultExecutionMode: FunctionExecutionMode.Synchronous,
       timeoutSeconds: 30,
       isEnabled: true,
-      metadata: '',
+      baseUrl: '',
+      providerSettings: '',
       parameterSchema: '',
     });
   };
@@ -250,6 +220,33 @@ export default function FunctionConfigurationsPage() {
     if (filterPurpose !== 'all' && config.purpose.toString() !== filterPurpose) return false;
     return true;
   });
+
+  const confirmFunctionCacheInvalidation = () => {
+    modals.openConfirmModal({
+      title: 'Invalidate function discovery cache?',
+      children: (
+        <Text size="sm">
+          Cached function tool definitions will be cleared across Gateway instances and
+          rebuilt on demand.
+        </Text>
+      ),
+      labels: { confirm: 'Invalidate cache', cancel: 'Cancel' },
+      confirmProps: { color: 'orange' },
+      onConfirm: () => {
+        void (async () => {
+          setInvalidatingCache(true);
+          try {
+            await executeWithAdmin(client => client.system.invalidateFunctionDiscoveryCache());
+            notify.success('Function discovery cache invalidation requested');
+          } catch (error) {
+            notify.error(error, 'Failed to invalidate function discovery cache');
+          } finally {
+            setInvalidatingCache(false);
+          }
+        })();
+      },
+    });
+  };
 
   return (
     <Container size="xl">
@@ -262,6 +259,14 @@ export default function FunctionConfigurationsPage() {
             </Text>
           </div>
           <Group gap="xs">
+            <Button
+              variant="light"
+              color="orange"
+              onClick={confirmFunctionCacheInvalidation}
+              loading={invalidatingCache}
+            >
+              Invalidate Function Discovery Cache
+            </Button>
             <Button
               leftSection={<IconRefresh size={16} />}
               variant="subtle"
@@ -434,7 +439,7 @@ export default function FunctionConfigurationsPage() {
           <Select
             label="Provider Type"
             value={formData.providerType.toString()}
-            onChange={(value) => setFormData({ ...formData, providerType: Number(value) as FunctionProviderType })}
+            onChange={(value) => setFormData({ ...formData, providerType: value as FunctionProviderType })}
             data={getAvailableFunctionProviders().map(p => ({
               value: p.value.toString(),
               label: p.label
@@ -448,10 +453,21 @@ export default function FunctionConfigurationsPage() {
             </Alert>
           )}
 
+          {isMcp && (
+            <TextInput
+              label="MCP Server URL"
+              placeholder="https://mcp.example.com/sse"
+              value={formData.baseUrl ?? ''}
+              onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
+              description="Remote MCP server endpoint (Streamable HTTP / SSE). Its tools are discovered automatically."
+              required
+            />
+          )}
+
           <Select
             label="Purpose"
             value={formData.purpose.toString()}
-            onChange={(value) => setFormData({ ...formData, purpose: Number(value) as FunctionPurpose })}
+            onChange={(value) => setFormData({ ...formData, purpose: value as FunctionPurpose })}
             data={[
               { value: FunctionPurpose.Search.toString(), label: 'Search' },
               { value: FunctionPurpose.Answer.toString(), label: 'Answer' },
@@ -472,7 +488,7 @@ export default function FunctionConfigurationsPage() {
           <Select
             label="Execution Mode"
             value={formData.defaultExecutionMode?.toString() ?? FunctionExecutionMode.Synchronous.toString()}
-            onChange={(value) => setFormData({ ...formData, defaultExecutionMode: Number(value) as FunctionExecutionMode })}
+            onChange={(value) => setFormData({ ...formData, defaultExecutionMode: value as FunctionExecutionMode })}
             data={[
               { value: FunctionExecutionMode.Synchronous.toString(), label: 'Synchronous' },
               { value: FunctionExecutionMode.Asynchronous.toString(), label: 'Asynchronous' },
@@ -493,23 +509,30 @@ export default function FunctionConfigurationsPage() {
           />
 
           <Textarea
-            label="Metadata (JSON)"
-            placeholder="{}"
-            value={formData.metadata}
-            onChange={(e) => setFormData({ ...formData, metadata: e.target.value })}
+            label={isMcp ? 'MCP Settings (JSON)' : 'Metadata (JSON)'}
+            placeholder={isMcp
+              ? '{"allowedTools": null, "authScheme": "Bearer", "authHeader": "Authorization", "allowPrivateNetwork": false}'
+              : '{}'}
+            value={formData.providerSettings}
+            onChange={(e) => setFormData({ ...formData, providerSettings: e.target.value })}
             rows={4}
             styles={{ input: { fontFamily: 'monospace' } }}
+            description={isMcp
+              ? 'Optional. "allowedTools": null exposes every tool the server advertises, or list names to restrict. Configure the server token in Function Credentials (scoped to this configuration).'
+              : undefined}
           />
 
-          <Textarea
-            label="Parameter Schema (JSON Schema)"
-            placeholder='{"type": "object", "properties": {...}, "required": [...]}'
-            value={formData.parameterSchema ?? ''}
-            onChange={(e) => setFormData({ ...formData, parameterSchema: e.target.value })}
-            rows={8}
-            styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
-            description="JSON Schema defining the function parameters that the LLM can use"
-          />
+          {!isMcp && (
+            <Textarea
+              label="Parameter Schema (JSON Schema)"
+              placeholder='{"type": "object", "properties": {...}, "required": [...]}'
+              value={formData.parameterSchema ?? ''}
+              onChange={(e) => setFormData({ ...formData, parameterSchema: e.target.value })}
+              rows={8}
+              styles={{ input: { fontFamily: 'monospace', fontSize: 12 } }}
+              description="JSON Schema defining the function parameters that the LLM can use"
+            />
+          )}
 
           <Group justify="flex-end" mt="md">
             <Button

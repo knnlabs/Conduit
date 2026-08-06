@@ -3,7 +3,8 @@
 import { Modal, Image, Stack, Group, Text, Badge, Button, CopyButton, Divider, Anchor } from '@mantine/core';
 import { IconDownload, IconCopy, IconExternalLink } from '@tabler/icons-react';
 import { MediaRecord } from '../types';
-import { formatBytes, formatDate, getProviderColor } from '../utils/formatters';
+import { getProviderColor } from '../utils/formatters';
+import { formatters } from '@/lib/utils/formatters';
 
 interface MediaDetailModalProps {
   media: MediaRecord | null;
@@ -20,9 +21,13 @@ export default function MediaDetailModal({
 }: MediaDetailModalProps) {
   if (!media) return null;
 
+  const mediaUrl = media.publicUrl ?? media.storageUrl;
+  const isVideo = media.mediaType.toLowerCase() === 'video';
+  const isImage = media.mediaType.toLowerCase() === 'image';
+
   const handleDownload = () => {
-    if (media.publicUrl) {
-      window.open(media.publicUrl, '_blank');
+    if (mediaUrl) {
+      window.open(mediaUrl, '_blank');
     }
   };
 
@@ -34,9 +39,9 @@ export default function MediaDetailModal({
       size="lg"
     >
       <Stack>
-        {media.mediaType === 'image' && media.publicUrl && (
+        {isImage && mediaUrl && (
           <Image
-            src={media.publicUrl}
+            src={mediaUrl}
             alt={media.prompt ?? 'Generated image'}
             radius="md"
             mah={400}
@@ -44,9 +49,9 @@ export default function MediaDetailModal({
           />
         )}
 
-        {media.mediaType === 'video' && media.publicUrl && (
+        {isVideo && mediaUrl && (
           <video
-            src={media.publicUrl}
+            src={mediaUrl}
             controls
             style={{ width: '100%', maxHeight: 400, borderRadius: 8 }}
           />
@@ -61,7 +66,7 @@ export default function MediaDetailModal({
               <Badge variant="light">
                 {media.model ?? 'Unknown model'}
               </Badge>
-              <Badge variant="light" color={media.mediaType === 'image' ? 'blue' : 'green'}>
+              <Badge variant="light" color={isImage ? 'blue' : 'green'}>
                 {media.mediaType.toUpperCase()}
               </Badge>
             </Group>
@@ -83,7 +88,7 @@ export default function MediaDetailModal({
             >
               Download
             </Button>
-            <CopyButton value={media.publicUrl ?? ''}>
+            <CopyButton value={mediaUrl ?? ''}>
               {({ copied, copy }) => (
                 <Button
                   leftSection={<IconCopy size={16} />}
@@ -104,28 +109,16 @@ export default function MediaDetailModal({
         <Stack gap="xs">
           <Group justify="space-between">
             <Text size="sm" c="dimmed">File Size:</Text>
-            <Text size="sm">{formatBytes(media.sizeBytes ?? 0)}</Text>
+            <Text size="sm">{formatters.fileSize(media.sizeBytes ?? 0)}</Text>
           </Group>
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Created:</Text>
-            <Text size="sm">{formatDate(media.createdAt)}</Text>
+            <Text size="sm">{formatters.date(media.createdAt)}</Text>
           </Group>
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Virtual Key ID:</Text>
             <Text size="sm">{media.virtualKeyId}</Text>
           </Group>
-          {media.virtualKeyGroupId && (
-            <Group justify="space-between">
-              <Text size="sm" c="dimmed">Virtual Key Group ID:</Text>
-              <Text size="sm">{media.virtualKeyGroupId}</Text>
-            </Group>
-          )}
-          {media.virtualKeyGroupName && (
-            <Group justify="space-between">
-              <Text size="sm" c="dimmed">Virtual Key Group:</Text>
-              <Text size="sm" fw={500}>{media.virtualKeyGroupName}</Text>
-            </Group>
-          )}
           <Group justify="space-between">
             <Text size="sm" c="dimmed">Access Count:</Text>
             <Text size="sm">{media.accessCount}</Text>
@@ -133,13 +126,13 @@ export default function MediaDetailModal({
           {media.lastAccessedAt && (
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Last Accessed:</Text>
-              <Text size="sm">{formatDate(media.lastAccessedAt)}</Text>
+              <Text size="sm">{formatters.date(media.lastAccessedAt)}</Text>
             </Group>
           )}
           {media.expiresAt && (
             <Group justify="space-between">
               <Text size="sm" c="dimmed">Expires:</Text>
-              <Text size="sm" c="orange">{formatDate(media.expiresAt)}</Text>
+              <Text size="sm" c="orange">{formatters.date(media.expiresAt)}</Text>
             </Group>
           )}
           <Group justify="space-between">

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.SignalR.Protocol;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Gateway.SignalR
 {

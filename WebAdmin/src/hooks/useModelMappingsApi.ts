@@ -1,17 +1,22 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { notifications } from '@mantine/notifications';
-import type { 
-  ModelProviderMappingDto, 
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { notify } from '@/lib/notifications';
+import { useAdminMutation } from '@/hooks/useAdminMutation';
+import type {
+  ModelProviderMappingDto,
   CreateModelProviderMappingDto,
   UpdateModelProviderMappingDto
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
+import {
+  mapDiscoveredModelCapabilities,
+  type DiscoveredModelCapabilities,
+} from './modelCapabilities';
 
 const QUERY_KEY = 'model-mappings';
 
 export function useModelMappings() {
-  
+
   const { data: mappings = [], isLoading, error, refetch } = useQuery({
     queryKey: [QUERY_KEY],
     queryFn: () => withAdminClient(client => client.modelMappings.list()),
@@ -43,173 +48,56 @@ export function useModelMapping(id: number | null) {
 }
 
 export function useCreateModelMapping() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CreateModelProviderMappingDto) => 
-      withAdminClient(client => client.modelMappings.create(data)),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping created successfully',
-        color: 'green',
-      });
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (data: CreateModelProviderMappingDto) => client => client.modelMappings.create(data),
+    successMessage: 'Model mapping created successfully',
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useUpdateModelMapping() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => 
-      withAdminClient(client => client.modelMappings.update(id, data)),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping updated successfully',
-        color: 'green',
-      });
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateModelProviderMappingDto }) => client => client.modelMappings.update(id, data),
+    successMessage: 'Model mapping updated successfully',
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useDeleteModelMapping() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: number) => 
-      withAdminClient(client => client.modelMappings.deleteById(id)),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      notifications.show({
-        title: 'Success',
-        message: 'Model mapping deleted successfully',
-        color: 'green',
-      });
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (id: number) => client => client.modelMappings.deleteById(id),
+    successMessage: 'Model mapping deleted successfully',
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useBulkDeleteModelMappings() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: number[]) => 
-      withAdminClient(client => client.modelMappings.bulkDelete(ids)),
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
-      if (result.failureCount > 0) {
-        notifications.show({
-          title: 'Partial Success',
-          message: `Deleted ${result.successCount} mappings. ${result.failureCount} failed.`,
-          color: 'yellow',
-        });
-      } else {
-        notifications.show({
-          title: 'Success',
-          message: `Successfully deleted ${result.successCount} mappings`,
-          color: 'green',
-        });
-      }
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (ids: number[]) => client => client.modelMappings.bulkDelete(ids),
+    successMessage: (result) => result.failureCount > 0
+      ? `Deleted ${result.successCount} mappings. ${result.failureCount} failed.`
+      : `Successfully deleted ${result.successCount} mappings`,
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useBulkEnableModelMappings() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: number[]) => 
-      withAdminClient(client => client.modelMappings.bulkEnable(ids)),
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
-      if (result.failureCount > 0) {
-        notifications.show({
-          title: 'Partial Success',
-          message: `Enabled ${result.successCount} mappings. ${result.failureCount} failed.`,
-          color: 'yellow',
-        });
-      } else {
-        notifications.show({
-          title: 'Success',
-          message: `Successfully enabled ${result.successCount} mappings`,
-          color: 'green',
-        });
-      }
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (ids: number[]) => client => client.modelMappings.bulkEnable(ids),
+    successMessage: (result) => result.failureCount > 0
+      ? `Enabled ${result.successCount} mappings. ${result.failureCount} failed.`
+      : `Successfully enabled ${result.successCount} mappings`,
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
 export function useBulkDisableModelMappings() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (ids: number[]) => 
-      withAdminClient(client => client.modelMappings.bulkDisable(ids)),
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
-      if (result.failureCount > 0) {
-        notifications.show({
-          title: 'Partial Success',
-          message: `Disabled ${result.successCount} mappings. ${result.failureCount} failed.`,
-          color: 'yellow',
-        });
-      } else {
-        notifications.show({
-          title: 'Success', 
-          message: `Successfully disabled ${result.successCount} mappings`,
-          color: 'green',
-        });
-      }
-    },
-    onError: (error: Error) => {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-      });
-    },
+  return useAdminMutation({
+    mutationFn: (ids: number[]) => client => client.modelMappings.bulkDisable(ids),
+    successMessage: (result) => result.failureCount > 0
+      ? `Disabled ${result.successCount} mappings. ${result.failureCount} failed.`
+      : `Successfully disabled ${result.successCount} mappings`,
+    invalidateKeys: [QUERY_KEY],
   });
 }
 
@@ -225,20 +113,9 @@ interface BulkDiscoverResult {
     providerModelId?: string;
     hasConflict: boolean;
     existingMapping: ModelProviderMappingDto | null;
-    capabilities: {
-      supportsVision: boolean;
-      supportsImageGeneration: boolean;
-      supportsAudioTranscription: boolean;
-      supportsTextToSpeech: boolean;
-      supportsRealtimeAudio: boolean;
-      supportsFunctionCalling: boolean;
-      supportsStreaming: boolean;
-      supportsVideoGeneration: boolean;
-      supportsEmbeddings: boolean;
-      supportsChat: boolean;
-      maxContextLength?: number | null;
-      maxOutputTokens?: number | null;
-    };
+    conflictReason: string | null;
+    modelProviderTypeAssociationId: number | null;
+    capabilities: DiscoveredModelCapabilities;
   }>;
   totalModels: number;
   conflictCount: number;
@@ -251,60 +128,58 @@ export function useBulkDiscoverModels() {
     setIsDiscovering(true);
     try {
       // Fetch models available from this specific provider using the new SDK method
-      const providerModels = await withAdminClient(client => 
+      const providerModels = await withAdminClient(client =>
         client.models.getByProvider(providerName.toLowerCase())
       );
 
-      // TODO: Use mapped aliases to check for conflicts
-      // const mappedModelAliases = new Set(
-      //   existingMappings
-      //     .filter(m => m.providerId?.toString() === providerId)
-      //     .map(m => m.modelAlias)
-      // );
+      const discoveredModels = providerModels.map(model => {
+        const providerModelId = (model as { providerModelId?: string }).providerModelId ?? model.name ?? '';
+        return { model, providerModelId };
+      });
+      if (discoveredModels.length === 0) {
+        return {
+          providerId,
+          providerName,
+          models: [],
+          totalModels: 0,
+          conflictCount: 0,
+        };
+      }
+      const preview = await withAdminClient(client => client.modelMappings.previewBulk({
+        mappings: discoveredModels.map(({ providerModelId }) => ({
+          modelAlias: providerModelId,
+          providerId: Number.parseInt(providerId, 10),
+          providerModelId,
+        })),
+      }));
 
       // Transform provider-specific models to discovery result format
       const result: BulkDiscoverResult = {
         providerId,
         providerName,
-        models: providerModels.map(model => {
-          // The backend now returns providerModelId for provider-specific endpoints
-          const providerModelId = (model as { providerModelId?: string }).providerModelId ?? model.name ?? undefined;
-          
+        models: discoveredModels.map(({ model, providerModelId }, index) => {
+          const resolution = preview.items[index];
+
           return {
             modelId: model.id?.toString() ?? '',
             displayName: model.name ?? model.id?.toString() ?? '',
             providerId,
-            providerModelId, // Store the provider-specific model ID
-            hasConflict: false, // TODO: Check against mapped aliases
-            existingMapping: null,
-            capabilities: {
-              supportsVision: model.supportsVision ?? false,
-              supportsImageGeneration: model.supportsImageGeneration ?? false,
-              supportsAudioTranscription: false, // Audio capabilities removed from project
-              supportsTextToSpeech: false, // Audio capabilities removed from project
-              supportsRealtimeAudio: false, // Audio capabilities removed from project
-              supportsFunctionCalling: model.supportsFunctionCalling ?? false,
-              supportsStreaming: model.supportsStreaming ?? true,
-              supportsVideoGeneration: model.supportsVideoGeneration ?? false,
-              supportsEmbeddings: model.supportsEmbeddings ?? false,
-              supportsChat: model.supportsChat ?? true,
-              maxContextLength: model.maxInputTokens ?? null,
-              maxOutputTokens: model.maxOutputTokens ?? null,
-            },
+            providerModelId,
+            hasConflict: resolution?.hasConflict ?? true,
+            existingMapping: resolution?.existingMapping ?? null,
+            conflictReason: resolution?.errorMessage ?? null,
+            modelProviderTypeAssociationId: resolution?.modelProviderTypeAssociationId ?? null,
+            capabilities: mapDiscoveredModelCapabilities(model),
           };
         }),
         totalModels: providerModels.length,
-        conflictCount: 0, // TODO: Implement proper conflict detection
+        conflictCount: preview.conflictCount ?? preview.items.filter(item => item.hasConflict).length,
       };
 
       return result;
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Failed to discover models');
-      notifications.show({
-        title: 'Discovery Failed',
-        message: error.message,
-        color: 'red',
-      });
+      notify.error(err, 'Failed to discover models');
       throw error;
     } finally {
       setIsDiscovering(false);
@@ -323,20 +198,7 @@ interface BulkCreateRequest {
     displayName: string;
     providerId: string;
     providerModelId?: string;
-    capabilities: {
-      supportsVision: boolean;
-      supportsImageGeneration: boolean;
-      supportsAudioTranscription: boolean;
-      supportsTextToSpeech: boolean;
-      supportsRealtimeAudio: boolean;
-      supportsFunctionCalling: boolean;
-      supportsStreaming: boolean;
-      supportsVideoGeneration: boolean;
-      supportsEmbeddings: boolean;
-      supportsChat: boolean;
-      maxContextLength?: number | null;
-      maxOutputTokens?: number | null;
-    };
+    capabilities: DiscoveredModelCapabilities;
   }>;
   defaultPriority?: number;
   enableByDefault?: boolean;
@@ -345,9 +207,11 @@ interface BulkCreateRequest {
 interface BulkCreateResult {
   success: boolean;
   created: number;
+  existing: number;
   failed: number;
   details: {
     created: ModelProviderMappingDto[];
+    existing: ModelProviderMappingDto[];
     failed: Array<{
       modelId: string;
       error: string;
@@ -362,50 +226,44 @@ export function useBulkCreateMappings() {
   const createMappings = async (request: BulkCreateRequest): Promise<BulkCreateResult> => {
     setIsCreating(true);
     try {
-      // Transform request to Admin SDK format
-      // TODO: This needs to be updated to create/find ModelProviderTypeAssociations first
-      // For now, using a placeholder value of 1 - this will need proper implementation
       const bulkRequest = {
         mappings: request.models.map(model => ({
-          modelAlias: model.providerModelId ?? model.displayName,  // Use provider model ID as alias
+          modelAlias: model.providerModelId ?? model.displayName,
           providerId: parseInt(model.providerId, 10),
-          providerModelId: model.providerModelId ?? model.displayName,  // Provider-specific model identifier
-          modelProviderTypeAssociationId: 1, // TODO: Need to create/find association for each model
-          isEnabled: request.enableByDefault ?? true,
-          priority: request.defaultPriority ?? 50,
+          providerModelId: model.providerModelId ?? model.displayName,
         })),
-        replaceExisting: false,
+        isEnabled: request.enableByDefault ?? true,
+        priority: request.defaultPriority ?? 50,
+        weight: 1,
       };
-      
-      const sdkResult = await withAdminClient(client => 
+
+      const sdkResult = await withAdminClient(client =>
         client.modelMappings.bulkCreate(bulkRequest)
       );
-      
+
       // Transform result back to expected format
       const result: BulkCreateResult = {
-        success: sdkResult.failureCount === 0,
-        created: sdkResult.successCount,
-        failed: sdkResult.failureCount,
+        success: sdkResult.isSuccess ?? sdkResult.failed.length === 0,
+        created: sdkResult.createdCount ?? sdkResult.created.length,
+        existing: sdkResult.existingCount ?? sdkResult.existing.length,
+        failed: sdkResult.failureCount ?? sdkResult.failed.length,
         details: {
           created: sdkResult.created,
-          failed: sdkResult.errors.map((error, index) => ({
-            modelId: request.models[index]?.modelId ?? 'unknown',
-            error: error,
+          existing: sdkResult.existing,
+          failed: sdkResult.failed.map(error => ({
+            modelId: request.models[error.index]?.modelId ?? 'unknown',
+            error: error.errorMessage ?? 'The mapping could not be created.',
           })),
         },
       };
-      
+
       // Invalidate cache to show new mappings
       void queryClient.invalidateQueries({ queryKey: [QUERY_KEY] });
-      
+
       return result;
-    } catch (error) {
-      notifications.show({
-        title: 'Bulk Creation Failed',
-        message: error instanceof Error ? error.message : 'Failed to create mappings',
-        color: 'red',
-      });
-      throw error;
+    } catch (err) {
+      notify.error(err, 'Failed to create mappings');
+      throw err;
     } finally {
       setIsCreating(false);
     }

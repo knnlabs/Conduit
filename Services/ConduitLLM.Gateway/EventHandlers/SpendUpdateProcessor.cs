@@ -1,7 +1,7 @@
-using MassTransit;
-using ConduitLLM.Core.Events;
 using ConduitLLM.Configuration.Enums;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Core.Events;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -10,40 +10,50 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Eliminates race conditions and dual update paths
     /// Uses proper dependency injection with IServiceScopeFactory
     /// </summary>
-    public class SpendUpdateProcessor : IConsumer<SpendUpdateRequested>
+    public class SpendUpdateProcessor : IEventHandler<SpendUpdateRequested>
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<SpendUpdateProcessor> _logger;
+        private readonly IBatchSpendUpdateService? _batchSpendService;
 
         /// <summary>
         /// Initializes a new instance of the SpendUpdateProcessor
         /// </summary>
         /// <param name="serviceScopeFactory">Service scope factory for creating scoped services</param>
-        /// <param name="publishEndpoint">MassTransit publish endpoint for publishing events</param>
+        /// <param name="eventBus">Event bus for publishing follow-on events</param>
         /// <param name="logger">Logger instance</param>
+        /// <param name="batchSpendService">Optional service used to release completed spend reservations</param>
         public SpendUpdateProcessor(
             IServiceScopeFactory serviceScopeFactory,
-            IPublishEndpoint publishEndpoint,
-            ILogger<SpendUpdateProcessor> logger)
+            IEventBus eventBus,
+            ILogger<SpendUpdateProcessor> logger,
+            IBatchSpendUpdateService? batchSpendService = null)
         {
             _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _batchSpendService = batchSpendService;
         }
 
         /// <summary>
         /// Processes spend update requests in ordered fashion
         /// This replaces the dual update paths (individual + batch) with single ordered processing
         /// </summary>
-        /// <param name="context">Message context containing the spend update request</param>
-        public async Task Consume(ConsumeContext<SpendUpdateRequested> context)
+        /// <param name="request">The spend update request</param>
+        /// <param name="context">Delivery context</param>
+        public async Task HandleAsync(SpendUpdateRequested request, IEventContext context)
         {
-            var request = context.Message;
-            
+            if (string.IsNullOrWhiteSpace(request.RequestId))
+            {
+                throw new ArgumentException(
+                    "Spend update requests require a non-empty RequestId for idempotent processing.",
+                    nameof(request));
+            }
+
             if (request.Amount <= 0)
             {
-                _logger.LogDebug("Spend update request for key {KeyId} has zero or negative amount {Amount} - skipping", 
+                _logger.LogDebug("Spend update request for key {KeyId} has zero or negative amount {Amount} - skipping",
                     request.KeyId, request.Amount);
                 return;
             }
@@ -52,121 +62,115 @@ namespace ConduitLLM.Gateway.EventHandlers
             using var scope = _serviceScopeFactory.CreateScope();
             var virtualKeyRepository = scope.ServiceProvider.GetService<IVirtualKeyRepository>();
             var groupRepository = scope.ServiceProvider.GetService<IVirtualKeyGroupRepository>();
-            
+
             if (virtualKeyRepository == null || groupRepository == null)
             {
-                _logger.LogWarning(
-                    "Virtual key or group repository not available - cannot process spend update for key {KeyId}. " +
-                    "This is expected in Gateway API context where repositories are not registered.",
+                _logger.LogError(
+                    "Virtual key or group repository not available - spend update for key {KeyId} cannot be processed",
                     request.KeyId);
-                
-                // Still publish the event so other services can react
-                // This allows the Admin API or other services to handle the update
-                await _publishEndpoint.Publish(new SpendUpdateDeferred
-                {
-                    KeyId = request.KeyId,
-                    Amount = request.Amount,
-                    RequestId = request.RequestId,
-                    CorrelationId = request.CorrelationId,
-                    Reason = "Repository not available in current context"
-                });
-                
+
+                // Do not acknowledge the durable request when its debit cannot be applied.
+                // Throwing lets the endpoint retry policy retain/retry the original,
+                // idempotent SpendUpdateRequested message instead of replacing it with an
+                // unhandled notification and silently losing the charge.
+                throw new InvalidOperationException(
+                    "Spend updates require both IVirtualKeyRepository and IVirtualKeyGroupRepository.");
+            }
+
+            _logger.LogDebug("Processing spend update request for key {KeyId}: amount {Amount}, requestId {RequestId}",
+                request.KeyId, request.Amount, request.RequestId);
+
+            // Get current virtual key state
+            var virtualKey = await virtualKeyRepository.GetByIdAsync(request.KeyId);
+            if (virtualKey == null)
+            {
+                _logger.LogWarning("Spend update request for non-existent virtual key {KeyId} - ignoring", request.KeyId);
                 return;
             }
 
-            try
+            // Get the key's group
+            var group = await groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
+            if (group == null)
             {
-                _logger.LogDebug("Processing spend update request for key {KeyId}: amount {Amount}, requestId {RequestId}",
-                    request.KeyId, request.Amount, request.RequestId);
-
-                // Get current virtual key state
-                var virtualKey = await virtualKeyRepository.GetByIdAsync(request.KeyId);
-                if (virtualKey == null)
-                {
-                    _logger.LogWarning("Spend update request for non-existent virtual key {KeyId} - ignoring", request.KeyId);
-                    return;
-                }
-
-                // Get the key's group
-                var group = await groupRepository.GetByIdAsync(virtualKey.VirtualKeyGroupId);
-                if (group == null)
-                {
-                    _logger.LogError("Virtual key {KeyId} has invalid group ID {GroupId}", request.KeyId, virtualKey.VirtualKeyGroupId);
-                    return;
-                }
-
-                // Calculate new spend total at group level
-                var previousSpend = group.LifetimeSpent;
-                var newSpend = previousSpend + request.Amount;
-                var previousBalance = group.Balance;
-
-                // Update the group balance and lifetime spent
-                var newBalance = await groupRepository.AdjustBalanceAsync(
-                    group.Id,
-                    -request.Amount,
-                    $"API usage by virtual key #{request.KeyId}",
-                    "System",
-                    ReferenceType.VirtualKey,
-                    request.KeyId.ToString());
-                
-                var success = newBalance >= 0; // Success if we got a valid balance back
-                
-                if (success)
-                {
-                    // Publish SpendUpdated event for cache invalidation and audit
-                    await _publishEndpoint.Publish(new SpendUpdated
-                    {
-                        KeyId = request.KeyId,
-                        KeyHash = virtualKey.KeyHash,
-                        Amount = request.Amount,
-                        NewTotalSpend = newSpend,
-                        RequestId = request.RequestId,
-                        CorrelationId = request.CorrelationId
-                    });
-
-                    _logger.LogInformation(
-                        "Spend updated for virtual key {KeyId} in group {GroupId}: {PreviousSpend} + {Amount} = {NewSpend}, new balance: {NewBalance} (requestId: {RequestId})",
-                        request.KeyId, group.Id, previousSpend, request.Amount, newSpend, newBalance, request.RequestId);
-                    
-                    // Check if group balance is depleted
-                    if (newBalance <= 0 && previousBalance > 0)
-                    {
-                        // Balance just hit zero
-                        
-                        await _publishEndpoint.Publish(new SpendThresholdExceeded
-                        {
-                            VirtualKeyId = virtualKey.Id,
-                            VirtualKeyHash = virtualKey.KeyHash,
-                            KeyName = virtualKey.KeyName,
-                            CurrentSpend = newSpend,
-                            MaxBudget = previousBalance, // The balance that was available
-                            AmountOver = -newBalance, // How much we're over
-                            BudgetDuration = null, // No longer applicable in bank account model
-                            ExceededAt = DateTime.UtcNow,
-                            KeyDisabled = false, // We don't auto-disable in this handler
-                            CorrelationId = request.CorrelationId
-                        });
-                        
-                        _logger.LogWarning(
-                            "Virtual key group {GroupId} for key {KeyId} ({KeyName}) has depleted balance: {NewBalance:C}",
-                            group.Id, virtualKey.Id, virtualKey.KeyName, newBalance);
-                    }
-                }
-                else
-                {
-                    _logger.LogError("Failed to update spend for virtual key group {GroupId} (key {KeyId}) - balance adjustment failed", group.Id, request.KeyId);
-                    throw new InvalidOperationException($"Failed to update spend for virtual key group {group.Id}");
-                }
+                _logger.LogError("Virtual key {KeyId} has invalid group ID {GroupId}", request.KeyId, virtualKey.VirtualKeyGroupId);
+                return;
             }
-            catch (Exception ex)
+
+            var previousBalance = group.Balance;
+            var description = $"API usage by virtual key #{request.KeyId}";
+
+            // Debit the group exactly once per RequestId (#927): the idempotency key
+            // rides the ledger row inside the same atomic save as the balance change,
+            // so an at-least-once redelivery cannot double-charge.
+            BalanceAdjustmentResult result;
+            result = await groupRepository.AdjustBalanceIdempotentAsync(
+                group.Id,
+                -request.Amount,
+                SpendIdempotency.KeyFor(request.RequestId),
+                description,
+                "System",
+                ReferenceType.VirtualKey,
+                request.KeyId.ToString(),
+                new DateTime(request.Timestamp.Year, request.Timestamp.Month, request.Timestamp.Day, request.Timestamp.Hour, 0, 0, DateTimeKind.Utc));
+
+            var newBalance = result.NewBalance;
+            var newSpend = result.LifetimeSpent;
+
+            // Keep the reservation in place until the durable database debit has
+            // completed. Releasing by RequestId is idempotent for event retries.
+            if (_batchSpendService != null)
             {
-                _logger.LogError(ex, 
-                    "Error processing spend update for virtual key {KeyId}, amount {Amount}, requestId {RequestId}", 
-                    request.KeyId, request.Amount, request.RequestId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                await _batchSpendService.ReleaseSpendReservationAsync(request.KeyId, request.RequestId);
+            }
+
+            if (!result.Applied)
+            {
+                _logger.LogWarning(
+                    "Spend update for key {KeyId} with requestId {RequestId} was already applied - republishing notification only",
+                    request.KeyId, request.RequestId);
+            }
+
+            // Publish SpendUpdated for cache invalidation and audit. Also republished on
+            // a duplicate delivery, in case the first attempt crashed after the debit
+            // committed but before this notification went out.
+            await _eventBus.PublishAsync(new SpendUpdated
+            {
+                KeyId = request.KeyId,
+                KeyHash = virtualKey.KeyHash,
+                Amount = request.Amount,
+                NewTotalSpend = newSpend,
+                RequestId = request.RequestId,
+                CorrelationId = request.CorrelationId
+            });
+
+            _logger.LogInformation(
+                "Spend updated for virtual key {KeyId} in group {GroupId}: +{Amount} = {NewSpend}, new balance: {NewBalance} (requestId: {RequestId}, applied: {Applied})",
+                request.KeyId, group.Id, request.Amount, newSpend, newBalance, request.RequestId, result.Applied);
+
+            // Check if this debit depleted the group balance (skipped on duplicate:
+            // the crossing was already reported when the debit first applied)
+            if (result.Applied && newBalance <= 0 && previousBalance > 0)
+            {
+                await _eventBus.PublishAsync(new SpendThresholdExceeded
+                {
+                    VirtualKeyId = virtualKey.Id,
+                    VirtualKeyHash = virtualKey.KeyHash,
+                    KeyName = virtualKey.KeyName,
+                    CurrentSpend = newSpend,
+                    MaxBudget = previousBalance, // The balance that was available
+                    AmountOver = -newBalance, // How much we're over
+                    BudgetDuration = null, // No longer applicable in bank account model
+                    ExceededAt = DateTime.UtcNow,
+                    KeyDisabled = false, // We don't auto-disable in this handler
+                    CorrelationId = request.CorrelationId
+                });
+
+                _logger.LogWarning(
+                    "Virtual key group {GroupId} for key {KeyId} ({KeyName}) has depleted balance: {NewBalance:C}",
+                    group.Id, virtualKey.Id, virtualKey.KeyName, newBalance);
             }
         }
-        
+
         // Note: Threshold approaching notifications are no longer applicable in the bank account model
         // Groups have a balance that decreases, not a budget that fills up
     }

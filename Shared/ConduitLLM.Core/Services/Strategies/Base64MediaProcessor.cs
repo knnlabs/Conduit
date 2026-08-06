@@ -5,10 +5,10 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services.Strategies
@@ -19,16 +19,16 @@ namespace ConduitLLM.Core.Services.Strategies
     public class Base64MediaProcessor : IMediaProcessingStrategy<object>
     {
         private readonly IMediaStorageService _storageService;
-        private readonly IPublishEndpoint _publishEndpoint;
+        private readonly IEventBus _eventBus;
         private readonly ILogger<Base64MediaProcessor> _logger;
 
         public Base64MediaProcessor(
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             ILogger<Base64MediaProcessor> logger)
         {
             _storageService = storageService ?? throw new ArgumentNullException(nameof(storageService));
-            _publishEndpoint = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -110,10 +110,8 @@ namespace ConduitLLM.Core.Services.Strategies
             };
 
             // Add CreatedBy if we have virtual key info
-            if (context.VirtualKeyId > 0)
-            {
-                metadata.CreatedBy = context.VirtualKeyId.ToString();
-            }
+            metadata.CreatedBy = context.CreatedBy ??
+                (context.VirtualKeyId > 0 ? context.VirtualKeyId.ToString() : null);
 
             return metadata;
         }
@@ -123,7 +121,7 @@ namespace ConduitLLM.Core.Services.Strategies
             MediaProcessingContext context,
             MediaMetadata metadata)
         {
-            await _publishEndpoint.Publish(new MediaGenerationCompleted
+            await _eventBus.PublishAsync(new MediaGenerationCompleted
             {
                 MediaType = context.MediaType,
                 VirtualKeyId = context.VirtualKeyId,
@@ -132,6 +130,7 @@ namespace ConduitLLM.Core.Services.Strategies
                 FileSizeBytes = storageResult.SizeBytes,
                 ContentType = metadata.ContentType,
                 GeneratedByModel = context.ModelInfo?.ModelId ?? "",
+                Provider = context.ModelInfo?.ProviderName ?? "",
                 GenerationPrompt = context.Prompt,
                 GeneratedAt = DateTime.UtcNow,
                 Metadata = new Dictionary<string, object>

@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
-using ConduitLLM.Admin.Options;
+using ConduitLLM.Security.Options;
 using ConduitLLM.Admin.Services;
 
 namespace ConduitLLM.Tests.Admin.Services
@@ -18,7 +18,8 @@ namespace ConduitLLM.Tests.Admin.Services
         private readonly Mock<IMemoryCache> _memoryCacheMock;
         private readonly Mock<IDistributedCache> _distributedCacheMock;
         private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
-        private readonly IOptions<SecurityOptions> _securityOptions;
+        private readonly Mock<IEphemeralMasterKeyService> _ephemeralKeyServiceMock;
+        private readonly IOptions<AdminSecurityOptions> _securityOptions;
         private readonly SecurityService _securityService;
 
         public SecurityServiceTests()
@@ -28,18 +29,30 @@ namespace ConduitLLM.Tests.Admin.Services
             _memoryCacheMock = new Mock<IMemoryCache>();
             _distributedCacheMock = new Mock<IDistributedCache>();
             _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
+            _ephemeralKeyServiceMock = new Mock<IEphemeralMasterKeyService>();
+            _ephemeralKeyServiceMock
+                .Setup(service => service.IsKeyValidAsync(It.IsAny<string>()))
+                .ReturnsAsync(false);
+            var serviceProviderMock = new Mock<IServiceProvider>();
+            serviceProviderMock
+                .Setup(provider => provider.GetService(typeof(IEphemeralMasterKeyService)))
+                .Returns(_ephemeralKeyServiceMock.Object);
+            var serviceScopeMock = new Mock<IServiceScope>();
+            serviceScopeMock.SetupGet(scope => scope.ServiceProvider).Returns(serviceProviderMock.Object);
+            _serviceScopeFactoryMock.Setup(factory => factory.CreateScope()).Returns(serviceScopeMock.Object);
 
-            var securityOptions = new SecurityOptions
+            var securityOptions = new AdminSecurityOptions
             {
                 ApiAuth = new ApiAuthOptions
                 {
                     ApiKeyHeader = "X-API-Key",
                     AlternativeHeaders = new List<string> { "X-Master-Key" }
-                },
-                RateLimiting = new RateLimitingOptions { Enabled = false },
-                IpFiltering = new IpFilteringOptions { Enabled = false },
-                FailedAuth = new FailedAuthOptions { Enabled = false }
+                }
             };
+            // Disable security features for testing
+            securityOptions.RateLimiting.Enabled = false;
+            securityOptions.IpFiltering.Enabled = false;
+            securityOptions.FailedAuth.Enabled = false;
             _securityOptions = Microsoft.Extensions.Options.Options.Create(securityOptions);
 
             _securityService = new SecurityService(
@@ -79,6 +92,8 @@ namespace ConduitLLM.Tests.Admin.Services
         {
             // Arrange
             var ephemeralKey = "emk_testkey123456789";
+            _ephemeralKeyServiceMock.Setup(service => service.IsKeyValidAsync(ephemeralKey))
+                .ReturnsAsync(true);
             var context = new DefaultHttpContext();
             context.Request.Path = "/api/test";
             context.Request.Headers["X-API-Key"] = ephemeralKey;
@@ -89,6 +104,9 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.True(result.IsAllowed);
             Assert.Equal("", result.Reason);
+            _ephemeralKeyServiceMock.Verify(
+                service => service.ValidateAndConsumeKeyAsync(It.IsAny<string>()),
+                Times.Never);
         }
 
         [Fact]
@@ -96,6 +114,8 @@ namespace ConduitLLM.Tests.Admin.Services
         {
             // Arrange
             var ephemeralKey = "emk_testkey123456789";
+            _ephemeralKeyServiceMock.Setup(service => service.IsKeyValidAsync(ephemeralKey))
+                .ReturnsAsync(true);
             var context = new DefaultHttpContext();
             context.Request.Path = "/api/test";
             context.Request.Headers["X-Master-Key"] = ephemeralKey;
@@ -144,6 +164,26 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.False(result.IsAllowed);
             Assert.Equal("Invalid or missing API key", result.Reason);
             Assert.Equal(401, result.StatusCode);
+        }
+
+        [Fact]
+        public async Task IsRequestAllowedAsync_RetiredHubPathIsNotAuthenticationExempt()
+        {
+            Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", "configured-key");
+            try
+            {
+                var context = new DefaultHttpContext();
+                context.Request.Path = "/hubs/admin-notifications";
+
+                var result = await _securityService.IsRequestAllowedAsync(context);
+
+                Assert.False(result.IsAllowed);
+                Assert.Equal(401, result.StatusCode);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable("CONDUIT_API_TO_API_BACKEND_AUTH_KEY", null);
+            }
         }
 
         [Fact]
@@ -202,6 +242,8 @@ namespace ConduitLLM.Tests.Admin.Services
         public async Task IsRequestAllowedAsync_VariousEphemeralKeyFormats_ReturnsAllowed(string ephemeralKey)
         {
             // Arrange
+            _ephemeralKeyServiceMock.Setup(service => service.IsKeyValidAsync(ephemeralKey))
+                .ReturnsAsync(true);
             var context = new DefaultHttpContext();
             context.Request.Path = "/api/test";
             context.Request.Headers["X-API-Key"] = ephemeralKey;
@@ -212,6 +254,23 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.True(result.IsAllowed);
             Assert.Equal("", result.Reason);
+        }
+
+        [Fact]
+        public async Task IsRequestAllowedAsync_WithUnknownEphemeralKey_ReturnsNotAllowed()
+        {
+            const string ephemeralKey = "emk_fabricated";
+            var context = new DefaultHttpContext();
+            context.Request.Path = "/api/test";
+            context.Request.Headers["X-API-Key"] = ephemeralKey;
+
+            var result = await _securityService.IsRequestAllowedAsync(context);
+
+            Assert.False(result.IsAllowed);
+            Assert.Equal(401, result.StatusCode);
+            _ephemeralKeyServiceMock.Verify(
+                service => service.IsKeyValidAsync(ephemeralKey),
+                Times.Once);
         }
 
         [Theory]

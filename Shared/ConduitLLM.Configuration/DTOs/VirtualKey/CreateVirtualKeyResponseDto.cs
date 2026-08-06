@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ConduitLLM.Configuration.DTOs.VirtualKey;
 
 /// <summary>
@@ -10,10 +12,10 @@ public class CreateVirtualKeyResponseDto
     /// The newly generated virtual key. This should be securely stored by the user
     /// as it will not be retrievable again.
     /// </summary>
-    public string VirtualKey { get; set; } = string.Empty;
+    [Required] public string VirtualKey { get; set; } = string.Empty;
 
     /// <summary>
     /// Details of the created key (excluding the hash).
     /// </summary>
-    public VirtualKeyDto KeyInfo { get; set; } = null!;
+    [Required] public VirtualKeyDto KeyInfo { get; set; } = null!;
 }

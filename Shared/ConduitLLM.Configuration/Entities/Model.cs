@@ -2,6 +2,9 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+using ConduitLLM.Configuration.Models;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -9,7 +12,7 @@ namespace ConduitLLM.Configuration.Entities
     /// This is a convenient way to associate costs, capabilities, and configurations with a specific model.
     /// We are assuming that the cost is primarily determined by the model variant and its associated provider.
     /// </summary>
-    public class Model
+    public class Model : IEntity<int>, IAuditableEntity
     {
         [Key]
         public int Id { get; set; }
@@ -46,10 +49,14 @@ namespace ConduitLLM.Configuration.Entities
         /// <remarks>
         /// JsonIgnore is applied to prevent circular reference during serialization.
         /// The cycle is: Model → Series → Models → Model
+        /// Must not be initialized to a fresh instance: graph-traversing operations
+        /// (DbSet.Add/Update) would treat the phantom Series (Id = 0) as a new entity and
+        /// insert blank ModelSeries/ModelAuthor rows, overriding ModelSeriesId (issue #1192).
+        /// Null until loaded via Include.
         /// </remarks>
         [ForeignKey("ModelSeriesId")]
         [JsonIgnore]
-        public ModelSeries Series { get; set; } = new ModelSeries();
+        public ModelSeries Series { get; set; } = null!;
         
         /// <summary>
         /// Indicates whether this model supports vision/image inputs.
@@ -72,6 +79,21 @@ namespace ConduitLLM.Configuration.Entities
         public bool SupportsEmbeddings { get; set; } = false;
 
         /// <summary>
+        /// Indicates whether this model supports speech-to-text transcription.
+        /// </summary>
+        public bool SupportsSpeechToText { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports text-to-speech synthesis.
+        /// </summary>
+        public bool SupportsTextToSpeech { get; set; } = false;
+
+        /// <summary>
+        /// Indicates whether this model supports document reranking.
+        /// </summary>
+        public bool SupportsRerank { get; set; } = false;
+
+        /// <summary>
         /// Indicates whether this model supports chat completions.
         /// </summary>
         public bool SupportsChat { get; set; } = false;
@@ -85,6 +107,28 @@ namespace ConduitLLM.Configuration.Entities
         /// Indicates whether this model supports streaming responses.
         /// </summary>
         public bool SupportsStreaming { get; set; } = false;
+
+        /// <summary>
+        /// JSON array of content modalities accepted by the model. Null means unknown.
+        /// </summary>
+        [Column("InputModalities", TypeName = "jsonb")]
+        public string? InputModalitiesJson { get; set; }
+
+        /// <summary>
+        /// JSON array of content modalities produced by the model. Null means unknown.
+        /// </summary>
+        [Column("OutputModalities", TypeName = "jsonb")]
+        public string? OutputModalitiesJson { get; set; }
+
+        /// <summary>
+        /// Source of the current capability metadata.
+        /// </summary>
+        public ModelCapabilitySource CapabilitySource { get; set; } = ModelCapabilitySource.LegacyInferred;
+
+        /// <summary>
+        /// When the capability metadata was last verified against its source.
+        /// </summary>
+        public DateTime? CapabilitiesLastVerifiedAt { get; set; }
 
         /// <summary>
         /// The tokenizer type used by this model (e.g., "cl100k_base", "p50k_base", "claude").

@@ -50,8 +50,9 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.True(result);
-            var updatedKey = await _context.ProviderKeyCredentials.FindAsync(1);
-            Assert.True(updatedKey.IsPrimary, "Enabling the only key should automatically set it as primary");
+            using var verifyContext = CreateVerificationContext();
+            var updatedKey = await verifyContext.ProviderKeyCredentials.FindAsync(1);
+            Assert.True(updatedKey!.IsPrimary, "Enabling the only key should automatically set it as primary");
         }
 
         [Fact]
@@ -113,12 +114,13 @@ namespace ConduitLLM.Tests.Configuration.Repositories
 
             // Assert
             Assert.True(result);
-            var updatedKey = await _context.ProviderKeyCredentials.FindAsync(2);
-            Assert.False(updatedKey.IsPrimary, "Enabling a key when other enabled keys exist should not automatically set it as primary");
-            
+            using var verifyContext = CreateVerificationContext();
+            var updatedKey = await verifyContext.ProviderKeyCredentials.FindAsync(2);
+            Assert.False(updatedKey!.IsPrimary, "Enabling a key when other enabled keys exist should not automatically set it as primary");
+
             // Verify first key is still primary
-            var firstKeyAfterUpdate = await _context.ProviderKeyCredentials.FindAsync(1);
-            Assert.True(firstKeyAfterUpdate.IsPrimary, "First key should remain primary");
+            var firstKeyAfterUpdate = await verifyContext.ProviderKeyCredentials.FindAsync(1);
+            Assert.True(firstKeyAfterUpdate!.IsPrimary, "First key should remain primary");
         }
     }
 }

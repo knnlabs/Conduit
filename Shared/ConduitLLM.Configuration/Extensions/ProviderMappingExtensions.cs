@@ -1,5 +1,7 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Models;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.Extensions
 {
@@ -27,6 +29,11 @@ namespace ConduitLLM.Configuration.Extensions
         /// </summary>
         public static ModelProviderMappingDto ToDto(this ModelProviderMapping mapping)
         {
+            var association = mapping.ModelProviderTypeAssociation;
+            var capabilities = association?.Model is null
+                ? null
+                : ModelCapabilityResolver.Resolve(association.Model, association);
+
             return new ModelProviderMappingDto
             {
                 Id = mapping.Id,
@@ -35,23 +42,13 @@ namespace ConduitLLM.Configuration.Extensions
                 ProviderId = mapping.ProviderId,
                 Provider = mapping.Provider?.ToReferenceDto(),
                 ModelProviderTypeAssociationId = mapping.ModelProviderTypeAssociationId,
-                Priority = 0, // Entity doesn't have Priority
+                Priority = mapping.RoutingPriority,
+                Weight = mapping.RoutingWeight,
                 IsEnabled = mapping.IsEnabled,
                 CreatedAt = mapping.CreatedAt,
                 UpdatedAt = mapping.UpdatedAt,
-                Notes = null, // Entity doesn't have Notes
-                Capabilities = mapping.ModelProviderTypeAssociation?.Model != null ? new ModelCapabilitiesDto
-                {
-                    SupportsVision = mapping.ModelProviderTypeAssociation.Model.SupportsVision,
-                    SupportsImageGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsImageGeneration,
-                    SupportsVideoGeneration = mapping.ModelProviderTypeAssociation.Model.SupportsVideoGeneration,
-                    SupportsEmbeddings = mapping.ModelProviderTypeAssociation.Model.SupportsEmbeddings,
-                    SupportsChat = mapping.ModelProviderTypeAssociation.Model.SupportsChat,
-                    SupportsFunctionCalling = mapping.ModelProviderTypeAssociation.Model.SupportsFunctionCalling,
-                    SupportsStreaming = mapping.ModelProviderTypeAssociation.Model.SupportsStreaming,
-                    MaxInputTokens = mapping.ModelProviderTypeAssociation.Model.MaxInputTokens,
-                    MaxOutputTokens = mapping.ModelProviderTypeAssociation.Model.MaxOutputTokens
-                } : null
+                ProviderOptions = ParseOptions(mapping.ProviderOptions),
+                Capabilities = capabilities
             };
         }
 
@@ -65,8 +62,24 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.ProviderId = dto.ProviderId;
             mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId;
             mapping.IsEnabled = dto.IsEnabled;
+            mapping.ProviderOptions = SerializeOptions(dto.ProviderOptions);
+            mapping.RoutingPriority = dto.Priority;
+            mapping.RoutingWeight = dto.Weight;
             mapping.UpdatedAt = System.DateTime.UtcNow;
-            // Note: Priority and Notes are DTO-only properties
+        }
+
+        public static void UpdateFromDto(this ModelProviderMapping mapping, UpdateModelProviderMappingDto dto)
+        {
+            if (dto.ModelAlias is not null) mapping.ModelAlias = dto.ModelAlias;
+            if (dto.ProviderModelId is not null) mapping.ProviderModelId = dto.ProviderModelId;
+            if (dto.ProviderId.HasValue) mapping.ProviderId = dto.ProviderId.Value;
+            if (dto.ModelProviderTypeAssociationId.HasValue)
+                mapping.ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId.Value;
+            if (dto.IsEnabled.HasValue) mapping.IsEnabled = dto.IsEnabled.Value;
+            if (dto.ProviderOptions is not null) mapping.ProviderOptions = SerializeOptions(dto.ProviderOptions);
+            if (dto.Priority.HasValue) mapping.RoutingPriority = dto.Priority.Value;
+            if (dto.Weight.HasValue) mapping.RoutingWeight = dto.Weight.Value;
+            mapping.UpdatedAt = System.DateTime.UtcNow;
         }
 
         /// <summary>
@@ -79,6 +92,40 @@ namespace ConduitLLM.Configuration.Extensions
             mapping.Id = 0; // Reset ID for new entities
             mapping.CreatedAt = System.DateTime.UtcNow;
             return mapping;
+        }
+
+        public static ModelProviderMapping ToEntity(this CreateModelProviderMappingDto dto)
+        {
+            return new ModelProviderMapping
+            {
+                ModelAlias = dto.ModelAlias,
+                ProviderModelId = dto.ProviderModelId,
+                ProviderId = dto.ProviderId,
+                ModelProviderTypeAssociationId = dto.ModelProviderTypeAssociationId,
+                IsEnabled = dto.IsEnabled,
+                ProviderOptions = SerializeOptions(dto.ProviderOptions),
+                RoutingPriority = dto.Priority,
+                RoutingWeight = dto.Weight,
+                CreatedAt = System.DateTime.UtcNow,
+                UpdatedAt = System.DateTime.UtcNow
+            };
+        }
+
+        private static string? SerializeOptions(Dictionary<string, JsonElement>? options) =>
+            options is null ? null : JsonSerializer.Serialize(options);
+
+        private static Dictionary<string, JsonElement>? ParseOptions(string? options)
+        {
+            if (string.IsNullOrWhiteSpace(options))
+                return null;
+            try
+            {
+                return JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(options);
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
         }
     }
 }

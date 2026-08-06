@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 
@@ -25,7 +25,6 @@ namespace ConduitLLM.Tests.Admin.Services
 
             var createdEntity = new ModelCost
             {
-                Id = 1,
                 CostName = createDto.CostName,
                 ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>()
             };
@@ -56,7 +55,6 @@ namespace ConduitLLM.Tests.Admin.Services
             // This test ensures we can remove all mappings by passing an empty list
             var updateDto = new UpdateModelCostDto
             {
-                Id = 1,
                 CostName = "Updated Cost",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
@@ -72,6 +70,8 @@ namespace ConduitLLM.Tests.Admin.Services
             // Add existing associations
             using (var setupContext = CreateDbContext())
             {
+                AddModels(setupContext, 1, 2);
+                setupContext.ModelCosts.Add(new ModelCost { Id = 1, CostName = "Original Cost" });
                 setupContext.ModelProviderTypeAssociations.AddRange(new[]
                 {
                     new ModelProviderTypeAssociation { Id = 1, ModelCostId = 1, Identifier = "gpt-4", ModelId = 1, IsEnabled = true },
@@ -86,10 +86,10 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _service.UpdateModelCostAsync(updateDto);
+            var result = await _service.UpdateModelCostAsync(1, updateDto);
 
             // Assert
-            result.Should().BeTrue();
+            result.Should().NotBeNull();
             using (var verifyContext = CreateDbContext())
             {
                 verifyContext.ModelProviderTypeAssociations.Where(a => a.ModelCostId == 1).Should().BeEmpty();

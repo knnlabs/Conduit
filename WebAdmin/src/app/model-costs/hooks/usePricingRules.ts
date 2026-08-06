@@ -5,7 +5,7 @@ import type {
   PricingConstraints,
   PricingType,
   PricingValidationError,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 interface UsePricingRulesOptions {
   initialConfig?: PricingRulesConfig;

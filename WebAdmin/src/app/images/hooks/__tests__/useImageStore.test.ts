@@ -2,6 +2,10 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useImageStore } from '../useImageStore';
 import { MediaGenerationStatus } from '@/app/types/media';
 import type { ImageTask } from '../../types';
+import {
+  InsufficientBalanceError,
+  ValidationError,
+} from '@/lib/conduit-common';
 
 // Mock the browser client
 jest.mock('@/lib/client/browserCoreClient', () => ({
@@ -21,7 +25,7 @@ jest.mock('@mantine/notifications', () => ({
 
 // Mock the createMediaStore
 type MockState = {
-  error: string | null;
+  error: Error | string | null;
   settings: Record<string, unknown>;
   currentTask: unknown;
   taskHistory: Array<{ id: string; [key: string]: unknown }>;
@@ -33,9 +37,7 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
   createMediaStore: jest.fn(() => (set: (fn: (state: MockState) => MockState) => void) => ({
     error: null,
     settings: {
-      model: '',
-      quality: 'standard',
-      style: 'vivid'
+      model: ''
     },
     currentTask: null,
     taskHistory: [],
@@ -47,7 +49,7 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
       settings: { ...state.settings, ...updates }
     })),
 
-    setError: (error: string | null) => set((state: MockState) => ({ ...state, error })),
+    setError: (error: Error | string | null) => set((state: MockState) => ({ ...state, error })),
 
     addTask: (task: unknown) => set((state: MockState) => ({
       ...state,
@@ -81,7 +83,7 @@ jest.mock('@/app/hooks/createMediaStore', () => ({
 }));
 
 // Mock error handler
-jest.mock('@knn_labs/conduit-gateway-client', () => ({
+jest.mock('@/lib/gateway-api', () => ({
   createToastErrorHandler: jest.fn(() => jest.fn((error: { message?: string } | string) => {
     if (typeof error === 'object' && error?.message) return error.message;
     if (typeof error === 'string') return error;
@@ -107,9 +109,7 @@ describe('useImageStore', () => {
         settingsVisible: false,
         error: null,
         settings: {
-          model: '',
-          quality: 'standard',
-          style: 'vivid'
+          model: ''
         },
         currentTask: null,
         taskHistory: []
@@ -127,9 +127,7 @@ describe('useImageStore', () => {
       expect(result.current.settingsVisible).toBe(false);
       expect(result.current.error).toBeNull();
       expect(result.current.settings).toEqual({
-        model: '',
-        quality: 'standard',
-        style: 'vivid'
+        model: ''
       });
     });
   });
@@ -168,7 +166,10 @@ describe('useImageStore', () => {
         await result.current.generateImages();
       });
 
-      expect(result.current.error).toBe('Please enter a prompt for image generation');
+      expect(result.current.error).toBeInstanceOf(ValidationError);
+      expect(result.current.error).toMatchObject({
+        message: 'Please enter a prompt for image generation',
+      });
       expect(result.current.status).toBe(MediaGenerationStatus.Failed);
     });
 
@@ -183,7 +184,10 @@ describe('useImageStore', () => {
         await result.current.generateImages();
       });
 
-      expect(result.current.error).toBe('Please select a model for image generation');
+      expect(result.current.error).toBeInstanceOf(ValidationError);
+      expect(result.current.error).toMatchObject({
+        message: 'Please select a model for image generation',
+      });
       expect(result.current.status).toBe(MediaGenerationStatus.Failed);
     });
 
@@ -227,8 +231,6 @@ describe('useImageStore', () => {
       expect(mockClient.images.generate).toHaveBeenCalledWith({
         prompt: 'Generate a sunset',
         model: 'dall-e-3',
-        quality: 'standard',
-        style: 'vivid',
         n: 1,
         response_format: 'url'
       });
@@ -262,7 +264,8 @@ describe('useImageStore', () => {
 
       await waitFor(() => {
         expect(result.current.status).toBe(MediaGenerationStatus.Failed);
-        expect(result.current.error).toBe('API Error');
+        expect(result.current.error).toBeInstanceOf(Error);
+        expect(result.current.error).toMatchObject({ message: 'API Error' });
         expect(result.current.currentResults).toEqual([]);
       });
     });
@@ -294,7 +297,10 @@ describe('useImageStore', () => {
       });
 
       await waitFor(() => {
-        expect(result.current.error).toBe('Please add credits to your account to generate images.');
+        expect(result.current.error).toBeInstanceOf(InsufficientBalanceError);
+        expect(result.current.error).toMatchObject({
+          message: 'Please add credits to your account to generate images.',
+        });
       });
     });
 
@@ -364,7 +370,7 @@ describe('useImageStore', () => {
         progress: 100,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        settings: { model: 'dall-e-3', quality: 'standard', style: 'vivid' },
+        settings: { model: 'dall-e-3' },
         retryCount: 0,
         retryHistory: [],
         result: {
@@ -406,15 +412,10 @@ describe('useImageStore', () => {
       const { result } = renderHook(() => useImageStore());
 
       act(() => {
-        result.current.updateSettings({
-          model: 'dall-e-2',
-          quality: 'hd'
-        });
+        result.current.updateSettings({ model: 'dall-e-2' });
       });
 
       expect(result.current.settings.model).toBe('dall-e-2');
-      expect(result.current.settings.quality).toBe('hd');
-      expect(result.current.settings.style).toBe('vivid'); // unchanged
     });
   });
 
@@ -461,7 +462,7 @@ describe('useImageStore', () => {
         progress: 100,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        settings: { model: 'dall-e-3', quality: 'standard', style: 'vivid' },
+        settings: { model: 'dall-e-3' },
         retryCount: 0,
         retryHistory: []
       };

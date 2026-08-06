@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -39,17 +41,11 @@ namespace ConduitLLM.Core.Interfaces
         Task InvalidatePatternAsync(string pattern, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Warms the discovery cache with common queries
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        Task WarmDiscoveryCacheAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Gets discovery cache statistics
         /// </summary>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Cache statistics</returns>
-        Task<DiscoveryCacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default);
+        Task<CacheStats> GetStatisticsAsync(CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -58,9 +54,11 @@ namespace ConduitLLM.Core.Interfaces
     public class DiscoveryModelsResult
     {
         /// <summary>
-        /// List of discovered models
+        /// List of discovered models serialized as JsonElement for reliable cache round-tripping.
+        /// Anonymous objects cannot survive JSON deserialization, so we store them as JsonElement
+        /// which serializes/deserializes correctly and produces the same JSON output for API consumers.
         /// </summary>
-        public List<object> Data { get; set; } = new();
+        public List<JsonElement> Data { get; set; } = new();
 
         /// <summary>
         /// Total count of models
@@ -78,39 +76,4 @@ namespace ConduitLLM.Core.Interfaces
         public string? CapabilityFilter { get; set; }
     }
 
-    /// <summary>
-    /// Statistics for discovery cache
-    /// </summary>
-    public class DiscoveryCacheStatistics
-    {
-        /// <summary>
-        /// Total number of cache hits
-        /// </summary>
-        public long Hits { get; set; }
-
-        /// <summary>
-        /// Total number of cache misses
-        /// </summary>
-        public long Misses { get; set; }
-
-        /// <summary>
-        /// Cache hit rate percentage
-        /// </summary>
-        public double HitRate { get; set; }
-
-        /// <summary>
-        /// Number of cached entries
-        /// </summary>
-        public int CachedEntries { get; set; }
-
-        /// <summary>
-        /// Last cache invalidation time
-        /// </summary>
-        public DateTime? LastInvalidation { get; set; }
-
-        /// <summary>
-        /// Last cache warming time
-        /// </summary>
-        public DateTime? LastWarmingTime { get; set; }
-    }
 }

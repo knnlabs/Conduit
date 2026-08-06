@@ -64,11 +64,11 @@ namespace ConduitLLM.Core.Services
             }
             
             // Best-effort event publishing
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
                 try
                 {
-                    await _publishEndpoint.Publish(new AsyncTaskCreated
+                    await _eventBus.PublishAsync(new AsyncTaskCreated
                     {
                         TaskId = taskId,
                         TaskType = taskType,
@@ -136,11 +136,11 @@ namespace ConduitLLM.Core.Services
             }
             
             // Best-effort event publishing
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
                 try
                 {
-                    await _publishEndpoint.Publish(new AsyncTaskCreated
+                    await _eventBus.PublishAsync(new AsyncTaskCreated
                     {
                         TaskId = taskId,
                         TaskType = taskType,
@@ -297,6 +297,8 @@ namespace ConduitLLM.Core.Services
             if (IsTaskCompleted(status))
             {
                 dbTask.CompletedAt = DateTime.UtcNow;
+                dbTask.LeasedBy = null;
+                dbTask.LeaseExpiryTime = null;
             }
 
             // Save to database
@@ -307,9 +309,9 @@ namespace ConduitLLM.Core.Services
             await CacheTaskStatusAsync(taskId, taskStatus, cancellationToken, IsTaskCompleted(status));
             
             // Publish event if event bus is available
-            if (_publishEndpoint != null)
+            if (_eventBus != null)
             {
-                await _publishEndpoint.Publish(new AsyncTaskUpdated
+                await _eventBus.PublishAsync(new AsyncTaskUpdated
                 {
                     TaskId = taskId,
                     State = status.ToString(),

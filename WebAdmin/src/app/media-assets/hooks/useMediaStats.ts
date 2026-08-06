@@ -1,54 +1,28 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { OverallMediaStorageStats } from '../types';
 
 export function useMediaStats() {
-  const [stats, setStats] = useState<OverallMediaStorageStats | null>(null);
-  const [providerStats, setProviderStats] = useState<Record<string, number>>({});
-  const [typeStats, setTypeStats] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Fetch overall stats using Admin SDK
-      const overallData = await withAdminClient(client => 
-        client.media.getMediaStats('overall')
-      );
-      setStats(overallData);
-
-      // Fetch provider stats using Admin SDK
-      const providerData = await withAdminClient(client => 
-        client.media.getMediaStats('by-provider')
-      );
-      setProviderStats(providerData);
-
-      // Fetch type stats using Admin SDK
-      const typeData = await withAdminClient(client => 
-        client.media.getMediaStats('by-type')
-      );
-      setTypeStats(typeData);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchStats();
-  }, [fetchStats]);
+  const query = useQuery({
+    queryKey: ['media-stats'],
+    queryFn: async () => {
+      const [stats, providerStats, typeStats] = await Promise.all([
+        withAdminClient(client => client.media.getMediaStats('overall')),
+        withAdminClient(client => client.media.getMediaStats('by-provider')),
+        withAdminClient(client => client.media.getMediaStats('by-type')),
+      ]);
+      return { stats, providerStats, typeStats };
+    },
+  });
 
   return {
-    stats,
-    providerStats,
-    typeStats,
-    loading,
-    error,
-    refetch: fetchStats,
+    stats: query.data?.stats ?? null as OverallMediaStorageStats | null,
+    providerStats: query.data?.providerStats ?? {},
+    typeStats: query.data?.typeStats ?? {},
+    isLoading: query.isFetching,
+    error: query.error instanceof Error ? query.error.message : null,
+    refetch: async () => {
+      await query.refetch();
+    },
   };
 }

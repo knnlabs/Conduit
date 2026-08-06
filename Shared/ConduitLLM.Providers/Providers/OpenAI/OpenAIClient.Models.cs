@@ -37,10 +37,10 @@ namespace ConduitLLM.Providers.OpenAI
                         {
                             var model = ExtendedModelInfo.Create(m.DeploymentId, ProviderName, m.DeploymentId)
                                 .WithName(m.Model ?? m.DeploymentId)
-                                .WithCapabilities(new ConduitLLM.Providers.Common.Models.ModelCapabilities
+                                .WithCapabilities(new ConduitLLM.Configuration.DTOs.ModelCapabilitiesDto
                                 {
-                                    Chat = true,
-                                    TextGeneration = true
+                                    CapabilitySource = ConduitLLM.Configuration.Models.ModelCapabilitySource.ProviderApi,
+                                    SupportsChat = true
                                 });
 
                             // Can't add custom properties directly, but they'll be ignored anyway

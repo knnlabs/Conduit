@@ -1,294 +1,109 @@
+using ConduitLLM.Configuration.Messaging;
+using ConduitLLM.Configuration.Messaging.Wolverine;
+using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Serialization;
 using ConduitLLM.Core.Services;
-
-using MassTransit;
 
 public partial class Program
 {
     public static void ConfigureMessagingServices(WebApplicationBuilder builder)
     {
-        // Configure RabbitMQ settings
-        var rabbitMqConfig = builder.Configuration.GetSection("ConduitLLM:RabbitMQ").Get<ConduitLLM.Configuration.RabbitMqConfiguration>() 
-            ?? new ConduitLLM.Configuration.RabbitMqConfiguration();
+        // Backend-neutral handler registrations.
+        //
+        // Cache-invalidation / notification IEventHandler<T> implementations (#919):
+        ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationHandlers(builder.Services);
+        ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationHandlers(builder.Services);
 
-        // Check if RabbitMQ is configured
-        var useRabbitMq = !string.IsNullOrEmpty(rabbitMqConfig.Host) && rabbitMqConfig.Host != "localhost";
+        // Media-generation orchestrator / notification IEventHandler<T> implementations (#920);
+        // the orchestrator bridges bind to the tuned image-/video-generation queues below.
+        ConduitLLM.Gateway.Extensions.MediaGenerationMessagingExtensions.AddMediaGenerationHandlers(builder.Services);
 
-        // Register MassTransit event bus
-        builder.Services.AddMassTransit(x =>
+        // High-risk handlers (#921): ordered spend processing (spend-update-events),
+        // deferred-retry webhook delivery (webhook-delivery), and the batch spend flush.
+        builder.Services.AddEventHandler<ConduitLLM.Core.Events.SpendUpdateRequested, ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
+        builder.Services.AddEventHandler<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent, ConduitLLM.Gateway.EventHandlers.BatchSpendFlushRequestedHandler>();
+        builder.Services.AddEventHandler<ConduitLLM.Core.Events.WebhookDeliveryRequested, ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>();
+
+        // Wolverine on the PostgreSQL transport is the only messaging backend as of I3.1
+        // (#932, epic #909); the previous backend was removed after the cutover (#930)
+        // soaked. Resolve still runs so a stale rollback backend value fails the boot with a
+        // clear pointer to Wolverine (see MessagingBackendResolver) instead of being silently
+        // ignored.
+        _ = MessagingBackendResolver.Resolve(builder.Configuration);
+        ConfigureWolverineMessaging(builder);
+    }
+
+    /// <summary>
+    /// Wolverine backend wiring (#925/#926): IEventBus adapter + one bridge handler per
+    /// bridged event type, on the PostgreSQL transport with durable persistence. Events
+    /// route through the shared queue topology (<c>ConduitMessagingTopology</c>): the four
+    /// tuned queues carry the <c>ConduitEndpointPolicies</c> descriptors translated by
+    /// <c>WolverineEndpointPolicy</c> (strict ordering for spend/image, concurrency cap +
+    /// circuit breaker for webhooks, per-type retry rules), everything else rides
+    /// <c>gateway-events</c>. Cross-service delivery (Admin→Gateway) flows over the same
+    /// queues.
+    /// </summary>
+    private static void ConfigureWolverineMessaging(WebApplicationBuilder builder)
+    {
+        builder.Services.AddWolverineEventBus();
+
+        var (_, connectionString) = new ConduitLLM.Core.Data.ConnectionStringManager()
+            .GetProviderAndConnectionString("CoreAPI");
+
+        var postgresTransport = !WolverineMessagingExtensions.UsesInMemoryTransport(builder.Configuration);
+
+        builder.Host.AddConduitWolverine(builder.Configuration, connectionString, "conduit-gateway", opts =>
         {
-            // Add event consumers for Gateway API
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VirtualKeyCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderEventHandler>();
-            
-            // Add spend notification consumer
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdatedHandler>();
-            
-            
-            // Add image generation consumers
-            x.AddConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ImageGenerationProgressHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ImageGenerationCompletedHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ImageGenerationFailedHandler>();
-            
-            // Add video generation consumers
-            x.AddConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>();
-            x.AddConsumer<ConduitLLM.Core.Services.VideoProgressTrackingOrchestrator>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationProgressHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationCompletedHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationFailedHandler>();
-            
-            // Add Admin API event consumers for cache invalidation
-            x.AddConsumer<ConduitLLM.Core.Consumers.GlobalSettingCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.IpFilterCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.DiscoveryCacheInvalidationHandler>();
+            // AddConduitWolverine is declared in the shared configuration assembly, so
+            // Wolverine's calling-assembly inference can otherwise point static loading at
+            // ConduitLLM.Configuration. The committed adapters are compiled into this host.
+            opts.ApplicationAssembly = typeof(Program).Assembly;
 
-            // Add Function Discovery Cache invalidation consumers
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionConfigurationCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Core.Consumers.FunctionDiscoveryCacheInvalidationRequestHandler>();
-
-            // LLM cache toggle now uses GlobalSettingChanged event via GlobalSettingCacheInvalidationHandler
-            // (registered above) - no separate consumer needed
-
-            // Add async task cache invalidation handler
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.AsyncTaskCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.ModelCostCacheInvalidationHandler>();
-            
-            // Navigation state event consumers removed - WebAdmin uses React Query instead of SignalR for model mapping updates
-
-            // Add cache invalidation consumers for runtime configuration updates
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ModelCacheInvalidationHandler>();
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.ProviderCacheInvalidationHandler>();
-
-            // Add model mapping cache invalidation consumer - handles both model mapping cache
-            // (CacheRegion.ModelMetadata) and discovery cache (CacheRegion.ModelDiscovery)
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.ModelMappingCacheInvalidationConsumer>();
-            
-            // Add media lifecycle handler for tracking generated media
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.MediaLifecycleHandler>();
-            
-            // Add video generation started handler for real-time notifications
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.VideoGenerationStartedHandler>();
-            
-            // Add webhook delivery consumer for scalable webhook processing
-            x.AddConsumer<ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>();
-            
-            // Add batch spend flush handler for admin operations and integration testing
-            x.AddConsumer<ConduitLLM.Gateway.EventHandlers.BatchSpendFlushRequestedHandler>();
-            
-            // Note: Media lifecycle consumers moved to Admin API
-            // See ConduitLLM.Admin.Consumers.MediaRetentionConsumer and MediaDeletionConsumer
-
-            if (useRabbitMq)
+            opts.UseSystemTextJsonForSerialization(options =>
             {
-                x.UsingRabbitMq((context, cfg) =>
+                options.TypeInfoResolverChain.Insert(0, CoreMessagingJsonContext.Default);
+                if (options.TypeInfoResolverChain.All(static resolver =>
+                        resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
                 {
-                    // Configure RabbitMQ connection
-                    cfg.Host(new Uri($"rabbitmq://{rabbitMqConfig.Host}:{rabbitMqConfig.Port}{rabbitMqConfig.VHost}"), h =>
-                    {
-                        h.Username(rabbitMqConfig.Username);
-                        h.Password(rabbitMqConfig.Password);
-                        h.Heartbeat(TimeSpan.FromSeconds(rabbitMqConfig.RequestedHeartbeat));
-                        
-                        // High throughput settings
-                        h.PublisherConfirmation = rabbitMqConfig.PublisherConfirmation;
-                        
-                        // Advanced connection settings
-                        h.RequestedChannelMax(rabbitMqConfig.ChannelMax);
-                        h.RequestedConnectionTimeout(TimeSpan.FromSeconds(30));
-                    });
-                    
-                    // Configure prefetch count for consumer concurrency
-                    cfg.PrefetchCount = rabbitMqConfig.PrefetchCount;
-                    
-                    // Configure retry policy for reliability
-                    cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
-                    
-                    // Configure delayed redelivery for failed messages
-                    cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
-                    
-                    // Configure webhook delivery endpoint optimized for 1000+ webhooks/minute
-                    cfg.ReceiveEndpoint("webhook-delivery", e =>
-                    {
-                        // Configure for high throughput - balanced for memory usage
-                        e.PrefetchCount = 100; // Reduced from 200 to prevent memory overload
-                        e.ConcurrentMessageLimit = 75; // Balanced concurrency
-                        
-                        // Use quorum queue for better reliability
-                        e.SetQuorumQueue();
-                        e.SetQueueArgument("x-delivery-limit", 10); // Max redelivery attempts
-                        e.SetQueueArgument("x-max-length", 50000); // Queue size limit
-                        e.SetQueueArgument("x-overflow", "reject-publish"); // Reject new messages when full
-                        
-                        // Configure retry with exponential backoff
-                        e.UseMessageRetry(r => r.Exponential(3, 
-                            TimeSpan.FromSeconds(1),
-                            TimeSpan.FromSeconds(30),
-                            TimeSpan.FromSeconds(2)));
-                        
-                        // Circuit breaker to prevent cascading failures
-                        e.UseCircuitBreaker(cb =>
-                        {
-                            cb.TrackingPeriod = TimeSpan.FromMinutes(1);
-                            cb.TripThreshold = 15; // 15% failure rate
-                            cb.ActiveThreshold = 10; // Minimum attempts before evaluating
-                            cb.ResetInterval = TimeSpan.FromMinutes(5);
-                        });
-                        
-                        // Rate limiting to prevent consumer overload
-                        e.UseRateLimit(100, TimeSpan.FromSeconds(1)); // 100 messages per second
-                        
-                        // Prevents duplicate sends during retries
-                        // Note: UseInMemoryOutbox is now configured at the bus level
-                        
-                        e.ConfigureConsumer<ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>(context, c =>
-                        {
-                            c.UseConcurrentMessageLimit(75);
-                        });
-                    });
-                    
-                    // Configure video generation endpoint for high throughput
-                    cfg.ReceiveEndpoint("video-generation-events", e =>
-                    {
-                        e.PrefetchCount = rabbitMqConfig.PrefetchCount;
-                        e.ConcurrentMessageLimit = rabbitMqConfig.ConcurrentMessageLimit;
-                        
-                        // Enable consume topology to properly bind consumers to the queue
-                        // This ensures VideoGenerationRequested events are routed to this endpoint
-                        e.ConfigureConsumeTopology = true;
-                        e.SetQuorumQueue();
-                        // Note: Removed x-single-active-consumer as it conflicts with partitioned processing
-                        // Ordering is maintained through partition keys in the event messages
-                        
-                        // Retry policy for transient failures
-                        e.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5)));
-                        
-                        // Circuit breaker
-                        e.UseCircuitBreaker(cb =>
-                        {
-                            cb.TrackingPeriod = TimeSpan.FromMinutes(2);
-                            cb.TripThreshold = 20; // 20% failure rate
-                            cb.ActiveThreshold = 5;
-                            cb.ResetInterval = TimeSpan.FromMinutes(10);
-                        });
-                        
-                        e.ConfigureConsumer<ConduitLLM.Core.Services.VideoGenerationOrchestrator>(context);
-                        e.ConfigureConsumer<ConduitLLM.Core.Services.VideoProgressTrackingOrchestrator>(context);
-                    });
-                    
-                    // Configure image generation endpoint
-                    cfg.ReceiveEndpoint("image-generation-events", e =>
-                    {
-                        e.PrefetchCount = rabbitMqConfig.PrefetchCount;
-                        e.ConcurrentMessageLimit = rabbitMqConfig.ConcurrentMessageLimit;
-                        
-                        e.SetQuorumQueue();
-                        e.SetQueueArgument("x-single-active-consumer", true);
-                        
-                        e.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(3)));
-                        
-                        e.UseCircuitBreaker(cb =>
-                        {
-                            cb.TrackingPeriod = TimeSpan.FromMinutes(1);
-                            cb.TripThreshold = 15;
-                            cb.ActiveThreshold = 5;
-                            cb.ResetInterval = TimeSpan.FromMinutes(5);
-                        });
-                        
-                        e.ConfigureConsumer<ConduitLLM.Core.Services.ImageGenerationOrchestrator>(context);
-                    });
-                    
-                    // Configure spend update endpoint with strict ordering
-                    cfg.ReceiveEndpoint("spend-update-events", e =>
-                    {
-                        e.PrefetchCount = 10; // Lower prefetch for ordered processing
-                        e.ConcurrentMessageLimit = 1; // Sequential processing per partition
-                        
-                        e.SetQuorumQueue();
-                        e.SetQueueArgument("x-single-active-consumer", true);
-                        e.SetQueueArgument("x-max-length", 10000);
-                        
-                        e.UseMessageRetry(r => r.Immediate(3));
-                        
-                        e.ConfigureConsumer<ConduitLLM.Gateway.EventHandlers.SpendUpdateProcessor>(context);
-                    });
+                    options.TypeInfoResolverChain.Add(
+                        new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
+                }
+            });
 
-                    // Note: Media lifecycle endpoints moved to Admin API
-                    // Retention checks, cleanup batches, and deletion are now handled by Admin API consumers
+            ConduitLLM.Gateway.Extensions.CacheInvalidationMessagingExtensions.AddGatewayCacheInvalidationBridges(opts);
+            ConduitLLM.Core.Extensions.SharedCacheInvalidationMessagingExtensions.AddSharedCacheInvalidationBridges(opts);
+            ConduitLLM.Gateway.Extensions.MediaGenerationMessagingExtensions.AddMediaGenerationBridges(opts);
 
-                    // Configure remaining endpoints with automatic topology
-                    cfg.ConfigureEndpoints(context);
-                });
-                
-                Console.WriteLine($"[Conduit] Event bus configured with RabbitMQ transport (multi-instance mode) - Host: {rabbitMqConfig.Host}:{rabbitMqConfig.Port}");
-                Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events for:");
-                Console.WriteLine("  - Virtual Key updates (cache invalidation across instances)");
-                Console.WriteLine("  - Spend updates (ordered processing with race condition prevention)");
-                Console.WriteLine("  - Provider credential changes (automatic capability refresh)");
-                Console.WriteLine("  - Model capability discovery (shared across all instances)");
-                Console.WriteLine("  - Model mapping changes (real-time WebAdmin updates via SignalR)");
-                Console.WriteLine("  - Provider health changes (real-time WebAdmin updates via SignalR)");
-                Console.WriteLine("  - Global settings changes (system-wide configuration updates)");
-                Console.WriteLine("  - IP filter changes (security policy updates)");
-                Console.WriteLine("  - Model cost changes (pricing updates)");
-                Console.WriteLine("  - Video generation tasks (partitioned processing per virtual key)");
-                Console.WriteLine("  - Image generation tasks (partitioned processing per virtual key)");
-            }
-            else
+            // High-risk bridges (#921); their endpoint tuning is applied by
+            // ListenAsConduitGateway below (#926).
+            opts.AddEventBridge<SpendUpdateRequested>();
+            opts.AddEventBridge<WebhookDeliveryRequested>();
+            opts.AddEventBridge<ConduitLLM.Configuration.Events.BatchSpendFlushRequestedEvent>();
+
+            // Event→queue topology (#926): publish routing identical on all hosts;
+            // the Gateway listens on the four tuned queues + gateway-events. Postgres
+            // queues only exist on the Postgresql transport — in-memory mode (dev/CI,
+            // #928) routes everything to local queues instead.
+            if (postgresTransport)
             {
-                x.UsingInMemory((context, cfg) =>
-                {
-                    // NOTE: Using in-memory transport for single-instance deployments
-                    // Configure RabbitMQ environment variables for multi-instance production
-                    
-                    // Configure retry policy for reliability
-                    cfg.UseMessageRetry(r => r.Incremental(3, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2)));
-                    
-                    // Configure delayed redelivery for failed messages
-                    cfg.UseDelayedRedelivery(r => r.Intervals(TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(15), TimeSpan.FromMinutes(30)));
-                    
-                    // Configure webhook delivery endpoint with high throughput settings
-                    cfg.ReceiveEndpoint("webhook-delivery", e =>
-                    {
-                        // Configure retry with shorter intervals for webhook scenarios
-                        e.UseMessageRetry(r => r.Exponential(3, 
-                            TimeSpan.FromSeconds(1), // Faster initial retry
-                            TimeSpan.FromSeconds(30), // Max backoff
-                            TimeSpan.FromSeconds(2)));
-                        
-                        // Prevents duplicate sends during retries
-                        // Note: UseInMemoryOutbox is now configured at the bus level
-                        
-                        e.ConfigureConsumer<ConduitLLM.Gateway.Consumers.WebhookDeliveryConsumer>(context, c =>
-                        {
-                            // Configure consumer concurrency for in-memory
-                            c.UseConcurrentMessageLimit(50); // Lower for single instance
-                        });
-                    });
-                    
-                    // Configure endpoints with automatic topology
-                    cfg.ConfigureEndpoints(context);
-                });
-                
-                Console.WriteLine("[Conduit] Event bus configured with in-memory transport (single-instance mode)");
-                Console.WriteLine("[Conduit] Event-driven architecture ENABLED - Services will publish events locally");
-                Console.WriteLine("[Conduit] WARNING: For production multi-instance deployments, configure RabbitMQ:");
-                Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__HOST to your RabbitMQ host");
-                Console.WriteLine("  - Set CONDUITLLM__RABBITMQ__USERNAME and CONDUITLLM__RABBITMQ__PASSWORD");
-                Console.WriteLine("  - This enables cache consistency and ordered processing across instances");
+                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ApplyConduitPublishRouting(opts);
+                ConduitLLM.Core.Messaging.ConduitMessagingTopology.ListenAsConduitGateway(opts);
             }
         });
 
-        // Register batch webhook publisher for high-throughput webhook delivery
-        if (useRabbitMq)
+        // Batch webhook publisher: publishes via IEventBus, so it is backend-agnostic.
+        builder.Services.AddBatchWebhookPublisher(options =>
         {
-            builder.Services.AddBatchWebhookPublisher(options =>
-            {
-                options.MaxBatchSize = 100;
-                options.MaxBatchDelay = TimeSpan.FromMilliseconds(100);
-                options.ConcurrentPublishers = 3;
-            });
-            Console.WriteLine("[Conduit] Batch webhook publisher configured for high-throughput delivery");
-        }
+            options.MaxBatchSize = 100;
+            options.MaxBatchDelay = TimeSpan.FromMilliseconds(100);
+            options.ConcurrentPublishers = 3;
+        });
+
+        // Gateway liveness heartbeat (#1067): every instance publishes a GatewayHeartbeat via
+        // IEventBus so the Admin health dashboard reports the Gateway's real status from
+        // staleness (keeps Admin↔Gateway event-only — no synchronous HTTP probe). Registered
+        // with a plain AddHostedService — NOT leader-elected — because a per-instance liveness
+        // signal must be emitted by every instance.
+        builder.Services.AddHostedService<ConduitLLM.Gateway.Services.GatewayHeartbeatPublisher>();
     }
 }

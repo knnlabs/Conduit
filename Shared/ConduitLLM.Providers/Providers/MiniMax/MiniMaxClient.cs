@@ -1,6 +1,9 @@
+using System.Text.Json;
+
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -11,9 +14,17 @@ namespace ConduitLLM.Providers.MiniMax
     /// </summary>
     public partial class MiniMaxClient : BaseLLMClient, IAuthenticationVerifiable
     {
-        private const string DefaultBaseUrl = "https://api.minimax.io";
         private readonly string _baseUrl;
         private Func<string, string, int, Task>? _progressCallback;
+
+        /// <summary>
+        /// MiniMax chat API returns snake_case properties — needs case-insensitive deserialization.
+        /// </summary>
+        private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+        };
 
         /// <summary>
         /// Initializes a new instance of the <see cref="MiniMaxClient"/> class.
@@ -22,29 +33,28 @@ namespace ConduitLLM.Providers.MiniMax
         /// <param name="modelId">The default model ID to use.</param>
         /// <param name="logger">The logger for diagnostic information.</param>
         /// <param name="httpClientFactory">The HTTP client factory.</param>
-        /// <param name="defaultModels">The default models configuration.</param>
         public MiniMaxClient(
             Provider provider,
             ProviderKeyCredential keyCredential,
             string modelId,
             ILogger<MiniMaxClient> logger,
-            IHttpClientFactory httpClientFactory,
-            ProviderDefaultModels? defaultModels = null)
-            : base(provider, keyCredential, modelId, logger, httpClientFactory, "minimax", defaultModels)
+            IHttpClientFactory httpClientFactory)
+            : base(provider, keyCredential, modelId, logger, httpClientFactory, "minimax")
         {
-            _baseUrl = string.IsNullOrWhiteSpace(provider.BaseUrl) ? DefaultBaseUrl : provider.BaseUrl.TrimEnd('/');
+            _baseUrl = ProviderConfigurationRegistry.ResolveBaseUrl(provider);
             logger.LogInformation("MiniMax client initialized with base URL: {BaseUrl}, Model: {Model}", _baseUrl, modelId);
         }
 
         /// <inheritdoc />
         protected override void ConfigureHttpClient(HttpClient client, string apiKey)
         {
-            client.DefaultRequestHeaders.Clear();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {apiKey}");
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-            // Add Accept header for SSE streaming
-            client.DefaultRequestHeaders.Add("Accept", "text/event-stream");
-            client.Timeout = TimeSpan.FromMinutes(10); // Long timeout for video processing
+            base.ConfigureHttpClient(client, apiKey);
+            // Override Accept header for SSE streaming (base sets application/json)
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(
+                new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("text/event-stream"));
+            // Use video generation timeout since MiniMax supports video
+            client.Timeout = VideoGenerationTimeout;
         }
 
         /// <summary>
@@ -56,10 +66,28 @@ namespace ConduitLLM.Providers.MiniMax
             _progressCallback = callback;
         }
 
+        private Task<TResponse> SendMiniMaxJsonAsync<TRequest, TResponse>(
+            HttpClient client,
+            string endpoint,
+            TRequest request,
+            JsonSerializerOptions jsonOptions,
+            CancellationToken cancellationToken)
+        {
+            return Core.Utilities.HttpClientHelper.SendJsonRequestAsync<TRequest, TResponse>(
+                client,
+                HttpMethod.Post,
+                endpoint,
+                request,
+                headers: null,
+                jsonOptions,
+                Logger,
+                cancellationToken);
+        }
+
         /// <inheritdoc/>
         protected override string GetDefaultBaseUrl()
         {
-            return DefaultBaseUrl;
+            return ProviderConfigurationRegistry.GetDefaultBaseUrl(ProviderType.MiniMax)!;
         }
     }
 }

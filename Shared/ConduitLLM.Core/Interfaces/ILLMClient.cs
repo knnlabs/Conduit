@@ -38,7 +38,7 @@ public interface ILLMClient
     /// <returns>The chat completion response from the model.</returns>
     /// <exception cref="ValidationException">Thrown when the request fails validation.</exception>
     /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the provider.</exception>
-    /// <exception cref="ModelUnavailableException">Thrown when the requested model is not available.</exception>
+    /// <exception cref="ModelNotFoundException">Thrown when the requested model is not available.</exception>
     /// <remarks>
     /// <para>
     /// This method sends a completion request to the LLM provider's API and awaits the full
@@ -68,7 +68,7 @@ public interface ILLMClient
     /// <returns>An asynchronous enumerable of chat completion chunks representing the streaming response.</returns>
     /// <exception cref="ValidationException">Thrown when the request fails validation.</exception>
     /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the provider.</exception>
-    /// <exception cref="ModelUnavailableException">Thrown when the requested model is not available.</exception>
+    /// <exception cref="ModelNotFoundException">Thrown when the requested model is not available.</exception>
     /// <remarks>
     /// <para>
     /// This method is similar to <see cref="CreateChatCompletionAsync"/> but returns a stream of
@@ -181,31 +181,4 @@ public interface ILLMClient
         string? apiKey = null,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Gets the capabilities supported by this provider/model combination.
-    /// </summary>
-    /// <param name="modelId">Optional specific model ID to get capabilities for.</param>
-    /// <returns>The provider capabilities including supported parameters and features.</returns>
-    /// <exception cref="LLMCommunicationException">Thrown when there is an error communicating with the provider.</exception>
-    /// <remarks>
-    /// <para>
-    /// This method returns information about what parameters and features are supported by
-    /// the provider and optionally a specific model. This enables better UX by allowing
-    /// interfaces to show/hide parameters based on capabilities.
-    /// </para>
-    /// <para>
-    /// The capabilities include information about:
-    /// </para>
-    /// <list type="bullet">
-    /// <item><description>Supported chat completion parameters (temperature, top_p, etc.)</description></item>
-    /// <item><description>Parameter constraints and valid ranges</description></item>
-    /// <item><description>Supported features (streaming, embeddings, vision, etc.)</description></item>
-    /// </list>
-    /// <para>
-    /// If a specific model ID is provided, the capabilities returned will be specific to that model.
-    /// Otherwise, the capabilities will be for the provider or default model.
-    /// </para>
-    /// </remarks>
-    Task<ProviderCapabilities> GetCapabilitiesAsync(
-        string? modelId = null);
 }

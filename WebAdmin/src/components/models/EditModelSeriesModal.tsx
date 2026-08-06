@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Modal, TextInput, Button, Stack, Group, Textarea, Alert, Text } from '@mantine/core';
+import { useState, useEffect, useCallback } from 'react';
+import { TextInput, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { IconAlertCircle } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
+import { JsonEditorField } from '@/components/common/JsonEditorField';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
-import type { ModelSeriesDto, UpdateModelSeriesDto } from '@knn_labs/conduit-admin-client';
+import type { ModelSeriesDto, UpdateModelSeriesDto } from '@/lib/admin-api';
 
 
 interface EditModelSeriesModalProps {
@@ -17,16 +18,18 @@ interface EditModelSeriesModalProps {
   onSuccess: () => void;
 }
 
-export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: EditModelSeriesModalProps) {
-  const [loading, setLoading] = useState(false);
-  const [jsonError, setJsonError] = useState<string | null>(null);
-  const { executeWithAdmin } = useAdminClient();
+type EditModelSeriesFormValues = Omit<UpdateModelSeriesDto, 'parameters'> & {
+  parameters?: string;
+};
 
-  const form = useForm<UpdateModelSeriesDto & { parameters?: string }>({
+export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: EditModelSeriesModalProps) {
+  const [jsonValid, setJsonValid] = useState(true);
+
+  const form = useForm<EditModelSeriesFormValues>({
     initialValues: {
       name: series?.name ?? '',
       description: series?.description ?? '',
-      parameters: series?.parameters ?? ''
+      parameters: series?.parameters ? JSON.stringify(series.parameters, null, 2) : ''
     },
     validate: {
       name: (value) => !value ? 'Name is required' : null,
@@ -35,12 +38,9 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
         if (value) {
           try {
             JSON.parse(value);
-            setJsonError(null);
             return null;
           } catch {
-            const error = 'Invalid JSON format';
-            setJsonError(error);
-            return error;
+            return 'Invalid JSON format';
           }
         }
         return null;
@@ -53,128 +53,79 @@ export function EditModelSeriesModal({ isOpen, series, onClose, onSuccess }: Edi
       form.setValues({
         name: series.name ?? '',
         description: series.description ?? '',
-        parameters: series.parameters ?? ''
+        parameters: series.parameters ? JSON.stringify(series.parameters, null, 2) : ''
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [series]);
 
 
-  const handleClose = () => {
-    form.reset();
-    setJsonError(null);
-    onClose();
-  };
-
-  const handleSubmit = async (values: typeof form.values) => {
-    try {
-      setLoading(true);
+  const submitAction = useCallback(
+    async (values: EditModelSeriesFormValues) => {
+      if (!series.id) throw new Error('Series ID is required');
       const dto: UpdateModelSeriesDto = {
         name: values.name,
         description: values.description,
-        parameters: values.parameters ?? null
+        parameters: values.parameters ? JSON.parse(values.parameters) as Record<string, unknown> : undefined
       };
-      
-      if (!series.id) throw new Error('Series ID is required');
-      await executeWithAdmin(client => client.modelSeries.update(series.id as number, dto));
-      notifications.show({
-        title: 'Success',
-        message: 'Model series updated successfully',
-        color: 'green',
-      });
-      handleClose();
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to update model series:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update model series',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      await withAdminClient(client => client.modelSeries.update(series.id as number, dto));
+    },
+    [series.id]
+  );
 
-  // Removed authorOptions as it's no longer used
+  const { loading, handleSubmit, handleClose: baseHandleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction,
+    successMessage: 'Model series updated successfully',
+  });
 
-  const validateJson = (value: string) => {
-    try {
-      if (value) {
-        JSON.parse(value);
-        setJsonError(null);
-      }
-    } catch {
-      setJsonError('Invalid JSON format');
-    }
-  };
+  const handleClose = useCallback(() => {
+    setJsonValid(true);
+    baseHandleClose();
+  }, [baseHandleClose]);
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
       onClose={handleClose}
       title="Edit Model Series"
-      size="lg"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Update Series"
+      submitDisabled={!jsonValid}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Series Name"
-            placeholder="e.g., GPT-4"
-            required
-            {...form.getInputProps('name')}
+      <TextInput
+        label="Series Name"
+        placeholder="e.g., GPT-4"
+        required
+        {...form.getInputProps('name')}
+      />
+
+      <Textarea
+        label="Description"
+        placeholder="Description of the model series..."
+        rows={3}
+        {...form.getInputProps('description')}
+      />
+
+      <JsonEditorField
+        label="Parameters (JSON)"
+        value={form.values.parameters ?? ''}
+        onChange={(v) => form.setFieldValue('parameters', v)}
+        onValidityChange={setJsonValid}
+        placeholder="JSON parameters for UI generation..."
+        previewPosition="above"
+        renderPreview={(v) => (
+          <ParameterPreview
+            parametersJson={v}
+            context="chat"
+            label="Preview UI Components"
+            maxHeight={300}
           />
-
-
-          <Textarea
-            label="Description"
-            placeholder="Description of the model series..."
-            rows={3}
-            {...form.getInputProps('description')}
-          />
-
-          <Stack gap="xs">
-            <Text size="sm" fw={500}>
-              Parameters (JSON)
-            </Text>
-            
-            <ParameterPreview 
-              parametersJson={form.values.parameters ?? ''}
-              context="chat"
-              label="Preview UI Components"
-              maxHeight={300}
-            />
-            
-            <Textarea
-              placeholder="JSON parameters for UI generation..."
-              rows={8}
-              style={{ fontFamily: 'monospace' }}
-              {...form.getInputProps('parameters')}
-              onChange={(e) => {
-                form.setFieldValue('parameters', e.currentTarget.value);
-                validateJson(e.currentTarget.value);
-              }}
-              error={jsonError}
-            />
-
-            {jsonError && (
-              <Alert icon={<IconAlertCircle size={16} />} color="red" variant="light">
-                {jsonError}
-              </Alert>
-            )}
-          </Stack>
-
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading} disabled={!!jsonError}>
-              Update Series
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+        )}
+      />
+    </EntityFormModal>
   );
 }

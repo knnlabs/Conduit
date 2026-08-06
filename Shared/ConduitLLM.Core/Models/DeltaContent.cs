@@ -42,6 +42,21 @@ public class DeltaContent
     [JsonPropertyName("channel")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Channel { get; set; }
+
+    /// <summary>Incremental assistant audio output.</summary>
+    [JsonPropertyName("audio")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Audio { get; set; }
+
+    /// <summary>Incremental assistant image output.</summary>
+    [JsonPropertyName("images")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Images { get; set; }
+
+    /// <summary>Structured provider reasoning details.</summary>
+    [JsonPropertyName("reasoning_details")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? ReasoningDetails { get; set; }
     
     /// <summary>
     /// Extension data to capture any additional fields not explicitly mapped.

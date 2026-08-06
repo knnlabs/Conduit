@@ -1,6 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+using ConduitLLM.Functions.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -8,7 +11,7 @@ namespace ConduitLLM.Configuration.Entities
     /// Multiple key credentials can be associated with a single provider for load balancing,
     /// failover, and account-based organization.
     /// </summary>
-    public class ProviderKeyCredential
+    public class ProviderKeyCredential : IEntity<int>, IAuditableEntity, ICredentialEntity
     {
         /// <summary>
         /// Gets or sets the unique identifier for this provider key credential.
@@ -37,6 +40,7 @@ namespace ConduitLLM.Configuration.Entities
         /// Keys with the same ProviderAccountGroup share quota limits and billing.
         /// This is used for intelligent failover - if one account hits rate limits,
         /// the system can switch to keys from a different account group.
+        /// Group 0 means ungrouped: errors for one group-0 key never propagate to another.
         /// Note: This refers to external provider accounts, not Conduit user accounts.
         /// </summary>
         // Each key can be part of an account on that LLM Provider. This is not related to our own concept of accounts as this is solely for tracking the external account.
@@ -45,7 +49,9 @@ namespace ConduitLLM.Configuration.Entities
         public short ProviderAccountGroup { get; set; } = 0;
     
         /// <summary>
-        /// Gets or sets the API key for this credential. Made nullable to allow for empty/cleared keys.
+        /// Gets or sets the API key for this credential. Stored encrypted through
+        /// <c>IProviderSecretProtector</c>; legacy plaintext values remain readable and are protected
+        /// on their next update. Made nullable to allow for empty/cleared keys.
         /// </summary>
         // Made ApiKey nullable to allow for empty/cleared keys
         public string? ApiKey { get; set; }
@@ -58,11 +64,19 @@ namespace ConduitLLM.Configuration.Entities
 
         
         /// <summary>
-        /// Gets or sets the organization or project ID for this key. Overrides provider default if specified.
+        /// Gets or sets the secret-valued structured settings this credential carries in addition to
+        /// <see cref="ApiKey"/>, keyed by the setting key declared in the provider registry (for
+        /// example an AWS secret access key, or a Google service-account JSON document).
         /// </summary>
-        // Optional: Organization or project ID (overrides provider default)
-        public string? Organization { get; set; }
-        
+        /// <remarks>
+        /// Values are stored encrypted (see <c>IProviderSecretProtector</c>) and are never returned
+        /// to API clients. Non-secret identifiers belong in <c>Provider.Settings</c> instead: that
+        /// bag is plaintext by contract. Secrets live on the credential rather than the provider so
+        /// they take part in the existing key rotation, failover and account-group behaviour - one
+        /// provider can hold credentials for several accounts.
+        /// </remarks>
+        public Dictionary<string, string>? SecretSettings { get; set; }
+
         /// <summary>
         /// Gets or sets a human-readable name for this key to help with identification and management.
         /// </summary>

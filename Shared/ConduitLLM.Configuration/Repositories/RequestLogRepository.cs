@@ -6,15 +6,19 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 using ConduitLLM.Configuration.Interfaces;
+
 namespace ConduitLLM.Configuration.Repositories
 {
     /// <summary>
-    /// Repository implementation for request logs using Entity Framework Core
+    /// Repository implementation for request logs using Entity Framework Core.
+    /// Extends RepositoryBase for standard CRUD operations.
     /// </summary>
-    public class RequestLogRepository : IRequestLogRepository
+    public class RequestLogRepository : RepositoryBase<RequestLog, int>, IRequestLogRepository
     {
-        private readonly IDbContextFactory<ConduitDbContext> _dbContextFactory;
-        private readonly ILogger<RequestLogRepository> _logger;
+        /// <summary>
+        /// Maximum page size for request log queries
+        /// </summary>
+        protected override int MaxPageSize => 1000;
 
         /// <summary>
         /// Creates a new instance of the repository
@@ -24,385 +28,421 @@ namespace ConduitLLM.Configuration.Repositories
         public RequestLogRepository(
             IDbContextFactory<ConduitDbContext> dbContextFactory,
             ILogger<RequestLogRepository> logger)
+            : base(dbContextFactory, logger)
         {
-            _dbContextFactory = dbContextFactory ?? throw new ArgumentNullException(nameof(dbContextFactory));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <inheritdoc/>
-        public async Task<RequestLog?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
+        protected override DbSet<RequestLog> GetDbSet(ConduitDbContext context)
         {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.RequestLogs
-                    .AsNoTracking()
-                    .FirstOrDefaultAsync(r => r.Id == id, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting request log with ID {LogId}", LogSanitizer.SanitizeObject(id));
-                throw;
-            }
+            return context.RequestLogs;
         }
 
         /// <inheritdoc/>
-        public async Task<List<RequestLog>> GetAllAsync(CancellationToken cancellationToken = default)
+        protected override IQueryable<RequestLog> ApplyDefaultOrdering(IQueryable<RequestLog> query)
         {
-            try
+            return query.OrderByDescending(r => r.Timestamp);
+        }
+
+        /// <inheritdoc/>
+        protected override void OnBeforeCreate(RequestLog entity)
+        {
+            base.OnBeforeCreate(entity);
+
+            // Ensure timestamp is set
+            if (entity.Timestamp == default)
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.RequestLogs
-                    .AsNoTracking()
-                    .OrderByDescending(r => r.Timestamp)
-                    .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting all request logs");
-                throw;
+                entity.Timestamp = DateTime.UtcNow;
             }
         }
 
         /// <inheritdoc/>
+        [Obsolete("Use GetByVirtualKeyIdPaginatedAsync instead. This method loads all records into memory and will be removed in a future version.")]
         public async Task<List<RequestLog>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default)
         {
-            try
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.RequestLogs
+                return await context.RequestLogs
                     .AsNoTracking()
                     .Where(r => r.VirtualKeyId == virtualKeyId)
                     .OrderByDescending(r => r.Timestamp)
                     .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting request logs for virtual key ID {VirtualKeyId}", LogSanitizer.SanitizeObject(virtualKeyId));
-                throw;
-            }
+            }, cancellationToken, $"getting by virtual key ID {virtualKeyId}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<RequestLog> Logs, int TotalCount)> GetByVirtualKeyIdPaginatedAsync(
+            int virtualKeyId,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            return await GetFilteredPaginatedAsync(
+                r => r.VirtualKeyId == virtualKeyId,
+                pageNumber,
+                pageSize,
+                q => q.OrderByDescending(r => r.Timestamp),
+                cancellationToken,
+                $"getting paginated by virtual key ID {virtualKeyId}");
         }
 
         /// <inheritdoc/>
         public async Task<List<RequestLog>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
-            try
+            // Ensure dates are UTC for PostgreSQL timestamp with time zone
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
             {
-                // Ensure dates are UTC for PostgreSQL timestamp with time zone
-                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
-                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
-                
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.RequestLogs
+                return await context.RequestLogs
                     .AsNoTracking()
                     .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
                     .OrderByDescending(r => r.Timestamp)
                     .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting request logs for date range {StartDate} to {EndDate}",
-                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate));
-                throw;
-            }
+            }, cancellationToken, $"getting by date range {startDate:d} to {endDate:d}");
         }
 
         /// <inheritdoc/>
-        public async Task<List<RequestLog>> GetByModelAsync(string modelName, CancellationToken cancellationToken = default)
+        public async Task<List<RequestLog>> GetByDateRangeFilteredAsync(
+            DateTime startDate,
+            DateTime endDate,
+            string? modelFilter = null,
+            int? virtualKeyId = null,
+            CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            // Pre-compute ILIKE pattern outside the EF expression so it's a parameterized literal.
+            // Escape the LIKE wildcards so a user-supplied "_" or "%" matches itself.
+            string? likePattern = null;
+            if (!string.IsNullOrEmpty(modelFilter))
+            {
+                var escaped = modelFilter
+                    .Replace("\\", "\\\\")
+                    .Replace("%", "\\%")
+                    .Replace("_", "\\_");
+                likePattern = $"%{escaped}%";
+            }
+
+            return await ExecuteAsync(async context =>
+            {
+                var query = context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate);
+
+                if (likePattern != null)
+                {
+                    query = query.Where(r => EF.Functions.ILike(r.ModelName, likePattern));
+                }
+
+                if (virtualKeyId.HasValue)
+                {
+                    var vkId = virtualKeyId.Value;
+                    query = query.Where(r => r.VirtualKeyId == vkId);
+                }
+
+                return await query
+                    .OrderByDescending(r => r.Timestamp)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting filtered by date range {startDate:d} to {endDate:d}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<(List<RequestLog> Logs, int TotalCount)> GetByModelPaginatedAsync(
+            string modelName,
+            int pageNumber,
+            int pageSize,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(modelName))
             {
                 throw new ArgumentException("Model name cannot be null or empty", nameof(modelName));
             }
 
-            try
+            return await GetFilteredPaginatedAsync(
+                r => r.ModelName == modelName,
+                pageNumber,
+                pageSize,
+                q => q.OrderByDescending(r => r.Timestamp),
+                cancellationToken,
+                $"getting paginated by model {LoggingSanitizer.S(modelName)}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<string>> GetDistinctModelsAsync(CancellationToken cancellationToken = default)
+        {
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                return await dbContext.RequestLogs
+                return await context.RequestLogs
                     .AsNoTracking()
-                    .Where(r => r.ModelName == modelName)
-                    .OrderByDescending(r => r.Timestamp)
+                    .Where(r => r.ModelName != null && r.ModelName != "")
+                    .Select(r => r.ModelName!)
+                    .Distinct()
+                    .OrderBy(m => m)
                     .ToListAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting request logs for model {ModelName}", LogSanitizer.SanitizeObject(modelName));
-                throw;
-            }
+            }, cancellationToken, "getting distinct models");
         }
 
         /// <inheritdoc/>
         public async Task<(List<RequestLog> Logs, int TotalCount)> GetByDateRangePaginatedAsync(
-            DateTime startDate, 
-            DateTime endDate, 
-            int pageNumber, 
-            int pageSize, 
+            DateTime startDate,
+            DateTime endDate,
+            int pageNumber,
+            int pageSize,
             CancellationToken cancellationToken = default)
         {
-            if (pageNumber < 1)
-            {
-                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
-            }
+            // Ensure dates are UTC for PostgreSQL timestamp with time zone
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
 
-            if (pageSize < 1)
-            {
-                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
-            }
-
-            // Add upper bound to prevent resource exhaustion
-            const int maxPageSize = 1000;
-            if (pageSize > maxPageSize)
-            {
-                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum", 
-                    LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
-                pageSize = maxPageSize;
-            }
-
-            try
-            {
-                // Ensure dates are UTC for PostgreSQL timestamp with time zone
-                var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
-                var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
-                
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Build the query with date range filter
-                var query = dbContext.RequestLogs
-                    .AsNoTracking()
-                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate);
-
-                // Get total count
-                var totalCount = await query.CountAsync(cancellationToken);
-
-                // Get paginated data
-                var logs = await query
-                    .OrderByDescending(r => r.Timestamp)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (logs, totalCount);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting paginated request logs for date range {StartDate} to {EndDate}, page {PageNumber}, size {PageSize}",
-                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate),
-                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<(List<RequestLog> Logs, int TotalCount)> GetPaginatedAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default)
-        {
-            if (pageNumber < 1)
-            {
-                throw new ArgumentException("Page number must be greater than or equal to 1", nameof(pageNumber));
-            }
-
-            if (pageSize < 1)
-            {
-                throw new ArgumentException("Page size must be greater than or equal to 1", nameof(pageSize));
-            }
-
-            // Add upper bound to prevent resource exhaustion
-            const int maxPageSize = 1000;
-            if (pageSize > maxPageSize)
-            {
-                _logger.LogWarning("Requested page size {RequestedPageSize} exceeds maximum allowed {MaxPageSize}, limiting to maximum", LogSanitizer.SanitizeObject(pageSize), LogSanitizer.SanitizeObject(maxPageSize));
-                pageSize = maxPageSize;
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Get total count
-                var totalCount = await dbContext.RequestLogs.CountAsync(cancellationToken);
-
-                // Get paginated data
-                var logs = await dbContext.RequestLogs
-                    .AsNoTracking()
-                    .OrderByDescending(r => r.Timestamp)
-                    .Skip((pageNumber - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToListAsync(cancellationToken);
-
-                return (logs, totalCount);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting paginated request logs for page {PageNumber}, size {PageSize}",
-                    LogSanitizer.SanitizeObject(pageNumber), LogSanitizer.SanitizeObject(pageSize));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<int> CreateAsync(RequestLog requestLog, CancellationToken cancellationToken = default)
-        {
-            if (requestLog == null)
-            {
-                throw new ArgumentNullException(nameof(requestLog));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Ensure timestamp is set
-                if (requestLog.Timestamp == default)
-                {
-                    requestLog.Timestamp = DateTime.UtcNow;
-                }
-
-                dbContext.RequestLogs.Add(requestLog);
-                await dbContext.SaveChangesAsync(cancellationToken);
-                return requestLog.Id;
-            }
-            catch (DbUpdateException ex)
-            {
-                _logger.LogError(ex, "Database error creating request log for endpoint '{RequestPath}'",
-                    LogSanitizer.SanitizeObject(requestLog.RequestPath ?? "unknown"));
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating request log for endpoint '{RequestPath}'",
-                    LogSanitizer.SanitizeObject(requestLog.RequestPath ?? "unknown"));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<bool> UpdateAsync(RequestLog requestLog, CancellationToken cancellationToken = default)
-        {
-            if (requestLog == null)
-            {
-                throw new ArgumentNullException(nameof(requestLog));
-            }
-
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
-                // Ensure the entity is tracked
-                dbContext.RequestLogs.Update(requestLog);
-
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                return rowsAffected > 0;
-            }
-            catch (DbUpdateConcurrencyException ex)
-            {
-                _logger.LogError(ex, "Concurrency error updating request log with ID {LogId}", LogSanitizer.SanitizeObject(requestLog.Id));
-
-                // Handle concurrency issues by reloading and reapplying changes if needed
-                try
-                {
-                    using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                    var existingEntity = await dbContext.RequestLogs.FindAsync(new object[] { requestLog.Id }, cancellationToken);
-
-                    if (existingEntity == null)
-                    {
-                        return false;
-                    }
-
-                    // Update properties
-                    dbContext.Entry(existingEntity).CurrentValues.SetValues(requestLog);
-
-                    int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                    return rowsAffected > 0;
-                }
-                catch (Exception retryEx)
-                {
-                    _logger.LogError(retryEx, "Error during retry of request log update with ID {LogId}", LogSanitizer.SanitizeObject(requestLog.Id));
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating request log with ID {LogId}",
-                    LogSanitizer.SanitizeObject(requestLog.Id));
-                throw;
-            }
-        }
-
-        /// <inheritdoc/>
-        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-                var requestLog = await dbContext.RequestLogs.FindAsync(new object[] { id }, cancellationToken);
-
-                if (requestLog == null)
-                {
-                    return false;
-                }
-
-                dbContext.RequestLogs.Remove(requestLog);
-                int rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
-                return rowsAffected > 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error deleting request log with ID {LogId}", LogSanitizer.SanitizeObject(id));
-                throw;
-            }
+            return await GetFilteredPaginatedAsync(
+                r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate,
+                pageNumber,
+                pageSize,
+                q => q.OrderByDescending(r => r.Timestamp),
+                cancellationToken,
+                $"getting paginated by date range {startDate:d} to {endDate:d}");
         }
 
         /// <inheritdoc/>
         public async Task<UsageStatisticsDto> GetUsageStatisticsAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
         {
-            try
-            {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
 
-                var logs = await dbContext.RequestLogs
-                    .AsNoTracking()
-                    .Where(r => r.Timestamp >= startDate && r.Timestamp <= endDate)
-                    .ToListAsync(cancellationToken);
+            // Get summary and model breakdown via database-level aggregation
+            var summaryTask = GetSummaryAsync(utcStartDate, utcEndDate, cancellationToken);
+            var modelTask = GetAggregatedByModelAsync(utcStartDate, utcEndDate, cancellationToken);
+            await Task.WhenAll(summaryTask, modelTask);
 
-                // Calculate statistics
-                var totalRequests = logs.Count;
-                var totalInputTokens = logs.Sum(r => r.InputTokens);
-                var totalOutputTokens = logs.Sum(r => r.OutputTokens);
-                var totalCost = logs.Sum(r => r.Cost);
+            var summary = await summaryTask;
+            var modelAggregations = await modelTask;
 
-                // Get model usage
-                var modelUsageDict = logs
-                    .GroupBy(r => r.ModelName)
-                    .ToDictionary(
-                        g => g.Key ?? "Unknown",
-                        g => new ModelUsage
-                        {
-                            RequestCount = g.Count(),
-                            Cost = g.Sum(r => r.Cost),
-                            InputTokens = g.Sum(r => r.InputTokens),
-                            OutputTokens = g.Sum(r => r.OutputTokens)
-                        }
-                    );
-
-                // Create result
-                var result = new UsageStatisticsDto
+            var modelUsageDict = modelAggregations.ToDictionary(
+                m => m.ModelName,
+                m => new ModelUsage
                 {
-                    TotalRequests = totalRequests,
-                    TotalCost = totalCost,
-                    AverageResponseTimeMs = logs.Count() > 0 ? logs.Average(r => r.ResponseTimeMs) : 0,
-                    TotalInputTokens = logs.Sum(r => r.InputTokens),
-                    TotalOutputTokens = logs.Sum(r => r.OutputTokens),
-                    ModelUsage = modelUsageDict
-                };
+                    RequestCount = m.RequestCount,
+                    Cost = m.TotalCost,
+                    InputTokens = (int)Math.Min(m.InputTokens, int.MaxValue),
+                    OutputTokens = (int)Math.Min(m.OutputTokens, int.MaxValue)
+                }
+            );
 
-                return result;
-            }
-            catch (Exception ex)
+            return new UsageStatisticsDto
             {
-                _logger.LogError(ex, "Error getting usage statistics for date range {StartDate} to {EndDate}",
-                    LogSanitizer.SanitizeObject(startDate), LogSanitizer.SanitizeObject(endDate));
-                throw;
-            }
+                TotalRequests = summary.TotalRequests,
+                TotalCost = summary.TotalCost,
+                AverageResponseTimeMs = summary.AverageResponseTimeMs,
+                TotalInputTokens = (int)Math.Min(summary.TotalInputTokens, int.MaxValue),
+                TotalOutputTokens = (int)Math.Min(summary.TotalOutputTokens, int.MaxValue),
+                ModelUsage = modelUsageDict
+            };
         }
+
+        #region Database-Level Aggregation Methods
+
+        /// <inheritdoc/>
+        public async Task<List<DateCostAggregation>> GetCostsByDateAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
+            {
+                return await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                    .GroupBy(r => r.Timestamp.Date)
+                    .Select(g => new DateCostAggregation
+                    {
+                        Date = g.Key,
+                        TotalCost = g.Sum(r => r.Cost),
+                        RequestCount = g.Count()
+                    })
+                    .OrderBy(d => d.Date)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting daily costs for {startDate:d} to {endDate:d}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ModelAggregation>> GetAggregatedByModelAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
+            {
+                return await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                    .GroupBy(r => r.ModelName)
+                    .Select(g => new ModelAggregation
+                    {
+                        ModelName = g.Key ?? "Unknown",
+                        TotalCost = g.Sum(r => r.Cost),
+                        RequestCount = g.Count(),
+                        InputTokens = g.Sum(r => (long)r.InputTokens),
+                        OutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        CachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        CachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0))
+                    })
+                    .OrderByDescending(m => m.TotalCost)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting model aggregations for {startDate:d} to {endDate:d}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<ModelAggregation>> GetAggregatedByModelForVirtualKeyAsync(
+            int virtualKeyId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
+            {
+                return await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate && r.VirtualKeyId == virtualKeyId)
+                    .GroupBy(r => r.ModelName)
+                    .Select(g => new ModelAggregation
+                    {
+                        ModelName = g.Key ?? "Unknown",
+                        TotalCost = g.Sum(r => r.Cost),
+                        RequestCount = g.Count(),
+                        InputTokens = g.Sum(r => (long)r.InputTokens),
+                        OutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        CachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        CachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0))
+                    })
+                    .OrderByDescending(m => m.TotalCost)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting model aggregations for virtual key {virtualKeyId}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<VirtualKeyAggregation>> GetAggregatedByVirtualKeyAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
+            {
+                return await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                    .GroupBy(r => r.VirtualKeyId)
+                    .Select(g => new VirtualKeyAggregation
+                    {
+                        VirtualKeyId = g.Key,
+                        TotalCost = g.Sum(r => r.Cost),
+                        RequestCount = g.Count(),
+                        LastUsed = g.Max(r => r.Timestamp),
+                        UniqueModels = g.Select(r => r.ModelName).Distinct().Count()
+                    })
+                    .OrderByDescending(v => v.TotalCost)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting virtual key aggregations for {startDate:d} to {endDate:d}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<RequestLogSummary> GetSummaryAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
+            {
+                var summary = await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                    .GroupBy(r => 1) // Single group for whole-set aggregation
+                    .Select(g => new RequestLogSummary
+                    {
+                        TotalRequests = g.Count(),
+                        TotalCost = g.Sum(r => r.Cost),
+                        TotalInputTokens = g.Sum(r => (long)r.InputTokens),
+                        TotalOutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        TotalCachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        TotalCachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0)),
+                        AverageResponseTimeMs = g.Average(r => r.ResponseTimeMs),
+                        SuccessCount = g.Sum(r => (r.StatusCode ?? 0) >= 200 && (r.StatusCode ?? 0) < 300 ? 1 : 0),
+                        ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                return summary ?? new RequestLogSummary();
+            }, cancellationToken, $"getting summary for {startDate:d} to {endDate:d}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<RequestLogSummary> GetSummaryForVirtualKeyAsync(
+            int virtualKeyId, DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
+            {
+                var summary = await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate && r.VirtualKeyId == virtualKeyId)
+                    .GroupBy(r => 1)
+                    .Select(g => new RequestLogSummary
+                    {
+                        TotalRequests = g.Count(),
+                        TotalCost = g.Sum(r => r.Cost),
+                        TotalInputTokens = g.Sum(r => (long)r.InputTokens),
+                        TotalOutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        TotalCachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        TotalCachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0)),
+                        AverageResponseTimeMs = g.Average(r => r.ResponseTimeMs),
+                        SuccessCount = g.Sum(r => (r.StatusCode ?? 0) >= 200 && (r.StatusCode ?? 0) < 300 ? 1 : 0),
+                        ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
+                    })
+                    .FirstOrDefaultAsync(cancellationToken);
+
+                return summary ?? new RequestLogSummary();
+            }, cancellationToken, $"getting summary for virtual key {virtualKeyId}");
+        }
+
+        /// <inheritdoc/>
+        public async Task<List<DailyStatisticsAggregation>> GetDailyStatisticsAsync(
+            DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default)
+        {
+            var utcStartDate = DateTime.SpecifyKind(startDate, DateTimeKind.Utc);
+            var utcEndDate = DateTime.SpecifyKind(endDate, DateTimeKind.Utc);
+
+            return await ExecuteAsync(async context =>
+            {
+                return await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => r.Timestamp >= utcStartDate && r.Timestamp <= utcEndDate)
+                    .GroupBy(r => r.Timestamp.Date)
+                    .Select(g => new DailyStatisticsAggregation
+                    {
+                        Date = g.Key,
+                        RequestCount = g.Count(),
+                        Cost = g.Sum(r => r.Cost),
+                        InputTokens = g.Sum(r => (long)r.InputTokens),
+                        OutputTokens = g.Sum(r => (long)r.OutputTokens),
+                        CachedInputTokens = g.Sum(r => (long)(r.CachedInputTokens ?? 0)),
+                        CachedWriteTokens = g.Sum(r => (long)(r.CachedWriteTokens ?? 0)),
+                        AverageResponseTime = g.Average(r => r.ResponseTimeMs),
+                        ErrorCount = g.Sum(r => (r.StatusCode ?? 0) >= 400 ? 1 : 0)
+                    })
+                    .OrderBy(s => s.Date)
+                    .ToListAsync(cancellationToken);
+            }, cancellationToken, $"getting daily statistics for {startDate:d} to {endDate:d}");
+        }
+
+        #endregion
 
         /// <inheritdoc/>
         public async Task<bool> UpdateCostByTaskIdAsync(
@@ -411,6 +451,7 @@ namespace ConduitLLM.Configuration.Repositories
             string? modelName = null,
             double? durationSeconds = null,
             string? resolution = null,
+            DateTime? billedAtUtc = null,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(taskId))
@@ -418,13 +459,11 @@ namespace ConduitLLM.Configuration.Repositories
                 throw new ArgumentException("Task ID cannot be null or empty", nameof(taskId));
             }
 
-            try
+            return await ExecuteAsync(async context =>
             {
-                using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
-
                 // Find the request log by task ID in the metadata JSONB column
                 // Using PostgreSQL JSONB ->> operator to extract text value
-                var requestLog = await dbContext.RequestLogs
+                var requestLog = await context.RequestLogs
                     .FromSqlRaw(
                         @"SELECT * FROM ""RequestLogs"" WHERE ""Metadata"" ->> 'taskId' = {0} LIMIT 1",
                         taskId)
@@ -432,12 +471,13 @@ namespace ConduitLLM.Configuration.Repositories
 
                 if (requestLog == null)
                 {
-                    _logger.LogWarning("Request log not found for task ID {TaskId}", LogSanitizer.SanitizeObject(taskId));
+                    Logger.LogWarning("Request log not found for task ID {TaskId}", LoggingSanitizer.S(taskId));
                     return false;
                 }
 
                 // Update the cost
                 requestLog.Cost = cost;
+                requestLog.BilledAtUtc = cost > 0 ? billedAtUtc ?? DateTime.UtcNow : null;
 
                 // Update model name if provided and different
                 if (!string.IsNullOrEmpty(modelName) && modelName != "unknown")
@@ -478,26 +518,21 @@ namespace ConduitLLM.Configuration.Repositories
                     }
                     catch (System.Text.Json.JsonException ex)
                     {
-                        _logger.LogWarning(ex, "Failed to parse metadata for task ID {TaskId}, skipping metadata update",
-                            LogSanitizer.SanitizeObject(taskId));
+                        Logger.LogWarning(ex, "Failed to parse metadata for task ID {TaskId}, skipping metadata update",
+                            LoggingSanitizer.S(taskId));
                     }
                 }
 
                 // Save changes
-                dbContext.RequestLogs.Update(requestLog);
-                var rowsAffected = await dbContext.SaveChangesAsync(cancellationToken);
+                context.RequestLogs.Update(requestLog);
+                var rowsAffected = await context.SaveChangesAsync(cancellationToken);
 
-                _logger.LogInformation(
+                Logger.LogInformation(
                     "Updated request log for task {TaskId}: Cost=${Cost}, Model={Model}, Duration={Duration}s",
-                    LogSanitizer.SanitizeObject(taskId), cost, modelName ?? requestLog.ModelName, durationSeconds);
+                    LoggingSanitizer.S(taskId), cost, modelName ?? requestLog.ModelName, durationSeconds);
 
                 return rowsAffected > 0;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error updating request log for task ID {TaskId}", LogSanitizer.SanitizeObject(taskId));
-                throw;
-            }
+            }, cancellationToken, $"updating cost for task {LoggingSanitizer.S(taskId)}");
         }
 
         /// <summary>

@@ -2,7 +2,7 @@ using System.Text.Json;
 
 using ConduitLLM.Admin.Models.ModelSeries;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Models.ModelSeries
 {
@@ -24,7 +24,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "GPT-4",
                 Description = "Fourth generation GPT models",
                 TokenizerType = TokenizerType.Cl100KBase,
-                Parameters = "{\"contextLength\":128000,\"architecture\":\"transformer\"}"
+                Parameters = ParseParameters("{\"contextLength\":128000,\"architecture\":\"transformer\"}")
             };
 
             // Act
@@ -39,7 +39,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
             deserialized.Name.Should().Be(dto.Name);
             deserialized.Description.Should().Be(dto.Description);
             deserialized.TokenizerType.Should().Be(dto.TokenizerType);
-            deserialized.Parameters.Should().Be(dto.Parameters);
+            JsonSerializer.Serialize(deserialized.Parameters).Should().Be(JsonSerializer.Serialize(dto.Parameters));
         }
 
         [Fact]
@@ -54,7 +54,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "Test Series",
                 Description = "Test",
                 TokenizerType = TokenizerType.O200KBase,
-                Parameters = "{}"
+                Parameters = ParseParameters("{}")
             };
 
             // Act
@@ -77,7 +77,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "Claude",
                 Description = "Anthropic's Claude series",
                 TokenizerType = TokenizerType.Claude,
-                Parameters = "{\"safetyLevel\":\"high\"}"
+                Parameters = ParseParameters("{\"safetyLevel\":\"high\"}")
             };
 
             // Act
@@ -102,7 +102,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "Updated Name",
                 Description = null, // Don't update
                 TokenizerType = null, // Don't update
-                Parameters = "{\"new\":\"config\"}"
+                Parameters = ParseParameters("{\"new\":\"config\"}")
             };
 
             // Act
@@ -111,11 +111,13 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.Id.Should().Be(10);
+            json.Should().NotContain("\"Id\"");
+            deserialized!.Id.Should().Be(0);
             deserialized.Name.Should().Be("Updated Name");
             deserialized.Description.Should().BeNull();
             deserialized.TokenizerType.Should().BeNull();
-            deserialized.Parameters.Should().Be("{\"new\":\"config\"}");
+            JsonSerializer.Serialize(deserialized.Parameters).Should()
+                .Be(JsonSerializer.Serialize(ParseParameters("{\"new\":\"config\"}")));
         }
 
         [Fact]
@@ -166,7 +168,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 AuthorId = 1,
                 Name = "Test",
                 TokenizerType = TokenizerType.Cl100KBase,
-                Parameters = complexParams
+                Parameters = ParseParameters(complexParams)
             };
 
             // Act
@@ -175,7 +177,8 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.Parameters.Should().Be(complexParams);
+            JsonSerializer.Serialize(deserialized!.Parameters).Should()
+                .Be(JsonSerializer.Serialize(ParseParameters(complexParams)));
         }
 
         [Theory]
@@ -196,7 +199,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 AuthorId = 1,
                 Name = "Test",
                 TokenizerType = tokenizerType,
-                Parameters = "{}"
+                Parameters = ParseParameters("{}")
             };
 
             // Act
@@ -219,7 +222,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "Test",
                 Description = "支持中文 🚀 Multi-language ñ é ü",
                 TokenizerType = TokenizerType.BPE,
-                Parameters = "{}"
+                Parameters = ParseParameters("{}")
             };
 
             // Act
@@ -241,7 +244,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 AuthorId = 1,
                 Name = "Test",
                 TokenizerType = TokenizerType.BPE,
-                Parameters = "" // Empty but not null
+                Parameters = [] // Empty object but not null
             };
 
             // Act

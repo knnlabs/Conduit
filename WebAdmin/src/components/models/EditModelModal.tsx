@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid, Tooltip, ActionIcon } from '@mantine/core';
+import { Modal, TextInput, Select, Switch, Button, Stack, Group, Textarea, Alert, Text, Tabs, Checkbox, Paper, SimpleGrid, Tooltip, ActionIcon, MultiSelect, Badge } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { IconAlertCircle, IconSettings, IconLink, IconTransform } from '@tabler/icons-react';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { ParameterPreview } from '@/components/parameters/ParameterPreview';
@@ -12,28 +12,22 @@ import { EditProviderTypeModal } from './EditProviderTypeModal';
 import { DeleteProviderTypeModal } from './DeleteProviderTypeModal';
 import { tryConvertReplicateSchema, isValidReplicateSchema } from '@/utils/replicateSchemaConverter';
 import { TOKENIZER_SELECT_OPTIONS, TokenizerType } from '@/lib/utils/tokenizerTypes';
+import {
+  MIN_MODEL_TOKEN_LIMIT,
+  modelFormValidation,
+} from './modelFormValidation';
 import type { 
   ModelDto, 
   UpdateModelDto, 
   ModelSeriesDto,
   NormalizedProviderTypeAssociation 
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
-// Extend ModelDto to include capability fields and modelParameters until SDK types are updated
-interface ExtendedModelDto extends ModelDto {
-  modelParameters?: string | null;
-  supportsChat?: boolean;
-  supportsVision?: boolean;
-  supportsFunctionCalling?: boolean;
-  supportsStreaming?: boolean;
-  supportsImageGeneration?: boolean;
-  supportsVideoGeneration?: boolean;
-  supportsEmbeddings?: boolean;
-  maxInputTokens?: number | null;
-  maxOutputTokens?: number | null;
-  tokenizerType?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20;
-}
+// The SDK's generated ModelDto now includes capability fields, modelParameters,
+// and tokenizerType directly
+type ExtendedModelDto = ModelDto;
 
+const MODALITY_OPTIONS = ['text', 'image', 'audio', 'video', 'file'];
 
 
 interface EditModelModalProps {
@@ -64,7 +58,10 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     modelSeriesId: number | null;
     isActive: boolean;
     modelParameters: string;
-    tokenizerType: number;
+    tokenizerType: TokenizerType;
+    capabilitiesKnown: boolean;
+    inputModalities: string[];
+    outputModalities: string[];
     supportsChat: boolean;
     supportsVision: boolean;
     supportsFunctionCalling: boolean;
@@ -72,6 +69,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
     supportsImageGeneration: boolean;
     supportsVideoGeneration: boolean;
     supportsEmbeddings: boolean;
+    supportsSpeechToText: boolean;
+    supportsTextToSpeech: boolean;
+    supportsRerank: boolean;
     maxInputTokens: number | null;
     maxOutputTokens: number | null;
   }>({
@@ -79,8 +79,13 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       name: model?.name ?? '',
       modelSeriesId: (model?.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
       isActive: model?.isActive ?? true,
-      modelParameters: model?.modelParameters ?? '',
+      modelParameters: model?.modelParameters
+        ? JSON.stringify(model.modelParameters, null, 2)
+        : '',
       tokenizerType: model?.tokenizerType ?? TokenizerType.Cl100KBase,
+      capabilitiesKnown: model?.inputModalities !== null && model?.outputModalities !== null,
+      inputModalities: model?.inputModalities ?? [],
+      outputModalities: model?.outputModalities ?? [],
       // Capability fields from the model directly (flat structure)
       supportsChat: model?.supportsChat ?? false,
       supportsVision: model?.supportsVision ?? false,
@@ -89,16 +94,14 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       supportsImageGeneration: model?.supportsImageGeneration ?? false,
       supportsVideoGeneration: model?.supportsVideoGeneration ?? false,
       supportsEmbeddings: model?.supportsEmbeddings ?? false,
+      supportsSpeechToText: model?.supportsSpeechToText ?? false,
+      supportsTextToSpeech: model?.supportsTextToSpeech ?? false,
+      supportsRerank: model?.supportsRerank ?? false,
       maxInputTokens: model?.maxInputTokens ?? null,
       maxOutputTokens: model?.maxOutputTokens ?? null
     },
     validate: {
-      name: (value) => !value ? 'Name is required' : null,
-      tokenizerType: (value) => {
-        if (value === null || value === undefined) return 'Tokenizer type is required';
-        if (typeof value !== 'number' || value < 0 || value > Object.keys(TokenizerType).length / 2 - 1) return 'Invalid tokenizer type';
-        return null;
-      },
+      ...modelFormValidation,
       modelParameters: (value) => {
         if (value) {
           try {
@@ -112,18 +115,6 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
           }
         }
         return null;
-      },
-      maxInputTokens: (value) => {
-        if (value !== null && value !== undefined && value < 1024) {
-          return 'Minimum value is 1024 tokens';
-        }
-        return null;
-      },
-      maxOutputTokens: (value) => {
-        if (value !== null && value !== undefined && value < 1024) {
-          return 'Minimum value is 1024 tokens';
-        }
-        return null;
       }
     }
   });
@@ -134,8 +125,13 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         name: model.name ?? '',
         modelSeriesId: (model.modelSeriesId && model.modelSeriesId !== 0) ? model.modelSeriesId : null,
         isActive: model.isActive ?? true,
-        modelParameters: model.modelParameters ?? '',
+        modelParameters: model.modelParameters
+          ? JSON.stringify(model.modelParameters, null, 2)
+          : '',
         tokenizerType: model.tokenizerType ?? TokenizerType.Cl100KBase,
+        capabilitiesKnown: model.inputModalities !== null && model.outputModalities !== null,
+        inputModalities: model.inputModalities ?? [],
+        outputModalities: model.outputModalities ?? [],
         // Update capability fields from the model directly (flat structure)
         supportsChat: model.supportsChat ?? false,
         supportsVision: model.supportsVision ?? false,
@@ -144,6 +140,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         supportsImageGeneration: model.supportsImageGeneration ?? false,
         supportsVideoGeneration: model.supportsVideoGeneration ?? false,
         supportsEmbeddings: model.supportsEmbeddings ?? false,
+        supportsSpeechToText: model.supportsSpeechToText ?? false,
+        supportsTextToSpeech: model.supportsTextToSpeech ?? false,
+        supportsRerank: model.supportsRerank ?? false,
         maxInputTokens: model.maxInputTokens ?? null,
         maxOutputTokens: model.maxOutputTokens ?? null
       });
@@ -167,11 +166,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       setSeries(seriesData);
     } catch (error) {
       console.warn('Failed to load data:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load series data',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load series data'));
     }
   };
 
@@ -192,25 +187,32 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
         maxInputTokens?: number | null;
         maxOutputTokens?: number | null;
         modelSeriesId?: number | null;
-        tokenizerType?: number;
+        tokenizerType?: TokenizerType;
       } = {
         name: values.name,
         modelSeriesId: (values.modelSeriesId && values.modelSeriesId !== 0) ? values.modelSeriesId : null,
         isActive: values.isActive,
         tokenizerType: values.tokenizerType,
+        inputModalities: values.capabilitiesKnown ? values.inputModalities : undefined,
+        outputModalities: values.capabilitiesKnown ? values.outputModalities : undefined,
+        capabilitySource: values.capabilitiesKnown ? 'manual' : undefined,
+        clearDirectionalCapabilities: !values.capabilitiesKnown,
         // Always include boolean capability fields
         supportsChat: values.supportsChat,
-        supportsVision: values.supportsVision,
+        supportsVision: values.capabilitiesKnown && values.inputModalities.includes('image'),
         supportsFunctionCalling: values.supportsFunctionCalling,
         supportsStreaming: values.supportsStreaming,
         supportsImageGeneration: values.supportsImageGeneration,
         supportsVideoGeneration: values.supportsVideoGeneration,
         supportsEmbeddings: values.supportsEmbeddings,
+        supportsSpeechToText: values.supportsSpeechToText,
+        supportsTextToSpeech: values.supportsTextToSpeech,
+        supportsRerank: values.supportsRerank,
       };
       
       // Only include optional string fields if they have content
       if (values.modelParameters && values.modelParameters.trim() !== '') {
-        dto.modelParameters = values.modelParameters;
+        dto.modelParameters = JSON.parse(values.modelParameters) as Record<string, unknown>;
       }
       
       // Include token fields - null means "clear the value"
@@ -220,19 +222,12 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       
       // Cast to unknown first to bypass type checking until SDK is updated
       await executeWithAdmin(client => client.models.update(modelId, dto as unknown as UpdateModelDto));
-      notifications.show({
-        title: 'Success',
-        message: 'Model updated successfully',
-        color: 'green',
-      });
+      notify.success('Model updated successfully');
       onSuccess();
+      handleClose();
     } catch (error) {
       console.error('Failed to update model:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update model',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to update model');
     } finally {
       setLoading(false);
     }
@@ -274,11 +269,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       console.warn('Failed to load provider associations:', error);
       // Don't show error notification for 404s - just means no associations exist yet
       if (error && typeof error === 'object' && 'status' in error && error.status !== 404) {
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load provider associations',
-          color: 'red',
-        });
+        notify.error(new Error('Failed to load provider associations'));
       }
     } finally {
       setLoadingAssociations(false);
@@ -308,11 +299,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       
       console.warn('Delete successful, reloading associations...');
       
-      notifications.show({
-        title: 'Success',
-        message: 'Provider association deleted successfully',
-        color: 'green',
-      });
+      notify.success('Provider association deleted successfully');
       
       // Reload associations
       await loadProviderAssociations();
@@ -323,11 +310,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
       setDeletingAssociation(null);
     } catch (error) {
       console.error('Failed to delete provider association:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete provider association',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to delete provider association');
     } finally {
       setDeletingAssociationLoading(false);
     }
@@ -384,7 +367,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
             data={TOKENIZER_SELECT_OPTIONS}
             placeholder="Select tokenizer type"
             value={form.values.tokenizerType.toString()}
-            onChange={(value) => form.setFieldValue('tokenizerType', value ? parseInt(value) : TokenizerType.Cl100KBase)}
+            onChange={(value) => form.setFieldValue('tokenizerType', value as TokenizerType ?? TokenizerType.Cl100KBase)}
             required
             searchable
             error={form.errors.tokenizerType}
@@ -392,7 +375,38 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
 
           <Paper p="md" withBorder>
             <Stack gap="sm">
-              <Text size="sm" fw={500}>Capabilities</Text>
+              <Group justify="space-between">
+                <Text size="sm" fw={500}>Directional modalities</Text>
+                <Badge variant="light">Source: {model.capabilitySource ?? 'unknown'}</Badge>
+              </Group>
+
+              <Switch
+                label="Directional metadata is known"
+                description="Turn off to store unknown. Empty selections explicitly mean unsupported."
+                {...form.getInputProps('capabilitiesKnown', { type: 'checkbox' })}
+              />
+
+              {form.values.capabilitiesKnown && (
+                <>
+                  <MultiSelect
+                    label="Accepted inputs"
+                    data={MODALITY_OPTIONS}
+                    searchable
+                    {...form.getInputProps('inputModalities')}
+                  />
+                  <MultiSelect
+                    label="Produced outputs"
+                    data={MODALITY_OPTIONS}
+                    searchable
+                    {...form.getInputProps('outputModalities')}
+                  />
+                  <Text size="xs" c="dimmed">
+                    Video input means analysis/understanding; video output plus the Video Generation operation means generation.
+                  </Text>
+                </>
+              )}
+
+              <Text size="sm" fw={500} mt="sm">Operations</Text>
               
               <SimpleGrid cols={2} spacing="sm">
                 <Checkbox
@@ -400,8 +414,9 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                   {...form.getInputProps('supportsChat', { type: 'checkbox' })}
                 />
                 <Checkbox
-                  label="Vision"
-                  {...form.getInputProps('supportsVision', { type: 'checkbox' })}
+                  label="Image input (legacy vision flag)"
+                  checked={form.values.inputModalities.includes('image')}
+                  disabled
                 />
                 <Checkbox
                   label="Function Calling"
@@ -423,10 +438,22 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                   label="Embeddings"
                   {...form.getInputProps('supportsEmbeddings', { type: 'checkbox' })}
                 />
+                <Checkbox
+                  label="Speech to Text"
+                  {...form.getInputProps('supportsSpeechToText', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Text to Speech"
+                  {...form.getInputProps('supportsTextToSpeech', { type: 'checkbox' })}
+                />
+                <Checkbox
+                  label="Rerank"
+                  {...form.getInputProps('supportsRerank', { type: 'checkbox' })}
+                />
                 <TextInput
                   label="Max Input Tokens"
                   type="number"
-                  min={1024}
+                  min={MIN_MODEL_TOKEN_LIMIT}
                   placeholder="e.g., 128000"
                   value={form.values.maxInputTokens?.toString() ?? ''}
                   onChange={(e) => form.setFieldValue('maxInputTokens', e.currentTarget.value ? parseInt(e.currentTarget.value) : null)}
@@ -435,7 +462,7 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                 <TextInput
                   label="Max Output Tokens"
                   type="number"
-                  min={1024}
+                  min={MIN_MODEL_TOKEN_LIMIT}
                   placeholder="e.g., 4096"
                   value={form.values.maxOutputTokens?.toString() ?? ''}
                   onChange={(e) => form.setFieldValue('maxOutputTokens', e.currentTarget.value ? parseInt(e.currentTarget.value) : null)}
@@ -467,29 +494,17 @@ export function EditModelModal({ isOpen, model, onClose, onSuccess }: EditModelM
                   onClick={() => {
                     const currentValue = form.values.modelParameters;
                     if (!currentValue.trim()) {
-                      notifications.show({
-                        title: 'No content',
-                        message: 'Paste a Replicate schema in the parameters field first',
-                        color: 'yellow',
-                      });
+                      notify.warning('Paste a Replicate schema in the parameters field first', 'No content');
                       return;
                     }
-                    
+
                     if (isValidReplicateSchema(currentValue)) {
                       const converted = tryConvertReplicateSchema(currentValue);
                       form.setFieldValue('modelParameters', converted);
                       validateJson(converted);
-                      notifications.show({
-                        title: 'Success',
-                        message: 'Replicate schema converted successfully',
-                        color: 'green',
-                      });
+                      notify.success('Replicate schema converted successfully');
                     } else {
-                      notifications.show({
-                        title: 'Not a Replicate schema',
-                        message: 'The content doesn\'t appear to be a valid Replicate schema',
-                        color: 'yellow',
-                      });
+                      notify.warning('The content doesn\'t appear to be a valid Replicate schema', 'Not a Replicate schema');
                     }
                   }}
                 >

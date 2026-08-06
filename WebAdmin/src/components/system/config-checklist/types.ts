@@ -4,7 +4,7 @@ import type {
   ModelProviderMappingDto,
   ModelCostDto,
   GlobalSettingDto
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 
 export interface CheckResult {
   id: string;

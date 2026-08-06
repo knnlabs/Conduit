@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Select, JsonInput, Stack, Text, Alert, Tabs, Badge, Group } from '@mantine/core';
 import { IconInfoCircle, IconCode, IconSettings } from '@tabler/icons-react';
-import { PricingModel } from '@knn_labs/conduit-admin-client';
+import { PricingModel } from '@/lib/admin-api';
 import { PricingRulesEditor } from './pricing-rules';
 
 interface PricingModelSelectorProps {
@@ -127,7 +127,7 @@ export function PricingModelSelector({
 
   const handleModelChange = (value: string | null) => {
     if (value) {
-      const model = Number(value) as PricingModel;
+      const model = value as PricingModel;
       onPricingModelChange(model);
 
       // Set default configuration for the selected model

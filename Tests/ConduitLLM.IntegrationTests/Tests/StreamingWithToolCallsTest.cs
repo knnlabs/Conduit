@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -24,7 +24,9 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
         return _fixture.ServiceProvider.GetRequiredService<ILogger<StreamingWithToolCallsTest>>();
     }
 
-    [Fact(DisplayName = "Streaming with Tool Calls - Should Emit tool-executing Events")]
+    [Fact(DisplayName = "Streaming with Tool Calls - Should Emit tool-executing Events",
+        Skip = "Inline JavaScript function configurations were removed; functions are now provider-typed " +
+               "(Exa, Tavily, MCP, ...). Rewrite against a function provider or a local MCP server.")]
     public async Task StreamingWithToolCalls_ShouldEmitToolExecutingEvents()
     {
         // This test verifies the complete tool execution lifecycle during streaming:
@@ -109,7 +111,7 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
             reportGenerated = true;
 
             // Check if there were errors
-            if (_context.Errors.Count() > 0)
+            if (_context.Errors.Any())
             {
                 var errorMessage = string.Join("; ", _context.Errors);
                 _specificLogger.LogError("Test completed with errors: {Errors}", errorMessage);
@@ -213,9 +215,10 @@ public class StreamingWithToolCallsTest : ProviderIntegrationTestBase
 
         string? currentEventType = null;
 
-        while (!reader.EndOfStream)
+        while (true)
         {
             var line = await reader.ReadLineAsync();
+            if (line is null) break;
             if (string.IsNullOrWhiteSpace(line)) continue;
 
             if (line.StartsWith("event:"))

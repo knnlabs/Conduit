@@ -1,5 +1,5 @@
 using ConduitLLM.Core.Interfaces;
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Logging;
 
@@ -13,9 +13,9 @@ namespace ConduitLLM.Core.Services
     {
         private readonly IAsyncTaskRepository _repository;
         private readonly IDistributedCache _cache;
-        private readonly IPublishEndpoint? _publishEndpoint;
+        private readonly IEventBus? _eventBus;
         private readonly ILogger<HybridAsyncTaskService> _logger;
-        private const string TASK_KEY_PREFIX = "async:task:";
+        private const string TASK_KEY_PREFIX = Constants.RedisKeys.AsyncTask.Prefix;
         private const int CACHE_EXPIRY_HOURS = 2; // Shorter expiry for completed tasks
 
         /// <summary>
@@ -39,17 +39,17 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         /// <param name="repository">The async task repository.</param>
         /// <param name="cache">The distributed cache service.</param>
-        /// <param name="publishEndpoint">The event publish endpoint (optional, can be null).</param>
+        /// <param name="eventBus">The event publish endpoint (optional, can be null).</param>
         /// <param name="logger">The logger instance.</param>
         public HybridAsyncTaskService(
             IAsyncTaskRepository repository,
             IDistributedCache cache,
-            IPublishEndpoint? publishEndpoint,
+            IEventBus? eventBus,
             ILogger<HybridAsyncTaskService> logger)
         {
             _repository = repository ?? throw new ArgumentNullException(nameof(repository));
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-            _publishEndpoint = publishEndpoint; // Allow null
+            _eventBus = eventBus; // Allow null
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 

@@ -73,6 +73,14 @@ namespace ConduitLLM.Core.Events
         public string PartitionKey => SettingId.ToString();
     }
 
+    /// <summary>
+    /// Requests a full global-settings cache reload across every Admin and Gateway instance.
+    /// </summary>
+    public record GlobalSettingsReloadRequested : DomainEvent
+    {
+        public string RequestedBy { get; init; } = string.Empty;
+    }
+
     // ===============================
     // Model Domain Events
     // ===============================

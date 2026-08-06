@@ -7,8 +7,6 @@ import {
   Group,
   Button,
   Card,
-  SimpleGrid,
-  ThemeIcon,
   LoadingOverlay,
   Alert,
   Menu,
@@ -19,7 +17,6 @@ import {
   IconServer,
   IconPlus,
   IconCircleCheck,
-  IconCircleX,
   IconRefresh,
   IconAlertCircle,
   IconDownload,
@@ -27,30 +24,22 @@ import {
   IconJson,
   IconSearch,
 } from '@tabler/icons-react';
+import { StatCardGrid } from '@/components/common/StatCardGrid';
 import { useState, useEffect } from 'react';
 import { ProvidersTable } from '@/components/providers/ProvidersTable';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useRouter } from 'next/navigation';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import { ApiKeyTestResult, type ProviderDto } from '@knn_labs/conduit-admin-client';
+import { ApiKeyTestResult, type ProviderDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
-
-// Use SDK types directly with health extensions
-interface ProviderWithHealth extends ProviderDto {
-  healthStatus: 'healthy' | 'unhealthy' | 'unknown';
-  lastHealthCheck?: string;
-  models?: string[];
-  endpoint?: string;
-  keyCount?: number;
-}
 
 export default function ProvidersPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [providers, setProviders] = useState<ProviderWithHealth[]>([]);
+  const [providers, setProviders] = useState<ProviderDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [testingProviders, setTestingProviders] = useState<Set<number>>(new Set());
@@ -67,7 +56,7 @@ export default function ProvidersPage() {
         client.providers.list(1, 1000)
       );
       
-      const providersList = result.items;
+      const providersList = result.data ?? [];
       
       // Fetch key counts for each provider
       const providersWithKeyCount = await Promise.all(
@@ -79,19 +68,13 @@ export default function ProvidersPage() {
                 client.providers.listKeys(provider.id)
               );
               keyCount = Array.isArray(keys) ? keys.length : 0;
-            } catch {
-              // Silently fail, keyCount remains 0
+            } catch (error) {
+              // keyCount remains 0; log so a failing key lookup isn't mistaken for "no keys"
+              console.warn(`Failed to list keys for provider ${provider.id}:`, error);
             }
           }
           
-          const providerWithHealth: ProviderWithHealth = {
-            ...provider,
-            healthStatus: 'unknown' as const,
-            models: [],
-            keyCount
-          };
-          
-          return providerWithHealth;
+          return { ...provider, keyCount };
         })
       );
       
@@ -110,20 +93,13 @@ export default function ProvidersPage() {
         client.providers.testConnectionById(providerId)
       );
       
-      notifications.show({
-        title: result.result === ApiKeyTestResult.SUCCESS ? 'Connection Successful' : 'Connection Failed',
-        message: result.message ?? (result.result === ApiKeyTestResult.SUCCESS ? 'Provider is working correctly' : 'Failed to connect to provider'),
-        color: result.result === ApiKeyTestResult.SUCCESS ? 'green' : 'red',
-      });
-      
-      // Refresh providers to get updated health status
-      void fetchProviders();
+      if (result.result === ApiKeyTestResult.SUCCESS) {
+        notify.success(result.message ?? 'Provider is working correctly', 'Connection Successful');
+      } else {
+        notify.error(new Error(result.message ?? 'Failed to connect to provider'), 'Connection Failed');
+      }
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to test provider connection',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to test provider connection'));
     } finally {
       setTestingProviders(prev => {
         const newSet = new Set(prev);
@@ -138,18 +114,10 @@ export default function ProvidersPage() {
       await withAdminClient(client => 
         client.providers.deleteById(providerId)
       );
-      notifications.show({
-        title: 'Success',
-        message: 'Provider deleted successfully',
-        color: 'green',
-      });
+      notify.success('Provider deleted successfully');
       void fetchProviders();
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete provider',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to delete provider'));
     }
   };
 
@@ -181,36 +149,27 @@ export default function ProvidersPage() {
   const stats = {
     totalProviders: filteredProviders.length,
     activeProviders: filteredProviders.filter((p) => p.isEnabled).length,
-    healthyProviders: filteredProviders.filter((p) => p.healthStatus === 'healthy').length,
-    unhealthyProviders: filteredProviders.filter((p) => p.healthStatus === 'unhealthy').length,
   };
 
-  const handleEdit = (provider: ProviderWithHealth) => {
+  const handleEdit = (provider: ProviderDto) => {
     router.push(`/llm-providers/edit/${provider.id}`);
   };
 
 
   const handleExportCSV = () => {
     if (filteredProviders.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no providers to export',
-        color: 'orange',
-      });
+      notify.warning('There are no providers to export', 'No data to export');
       return;
     }
 
     const exportData = filteredProviders.map((provider) => {
       const displayName = provider.providerType ? getProviderDisplayName(provider.providerType) : 'Unknown Provider';
-      
+
       return {
         name: provider.providerName ?? displayName,
         type: displayName,
         status: provider.isEnabled ? 'Enabled' : 'Disabled',
-        health: provider.healthStatus,
         endpoint: provider.baseUrl ?? '',
-        models: provider.models?.join('; ') ?? '',
-        lastHealthCheck: formatDateForExport(provider.lastHealthCheck),
         createdAt: formatDateForExport(provider.createdAt),
       };
     });
@@ -222,28 +181,17 @@ export default function ProvidersPage() {
         { key: 'name', label: 'Provider Name' },
         { key: 'type', label: 'Type' },
         { key: 'status', label: 'Status' },
-        { key: 'health', label: 'Health' },
         { key: 'endpoint', label: 'Endpoint' },
-        { key: 'models', label: 'Models' },
-        { key: 'lastHealthCheck', label: 'Last Health Check' },
         { key: 'createdAt', label: 'Created At' },
       ]
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredProviders.length} providers`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredProviders.length} providers`, 'Export successful');
   };
 
   const handleExportJSON = () => {
     if (filteredProviders.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no providers to export',
-        color: 'orange',
-      });
+      notify.warning('There are no providers to export', 'No data to export');
       return;
     }
 
@@ -252,13 +200,11 @@ export default function ProvidersPage() {
       `providers-${new Date().toISOString().split('T')[0]}`
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredProviders.length} providers`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredProviders.length} providers`, 'Export successful');
   };
 
+  // Note: per-provider health is not continuously monitored, so there are no
+  // "Healthy"/"Unhealthy" cards here — use Test Connection for an on-demand check
   const statCards = [
     {
       title: 'Total Providers',
@@ -271,18 +217,6 @@ export default function ProvidersPage() {
       value: stats.activeProviders,
       icon: IconCircleCheck,
       color: 'green',
-    },
-    {
-      title: 'Healthy',
-      value: stats.healthyProviders,
-      icon: IconCircleCheck,
-      color: 'teal',
-    },
-    {
-      title: 'Unhealthy',
-      value: stats.unhealthyProviders,
-      icon: IconCircleX,
-      color: 'red',
     },
   ];
 
@@ -356,25 +290,7 @@ export default function ProvidersPage() {
       </Group>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-        {statCards.map((stat) => (
-          <Card key={stat.title} p="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value}
-                </Text>
-              </div>
-              <ThemeIcon size="lg" variant="light" color={stat.color}>
-                <stat.icon size={20} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <StatCardGrid items={statCards} cols={{ base: 1, sm: 2 }} />
 
       {/* Providers Table */}
       <Card>

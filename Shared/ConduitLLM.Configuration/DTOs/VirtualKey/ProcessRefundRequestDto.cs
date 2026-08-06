@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ConduitLLM.Configuration.DTOs.VirtualKey
 {
     /// <summary>
@@ -26,9 +28,17 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         public string RefundReason { get; set; } = string.Empty;
 
         /// <summary>
-        /// Optional original transaction ID for audit trail
+        /// ID of the original debit transaction being refunded
         /// </summary>
-        public string? OriginalTransactionId { get; set; }
+        [Required]
+        public string OriginalTransactionId { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Optional ID of the original request log being refunded. When supplied and that request was
+        /// billed from a trusted provider-reported cost, the refund is prorated from the amount actually
+        /// charged rather than recomputed from ModelCost rates.
+        /// </summary>
+        public int? RequestLogId { get; set; }
     }
 
     /// <summary>
@@ -55,6 +65,12 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Number of cached input tokens (read from cache)
         /// </summary>
         public int? CachedInputTokens { get; set; }
+
+        /// <summary>
+        /// Whether cached input tokens are included in <see cref="PromptTokens"/>.
+        /// Anthropic usage should set this to false.
+        /// </summary>
+        public bool CachedInputTokensIncludedInPrompt { get; set; } = true;
 
         /// <summary>
         /// Number of tokens written to cache

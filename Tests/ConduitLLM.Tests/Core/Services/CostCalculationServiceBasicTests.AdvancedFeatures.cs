@@ -1,6 +1,6 @@
 using ConduitLLM.Core.Models;
 using ConduitLLM.Tests.TestHelpers;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using ConduitLLM.Configuration.Entities;
@@ -71,6 +71,56 @@ namespace ConduitLLM.Tests.Core.Services
             // Assert
             // Expected: (1 * 0.000001 / 1_000_000) + (1 * 0.000002 / 1_000_000) = 0.000000000001 + 0.000000000002 = 0.000000000003
             result.Should().Be(0.000000000003m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithReasoningTokens_PricesCompletionSubsetOnce()
+        {
+            var modelId = "reasoning/model";
+            var usage = new Usage
+            {
+                PromptTokens = 1_000,
+                CompletionTokens = 500,
+                ReasoningTokens = 200,
+                TotalTokens = 1_500
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                InputCostPerMillionTokens = 10m,
+                OutputCostPerMillionTokens = 30m,
+                ReasoningCostPerMillionTokens = 60m
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            // Input: .010; ordinary output: 300 * 30 / 1M = .009; reasoning: 200 * 60 / 1M = .012.
+            result.Should().Be(0.031m);
+        }
+
+        [Fact]
+        public async Task CalculateCostAsync_WithReasoningAtOutputRate_DoesNotIncreaseCompletionCost()
+        {
+            var modelId = "reasoning/model";
+            var usage = new Usage { CompletionTokens = 500, ReasoningTokens = 200 };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                InputCostPerMillionTokens = 10m,
+                OutputCostPerMillionTokens = 30m
+            };
+
+            _modelCostServiceMock
+                .Setup(x => x.GetCostForModelAsync(modelId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelCost);
+
+            var result = await _service.CalculateCostAsync(modelId, usage);
+
+            result.Should().Be(0.015m);
         }
 
         [Fact]

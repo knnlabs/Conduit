@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Stack, Group, Button, Select, Text } from '@mantine/core';
 import { IconRefresh, IconTrash } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { useMediaAssets } from '../hooks/useMediaAssets';
-import { useBulkSelection } from '../hooks/useBulkSelection';
+import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { MediaRecord, VirtualKeyInfo } from '../types';
 import MediaStatsCards from './MediaStatsCards';
 import MediaFilterBar from './MediaFilterBar';
@@ -28,41 +28,41 @@ export default function MediaAssetsContent() {
 
   const {
     media,
-    loading,
+    isLoading,
     filters,
     applyFilters,
     deleteMedia,
+    restoreMedia,
     refetch,
   } = useMediaAssets(selectedVirtualKey);
 
   const {
-    selectedIds,
+    selectedKeys: selectedIds,
     selectedCount,
-    toggleSelection,
-    deselectAll,
-    getSelectedMedia,
-  } = useBulkSelection(media);
+    toggleOne: toggleSelection,
+    clearSelection: deselectAll,
+    getSelectedItems: getSelectedMedia,
+  } = useBulkSelection({
+    items: media,
+    getKey: (item) => item.id,
+  });
 
   // Fetch key groups
   useEffect(() => {
     const fetchKeyGroups = async () => {
       try {
         setLoadingKeyGroups(true);
-        const result = await withAdminClient(client => 
+        const result = await withAdminClient(client =>
           client.virtualKeyGroups.list()
         );
-        const groups = result.map((group) => ({
+        const groups = (result.data ?? []).map((group) => ({
           id: group.id,
           name: group.groupName
         }));
         setKeyGroups(groups);
       } catch (error) {
         console.error('Failed to fetch key groups:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load key groups',
-          color: 'red',
-        });
+        notify.error('Failed to load key groups');
       } finally {
         setLoadingKeyGroups(false);
       }
@@ -103,11 +103,7 @@ export default function MediaAssetsContent() {
         }
       } catch (error) {
         console.error('Failed to fetch virtual keys:', error);
-        notifications.show({
-          title: 'Error',
-          message: 'Failed to load virtual keys',
-          color: 'red',
-        });
+        notify.error('Failed to load virtual keys');
       } finally {
         setLoadingVirtualKeys(false);
       }
@@ -121,7 +117,8 @@ export default function MediaAssetsContent() {
       title: 'Delete Media',
       children: (
         <Text size="sm">
-          Are you sure you want to delete this media? This action cannot be undone.
+          Delete this media? When soft delete is enabled, it can be restored during
+          the configured recovery window; otherwise deletion is permanent.
         </Text>
       ),
       labels: { confirm: 'Delete', cancel: 'Cancel' },
@@ -138,7 +135,8 @@ export default function MediaAssetsContent() {
       title: 'Delete Multiple Items',
       children: (
         <Text size="sm">
-          Are you sure you want to delete {count} media items? This action cannot be undone.
+          Delete {count} media items? Items can be restored during the configured
+          recovery window when soft delete is enabled.
         </Text>
       ),
       labels: { confirm: 'Delete All', cancel: 'Cancel' },
@@ -146,17 +144,27 @@ export default function MediaAssetsContent() {
       onConfirm: () => {
         void (async () => {
           const selectedMedia = getSelectedMedia();
-          
+          let successCount = 0;
+          let failCount = 0;
+
           for (const media of selectedMedia) {
-            await deleteMedia(media.id);
+            const success = await deleteMedia(media.id, false);
+            if (success) {
+              successCount++;
+            } else {
+              failCount++;
+            }
           }
-          
+
           deselectAll();
-          notifications.show({
-            title: 'Success',
-            message: `Deleted ${count} media items`,
-            color: 'green',
-          });
+
+          if (failCount === 0) {
+            notify.success(`Deleted ${successCount} media items`);
+          } else if (successCount === 0) {
+            notify.error(`Failed to delete ${failCount} media items`);
+          } else {
+            notify.warning(`Deleted ${successCount} of ${count} items. ${failCount} failed.`, 'Partial Success');
+          }
         })();
       },
     });
@@ -179,11 +187,7 @@ export default function MediaAssetsContent() {
       }
     }
     
-    notifications.show({
-      title: 'Success',
-      message: `Downloaded ${selectedCount} files`,
-      color: 'green',
-    });
+    notify.success(`Downloaded ${selectedCount} files`);
   };
 
   // Get unique providers from media
@@ -229,7 +233,7 @@ export default function MediaAssetsContent() {
             variant="light"
             leftSection={<IconRefresh size={16} />}
             onClick={() => void refetch()}
-            loading={loading}
+            loading={isLoading}
           >
             Refresh
           </Button>
@@ -267,11 +271,12 @@ export default function MediaAssetsContent() {
 
         <MediaGallery
           media={media}
-          loading={loading}
+          loading={isLoading}
           selectedIds={selectedIds}
           onSelectMedia={toggleSelection}
           onViewMedia={setSelectedMedia}
           onDeleteMedia={(id) => void handleDeleteMedia(id)}
+          onRestoreMedia={(id) => void restoreMedia(id)}
         />
       </div>
 

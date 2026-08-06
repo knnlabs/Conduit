@@ -2,20 +2,24 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy solution and project files first for layer caching
-COPY Conduit.sln .
+# Copy solution-wide restore inputs and project files first for layer caching
+COPY Conduit.slnx Directory.Build.props Directory.Packages.props NuGet.Config ./
 COPY Shared/ConduitLLM.Configuration/*.csproj ./Shared/ConduitLLM.Configuration/
 COPY Shared/ConduitLLM.Core/*.csproj ./Shared/ConduitLLM.Core/
+COPY Shared/ConduitLLM.Functions/*.csproj ./Shared/ConduitLLM.Functions/
 COPY Shared/ConduitLLM.Providers/*.csproj ./Shared/ConduitLLM.Providers/
+COPY Shared/ConduitLLM.Security/*.csproj ./Shared/ConduitLLM.Security/
+COPY Services/ConduitLLM.Admin/*.csproj ./Services/ConduitLLM.Admin/
 COPY Services/ConduitLLM.Gateway/*.csproj ./Services/ConduitLLM.Gateway/
-COPY WebAdmin/*.csproj ./WebAdmin/
-# Add other projects referenced by the solution for restore step
 COPY Tests/ConduitLLM.Tests/*.csproj ./Tests/ConduitLLM.Tests/
 COPY Tests/ConduitLLM.IntegrationTests/*.csproj ./Tests/ConduitLLM.IntegrationTests/
 COPY Tests/ConduitLLM.Benchmarks/*.csproj ./Tests/ConduitLLM.Benchmarks/
+COPY Tests/ConduitLLM.BillingInvariantTests/*.csproj ./Tests/ConduitLLM.BillingInvariantTests/
+COPY Tests/ConduitLLM.FaultInjectionTests/*.csproj ./Tests/ConduitLLM.FaultInjectionTests/
+COPY tools/openapi/GenerateOpenApiSpecs/*.csproj ./tools/openapi/GenerateOpenApiSpecs/
 
 # Restore dependencies
-RUN dotnet restore Conduit.sln
+RUN dotnet restore Conduit.slnx
 
 # Copy the rest of the source code
 COPY . .

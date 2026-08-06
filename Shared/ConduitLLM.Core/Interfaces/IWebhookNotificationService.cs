@@ -1,6 +1,18 @@
 namespace ConduitLLM.Core.Interfaces
 {
     /// <summary>
+    /// Result of a webhook send attempt.
+    /// </summary>
+    /// <param name="Success">Whether the endpoint returned a success status code.</param>
+    /// <param name="StatusCode">The HTTP status code returned by the endpoint, or null when no response was received (timeout, connection error).</param>
+    /// <param name="Error">Description of the failure, or null on success.</param>
+    public record WebhookSendResult(bool Success, int? StatusCode, string? Error)
+    {
+        public static WebhookSendResult Ok(int statusCode) => new(true, statusCode, null);
+        public static WebhookSendResult Failed(int? statusCode, string error) => new(false, statusCode, error);
+    }
+
+    /// <summary>
     /// Service for sending webhook notifications to external endpoints.
     /// </summary>
     public interface IWebhookNotificationService
@@ -12,8 +24,8 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="payload">The payload to send in the webhook request.</param>
         /// <param name="headers">Optional headers to include in the request.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if the webhook was sent successfully, false otherwise.</returns>
-        Task<bool> SendTaskCompletionWebhookAsync(
+        /// <returns>The send result, including the endpoint's actual HTTP status code when a response was received.</returns>
+        Task<WebhookSendResult> SendTaskCompletionWebhookAsync(
             string webhookUrl,
             object payload,
             Dictionary<string, string>? headers = null,
@@ -26,8 +38,8 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="payload">The payload to send in the webhook request.</param>
         /// <param name="headers">Optional headers to include in the request.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if the webhook was sent successfully, false otherwise.</returns>
-        Task<bool> SendTaskProgressWebhookAsync(
+        /// <returns>The send result, including the endpoint's actual HTTP status code when a response was received.</returns>
+        Task<WebhookSendResult> SendTaskProgressWebhookAsync(
             string webhookUrl,
             object payload,
             Dictionary<string, string>? headers = null,
@@ -41,8 +53,8 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="headers">Optional headers to include in the request.</param>
         /// <param name="customTimeout">Custom timeout for this specific request.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns>True if the webhook was sent successfully, false otherwise.</returns>
-        Task<bool> SendWebhookAsync(
+        /// <returns>The send result, including the endpoint's actual HTTP status code when a response was received.</returns>
+        Task<WebhookSendResult> SendWebhookAsync(
             string webhookUrl,
             object payload,
             Dictionary<string, string>? headers = null,

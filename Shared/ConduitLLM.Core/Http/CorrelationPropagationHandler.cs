@@ -49,28 +49,18 @@ namespace ConduitLLM.Core.Http
                 request.RequestUri,
                 _correlationService.CorrelationId);
 
-            try
-            {
-                var response = await base.SendAsync(request, cancellationToken);
+            var response = await base.SendAsync(request, cancellationToken);
 
-                // Log response correlation
-                if (response.Headers.TryGetValues("X-Correlation-ID", out var responseCorrelationIds))
-                {
-                    _logger.LogDebug(
-                        "Received response with correlation ID: {ResponseCorrelationId} for request {CorrelationId}",
-                        string.Join(", ", responseCorrelationIds),
-                        _correlationService.CorrelationId);
-                }
-
-                return response;
-            }
-            catch (Exception ex)
+            // Log response correlation
+            if (response.Headers.TryGetValues("x-request-id", out var responseCorrelationIds))
             {
-                _logger.LogError(ex,
-                    "Error during request with correlation ID: {CorrelationId}",
+                _logger.LogDebug(
+                    "Received response with correlation ID: {ResponseCorrelationId} for request {CorrelationId}",
+                    string.Join(", ", responseCorrelationIds),
                     _correlationService.CorrelationId);
-                throw;
             }
+
+            return response;
         }
     }
 }

@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Table, Badge, Group, Text, ActionIcon, LoadingOverlay } from '@mantine/core';
 import { IconEdit, IconTrash } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { EditProviderToolModal } from './EditProviderToolModal';
 import { modals } from '@mantine/modals';
-import type { ProviderTool } from '@knn_labs/conduit-admin-client';
+import type { ProviderTool } from '@/lib/admin-api';
 
 interface ProviderToolsTableProps {
   onRefresh: () => void;
@@ -29,11 +29,7 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
         setTools(data);
       } catch (error) {
         console.error('Failed to load provider tools:', error);
-        notifications.show({
-          title: 'Failed to Load Tools',
-          message: error instanceof Error ? error.message : 'Failed to load provider tools',
-          color: 'red',
-        });
+        notify.error(error, 'Failed to load provider tools');
       } finally {
         setLoading(false);
       }
@@ -51,11 +47,7 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
       setTools(data);
     } catch (error) {
       console.error('Failed to load provider tools:', error);
-      notifications.show({
-        title: 'Failed to Load Tools',
-        message: error instanceof Error ? error.message : 'Failed to load provider tools',
-        color: 'red',
-      });
+      notify.error(error, 'Failed to load provider tools');
     } finally {
       setLoading(false);
     }
@@ -77,27 +69,19 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
             await executeWithAdmin(client =>
               client.providerTools.deleteProviderTool(tool.id)
             );
-            notifications.show({
-              title: 'Tool Deleted',
-              message: `Successfully deleted ${tool.toolName}`,
-              color: 'green',
-            });
+            notify.success(`Successfully deleted ${tool.toolName}`);
             onRefresh();
             void loadTools();
           } catch (error) {
             console.error('Failed to delete tool:', error);
-            notifications.show({
-              title: 'Delete Failed',
-              message: error instanceof Error ? error.message : 'Failed to delete provider tool',
-              color: 'red',
-            });
+            notify.error(error, 'Failed to delete provider tool');
           }
         })();
       },
     });
   };
 
-  const formatCost = (costPerUnit?: number | null, billingUnit?: string | null) => {
+  const formatCostPerUnit = (costPerUnit?: number | null, billingUnit?: string | null) => {
     if (!costPerUnit) return 'Not configured';
     const formattedCost = costPerUnit < 0.01 ? costPerUnit.toExponential(2) : costPerUnit.toFixed(4);
     return `$${formattedCost}${billingUnit ? ` per ${billingUnit}` : ''}`;
@@ -107,7 +91,7 @@ export function ProviderToolsTable({ onRefresh }: ProviderToolsTableProps) {
     <Table.Tr key={tool.id}>
       <Table.Td>{tool.providerName ?? 'Unknown'}</Table.Td>
       <Table.Td>{tool.toolName}</Table.Td>
-      <Table.Td>{formatCost(tool.costPerUnit, tool.billingUnit)}</Table.Td>
+      <Table.Td>{formatCostPerUnit(tool.costPerUnit, tool.billingUnit)}</Table.Td>
       <Table.Td>{tool.costDescription ?? '-'}</Table.Td>
       <Table.Td>
         <Badge color={tool.isActive ? 'green' : 'gray'}>

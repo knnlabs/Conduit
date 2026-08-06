@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ConduitLLM.Functions.Models.Pricing;
+using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Functions.Services;
 
@@ -43,8 +44,8 @@ public partial class FunctionCostCalculationService
 
         if (functionCost == null)
         {
-            _logger.LogWarning("Cost information not found for function configuration {ConfigId}. Returning 0 estimate.", functionConfigurationId);
-            return 0m;
+            throw new InvalidOperationException(
+                $"Cost information is required for function configuration {functionConfigurationId}.");
         }
 
         decimal estimatedCost = 0m;
@@ -104,15 +105,15 @@ public partial class FunctionCostCalculationService
 
         if (requestParameters.TryGetValue("numResults", out var numResultsObj))
         {
-            requestedResults = Convert.ToInt32(numResultsObj);
+            requestedResults = JsonElementConverter.ConvertToInt32(numResultsObj) ?? requestedResults;
         }
         else if (requestParameters.TryGetValue("num_results", out var numResultsSnake))
         {
-            requestedResults = Convert.ToInt32(numResultsSnake);
+            requestedResults = JsonElementConverter.ConvertToInt32(numResultsSnake) ?? requestedResults;
         }
         else if (requestParameters.TryGetValue("limit", out var limitObj))
         {
-            requestedResults = Convert.ToInt32(limitObj);
+            requestedResults = JsonElementConverter.ConvertToInt32(limitObj) ?? requestedResults;
         }
 
         var estimate = requestedResults * functionCost.CostPerResult.Value;
@@ -197,7 +198,7 @@ public partial class FunctionCostCalculationService
         int requestedUnits = 10; // Default
         if (requestParameters.TryGetValue("numResults", out var numObj))
         {
-            requestedUnits = Convert.ToInt32(numObj);
+            requestedUnits = JsonElementConverter.ConvertToInt32(numObj) ?? requestedUnits;
         }
 
         // Use the highest tier rate as conservative estimate
@@ -217,27 +218,69 @@ public partial class FunctionCostCalculationService
     {
         if (string.IsNullOrWhiteSpace(functionCost.PricingConfiguration))
         {
-            return 0m;
+            throw new InvalidOperationException(
+                $"Hybrid pricing configuration is required for cost '{functionCost.CostName}'.");
         }
 
-        // Try Exa format
         try
         {
-            var exaConfig = JsonSerializer.Deserialize<ExaHybridPricingConfig>(functionCost.PricingConfiguration);
-            if (exaConfig != null)
+            return functionCost.ProviderType switch
             {
-                return EstimateExaHybridCost(exaConfig, requestParameters);
-            }
+                Enums.FunctionProviderType.Exa => EstimateExaHybridCost(
+                    DeserializeHybridConfig<ExaHybridPricingConfig>(functionCost), requestParameters),
+                Enums.FunctionProviderType.Tavily => EstimateTavilySearchCost(
+                    DeserializeHybridConfig<TavilySearchPricingConfig>(functionCost), requestParameters),
+                Enums.FunctionProviderType.Perplexity => EstimatePerplexityHybridCost(
+                    DeserializeHybridConfig<PerplexityHybridPricingConfig>(functionCost), requestParameters),
+                _ => throw new InvalidOperationException(
+                    $"Hybrid pricing is not supported for provider {functionCost.ProviderType} on cost '{functionCost.CostName}'.")
+            };
         }
-        catch (JsonException)
+        catch (JsonException exception)
         {
-            _logger.LogDebug("Failed to parse as Exa hybrid pricing config for estimation");
+            _logger.LogError(exception,
+                "Invalid {ProviderType} hybrid pricing configuration for cost {CostName} during estimation.",
+                functionCost.ProviderType, functionCost.CostName);
+            throw new InvalidOperationException(
+                $"Invalid {functionCost.ProviderType} hybrid pricing configuration for cost '{functionCost.CostName}'.",
+                exception);
+        }
+    }
+
+    private decimal EstimateTavilySearchCost(
+        TavilySearchPricingConfig config,
+        Dictionary<string, object> requestParameters)
+    {
+        var hasDepth = requestParameters.TryGetValue("searchDepth", out var depth)
+            || requestParameters.TryGetValue("search_depth", out depth);
+        var advanced = hasDepth
+            && string.Equals(JsonElementConverter.ConvertToString(depth), "advanced", StringComparison.OrdinalIgnoreCase);
+        var credits = advanced ? config.AdvancedSearchCredits : config.BasicSearchCredits;
+
+        var hasAutoParameters = requestParameters.TryGetValue("autoParameters", out var autoParameters)
+            || requestParameters.TryGetValue("auto_parameters", out autoParameters);
+        if (hasAutoParameters && JsonElementConverter.ConvertToBoolean(autoParameters) == true)
+        {
+            credits += config.AutoParametersCredits ?? 0;
         }
 
-        // Future: Add other hybrid estimation formats
+        return credits * config.CostPerCredit;
+    }
 
-        _logger.LogWarning("Could not estimate hybrid pricing cost. Unknown format.");
-        return 0m;
+    private static decimal EstimatePerplexityHybridCost(
+        PerplexityHybridPricingConfig config,
+        Dictionary<string, object> requestParameters)
+    {
+        var maxOutputTokens = requestParameters.TryGetValue("maxTokens", out var maxTokens)
+            ? JsonElementConverter.ConvertToInt32(maxTokens) ?? 0
+            : requestParameters.TryGetValue("max_tokens", out var maxTokensSnake)
+                ? JsonElementConverter.ConvertToInt32(maxTokensSnake) ?? 0
+                : 0;
+
+        // The request does not expose a reliable tokenizer here. The base charge is always
+        // reserved, and any declared maximum output is reserved at the output-token rate.
+        return config.BaseRequestCost
+            + maxOutputTokens * config.OutputTokenCostPerMillion / 1_000_000m;
     }
 
     /// <summary>
@@ -259,11 +302,11 @@ public partial class FunctionCostCalculationService
         int requestedResults = 10; // Default
         if (requestParameters.TryGetValue("numResults", out var numObj))
         {
-            requestedResults = Convert.ToInt32(numObj);
+            requestedResults = JsonElementConverter.ConvertToInt32(numObj) ?? requestedResults;
         }
         else if (requestParameters.TryGetValue("num_results", out var numSnake))
         {
-            requestedResults = Convert.ToInt32(numSnake);
+            requestedResults = JsonElementConverter.ConvertToInt32(numSnake) ?? requestedResults;
         }
 
         // 1. Estimate search cost (assume neural for conservatism)

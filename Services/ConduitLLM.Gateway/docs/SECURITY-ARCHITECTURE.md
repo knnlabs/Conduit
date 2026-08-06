@@ -64,6 +64,21 @@ X-Virtual-Key: condt_xxxx (legacy)
 - Quick deployment filtering via environment variables
 - Supports comma-separated IP/CIDR lists
 
+**Client IP Resolution (trusted proxies)** — ⚠️ security-critical:
+- The client IP used by IP filtering, rate limiting, and auto-banning is resolved once, up front, by
+  ASP.NET Core's `ForwardedHeadersMiddleware`. It honors `X-Forwarded-For` / `CF-Connecting-IP` **only**
+  when the connecting peer is an explicitly-configured trusted proxy; otherwise forwarded headers are
+  ignored and the direct socket peer is used. A direct client therefore **cannot spoof its source IP** to
+  bypass filters, evade bans, or poison another IP's rate-limit / ban counters.
+- **Disabled by default** (`CONDUIT_TRUSTED_PROXY_ENABLED=false`). Enable only when the API sits behind a
+  proxy/CDN you control.
+- **Cloudflare:** set `CONDUIT_TRUSTED_PROXY_ENABLED=true` and `CONDUIT_TRUSTED_PROXY_TRUST_CLOUDFLARE=true`.
+  The middleware then trusts Cloudflare's published ranges and reads `CF-Connecting-IP`.
+- **⚠️ Deployment prerequisite:** when trusting a CDN you MUST also restrict origin ingress to that CDN's IPs
+  (firewall / security group) or require a shared-secret header (Cloudflare Authenticated Origin Pulls).
+  Otherwise an attacker can bypass the CDN by connecting to the origin directly and forge the client IP —
+  the application-level trust model provides no protection without that network-level lockdown.
+
 ### 5. Security Headers
 
 **API-Optimized Headers**:
@@ -101,6 +116,14 @@ CONDUIT_CORE_ENFORCE_VKEY_MODELS=true
 
 # Distributed Tracking (shared with Admin/WebAdmin)
 CONDUIT_SECURITY_USE_DISTRIBUTED_TRACKING=true
+
+# Trusted proxy / client-IP resolution (shared by Gateway + Admin; OFF by default)
+CONDUIT_TRUSTED_PROXY_ENABLED=false
+CONDUIT_TRUSTED_PROXY_TRUST_CLOUDFLARE=false     # trust Cloudflare ranges + read CF-Connecting-IP
+CONDUIT_TRUSTED_PROXY_USE_CF_CONNECTING_IP=true
+CONDUIT_TRUSTED_PROXY_KNOWN_NETWORKS=            # extra trusted proxy CIDRs (comma-separated)
+CONDUIT_TRUSTED_PROXY_KNOWN_PROXIES=             # extra trusted proxy IPs (comma-separated)
+CONDUIT_TRUSTED_PROXY_FORWARD_LIMIT=1
 ```
 
 ## Shared Security Tracking

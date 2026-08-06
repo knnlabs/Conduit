@@ -1,16 +1,14 @@
 import { renderHook, act } from '@testing-library/react';
 import { useEnhancedVideoGeneration } from '../useEnhancedVideoGeneration';
 import * as browserClientModule from '@/lib/client/browserCoreClient';
-import type { VideoProgressCallbacks } from '@knn_labs/conduit-gateway-client';
+import type { VideoProgressCallbacks } from '@/lib/gateway-api';
 
 // Mock the browser client module
 jest.mock('@/lib/client/browserCoreClient');
 
 // Mock the video SignalR client
 jest.mock('@/lib/client/videoSignalRClient', () => ({
-  videoSignalRClient: {
-    disconnect: jest.fn().mockResolvedValue(undefined),
-  },
+  disconnectVideoSignalRClient: jest.fn().mockResolvedValue(undefined),
 }));
 
 interface MockVideoClient {

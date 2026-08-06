@@ -22,7 +22,8 @@ public interface IFunctionCostCalculationService
     /// <remarks>
     /// This method is called after function execution completes to determine the actual cost
     /// based on real usage data (result count, tokens consumed, content extracted, etc.).
-    /// The cost is calculated using the active FunctionCost configuration for the given function.
+    /// A non-negative provider-reported cost is authoritative when available; otherwise the cost is
+    /// calculated using the active FunctionCost configuration for the given function.
     /// </remarks>
     Task<decimal> CalculateCostAsync(
         int functionConfigurationId,

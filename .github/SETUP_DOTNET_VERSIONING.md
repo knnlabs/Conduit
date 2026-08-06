@@ -138,7 +138,7 @@ Or trigger GitHub Actions manually:
 
 ### ConduitLLM.Core  
 - **Purpose**: Core interfaces, models, business logic
-- **Dependencies**: AWS S3, Polly, TiktokenSharp, ConduitLLM.Configuration
+- **Dependencies**: AWS S3, Polly, Microsoft.ML.Tokenizers, ConduitLLM.Configuration
 - **Use Case**: When building applications that use Conduit's core functionality
 
 ### ConduitLLM.Providers
@@ -163,7 +163,7 @@ dotnet add package ConduitLLM.Configuration
 ### Dev Versions
 ```bash
 # Add GitHub Packages source
-dotnet nuget add source https://nuget.pkg.github.com/knnlabs/index.json -n github
+dotnet nuget add source https://nuget.pkg.github.com/nickna/index.json -n github
 
 # Install dev versions
 dotnet add package ConduitLLM.Core --version 0.1.0-dev.20250619123456 --source github
@@ -231,7 +231,7 @@ ConduitLLM.Core
 ├── ConduitLLM.Configuration
 ├── AWS S3 SDK
 ├── Polly (resilience)
-└── TiktokenSharp (tokenization)
+└── Microsoft.ML.Tokenizers (tokenization, bundled vocabularies)
 
 ConduitLLM.Providers  
 ├── ConduitLLM.Core

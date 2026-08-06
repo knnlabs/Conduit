@@ -1,3 +1,4 @@
+using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
@@ -37,12 +38,6 @@ namespace ConduitLLM.Core.Services
         private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(CacheDurationMinutes);
         private const CacheRegion Region = CacheRegion.ModelMetadata;
 
-        // Cache key patterns
-        private const string CacheKeyPrefix = "model:mapping";
-        private const string ByAliasKeyPattern = "model:mapping:{0}";
-        private const string ByIdKeyPattern = "model:mapping:id:{0}";
-        private const string AllMappingsKey = "model:mapping:all";
-
         public CachedModelProviderMappingService(
             IModelProviderMappingService innerService,
             ICacheManager cacheManager,
@@ -58,7 +53,7 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         public async Task<ModelProviderMapping?> GetMappingByIdAsync(int id)
         {
-            var cacheKey = string.Format(ByIdKeyPattern, id);
+            var cacheKey = CacheKeys.ModelMapping.ById(id);
 
             try
             {
@@ -67,6 +62,11 @@ namespace ConduitLLM.Core.Services
                     async () => await _innerService.GetMappingByIdAsync(id),
                     Region,
                     CacheTtl);
+
+                if (IsMissingNavigationGraph(cached))
+                {
+                    return await ReloadAndRecacheAsync(cacheKey, () => _innerService.GetMappingByIdAsync(id), $"ID {id}");
+                }
 
                 _logger.LogDebug("Retrieved model provider mapping by ID {Id} from cache", id);
                 return cached;
@@ -89,7 +89,7 @@ namespace ConduitLLM.Core.Services
                 throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
             }
 
-            var cacheKey = string.Format(ByAliasKeyPattern, modelAlias);
+            var cacheKey = CacheKeys.ModelMapping.ByAlias(modelAlias);
 
             try
             {
@@ -98,6 +98,11 @@ namespace ConduitLLM.Core.Services
                     async () => await _innerService.GetMappingByModelAliasAsync(modelAlias),
                     Region,
                     CacheTtl);
+
+                if (IsMissingNavigationGraph(cached))
+                {
+                    return await ReloadAndRecacheAsync(cacheKey, () => _innerService.GetMappingByModelAliasAsync(modelAlias), $"alias '{modelAlias}'");
+                }
 
                 _logger.LogDebug("Retrieved model provider mapping for alias '{ModelAlias}' from cache", modelAlias);
                 return cached;
@@ -109,6 +114,30 @@ namespace ConduitLLM.Core.Services
             }
         }
 
+        public async Task<List<ModelProviderMapping>> GetMappingsByModelAliasAsync(string modelAlias)
+        {
+            if (string.IsNullOrWhiteSpace(modelAlias))
+                throw new ArgumentException("Model alias cannot be null or empty", nameof(modelAlias));
+            var cacheKey = CacheKeys.ModelMapping.ByAlias(modelAlias) + ":all";
+            try
+            {
+                var cached = await _cacheManager.GetOrCreateAsync(cacheKey,
+                    () => _innerService.GetMappingsByModelAliasAsync(modelAlias), Region, CacheTtl);
+                if (cached is null || cached.Any(IsMissingNavigationGraph))
+                {
+                    var fresh = await _innerService.GetMappingsByModelAliasAsync(modelAlias);
+                    await _cacheManager.SetAsync(cacheKey, fresh, Region, CacheTtl);
+                    return fresh;
+                }
+                return cached;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Cache operation failed for mappings alias '{ModelAlias}'", modelAlias);
+                return await _innerService.GetMappingsByModelAliasAsync(modelAlias);
+            }
+        }
+
         /// <summary>
         /// Gets all mappings with caching.
         /// </summary>
@@ -117,10 +146,18 @@ namespace ConduitLLM.Core.Services
             try
             {
                 var cached = await _cacheManager.GetOrCreateAsync(
-                    AllMappingsKey,
+                    CacheKeys.ModelMapping.AllMappings,
                     async () => await _innerService.GetAllMappingsAsync(),
                     Region,
                     CacheTtl);
+
+                if (cached == null || cached.Any(IsMissingNavigationGraph))
+                {
+                    LogIncompleteCacheEntry("all-mappings list");
+                    var fresh = await _innerService.GetAllMappingsAsync();
+                    await _cacheManager.SetAsync(CacheKeys.ModelMapping.AllMappings, fresh, Region, CacheTtl);
+                    return fresh;
+                }
 
                 _logger.LogDebug("Retrieved all model provider mappings from cache");
                 return cached;
@@ -245,6 +282,55 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <summary>
+        /// Detects cache entries that lost their navigation graph while round-tripping the
+        /// distributed cache. ModelProviderTypeAssociation.Model is [JsonIgnore] (to break
+        /// serialization cycles), so entries deserialized from Redis come back with a null Model
+        /// and all capability flags read false. A mapping loaded from the repository always has
+        /// Provider, ModelProviderTypeAssociation, and Model populated.
+        /// </summary>
+        private static bool IsMissingNavigationGraph(ModelProviderMapping? mapping)
+        {
+            return mapping != null &&
+                   (mapping.Provider == null ||
+                    mapping.ModelProviderTypeAssociation == null ||
+                    mapping.ModelProviderTypeAssociation.Model == null);
+        }
+
+        /// <summary>
+        /// Reloads a mapping from the database when the cached entry is missing its navigation
+        /// graph, and refreshes the cache (repopulating the memory tier with the full object).
+        /// </summary>
+        private async Task<ModelProviderMapping?> ReloadAndRecacheAsync(
+            string cacheKey,
+            Func<Task<ModelProviderMapping?>> loader,
+            string identifier)
+        {
+            LogIncompleteCacheEntry(identifier);
+
+            var fresh = await loader();
+            if (fresh != null)
+            {
+                await _cacheManager.SetAsync(cacheKey, fresh, Region, CacheTtl);
+            }
+            else
+            {
+                // The mapping no longer exists; drop the stale entry so it stops resurfacing.
+                await _cacheManager.RemoveAsync(cacheKey, Region);
+            }
+
+            return fresh;
+        }
+
+        private void LogIncompleteCacheEntry(string identifier)
+        {
+            _logger.LogWarning(
+                "Cached model provider mapping for {Identifier} is missing its navigation graph " +
+                "(entries deserialized from the distributed cache lose [JsonIgnore] navigation properties); " +
+                "reloading from database",
+                identifier);
+        }
+
+        /// <summary>
         /// Invalidates cache entries for a specific mapping.
         /// </summary>
         /// <param name="modelAlias">The model alias (can be null if unknown)</param>
@@ -256,16 +342,17 @@ namespace ConduitLLM.Core.Services
                 var keysToRemove = new List<string>();
 
                 // Always invalidate the ID-based key
-                keysToRemove.Add(string.Format(ByIdKeyPattern, id));
+                keysToRemove.Add(CacheKeys.ModelMapping.ById(id));
 
                 // Invalidate alias-based key if we know the alias
                 if (!string.IsNullOrEmpty(modelAlias))
                 {
-                    keysToRemove.Add(string.Format(ByAliasKeyPattern, modelAlias));
+                    keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(modelAlias));
+                    keysToRemove.Add(CacheKeys.ModelMapping.ByAlias(modelAlias) + ":all");
                 }
 
                 // Invalidate the "all mappings" cache
-                keysToRemove.Add(AllMappingsKey);
+                keysToRemove.Add(CacheKeys.ModelMapping.AllMappings);
 
                 var removed = await _cacheManager.RemoveManyAsync(keysToRemove, Region);
 

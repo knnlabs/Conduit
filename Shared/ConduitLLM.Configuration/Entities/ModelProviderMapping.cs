@@ -2,14 +2,16 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
-    /// Maps a generic model alias (e.g., "gpt-4-turbo") to a specific provider's model name 
-    /// and associates it with provider credentials. This entity enables routing requests to 
+    /// Maps a generic model alias (e.g., "gpt-4-turbo") to a specific provider's model name
+    /// and associates it with provider credentials. This entity enables routing requests to
     /// specific provider models regardless of the model name used in the request.
     /// </summary>
-    public class ModelProviderMapping
+    public class ModelProviderMapping : IEntity<int>, IAuditableEntity
     {
         /// <summary>
         /// Unique identifier for the model-provider mapping.
@@ -52,6 +54,24 @@ namespace ConduitLLM.Configuration.Entities
         /// When false, the router will not use this mapping for routing requests.
         /// </summary>
         public bool IsEnabled { get; set; } = true;
+
+        /// <summary>Deterministic tie-break priority; lower values win.</summary>
+        [Range(0, int.MaxValue)]
+        public int RoutingPriority { get; set; } = 100;
+
+        /// <summary>Multiplier applied to the balanced route score.</summary>
+        [Range(0.1, 2.0)]
+        [Column(TypeName = "decimal(4, 2)")]
+        public decimal RoutingWeight { get; set; } = 1.0m;
+
+        /// <summary>
+        /// Optional provider-specific request options as a JSON object. For OpenRouter mappings the
+        /// top-level keys (provider, plugins, transforms, models, route) are merged into every
+        /// outgoing request routed through this mapping. Caller-supplied ExtensionData wins on key
+        /// conflict; standard parameters always win.
+        /// </summary>
+        [Column(TypeName = "text")]
+        public string? ProviderOptions { get; set; }
 
         /// <summary>
         /// The UTC timestamp when this mapping was created.

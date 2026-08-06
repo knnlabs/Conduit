@@ -13,7 +13,7 @@ import {
   Tooltip
 } from '@mantine/core';
 import { IconPhoto } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { ImageAttachment } from '../types';
 
 interface ImageUploadProps {
@@ -32,7 +32,12 @@ export function ImageUpload({
   disabled = false 
 }: ImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const imagesRef = useRef(images);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  React.useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
   const handleFileSelect = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -47,31 +52,19 @@ export function ImageUpload({
       
       // Check if we've reached max images
       if (images.length + newImages.length >= maxImages) {
-        notifications.show({
-          title: 'Max images reached',
-          message: `You can only upload up to ${maxImages} images`,
-          color: 'yellow',
-        });
+        notify.warning(`You can only upload up to ${maxImages} images`, 'Max images reached');
         break;
       }
 
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        notifications.show({
-          title: 'Invalid file type',
-          message: `${file.name} is not an image`,
-          color: 'red',
-        });
+        notify.error(`${file.name} is not an image`);
         continue;
       }
 
       // Check file size
       if (file.size > maxSizeInBytes) {
-        notifications.show({
-          title: 'File too large',
-          message: `${file.name} exceeds ${maxSizeInMB}MB limit`,
-          color: 'red',
-        });
+        notify.error(`${file.name} exceeds ${maxSizeInMB}MB limit`);
         continue;
       }
 
@@ -91,11 +84,7 @@ export function ImageUpload({
         });
       } catch (error) {
         console.error('Error processing image:', error);
-        notifications.show({
-          title: 'Error processing image',
-          message: `Failed to process ${file.name}`,
-          color: 'red',
-        });
+        notify.error(`Failed to process ${file.name}`);
       }
     }
 
@@ -163,13 +152,13 @@ export function ImageUpload({
   // Clean up object URLs when component unmounts
   React.useEffect(() => {
     return () => {
-      images.forEach(img => {
+      imagesRef.current.forEach(img => {
         if (img.url.startsWith('blob:')) {
           URL.revokeObjectURL(img.url);
         }
       });
     };
-  }, [images]);
+  }, []);
 
   return (
     <Stack gap="xs">

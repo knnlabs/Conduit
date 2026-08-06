@@ -73,13 +73,10 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         Task DeleteTaskAsync(string taskId, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Cleans up old completed or failed tasks.
-        /// </summary>
-        /// <param name="olderThan">Remove tasks older than this timespan</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Number of tasks cleaned up</returns>
-        Task<int> CleanupOldTasksAsync(TimeSpan olderThan, CancellationToken cancellationToken = default);
+        /// <summary>Archives and deletes tasks according to the supplied retention policy.</summary>
+        Task<AsyncTaskCleanupResult> CleanupOldTasksAsync(
+            AsyncTaskRetentionPolicy policy,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets all pending tasks that need to be processed.
@@ -89,6 +86,50 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>List of pending tasks</returns>
         Task<IList<AsyncTaskStatus>> GetPendingTasksAsync(string? taskType = null, int limit = 100, CancellationToken cancellationToken = default);
+
+        Task<ConduitLLM.Configuration.Interfaces.AsyncTaskClaimResult> TryClaimTaskAsync(
+            string taskId,
+            string workerId,
+            TimeSpan leaseDuration,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> MarkProviderInvocationStartedAsync(
+            string taskId,
+            string workerId,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> MarkProviderInvocationCompletedAsync(
+            string taskId,
+            string workerId,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> ExtendTaskLeaseAsync(
+            string taskId,
+            string workerId,
+            TimeSpan extension,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Returns a sanitized page of tasks in the requested state.</summary>
+        Task<AsyncTaskSummaryPage> GetTasksByStateAsync(
+            TaskState state,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Marks an indeterminate task failed without charging the customer.</summary>
+        Task<bool> FailIndeterminateTaskWithoutChargeAsync(
+            string taskId,
+            string reason,
+            string? providerOperationId = null,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>Idempotently prepares a media task for a durable operator retry.</summary>
+        Task<MediaTaskRetryPreparation> PrepareIndeterminateTaskRetryAsync(
+            string taskId,
+            string dispatchId,
+            string reason,
+            CancellationToken cancellationToken = default);
     }
 
     /// <summary>
@@ -205,6 +246,60 @@ namespace ConduitLLM.Core.Interfaces
         /// <summary>
         /// Task timed out.
         /// </summary>
-        TimedOut
+        TimedOut,
+
+        /// <summary>The provider may have accepted work; automatic retry is unsafe.</summary>
+        Indeterminate
+    }
+
+    /// <summary>Safe task data intended for operator listings; excludes payloads and secrets.</summary>
+    public sealed record AsyncTaskSummary(
+        string TaskId,
+        string TaskType,
+        TaskState State,
+        int VirtualKeyId,
+        string? Model,
+        DateTime CreatedAt,
+        DateTime UpdatedAt,
+        DateTime? CompletedAt,
+        string? Error,
+        int RetryCount,
+        int MaxRetries,
+        DateTime? ProviderInvocationStartedAt,
+        DateTime? ProviderInvocationCompletedAt,
+        string? ProviderOperationId);
+
+    public sealed record AsyncTaskSummaryPage(
+        IReadOnlyList<AsyncTaskSummary> Tasks,
+        int Page,
+        int PageSize,
+        int TotalCount);
+
+    public enum MediaTaskRetryPreparationStatus
+    {
+        Prepared = 0,
+        AlreadyPrepared = 1,
+        Missing = 2,
+        NotIndeterminate = 3,
+        UnsupportedTaskType = 4,
+        RetryLimitExceeded = 5
+    }
+
+    public sealed record MediaTaskRetryPreparation(
+        MediaTaskRetryPreparationStatus Status,
+        string? TaskType = null,
+        TaskMetadata? Metadata = null);
+
+    /// <summary>Thresholds used for one async-task retention pass.</summary>
+    public sealed record AsyncTaskRetentionPolicy(
+        TimeSpan ArchiveCompletedAfter,
+        TimeSpan DeleteArchivedAfter,
+        TimeSpan ArchiveStaleAfter,
+        int BatchSize = 500);
+
+    /// <summary>Counts produced by one async-task retention pass.</summary>
+    public sealed record AsyncTaskCleanupResult(int Archived, int Deleted)
+    {
+        public int Total => Archived + Deleted;
     }
 }

@@ -1,7 +1,7 @@
 # ConduitLLM.Tests
 
 ## Overview
-`ConduitLLM.Tests` is the automated test suite for the ConduitLLM solution, which is managed via the top-level `Conduit.sln` file. This project ensures the reliability, correctness, and maintainability of the core ConduitLLM components by providing comprehensive unit and integration tests.
+`ConduitLLM.Tests` is the automated test suite for the ConduitLLM solution, which is managed via the top-level `Conduit.slnx` file. This project ensures the reliability, correctness, and maintainability of the core ConduitLLM components by providing comprehensive unit and integration tests.
 
 ## How It Fits Into the Conduit Solution
 The ConduitLLM solution is a modular .NET-based framework for working with Large Language Models (LLMs). It is composed of several sub-projects, including:
@@ -13,7 +13,7 @@ The ConduitLLM solution is a modular .NET-based framework for working with Large
 - **ConduitLLM.Providers**: Integrations for various LLM providers (OpenAI, Cohere, Gemini, Anthropic, LiteLLM, etc.).
 - **ConduitLLM.Tests**: This project. Contains tests for all core, provider, HTTP, and configuration components.
 
-All these projects are orchestrated via `Conduit.sln`, allowing for coordinated development and testing.
+All these projects are orchestrated via `Conduit.slnx`, allowing for coordinated development and testing.
 
 ## What Does ConduitLLM.Tests Do?
 - **Covers all major components**: Tests core logic, provider integrations, API endpoints, configuration, caching, streaming, security, and middleware.
@@ -37,7 +37,7 @@ dotnet test ConduitLLM.Tests/ConduitLLM.Tests.csproj
 Or run all tests in the solution:
 
 ```bash
-dotnet test Conduit.sln
+dotnet test Conduit.slnx
 ```
 
 ## Configuration

@@ -36,15 +36,17 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         public decimal? BudgetPercentage { get; set; }
 
         /// <summary>
-        /// Gets or sets the provider name.
+        /// Gets or sets the provider name, or null when the update is not attributable
+        /// to a single provider (e.g. aggregated batch spend updates).
         /// </summary>
-        public string Provider { get; set; } = string.Empty;
+        public string? Provider { get; set; }
 
 
         /// <summary>
-        /// Gets or sets the model used.
+        /// Gets or sets the model used, or null when the update is not attributable
+        /// to a single model.
         /// </summary>
-        public string Model { get; set; } = string.Empty;
+        public string? Model { get; set; }
 
         /// <summary>
         /// Gets or sets the amount of new spend.
@@ -54,7 +56,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// <summary>
         /// Gets or sets the request metadata.
         /// </summary>
-        public RequestMetadata? Metadata { get; set; }
+        public SpendRequestMetadata? Metadata { get; set; }
     }
 
     /// <summary>
@@ -157,7 +159,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
         /// <summary>
         /// Gets or sets the period comparison.
         /// </summary>
-        public PeriodComparison? Comparison { get; set; }
+        public SpendPeriodComparison? Comparison { get; set; }
     }
 
     /// <summary>
@@ -215,7 +217,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     /// <summary>
     /// Metadata for a request.
     /// </summary>
-    public class RequestMetadata
+    public class SpendRequestMetadata
     {
         /// <summary>
         /// Gets or sets the request ID.
@@ -303,7 +305,7 @@ namespace ConduitLLM.Configuration.DTOs.SignalR
     /// <summary>
     /// Period comparison data.
     /// </summary>
-    public class PeriodComparison
+    public class SpendPeriodComparison
     {
         /// <summary>
         /// Gets or sets the previous period spend.

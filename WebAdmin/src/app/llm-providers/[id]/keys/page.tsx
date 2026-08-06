@@ -12,9 +12,13 @@ import {
   Badge,
   ActionIcon,
   TextInput,
+  PasswordInput,
+  NumberInput,
   Switch,
   Card,
   Menu,
+  Modal,
+  Tooltip,
   rem,
   Alert,
   LoadingOverlay,
@@ -32,10 +36,16 @@ import {
   IconAlertCircle,
   IconTestPipe,
   IconArrowLeft,
+  IconUsersGroup,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { modals } from '@mantine/modals';
-import type { ProviderDto, ProviderKeyCredentialDto, CreateProviderKeyCredentialDto } from '@knn_labs/conduit-admin-client';
+import type {
+  ProviderDto,
+  ProviderKeyCredentialDto,
+  CreateProviderKeyCredentialDto,
+  ProviderSettingField,
+} from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 import { formatters } from '@/lib/utils/formatters';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
@@ -55,12 +65,19 @@ export default function ProviderKeysPage() {
   const [newKeyForm, setNewKeyForm] = useState<CreateProviderKeyCredentialDto>({
     apiKey: '',
     keyName: '',
-    organization: '',
     isPrimary: false,
     isEnabled: true,
     providerAccountGroup: 0,
     baseUrl: '',
   });
+  // Secret-valued settings the provider type declares (for example an AWS secret access key).
+  // They are held on the key credential, encrypted at rest, and never read back from the server.
+  const [secretFields, setSecretFields] = useState<ProviderSettingField[]>([]);
+  const [requiresApiKey, setRequiresApiKey] = useState(true);
+  const [newKeySecrets, setNewKeySecrets] = useState<Record<string, string>>({});
+  const [editingGroupKey, setEditingGroupKey] = useState<ProviderKeyCredentialDto | null>(null);
+  const [editGroupValue, setEditGroupValue] = useState<number>(0);
+  const [isSavingGroup, setIsSavingGroup] = useState(false);
 
   const fetchProvider = useCallback(async () => {
     try {
@@ -70,11 +87,7 @@ export default function ProviderKeysPage() {
       setProvider(data);
     } catch (error) {
       console.error('Error fetching provider:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load provider details',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load provider details'));
     }
   }, [providerId]);
 
@@ -87,11 +100,7 @@ export default function ProviderKeysPage() {
       setKeys(data);
     } catch (error) {
       console.error('Error fetching provider keys:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to load provider keys',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to load provider keys'));
     } finally {
       setIsLoading(false);
     }
@@ -102,43 +111,66 @@ export default function ProviderKeysPage() {
     void fetchKeys();
   }, [fetchProvider, fetchKeys]);
 
+  useEffect(() => {
+    const providerType = provider?.providerType;
+    if (!providerType) return;
+
+    const loadSecretFields = async () => {
+      try {
+        const schema = await withAdminClient(client => client.providers.getConfigurationSchema());
+        const configuration = schema[providerType];
+        setRequiresApiKey(configuration?.requiresApiKey ?? true);
+        setSecretFields((configuration?.settings ?? []).filter(field => field.secret));
+      } catch (error) {
+        console.error('Error fetching provider settings schema:', error);
+        notify.error(new Error('Failed to load provider credential fields'));
+      }
+    };
+
+    void loadSecretFields();
+  }, [provider?.providerType]);
+
   const handleAddKey = async () => {
-    if (!newKeyForm.apiKey) return;
+    if (requiresApiKey && !newKeyForm.apiKey) return;
+    if (secretFields.some(field =>
+      field.required && !(newKeySecrets[field.key]?.trim()))) return;
 
     try {
       setIsAddingKey(true);
-      await withAdminClient(client => 
-        client.providers.createKey(providerId, newKeyForm)
+      const secretSettings: Record<string, string> = {};
+      for (const field of secretFields) {
+        const value = newKeySecrets[field.key]?.trim() ?? '';
+        if (value) {
+          secretSettings[field.key] = value;
+        }
+      }
+
+      await withAdminClient(client =>
+        client.providers.createKey(providerId, {
+          ...newKeyForm,
+          secretSettings: Object.keys(secretSettings).length > 0 ? secretSettings : undefined,
+        })
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Provider key added successfully',
-        color: 'green',
-      });
+      notify.success('Provider key added successfully');
       
       // Reset form
       setNewKeyForm({
         apiKey: '',
         keyName: '',
-        organization: '',
         isPrimary: false,
         isEnabled: true,
         providerAccountGroup: 0,
         baseUrl: '',
       });
+      setNewKeySecrets({});
       setShowAddForm(false);
       
       // Refresh keys
       void fetchKeys();
     } catch (error) {
       console.error('Error adding key:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to add provider key';
-      notifications.show({
-        title: 'Error',
-        message: errorMessage,
-        color: 'red',
-      });
+      notify.error(error, 'Failed to add provider key');
     } finally {
       setIsAddingKey(false);
     }
@@ -150,20 +182,12 @@ export default function ProviderKeysPage() {
         client.providers.setPrimaryKey(providerId, keyId)
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Primary key updated',
-        color: 'green',
-      });
-      
+      notify.success('Primary key updated');
+
       void fetchKeys();
     } catch (error) {
       console.error('Error setting primary key:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to set primary key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to set primary key'));
     }
   };
 
@@ -173,20 +197,33 @@ export default function ProviderKeysPage() {
         client.providers.updateKey(providerId, keyId, { isEnabled: enabled })
       );
       
-      notifications.show({
-        title: 'Success',
-        message: `Key ${enabled ? 'enabled' : 'disabled'} successfully`,
-        color: 'green',
-      });
-      
+      notify.success(`Key ${enabled ? 'enabled' : 'disabled'} successfully`);
+
       void fetchKeys();
     } catch (error) {
       console.error('Error updating key:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to update key'));
+    }
+  };
+
+  const handleSaveAccountGroup = async () => {
+    if (!editingGroupKey) return;
+
+    try {
+      setIsSavingGroup(true);
+      await withAdminClient(client =>
+        client.providers.updateKey(providerId, editingGroupKey.id, { providerAccountGroup: editGroupValue })
+      );
+
+      notify.success('Account group updated');
+      setEditingGroupKey(null);
+
+      void fetchKeys();
+    } catch (error) {
+      console.error('Error updating account group:', error);
+      notify.error(new Error('Failed to update account group'));
+    } finally {
+      setIsSavingGroup(false);
     }
   };
 
@@ -200,28 +237,17 @@ export default function ProviderKeysPage() {
       // Handle new response format
       const isSuccess = (result.result as string) === 'success';
       const testResult = result.result as string;
-      
-      const colors: Record<string, string> = {
-        'success': 'green',
-        'invalid_key': 'red',
-        'ignored': 'yellow',
-        'provider_down': 'orange',
-        'rate_limited': 'orange',
-        'unknown_error': 'red'
-      };
-      
-      notifications.show({
-        title: isSuccess ? 'Key Test Successful' : 'Key Test Failed',
-        message: result.message ?? (isSuccess ? 'The API key is valid and working' : 'The API key is invalid or not working'),
-        color: colors[testResult] ?? 'red',
-      });
+
+      if (isSuccess) {
+        notify.success(result.message ?? 'The API key is valid and working', 'Key Test Successful');
+      } else if (testResult === 'ignored' || testResult === 'provider_down' || testResult === 'rate_limited') {
+        notify.warning(result.message ?? 'The API key is invalid or not working', 'Key Test Failed');
+      } else {
+        notify.error(new Error(result.message ?? 'The API key is invalid or not working'), 'Key Test Failed');
+      }
     } catch (error) {
       console.error('Error testing key:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to test key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to test key'));
     } finally {
       setTestingKeys(prev => {
         const newSet = new Set(prev);
@@ -233,11 +259,7 @@ export default function ProviderKeysPage() {
 
   const handleDeleteKey = (key: ProviderKeyCredentialDto) => {
     if (key.isPrimary) {
-      notifications.show({
-        title: 'Cannot delete primary key',
-        message: 'Please set another key as primary before deleting this one',
-        color: 'red',
-      });
+      notify.error(new Error('Please set another key as primary before deleting this one'), 'Cannot delete primary key');
       return;
     }
 
@@ -257,20 +279,12 @@ export default function ProviderKeysPage() {
               client.providers.deleteKey(providerId, key.id)
             );
             
-            notifications.show({
-              title: 'Success',
-              message: 'Key deleted successfully',
-              color: 'green',
-            });
-            
+            notify.success('Key deleted successfully');
+
             void fetchKeys();
           } catch (error) {
             console.error('Error deleting key:', error);
-            notifications.show({
-              title: 'Error',
-              message: 'Failed to delete key',
-              color: 'red',
-            });
+            notify.error(new Error('Failed to delete key'));
           }
         })();
       },
@@ -310,39 +324,58 @@ export default function ProviderKeysPage() {
             onClick={() => setShowAddForm(!showAddForm)}
             disabled={showAddForm}
           >
-            Add New Key
+            Add New Credential
           </Button>
         </Group>
       </Group>
 
       {showAddForm && (
         <Paper shadow="sm" p="lg" mb="xl" withBorder>
-          <Title order={4} mb="md">Add New API Key</Title>
+          <Title order={4} mb="md">
+            Add New {requiresApiKey ? 'API Key' : 'Credential'}
+          </Title>
           <Stack>
+            {requiresApiKey && (
+              <TextInput
+                label="API Key"
+                placeholder="Enter API key"
+                value={newKeyForm.apiKey}
+                onChange={(e) => setNewKeyForm({ ...newKeyForm, apiKey: e.target.value })}
+                required
+              />
+            )}
+            
             <TextInput
-              label="API Key"
-              placeholder="Enter API key"
-              value={newKeyForm.apiKey}
-              onChange={(e) => setNewKeyForm({ ...newKeyForm, apiKey: e.target.value })}
-              required
+              label="Key Name (optional)"
+              placeholder="e.g., Production Key"
+              value={newKeyForm.keyName}
+              onChange={(e) => setNewKeyForm({ ...newKeyForm, keyName: e.target.value })}
             />
-            
-            <Group grow>
-              <TextInput
-                label="Key Name (optional)"
-                placeholder="e.g., Production Key"
-                value={newKeyForm.keyName}
-                onChange={(e) => setNewKeyForm({ ...newKeyForm, keyName: e.target.value })}
+
+            {secretFields.map((field) => (
+              <PasswordInput
+                key={field.key}
+                label={field.label}
+                placeholder={field.placeholder ?? ''}
+                description={field.helpText}
+                required={field.required}
+                autoComplete="off"
+                value={newKeySecrets[field.key] ?? ''}
+                onChange={(e) => setNewKeySecrets({ ...newKeySecrets, [field.key]: e.target.value })}
               />
-              
-              <TextInput
-                label="Organization (optional)"
-                placeholder="e.g., OpenAI Org ID"
-                value={newKeyForm.organization}
-                onChange={(e) => setNewKeyForm({ ...newKeyForm, organization: e.target.value })}
-              />
-            </Group>
-            
+            ))}
+
+            <NumberInput
+              label="Account Group"
+              description="Group 0 means ungrouped (the key is treated independently). Keys in the same group (1-32) share one provider account balance, so balance exhaustion disables and re-enables all keys in the group together."
+              min={0}
+              max={32}
+              allowDecimal={false}
+              clampBehavior="strict"
+              value={newKeyForm.providerAccountGroup ?? 0}
+              onChange={(value) => setNewKeyForm({ ...newKeyForm, providerAccountGroup: typeof value === 'number' ? value : 0 })}
+            />
+
             <Group>
               <Switch
                 label="Set as Primary"
@@ -361,9 +394,11 @@ export default function ProviderKeysPage() {
               <Button
                 onClick={() => void handleAddKey()}
                 loading={isAddingKey}
-                disabled={!newKeyForm.apiKey}
+                disabled={(requiresApiKey && !newKeyForm.apiKey)
+                  || secretFields.some(field =>
+                    field.required && !(newKeySecrets[field.key]?.trim()))}
               >
-                Add Key
+                Add Credential
               </Button>
               <Button
                 variant="default"
@@ -372,7 +407,6 @@ export default function ProviderKeysPage() {
                   setNewKeyForm({
                     apiKey: '',
                     keyName: '',
-                    organization: '',
                     isPrimary: false,
                     isEnabled: true,
                     providerAccountGroup: 0,
@@ -412,15 +446,26 @@ export default function ProviderKeysPage() {
                       <Badge size="sm" variant={key.isEnabled ? 'light' : 'filled'} color={key.isEnabled ? 'green' : 'gray'}>
                         {key.isEnabled ? 'ENABLED' : 'DISABLED'}
                       </Badge>
+                      {key.providerAccountGroup > 0 && (
+                        <Tooltip label={`Shares an account balance with other group ${key.providerAccountGroup} keys — balance exhaustion disables and re-enables the whole group together`}>
+                          <Badge size="sm" variant="light" color="indigo" leftSection={<IconUsersGroup size={12} />}>
+                            GROUP {key.providerAccountGroup}
+                          </Badge>
+                        </Tooltip>
+                      )}
                     </Group>
                     
                     <Group gap="xl">
                       <Text size="xs" c="dimmed">
                         API Key: {key.apiKey}
                       </Text>
-                      {key.organization && (
+                      <Text size="xs" c="dimmed">
+                        Account Group: {key.providerAccountGroup > 0 ? key.providerAccountGroup : 'Ungrouped'}
+                      </Text>
+                      {key.configuredSecretSettings && key.configuredSecretSettings.length > 0 && (
                         <Text size="xs" c="dimmed">
-                          Org: {key.organization}
+                          {/* Names only - the server never returns secret values. */}
+                          Secrets: {key.configuredSecretSettings.join(', ')}
                         </Text>
                       )}
                       <Text size="xs" c="dimmed">
@@ -451,6 +496,15 @@ export default function ProviderKeysPage() {
                       >
                         {testingKeys.has(key.id) ? 'Testing...' : 'Test Key'}
                       </Menu.Item>
+                      <Menu.Item
+                        leftSection={<IconUsersGroup style={{ width: rem(14), height: rem(14) }} />}
+                        onClick={() => {
+                          setEditGroupValue(key.providerAccountGroup);
+                          setEditingGroupKey(key);
+                        }}
+                      >
+                        Change Account Group
+                      </Menu.Item>
                       {!key.isPrimary && (
                         <Menu.Item
                           leftSection={<IconStar style={{ width: rem(14), height: rem(14) }} />}
@@ -477,6 +531,33 @@ export default function ProviderKeysPage() {
           ))}
         </Stack>
       )}
+
+      <Modal
+        opened={editingGroupKey !== null}
+        onClose={() => setEditingGroupKey(null)}
+        title={`Change Account Group${editingGroupKey?.keyName ? ` — ${editingGroupKey.keyName}` : ''}`}
+      >
+        <Stack>
+          <NumberInput
+            label="Account Group"
+            description="Group 0 means ungrouped (the key is treated independently). Keys in the same group (1-32) share one provider account balance, so balance exhaustion disables and re-enables all keys in the group together."
+            min={0}
+            max={32}
+            allowDecimal={false}
+            clampBehavior="strict"
+            value={editGroupValue}
+            onChange={(value) => setEditGroupValue(typeof value === 'number' ? value : 0)}
+          />
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setEditingGroupKey(null)} disabled={isSavingGroup}>
+              Cancel
+            </Button>
+            <Button onClick={() => void handleSaveAccountGroup()} loading={isSavingGroup}>
+              Save
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
     </Container>
   );
 }

@@ -3,7 +3,10 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Services;
+using ConduitLLM.Functions.Utilities;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -13,117 +16,120 @@ namespace ConduitLLM.Admin.Services
     public partial class AdminModelCostService
     {
         /// <inheritdoc />
-        public async Task<int> ImportModelCostsAsync(IEnumerable<CreateModelCostDto> modelCosts)
+        public async Task<BulkImportResult> ImportModelCostsAsync(IEnumerable<CreateModelCostDto> modelCosts)
         {
             if (modelCosts == null)
             {
                 throw new ArgumentNullException(nameof(modelCosts));
             }
 
-            if (modelCosts.Count() == 0)
+            if (!modelCosts.Any())
             {
-                return 0;
+                return new BulkImportResult();
             }
 
-            try
-            {
-                int importedCount = 0;
+            var result = new BulkImportResult();
+            var totalCount = modelCosts.Count();
 
-                // Process each model cost
-                foreach (var modelCost in modelCosts)
+            // Process each model cost
+            foreach (var modelCost in modelCosts)
+            {
+                try
                 {
-                    try
-                    {
-                        // Check if a model cost with the same name already exists
-                        var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
+                    ModelPricingConfigurationValidator.Validate(
+                        modelCost.PricingModel,
+                        StructuredJson.SerializeObject(modelCost.PricingConfiguration));
 
-                        if (existingModelCost != null)
+                    // Check if a model cost with the same name already exists
+                    var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
+
+                    if (existingModelCost != null)
+                    {
+                        // Update existing model cost
+                        var updateDto = new UpdateModelCostDto
                         {
-                            // Update existing model cost
-                            var updateDto = new UpdateModelCostDto
+                            CostName = modelCost.CostName,
+                            PricingModel = modelCost.PricingModel,
+                            PricingConfiguration = modelCost.PricingConfiguration,
+                            InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
+                            OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
+                            EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
+                            BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
+                            SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
+                            CostPerSearchUnit = modelCost.CostPerSearchUnit,
+                            CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
+                            CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens
+                        };
+
+                        existingModelCost.UpdateFrom(updateDto);
+                        await _modelCostRepository.UpdateAsync(existingModelCost);
+
+                        // Publish ModelCostChanged event for updated model cost
+                        await PublishEventAsync(
+                            new ModelCostChanged
                             {
-                                Id = existingModelCost.Id,
-                                CostName = modelCost.CostName,
-                                PricingModel = modelCost.PricingModel,
-                                PricingConfiguration = modelCost.PricingConfiguration,
-                                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
-                                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
-                                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
-                                BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
-                                SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
-                                CostPerSearchUnit = modelCost.CostPerSearchUnit,
-                                CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
-                                CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens
-                            };
-
-                            existingModelCost.UpdateFrom(updateDto);
-                            await _modelCostRepository.UpdateAsync(existingModelCost);
-
-                            // Publish ModelCostChanged event for updated model cost
-                            await PublishEventAsync(
-                                new ModelCostChanged
-                                {
-                                    ModelCostId = existingModelCost.Id,
-                                    CostName = existingModelCost.CostName,
-                                    ChangeType = "Updated",
-                                    ChangedProperties = new[] { "ImportUpdated" },
-                                    CorrelationId = Guid.NewGuid().ToString()
-                                },
-                                "ImportModelCosts");
-                        }
-                        else
-                        {
-                            // Create new model cost
-                            var modelCostEntity = modelCost.ToEntity();
-                            var newId = await _modelCostRepository.CreateAsync(modelCostEntity);
-                            
-                            // Publish ModelCostChanged event for new model cost
-                            await PublishEventAsync(
-                                new ModelCostChanged
-                                {
-                                    ModelCostId = newId,
-                                    CostName = modelCost.CostName,
-                                    ChangeType = "Created",
-                                    ChangedProperties = new[] { "ImportCreated" },
-                                    CorrelationId = Guid.NewGuid().ToString()
-                                },
-                                "ImportModelCosts");
-                        }
-
-                        importedCount++;
+                                ModelCostId = existingModelCost.Id,
+                                CostName = existingModelCost.CostName,
+                                ChangeType = "Updated",
+                                ChangedProperties = new[] { "ImportUpdated" },
+                                CorrelationId = Guid.NewGuid().ToString()
+                            },
+                            "ImportModelCosts");
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        _logger.LogWarning(ex,
-                "Error importing model cost with name '{CostName}'",
-                LoggingSanitizer.S(modelCost.CostName));
-                        // Continue with next model cost
-                    }
-                }
+                        // Create new model cost
+                        var modelCostEntity = modelCost.ToEntity();
+                        var newId = await _modelCostRepository.CreateAsync(modelCostEntity);
 
-                _logger.LogInformation("Imported {Count} model costs",
-                importedCount);
-                return importedCount;
+                        // Publish ModelCostChanged event for new model cost
+                        await PublishEventAsync(
+                            new ModelCostChanged
+                            {
+                                ModelCostId = newId,
+                                CostName = modelCost.CostName,
+                                ChangeType = "Created",
+                                ChangedProperties = new[] { "ImportCreated" },
+                                CorrelationId = Guid.NewGuid().ToString()
+                            },
+                            "ImportModelCosts");
+                    }
+
+                    result.SuccessCount++;
+                }
+                catch (Exception ex)
+                {
+                    result.FailureCount++;
+                    result.Errors.Add($"Failed to import model cost '{modelCost.CostName}': {ex.Message}");
+                    _logger.LogWarning(ex,
+                        "Error importing model cost with name '{CostName}'",
+                        LoggingSanitizer.S(modelCost.CostName));
+                    // Continue with next model cost
+                }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                "Error importing model costs");
-                throw;
-            }
+
+            _logger.LogInformation("Imported {Imported} model costs ({Failed} failed out of {Total})",
+                result.SuccessCount, result.FailureCount, totalCount);
+            return result;
         }
 
         /// <inheritdoc />
         public async Task<string> ExportModelCostsAsync(string format, int? providerId = null)
         {
+            _logger.LogDebug("Exporting model costs as {Format}{ProviderFilter}",
+                format ?? "json",
+                providerId.HasValue ? $" for provider {providerId}" : "");
+
             IEnumerable<ModelCost> modelCosts;
             if (providerId != null)
             {
-                modelCosts = await _modelCostRepository.GetByProviderAsync(providerId.Value);
+                modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetByProviderPaginatedAsync, providerId.Value);
             }
             else
             {
-                modelCosts = await _modelCostRepository.GetAllAsync();
+                modelCosts = await RepositoryPaginationExtensions.GetAllViaPaginationAsync(
+                    _modelCostRepository.GetPaginatedAsync);
             }
 
             format = format?.ToLowerInvariant() ?? "json";
@@ -156,57 +162,19 @@ namespace ConduitLLM.Admin.Services
                     _ => throw new ArgumentException($"Unsupported import format: {format}")
                 };
 
-                foreach (var modelCost in modelCosts)
-                {
-                    try
-                    {
-                        // Check if model cost with the same name already exists
-                        var existingModelCost = await _modelCostRepository.GetByCostNameAsync(modelCost.CostName);
-
-                        if (existingModelCost != null)
-                        {
-                            // Update existing model cost
-                            var updateDto = new UpdateModelCostDto
-                            {
-                                Id = existingModelCost.Id,
-                                CostName = modelCost.CostName,
-                                PricingModel = modelCost.PricingModel,
-                                PricingConfiguration = modelCost.PricingConfiguration,
-                                InputCostPerMillionTokens = modelCost.InputCostPerMillionTokens,
-                                OutputCostPerMillionTokens = modelCost.OutputCostPerMillionTokens,
-                                EmbeddingCostPerMillionTokens = modelCost.EmbeddingCostPerMillionTokens,
-                                BatchProcessingMultiplier = modelCost.BatchProcessingMultiplier,
-                                SupportsBatchProcessing = modelCost.SupportsBatchProcessing,
-                                CostPerSearchUnit = modelCost.CostPerSearchUnit,
-                                CachedInputCostPerMillionTokens = modelCost.CachedInputCostPerMillionTokens,
-                                CachedInputWriteCostPerMillionTokens = modelCost.CachedInputWriteCostPerMillionTokens
-                            };
-
-                            existingModelCost.UpdateFrom(updateDto);
-                            await _modelCostRepository.UpdateAsync(existingModelCost);
-                        }
-                        else
-                        {
-                            // Create new model cost
-                            var modelCostEntity = modelCost.ToEntity();
-                            await _modelCostRepository.CreateAsync(modelCostEntity);
-                        }
-
-                        result.SuccessCount++;
-                    }
-                    catch (Exception ex)
-                    {
-                        result.FailureCount++;
-                        result.Errors.Add($"Failed to import model cost '{modelCost.CostName}': {ex.Message}");
-                    }
-                }
+                // Keep parsed file imports on the same write and event-publishing path as
+                // DTO imports so Gateway model-cost caches are invalidated consistently.
+                result = await ImportModelCostsAsync(modelCosts);
             }
             catch (Exception ex)
             {
                 result.FailureCount++;
                 result.Errors.Add($"Failed to parse import data: {ex.Message}");
+                _logger.LogError(ex, "Failed to parse {Format} import data", format);
             }
 
+            _logger.LogInformation("Model cost {Format} import completed: {Success} succeeded, {Failed} failed",
+                format, result.SuccessCount, result.FailureCount);
             return result;
         }
     }

@@ -1,22 +1,23 @@
-using System.Text;
 using System.Text.Json;
 
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 
 using Microsoft.Extensions.Logging;
-
-using TiktokenSharp;
+using Microsoft.ML.Tokenizers;
 
 namespace ConduitLLM.Core.Services
 {
     /// <summary>
-    /// Token counter implementation using TiktokenSharp for OpenAI-compatible tokenization.
+    /// Token counter implementation using Microsoft.ML.Tokenizers for OpenAI-compatible (tiktoken)
+    /// tokenization.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// The TiktokenCounter provides token counting functionality using the TiktokenSharp library,
-    /// which implements OpenAI's tokenization algorithm. This service is essential for:
+    /// The TiktokenCounter provides token counting functionality using Microsoft.ML.Tokenizers,
+    /// which implements OpenAI's tiktoken algorithm with vocabulary data bundled as NuGet
+    /// packages — no runtime download (#1227). This service is essential for:
     /// </para>
     /// <list type="bullet">
     ///   <item><description>Accurately estimating token usage for cost calculation</description></item>
@@ -38,8 +39,10 @@ namespace ConduitLLM.Core.Services
     /// </remarks>
     public class TiktokenCounter : ITokenCounter
     {
-        // Cache encodings for performance
-        private static readonly Dictionary<string, TikToken> _encodings = new();
+        // Cache encodings for performance, keyed by the requested tokenizer identifier.
+        // A null tokenizer is a cached failure and means "use character-based estimation";
+        // the fidelity is cached alongside so it is computed once per tokenizer, not per count.
+        private static readonly Dictionary<string, (Tokenizer? Encoding, TokenCountFidelity Fidelity)> _encodings = new();
         private static readonly object _lock = new();
         private readonly ILogger<TiktokenCounter> _logger;
         private readonly IModelCapabilityService? _capabilityService;
@@ -62,27 +65,27 @@ namespace ConduitLLM.Core.Services
         }
 
         /// <inheritdoc />
-        public Task<int> EstimateTokenCountAsync(string modelName, List<Message> messages)
+        public async Task<TokenCount> EstimateTokenCountAsync(string modelName, List<Message> messages, IReadOnlyList<Tool>? tools = null)
         {
-            if (messages == null || messages.Count() == 0)
+            if (messages == null || !messages.Any())
             {
-                return Task.FromResult(0);
+                return Finish(new TokenCount(0, TokenCountFidelity.Exact));
             }
 
             try
             {
-                var encoding = GetEncodingForModel(modelName);
+                var (encoding, fidelity) = await GetEncodingForModelAsync(modelName);
                 if (encoding == null)
                 {
                     // Fallback strategy if we can't get the right encoding
                     _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return Task.FromResult(FallbackEstimateTokens(messages));
+                    return Finish(new TokenCount(FallbackEstimateTokens(messages, tools), TokenCountFidelity.CharacterHeuristic));
                 }
 
                 int tokenCount = 0;
                 foreach (var message in messages)
                 {
-                    // OpenAI adds tokens per message and per role. 
+                    // OpenAI adds tokens per message and per role.
                     // These numbers are based on OpenAI's tokenization approach
                     tokenCount += 4; // Every message follows <|start|>{role/name}\n{content}<|end|>\n
 
@@ -91,12 +94,13 @@ namespace ConduitLLM.Core.Services
                     {
                         try
                         {
-                            tokenCount += encoding.Encode(message.Role).Count;
+                            tokenCount += encoding.CountTokens(message.Role);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Error encoding role. Using fallback estimate.");
                             tokenCount += message.Role.Length / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
                         }
                     }
 
@@ -107,18 +111,19 @@ namespace ConduitLLM.Core.Services
                             if (message.Content is string contentStr)
                             {
                                 // Simple string content
-                                tokenCount += encoding.Encode(contentStr).Count;
+                                tokenCount += encoding.CountTokens(contentStr);
                             }
                             else if (message.Content is JsonElement jsonElement)
                             {
                                 // Handle JsonElement (common when deserialized from JSON)
-                                tokenCount += EstimateJsonElementTokens(jsonElement, encoding);
+                                tokenCount += EstimateJsonElementTokens(jsonElement, encoding, ref fidelity);
                             }
                             else
                             {
-                                // Try to handle content parts or other objects
-                                string textContent = ExtractTextFromContentObject(message.Content);
-                                tokenCount += encoding.Encode(textContent).Count;
+                                // Typed content parts (TextContentPart / ImageUrlContentPart) and
+                                // other structured content: serialize and reuse the JSON path so
+                                // text and images are counted identically however content arrived.
+                                tokenCount += EstimateContentObjectTokens(message.Content, encoding, ref fidelity);
                             }
                         }
                         catch (Exception ex)
@@ -127,6 +132,7 @@ namespace ConduitLLM.Core.Services
                             // Fallback calculation
                             string contentStr = message.Content.ToString() ?? "";
                             tokenCount += contentStr.Length / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
                         }
                     }
 
@@ -135,100 +141,185 @@ namespace ConduitLLM.Core.Services
                     {
                         try
                         {
-                            tokenCount += encoding.Encode(message.Name).Count;
+                            tokenCount += encoding.CountTokens(message.Name);
                         }
                         catch (Exception ex)
                         {
                             _logger.LogWarning(ex, "Error encoding name. Using fallback estimate.");
                             tokenCount += message.Name.Length / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
                         }
                         tokenCount += 1; // Additional overhead for name field
+                    }
+
+                    // Assistant tool calls travel back to the provider as prompt content on the
+                    // next turn, so agentic histories are structurally under-counted without them.
+                    if (message.ToolCalls is { Count: > 0 })
+                    {
+                        try
+                        {
+                            tokenCount += CountToolCallTokens(message.ToolCalls, encoding);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Error encoding tool calls. Using fallback estimate.");
+                            tokenCount += ToolCallFallbackChars(message.ToolCalls) / 4;
+                            fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
+                        }
+                    }
+                }
+
+                if (tools is { Count: > 0 })
+                {
+                    try
+                    {
+                        tokenCount += CountToolDefinitionTokens(tools, encoding);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error encoding tool definitions. Using fallback estimate.");
+                        tokenCount += ToolDefinitionFallbackChars(tools) / 4;
+                        fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.CharacterHeuristic);
                     }
                 }
 
                 tokenCount += 3; // Every reply is primed with <|start|>assistant<|message|>
 
-                return Task.FromResult(tokenCount);
+                return Finish(new TokenCount(tokenCount, fidelity));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return Task.FromResult(FallbackEstimateTokens(messages));
-            }
-        }
-
-        /// <inheritdoc />
-        public Task<int> EstimateTokenCountAsync(string modelName, string text)
-        {
-            if (string.IsNullOrEmpty(text))
-            {
-                return Task.FromResult(0);
-            }
-
-            try
-            {
-                var encoding = GetEncodingForModel(modelName);
-                if (encoding == null)
-                {
-                    // Fallback strategy
-                    _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
-                    return Task.FromResult(FallbackEstimateTokens(text));
-                }
-
-                try
-                {
-                    return Task.FromResult(encoding.Encode(text).Count);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error encoding text. Using fallback estimate.");
-                    return Task.FromResult(FallbackEstimateTokens(text));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error estimating token count. Using fallback method.");
-                return Task.FromResult(FallbackEstimateTokens(text));
+                return Finish(new TokenCount(FallbackEstimateTokens(messages, tools), TokenCountFidelity.CharacterHeuristic));
             }
         }
 
         /// <summary>
-        /// Gets the appropriate TikToken encoding for a given model.
+        /// Counts the tokens an assistant message's tool calls contribute when replayed as prompt
+        /// context: the function name and raw JSON arguments, plus a small per-call framing cost.
+        /// </summary>
+        /// <remarks>
+        /// Providers do not publish their exact serialization of historical tool calls, so the
+        /// per-call overhead of 3 mirrors the reply-priming constant used elsewhere in this
+        /// counter. The name and arguments dominate in practice.
+        /// </remarks>
+        private static int CountToolCallTokens(IReadOnlyList<ToolCall> toolCalls, Tokenizer encoding)
+        {
+            int tokenCount = 0;
+            foreach (var toolCall in toolCalls)
+            {
+                tokenCount += 3;
+                tokenCount += encoding.CountTokens(toolCall.Function.Name);
+                tokenCount += encoding.CountTokens(toolCall.Function.Arguments);
+            }
+
+            return tokenCount;
+        }
+
+        /// <summary>
+        /// Counts the tokens a request's tool definitions contribute: providers inject each
+        /// function's name, description and JSON-schema parameters into the prompt.
+        /// </summary>
+        /// <remarks>
+        /// OpenAI compacts schemas into a TypeScript-like namespace listing before tokenizing;
+        /// counting the raw JSON schema instead over-counts slightly (schema punctuation the
+        /// compaction strips), which errs on the safe side for reservations and fallback billing.
+        /// The constants — 10 for the scaffolding around the tools block, 6 per function — follow
+        /// the same published community measurements the compaction format comes from.
+        /// </remarks>
+        private static int CountToolDefinitionTokens(IReadOnlyList<Tool> tools, Tokenizer encoding)
+        {
+            int tokenCount = 10;
+            foreach (var tool in tools)
+            {
+                tokenCount += 6;
+                tokenCount += encoding.CountTokens(tool.Function.Name);
+                if (!string.IsNullOrEmpty(tool.Function.Description))
+                {
+                    tokenCount += encoding.CountTokens(tool.Function.Description);
+                }
+                if (tool.Function.Parameters is not null)
+                {
+                    tokenCount += encoding.CountTokens(tool.Function.Parameters.ToJsonString());
+                }
+            }
+
+            return tokenCount;
+        }
+
+        private static int ToolCallFallbackChars(IReadOnlyList<ToolCall> toolCalls) =>
+            toolCalls.Sum(c => c.Function.Name.Length + c.Function.Arguments.Length);
+
+        private static int ToolDefinitionFallbackChars(IReadOnlyList<Tool> tools) =>
+            tools.Sum(t => t.Function.Name.Length
+                + (t.Function.Description?.Length ?? 0)
+                + (t.Function.Parameters?.ToJsonString().Length ?? 0));
+
+        /// <inheritdoc />
+        public async Task<TokenCount> EstimateTokenCountAsync(string modelName, string text)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return Finish(new TokenCount(0, TokenCountFidelity.Exact));
+            }
+
+            try
+            {
+                var (encoding, fidelity) = await GetEncodingForModelAsync(modelName);
+                if (encoding == null)
+                {
+                    // Fallback strategy
+                    _logger.LogWarning("Could not determine encoding for model {ModelName}. Using fallback token estimation method.", modelName);
+                    return Finish(new TokenCount(FallbackEstimateTokens(text), TokenCountFidelity.CharacterHeuristic));
+                }
+
+                try
+                {
+                    return Finish(new TokenCount(encoding.CountTokens(text), fidelity));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error encoding text. Using fallback estimate.");
+                    return Finish(new TokenCount(FallbackEstimateTokens(text), TokenCountFidelity.CharacterHeuristic));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error estimating token count. Using fallback method.");
+                return Finish(new TokenCount(FallbackEstimateTokens(text), TokenCountFidelity.CharacterHeuristic));
+            }
+        }
+
+        /// <summary>
+        /// Records the estimate's fidelity to metrics before handing it back. The
+        /// character_heuristic series is the operational alarm for broken vocabulary data (#1227).
+        /// </summary>
+        private static TokenCount Finish(TokenCount count)
+        {
+            TokenCountingMetrics.Record(count.Fidelity);
+            return count;
+        }
+
+        /// <summary>
+        /// Gets the appropriate tiktoken tokenizer, and the fidelity its counts will have, for a
+        /// given model asynchronously.
         /// </summary>
         /// <param name="modelName">The name of the model to get encoding for.</param>
-        /// <returns>The appropriate TikToken encoding, or null if it cannot be determined.</returns>
-        /// <remarks>
-        /// <para>
-        /// This method determines the appropriate encoding based on the model name using these steps:
-        /// </para>
-        /// <list type="number">
-        ///   <item><description>Identifies the encoding type based on model name patterns</description></item>
-        ///   <item><description>Uses a thread-safe caching mechanism to avoid repeatedly creating encodings</description></item>
-        ///   <item><description>Falls back to the most modern encoding (cl100k_base) when uncertain</description></item>
-        /// </list>
-        /// <para>
-        /// The current encoding mappings are:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>cl100k_base: GPT-3.5 and GPT-4 models</description></item>
-        ///   <item><description>p50k_base: Legacy models (davinci, curie, babbage, ada)</description></item>
-        /// </list>
-        /// </remarks>
-        private TikToken? GetEncodingForModel(string modelName)
+        /// <returns>The tokenizer (null if it cannot be determined) and the resulting fidelity.</returns>
+        private async Task<(Tokenizer? Encoding, TokenCountFidelity Fidelity)> GetEncodingForModelAsync(string modelName)
         {
             try
             {
-                string encodingName = "cl100k_base"; // Default for newer models
+                string? tokenizerType = null;
 
                 // Try to get tokenizer type from capability service first
                 if (_capabilityService != null)
                 {
                     try
                     {
-                        var tokenizerType = _capabilityService.GetTokenizerTypeAsync(modelName).GetAwaiter().GetResult();
+                        tokenizerType = await _capabilityService.GetTokenizerTypeAsync(modelName);
                         if (!string.IsNullOrEmpty(tokenizerType))
                         {
-                            encodingName = tokenizerType;
                             _logger.LogDebug("Using tokenizer {TokenizerType} from capability service for model {Model}", tokenizerType, modelName);
                         }
                     }
@@ -238,63 +329,81 @@ namespace ConduitLLM.Core.Services
                     }
                 }
 
-                // Map non-OpenAI tokenizer types to their closest OpenAI equivalent
-                // since TiktokenSharp only supports OpenAI encodings
-                if (encodingName == "claude" || encodingName == "gemini")
-                {
-                    // Use cl100k_base as approximation for non-OpenAI models
-                    _logger.LogDebug("Using cl100k_base approximation for {TokenizerType} tokenizer on model {Model}", encodingName, modelName);
-                    encodingName = "cl100k_base";
-                }
-                else if (encodingName == "o200k_base")
-                {
-                    // o200k_base is newer than cl100k_base, but if not supported, fall back
-                    // Try to use it, but we'll handle the error below if it's not supported
-                    _logger.LogDebug("Attempting to use o200k_base tokenizer for model {Model}", modelName);
-                }
-
-                lock (_lock)
-                {
-                    if (!_encodings.TryGetValue(encodingName, out var encoding))
-                    {
-                        try
-                        {
-                            encoding = TikToken.EncodingForModel(encodingName);
-                            _encodings[encodingName] = encoding;
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning(ex, "Failed to get encoding {EncodingName} for model {ModelName}, trying cl100k_base fallback", encodingName, modelName);
-
-                            // Try fallback to cl100k_base if the specific encoding isn't supported
-                            if (encodingName != "cl100k_base")
-                            {
-                                try
-                                {
-                                    encodingName = "cl100k_base";
-                                    encoding = TikToken.EncodingForModel(encodingName);
-                                    _encodings[encodingName] = encoding;
-                                    _logger.LogInformation("Successfully used cl100k_base fallback for model {ModelName}", modelName);
-                                }
-                                catch (Exception fallbackEx)
-                                {
-                                    _logger.LogError(fallbackEx, "Failed to get fallback encoding cl100k_base");
-                                    return null;
-                                }
-                            }
-                            else
-                            {
-                                return null;
-                            }
-                        }
-                    }
-                    return encoding;
-                }
+                return GetOrCreateEncoding(tokenizerType, modelName);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in GetEncodingForModel");
-                return null;
+                _logger.LogError(ex, "Error in GetEncodingForModelAsync");
+                return (null, TokenCountFidelity.CharacterHeuristic);
+            }
+        }
+
+        /// <summary>
+        /// Gets or creates a tiktoken tokenizer with thread-safe caching.
+        /// </summary>
+        /// <param name="tokenizerType">
+        /// The tokenizer identifier from model metadata (a <c>TokenizerType</c> name such as
+        /// <c>Cl100KBase</c> or <c>LLaMA3</c>), or null to use the default encoding.
+        /// </param>
+        /// <param name="modelName">The model name (for logging purposes).</param>
+        /// <returns>The tokenizer (null if it cannot be created) and the resulting fidelity.</returns>
+        /// <remarks>
+        /// The cache is keyed on <paramref name="tokenizerType"/> rather than on the resolved
+        /// encoding name. Keying it on the resolved name meant an unresolvable tokenizer never
+        /// populated an entry under the key that was looked up, so every single token count
+        /// re-entered the failure path and re-logged (#1051).
+        /// </remarks>
+        private (Tokenizer? Encoding, TokenCountFidelity Fidelity) GetOrCreateEncoding(string? tokenizerType, string modelName)
+        {
+            var cacheKey = tokenizerType?.Trim() ?? string.Empty;
+
+            lock (_lock)
+            {
+                if (_encodings.TryGetValue(cacheKey, out var cached))
+                {
+                    return cached;
+                }
+
+                var resolved = TokenizerEncodingMap.Resolve(tokenizerType);
+
+                if (!resolved.IsRecognized)
+                {
+                    _logger.LogWarning(
+                        "Unknown tokenizer {TokenizerType} for model {ModelName}; using {EncodingName} for estimation",
+                        tokenizerType, modelName, resolved.EncodingName);
+                }
+                else if (resolved.IsApproximation)
+                {
+                    _logger.LogDebug(
+                        "Tokenizer {TokenizerType} has no Tiktoken equivalent; approximating model {ModelName} with {EncodingName}",
+                        tokenizerType, modelName, resolved.EncodingName);
+                }
+
+                Tokenizer? encoding;
+                try
+                {
+                    encoding = TiktokenTokenizer.CreateForEncoding(resolved.EncodingName);
+                }
+                catch (Exception ex)
+                {
+                    // The map only ever yields encodings whose vocabulary ships in a referenced
+                    // Microsoft.ML.Tokenizers.Data.* package, so this indicates a missing package
+                    // reference rather than bad configuration or a network failure.
+                    _logger.LogError(ex,
+                        "Failed to load encoding {EncodingName} for model {ModelName}; falling back to character-based estimation",
+                        resolved.EncodingName, modelName);
+                    encoding = null;
+                }
+
+                var fidelity = encoding is null
+                    ? TokenCountFidelity.CharacterHeuristic
+                    : resolved.IsApproximation || !resolved.IsRecognized
+                        ? TokenCountFidelity.ApproximateVocabulary
+                        : TokenCountFidelity.Exact;
+
+                // Cache the failure too, so a broken encoding does not re-throw on every request.
+                _encodings[cacheKey] = (encoding, fidelity);
+                return (encoding, fidelity);
             }
         }
 
@@ -303,23 +412,16 @@ namespace ConduitLLM.Core.Services
         /// </summary>
         /// <param name="element">The JsonElement to estimate token count for.</param>
         /// <param name="encoding">The tokenizer encoding to use.</param>
+        /// <param name="fidelity">Degraded in place when a part's cost is itself an estimate.</param>
         /// <returns>The estimated token count.</returns>
         /// <remarks>
-        /// <para>
-        /// This method handles different types of JsonElement content:
-        /// </para>
         /// <list type="bullet">
         ///   <item><description>String elements: Directly tokenized</description></item>
-        ///   <item><description>Arrays: Processes each element, especially for content parts</description></item>
-        ///   <item><description>Text content parts: Extracts and tokenizes text with type="text"</description></item>
-        ///   <item><description>Image content parts: Uses fixed token estimates based on type="image_url"</description></item>
+        ///   <item><description>Arrays: Each element treated as a content part</description></item>
+        ///   <item><description>Objects: Treated as a single content part</description></item>
         /// </list>
-        /// <para>
-        /// For image tokens, the implementation uses a fixed estimate since actual image token
-        /// usage depends on resolution which isn't always available at counting time.
-        /// </para>
         /// </remarks>
-        private int EstimateJsonElementTokens(JsonElement element, TikToken encoding)
+        private static int EstimateJsonElementTokens(JsonElement element, Tokenizer encoding, ref TokenCountFidelity fidelity)
         {
             int tokenCount = 0;
 
@@ -328,108 +430,116 @@ namespace ConduitLLM.Core.Services
                 string? stringValue = element.GetString();
                 if (stringValue != null)
                 {
-                    tokenCount += encoding.Encode(stringValue).Count;
+                    tokenCount += encoding.CountTokens(stringValue);
                 }
             }
             else if (element.ValueKind == JsonValueKind.Array)
             {
-                // For arrays (like content parts), process each element
                 foreach (var item in element.EnumerateArray())
                 {
-                    // Check if it's a text content part
-                    if (item.TryGetProperty("type", out var typeElement) &&
-                        typeElement.ValueKind == JsonValueKind.String &&
-                        typeElement.GetString() == "text" &&
-                        item.TryGetProperty("text", out var textElement) &&
-                        textElement.ValueKind == JsonValueKind.String)
-                    {
-                        // It's a text content part
-                        string? text = textElement.GetString();
-                        if (text != null)
-                        {
-                            tokenCount += encoding.Encode(text).Count;
-                        }
-                    }
-                    else if (item.TryGetProperty("type", out var imgTypeElement) &&
-                             imgTypeElement.ValueKind == JsonValueKind.String &&
-                             imgTypeElement.GetString() == "image_url")
-                    {
-                        // For image tokens, OpenAI uses a formula based on resolution
-                        // As a base, we'll add a fixed count that's average for a medium-res image
-                        // High-res images actually use more tokens than text in the same message
-                        tokenCount += 65; // An average low-res image cost
-                    }
+                    tokenCount += EstimateContentPartTokens(item, encoding, ref fidelity);
                 }
+            }
+            else if (element.ValueKind == JsonValueKind.Object)
+            {
+                tokenCount += EstimateContentPartTokens(element, encoding, ref fidelity);
             }
 
             return tokenCount;
         }
 
         /// <summary>
-        /// Extracts text content from a complex content object.
+        /// Estimates tokens for structured (non-string, non-JsonElement) content by serializing
+        /// it and reusing the JSON content-part logic, so typed content parts count the same as
+        /// their deserialized equivalents.
         /// </summary>
-        /// <param name="content">The content object to extract text from.</param>
-        /// <returns>A string representation of the textual content.</returns>
-        /// <remarks>
-        /// <para>
-        /// This method handles various content object formats:
-        /// </para>
-        /// <list type="bullet">
-        ///   <item><description>Serializes the object to JSON then parses it as a JsonDocument</description></item>
-        ///   <item><description>For arrays (likely content parts): extracts text from each part with type="text"</description></item>
-        ///   <item><description>For string values: returns them directly</description></item>
-        ///   <item><description>For other types: falls back to ToString()</description></item>
-        /// </list>
-        /// <para>
-        /// This extraction is particularly useful for multimodal content where we need to
-        /// extract only the textual parts for token counting.
-        /// </para>
-        /// </remarks>
-        private string ExtractTextFromContentObject(object content)
+        private static int EstimateContentObjectTokens(object content, Tokenizer encoding, ref TokenCountFidelity fidelity)
         {
-            try
+            using var document = JsonDocument.Parse(JsonSerializer.Serialize(content));
+            return EstimateJsonElementTokens(document.RootElement, encoding, ref fidelity);
+        }
+
+        /// <summary>
+        /// Estimates tokens for one content part. Text parts are tokenized; image parts are
+        /// priced through <see cref="ImageTokenCalculator.EstimateImageTokens"/> — the real
+        /// detail/resolution vision formula, replacing the flat 65 that under-counted
+        /// high-detail images roughly 10-17x (#1231). Media whose duration/page count cannot
+        /// be known locally receives a conservative prompt-token reservation.
+        /// </summary>
+        /// <remarks>
+        /// An image whose geometry cannot be determined locally is charged the conservative
+        /// high-detail default and degrades <paramref name="fidelity"/>, so billing consumers
+        /// buffer the count instead of trusting it as exact. The formula is OpenAI's;
+        /// provider-specific image accounting is out of scope here, but the conservative
+        /// default is far closer to every provider's real cost than 65 was.
+        /// </remarks>
+        private static int EstimateContentPartTokens(JsonElement part, Tokenizer encoding, ref TokenCountFidelity fidelity)
+        {
+            if (part.ValueKind != JsonValueKind.Object ||
+                !part.TryGetProperty("type", out var typeElement) ||
+                typeElement.ValueKind != JsonValueKind.String)
             {
-                // First try to serialize the content to JSON
-                string json = JsonSerializer.Serialize(content);
+                return 0;
+            }
 
-                // Then parse it as a JsonElement to use our existing logic
-                using var document = JsonDocument.Parse(json);
-                var root = document.RootElement;
-
-                StringBuilder sb = new StringBuilder();
-
-                // If it's an array, likely it's content parts
-                if (root.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var item in root.EnumerateArray())
+            switch (typeElement.GetString())
+            {
+                case "text":
+                    if (part.TryGetProperty("text", out var textElement) &&
+                        textElement.ValueKind == JsonValueKind.String &&
+                        textElement.GetString() is { } text)
                     {
-                        if (item.TryGetProperty("type", out var typeElement) &&
-                            typeElement.ValueKind == JsonValueKind.String &&
-                            typeElement.GetString() == "text" &&
-                            item.TryGetProperty("text", out var textElement) &&
-                            textElement.ValueKind == JsonValueKind.String)
+                        return encoding.CountTokens(text);
+                    }
+                    return 0;
+
+                case "image_url":
+                    string? url = null;
+                    string? detail = null;
+                    if (part.TryGetProperty("image_url", out var imageUrlElement) &&
+                        imageUrlElement.ValueKind == JsonValueKind.Object)
+                    {
+                        if (imageUrlElement.TryGetProperty("url", out var urlElement) &&
+                            urlElement.ValueKind == JsonValueKind.String)
                         {
-                            // It's a text content part
-                            string? text = textElement.GetString();
-                            if (text != null)
-                            {
-                                sb.AppendLine(text);
-                            }
+                            url = urlElement.GetString();
+                        }
+                        if (imageUrlElement.TryGetProperty("detail", out var detailElement) &&
+                            detailElement.ValueKind == JsonValueKind.String)
+                        {
+                            detail = detailElement.GetString();
                         }
                     }
-                    return sb.ToString();
-                }
-                else if (root.ValueKind == JsonValueKind.String)
-                {
-                    return root.GetString() ?? "";
-                }
-            }
-            catch
-            {
-                // If we can't process it properly, just return the string representation
-            }
 
-            return content.ToString() ?? "";
+                    if (url is null)
+                    {
+                        // Malformed image part: charge the conservative default rather than zero.
+                        fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                        return ImageTokenCalculator.ConservativeHighDetailTokens;
+                    }
+
+                    var (imageTokens, isConservativeDefault) = ImageTokenCalculator.EstimateImageTokens(
+                        new ImageUrl { Url = url, Detail = detail });
+                    if (isConservativeDefault)
+                    {
+                        fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    }
+                    return imageTokens;
+
+                case "input_audio":
+                    fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    return 8_192;
+
+                case "video_url":
+                case "file":
+                    fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    return 16_384;
+
+                default:
+                    // Unknown provider extensions must not be treated as free input.
+                    fidelity = TokenCount.Worst(fidelity, TokenCountFidelity.ApproximateVocabulary);
+                    return 1_024;
+            }
         }
 
         /// <summary>
@@ -451,13 +561,19 @@ namespace ConduitLLM.Core.Services
         /// estimate when the correct encoder is unavailable or fails.
         /// </para>
         /// </remarks>
-        private int FallbackEstimateTokens(List<Message> messages)
+        private int FallbackEstimateTokens(List<Message> messages, IReadOnlyList<Tool>? tools = null)
         {
             // Very rough estimation based on characters
             int totalCharacters = messages.Sum(m =>
                 (m.Content != null ? m.Content.ToString()?.Length ?? 0 : 0) +
                 (m.Role?.Length ?? 0) +
-                (m.Name?.Length ?? 0));
+                (m.Name?.Length ?? 0) +
+                (m.ToolCalls is { Count: > 0 } ? ToolCallFallbackChars(m.ToolCalls) : 0));
+
+            if (tools is { Count: > 0 })
+            {
+                totalCharacters += ToolDefinitionFallbackChars(tools);
+            }
 
             // Rough estimate: 1 token ≈ 4 characters in English
             return totalCharacters / 4;

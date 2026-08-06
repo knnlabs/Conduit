@@ -8,22 +8,22 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Unique identifier for the key credential
         /// </summary>
-        public int Id { get; set; }
+        public required int Id { get; set; }
 
         /// <summary>
         /// The provider credential ID this key belongs to
         /// </summary>
-        public int ProviderId { get; set; }
+        public required int ProviderId { get; set; }
 
         /// <summary>
         /// The provider account group (0-32)
         /// </summary>
-        public short ProviderAccountGroup { get; set; }
+        public required short ProviderAccountGroup { get; set; }
 
         /// <summary>
         /// API key or other authentication token (always masked in responses)
         /// </summary>
-        public string? ApiKey { get; set; }
+        public required string ApiKey { get; set; }
 
         /// <summary>
         /// Base URL for the provider API (optional, overrides provider default)
@@ -31,19 +31,20 @@ namespace ConduitLLM.Configuration.DTOs
         public string? BaseUrl { get; set; }
 
         /// <summary>
-        /// Organization or project ID (optional, overrides provider default)
+        /// The keys of the secret settings this credential has configured, so a UI can show which
+        /// are set without ever receiving their values. Secret values are write-only.
         /// </summary>
-        public string? Organization { get; set; }
+        public IReadOnlyList<string> ConfiguredSecretSettings { get; set; } = Array.Empty<string>();
 
         /// <summary>
         /// Whether this key is the primary key for the provider
         /// </summary>
-        public bool IsPrimary { get; set; }
+        public required bool IsPrimary { get; set; }
 
         /// <summary>
         /// Whether this key is enabled
         /// </summary>
-        public bool IsEnabled { get; set; }
+        public required bool IsEnabled { get; set; }
 
         /// <summary>
         /// Optional human-readable name for this key
@@ -53,12 +54,12 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// Date when the key was created
         /// </summary>
-        public DateTime CreatedAt { get; set; }
+        public required DateTime CreatedAt { get; set; }
 
         /// <summary>
         /// Date when the key was last updated
         /// </summary>
-        public DateTime UpdatedAt { get; set; }
+        public required DateTime UpdatedAt { get; set; }
     }
 
     /// <summary>
@@ -80,11 +81,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Base URL for the provider API (optional)
         /// </summary>
         public string? BaseUrl { get; set; }
-
-        /// <summary>
-        /// Organization or project ID (optional)
-        /// </summary>
-        public string? Organization { get; set; }
 
         /// <summary>
         /// Whether to set this key as the primary key
@@ -121,11 +117,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Base URL for the provider API (optional)
         /// </summary>
         public string? BaseUrl { get; set; }
-
-        /// <summary>
-        /// Organization or project ID (optional)
-        /// </summary>
-        public string? Organization { get; set; }
 
         /// <summary>
         /// Whether this key is enabled

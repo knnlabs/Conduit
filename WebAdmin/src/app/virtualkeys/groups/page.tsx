@@ -15,8 +15,6 @@ import {
   rem,
   LoadingOverlay,
   Alert,
-  SimpleGrid,
-  ThemeIcon,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -28,18 +26,22 @@ import {
   IconCash,
   IconLayersLinked,
   IconHistory,
+  IconPencil,
 } from '@tabler/icons-react';
+import { StatCardGrid } from '@/components/common/StatCardGrid';
 import { useState, useEffect } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { useSearchParams } from 'next/navigation';
 import { formatters } from '@/lib/utils/formatters';
-import type { VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import { getBalanceColor, getBalanceBadgeVariant } from '@/lib/utils/badge-helpers';
+import type { VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 // Import modals lazily
 import { 
   LazyCreateVirtualKeyGroupModal as CreateVirtualKeyGroupModal,
   LazyViewVirtualKeyGroupModal as ViewVirtualKeyGroupModal,
+  LazyEditVirtualKeyGroupModal as EditVirtualKeyGroupModal,
   LazyAddCreditsModal as AddCreditsModal,
   LazyTransactionHistoryModal as TransactionHistoryModal,
 } from '@/components/lazy/LazyModals';
@@ -55,6 +57,7 @@ export default function VirtualKeyGroupsPage() {
   // Modal states
   const [createModalOpened, { open: openCreateModal, close: closeCreateModal }] = useDisclosure(false);
   const [viewModalOpened, { open: openViewModal, close: closeViewModal }] = useDisclosure(false);
+  const [editModalOpened, { open: openEditModal, close: closeEditModal }] = useDisclosure(false);
   const [creditsModalOpened, { open: openCreditsModal, close: closeCreditsModal }] = useDisclosure(false);
   const [transactionHistoryOpened, { open: openTransactionHistory, close: closeTransactionHistory }] = useDisclosure(false);
 
@@ -81,10 +84,10 @@ export default function VirtualKeyGroupsPage() {
       setIsLoading(true);
       setError(null);
       
-      const data = await withAdminClient(client => 
+      const data = await withAdminClient(client =>
         client.virtualKeyGroups.list()
       );
-      setGroups(data);
+      setGroups(data.data ?? []);
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Unknown error'));
     } finally {
@@ -124,12 +127,6 @@ export default function VirtualKeyGroupsPage() {
   const handleViewTransactionHistory = (group: VirtualKeyGroupDto) => {
     setSelectedGroup(group);
     openTransactionHistory();
-  };
-
-  const getBalanceColor = (balance: number) => {
-    if (balance <= 0) return 'red';
-    if (balance < 10) return 'orange';
-    return 'green';
   };
 
   const statCards = [
@@ -189,25 +186,7 @@ export default function VirtualKeyGroupsPage() {
       </Group>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 3 }} spacing="lg">
-        {statCards.map((stat) => (
-          <Card key={stat.title} p="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value}
-                </Text>
-              </div>
-              <ThemeIcon size="lg" variant="light" color={stat.color}>
-                <stat.icon size={20} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <StatCardGrid items={statCards} cols={{ base: 1, sm: 3 }} />
 
       {/* Groups Table */}
       <Card>
@@ -257,7 +236,7 @@ export default function VirtualKeyGroupsPage() {
                     <Table.Td>
                       <Badge 
                         color={getBalanceColor(group.balance)} 
-                        variant={group.balance <= 0 ? 'filled' : 'light'}
+                        variant={getBalanceBadgeVariant(group.balance)}
                       >
                         {formatters.currency(group.balance)}
                       </Badge>
@@ -283,6 +262,15 @@ export default function VirtualKeyGroupsPage() {
                               onClick={() => handleViewGroup(group)}
                             >
                               View Details
+                            </Menu.Item>
+                            <Menu.Item
+                              leftSection={<IconPencil style={{ width: rem(14), height: rem(14) }} />}
+                              onClick={() => {
+                                setSelectedGroup(group);
+                                openEditModal();
+                              }}
+                            >
+                              Edit Group &amp; Limits
                             </Menu.Item>
                             <Menu.Item
                               leftSection={<IconHistory style={{ width: rem(14), height: rem(14) }} />}
@@ -328,6 +316,13 @@ export default function VirtualKeyGroupsPage() {
         opened={viewModalOpened}
         onClose={closeViewModal}
         group={selectedGroup}
+      />
+
+      <EditVirtualKeyGroupModal
+        opened={editModalOpened}
+        onClose={closeEditModal}
+        group={selectedGroup}
+        onSuccess={() => void fetchGroups()}
       />
 
       <AddCreditsModal

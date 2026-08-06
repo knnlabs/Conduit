@@ -1,9 +1,8 @@
-using System.Net.Http.Headers;
-
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Exceptions;
-using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Providers.Authentication;
+using ConduitLLM.Providers.Configuration;
 
 using Microsoft.Extensions.Logging;
 
@@ -21,31 +20,34 @@ namespace ConduitLLM.Providers.OpenAI
     /// </remarks>
     public partial class OpenAIClient : ConduitLLM.Providers.OpenAICompatible.OpenAICompatibleClient
     {
-        // Default API configuration constants
+        // API configuration constants
         private static class Constants
         {
-            public static class Urls
-            {
-                public const string DefaultOpenAIBaseUrl = "https://api.openai.com/v1";
-            }
-
-            // Azure API version is now hardcoded
-            public const string AzureApiVersion = "2024-02-01";
-
             public static class Endpoints
             {
-                public const string ChatCompletions = "/chat/completions";
                 public const string Models = "/models";
+                public const string ChatCompletions = "/chat/completions";
                 public const string Embeddings = "/embeddings";
                 public const string ImageGenerations = "/images/generations";
-                public const string AudioTranscriptions = "/audio/transcriptions";
-                public const string AudioTranslations = "/audio/translations";
-                public const string AudioSpeech = "/audio/speech";
             }
         }
 
         private readonly bool _isAzure;
-        private readonly IModelCapabilityService? _capabilityService;
+
+        /// <summary>
+        /// Gets the authentication strategy for the configured provider type.
+        /// Azure OpenAI uses the api-key header, standard OpenAI uses a Bearer token.
+        /// </summary>
+        protected override IAuthenticationStrategy AuthenticationStrategy =>
+            ProviderConfigurationRegistry.GetAuthenticationStrategy(Provider.ProviderType);
+
+        /// <summary>
+        /// The Azure OpenAI REST API version to send with every request, taken from the provider's
+        /// declared <c>api_version</c> setting and falling back to the registry's default.
+        /// </summary>
+        private string AzureApiVersion =>
+            ProviderConfigurationRegistry.GetSettingValue(Provider.ProviderType, Provider.Settings, "api_version")
+            ?? ProviderConfigurationRegistry.AzureDefaultApiVersion;
 
         /// <summary>
         /// Initializes a new instance of the OpenAIClient class.
@@ -55,8 +57,6 @@ namespace ConduitLLM.Providers.OpenAI
         /// <param name="providerModelId">The specific model ID to use with this provider. For Azure, this is the deployment name.</param>
         /// <param name="logger">Logger for recording diagnostic information.</param>
         /// <param name="httpClientFactory">Factory for creating HttpClient instances with proper configuration.</param>
-        /// <param name="capabilityService">Optional service for model capability detection and validation.</param>
-        /// <param name="defaultModels">Optional default model configuration for the provider.</param>
         /// <param name="providerName">Optional provider name override. If not specified, uses provider.ProviderName or defaults to "openai".</param>
         /// <exception cref="ArgumentNullException">Thrown when any required parameter is null.</exception>
         /// <exception cref="ConfigurationException">Thrown when API key is missing for non-Azure providers.</exception>
@@ -66,8 +66,6 @@ namespace ConduitLLM.Providers.OpenAI
             string providerModelId,
             ILogger<OpenAIClient> logger,
             IHttpClientFactory httpClientFactory,
-            IModelCapabilityService? capabilityService = null,
-            ProviderDefaultModels? defaultModels = null,
             string? providerName = null)
             : base(
                 provider,
@@ -76,60 +74,28 @@ namespace ConduitLLM.Providers.OpenAI
                 logger,
                 httpClientFactory,
                 providerName ?? provider.ProviderType.ToString() ?? "openai",
-                DetermineBaseUrl(provider, primaryKeyCredential, providerName ?? provider.ProviderType.ToString() ?? "openai"),
-                defaultModels)
+                DetermineBaseUrl(provider, primaryKeyCredential))
         {
-            _isAzure = (providerName ?? provider.ProviderType.ToString() ?? "openai").Equals("azure", StringComparison.OrdinalIgnoreCase);
-            _capabilityService = capabilityService;
-
-            // Specific validation for Azure credentials
-            if (_isAzure && string.IsNullOrWhiteSpace(provider.BaseUrl) && string.IsNullOrWhiteSpace(primaryKeyCredential.BaseUrl))
-            {
-                throw new ConfigurationException("BaseUrl (Azure resource endpoint) is required for the 'azure' provider.");
-            }
+            _isAzure = provider.ProviderType == ProviderType.Azure;
         }
 
         /// <summary>
-        /// Determines the appropriate base URL based on the provider and credentials.
+        /// Determines the effective base URL for the provider and key.
         /// </summary>
-        private static string DetermineBaseUrl(Provider provider, ProviderKeyCredential keyCredential, string providerName)
+        /// <remarks>
+        /// A key-level base URL is the narrowest override and wins outright. Otherwise the registry
+        /// resolves the provider's base URL, substituting structured settings such as Azure's
+        /// <c>{resource_name}</c> - and raising an actionable configuration error when a required one
+        /// is missing, rather than letting a malformed URL reach the wire.
+        /// </remarks>
+        private static string DetermineBaseUrl(Provider provider, ProviderKeyCredential keyCredential)
         {
-            // Use key credential base URL if specified, otherwise fall back to provider base URL
-            var baseUrl = keyCredential.BaseUrl ?? provider.BaseUrl;
-            
-            // For Azure, we'll handle this specially in the endpoint methods
-            if (providerName.Equals("azure", StringComparison.OrdinalIgnoreCase))
+            if (!string.IsNullOrWhiteSpace(keyCredential.BaseUrl))
             {
-                return baseUrl ?? "";
+                return keyCredential.BaseUrl.TrimEnd('/');
             }
 
-            // For standard OpenAI or compatible providers
-            baseUrl = string.IsNullOrWhiteSpace(baseUrl)
-                ? Constants.Urls.DefaultOpenAIBaseUrl
-                : baseUrl;
-            
-            // Ensure consistent formatting
-            return baseUrl.TrimEnd('/');
-        }
-
-        /// <summary>
-        /// Configures the HTTP client with appropriate headers and settings.
-        /// </summary>
-        protected override void ConfigureHttpClient(HttpClient client, string apiKey)
-        {
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            client.DefaultRequestHeaders.Add("User-Agent", "ConduitLLM");
-
-            // Different authentication method for Azure vs. standard OpenAI
-            if (_isAzure)
-            {
-                client.DefaultRequestHeaders.Add("api-key", apiKey);
-            }
-            else
-            {
-                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-            }
+            return ProviderConfigurationRegistry.ResolveBaseUrl(provider);
         }
     }
 }

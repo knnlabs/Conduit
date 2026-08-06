@@ -1,7 +1,8 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
+using System.Text.Json;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 
@@ -20,6 +21,8 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = "Test Model Cost",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m,
+                ReasoningCostPerMillionTokens = 30.00m,
+                IsActive = false,
                 ModelProviderTypeAssociationIds = new List<int>()
             };
 
@@ -29,6 +32,8 @@ namespace ConduitLLM.Tests.Admin.Services
                 CostName = createDto.CostName,
                 InputCostPerMillionTokens = createDto.InputCostPerMillionTokens,
                 OutputCostPerMillionTokens = createDto.OutputCostPerMillionTokens,
+                ReasoningCostPerMillionTokens = createDto.ReasoningCostPerMillionTokens,
+                IsActive = false,
                 ModelProviderTypeAssociations = new List<ModelProviderTypeAssociation>()
             };
 
@@ -47,6 +52,15 @@ namespace ConduitLLM.Tests.Admin.Services
             result.CostName.Should().Be("Test Model Cost");
             result.InputCostPerMillionTokens.Should().Be(10.00m);
             result.OutputCostPerMillionTokens.Should().Be(20.00m);
+            result.ReasoningCostPerMillionTokens.Should().Be(30.00m);
+            result.IsActive.Should().BeFalse();
+            _mockModelCostRepository.Verify(
+                x => x.CreateAsync(
+                    It.Is<ModelCost>(cost =>
+                        cost.ReasoningCostPerMillionTokens == 30.00m &&
+                        !cost.IsActive),
+                    It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         [Fact]
@@ -144,6 +158,18 @@ namespace ConduitLLM.Tests.Admin.Services
             // Act & Assert
             await Assert.ThrowsAsync<ArgumentNullException>(
                 async () => await _service.CreateModelCostAsync(null!));
+        }
+
+        [Fact]
+        public async Task CreateModelCostAsync_WithMalformedPricingConfiguration_ShouldRejectBeforeSave()
+        {
+            var act = () => JsonSerializer.Deserialize<CreateModelCostDto>(
+                """{"costName":"Broken video pricing","pricingModel":3,"pricingConfiguration":"{not-json"}""",
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+            act.Should().Throw<JsonException>();
+            _mockModelCostRepository.Verify(
+                x => x.CreateAsync(It.IsAny<ModelCost>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
         #endregion

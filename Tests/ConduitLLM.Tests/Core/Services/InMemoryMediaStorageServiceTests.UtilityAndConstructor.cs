@@ -93,7 +93,7 @@ namespace ConduitLLM.Tests.Core.Services
             var url = await service.GenerateUrlAsync("test/key");
 
             // Assert
-            Assert.Equal("http://localhost:8080/v1/media/test/key", url);
+            Assert.Equal("http://localhost:8080/v1/conduit/media/test/key", url);
         }
 
         [Fact]
@@ -104,7 +104,7 @@ namespace ConduitLLM.Tests.Core.Services
             var url = await service.GenerateUrlAsync("test/key");
 
             // Assert
-            Assert.Equal("http://localhost:5000/v1/media/test/key", url);
+            Assert.Equal("http://localhost:5000/v1/conduit/media/test/key", url);
         }
 
         #endregion

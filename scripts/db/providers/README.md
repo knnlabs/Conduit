@@ -1,6 +1,13 @@
 # Provider Models SQL Generator
 
-This directory contains a unified script for generating SQL to populate provider models in the Conduit database.
+This directory contains the canonical provider model catalogs plus an optional SQL generator for offline maintenance.
+
+The JSON files and `provider-config.json` are embedded in the shared Configuration
+assembly during every release build. A clean database imports that snapshot after
+migrations, and administrators can merge entries from WebAdmin's Models page.
+Runtime imports refresh provider-owned metadata while preserving associations marked
+as `Manual` and canonical models marked `Curated` or `Manual`; generated SQL is not
+used by the Docker images.
 
 ## Overview
 
@@ -17,9 +24,13 @@ This unified approach consolidates the previously separate provider-specific scr
 
 - **provider-config.json** - Provider metadata (ProviderType enum, URLs, capabilities)
 - **generate-provider-sql.cs** - Unified C# script that generates PostgreSQL SQL
+- **fetch-openrouter-models.cs** - Fetches OpenRouter models from API → generates openrouter-models.json
+- **fetch-cloudflare-models.cs** - Fetches Workers AI catalog → generates cloudflare-models.json
 - **cerebras-models.json** - Hand-maintained list of Cerebras models
 - **groq-models.json** - Hand-maintained list of Groq models
 - **sambanova-models.json** - Hand-maintained list of SambaNova models
+- **openrouter-models.json** - Auto-generated from OpenRouter API (do not hand-edit)
+- **cloudflare-models.json** - Auto-generated from the Workers AI catalog (do not hand-edit)
 - **UPDATING-MODELS.md** - Comprehensive guide for updating model JSON files
 - **README.md** - This file
 
@@ -37,11 +48,62 @@ This unified approach consolidates the previously separate provider-specific scr
 # Generate SQL for SambaNova (outputs to sambanova-models.sql)
 ./generate-provider-sql.cs sambanova
 
+# Generate SQL for OpenRouter (requires fetch step first — see below)
+./generate-provider-sql.cs openrouter
+
 # Generate SQL with custom output filename
 ./generate-provider-sql.cs cerebras my-cerebras-models.sql
-./generate-provider-sql.cs groq my-groq-models.sql
-./generate-provider-sql.cs sambanova my-sambanova-models.sql
 ```
+
+### OpenRouter (API-Fetched)
+
+OpenRouter has 300+ models from 50+ upstream providers — too many to hand-maintain.
+Use the fetch script to pull the latest model catalog from OpenRouter's API:
+
+```bash
+# Step 1: Fetch models from OpenRouter API → generates openrouter-models.json
+dotnet run fetch-openrouter-models.cs
+
+# Step 2: Generate SQL from the fetched JSON (same as other providers)
+dotnet run generate-provider-sql.cs -- openrouter
+```
+
+The fetch script:
+- Calls `GET https://openrouter.ai/api/v1/models` (no auth required)
+- Converts per-token pricing to per-million-tokens
+- Captures OpenRouter's exact `input_modalities` and `output_modalities`
+- Infers operation support such as function calling from `supported_parameters`
+- Maps OpenRouter tokenizer names to Conduit's tokenizer enum
+- Derives model family/series from naming patterns
+- Retains free-tier variants so the bundled snapshot matches the public catalog
+- Outputs standard `openrouter-models.json` format
+
+### Cloudflare Workers AI (Catalog-Fetched)
+
+Cloudflare's authenticated `/accounts/{account_id}/ai/models/search` endpoint has no
+accountless equivalent, so the fetch script instead pulls the per-model JSON dumps
+the cloudflare-docs repository publishes (identical shape to the API's entries) —
+no credentials required:
+
+```bash
+# Step 1: Fetch the Workers AI catalog → generates cloudflare-models.json
+dotnet run fetch-cloudflare-models.cs
+
+# Step 2 (optional): Generate SQL from the fetched JSON
+dotnet run generate-provider-sql.cs -- cloudflare
+```
+
+The fetch script:
+- Lists `src/content/workers-ai-models/*.json` in `cloudflare/cloudflare-docs` via the GitHub API
+- Keys entries on the full `@cf/...` slug — the identifier the Gateway sends to Cloudflare
+- Maps `task.name` to capabilities (Text Generation → chat, Text Embeddings → embeddings,
+  Text-to-Image → image generation, ASR → speech-to-text, Text-to-Speech, Image-to-Text → vision)
+- Skips tasks Conduit cannot route (classification, translation, summarization, detection)
+  and prints what was skipped
+- Reads `context_window`, `function_calling`, `vision`, `beta`, `lora` from the properties array
+- Maps per-M-token pricing to the catalog fields; non-token pricing units
+  (per step, per tile, per audio minute) are recorded in `notes`
+- Cloudflare publishes no max output limit; chat models default to 25% of context
 
 ### Executing Generated SQL
 
@@ -50,11 +112,13 @@ This unified approach consolidates the previously separate provider-specific scr
 psql -h localhost -U conduit -d conduit_db < cerebras-models.sql
 psql -h localhost -U conduit -d conduit_db < groq-models.sql
 psql -h localhost -U conduit -d conduit_db < sambanova-models.sql
+psql -h localhost -U conduit -d conduit_db < openrouter-models.sql
 
 # Execute via Docker
 docker exec -i conduit-postgres psql -U conduit -d conduit_db < cerebras-models.sql
 docker exec -i conduit-postgres psql -U conduit -d conduit_db < groq-models.sql
 docker exec -i conduit-postgres psql -U conduit -d conduit_db < sambanova-models.sql
+docker exec -i conduit-postgres psql -U conduit -d conduit_db < openrouter-models.sql
 ```
 
 ## Provider Configuration
@@ -107,10 +171,17 @@ Each model in `{provider}-models.json` includes:
     "tokenizerType": "LLaMA3|Cl100KBase|Tiktoken|Mistral",
     "supportsChat": true,
     "supportsStreaming": true,
-    "supportsVision": false,
+    "inputModalities": ["text", "image", "video"],
+    "outputModalities": ["text"],
+    "capabilitySource": "ProviderApi",
+    "capabilitiesLastVerifiedAt": "2026-07-23T00:00:00Z",
     "supportsFunctionCalling": true,
     "supportsEmbeddings": false,
-    "supportsAudio": false,
+    "supportsImageGeneration": false,
+    "supportsVideoGeneration": false,
+    "supportsSpeechToText": false,
+    "supportsTextToSpeech": false,
+    "supportsRerank": false,
     "inputPricePerMillion": 0.85,
     "outputPricePerMillion": 1.20,
     "speedTokensPerSec": 2100,
@@ -119,7 +190,10 @@ Each model in `{provider}-models.json` includes:
 }
 ```
 
-**Note**: `supportsAudio` field is optional and only needed for providers that offer audio transcription models.
+`inputModalities` and `outputModalities` are directional. For example, a model can
+accept `video` and return `text` without supporting `supportsVideoGeneration`.
+Use `null`/omission for unknown metadata and `[]` only when explicitly unsupported.
+Legacy `supportsVision` is retained as a compatibility alias for image input.
 
 ## Generated SQL Structure
 
@@ -210,6 +284,22 @@ The script generates SQL that creates/updates:
 - Pricing: https://cloud.sambanova.ai/plans/pricing
 - Performance Analysis: https://artificialanalysis.ai/providers/sambanova
 
+### OpenRouter (ProviderType = 13)
+
+**Auto-fetched from API (~316 paid models from 50+ upstream providers)**
+
+Unlike other providers, OpenRouter models are **not hand-maintained**. The `fetch-openrouter-models.cs` script pulls the latest catalog from OpenRouter's API. Run it periodically to pick up new models.
+
+**Key Features:**
+- Meta-provider routing to 300+ models from OpenAI, Anthropic, Google, Meta, Mistral, and more
+- Models use `provider/model-name` format (e.g., `openai/gpt-4o`, `anthropic/claude-3.5-sonnet`)
+- Pricing varies by upstream provider
+- Capabilities (vision, tools, etc.) detected from API metadata
+
+**Data Source:**
+- API: https://openrouter.ai/api/v1/models (public, no auth required)
+- Docs: https://openrouter.ai/docs
+
 ## Updating Models
 
 When a provider releases new models or updates specifications:
@@ -217,9 +307,9 @@ When a provider releases new models or updates specifications:
 1. **Check official documentation** for new model announcements
 2. **Read UPDATING-MODELS.md** for comprehensive update guide (LLM-friendly)
 3. **Edit {provider}-models.json** to add/update model data
-4. **Run ./generate-provider-sql.cs {provider}** to generate new SQL
-5. **Review the generated SQL**
-6. **Execute against your database**
+4. **Build the Configuration/Admin projects** to validate and embed the catalog
+5. **Optionally run ./generate-provider-sql.cs {provider}** when standalone SQL is needed
+6. **Use WebAdmin or POST /api/Model/bundled-catalog/import** to merge a rebuilt release snapshot
 
 The UPDATING-MODELS.md guide includes:
 - Data source URLs for model specs and pricing
@@ -257,9 +347,9 @@ To add a new provider to this system:
 
 2. **Create model JSON file**: `newprovider-models.json` with model specifications
 
-3. **Generate SQL**: `./generate-provider-sql.cs newprovider`
+3. **Build the release**: the wildcard embedded-resource rule includes the new JSON automatically
 
-4. **Execute**: Run generated SQL against database
+4. **Verify**: run the bundled catalog tests and import through the Admin API
 
 No code changes required - the script is fully configuration-driven!
 
@@ -304,18 +394,17 @@ Both Cerebras and SambaNova are known for **ultra-fast inference**:
 
 Both providers are 10-30x faster than traditional GPU-based inference.
 
-## Comparison with Other Approaches
+## Comparison of Approaches
 
-| Aspect | This Unified Approach | Replicate Approach |
-|--------|----------------------|-------------------|
-| Data Source | Static JSON files | Web scraping |
-| Provider Count | Multiple (unified) | Single (specialized) |
-| Model Count | 4-15 per provider | 20-50+ models |
-| Parameters | Standard (OpenAI) | Unique per model |
-| Update Frequency | Quarterly | Monthly |
-| Maintenance | Edit JSON + config | Update scraping logic |
-| Complexity | Low (~380 lines) | High (~1400 lines) |
-| Extensibility | Add JSON config | Duplicate scraper |
+| Aspect | Hand-Maintained JSON | OpenRouter API Fetch | Replicate Scraper |
+|--------|---------------------|---------------------|-------------------|
+| Data Source | Static JSON files | Live API | Web scraping |
+| Providers | Cerebras, Groq, SambaNova | OpenRouter | Replicate |
+| Model Count | 4-15 per provider | 300+ models | 20-50+ models |
+| Parameters | Standard (OpenAI) | Standard (OpenAI) | Unique per model |
+| Update Process | Edit JSON manually | Run fetch script | Update scraping logic |
+| Complexity | Low | Low (~200 lines) | High (~1400 lines) |
+| Extensibility | Add JSON config | N/A (OpenRouter-specific) | Duplicate scraper |
 
 ## Future Enhancements
 

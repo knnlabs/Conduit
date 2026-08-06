@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using ConduitLLM.Functions.Enums;
 
 namespace ConduitLLM.Functions.DTOs;
@@ -56,14 +57,14 @@ public class UpdateFunctionConfigurationRequest
     public int? MaxRetries { get; set; }
 
     /// <summary>
-    /// Provider-specific settings as JSON string
+    /// Provider-specific structured settings.
     /// </summary>
-    public string? ProviderSettings { get; set; }
+    public Dictionary<string, JsonElement>? ProviderSettings { get; set; }
 
     /// <summary>
-    /// JSON Schema defining parameter requirements for this function
+    /// JSON Schema object defining parameter requirements for this function.
     /// </summary>
-    public string? ParameterSchema { get; set; }
+    public Dictionary<string, JsonElement>? ParameterSchema { get; set; }
 
     /// <summary>
     /// Optional description

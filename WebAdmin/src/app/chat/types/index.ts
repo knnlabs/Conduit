@@ -1,22 +1,17 @@
-// ImageAttachment moved to SDK - import from @knn_labs/conduit-gateway-client
-import type { ImageAttachment } from '@knn_labs/conduit-gateway-client';
-export type { ImageAttachment };
+// ImageAttachment moved to SDK - import from the local Gateway API boundary
+import type { ChatAttachment, ImageAttachment, TextContent, ImageContent, MessageContent } from '@/lib/gateway-api';
+export type { ChatAttachment, ImageAttachment };
 
-// Content types for chat messages (similar to SDK types)
-export interface TextContent {
-  type: 'text';
-  text: string;
-}
-
-export interface ImageContent {
-  type: 'image_url';
-  image_url: {
-    url: string;
-    detail?: 'auto' | 'low' | 'high';
-  };
-}
-
-export type MessageContent = string | Array<TextContent | ImageContent>;
+// Content types for chat messages - re-exported from the Gateway API boundary
+export type {
+  TextContent,
+  ImageContent,
+  VideoContent,
+  AudioContent,
+  FileContent,
+  MessageContentPart,
+  MessageContent,
+} from '@/lib/gateway-api';
 
 // Content helpers
 export const ContentHelpers = {
@@ -48,6 +43,8 @@ export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system' | 'function';
   content: string;
+  attachments?: ChatAttachment[];
+  /** @deprecated Use attachments. */
   images?: ImageAttachment[];
   timestamp: Date;
   model?: string;
@@ -94,6 +91,7 @@ export interface ChatMessage {
       messages: Array<{
         role: 'system' | 'user' | 'assistant';
         content: string;
+        attachments?: ChatAttachment[];
         images?: ImageAttachment[];
       }>;
       model: string;
@@ -145,7 +143,7 @@ export interface ChatParameters {
 }
 
 // Re-export ChatPreset type from Core SDK
-export type { ChatPreset, ChatPresetParameters } from '@knn_labs/conduit-gateway-client';
+export type { ChatPreset, ChatPresetParameters } from '@/lib/gateway-api';
 
 export interface ConversationStarter {
   id: string;
@@ -179,6 +177,10 @@ export interface ModelWithCapabilities {
   displayName: string;
   maxContextTokens?: number;
   supportsVision?: boolean;
+  supportsVideoInput?: boolean;
+  supportsAudioInput?: boolean;
+  supportsFileInput?: boolean;
+  supportsPdfInput?: boolean;
   supportsFunctionCalling?: boolean;
   supportsToolUsage?: boolean;
   supportsJsonMode?: boolean;

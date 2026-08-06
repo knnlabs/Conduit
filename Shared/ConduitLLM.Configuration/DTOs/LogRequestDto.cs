@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace ConduitLLM.Configuration.DTOs
 {
     /// <summary>
@@ -29,6 +31,14 @@ namespace ConduitLLM.Configuration.DTOs
         /// Type of the provider that processed the request (e.g., "OpenAI", "Anthropic").
         /// </summary>
         public string? ProviderType { get; set; }
+        public int? ModelProviderMappingId { get; set; }
+        public bool PromptCachingEligible { get; set; }
+        public bool PromptCachingPolicyApplied { get; set; }
+        public decimal CachedReadSavings { get; set; }
+        public decimal CacheWritePremium { get; set; }
+        public bool RoutingAffinityUsed { get; set; }
+        public string? RoutingDecisionReason { get; set; }
+        public int RoutingFailoverCount { get; set; }
 
         /// <summary>
         /// Type of the request (chat, completion, embedding, etc.)
@@ -46,9 +56,40 @@ namespace ConduitLLM.Configuration.DTOs
         public int OutputTokens { get; set; }
 
         /// <summary>
+        /// Number of input tokens read from cache. Null if caching was not used.
+        /// </summary>
+        public int? CachedInputTokens { get; set; }
+
+        /// <summary>
+        /// Number of tokens written to cache. Null if caching was not used.
+        /// </summary>
+        public int? CachedWriteTokens { get; set; }
+
+        /// <summary>
         /// Cost of the request
         /// </summary>
         public decimal Cost { get; set; }
+
+        /// <summary>
+        /// How the cost was determined (ModelCost vs. provider-reported cost). Null for
+        /// ModelCost-billed requests.
+        /// </summary>
+        public Enums.RequestBillingMethod? BillingMethod { get; set; }
+
+        /// <summary>
+        /// The raw provider-reported cost (USD, pre-markup) when billed from provider cost; else null.
+        /// </summary>
+        public decimal? ProviderReportedCostUsd { get; set; }
+
+        /// <summary>
+        /// Provider-cost markup multiplier applied to the reported cost.
+        /// </summary>
+        public decimal? ProviderCostMarkupMultiplier { get; set; }
+
+        /// <summary>
+        /// Timestamp of the billable event. Null for zero-cost/unbilled rows.
+        /// </summary>
+        public DateTime? BilledAtUtc { get; set; }
 
         /// <summary>
         /// Response time in milliseconds
@@ -84,6 +125,6 @@ namespace ConduitLLM.Configuration.DTOs
         /// Optional metadata as JSON for request-type-specific details.
         /// Used for functions, images, video, audio, and other execution types.
         /// </summary>
-        public string? Metadata { get; set; }
+        public Dictionary<string, JsonElement>? Metadata { get; set; }
     }
 }

@@ -1,5 +1,8 @@
+using System.Net;
+
 using ConduitLLM.Core.Utilities;
-using FluentAssertions;
+using AwesomeAssertions;
+using Microsoft.AspNetCore.Http;
 
 namespace ConduitLLM.Tests.Core.Utilities
 {
@@ -43,6 +46,14 @@ namespace ConduitLLM.Tests.Core.Utilities
 
             // Assert
             result.Should().Be(expected);
+        }
+
+        [Theory]
+        [InlineData("::ffff:203.0.113.9", "203.0.113.9")]
+        [InlineData("::ffff:203.0.113.9", "203.0.113.0/24")]
+        public void IsIpInRange_IPv4MappedAddress_MatchesIpv4Rule(string ipAddress, string rule)
+        {
+            IpAddressHelper.IsIpInRange(ipAddress, rule).Should().BeTrue();
         }
 
         #endregion
@@ -238,6 +249,82 @@ namespace ConduitLLM.Tests.Core.Utilities
             IpAddressHelper.IsValidIpAddressOrCidr(null!).Should().BeFalse();
             IpAddressHelper.IsValidIpAddressOrCidr("").Should().BeFalse();
             IpAddressHelper.IsValidIpAddressOrCidr("   ").Should().BeFalse();
+        }
+
+        #endregion
+
+        #region GetClientIpAddress - Trusted Proxy / Spoofing Tests
+
+        [Fact]
+        public void GetClientIpAddress_ShouldIgnoreSpoofedXForwardedForHeader()
+        {
+            // Arrange: an untrusted client forges X-Forwarded-For. Because ForwardedHeadersMiddleware
+            // has NOT rewritten RemoteIpAddress (the peer is not a trusted proxy), the helper must
+            // return the real socket peer — not the attacker-controlled header.
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.7");
+            context.Request.Headers["X-Forwarded-For"] = "1.2.3.4, 5.6.7.8";
+
+            // Act
+            var result = IpAddressHelper.GetClientIpAddress(context);
+
+            // Assert
+            result.Should().Be("203.0.113.7");
+        }
+
+        [Fact]
+        public void GetClientIpAddress_ShouldIgnoreSpoofedXRealIpHeader()
+        {
+            // Arrange
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.7");
+            context.Request.Headers["X-Real-IP"] = "1.2.3.4";
+
+            // Act
+            var result = IpAddressHelper.GetClientIpAddress(context);
+
+            // Assert
+            result.Should().Be("203.0.113.7");
+        }
+
+        [Fact]
+        public void GetClientIpAddress_ShouldReturnVettedRemoteIpAddress()
+        {
+            // Arrange: when behind a trusted proxy, ForwardedHeadersMiddleware has already rewritten
+            // RemoteIpAddress to the real client. The helper simply returns it.
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = IPAddress.Parse("198.51.100.42");
+
+            // Act
+            var result = IpAddressHelper.GetClientIpAddress(context);
+
+            // Assert
+            result.Should().Be("198.51.100.42");
+        }
+
+        [Fact]
+        public void GetClientIpAddress_ShouldCanonicalizeIpv4MappedRemoteAddress()
+        {
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = IPAddress.Parse("::ffff:203.0.113.9");
+
+            var result = IpAddressHelper.GetClientIpAddress(context);
+
+            result.Should().Be("203.0.113.9");
+        }
+
+        [Fact]
+        public void GetClientIpAddress_ShouldReturnUnknown_WhenNoRemoteIp()
+        {
+            // Arrange
+            var context = new DefaultHttpContext();
+            context.Connection.RemoteIpAddress = null;
+
+            // Act
+            var result = IpAddressHelper.GetClientIpAddress(context);
+
+            // Assert
+            result.Should().Be("unknown");
         }
 
         #endregion

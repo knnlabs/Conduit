@@ -27,6 +27,30 @@ public interface ICostCalculationService
     Task<decimal> CalculateCostByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Calculates the estimated cost savings from prompt caching for a request.
+    /// Savings = cached_input_tokens * (standard_input_rate - cached_input_rate) / 1,000,000.
+    /// Returns 0 if no cached tokens or no cached pricing configured.
+    /// </summary>
+    /// <param name="modelId">The specific model ID used.</param>
+    /// <param name="usage">The usage data returned by the provider.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The estimated savings in dollars, or 0 if not applicable.</returns>
+    Task<decimal> CalculateCacheSavingsAsync(string modelId, Usage usage, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Calculates the estimated cost savings from prompt caching using a direct ModelCost ID lookup.
+    /// </summary>
+    /// <param name="modelCostId">The ID of the ModelCost record to use for pricing.</param>
+    /// <param name="usage">The usage data returned by the provider.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The estimated savings in dollars, or 0 if not applicable.</returns>
+    Task<decimal> CalculateCacheSavingsByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
+
+    Task<decimal> CalculateCacheWritePremiumAsync(string modelId, Usage usage, CancellationToken cancellationToken = default);
+
+    Task<decimal> CalculateCacheWritePremiumByIdAsync(int modelCostId, Usage usage, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Calculates a refund for a previous LLM operation.
     /// </summary>
     /// <param name="modelId">The specific model ID used in the original operation.</param>
@@ -34,6 +58,10 @@ public interface ICostCalculationService
     /// <param name="refundUsage">The usage data to be refunded.</param>
     /// <param name="refundReason">The reason for the refund.</param>
     /// <param name="originalTransactionId">Optional original transaction ID for audit trail.</param>
+    /// <param name="providerCostContext">
+    /// Optional historical billing context. When supplied, the refund is prorated from the amount
+    /// recorded on the original debit rather than recomputed from current ModelCost rates.
+    /// </param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A RefundResult containing the refund details and any validation messages.</returns>
     Task<RefundResult> CalculateRefundAsync(
@@ -42,5 +70,6 @@ public interface ICostCalculationService
         Usage refundUsage,
         string refundReason,
         string? originalTransactionId = null,
+        ProviderCostRefundContext? providerCostContext = null,
         CancellationToken cancellationToken = default);
 }

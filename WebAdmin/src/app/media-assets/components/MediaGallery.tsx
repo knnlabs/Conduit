@@ -11,6 +11,7 @@ interface MediaGalleryProps {
   onSelectMedia: (id: string) => void;
   onViewMedia: (media: MediaRecord) => void;
   onDeleteMedia: (id: string) => void;
+  onRestoreMedia: (id: string) => void;
 }
 
 export default function MediaGallery({
@@ -20,6 +21,7 @@ export default function MediaGallery({
   onSelectMedia,
   onViewMedia,
   onDeleteMedia,
+  onRestoreMedia,
 }: MediaGalleryProps) {
   if (loading) {
     return (
@@ -47,6 +49,7 @@ export default function MediaGallery({
           onSelect={onSelectMedia}
           onView={onViewMedia}
           onDelete={onDeleteMedia}
+          onRestore={onRestoreMedia}
         />
       ))}
     </SimpleGrid>

@@ -63,9 +63,7 @@ function RetryButton({ task, onRetry }: { task: VideoTask; onRetry: (task: Video
 
 export default function VideoQueue() {
   const { currentTask } = useVideoStore();
-  const { cancelGeneration, retryGeneration } = useEnhancedVideoGeneration({
-    fallbackToPolling: true,
-  });
+  const { cancelGeneration, retryGeneration } = useEnhancedVideoGeneration();
   const [retryHistoryOpen, setRetryHistoryOpen] = useState(false);
 
   if (!currentTask) {

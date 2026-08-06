@@ -31,6 +31,18 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("usage")]
         public Usage? Usage { get; set; }
+
+        [JsonPropertyName("background")]
+        public string? Background { get; set; }
+
+        [JsonPropertyName("output_format")]
+        public string? OutputFormat { get; set; }
+
+        [JsonPropertyName("quality")]
+        public string? Quality { get; set; }
+
+        [JsonPropertyName("size")]
+        public string? Size { get; set; }
     }
 
     /// <summary>
@@ -58,5 +70,13 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("b64_json")]
         public string? B64Json { get; set; }
+
+        /// <summary>
+        /// The prompt the provider actually used, when it rewrites the user's prompt
+        /// (e.g. DALL·E 3). Null when the provider does not revise prompts.
+        /// </summary>
+        [JsonPropertyName("revised_prompt")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string? RevisedPrompt { get; set; }
     }
 }

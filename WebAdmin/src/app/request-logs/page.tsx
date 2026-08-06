@@ -8,7 +8,6 @@ import {
   Group,
   Button,
   Card,
-  SimpleGrid,
   ThemeIcon,
   LoadingOverlay,
   Alert,
@@ -26,14 +25,22 @@ import {
   IconClock,
   IconCheck,
 } from '@tabler/icons-react';
-import { notifications } from '@mantine/notifications';
+import { StatCardGrid } from '@/components/common/StatCardGrid';
+import { notify } from '@/lib/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { RequestLogsTable } from '@/components/analytics/RequestLogsTable';
 import { RequestLogsFilters } from '@/components/analytics/RequestLogsFilters';
-import { useRequestLogs, useDistinctModels, type RequestLogFilters } from '@/hooks/useRequestLogs';
+import { ViewVirtualKeyModal } from '@/components/virtualkeys/ViewVirtualKeyModal';
+import { useRequestLogs, useDistinctModels, type RequestLogFormFilters } from '@/hooks/useRequestLogs';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
 import { withAdminClient } from '@/lib/client/adminClient';
-import type { VirtualKeyDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
+
+function formatBillingMethodForExport(method: number | null): string {
+  if (method === 1) return 'provider-reported';
+  if (method === 0) return 'model-cost';
+  return '';
+}
 
 export default function RequestLogsPage() {
   // Pagination state
@@ -41,10 +48,12 @@ export default function RequestLogsPage() {
   const [pageSize, setPageSize] = useState(50);
 
   // Filter state
-  const [filters, setFilters] = useState<RequestLogFilters>({});
+  const [filters, setFilters] = useState<RequestLogFormFilters>({});
 
   // Virtual keys for filter dropdown
   const [virtualKeys, setVirtualKeys] = useState<VirtualKeyDto[]>([]);
+  const [virtualKeyGroups, setVirtualKeyGroups] = useState<VirtualKeyGroupDto[]>([]);
+  const [selectedVirtualKey, setSelectedVirtualKey] = useState<VirtualKeyDto | null>(null);
 
   // Fetch request logs
   const {
@@ -63,11 +72,11 @@ export default function RequestLogsPage() {
   // Fetch distinct models for filter
   const { models } = useDistinctModels();
 
-  // Fetch virtual keys for filter dropdown
+  // Fetch virtual keys for filters and request-log identity context.
   useEffect(() => {
     const fetchVirtualKeys = async () => {
       try {
-        const result = await withAdminClient((client) => client.virtualKeys.list(1, 1000));
+        const result = await withAdminClient((client) => client.virtualKeys.list(1, Number.MAX_SAFE_INTEGER));
         const validKeys = result.items.filter(
           (key): key is VirtualKeyDto => key.id !== undefined && key.id !== null
         );
@@ -77,8 +86,72 @@ export default function RequestLogsPage() {
       }
     };
 
-    void fetchVirtualKeys();
+    const fetchVirtualKeyGroups = async () => {
+      try {
+        const groups = await withAdminClient(async (client) => {
+          const firstPage = await client.virtualKeyGroups.list({ page: 1, pageSize: 100 });
+          const allGroups = [...(firstPage.data ?? [])];
+          for (let groupPage = 2; groupPage <= (firstPage.pagination?.totalPages ?? 1); groupPage += 1) {
+            const result = await client.virtualKeyGroups.list({ page: groupPage, pageSize: 100 });
+            allGroups.push(...(result.data ?? []));
+          }
+          return allGroups;
+        });
+        setVirtualKeyGroups(groups);
+      } catch (err) {
+        console.warn('Error fetching virtual key groups:', err);
+      }
+    };
+
+    void Promise.all([fetchVirtualKeys(), fetchVirtualKeyGroups()]);
   }, []);
+
+  const exportData = useMemo(() => {
+    const keyMap = new Map(virtualKeys.map((key) => [key.id, key]));
+    const groupMap = new Map(virtualKeyGroups.map((group) => [group.id, group]));
+
+    return logs.map((log) => {
+      const key = keyMap.get(log.virtualKeyId);
+      const group = key ? groupMap.get(key.virtualKeyGroupId) : undefined;
+      return {
+        id: log.id,
+        timestamp: formatDateForExport(log.timestamp),
+        model: log.modelName,
+        providerType: log.providerType ?? '',
+        providerId: log.providerId ?? '',
+        modelProviderMappingId: log.modelProviderMappingId ?? '',
+        requestType: log.requestType,
+        inputTokens: log.inputTokens,
+        outputTokens: log.outputTokens,
+        cachedInputTokens: log.cachedInputTokens ?? '',
+        cachedWriteTokens: log.cachedWriteTokens ?? '',
+        totalTokens: log.inputTokens + log.outputTokens,
+        cost: log.cost,
+        billingMethod: formatBillingMethodForExport(log.billingMethod),
+        providerReportedCostUsd: log.providerReportedCostUsd ?? '',
+        providerCostMarkupMultiplier: log.providerCostMarkupMultiplier ?? '',
+        billedAtUtc: log.billedAtUtc ?? '',
+        durationMs: log.responseTimeMs,
+        statusCode: log.statusCode ?? '',
+        virtualKeyId: log.virtualKeyId,
+        virtualKeyName: key?.keyName ?? log.userId ?? '',
+        virtualKeyPrefix: key?.keyPrefix ?? '',
+        customerName: group?.groupName ?? '',
+        externalCustomerId: group?.externalGroupId ?? '',
+        userId: log.userId ?? '',
+        clientIp: log.clientIp ?? '',
+        requestPath: log.requestPath ?? '',
+        promptCachingEligible: log.promptCachingEligible,
+        promptCachingPolicyApplied: log.promptCachingPolicyApplied,
+        cachedReadSavings: log.cachedReadSavings,
+        cacheWritePremium: log.cacheWritePremium,
+        routingAffinityUsed: log.routingAffinityUsed,
+        routingDecisionReason: log.routingDecisionReason ?? '',
+        routingFailoverCount: log.routingFailoverCount,
+        metadata: log.metadata ?? '',
+      };
+    });
+  }, [logs, virtualKeys, virtualKeyGroups]);
 
   // Handle page change
   const handlePageChange = useCallback((newPage: number) => {
@@ -92,7 +165,7 @@ export default function RequestLogsPage() {
   }, []);
 
   // Handle filter changes
-  const handleFiltersChange = useCallback((newFilters: RequestLogFilters) => {
+  const handleFiltersChange = useCallback((newFilters: RequestLogFormFilters) => {
     setFilters(newFilters);
     setPage(1); // Reset to first page when changing filters
   }, []);
@@ -100,78 +173,69 @@ export default function RequestLogsPage() {
   // Export handlers
   const handleExportCSV = useCallback(() => {
     if (logs.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no request logs to export with the current filters',
-        color: 'orange',
-      });
+      notify.warning('There are no request logs to export with the current filters', 'No data to export');
       return;
     }
-
-    const exportData = logs.map((log) => ({
-      id: log.id,
-      timestamp: formatDateForExport(log.timestamp),
-      model: log.modelName,
-      requestType: log.requestType,
-      inputTokens: log.inputTokens,
-      outputTokens: log.outputTokens,
-      totalTokens: log.inputTokens + log.outputTokens,
-      cost: log.cost,
-      latencyMs: log.responseTimeMs,
-      statusCode: log.statusCode ?? '',
-      virtualKeyId: log.virtualKeyId,
-      userId: log.userId ?? '',
-      clientIp: log.clientIp ?? '',
-      requestPath: log.requestPath ?? '',
-    }));
 
     exportToCSV(exportData, `request-logs-${new Date().toISOString().split('T')[0]}`, [
       { key: 'id', label: 'ID' },
       { key: 'timestamp', label: 'Timestamp' },
       { key: 'model', label: 'Model' },
+      { key: 'providerType', label: 'Provider' },
+      { key: 'providerId', label: 'Provider ID' },
+      { key: 'modelProviderMappingId', label: 'Provider Mapping ID' },
       { key: 'requestType', label: 'Request Type' },
       { key: 'inputTokens', label: 'Input Tokens' },
       { key: 'outputTokens', label: 'Output Tokens' },
+      { key: 'cachedInputTokens', label: 'Cached Input Tokens' },
+      { key: 'cachedWriteTokens', label: 'Cached Write Tokens' },
       { key: 'totalTokens', label: 'Total Tokens' },
       { key: 'cost', label: 'Cost' },
-      { key: 'latencyMs', label: 'Latency (ms)' },
+      { key: 'billingMethod', label: 'Billing Method' },
+      { key: 'providerReportedCostUsd', label: 'Provider Reported Cost (USD)' },
+      { key: 'providerCostMarkupMultiplier', label: 'Provider Cost Markup' },
+      { key: 'billedAtUtc', label: 'Billed At (UTC)' },
+      { key: 'durationMs', label: 'Duration (ms)' },
       { key: 'statusCode', label: 'Status Code' },
       { key: 'virtualKeyId', label: 'Virtual Key ID' },
+      { key: 'virtualKeyName', label: 'Virtual Key Name' },
+      { key: 'virtualKeyPrefix', label: 'Virtual Key Prefix' },
+      { key: 'customerName', label: 'Customer' },
+      { key: 'externalCustomerId', label: 'External Customer ID' },
       { key: 'userId', label: 'User ID' },
       { key: 'clientIp', label: 'Client IP' },
       { key: 'requestPath', label: 'Request Path' },
+      { key: 'promptCachingEligible', label: 'Prompt Caching Eligible' },
+      { key: 'promptCachingPolicyApplied', label: 'Prompt Caching Policy Applied' },
+      { key: 'cachedReadSavings', label: 'Cached Read Savings' },
+      { key: 'cacheWritePremium', label: 'Cache Write Premium' },
+      { key: 'routingAffinityUsed', label: 'Routing Affinity Used' },
+      { key: 'routingDecisionReason', label: 'Routing Decision Reason' },
+      { key: 'routingFailoverCount', label: 'Routing Failover Count' },
+      { key: 'metadata', label: 'Metadata' },
     ]);
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${logs.length} request logs`,
-      color: 'green',
-    });
-  }, [logs]);
+    notify.success(`Exported ${logs.length} request logs`, 'Export successful');
+  }, [exportData, logs.length]);
 
   const handleExportJSON = useCallback(() => {
     if (logs.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no request logs to export with the current filters',
-        color: 'orange',
-      });
+      notify.warning('There are no request logs to export with the current filters', 'No data to export');
       return;
     }
 
-    exportToJSON(logs, `request-logs-${new Date().toISOString().split('T')[0]}`);
+    exportToJSON(exportData, `request-logs-${new Date().toISOString().split('T')[0]}`);
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${logs.length} request logs`,
-      color: 'green',
-    });
-  }, [logs]);
+    notify.success(`Exported ${logs.length} request logs`, 'Export successful');
+  }, [exportData, logs.length]);
 
   // Statistics cards
   const statCards = useMemo(() => {
     if (!stats) return [];
 
+    // All but Total Requests are computed from the rows on the current page,
+    // so they are labeled as page-scoped — presenting them as period totals
+    // would change with every pagination click.
     return [
       {
         title: 'Total Requests',
@@ -180,19 +244,19 @@ export default function RequestLogsPage() {
         color: 'blue',
       },
       {
-        title: 'Success Rate',
+        title: 'Success Rate (page)',
         value: `${stats.successRate.toFixed(1)}%`,
         icon: IconCheck,
         color: 'green',
       },
       {
-        title: 'Total Cost',
+        title: 'Cost (page)',
         value: `$${stats.totalCost.toFixed(4)}`,
         icon: IconCoin,
         color: 'orange',
       },
       {
-        title: 'Avg Latency',
+        title: 'Avg Duration (page)',
         value: `${Math.round(stats.avgLatency)} ms`,
         icon: IconClock,
         color: 'violet',
@@ -248,25 +312,7 @@ export default function RequestLogsPage() {
       </Group>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-        {statCards.map((stat) => (
-          <Card key={stat.title} p="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value}
-                </Text>
-              </div>
-              <ThemeIcon size="lg" variant="light" color={stat.color}>
-                <stat.icon size={20} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <StatCardGrid items={statCards} />
 
       {/* Filters */}
       <Card>
@@ -309,7 +355,13 @@ export default function RequestLogsPage() {
 
         <Card.Section p="md" pt={0} style={{ position: 'relative' }}>
           <LoadingOverlay visible={isLoading} overlayProps={{ radius: 'sm', blur: 2 }} />
-          <RequestLogsTable data={logs} isLoading={isLoading} />
+          <RequestLogsTable
+            data={logs}
+            virtualKeys={virtualKeys}
+            virtualKeyGroups={virtualKeyGroups}
+            isLoading={isLoading}
+            onViewVirtualKey={setSelectedVirtualKey}
+          />
           {totalCount > 0 && (
             <TablePagination
               total={totalCount}
@@ -322,6 +374,15 @@ export default function RequestLogsPage() {
           )}
         </Card.Section>
       </Card>
+
+      <ViewVirtualKeyModal
+        opened={selectedVirtualKey !== null}
+        onClose={() => setSelectedVirtualKey(null)}
+        virtualKey={selectedVirtualKey}
+        virtualKeyGroup={virtualKeyGroups.find(
+          (group) => group.id === selectedVirtualKey?.virtualKeyGroupId
+        )}
+      />
     </Stack>
   );
 }

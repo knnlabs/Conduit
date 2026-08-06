@@ -1,4 +1,3 @@
-using MassTransit;
 
 namespace ConduitLLM.Configuration.Events
 {
@@ -72,14 +71,6 @@ namespace ConduitLLM.Configuration.Events
         /// High priority - urgent operational need (e.g., before maintenance)
         /// </summary>
         High = 1
-    }
-
-    /// <summary>
-    /// Event consumer interface for batch spend flush requests.
-    /// Implementations should handle the immediate processing of pending spend updates.
-    /// </summary>
-    public interface IBatchSpendFlushRequestedConsumer : IConsumer<BatchSpendFlushRequestedEvent>
-    {
     }
 
     /// <summary>

@@ -9,7 +9,7 @@ namespace ConduitLLM.IntegrationTests.Core;
 
 public class CreateProviderRequest
 {
-    public int ProviderType { get; set; }  // Enum value
+    public string ProviderType { get; set; } = "";  // Enum name (Admin API requires string enums)
     public string ProviderName { get; set; } = "";
     public string? BaseUrl { get; set; }
     public bool IsEnabled { get; set; } = true;
@@ -19,7 +19,7 @@ public class CreateProviderResponse
 {
     public int Id { get; set; }
     public string ProviderName { get; set; } = "";
-    public int ProviderType { get; set; }
+    public string ProviderType { get; set; } = "";
     public bool IsEnabled { get; set; }
 }
 
@@ -31,7 +31,6 @@ public class CreateProviderKeyRequest
 {
     public string ApiKey { get; set; } = "";
     public string KeyName { get; set; } = "";
-    public string? Organization { get; set; }
     public string? BaseUrl { get; set; }
     public bool IsPrimary { get; set; } = true;
     public bool IsEnabled { get; set; } = true;
@@ -49,26 +48,58 @@ public class CreateProviderKeyResponse
 }
 
 // =====================================================
+// Model Catalog Resolution DTOs
+// Mappings/costs reference a ModelProviderTypeAssociation from the
+// bundled model catalog, resolved via bulk mapping preview.
+// =====================================================
+
+public class BulkMappingPreviewRequest
+{
+    public List<BulkMappingItem> Mappings { get; set; } = new();
+}
+
+public class BulkMappingItem
+{
+    public string ModelAlias { get; set; } = "";
+    public int ProviderId { get; set; }
+    public string ProviderModelId { get; set; } = "";
+}
+
+public class BulkMappingPreviewResponse
+{
+    public List<BulkMappingResolution> Items { get; set; } = new();
+    public int TotalProcessed { get; set; }
+    public int ConflictCount { get; set; }
+}
+
+public class BulkMappingResolution
+{
+    public int Index { get; set; }
+    public string ModelAlias { get; set; } = "";
+    public int? ModelProviderTypeAssociationId { get; set; }
+    public bool HasConflict { get; set; }
+    public string? ErrorType { get; set; }
+    public string? ErrorMessage { get; set; }
+}
+
+// =====================================================
 // Model Mapping DTOs
 // =====================================================
 
 public class CreateModelMappingRequest
 {
-    public string ModelId { get; set; } = "";  // Model alias
+    public string ModelAlias { get; set; } = "";  // Model alias
     public string ProviderModelId { get; set; } = "";  // Actual model name
     public int ProviderId { get; set; }
+    public int ModelProviderTypeAssociationId { get; set; }
     public int Priority { get; set; } = 0;
     public bool IsEnabled { get; set; } = true;
-    public bool SupportsVision { get; set; } = false;
-    public bool SupportsChat { get; set; } = true;
-    public bool SupportsStreaming { get; set; } = true;
-    public bool SupportsFunctionCalling { get; set; } = false;
 }
 
 public class CreateModelMappingResponse
 {
     public int Id { get; set; }
-    public string ModelId { get; set; } = "";
+    public string ModelAlias { get; set; } = "";
     public string ProviderModelId { get; set; } = "";
     public int ProviderId { get; set; }
 }
@@ -80,8 +111,8 @@ public class CreateModelMappingResponse
 public class CreateModelCostRequest
 {
     public string CostName { get; set; } = "";
-    public int PricingModel { get; set; } = 0; // PricingModel.Standard
-    public List<int> ModelProviderMappingIds { get; set; } = new();
+    public string PricingModel { get; set; } = "standard"; // Enum name (Admin API requires string enums)
+    public List<int> ModelProviderTypeAssociationIds { get; set; } = new();
     public string ModelType { get; set; } = "chat";
     public int Priority { get; set; } = 0;
     public string? Description { get; set; }
@@ -124,10 +155,10 @@ public class CreateVirtualKeyGroupResponse
 public class CreateVirtualKeyRequest
 {
     public string KeyName { get; set; } = "";
-    public string? AllowedModels { get; set; }
+    public List<string>? AllowedModels { get; set; }
     public int VirtualKeyGroupId { get; set; }
     public DateTime? ExpiresAt { get; set; }
-    public string? Metadata { get; set; }
+    public Dictionary<string, object>? Metadata { get; set; }
     public int? RateLimitRpm { get; set; }
     public int? RateLimitRpd { get; set; }
 }

@@ -1,6 +1,8 @@
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
+
+using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Gateway.EventHandlers
 {
@@ -8,61 +10,48 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Handles ModelUpdated events to invalidate discovery cache
     /// Critical for ensuring updated model parameters are reflected in the discovery API
     /// </summary>
-    public class ModelCacheInvalidationHandler : IConsumer<ModelUpdated>
+    public class ModelCacheInvalidationHandler : IEventHandler<ModelUpdated>
     {
         private readonly IDiscoveryCacheService _discoveryCacheService;
+        private readonly IModelCapabilityService _modelCapabilityService;
         private readonly ILogger<ModelCacheInvalidationHandler> _logger;
 
         public ModelCacheInvalidationHandler(
             IDiscoveryCacheService discoveryCacheService,
+            IModelCapabilityService modelCapabilityService,
             ILogger<ModelCacheInvalidationHandler> logger)
         {
             _discoveryCacheService = discoveryCacheService ?? throw new ArgumentNullException(nameof(discoveryCacheService));
+            _modelCapabilityService = modelCapabilityService ?? throw new ArgumentNullException(nameof(modelCapabilityService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
         /// Handles ModelUpdated events by invalidating discovery cache
         /// </summary>
-        public async Task Consume(ConsumeContext<ModelUpdated> context)
+        public async Task HandleAsync(ModelUpdated message, IEventContext context)
         {
-            var @event = context.Message;
-            
-            try
-            {
-                _logger.LogInformation(
-                    "Processing ModelUpdated event: {ModelName} (ID: {ModelId}, ChangeType: {ChangeType}, ParametersChanged: {ParametersChanged})",
-                    @event.ModelName,
-                    @event.ModelId,
-                    @event.ChangeType,
-                    @event.ParametersChanged);
+            _logger.LogInformation(
+                "Processing ModelUpdated event: {ModelName} (ID: {ModelId}, ChangeType: {ChangeType}, ParametersChanged: {ParametersChanged})",
+                message.ModelName,
+                message.ModelId,
+                message.ChangeType,
+                message.ParametersChanged);
 
-                // Invalidate all discovery cache entries
-                // This ensures that any capability-filtered queries get fresh data
-                await _discoveryCacheService.InvalidateAllDiscoveryAsync();
-                
-                _logger.LogInformation(
-                    "Invalidated all discovery cache entries after {ChangeType} of model {ModelName} (ID: {ModelId})",
-                    @event.ChangeType,
-                    @event.ModelName,
-                    @event.ModelId);
-                
-                // Log specific parameter changes for debugging
-                if (@event.ParametersChanged)
-                {
-                    _logger.LogInformation(
-                        "Model parameters were updated for {ModelName} - UI components will reflect new parameter definitions",
-                        @event.ModelName);
-                }
-            }
-            catch (Exception ex)
+            await _discoveryCacheService.InvalidateAllDiscoveryAsync();
+            await _modelCapabilityService.RefreshCacheAsync();
+
+            _logger.LogInformation(
+                "Invalidated all discovery cache entries after {ChangeType} of model {ModelName} (ID: {ModelId})",
+                message.ChangeType,
+                message.ModelName,
+                message.ModelId);
+
+            if (message.ParametersChanged)
             {
-                _logger.LogError(ex, 
-                    "Failed to invalidate discovery cache after {ChangeType} of model {ModelName} (ID: {ModelId})", 
-                    @event.ChangeType,
-                    @event.ModelName,
-                    @event.ModelId);
-                throw; // Re-throw to trigger MassTransit retry logic
+                _logger.LogInformation(
+                    "Model parameters were updated for {ModelName} - UI components will reflect new parameter definitions",
+                    message.ModelName);
             }
         }
     }

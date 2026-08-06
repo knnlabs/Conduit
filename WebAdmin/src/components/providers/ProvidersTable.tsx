@@ -23,23 +23,15 @@ import {
 } from '@tabler/icons-react';
 import { modals } from '@mantine/modals';
 import { formatters } from '@/lib/utils/formatters';
-import type { ProviderDto } from '@knn_labs/conduit-admin-client';
+import type { ProviderDto } from '@/lib/admin-api';
 import { useRouter } from 'next/navigation';
 import { getProviderDisplayName } from '@/lib/utils/providerTypeUtils';
 
-// Use SDK types directly with health extensions  
-interface Provider extends ProviderDto {
-  healthStatus: 'healthy' | 'unhealthy' | 'unknown';
-  lastHealthCheck?: string;
-  models?: string[];
-  keyCount?: number;
-}
-
 interface ProvidersTableProps {
-  onEdit?: (provider: Provider) => void;
+  onEdit?: (provider: ProviderDto) => void;
   onTest?: (providerId: number) => void;
   onDelete?: (providerId: number) => void;
-  data?: Provider[];
+  data?: ProviderDto[];
   testingProviders?: Set<number>;
 }
 
@@ -47,7 +39,7 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
   const providers = data ?? [];
   const router = useRouter();
 
-  const handleDelete = (provider: Provider) => {
+  const handleDelete = (provider: ProviderDto) => {
     void modals.openConfirmModal({
       title: 'Delete Provider',
       children: (
@@ -117,21 +109,6 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
       </Table.Td>
 
       <Table.Td>
-        <Group gap={4}>
-          {provider.models?.slice(0, 2).map((model) => (
-            <Badge key={`model-${model}`} size="xs" variant="light">
-              {model}
-            </Badge>
-          ))}
-          {provider.models && provider.models.length > 2 && (
-            <Badge size="xs" variant="light" color="gray">
-              +{provider.models.length - 2}
-            </Badge>
-          )}
-        </Group>
-      </Table.Td>
-
-      <Table.Td>
         <Text size="sm" c="dimmed">
           {provider.createdAt ? formatters.date(provider.createdAt) : '-'}
         </Text>
@@ -191,7 +168,6 @@ export function ProvidersTable({ onEdit, onTest, onDelete, data, testingProvider
                 <Table.Th>Type</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th>API Keys</Table.Th>
-                <Table.Th>Models</Table.Th>
                 <Table.Th>Created</Table.Th>
                 <Table.Th />
               </Table.Tr>

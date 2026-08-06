@@ -11,12 +11,13 @@ using Moq;
 
 namespace ConduitLLM.Tests.Core.Services
 {
-    public partial class S3MediaStorageServiceTests
+    public partial class S3MediaStorageServiceTests : IDisposable
     {
         private readonly Mock<IAmazonS3> _mockS3Client;
         private readonly Mock<ILogger<S3MediaStorageService>> _mockLogger;
         private readonly Mock<IOptions<S3StorageOptions>> _mockOptions;
         private readonly S3StorageOptions _options;
+        private readonly MutableTimeProvider _timeProvider;
         private readonly S3MediaStorageService _service;
 
         public S3MediaStorageServiceTests()
@@ -24,6 +25,7 @@ namespace ConduitLLM.Tests.Core.Services
             _mockS3Client = new Mock<IAmazonS3>();
             _mockLogger = new Mock<ILogger<S3MediaStorageService>>();
             _mockOptions = new Mock<IOptions<S3StorageOptions>>();
+            _timeProvider = new MutableTimeProvider();
             
             _options = new S3StorageOptions
             {
@@ -51,20 +53,25 @@ namespace ConduitLLM.Tests.Core.Services
 
         private S3MediaStorageService CreateServiceWithMockedS3Client()
         {
-            // We need to use reflection to inject the mocked S3 client
-            var service = new S3MediaStorageService(_mockOptions.Object, _mockLogger.Object);
-            
-            // Use reflection to replace the S3 client
-            var s3ClientField = typeof(S3MediaStorageService).GetField("_s3Client", 
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            s3ClientField?.SetValue(service, _mockS3Client.Object);
-            
-            // Replace the TransferUtility with a null to prevent real AWS calls
-            var transferUtilityField = typeof(S3MediaStorageService).GetField("_transferUtility",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            transferUtilityField?.SetValue(service, null);
-            
-            return service;
+            return new S3MediaStorageService(
+                _mockOptions.Object,
+                _mockLogger.Object,
+                _timeProvider,
+                s3Client: _mockS3Client.Object);
+        }
+
+        public void Dispose()
+        {
+            _service.Dispose();
+        }
+
+        private sealed class MutableTimeProvider : TimeProvider
+        {
+            private DateTimeOffset _utcNow = DateTimeOffset.UtcNow;
+
+            public override DateTimeOffset GetUtcNow() => _utcNow;
+
+            public void Advance(TimeSpan duration) => _utcNow = _utcNow.Add(duration);
         }
 
         #region Constructor Tests

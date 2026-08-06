@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
 
@@ -13,14 +12,6 @@ namespace ConduitLLM.Gateway.Hubs
     {
         private readonly ISignalRMetrics _metrics;
         private readonly ILogger<SystemNotificationHub> _logger;
-        
-        // Store notification preferences per connection
-        private static readonly ConcurrentDictionary<string, NotificationPreferences> _connectionPreferences = new();
-        
-        // Notification batching support
-        private static readonly ConcurrentDictionary<string, NotificationBatch> _pendingBatches = new();
-        private const int BatchSize = 10;
-        private const int BatchDelayMs = 500;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="SystemNotificationHub"/> class.
@@ -42,75 +33,6 @@ namespace ConduitLLM.Gateway.Hubs
         /// </summary>
         /// <returns>The hub name.</returns>
         protected override string GetHubName() => "SystemNotificationHub";
-
-        /// <summary>
-        /// Called when a client connects to the hub.
-        /// </summary>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public override async Task OnConnectedAsync()
-        {
-            await base.OnConnectedAsync();
-            
-            // Initialize default preferences for the connection
-            _connectionPreferences[Context.ConnectionId] = new NotificationPreferences
-            {
-                EnabledTypes = new HashSet<string> { "rate_limit", "system_announcement", "service_degradation", "service_restoration" },
-                MinimumPriority = NotificationPriority.Low
-            };
-            
-            _logger.LogInformation("Client connected to SystemNotificationHub: {ConnectionId}", Context.ConnectionId);
-        }
-
-        /// <summary>
-        /// Called when a client disconnects from the hub.
-        /// </summary>
-        /// <param name="exception">The exception that caused the disconnect, if any.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public override async Task OnDisconnectedAsync(Exception? exception)
-        {
-            // Clean up preferences
-            _connectionPreferences.TryRemove(Context.ConnectionId, out _);
-            
-            // Clean up any pending batches
-            _pendingBatches.TryRemove(Context.ConnectionId, out _);
-            
-            await base.OnDisconnectedAsync(exception);
-        }
-
-        /// <summary>
-        /// Updates notification preferences for the connected client.
-        /// </summary>
-        /// <param name="preferences">The notification preferences.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public async Task UpdatePreferences(NotificationPreferences preferences)
-        {
-            var correlationId = GetOrCreateCorrelationId();
-            
-            using (_logger.BeginScope(new Dictionary<string, object>
-            {
-                ["CorrelationId"] = correlationId,
-                ["Method"] = nameof(UpdatePreferences)
-            }))
-            {
-                try
-                {
-                    _connectionPreferences[Context.ConnectionId] = preferences;
-                    
-                    await Clients.Caller.SendAsync("PreferencesUpdated", preferences);
-                    
-                    _logger.LogInformation(
-                        "Updated notification preferences for connection {ConnectionId}: {EnabledTypes}, MinPriority: {MinPriority}",
-                        Context.ConnectionId,
-                        string.Join(", ", preferences.EnabledTypes),
-                        preferences.MinimumPriority);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error updating notification preferences");
-                    throw;
-                }
-            }
-        }
 
         /// <summary>
         /// Sends rate limit warnings to connected clients.
@@ -225,7 +147,7 @@ namespace ConduitLLM.Gateway.Hubs
         }
 
         /// <summary>
-        /// Broadcasts a notification to all connected clients based on their preferences.
+        /// Broadcasts a notification to all connected clients for the current virtual key.
         /// </summary>
         private async Task BroadcastNotification(SystemNotification notification)
         {
@@ -248,7 +170,7 @@ namespace ConduitLLM.Gateway.Hubs
                         return;
                     }
 
-                    // Send to all clients in the virtual key's group that meet the preference criteria
+                    // Send to all clients in the virtual key's group.
                     var groupName = $"vkey-{virtualKeyId.Value}";
                     
                     // Track metrics
@@ -273,29 +195,5 @@ namespace ConduitLLM.Gateway.Hubs
             }
         }
 
-        /// <summary>
-        /// Notification preferences for a connected client.
-        /// </summary>
-        public class NotificationPreferences
-        {
-            /// <summary>
-            /// Gets or sets the enabled notification types.
-            /// </summary>
-            public HashSet<string> EnabledTypes { get; set; } = new();
-
-            /// <summary>
-            /// Gets or sets the minimum priority level to receive.
-            /// </summary>
-            public NotificationPriority MinimumPriority { get; set; } = NotificationPriority.Low;
-        }
-
-        /// <summary>
-        /// Represents a batch of notifications.
-        /// </summary>
-        private class NotificationBatch
-        {
-            public List<SystemNotification> Notifications { get; } = new();
-            public DateTime CreatedAt { get; } = DateTime.UtcNow;
-        }
     }
 }

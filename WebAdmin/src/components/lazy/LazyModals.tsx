@@ -36,6 +36,13 @@ export const LazyCreateVirtualKeyGroupModal = (props: React.ComponentProps<typeo
   </Suspense>
 );
 
+const EditVirtualKeyGroupModalLazy = lazy(() => import('../virtualkeys/EditVirtualKeyGroupModal').then(mod => ({ default: mod.EditVirtualKeyGroupModal })));
+export const LazyEditVirtualKeyGroupModal = (props: React.ComponentProps<typeof EditVirtualKeyGroupModalLazy>) => (
+  <Suspense fallback={<ModalSkeleton />}>
+    <EditVirtualKeyGroupModalLazy {...props} />
+  </Suspense>
+);
+
 const ViewVirtualKeyGroupModalLazy = lazy(() => import('../virtualkeys/ViewVirtualKeyGroupModal').then(mod => ({ default: mod.ViewVirtualKeyGroupModal })));
 export const LazyViewVirtualKeyGroupModal = (props: React.ComponentProps<typeof ViewVirtualKeyGroupModalLazy>) => (
   <Suspense fallback={<ModalSkeleton />}>
@@ -57,32 +64,3 @@ export const LazyTransactionHistoryModal = (props: React.ComponentProps<typeof T
   </Suspense>
 );
 
-// Provider Modals
-const CreateProviderModalLazy = lazy(() => import('../providers/CreateProviderModal').then(mod => ({ default: mod.CreateProviderModal })));
-export const LazyCreateProviderModal = (props: React.ComponentProps<typeof CreateProviderModalLazy>) => (
-  <Suspense fallback={<ModalSkeleton />}>
-    <CreateProviderModalLazy {...props} />
-  </Suspense>
-);
-
-const EditProviderModalLazy = lazy(() => import('../providers/EditProviderModal').then(mod => ({ default: mod.EditProviderModal })));
-export const LazyEditProviderModal = (props: React.ComponentProps<typeof EditProviderModalLazy>) => (
-  <Suspense fallback={<ModalSkeleton />}>
-    <EditProviderModalLazy {...props} />
-  </Suspense>
-);
-
-// Model Mapping Modals
-const CreateModelMappingModalLazy = lazy(() => import('../modelmappings/CreateModelMappingModal').then(mod => ({ default: mod.CreateModelMappingModal })));
-export const LazyCreateModelMappingModal = (props: React.ComponentProps<typeof CreateModelMappingModalLazy>) => (
-  <Suspense fallback={<ModalSkeleton />}>
-    <CreateModelMappingModalLazy {...props} />
-  </Suspense>
-);
-
-const EditModelMappingModalLazy = lazy(() => import('../modelmappings/EditModelMappingModalWithHooks').then(mod => ({ default: mod.EditModelMappingModal })));
-export const LazyEditModelMappingModal = (props: React.ComponentProps<typeof EditModelMappingModalLazy>) => (
-  <Suspense fallback={<ModalSkeleton />}>
-    <EditModelMappingModalLazy {...props} />
-  </Suspense>
-);

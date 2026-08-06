@@ -39,7 +39,7 @@ stable-diffusion-xl,stable-diffusion-xl,image,0,0,0.00013,30`;
   it('should convert parsed Phase 2 data to DTOs correctly', () => {
     const csv = `Cost Name,Associated Model Aliases,Model Type,Input Cost (per million tokens),Output Cost (per million tokens),Cached Input Cost (per million tokens),Search Unit Cost (per 1K units),Priority,Active
 claude-opus-4,claude-3-opus,chat,15.00,75.00,1.50,,100,yes
-rerank-3.5,rerank-3.5,chat,0,0,,2.0,90,true`;
+rerank-3.5,rerank-3.5,chat,0,0,,2.0,90,no`;
     
     const parsed = parseCSVContent(csv);
     const dtos = convertParsedToDto(parsed);
@@ -49,10 +49,12 @@ rerank-3.5,rerank-3.5,chat,0,0,,2.0,90,true`;
     // Check cached token costs (already per million)
     expect(dtos[0].cachedInputCostPerMillionTokens).toBe(1.50);
     expect(dtos[0].costPerSearchUnit).toBeUndefined(); // Empty field should be undefined
+    expect(dtos[0].isActive).toBe(true);
     
     // Check search unit cost (no conversion needed)
     expect(dtos[1].costPerSearchUnit).toBe(2.0);
     expect(dtos[1].cachedInputCostPerMillionTokens).toBeUndefined();
+    expect(dtos[1].isActive).toBe(false);
   });
 
   it('should validate negative Phase 2 costs', () => {

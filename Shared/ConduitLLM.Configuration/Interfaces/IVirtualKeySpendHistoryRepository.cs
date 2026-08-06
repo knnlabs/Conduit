@@ -3,24 +3,17 @@ using ConduitLLM.Configuration.Entities;
 namespace ConduitLLM.Configuration.Interfaces
 {
     /// <summary>
-    /// Repository interface for managing virtual key spend history
+    /// Repository interface for managing virtual key spend history.
+    /// Extends IRepositoryBase for standard CRUD operations and adds domain-specific methods.
     /// </summary>
-    public interface IVirtualKeySpendHistoryRepository
+    public interface IVirtualKeySpendHistoryRepository : IRepositoryBase<VirtualKeySpendHistory, int>
     {
-        /// <summary>
-        /// Gets a spend history record by ID
-        /// </summary>
-        /// <param name="id">The spend history record ID</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The spend history entity or null if not found</returns>
-        Task<VirtualKeySpendHistory?> GetByIdAsync(int id, CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Gets all spend history records for a specific virtual key
         /// </summary>
         /// <param name="virtualKeyId">The virtual key ID</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of spend history records</returns>
+        /// <returns>A list of spend history records ordered by timestamp descending</returns>
         Task<List<VirtualKeySpendHistory>> GetByVirtualKeyIdAsync(int virtualKeyId, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -29,7 +22,7 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="startDate">The start date</param>
         /// <param name="endDate">The end date</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of spend history records</returns>
+        /// <returns>A list of spend history records with VirtualKey navigation property included</returns>
         Task<List<VirtualKeySpendHistory>> GetByDateRangeAsync(DateTime startDate, DateTime endDate, CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -39,7 +32,7 @@ namespace ConduitLLM.Configuration.Interfaces
         /// <param name="startDate">The start date</param>
         /// <param name="endDate">The end date</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>A list of spend history records</returns>
+        /// <returns>A list of spend history records ordered by timestamp descending</returns>
         Task<List<VirtualKeySpendHistory>> GetByVirtualKeyAndDateRangeAsync(
             int virtualKeyId,
             DateTime startDate,
@@ -47,31 +40,7 @@ namespace ConduitLLM.Configuration.Interfaces
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Creates a new spend history record
-        /// </summary>
-        /// <param name="spendHistory">The spend history to create</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The ID of the created spend history record</returns>
-        Task<int> CreateAsync(VirtualKeySpendHistory spendHistory, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Updates a spend history record
-        /// </summary>
-        /// <param name="spendHistory">The spend history to update</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if the update was successful, false otherwise</returns>
-        Task<bool> UpdateAsync(VirtualKeySpendHistory spendHistory, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Deletes a spend history record
-        /// </summary>
-        /// <param name="id">The ID of the spend history record to delete</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True if the deletion was successful, false otherwise</returns>
-        Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Gets a summary of spending for a virtual key
+        /// Gets the total amount spent for a virtual key
         /// </summary>
         /// <param name="virtualKeyId">The virtual key ID</param>
         /// <param name="cancellationToken">Cancellation token</param>

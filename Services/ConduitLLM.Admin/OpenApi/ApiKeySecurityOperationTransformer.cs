@@ -1,25 +1,16 @@
-using Microsoft.AspNetCore.OpenApi;
+using ConduitLLM.Core.OpenApi;
 
 namespace ConduitLLM.Admin.OpenApi;
 
 /// <summary>
-/// Adds API key security requirements to all operations
+/// Publishes the Admin API's security requirement from endpoint authorization metadata.
 /// </summary>
-public class ApiKeySecurityOperationTransformer : IOpenApiOperationTransformer
+public sealed class ApiKeySecurityOperationTransformer : AuthorizedOperationSecurityTransformer
 {
-    /// <summary>
-    /// Transforms each operation to add security requirements
-    /// </summary>
-    public Task TransformAsync(Microsoft.OpenApi.OpenApiOperation operation, OpenApiOperationTransformerContext context, CancellationToken cancellationToken)
+    public const string SecuritySchemeName = "MasterKey";
+
+    public ApiKeySecurityOperationTransformer()
+        : base(SecuritySchemeName)
     {
-        // Note: In .NET 10's built-in OpenAPI support, security is handled differently
-        // The API key authentication will be configured through middleware and attributes
-        // rather than through OpenAPI transformers
-
-        // Add a custom extension to indicate API key requirement
-        // Note: Extensions can be added but the exact type will depend on the OpenAPI model version
-        // For now, we'll skip adding extensions as the security is handled by middleware
-
-        return Task.CompletedTask;
     }
 }

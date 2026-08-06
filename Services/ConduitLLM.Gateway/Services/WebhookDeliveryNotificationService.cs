@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Configuration.DTOs.SignalR;
+using ConduitLLM.Core.Constants;
+using ConduitLLM.Core.Extensions;
 using ConduitLLM.Gateway.Hubs;
 using ConduitLLM.Core.Services;
 
@@ -88,12 +90,22 @@ namespace ConduitLLM.Gateway.Services
             using var scope = _serviceProvider.CreateScope();
             _metricsService = scope.ServiceProvider.GetService<IWebhookMetricsService>();
 
-            // Start periodic statistics broadcasting
-            _statisticsTimer = new Timer(
-                async _ => await BroadcastStatisticsAsync(),
-                null,
-                TimeSpan.FromMinutes(1),
-                TimeSpan.FromMinutes(1));
+            if (_metricsService != null)
+            {
+                // Start periodic statistics broadcasting
+                _statisticsTimer = new Timer(
+                    async _ => await BroadcastStatisticsAsync(),
+                    null,
+                    TimeSpan.FromMinutes(1),
+                    TimeSpan.FromMinutes(1));
+            }
+            else
+            {
+                // Without a metrics backend there is nothing measured to broadcast —
+                // pushing all-zero statistics would present fabricated data as real
+                _logger.LogInformation(
+                    "Webhook statistics broadcasting disabled: no metrics backend (Redis) available");
+            }
 
             _logger.LogInformation("WebhookDeliveryNotificationService started");
             return Task.CompletedTask;
@@ -126,13 +138,8 @@ namespace ConduitLLM.Gateway.Services
                     Timestamp = DateTime.UtcNow
                 };
                 
-                // Get the hub directly to use broadcast method
-                using var scope = _serviceProvider.CreateScope();
-                var hub = scope.ServiceProvider.GetService<WebhookDeliveryHub>();
-                if (hub != null)
-                {
-                    await hub.BroadcastDeliveryAttempt(webhookUrl, attempt);
-                }
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
+                await _hubContext.Clients.Group(groupName).SendAsync("DeliveryAttempted", attempt);
                 
                 // Record metrics if service is available
                 if (_metricsService != null)
@@ -175,7 +182,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("DeliverySucceeded", success);
                 
                 // Record metrics if service is available
@@ -221,7 +228,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("DeliveryFailed", failure);
                 
                 // Record metrics if service is available
@@ -266,7 +273,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("RetryScheduled", retry);
                 
                 _logger.LogInformation(
@@ -300,7 +307,7 @@ namespace ConduitLLM.Gateway.Services
                 };
                 
                 // Broadcast to webhook-specific group and all clients
-                var groupName = GetWebhookGroupName(webhookUrl);
+                var groupName = SignalRConstants.Groups.Webhook(webhookUrl);
                 await _hubContext.Clients.Group(groupName).SendAsync("CircuitBreakerStateChanged", stateChange);
                 await _hubContext.Clients.All.SendAsync("CircuitBreakerStateChanged", stateChange);
                 
@@ -318,21 +325,21 @@ namespace ConduitLLM.Gateway.Services
         {
             // This is now handled by the metrics service when available
             // Keep as fallback for when Redis is not available
-            _logger.LogDebug("Recording delivery attempt for {WebhookUrl} (fallback mode)", webhookUrl);
+            _logger.LogDebug("Recording delivery attempt for {WebhookUrl} (fallback mode)", LoggingSanitizer.S(webhookUrl));
         }
 
         public void RecordDeliverySuccess(string webhookUrl, long responseTimeMs)
         {
             // This is now handled by the metrics service when available
             // Keep as fallback for when Redis is not available
-            _logger.LogDebug("Recording delivery success for {WebhookUrl} (fallback mode)", webhookUrl);
+            _logger.LogDebug("Recording delivery success for {WebhookUrl} (fallback mode)", LoggingSanitizer.S(webhookUrl));
         }
 
         public void RecordDeliveryFailure(string webhookUrl, bool isPermanent)
         {
             // This is now handled by the metrics service when available
             // Keep as fallback for when Redis is not available
-            _logger.LogDebug("Recording delivery failure for {WebhookUrl} (fallback mode)", webhookUrl);
+            _logger.LogDebug("Recording delivery failure for {WebhookUrl} (fallback mode)", LoggingSanitizer.S(webhookUrl));
         }
 
         public async Task<WebhookStatistics> GetStatisticsAsync(string period = "last_hour")
@@ -378,10 +385,5 @@ namespace ConduitLLM.Gateway.Services
             return $"{taskId}_{webhookUrl.GetHashCode():X8}";
         }
 
-        private static string GetWebhookGroupName(string webhookUrl)
-        {
-            var uri = new Uri(webhookUrl);
-            return $"webhook-{uri.Host.Replace(".", "-")}-{uri.AbsolutePath.Replace("/", "-")}";
-        }
     }
 }

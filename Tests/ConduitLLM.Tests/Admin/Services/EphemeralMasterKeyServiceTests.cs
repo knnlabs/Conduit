@@ -170,43 +170,6 @@ namespace ConduitLLM.Tests.Admin.Services
         }
 
         [Fact]
-        public async Task ConsumeKeyAsync_ValidKey_ReturnsTrue()
-        {
-            // Arrange
-            var key = "emk_consume_key";
-            var keyData = new EphemeralMasterKeyData
-            {
-                Key = key,
-                CreatedAt = DateTimeOffset.UtcNow.AddMinutes(-1),
-                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(4),
-                IsConsumed = false,
-                IsValid = true
-            };
-
-            var json = JsonSerializer.Serialize(keyData);
-            var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-
-            _cacheMock.Setup(x => x.GetAsync($"ephemeral:master:{key}", default))
-                .ReturnsAsync(bytes);
-
-            _cacheMock.Setup(x => x.RemoveAsync(
-                It.IsAny<string>(),
-                default))
-                .Returns(Task.CompletedTask);
-
-            // Act
-            var result = await _service.ConsumeKeyAsync(key);
-
-            // Assert
-            Assert.True(result);
-
-            // Verify key was deleted
-            _cacheMock.Verify(x => x.RemoveAsync(
-                $"ephemeral:master:{key}",
-                default), Times.Once);
-        }
-
-        [Fact]
         public async Task KeyExistsAsync_ExistingKey_ReturnsTrue()
         {
             // Arrange
@@ -249,6 +212,60 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Assert
             Assert.False(result);
+        }
+
+        [Fact]
+        public async Task IsKeyValidAsync_ValidKey_DoesNotConsumeIt()
+        {
+            var key = "emk_validation_test";
+            var keyData = new EphemeralMasterKeyData
+            {
+                Key = key,
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+                IsConsumed = false,
+                IsValid = true
+            };
+            _cacheMock.Setup(cache => cache.GetAsync($"ephemeral:master:{key}", default))
+                .ReturnsAsync(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(keyData)));
+
+            var result = await _service.IsKeyValidAsync(key);
+
+            Assert.True(result);
+            _cacheMock.Verify(cache => cache.SetAsync(
+                It.IsAny<string>(),
+                It.IsAny<byte[]>(),
+                It.IsAny<DistributedCacheEntryOptions>(),
+                default), Times.Never);
+            _cacheMock.Verify(cache => cache.RemoveAsync(
+                It.IsAny<string>(), default), Times.Never);
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(true, true)]
+        public async Task IsKeyValidAsync_RejectsInvalidOrConsumedKey(bool isConsumed, bool isValid)
+        {
+            var key = "emk_validation_test";
+            var keyData = new EphemeralMasterKeyData
+            {
+                Key = key,
+                CreatedAt = DateTimeOffset.UtcNow,
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(5),
+                IsConsumed = isConsumed,
+                IsValid = isValid
+            };
+            _cacheMock.Setup(cache => cache.GetAsync($"ephemeral:master:{key}", default))
+                .ReturnsAsync(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(keyData)));
+
+            var result = await _service.IsKeyValidAsync(key);
+
+            Assert.False(result);
+            _cacheMock.Verify(cache => cache.SetAsync(
+                It.IsAny<string>(),
+                It.IsAny<byte[]>(),
+                It.IsAny<DistributedCacheEntryOptions>(),
+                default), Times.Never);
         }
 
         [Fact]

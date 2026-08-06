@@ -35,7 +35,7 @@ namespace ConduitLLM.Providers.MiniMax
                     };
                 }
                 
-                if (message.Role == "assistant" && message.ToolCalls != null && message.ToolCalls.Count() > 0)
+                if (message.Role == "assistant" && message.ToolCalls != null && message.ToolCalls.Any())
                 {
                     // MiniMax uses function_call format, convert from tool_calls
                     var firstToolCall = message.ToolCalls[0];
@@ -93,7 +93,7 @@ namespace ConduitLLM.Providers.MiniMax
 
         private List<MiniMaxTool>? ConvertTools(List<Tool>? tools)
         {
-            if (tools == null || tools.Count() == 0)
+            if (tools == null || !tools.Any())
                 return null;
 
             var miniMaxTools = new List<MiniMaxTool>();
@@ -114,7 +114,7 @@ namespace ConduitLLM.Providers.MiniMax
                 }
             }
 
-            return miniMaxTools.Count() > 0 ? miniMaxTools : null;
+            return miniMaxTools.Any() ? miniMaxTools : null;
         }
 
         private object? ConvertToolChoice(ToolChoice? toolChoice)
@@ -233,30 +233,6 @@ namespace ConduitLLM.Providers.MiniMax
                 "1080x1920" => "1080P", // Portrait Full HD
                 _ => "768P" // Default to 768P (HD)
             };
-        }
-
-        private static int ParseResolutionWidth(string? size)
-        {
-            if (string.IsNullOrEmpty(size))
-                return 1280;
-            
-            var parts = size.Split('x');
-            if (parts.Length == 2 && int.TryParse(parts[0], out var width))
-                return width;
-                
-            return 1280;
-        }
-
-        private static int ParseResolutionHeight(string? size)
-        {
-            if (string.IsNullOrEmpty(size))
-                return 720;
-            
-            var parts = size.Split('x');
-            if (parts.Length == 2 && int.TryParse(parts[1], out var height))
-                return height;
-                
-            return 720;
         }
     }
 }

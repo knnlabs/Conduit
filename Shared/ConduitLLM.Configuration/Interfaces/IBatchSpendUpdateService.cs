@@ -1,5 +1,18 @@
 namespace ConduitLLM.Configuration.Interfaces
 {
+    public enum SpendReservationSettlementStatus
+    {
+        Missing,
+        Settled,
+        AlreadySettled,
+        SettledOverEstimate,
+        Conflict
+    }
+
+    public sealed record SpendReservationSettlementResult(
+        SpendReservationSettlementStatus Status,
+        decimal ActualAmount);
+
     /// <summary>
     /// Interface for batch spend update service
     /// </summary>
@@ -16,8 +29,47 @@ namespace ConduitLLM.Configuration.Interfaces
         event Action<string[]>? SpendUpdatesCompleted;
 
         /// <summary>
-        /// Queues a spend update to be processed in the next batch
+        /// Queues a spend update to Redis for batch processing.
+        /// Throws on failure so the caller can fall back to alternative paths.
         /// </summary>
-        void QueueSpendUpdate(int virtualKeyId, decimal cost);
+        Task QueueSpendUpdateAsync(int virtualKeyId, decimal cost, DateTime? billedAtUtc = null);
+
+        /// <summary>
+        /// Gets spend that has not yet been reflected in the group's database balance,
+        /// including active reservations.
+        /// </summary>
+        Task<decimal> GetPendingSpendAsync(int virtualKeyId);
+
+        /// <summary>
+        /// Atomically reserves part of a virtual key group's available balance.
+        /// </summary>
+        Task<bool> TryReserveSpendAsync(int virtualKeyId, decimal amount, string reservationId);
+
+        /// <summary>
+        /// Moves a reservation into the invocation-started state. Started reservations
+        /// are not eligible for automatic expiry or ordinary release.
+        /// </summary>
+        Task<bool> MarkSpendReservationInvocationStartedAsync(int virtualKeyId, string reservationId);
+
+        /// <summary>
+        /// Atomically replaces a reservation with actual pending spend.
+        /// </summary>
+        Task<SpendReservationSettlementResult> SettleSpendReservationAsync(
+            int virtualKeyId,
+            string reservationId,
+            decimal actualAmount,
+            DateTime? billedAtUtc = null);
+
+        /// <summary>
+        /// Releases a previously-created spend reservation.
+        /// </summary>
+        Task ReleaseSpendReservationAsync(int virtualKeyId, string reservationId);
+
+        /// <summary>
+        /// Queues a spend update to an in-memory fallback queue.
+        /// Used as a last resort when both Redis and direct DB writes fail.
+        /// Updates are drained on the next successful flush cycle.
+        /// </summary>
+        void QueueFallbackUpdate(int virtualKeyId, decimal cost, DateTime? billedAtUtc = null);
     }
 }

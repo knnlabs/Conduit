@@ -2,6 +2,8 @@
  * Media download utilities for handling various media download scenarios
  */
 
+import { downloadBlob } from '@/lib/utils/export';
+
 /**
  * Options for downloading media
  */
@@ -63,24 +65,7 @@ export async function createBlobFromUrl(url: string): Promise<Blob> {
  * @param filename - Name for the downloaded file
  */
 export function triggerDownload(blob: Blob, filename: string): void {
-  const blobUrl = URL.createObjectURL(blob);
-  
-  try {
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
-    link.style.display = 'none';
-    
-    // Add to DOM, click, and remove
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  } finally {
-    // Clean up the blob URL after a short delay to ensure download starts
-    setTimeout(() => {
-      URL.revokeObjectURL(blobUrl);
-    }, 100);
-  }
+  downloadBlob(blob, filename);
 }
 
 /**
@@ -163,21 +148,6 @@ export function getMimeTypeFromFilename(filename: string): string {
   };
   
   return mimeTypes[extension ?? ''] ?? 'application/octet-stream';
-}
-
-/**
- * Formats file size in human-readable format
- * @param bytes - Size in bytes
- * @returns Formatted string
- */
-export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const k = 1024;
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${units[i]}`;
 }
 
 /**

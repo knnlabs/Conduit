@@ -1,3 +1,7 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+
 namespace ConduitLLM.Core.Events
 {
     // ===============================
@@ -28,7 +32,9 @@ namespace ConduitLLM.Core.Events
         /// <summary>
         /// The image generation request details
         /// </summary>
-        public ImageGenerationRequest Request { get; init; } = new();
+        [JsonConverter(typeof(ImageGenerationEventRequestConverter))]
+        public ConduitLLM.Core.Models.ImageGenerationRequest Request { get; init; } =
+            new() { Prompt = string.Empty };
         
         /// <summary>
         /// User identifier for tracking and logging
@@ -249,74 +255,40 @@ namespace ConduitLLM.Core.Events
         public Dictionary<string, object> Metadata { get; init; } = new();
     }
 
-    /// <summary>
-    /// Image generation request structure
-    /// </summary>
-    public record ImageGenerationRequest
+}
+
+/// <summary>
+/// Reads the nested extensionData property used by the removed event-specific
+/// request copy, while writing the canonical API request shape.
+/// </summary>
+internal sealed class ImageGenerationEventRequestConverter
+    : JsonConverter<ConduitLLM.Core.Models.ImageGenerationRequest>
+{
+    public override ConduitLLM.Core.Models.ImageGenerationRequest? Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options)
     {
-        /// <summary>
-        /// The prompt to generate images from
-        /// </summary>
-        public string Prompt { get; init; } = string.Empty;
-        
-        /// <summary>
-        /// Model to use for generation
-        /// </summary>
-        public string? Model { get; init; }
-        
-        /// <summary>
-        /// Number of images to generate (1-10)
-        /// </summary>
-        public int N { get; init; } = 1;
-        
-        /// <summary>
-        /// Image size (e.g., "1024x1024", "1792x1024")
-        /// </summary>
-        public string? Size { get; init; }
-        
-        /// <summary>
-        /// Quality setting (standard, hd)
-        /// </summary>
-        public string? Quality { get; init; }
-        
-        /// <summary>
-        /// Style setting (vivid, natural)
-        /// </summary>
-        public string? Style { get; init; }
-        
-        /// <summary>
-        /// Response format (url, b64_json)
-        /// </summary>
-        public string? ResponseFormat { get; init; }
-        
-        /// <summary>
-        /// User identifier for tracking
-        /// </summary>
-        public string? User { get; init; }
-        
-        /// <summary>
-        /// Base64-encoded image to use as input for image-to-image generation.
-        /// When provided, the prompt will be used to modify or enhance this image.
-        /// </summary>
-        public string? Image { get; init; }
-        
-        /// <summary>
-        /// Base64-encoded mask image for image editing (PNG with transparency).
-        /// Only the transparent areas will be edited when both image and mask are provided.
-        /// </summary>
-        public string? Mask { get; init; }
-        
-        /// <summary>
-        /// The operation type for image generation.
-        /// - "generate": Standard text-to-image generation (default)
-        /// - "edit": Edit existing image using prompt and optional mask
-        /// - "variation": Create variations of existing image
-        /// </summary>
-        public string Operation { get; init; } = "generate";
-        
-        /// <summary>
-        /// Additional model-specific parameters that are passed through to the provider API.
-        /// </summary>
-        public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; init; }
+        var requestObject = JsonNode.Parse(ref reader)?.AsObject()
+            ?? throw new JsonException("Expected an image generation request object.");
+        var legacyProperty = requestObject.FirstOrDefault(property =>
+            property.Key.Equals("extensionData", StringComparison.OrdinalIgnoreCase));
+
+        if (legacyProperty.Value is JsonObject legacyExtensionData)
+        {
+            requestObject.Remove(legacyProperty.Key);
+            foreach (var (key, value) in legacyExtensionData.ToList())
+            {
+                requestObject[key] = value?.DeepClone();
+            }
+        }
+
+        return requestObject.Deserialize<ConduitLLM.Core.Models.ImageGenerationRequest>(options);
     }
+
+    public override void Write(
+        Utf8JsonWriter writer,
+        ConduitLLM.Core.Models.ImageGenerationRequest value,
+        JsonSerializerOptions options)
+        => JsonSerializer.Serialize(writer, value, options);
 }

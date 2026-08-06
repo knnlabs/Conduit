@@ -1,0 +1,750 @@
+{
+  "id": null,
+  "uid": "conduit-prompt-caching",
+  "title": "Prompt Caching Analytics",
+  "tags": ["conduit", "caching", "cost-savings"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "provider",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(conduit_prompt_cache_events_total, provider)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "model",
+        "type": "query",
+        "datasource": {"type": "prometheus", "uid": "prometheus"},
+        "query": "label_values(conduit_prompt_cache_events_total{provider=~\"$provider\"}, alias)",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 100,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 0},
+      "type": "row",
+      "title": "Cost Savings Overview",
+      "collapsed": false
+    },
+    {
+      "id": 1,
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 2},
+      "type": "stat",
+      "title": "Net Cache Savings (24h)",
+      "description": "Estimated cache-read savings less cache-write premiums in the last 24 hours",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[24h])) - sum(increase(conduit_prompt_caching_write_premium_dollars{provider=~\"$provider\", model=~\"$model\"}[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 0.01},
+              {"color": "green", "value": 1}
+            ]
+          },
+          "unit": "currencyUSD",
+          "decimals": 2
+        }
+      },
+      "options": {
+        "graphMode": "area",
+        "colorMode": "background",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 2,
+      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 2},
+      "type": "gauge",
+      "title": "Cache Hit Rate",
+      "description": "Percentage of requests that returned cached tokens. Target: 60-80%+",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[5m])) / sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"read|eligible_miss\"}[5m])) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 20},
+              {"color": "yellow", "value": 50},
+              {"color": "green", "value": 70}
+            ]
+          },
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "decimals": 1
+        }
+      },
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true,
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 3,
+      "gridPos": {"h": 5, "w": 6, "x": 12, "y": 2},
+      "type": "stat",
+      "title": "Cached Tokens (24h)",
+      "description": "Total cached input tokens read from cache in the last 24 hours",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_input\"}[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "blue", "value": null},
+              {"color": "green", "value": 100000}
+            ]
+          },
+          "unit": "short",
+          "decimals": 0
+        }
+      },
+      "options": {
+        "graphMode": "area",
+        "colorMode": "background",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 4,
+      "gridPos": {"h": 5, "w": 6, "x": 18, "y": 2},
+      "type": "stat",
+      "title": "Cache Write/Read Ratio",
+      "description": "Ratio of cache writes to reads. Lower is better. Anthropic breakeven is ~1.4 reads per write.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_write\"}[5m])) / sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_input\"}[5m]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 0.5},
+              {"color": "orange", "value": 1},
+              {"color": "red", "value": 2}
+            ]
+          },
+          "unit": "none",
+          "decimals": 2
+        }
+      },
+      "options": {
+        "graphMode": "none",
+        "colorMode": "background",
+        "textMode": "auto",
+        "reduceOptions": {
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 101,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 7},
+      "type": "row",
+      "title": "Token Breakdown Over Time",
+      "collapsed": false
+    },
+    {
+      "id": 5,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 9},
+      "type": "timeseries",
+      "title": "Token Distribution by Type",
+      "description": "Stacked view of all token types over time. Growing 'cached_input' area indicates effective caching.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"prompt\"}[5m]))",
+          "legendFormat": "Fresh Input",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_input\"}[5m]))",
+          "legendFormat": "Cached Input (reads)",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_write\"}[5m]))",
+          "legendFormat": "Cache Writes",
+          "refId": "C"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"completion\"}[5m]))",
+          "legendFormat": "Completion",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "tokens/sec",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 30,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "normal"},
+            "thresholdsStyle": {"mode": "off"}
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Cached Input (reads)"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Cache Writes"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Fresh Input"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "blue", "mode": "fixed"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Completion"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "purple", "mode": "fixed"}}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": ["mean", "lastNotNull"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 9},
+      "type": "timeseries",
+      "title": "Cache Hit Rate Trend",
+      "description": "Percentage of caching-eligible requests that received cached tokens over time. Drops may indicate prompt structure changes or TTL expiry.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[5m])) / sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"read|eligible_miss\"}[5m])) * 100",
+          "legendFormat": "Hit Rate %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "custom": {
+            "axisLabel": "Hit Rate %",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "scheme",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"},
+            "thresholdsStyle": {"mode": "area"}
+          },
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "orange", "value": 20},
+              {"color": "yellow", "value": 50},
+              {"color": "green", "value": 70}
+            ]
+          }
+        }
+      },
+      "options": {
+        "legend": {
+          "calcs": ["mean", "min", "max"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 102,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 17},
+      "type": "row",
+      "title": "Cost Analysis",
+      "collapsed": false
+    },
+    {
+      "id": 7,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 19},
+      "type": "timeseries",
+      "title": "Cache Economics Over Time",
+      "description": "Cache-read savings and cache-write premiums in dollars per minute.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[5m])) * 60",
+          "legendFormat": "Savings ($/min)",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_caching_write_premium_dollars{provider=~\"$provider\", model=~\"$model\"}[5m])) * -60",
+          "legendFormat": "Write premium ($/min)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"fixedColor": "green", "mode": "fixed"},
+          "custom": {
+            "axisLabel": "$/min",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "scheme",
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"},
+            "thresholdsStyle": {"mode": "off"}
+          },
+          "unit": "currencyUSD",
+          "decimals": 4
+        }
+      },
+      "options": {
+        "legend": {
+          "calcs": ["mean", "sum"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 19},
+      "type": "table",
+      "title": "Cache Effectiveness by Model",
+      "description": "Per-model breakdown of caching performance: hit rate, total cached tokens, and savings.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[24h])) by (alias)",
+          "legendFormat": "{{model}}",
+          "refId": "hits",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"read|eligible_miss\"}[24h])) by (alias)",
+          "legendFormat": "{{model}}",
+          "refId": "total",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_input\"}[24h])) by (model)",
+          "legendFormat": "{{model}}",
+          "refId": "cached_tokens",
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(increase(conduit_prompt_caching_savings_dollars{provider=~\"$provider\", model=~\"$model\"}[24h])) by (model) - sum(increase(conduit_prompt_caching_write_premium_dollars{provider=~\"$provider\", model=~\"$model\"}[24h])) by (model)",
+          "legendFormat": "{{model}}",
+          "refId": "savings",
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {"type": "auto"},
+            "filterable": true,
+            "inspect": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Value #savings"},
+            "properties": [
+              {"id": "unit", "value": "currencyUSD"},
+              {"id": "decimals", "value": 4},
+              {"id": "displayName", "value": "Savings ($)"}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Value #hits"},
+            "properties": [
+              {"id": "displayName", "value": "Cache Hits"}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Value #total"},
+            "properties": [
+              {"id": "displayName", "value": "Total Requests"}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Value #cached_tokens"},
+            "properties": [
+              {"id": "displayName", "value": "Cached Tokens"},
+              {"id": "unit", "value": "short"}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Time"},
+            "properties": [
+              {"id": "custom.hidden", "value": true}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {"displayName": "Savings ($)", "desc": true}
+        ]
+      },
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 103,
+      "gridPos": {"h": 2, "w": 24, "x": 0, "y": 27},
+      "type": "row",
+      "title": "Operational Health",
+      "collapsed": false
+    },
+    {
+      "id": 9,
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 29},
+      "type": "timeseries",
+      "title": "Cache Status by Request",
+      "description": "Request rate by provider-reported hit, cache write, eligible miss, and unknown/unsupported status.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"read\"}[5m]))",
+          "legendFormat": "Hit",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"eligible_miss\"}[5m]))",
+          "legendFormat": "Eligible miss",
+          "refId": "B"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=\"write\"}[5m]))",
+          "legendFormat": "Cache write",
+          "refId": "C"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_cache_events_total{provider=~\"$provider\", alias=~\"$model\", event=~\"unknown|unsupported\"}[5m]))",
+          "legendFormat": "Unknown / unsupported",
+          "refId": "D"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "req/sec",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "normal"},
+            "thresholdsStyle": {"mode": "off"}
+          },
+          "unit": "reqps"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Hit"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Miss (write)"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Disabled"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "semi-dark-blue", "mode": "fixed"}}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": ["mean"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 29},
+      "type": "timeseries",
+      "title": "Cache Write vs Read Tokens",
+      "description": "Token rates for cache writes (new entries) vs reads (cache hits). Healthy: reads >> writes.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_input\"}[5m]))",
+          "legendFormat": "Cache Reads",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_model_tokens_total{provider=~\"$provider\", model=~\"$model\", token_type=\"cached_write\"}[5m]))",
+          "legendFormat": "Cache Writes",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "tokens/sec",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"},
+            "thresholdsStyle": {"mode": "off"}
+          },
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Cache Reads"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Cache Writes"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "orange", "mode": "fixed"}}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": ["mean", "sum"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 29},
+      "type": "timeseries",
+      "title": "Cache Injection Results",
+      "description": "Rate of cache_control directive injections by the PromptCachingLLMClient decorator. Errors indicate config/deserialization issues.",
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_caching_injections_total{model=~\"$model\", result=\"success\"}[5m]))",
+          "legendFormat": "Injections (success)",
+          "refId": "A"
+        },
+        {
+          "datasource": {"type": "prometheus", "uid": "prometheus"},
+          "expr": "sum(rate(conduit_prompt_caching_injections_total{model=~\"$model\", result=\"error\"}[5m]))",
+          "legendFormat": "Injections (error)",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {
+            "axisLabel": "ops/sec",
+            "axisPlacement": "auto",
+            "drawStyle": "line",
+            "fillOpacity": 15,
+            "gradientMode": "none",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {"type": "linear"},
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {"group": "A", "mode": "none"},
+            "thresholdsStyle": {"mode": "off"}
+          },
+          "unit": "ops"
+        },
+        "overrides": [
+          {
+            "matcher": {"id": "byName", "options": "Injections (success)"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "green", "mode": "fixed"}}
+            ]
+          },
+          {
+            "matcher": {"id": "byName", "options": "Injections (error)"},
+            "properties": [
+              {"id": "color", "value": {"fixedColor": "red", "mode": "fixed"}}
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "calcs": ["mean"],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    }
+  ]
+}

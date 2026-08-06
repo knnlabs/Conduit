@@ -1,4 +1,4 @@
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 
@@ -8,7 +8,7 @@ namespace ConduitLLM.Gateway.EventHandlers
     /// Base class for event handlers that support batch cache invalidation
     /// </summary>
     /// <typeparam name="TEvent">The type of domain event to handle</typeparam>
-    public abstract class BatchInvalidationEventHandler<TEvent> : IConsumer<TEvent> 
+    public abstract class BatchInvalidationEventHandler<TEvent> : IEventHandler<TEvent>
         where TEvent : class
     {
         private readonly IBatchCacheInvalidationService _batchService;
@@ -28,44 +28,34 @@ namespace ConduitLLM.Gateway.EventHandlers
         /// <summary>
         /// Consumes the event and queues invalidation requests
         /// </summary>
-        public async Task Consume(ConsumeContext<TEvent> context)
+        public async Task HandleAsync(TEvent message, IEventContext context)
         {
-            try
+            var requests = ExtractInvalidationRequests(message);
+
+            if (requests.Any())
             {
-                var requests = ExtractInvalidationRequests(context.Message);
-                
-                if (requests.Count() > 0)
+                // Group by cache type for efficient processing
+                var groupedRequests = requests.GroupBy(r => GetCacheType(r));
+
+                foreach (var group in groupedRequests)
                 {
-                    // Group by cache type for efficient processing
-                    var groupedRequests = requests.GroupBy(r => GetCacheType(r));
-                    
-                    foreach (var group in groupedRequests)
+                    var cacheType = group.Key;
+                    var keys = group.Select(r => r.EntityId).ToArray();
+
+                    // Queue bulk invalidation for this cache type
+                    if (message is DomainEvent domainEvent)
                     {
-                        var cacheType = group.Key;
-                        var keys = group.Select(r => r.EntityId).ToArray();
-                        
-                        // Queue bulk invalidation for this cache type
-                        if (context.Message is DomainEvent domainEvent)
-                        {
-                            await _batchService.QueueBulkInvalidationAsync(
-                                keys, 
-                                domainEvent, 
-                                cacheType);
-                        }
+                        await _batchService.QueueBulkInvalidationAsync(
+                            keys,
+                            domainEvent,
+                            cacheType);
                     }
-                    
-                    _logger.LogDebug(
-                        "Enqueued {Count} cache invalidation requests from {EventType}",
-                        requests.Count(),
-                        nameof(TEvent));
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Failed to process cache invalidation for {EventType}",
+
+                _logger.LogDebug(
+                    "Enqueued {Count} cache invalidation requests from {EventType}",
+                    requests.Count(),
                     nameof(TEvent));
-                throw; // Let MassTransit handle retry
             }
         }
 
@@ -109,17 +99,17 @@ namespace ConduitLLM.Gateway.EventHandlers
                 // Critical - Security/billing related
                 VirtualKeyDeleted => InvalidationPriority.Critical,
                 SpendThresholdExceeded => InvalidationPriority.Critical,
-                
+
                 // High - Affects active operations
                 VirtualKeyUpdated e when e.ChangedProperties.Contains("IsEnabled") => InvalidationPriority.High,
                 VirtualKeyUpdated e when e.ChangedProperties.Contains("MaxBudget") => InvalidationPriority.High,
                 SpendUpdated => InvalidationPriority.High,
-                
+
                 // Normal - Regular updates
                 ModelCostChanged => InvalidationPriority.Normal,
                 VirtualKeyCreated => InvalidationPriority.Normal,
                 VirtualKeyUpdated => InvalidationPriority.Normal,
-                
+
                 // Default
                 _ => InvalidationPriority.Normal
             };

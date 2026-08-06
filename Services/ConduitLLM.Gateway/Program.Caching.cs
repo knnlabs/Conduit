@@ -3,8 +3,8 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Gateway.Services;
 using StackExchange.Redis;
-using MassTransit;
 using ConduitLLM.Core.Extensions;
+using ConduitLLM.Core.Services;
 
 public partial class Program
 {
@@ -20,25 +20,9 @@ public partial class Program
         // Virtual Key service registration will be done after Redis configuration
 
         // Configure Redis connection for all Redis-dependent services
-        // Check for REDIS_URL first, then fall back to CONDUIT_REDIS_CONNECTION_STRING
-        var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
-        var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+        var redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ResolveConnectionString();
 
-        if (!string.IsNullOrEmpty(redisUrl))
-        {
-            try
-            {
-                redisConnectionString = ConduitLLM.Configuration.Utilities.RedisUrlParser.ParseRedisUrl(redisUrl);
-            }
-            catch
-            {
-                // Failed to parse REDIS_URL, will use legacy connection string if available
-                // Validation will be logged during startup after logger is available
-            }
-        }
-
-        // Configure CacheOptions with the parsed Redis connection string
-        // This ensures SignalRAcknowledgmentService and other services can access it
+        // Configure CacheOptions with the parsed Redis connection string for cache services.
         builder.Services.Configure<ConduitLLM.Configuration.Options.CacheOptions>(options =>
         {
             if (!string.IsNullOrEmpty(redisConnectionString))
@@ -52,20 +36,15 @@ public partial class Program
         // Configure Redis connection multiplexer FIRST (shared across all Redis services)
         if (!string.IsNullOrEmpty(redisConnectionString))
         {
-            Console.WriteLine($"[Conduit] Redis connection string configured: {redisConnectionString}");
-
             // Register Redis connection factory for proper connection pooling
             builder.Services.AddSingleton<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
 
             // Use Redis-cached Virtual Key service for high-performance validation
             builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
             {
-                Console.WriteLine("[Conduit] Creating Redis connection during service registration...");
                 var factory = sp.GetRequiredService<ConduitLLM.Configuration.Services.RedisConnectionFactory>();
                 var connectionTask = factory.GetConnectionAsync(redisConnectionString);
-                Console.WriteLine("[Conduit] Waiting for Redis connection to complete...");
                 var connection = connectionTask.GetAwaiter().GetResult();
-                Console.WriteLine("[Conduit] Redis connection established successfully");
                 return connection;
             });
 
@@ -77,13 +56,11 @@ public partial class Program
                 options.Configuration = redisConnectionString;
                 options.InstanceName = "conduit-tasks:";
             });
-            Console.WriteLine("[Conduit] Configured Redis distributed cache for async task storage");
         }
         else
         {
             // Fall back to in-memory distributed cache
             builder.Services.AddDistributedMemoryCache();
-            Console.WriteLine("[Conduit] Using in-memory distributed cache for async task storage (development mode)");
         }
 
         // Register Virtual Key service with optional Redis caching
@@ -92,16 +69,18 @@ public partial class Program
             // IConnectionMultiplexer and RedisConnectionFactory are already registered above
 
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IVirtualKeyCache, RedisVirtualKeyCache>();
-            
-            // Register additional Redis cache services
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderCache, RedisProviderCache>();
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IGlobalSettingCache, RedisGlobalSettingCache>();
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IModelCostCache, RedisModelCostCache>();
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IIpFilterCache, RedisIpFilterCache>();
-            
+
             // Register distributed lock service - prefer PostgreSQL for better consistency
             // PostgreSQL advisory locks are more reliable for cache warming coordination
-            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, PostgresDistributedLockService>();
+
+            // Register cache stampede prevention service (must be registered before caches that depend on it)
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedCachePopulator, DistributedCachePopulator>();
+
+            // Register additional Redis cache services
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderCache, RedisProviderCache>();
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IModelCostCache, RedisModelCostCache>();
+            builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IProviderToolCache, RedisProviderToolCache>();
             
             // Register CachedApiVirtualKeyService with event publishing dependency
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>
@@ -110,24 +89,28 @@ public partial class Program
                 var spendHistoryRepository = serviceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
                 var groupRepository = serviceProvider.GetRequiredService<IVirtualKeyGroupRepository>();
                 var cache = serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyCache>();
-                var publishEndpoint = serviceProvider.GetService<IPublishEndpoint>(); // Optional
+                var eventBus = serviceProvider.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
                 var logger = serviceProvider.GetRequiredService<ILogger<CachedApiVirtualKeyService>>();
-                
-                return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, publishEndpoint, logger);
+
+                return new CachedApiVirtualKeyService(virtualKeyRepository, spendHistoryRepository, groupRepository, cache, eventBus, logger);
             });
-            
-            Console.WriteLine("[Conduit] Using Redis-cached services (high-performance mode) with PostgreSQL distributed locking");
-            Console.WriteLine("[Conduit] Enabled caches: VirtualKey, Provider, GlobalSetting, ModelCost, IpFilter");
         }
         else
         {
             // Fall back to direct database Virtual Key service
-            builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService, ConduitLLM.Gateway.Services.ApiVirtualKeyService>();
-            
+            builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(sp =>
+            {
+                var virtualKeyRepository = sp.GetRequiredService<IVirtualKeyRepository>();
+                var groupRepository = sp.GetRequiredService<IVirtualKeyGroupRepository>();
+                var spendHistoryRepository = sp.GetRequiredService<IVirtualKeySpendHistoryRepository>();
+                var eventBus = sp.GetService<ConduitLLM.Configuration.Messaging.IEventBus>(); // Optional
+                var logger = sp.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.DirectApiVirtualKeyService>>();
+                return new ConduitLLM.Gateway.Services.DirectApiVirtualKeyService(
+                    virtualKeyRepository, groupRepository, spendHistoryRepository, eventBus, logger);
+            });
+
             // Register PostgreSQL distributed lock service (works even without Redis)
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
-            
-            Console.WriteLine("[Conduit] Using direct database Virtual Key validation (fallback mode) with PostgreSQL distributed locking");
         }
 
         // Register Webhook Delivery Tracker for deduplication and statistics
@@ -148,8 +131,6 @@ public partial class Program
                 
                 return new ConduitLLM.Core.Services.CachedWebhookDeliveryTracker(redisTracker, memoryCache, logger);
             });
-            
-            Console.WriteLine("[Conduit] Webhook delivery tracking configured with Redis backend and in-memory cache");
         }
         else
         {
@@ -158,8 +139,8 @@ public partial class Program
             {
                 var logger = sp.GetRequiredService<ILogger<Program>>();
                 logger.LogWarning("No Redis connection configured. Webhook delivery tracking and deduplication will not be available.");
-                // Return a simple no-op implementation
-                return new ConduitLLM.Gateway.Services.NoOpWebhookDeliveryTracker();
+                var noOpLogger = sp.GetRequiredService<ILogger<ConduitLLM.Gateway.Services.NoOpWebhookDeliveryTracker>>();
+                return new ConduitLLM.Gateway.Services.NoOpWebhookDeliveryTracker(noOpLogger);
             });
         }
     }

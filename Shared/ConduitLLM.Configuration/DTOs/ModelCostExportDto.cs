@@ -14,6 +14,8 @@ namespace ConduitLLM.Configuration.DTOs
         public decimal? BatchProcessingMultiplier { get; set; }
         public bool SupportsBatchProcessing { get; set; }
         public decimal? CostPerSearchUnit { get; set; }
+        public decimal? AudioCostPerMinute { get; set; }
+        public decimal? AudioCostPerThousandCharacters { get; set; }
         public decimal? CachedInputCostPerMillionTokens { get; set; }
         public decimal? CachedInputWriteCostPerMillionTokens { get; set; }
     }

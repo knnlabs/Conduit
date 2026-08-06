@@ -87,6 +87,8 @@ public class MultiServerSignalRHostFactory : IAsyncDisposable
                             {
                                 options.Configuration.ChannelPrefix = RedisChannel.Literal("test_signalr:");
                                 options.Configuration.DefaultDatabase = 3; // Test database
+                                options.Configuration.AbortOnConnectFail = false;
+                                options.Configuration.ReconnectRetryPolicy = new LinearRetry(500);
                             });
                         }
 

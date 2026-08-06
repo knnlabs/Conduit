@@ -1,6 +1,6 @@
 using ConduitLLM.Admin.Models.ModelSeries;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Models.ModelSeries
 {
@@ -34,7 +34,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "GPT-4",
                 Description = "Fourth generation GPT models",
                 TokenizerType = TokenizerType.Cl100KBase,
-                Parameters = "{\"contextLength\":128000}"
+                Parameters = ParseParameters("{\"contextLength\":128000}")
             };
 
             // Assert
@@ -42,7 +42,8 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
             dto.Name.Should().Be("GPT-4");
             dto.Description.Should().Be("Fourth generation GPT models");
             dto.TokenizerType.Should().Be(TokenizerType.Cl100KBase);
-            dto.Parameters.Should().Be("{\"contextLength\":128000}");
+            dto.Parameters.Should().ContainKey("contextLength")
+                .WhoseValue.GetInt32().Should().Be(128000);
         }
 
         [Theory]
@@ -137,7 +138,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 AuthorName = null, // Inconsistent - have ID but no name loaded
                 Name = "Test Series",
                 TokenizerType = TokenizerType.BPE,
-                Parameters = "{}"
+                Parameters = ParseParameters("{}")
             };
 
             // Act & Assert
@@ -151,13 +152,9 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
         }
 
         [Theory]
-        [InlineData("{}")]
-        [InlineData("[]")]
-        [InlineData("null")]
         [InlineData("{\"key\":\"value\"}")]
-        [InlineData("not-json-at-all")]
-        [InlineData("{'single':'quotes'}")]
-        public void ModelSeriesDto_Should_Accept_Any_String_As_Parameters(string parameters)
+        [InlineData("{\"nested\":{\"enabled\":true}}")]
+        public void ModelSeriesDto_Should_Accept_Json_Objects_As_Parameters(string parameters)
         {
             // Arrange & Act
             var dto = new ModelSeriesDto
@@ -166,12 +163,11 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 AuthorId = 1,
                 Name = "Test",
                 TokenizerType = TokenizerType.BPE,
-                Parameters = parameters
+                Parameters = ParseParameters(parameters)
             };
 
             // Assert
-            // DTO accepts any string, JSON validation happens at business layer
-            dto.Parameters.Should().Be(parameters);
+            dto.Parameters.Should().NotBeNull();
         }
 
         [Fact]
@@ -242,8 +238,8 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
             dto.Parameters.Should().BeNull("Default should be null, not empty string");
             
             // Controller would typically convert null to "{}"
-            var effectiveParams = dto.Parameters ?? "{}";
-            effectiveParams.Should().Be("{}");
+            var effectiveParams = dto.Parameters ?? [];
+            effectiveParams.Should().BeEmpty();
         }
 
         [Theory]
@@ -263,7 +259,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 AuthorId = 1,
                 Name = seriesName,
                 TokenizerType = TokenizerType.BPE,
-                Parameters = "{}"
+                Parameters = ParseParameters("{}")
             };
 
             // Assert
@@ -283,7 +279,7 @@ namespace ConduitLLM.Tests.Admin.Models.ModelSeries
                 Name = "Test",
                 Description = longDescription,
                 TokenizerType = TokenizerType.BPE,
-                Parameters = "{}"
+                Parameters = ParseParameters("{}")
             };
 
             // Act & Assert

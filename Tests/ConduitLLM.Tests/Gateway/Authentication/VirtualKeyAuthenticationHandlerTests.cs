@@ -8,8 +8,10 @@ using Moq;
 using Xunit.Abstractions;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Authentication;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Security.Options;
 
 namespace ConduitLLM.Tests.Http.Authentication
 {
@@ -45,7 +47,8 @@ namespace ConduitLLM.Tests.Http.Authentication
                 _loggerFactoryMock.Object,
                 UrlEncoder.Default,
                 _virtualKeyServiceMock.Object,
-                _ephemeralKeyServiceMock.Object);
+                _ephemeralKeyServiceMock.Object,
+                Options.Create(new GatewaySecurityOptions()));
 
             _httpContext = new DefaultHttpContext();
         }
@@ -61,7 +64,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.Path = "/v1/chat/completions";
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -97,7 +100,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.Path = "/v1/models";
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -139,7 +142,10 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.Path = "/v1/chat/completions";
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync((VirtualKey?)null);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Failure(
+                    VirtualKeyValidationFailureCodes.KeyNotFound,
+                    401,
+                    "Virtual key was not found."));
 
             await InitializeHandler();
 
@@ -161,11 +167,11 @@ namespace ConduitLLM.Tests.Http.Authentication
             var keyValue = "condt_zerobalance";
             
             _httpContext.Request.Headers["Authorization"] = $"Bearer {keyValue}";
-            _httpContext.Request.Path = "/v1/models/gpt-4/metadata";
+            _httpContext.Request.Path = "/v1/conduit/models/gpt-4/metadata";
             
             // ValidateVirtualKeyForAuthenticationAsync should succeed even with $0.00 balance
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -204,8 +210,7 @@ namespace ConduitLLM.Tests.Http.Authentication
         [InlineData("/health")]
         [InlineData("/health/ready")]
         [InlineData("/health/live")]
-        [InlineData("/metrics")]
-        [InlineData("/v1/media/public")]
+        [InlineData("/v1/conduit/media/public")]
         public async Task HandleAuthenticateAsync_WithExcludedPaths_SkipsAuthentication(string path)
         {
             // Arrange
@@ -224,6 +229,28 @@ namespace ConduitLLM.Tests.Http.Authentication
         }
 
         [Fact]
+        public async Task HandleAuthenticateAsync_WithMetricsPath_AuthenticatesVirtualKey()
+        {
+            var virtualKey = CreateValidVirtualKey();
+            var keyValue = "condt_metrics";
+
+            _httpContext.Request.Headers["Authorization"] = $"Bearer {keyValue}";
+            _httpContext.Request.Path = "/metrics";
+            _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
+
+            await InitializeHandler();
+
+            var result = await _handler.AuthenticateAsync();
+
+            Assert.True(result.Succeeded);
+            Assert.True(result.Principal.Identity.IsAuthenticated);
+            _virtualKeyServiceMock.Verify(
+                s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null),
+                Times.Once);
+        }
+
+        [Fact]
         public async Task HandleAuthenticateAsync_WithSignalRConnection_ExtractsFromQueryString()
         {
             // Arrange
@@ -234,7 +261,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             _httpContext.Request.QueryString = new QueryString($"?access_token={keyValue}");
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(keyValue, null))
-                .ReturnsAsync(virtualKey);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKey));
 
             await InitializeHandler();
 
@@ -281,7 +308,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             var virtualKeyEntity = CreateValidVirtualKey();
             
             _httpContext.Request.Headers["Authorization"] = $"Bearer {ephemeralKey}";
-            _httpContext.Request.Path = "/v1/media/upload";
+            _httpContext.Request.Path = "/v1/conduit/media/upload";
             
             var keyData = new ConduitLLM.Gateway.Models.EphemeralKeyData
             {
@@ -297,7 +324,7 @@ namespace ConduitLLM.Tests.Http.Authentication
                 .ReturnsAsync(actualVirtualKey);
             
             _virtualKeyServiceMock.Setup(s => s.ValidateVirtualKeyForAuthenticationAsync(actualVirtualKey, null))
-                .ReturnsAsync(virtualKeyEntity);
+                .ReturnsAsync(VirtualKeyValidationOutcome.Success(virtualKeyEntity));
 
             await InitializeHandler();
 
@@ -327,7 +354,7 @@ namespace ConduitLLM.Tests.Http.Authentication
             var ephemeralKey = "ek_expired";
             
             _httpContext.Request.Headers["Authorization"] = $"Bearer {ephemeralKey}";
-            _httpContext.Request.Path = "/v1/media/upload";
+            _httpContext.Request.Path = "/v1/conduit/media/upload";
             
             var keyData = new ConduitLLM.Gateway.Models.EphemeralKeyData
             {

@@ -1,23 +1,21 @@
+using System.Text.Json.Serialization;
+using ConduitLLM.Core.Models;
+
 namespace ConduitLLM.Admin.Models
 {
     /// <summary>
     /// Response model for ephemeral master key generation
     /// </summary>
-    public class EphemeralMasterKeyResponse
+    public class EphemeralMasterKeyResponse : EphemeralKeyResponseBase
     {
         /// <summary>
         /// The generated ephemeral master key token
         /// </summary>
-        public string EphemeralMasterKey { get; set; } = string.Empty;
-
-        /// <summary>
-        /// When the key expires
-        /// </summary>
-        public DateTimeOffset ExpiresAt { get; set; }
-
-        /// <summary>
-        /// Number of seconds until the key expires
-        /// </summary>
-        public int ExpiresInSeconds { get; set; }
+        [JsonPropertyName("ephemeralMasterKey")]
+        public string EphemeralMasterKey
+        {
+            get => Token;
+            set => Token = value;
+        }
     }
 }

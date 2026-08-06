@@ -1,3 +1,4 @@
+using ConduitLLM.Gateway.Utilities;
 using Microsoft.AspNetCore.SignalR;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
@@ -111,56 +112,71 @@ namespace ConduitLLM.Gateway.Hubs
         public async Task TaskStarted(string taskId, string taskType, object metadata)
         {
             int? virtualKeyId = null;
-            
+
             // Handle both TaskMetadata and IDictionary formats
             if (metadata is TaskMetadata taskMetadata)
             {
                 virtualKeyId = taskMetadata.VirtualKeyId;
             }
-            else if (metadata is IDictionary<string, object> metadataDict && 
+            else if (metadata is IDictionary<string, object> metadataDict &&
                 metadataDict.TryGetValue("virtualKeyId", out var virtualKeyIdObj))
             {
-                virtualKeyId = TaskHub.ConvertToInt(virtualKeyIdObj);
+                virtualKeyId = HubContextHelpers.ConvertToInt(virtualKeyIdObj);
             }
-            
+
             if (virtualKeyId.HasValue)
             {
+                Logger.LogInformation("Task {TaskId} started: type={TaskType}, virtualKey={VirtualKeyId}",
+                    taskId, taskType, virtualKeyId);
+
                 // Notify specific task subscribers
                 await _hubContext.Clients.Group($"task-{taskId}")
                     .SendAsync("TaskStarted", taskId, taskType, metadata);
-                
+
                 // Notify task type subscribers for this virtual key
                 await _hubContext.Clients.Group($"vkey-{virtualKeyId}-{taskType}")
                     .SendAsync("TaskStarted", taskId, taskType, metadata);
+            }
+            else
+            {
+                Logger.LogWarning("Task {TaskId} started but no virtual key ID could be extracted from metadata", taskId);
             }
         }
 
         public async Task TaskProgress(string taskId, int progress, string? message = null)
         {
+            Logger.LogDebug("Task {TaskId} progress: {Progress}%{Message}",
+                taskId, progress, message != null ? $" - {message}" : "");
             await _hubContext.Clients.Group($"task-{taskId}")
                 .SendAsync("TaskProgress", taskId, progress, message);
         }
 
         public async Task TaskCompleted(string taskId, object result)
         {
+            Logger.LogInformation("Task {TaskId} completed successfully", taskId);
             await _hubContext.Clients.Group($"task-{taskId}")
                 .SendAsync("TaskCompleted", taskId, result);
         }
 
         public async Task TaskFailed(string taskId, string error, bool isRetryable = false)
         {
+            Logger.LogWarning("Task {TaskId} failed (retryable: {IsRetryable}): {Error}",
+                taskId, isRetryable, error);
             await _hubContext.Clients.Group($"task-{taskId}")
                 .SendAsync("TaskFailed", taskId, error, isRetryable);
         }
 
         public async Task TaskCancelled(string taskId, string? reason = null)
         {
+            Logger.LogInformation("Task {TaskId} cancelled{Reason}",
+                taskId, reason != null ? $": {reason}" : "");
             await _hubContext.Clients.Group($"task-{taskId}")
                 .SendAsync("TaskCancelled", taskId, reason);
         }
 
         public async Task TaskTimedOut(string taskId, int timeoutSeconds)
         {
+            Logger.LogWarning("Task {TaskId} timed out after {TimeoutSeconds}s", taskId, timeoutSeconds);
             await _hubContext.Clients.Group($"task-{taskId}")
                 .SendAsync("TaskTimedOut", taskId, timeoutSeconds);
         }
@@ -177,17 +193,6 @@ namespace ConduitLLM.Gateway.Hubs
 
             // TaskMetadata is the expected type in AsyncTaskStatus
             return taskStatus.Metadata.VirtualKeyId == virtualKeyId;
-        }
-        
-        private static int? ConvertToInt(object value)
-        {
-            return value switch
-            {
-                int intValue => intValue,
-                long longValue => (int)longValue,
-                string stringValue when int.TryParse(stringValue, out var parsedValue) => parsedValue,
-                _ => null
-            };
         }
     }
 }

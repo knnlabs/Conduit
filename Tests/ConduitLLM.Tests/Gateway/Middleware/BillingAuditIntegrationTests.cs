@@ -18,6 +18,8 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Gateway.UsageTracking;
+using ConduitLLM.Tests.TestInfrastructure;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware
@@ -28,7 +30,7 @@ namespace ConduitLLM.Tests.Http.Middleware
     public class BillingAuditIntegrationTests : IDisposable
     {
         private readonly ServiceProvider _serviceProvider;
-        private readonly string _databaseName;
+        private readonly SqliteTestDatabase _database;
         private readonly IBillingAuditService _billingAuditService;
         private readonly Mock<ICostCalculationService> _mockCostService;
         private readonly Mock<IBatchSpendUpdateService> _mockBatchSpendService;
@@ -42,10 +44,9 @@ namespace ConduitLLM.Tests.Http.Middleware
         {
             var services = new ServiceCollection();
             
-            // Configure in-memory database with a consistent name for this test instance
-            _databaseName = $"BillingAuditIntegrationTestDb_{Guid.NewGuid()}";
+            _database = new SqliteTestDatabase();
             services.AddDbContext<ConduitDbContext>(options =>
-                options.UseInMemoryDatabase(databaseName: _databaseName),
+                options.UseSqlite(_database.ConnectionString),
                 ServiceLifetime.Scoped);
             
             // Register logger
@@ -59,6 +60,22 @@ namespace ConduitLLM.Tests.Http.Middleware
             {
                 var context = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
                 context.Database.EnsureCreated();
+                context.VirtualKeyGroups.Add(new VirtualKeyGroup
+                {
+                    Id = 1,
+                    GroupName = "Billing audit test group"
+                });
+                context.VirtualKeys.AddRange(
+                    new[] { 123, 456, 789, 111, 222, 333, 444 }
+                .Select(id => new VirtualKey
+                {
+                    Id = id,
+                    VirtualKeyGroupId = 1,
+                    KeyName = $"Billing audit key {id}",
+                    KeyHash = $"billing-audit-{id}",
+                    IsEnabled = true
+                }));
+                context.SaveChanges();
             }
             
             // Create BillingAuditService with the service provider
@@ -118,6 +135,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             // Store response data for the next delegate to write
             context.Items["MockResponseData"] = responseData;
+            PublishProviderUsage(
+                context,
+                RequestOperation.ChatCompletion,
+                "gpt-4",
+                new Usage { PromptTokens = 100, CompletionTokens = 200, TotalTokens = 300 });
             
             // Replace response body with a stream we can control
             var originalBody = context.Response.Body;
@@ -164,7 +186,7 @@ namespace ConduitLLM.Tests.Http.Middleware
         }
 
         [Fact]
-        public async Task Middleware_ShouldLogZeroCostSkippedEvent_ForZeroCost()
+        public async Task Middleware_ShouldLogUnpricedUsageEvent_ForPositiveUsageWithZeroCost()
         {
             // Arrange
             var context = CreateHttpContext("/v1/chat/completions");
@@ -186,6 +208,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             // Store response data for the next delegate to write
             context.Items["MockResponseData"] = responseData;
+            PublishProviderUsage(
+                context,
+                RequestOperation.ChatCompletion,
+                "free-model",
+                new Usage { PromptTokens = 50, CompletionTokens = 50, TotalTokens = 100 });
             
             // Replace response body with a stream we can control
             var originalBody = context.Response.Body;
@@ -215,7 +242,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
             var auditEvent = await dbContext.BillingAuditEvents
-                .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.ZeroCostSkipped);
+                .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.UnpricedUsage);
             
             Assert.NotNull(auditEvent);
             Assert.Equal(456, auditEvent.VirtualKeyId);
@@ -379,11 +406,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             Assert.NotNull(auditEvent);
             Assert.Equal(222, auditEvent.VirtualKeyId);
-            Assert.Contains("No StreamingUsage", auditEvent.FailureReason!);
+            Assert.Contains("No provider usage in the typed request accounting snapshot", auditEvent.FailureReason!);
         }
 
         [Fact]
-        public async Task Middleware_ShouldLogJsonParseErrorEvent_ForInvalidJson()
+        public async Task Middleware_ShouldIgnoreInvalidResponseJson_AndLogMissingTypedUsage()
         {
             // Arrange
             var context = CreateHttpContext("/v1/chat/completions");
@@ -414,7 +441,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<ConduitDbContext>();
             var auditEvent = await dbContext.BillingAuditEvents
-                .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.JsonParseError);
+                .FirstOrDefaultAsync(e => e.EventType == BillingAuditEventType.MissingUsageData);
             
             Assert.NotNull(auditEvent);
             Assert.Equal(333, auditEvent.VirtualKeyId);
@@ -443,6 +470,11 @@ namespace ConduitLLM.Tests.Http.Middleware
             
             // Store response data for the next delegate to write
             context.Items["MockResponseData"] = responseData;
+            PublishProviderUsage(
+                context,
+                RequestOperation.Embedding,
+                "text-embedding-ada-002",
+                new Usage { PromptTokens = 50, TotalTokens = 50 });
             
             // Replace response body with a stream we can control
             var originalBody = context.Response.Body;
@@ -502,6 +534,20 @@ namespace ConduitLLM.Tests.Http.Middleware
             return context;
         }
 
+        private static void PublishProviderUsage(
+            HttpContext context,
+            RequestOperation operation,
+            string model,
+            Usage usage)
+        {
+            var accounting = context.GetOrCreateRequestAccountingContext();
+            accounting.SetOperation(
+                operation,
+                context.Items.TryGetValue("VirtualKeyId", out var virtualKeyId) ? virtualKeyId as int? : null,
+                model);
+            accounting.RecordProviderUsage(usage, model, UsageEvidenceSource.Provider);
+        }
+
         public void Dispose()
         {
             // Stop and flush the service before disposing
@@ -511,6 +557,7 @@ namespace ConduitLLM.Tests.Http.Middleware
             }
             (_billingAuditService as IDisposable)?.Dispose();
             _serviceProvider?.Dispose();
+            _database.Dispose();
         }
     }
 }

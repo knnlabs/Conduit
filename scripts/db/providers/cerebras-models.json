@@ -13,10 +13,17 @@
       "supportsVision": false,
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
-      "inputPricePerMillion": 0.10,
-      "outputPricePerMillion": 0.10,
+      "inputPricePerMillion": 0.1,
+      "outputPricePerMillion": 0.1,
       "speedTokensPerSec": 2200,
-      "notes": "Ultra-fast 8B parameter model on CS-3 hardware. 32K context (paid tier), 8K output. Supports tool calling and structured outputs. Same underlying model as Groq 'llama-3.1-8b-instant' and SambaNova 'Meta-Llama-3.1-8B-Instruct'."
+      "notes": "Ultra-fast 8B parameter model on CS-3 hardware. 32K context (paid tier), 8K output. Supports tool calling and structured outputs. Same underlying model as Groq 'llama-3.1-8b-instant' and SambaNova 'Meta-Llama-3.1-8B-Instruct'.",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "llama-3.3-70b": {
       "name": "llama-3.3-70b",
@@ -32,9 +39,16 @@
       "supportsFunctionCalling": false,
       "supportsEmbeddings": false,
       "inputPricePerMillion": 0.85,
-      "outputPricePerMillion": 1.20,
+      "outputPricePerMillion": 1.2,
       "speedTokensPerSec": 2100,
-      "notes": "High-performance 70B parameter model. 128K context, 65K output (paid tier). 2100 tokens/sec inference speed. Same underlying model as Groq 'llama-3.3-70b-versatile' and SambaNova 'Meta-Llama-3.3-70B-Instruct'."
+      "notes": "High-performance 70B parameter model. 128K context, 65K output (paid tier). 2100 tokens/sec inference speed. Same underlying model as Groq 'llama-3.3-70b-versatile' and SambaNova 'Meta-Llama-3.3-70B-Instruct'.",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "gpt-oss-120b": {
       "name": "gpt-oss-120b",
@@ -52,7 +66,14 @@
       "inputPricePerMillion": 0.35,
       "outputPricePerMillion": 0.75,
       "speedTokensPerSec": 3000,
-      "notes": "120B parameter model with reasoning capabilities. 131K context, 40K output (paid tier). Supports tool calling, structured outputs, and reasoning_effort parameter. Fastest inference at ~3000 tokens/sec. Same underlying model as Groq 'openai/gpt-oss-120b' and SambaNova 'gpt-oss-120b'."
+      "notes": "120B parameter model with reasoning capabilities. 131K context, 40K output (paid tier). Supports tool calling, structured outputs, and reasoning_effort parameter. Fastest inference at ~3000 tokens/sec. Same underlying model as Groq 'openai/gpt-oss-120b' and SambaNova 'gpt-oss-120b'.",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     },
     "qwen-3-32b": {
       "name": "qwen-3-32b",
@@ -67,10 +88,17 @@
       "supportsVision": false,
       "supportsFunctionCalling": true,
       "supportsEmbeddings": false,
-      "inputPricePerMillion": 0.40,
-      "outputPricePerMillion": 0.80,
+      "inputPricePerMillion": 0.4,
+      "outputPricePerMillion": 0.8,
       "speedTokensPerSec": 2600,
-      "notes": "32B parameter model with hybrid reasoning mode. 131K context, 8K output. Supports tool calling, structured outputs, and /no_think command to disable reasoning. ~2600 tokens/sec. Same underlying model as Groq 'qwen/qwen3-32b' and SambaNova 'Qwen3-32B'."
+      "notes": "32B parameter model with hybrid reasoning mode. 131K context, 8K output. Supports tool calling, structured outputs, and /no_think command to disable reasoning. ~2600 tokens/sec. Same underlying model as Groq 'qwen/qwen3-32b' and SambaNova 'Qwen3-32B'.",
+      "inputModalities": [
+        "text"
+      ],
+      "outputModalities": [
+        "text"
+      ],
+      "capabilitySource": "Curated"
     }
   }
 }

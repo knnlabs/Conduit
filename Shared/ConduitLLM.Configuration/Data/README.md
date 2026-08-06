@@ -1,63 +1,38 @@
-# Database Initialization Service
+# Database Migration Infrastructure
 
-This directory contains a robust solution for handling database initialization in a cross-provider environment, addressing the limitations of Entity Framework Core migrations when used with different database providers.
+Release migration and runtime readiness handling for the single EF Core context
+(`ConduitDbContext`, PostgreSQL only). Normal services are read-only with respect
+to schema; behavior is governed by `CONDUIT_MIGRATION_MODE` — the full
+operational guide is
+[docs/operations/deployment/migration-deployment-strategy.md](../../../docs/operations/deployment/migration-deployment-strategy.md),
+and the schema-compatibility rules are
+[ADR-002](../../../docs/architecture/adr-002-expand-contract-migration-policy.md).
 
-## Problem
+## Components
 
-Entity Framework Core migrations are specific to the database provider they are created with. When a migration is created with one provider (e.g., SQLite) but then applied to another provider (e.g., PostgreSQL), tables may not be created correctly due to provider-specific SQL syntax differences. This can result in errors such as:
+| File | Role |
+|---|---|
+| `MigrationStartupOptions.cs` | `CONDUIT_MIGRATION_MODE` (`Wait`/`Skip`) + timeout env parsing; rejects legacy `Apply` |
+| `SimpleMigrationService.cs` | Applies migrations + seeds default data under a blocking session-scoped `pg_advisory_lock(7891011)` |
+| `MigrationWaitService.cs` | Wait mode: background poll of pending migrations; flips readiness when the schema is current |
+| `MigrationReadinessState.cs` | Process-wide "schema is current" flag |
+| `../HealthChecks/PendingMigrationsReadinessCheck.cs` | Gates `/health/ready` (tag `ready`) on that flag |
+| `MigrationExtensions.cs` | Read-only readiness registration (`AddDatabaseMigration`) |
+| `MigrationCommand.cs` | `migrate` CLI verb: standalone migrator + Wolverine schema provisioning (release-hook entry point) |
+| `ExecutionStrategyExtensions.cs` | `ExecuteInTransactionAsync` — explicit transactions compatible with `EnableRetryOnFailure` |
+| `ConfigurationDbContextFactory.cs` | Design-time factory; also resolves `DATABASE_URL` for the migrate verb |
 
-```
-PG Error: relation 'IpFilters' does not exist
-```
+## Design invariants
 
-## Solution
-
-The `DatabaseInitializer` provides a comprehensive solution that:
-
-1. Centralizes initialization logic for different database providers (SQLite, PostgreSQL)
-2. Applies standard EF Core migrations when possible
-3. Falls back to direct table creation when migrations fail
-4. Ensures critical database tables exist across providers
-5. Provides robust retry and error recovery
-
-## Key Components
-
-- **DatabaseInitializer**: Implementation that handles migrations across different providers
-- **DatabaseInitializationExtensions**: Extension methods for using the initializer in applications
-
-## Usage
-
-### Registration
-
-In `Program.cs` or `Startup.cs`:
-
-```csharp
-// Add database initialization services to DI container
-services.AddDatabaseInitialization();
-```
-
-### Initializing the Database
-
-```csharp
-// Apply migrations and create tables
-await serviceProvider.InitializeDatabaseAsync();
-
-// Ensure specific tables exist
-await serviceProvider.EnsureTablesExistAsync("TableName1", "TableName2");
-```
-
-## Features
-
-- **Provider Detection**: Automatically detects SQLite vs PostgreSQL
-- **Table Verification**: Ensures tables exist after migrations
-- **Direct Table Creation**: Creates tables directly when migrations fail
-- **Comprehensive Error Handling**: With customizable retry logic
-- **Index Creation**: Creates appropriate indexes for performance
-
-## Benefits
-
-1. **Reliability**: More reliable database initialization across providers
-2. **Consistency**: Tables are created with consistent schema regardless of provider
-3. **Robustness**: Better error recovery and retry logic
-4. **Maintainability**: Centralized and modular database initialization code
-5. **Diagnostics**: Improved logging and error reporting
+- **Migrations only.** Never `EnsureCreated` — it bypasses `__EFMigrationsHistory` and
+  historically corrupted production databases
+  (see `scripts/migrations/fix-production-migrations.ps1`).
+- **One session for lock + migration.** The advisory lock and `MigrateAsync` share a
+  dedicated `NpgsqlConnection`; if the migrator dies, the lock dies with the
+  connection. The migration context deliberately has no retrying execution strategy.
+- **Losers block, then verify.** Contending instances block on `pg_advisory_lock`
+  (waiter timeout `CONDUIT_MIGRATION_LOCK_TIMEOUT_SECONDS`), then re-check
+  `GetPendingMigrationsAsync()` and find nothing to do.
+- **Seeding runs under the lock** and is idempotent.
+- **Web processes are schema-read-only.** Only the `migrate` verb constructs
+  `SimpleMigrationService` or enables Wolverine resource provisioning.

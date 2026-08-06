@@ -1,6 +1,6 @@
 using System.Text.Json;
 using ConduitLLM.Core.Converters;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace ConduitLLM.Tests.Core.Converters;

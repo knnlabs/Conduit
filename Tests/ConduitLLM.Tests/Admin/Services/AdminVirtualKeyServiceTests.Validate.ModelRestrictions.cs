@@ -65,7 +65,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 LifetimeCreditsAdded = 100m,
                 LifetimeSpent = 50m
             };
-            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+            _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(group);
 
             // Act
@@ -76,7 +76,7 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.Null(result.ErrorMessage);
             Assert.Equal(1, result.VirtualKeyId);
             Assert.Equal("Test Key", result.KeyName);
-            Assert.Equal("gpt-3.5-turbo,gpt-4,claude-3-opus", result.AllowedModels);
+            Assert.Equal(["gpt-3.5-turbo", "gpt-4", "claude-3-opus"], result.AllowedModels);
         }
 
         [Fact]
@@ -100,7 +100,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(virtualKey);
             
             var group = new VirtualKeyGroup { Id = 1, Balance = 75m };
-            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+            _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(group);
 
             // Act
@@ -133,7 +133,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(virtualKey);
             
             var group = new VirtualKeyGroup { Id = 1, Balance = 100m };
-            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+            _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(group);
 
             // Act
@@ -166,7 +166,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(virtualKey);
             
             var group = new VirtualKeyGroup { Id = 1, Balance = 500m };
-            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+            _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(group);
 
             // Act
@@ -198,7 +198,7 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(virtualKey);
             
             var group = new VirtualKeyGroup { Id = 1, Balance = 250m };
-            _mockGroupRepository.Setup(x => x.GetByKeyIdAsync(1))
+            _mockGroupRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(group);
 
             // Act & Assert - Multiple model tests

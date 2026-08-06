@@ -1,145 +1,81 @@
-using System.Text.Json;
+using ConduitLLM.Configuration.DTOs;
+using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Models;
+using ConduitLLM.Gateway.DTOs;
 
-namespace ConduitLLM.Gateway.Services
+namespace ConduitLLM.Gateway.Services;
+
+/// <summary>Retrieves effective model metadata from the configured routing database.</summary>
+public interface IModelMetadataService
 {
-    /// <summary>
-    /// Service for retrieving model metadata.
-    /// </summary>
-    public interface IModelMetadataService
+    Task<ModelMetadataDto?> GetModelMetadataAsync(string modelId);
+}
+
+/// <summary>
+/// Resolves metadata for the highest-priority enabled mapping instead of relying on a
+/// separately deployed static file that can drift from the active configuration.
+/// </summary>
+public sealed class ModelMetadataService : IModelMetadataService
+{
+    private readonly IModelProviderMappingRepository _mappingRepository;
+    private readonly ILogger<ModelMetadataService> _logger;
+
+    public ModelMetadataService(
+        IModelProviderMappingRepository mappingRepository,
+        ILogger<ModelMetadataService> logger)
     {
-        /// <summary>
-        /// Gets metadata for a specific model.
-        /// </summary>
-        /// <param name="modelId">The model ID.</param>
-        /// <returns>Model metadata or null if not found.</returns>
-        Task<object?> GetModelMetadataAsync(string modelId);
+        _mappingRepository = mappingRepository;
+        _logger = logger;
     }
 
-    /// <summary>
-    /// Implementation of model metadata service that reads from static JSON.
-    /// </summary>
-    public class ModelMetadataService : IModelMetadataService
+    public async Task<ModelMetadataDto?> GetModelMetadataAsync(string modelId)
     {
-        private readonly ILogger<ModelMetadataService> _logger;
-        private readonly Dictionary<string, object> _metadataCache;
-        private readonly object _cacheLock = new();
-        private DateTime _lastCacheUpdate = DateTime.MinValue;
-        private readonly TimeSpan _cacheExpiry = TimeSpan.FromMinutes(5);
+        var mappings = await _mappingRepository.GetAllByModelNameAsync(modelId);
+        var mapping = mappings.FirstOrDefault(candidate =>
+            candidate.IsEnabled &&
+            candidate.Provider?.IsEnabled == true &&
+            candidate.ModelProviderTypeAssociation?.IsEnabled == true);
 
-        public ModelMetadataService(ILogger<ModelMetadataService> logger)
+        var association = mapping?.ModelProviderTypeAssociation;
+        var model = association?.Model;
+        if (model is null)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _metadataCache = new Dictionary<string, object>();
+            _logger.LogDebug("No enabled metadata found for model {ModelId}", modelId);
+            return null;
         }
 
-        public async Task<object?> GetModelMetadataAsync(string modelId)
-        {
-            try
-            {
-                await LoadMetadataIfNeededAsync();
-
-                lock (_cacheLock)
-                {
-                    if (_metadataCache.TryGetValue(modelId, out var metadata))
-                    {
-                        return metadata;
-                    }
-                }
-
-                _logger.LogDebug("No metadata found for model {ModelId}", modelId);
-                return null;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving metadata for model {ModelId}", modelId);
-                throw; // Re-throw to ensure errors are properly reported
-            }
-        }
-
-        private async Task LoadMetadataIfNeededAsync()
-        {
-            lock (_cacheLock)
-            {
-                if (DateTime.UtcNow - _lastCacheUpdate < _cacheExpiry && _metadataCache.Count() > 0)
-                {
-                    return;
-                }
-            }
-
-            try
-            {
-                var assemblyLocation = GetAssemblyDirectory();
-                var metadataPath = Path.Combine(assemblyLocation, "StaticModels", "model-metadata.json");
-                
-                _logger.LogDebug("Assembly location: {AssemblyLocation}", assemblyLocation);
-                _logger.LogDebug("Looking for metadata at: {MetadataPath}", metadataPath);
-
-                if (!File.Exists(metadataPath))
-                {
-                    // Try alternative paths
-                    var alternativePaths = new[]
-                    {
-                        Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "StaticModels", "model-metadata.json"),
-                        Path.Combine(Directory.GetCurrentDirectory(), "StaticModels", "model-metadata.json"),
-                        Path.Combine("/app", "StaticModels", "model-metadata.json")
-                    };
-
-                    foreach (var altPath in alternativePaths)
-                    {
-                        _logger.LogDebug("Trying alternative path: {Path}", altPath);
-                        if (File.Exists(altPath))
-                        {
-                            metadataPath = altPath;
-                            _logger.LogInformation("Found metadata file at alternative path: {Path}", altPath);
-                            break;
-                        }
-                    }
-
-                    if (!File.Exists(metadataPath))
-                    {
-                        _logger.LogWarning("Model metadata file not found at any location. Tried: {OriginalPath} and alternatives", metadataPath);
-                        return;
-                    }
-                }
-
-                var json = await File.ReadAllTextAsync(metadataPath);
-                var options = new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                    PropertyNameCaseInsensitive = true
-                };
-
-                var allMetadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json, options);
-
-                if (allMetadata != null)
-                {
-                    lock (_cacheLock)
-                    {
-                        _metadataCache.Clear();
-                        foreach (var kvp in allMetadata)
-                        {
-                            _metadataCache[kvp.Key] = kvp.Value;
-                        }
-                        _lastCacheUpdate = DateTime.UtcNow;
-                    }
-
-                    _logger.LogInformation("Loaded metadata for {Count} models from {Path}", _metadataCache.Count, metadataPath);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading model metadata");
-                // Don't re-throw - just log and continue with empty cache
-                // This allows the service to continue working even if metadata is invalid
-            }
-        }
-
-        /// <summary>
-        /// Gets the assembly directory. Virtual to allow testing.
-        /// </summary>
-        protected virtual string GetAssemblyDirectory()
-        {
-            return Path.GetDirectoryName(typeof(ModelMetadataService).Assembly.Location)!;
-        }
+        var capabilities = ModelCapabilityResolver.Resolve(model, association);
+        return new ModelMetadataDto(
+            modelId,
+            model.Id,
+            model.Name,
+            mapping!.Provider?.ProviderType.ToString().ToLowerInvariant(),
+            association!.Identifier,
+            model.Description,
+            model.ModelCardUrl,
+            capabilities.InputModalities ?? [],
+            capabilities.OutputModalities ?? [],
+            capabilities.CapabilitySource.ToString().ToLowerInvariant(),
+            capabilities.CapabilitiesLastVerifiedAt,
+            new DiscoveryModelCapabilitiesDto(
+                capabilities.SupportsChat,
+                capabilities.SupportsStreaming,
+                capabilities.SupportsImageInput,
+                capabilities.SupportsVideoInput,
+                capabilities.SupportsAudioInput,
+                capabilities.SupportsFileInput,
+                capabilities.SupportsVision,
+                capabilities.SupportsVideoUnderstanding,
+                capabilities.SupportsImageGeneration,
+                capabilities.SupportsVideoGeneration,
+                capabilities.SupportsEmbeddings,
+                capabilities.SupportsFunctionCalling,
+                capabilities.SupportsSpeechToText,
+                capabilities.SupportsTextToSpeech,
+                capabilities.SupportsRerank,
+                PdfInput: capabilities.SupportsFileInput ||
+                          mapping.Provider?.ProviderType == ConduitLLM.Configuration.ProviderType.OpenRouter),
+            capabilities.MaxInputTokens,
+            capabilities.MaxOutputTokens);
     }
 }

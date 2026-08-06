@@ -1,13 +1,18 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+
 using StackExchange.Redis;
+
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Interfaces;
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Options;
 
 namespace ConduitLLM.Admin.Services
 {
@@ -20,11 +25,20 @@ namespace ConduitLLM.Admin.Services
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly IConnectionMultiplexer? _redis;
         private readonly MediaLifecycleOptions _options;
+        private readonly bool _isPublicMediaBaseUrlConfigured;
         private readonly ILogger<MediaCleanupStatusService> _logger;
 
         // Redis keys
         private const string REDIS_KEY_LAST_RUN = "media:cleanup:last-run";
+        private const string REDIS_KEY_OPERATION_PREFIX = "media:cleanup:last-run:";
+        private const string REDIS_KEY_RECONCILIATION_DRIFT = "media:cleanup:reconciliation-drift";
         private const string REDIS_KEY_LEADER = "media:cleanup:current-leader";
+
+        // In-process fallback keeps status useful for single-instance deployments without Redis.
+        private LastRunInfo? _lastRunFallback;
+        private string? _leaderFallback;
+        private readonly ConcurrentDictionary<string, LastRunInfo> _operationRunFallback = new();
+        private ReconciliationDriftInfo _reconciliationDriftFallback = new();
 
         /// <summary>
         /// GlobalSetting key for the runtime enabled toggle.
@@ -54,12 +68,15 @@ namespace ConduitLLM.Admin.Services
             IServiceScopeFactory scopeFactory,
             IOptions<MediaLifecycleOptions> options,
             ILogger<MediaCleanupStatusService> logger,
-            IConnectionMultiplexer? redis = null)
+            IConnectionMultiplexer? redis = null,
+            IOptions<S3StorageOptions>? s3Options = null)
         {
             _scopeFactory = scopeFactory;
             _options = options.Value;
             _logger = logger;
             _redis = redis;
+            _isPublicMediaBaseUrlConfigured =
+                !string.IsNullOrWhiteSpace(s3Options?.Value.PublicBaseUrl);
         }
 
         /// <inheritdoc />
@@ -68,6 +85,8 @@ namespace ConduitLLM.Admin.Services
             using var scope = _scopeFactory.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<IConfigurationDbContext>();
             var budgetService = scope.ServiceProvider.GetRequiredService<IMediaDeletionBudgetService>();
+            var storageService = scope.ServiceProvider.GetService<IMediaStorageService>();
+            var approvalService = scope.ServiceProvider.GetRequiredService<IMediaCleanupApprovalService>();
 
             // Get budget info
             var monthlyDeleteCount = await budgetService.GetMonthlyDeleteCountAsync(cancellationToken);
@@ -75,6 +94,23 @@ namespace ConduitLLM.Admin.Services
 
             // Get last run info from Redis
             var lastRunInfo = await GetLastRunInfoAsync();
+            var reconciliationDrift = await GetReconciliationDriftAsync();
+            var operationStatuses = new List<MediaCleanupOperationStatusDto>();
+            foreach (var cleanupType in MediaCleanupTypes.All)
+            {
+                var operationInfo = await GetLastRunInfoAsync(cleanupType);
+                operationStatuses.Add(new MediaCleanupOperationStatusDto
+                {
+                    CleanupType = cleanupType,
+                    IsEnabled = IsOperationEnabled(cleanupType),
+                    LastRunTimeUtc = operationInfo?.LastRunTimeUtc,
+                    LastRunStatus = operationInfo?.Status,
+                    TriggeredBy = operationInfo?.TriggeredBy,
+                    LastRunFilesDeleted = operationInfo?.FilesDeleted ?? 0,
+                    LastRunBytesFreed = operationInfo?.BytesFreed ?? 0,
+                    LastRunDurationSeconds = operationInfo?.DurationSeconds
+                });
+            }
 
             // Get default retention policy
             var defaultPolicy = await context.MediaRetentionPolicies
@@ -117,6 +153,7 @@ namespace ConduitLLM.Admin.Services
 
             // Get simple retention override
             var simpleRetentionOverride = await GetSimpleRetentionOverrideAsync(cancellationToken);
+            var pendingApprovals = await approvalService.ListPendingAsync(cancellationToken);
 
             // Calculate budget percentage
             var budgetUsedPercent = _options.MonthlyDeleteBudget > 0
@@ -127,8 +164,20 @@ namespace ConduitLLM.Admin.Services
             {
                 IsEnabled = isEnabled,
                 IsDryRunMode = _options.DryRunMode,
+                IsSoftDeleteEnabled = _options.EnableSoftDelete,
+                SoftDeleteGracePeriodDays = _options.SoftDeleteGracePeriodDays,
+                StorageBackend = MediaStorageConfigurationGuard.GetBackendName(storageService),
+                IsPublicMediaBaseUrlConfigured = _isPublicMediaBaseUrlConfigured,
+                TestScopeActive = _options.TestVirtualKeyGroups.Count > 0,
+                TestVirtualKeyGroups = _options.TestVirtualKeyGroups
+                    .Distinct()
+                    .Order()
+                    .ToList(),
+                UntrackedObjectCount = reconciliationDrift.UntrackedObjectCount,
+                UntrackedBytes = reconciliationDrift.UntrackedBytes,
                 LastRunTimeUtc = lastRunInfo?.LastRunTimeUtc,
                 LastRunStatus = lastRunInfo?.Status,
+                LastRunTriggeredBy = lastRunInfo?.TriggeredBy,
                 LastRunFilesDeleted = lastRunInfo?.FilesDeleted ?? 0,
                 LastRunBytesFreed = lastRunInfo?.BytesFreed ?? 0,
                 LastRunDurationSeconds = lastRunInfo?.DurationSeconds,
@@ -136,13 +185,24 @@ namespace ConduitLLM.Admin.Services
                 MonthlyDeleteBudget = _options.MonthlyDeleteBudget,
                 MonthlyDeleteBudgetRemaining = remainingBudget,
                 MonthlyBudgetUsedPercent = Math.Round(budgetUsedPercent, 2),
+                BudgetAlertThresholdPercent = Math.Clamp(
+                    _options.BudgetAlertThresholdPercent,
+                    0,
+                    100),
+                BudgetBackend = budgetService.BackendName,
+                IsBudgetBackendPersistent = budgetService.IsPersistent,
+                BudgetFailureMode = _options.BudgetFailureMode.ToString(),
+                BudgetLastFailureAtUtc = budgetService.LastFailureAtUtc,
                 ScheduleIntervalMinutes = _options.ScheduleIntervalMinutes,
                 MaxBatchSize = _options.MaxBatchSize,
+                MaxRecordsPerRun = _options.MaxRecordsPerRun,
                 DefaultRetentionPolicy = defaultPolicy,
                 ActiveRetentionPoliciesCount = activePoliciesCount,
                 SimpleRetentionOverrideDays = simpleRetentionOverride,
                 NextScheduledRunUtc = nextScheduledRun,
-                CurrentLeaderInstanceId = currentLeader
+                CurrentLeaderInstanceId = currentLeader,
+                OperationStatuses = operationStatuses,
+                PendingApprovals = pendingApprovals.ToList()
             };
         }
 
@@ -153,40 +213,118 @@ namespace ConduitLLM.Admin.Services
             double durationSeconds,
             string status,
             string leaderInstanceId,
+            string triggeredBy,
             CancellationToken cancellationToken = default)
         {
+            var runInfo = CreateRunInfo(
+                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId, triggeredBy);
+            _lastRunFallback = runInfo;
+            _leaderFallback = leaderInstanceId;
+
+            await PersistRunInfoAsync(REDIS_KEY_LAST_RUN, runInfo, leaderInstanceId);
+
+            _logger.LogDebug(
+                "Recorded cleanup run completion: {FilesDeleted} files, {BytesFreed} bytes, {Duration:F2}s",
+                filesDeleted, bytesFreed, durationSeconds);
+        }
+
+        /// <inheritdoc />
+        public async Task RecordOperationCompletionAsync(
+            string cleanupType,
+            int filesDeleted,
+            long bytesFreed,
+            double durationSeconds,
+            string status,
+            string leaderInstanceId,
+            string triggeredBy,
+            CancellationToken cancellationToken = default)
+        {
+            var runInfo = CreateRunInfo(
+                filesDeleted, bytesFreed, durationSeconds, status, leaderInstanceId, triggeredBy);
+            _operationRunFallback[cleanupType] = runInfo;
+            _leaderFallback = leaderInstanceId;
+
+            await PersistRunInfoAsync(
+                REDIS_KEY_OPERATION_PREFIX + cleanupType, runInfo, leaderInstanceId);
+
+            _logger.LogDebug(
+                "Recorded {CleanupType} cleanup completion: {Status}, {FilesDeleted} files, {Duration:F2}s",
+                cleanupType, status, filesDeleted, durationSeconds);
+        }
+
+        /// <inheritdoc />
+        public async Task RecordReconciliationDriftAsync(
+            int untrackedObjectCount,
+            long untrackedBytes,
+            CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var drift = new ReconciliationDriftInfo
+            {
+                UntrackedObjectCount = untrackedObjectCount,
+                UntrackedBytes = untrackedBytes,
+                ObservedAtUtc = DateTime.UtcNow
+            };
+            _reconciliationDriftFallback = drift;
+
             if (_redis == null)
             {
-                _logger.LogDebug("Redis not available - last run info will not be persisted");
                 return;
             }
 
             try
             {
                 var db = _redis.GetDatabase();
-                var runInfo = new LastRunInfo
-                {
-                    LastRunTimeUtc = DateTime.UtcNow,
-                    FilesDeleted = filesDeleted,
-                    BytesFreed = bytesFreed,
-                    DurationSeconds = durationSeconds,
-                    Status = status,
-                    LeaderInstanceId = leaderInstanceId
-                };
-
-                var json = JsonSerializer.Serialize(runInfo);
-                await db.StringSetAsync(REDIS_KEY_LAST_RUN, json, TimeSpan.FromDays(7));
-                await db.StringSetAsync(REDIS_KEY_LEADER, leaderInstanceId, TimeSpan.FromMinutes(35));
-
-                _logger.LogDebug(
-                    "Recorded cleanup run completion: {FilesDeleted} files, {BytesFreed} bytes, {Duration:F2}s",
-                    filesDeleted, bytesFreed, durationSeconds);
+                await db.StringSetAsync(
+                    REDIS_KEY_RECONCILIATION_DRIFT,
+                    JsonSerializer.Serialize(drift),
+                    TimeSpan.FromDays(7));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error recording cleanup run completion to Redis");
+                _logger.LogError(ex, "Error recording reconciliation drift");
             }
         }
+
+        private async Task PersistRunInfoAsync(
+            string redisKey,
+            LastRunInfo runInfo,
+            string leaderInstanceId)
+        {
+            if (_redis == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var db = _redis.GetDatabase();
+                var json = JsonSerializer.Serialize(runInfo);
+                await db.StringSetAsync(redisKey, json, TimeSpan.FromDays(7));
+                await db.StringSetAsync(REDIS_KEY_LEADER, leaderInstanceId, TimeSpan.FromMinutes(35));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error recording cleanup run status to Redis key {RedisKey}", redisKey);
+            }
+        }
+
+        private static LastRunInfo CreateRunInfo(
+            int filesDeleted,
+            long bytesFreed,
+            double durationSeconds,
+            string status,
+            string leaderInstanceId,
+            string triggeredBy) => new()
+            {
+                LastRunTimeUtc = DateTime.UtcNow,
+                FilesDeleted = filesDeleted,
+                BytesFreed = bytesFreed,
+                DurationSeconds = durationSeconds,
+                Status = status,
+                LeaderInstanceId = leaderInstanceId,
+                TriggeredBy = triggeredBy
+            };
 
         /// <inheritdoc />
         public async Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default)
@@ -233,23 +371,15 @@ namespace ConduitLLM.Admin.Services
             using var scope = _scopeFactory.CreateScope();
             var globalSettingService = scope.ServiceProvider.GetRequiredService<IAdminGlobalSettingService>();
 
-            try
+            // Use the service layer which publishes GlobalSettingChanged events
+            await globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
             {
-                // Use the service layer which publishes GlobalSettingChanged events
-                await globalSettingService.UpdateSettingByKeyAsync(new UpdateGlobalSettingByKeyDto
-                {
-                    Key = SETTING_KEY_ENABLED,
-                    Value = enabled.ToString().ToLowerInvariant(),
-                    Description = "Runtime toggle for the media cleanup service"
-                });
+                Key = SETTING_KEY_ENABLED,
+                Value = enabled.ToString().ToLowerInvariant(),
+                Description = "Runtime toggle for the media cleanup service"
+            });
 
-                _logger.LogInformation("Media cleanup service enabled state changed to: {Enabled}", enabled);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting cleanup enabled state in GlobalSettings");
-                throw;
-            }
+            _logger.LogInformation("Media cleanup service enabled state changed to: {Enabled}", enabled);
         }
 
         /// <inheritdoc />
@@ -322,28 +452,63 @@ namespace ConduitLLM.Admin.Services
             {
                 throw; // Re-throw validation errors
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting simple retention override in GlobalSettings");
-                throw;
-            }
         }
 
-        private async Task<LastRunInfo?> GetLastRunInfoAsync()
+        private bool IsOperationEnabled(string cleanupType) => cleanupType switch
+        {
+            MediaCleanupTypes.Expiration => _options.EnableExpirationCleanup,
+            MediaCleanupTypes.Purge => true,
+            MediaCleanupTypes.Reconciliation => _options.EnableReconciliation,
+            MediaCleanupTypes.Quota => _options.EnableQuotaCleanup,
+            MediaCleanupTypes.Retention => _options.EnableRetentionCleanup,
+            _ => false
+        };
+
+        private async Task<ReconciliationDriftInfo> GetReconciliationDriftAsync()
         {
             if (_redis == null)
             {
-                return null;
+                return _reconciliationDriftFallback;
             }
 
             try
             {
                 var db = _redis.GetDatabase();
-                var json = await db.StringGetAsync(REDIS_KEY_LAST_RUN);
+                var json = await db.StringGetAsync(REDIS_KEY_RECONCILIATION_DRIFT);
+                return json.IsNullOrEmpty
+                    ? _reconciliationDriftFallback
+                    : JsonSerializer.Deserialize<ReconciliationDriftInfo>(json.ToString())
+                        ?? _reconciliationDriftFallback;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error reading reconciliation drift");
+                return _reconciliationDriftFallback;
+            }
+        }
+
+        private async Task<LastRunInfo?> GetLastRunInfoAsync(string? cleanupType = null)
+        {
+            var fallback = cleanupType == null
+                ? _lastRunFallback
+                : _operationRunFallback.GetValueOrDefault(cleanupType);
+
+            if (_redis == null)
+            {
+                return fallback;
+            }
+
+            try
+            {
+                var db = _redis.GetDatabase();
+                var redisKey = cleanupType == null
+                    ? REDIS_KEY_LAST_RUN
+                    : REDIS_KEY_OPERATION_PREFIX + cleanupType;
+                var json = await db.StringGetAsync(redisKey);
 
                 if (json.IsNullOrEmpty)
                 {
-                    return null;
+                    return fallback;
                 }
 
                 return JsonSerializer.Deserialize<LastRunInfo>(json.ToString());
@@ -351,7 +516,7 @@ namespace ConduitLLM.Admin.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reading last run info from Redis");
-                return null;
+                return fallback;
             }
         }
 
@@ -359,19 +524,19 @@ namespace ConduitLLM.Admin.Services
         {
             if (_redis == null)
             {
-                return null;
+                return _leaderFallback;
             }
 
             try
             {
                 var db = _redis.GetDatabase();
                 var leader = await db.StringGetAsync(REDIS_KEY_LEADER);
-                return leader.IsNullOrEmpty ? null : leader.ToString();
+                return leader.IsNullOrEmpty ? _leaderFallback : leader.ToString();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error reading current leader from Redis");
-                return null;
+                return _leaderFallback;
             }
         }
 
@@ -386,6 +551,14 @@ namespace ConduitLLM.Admin.Services
             public double DurationSeconds { get; set; }
             public string? Status { get; set; }
             public string? LeaderInstanceId { get; set; }
+            public string? TriggeredBy { get; set; }
+        }
+
+        private sealed class ReconciliationDriftInfo
+        {
+            public int UntrackedObjectCount { get; set; }
+            public long UntrackedBytes { get; set; }
+            public DateTime? ObservedAtUtc { get; set; }
         }
     }
 }

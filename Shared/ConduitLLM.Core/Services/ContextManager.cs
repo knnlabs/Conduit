@@ -93,13 +93,14 @@ namespace ConduitLLM.Core.Services
             }
 
             // Early exit conditions
-            if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || request.Messages.Count() == 0)
+            if (maxContextTokens == null || maxContextTokens <= 0 || request.Messages == null || !request.Messages.Any())
             {
                 return request; // Nothing to do if no limit or no messages
             }
 
-            // Get the current token count using the token counter
-            int currentTokens = await _tokenCounter.EstimateTokenCountAsync(request.Model, request.Messages);
+            // Get the current token count using the token counter. Context trimming compares
+            // against a hard window, so the count alone is enough; fidelity is not consulted.
+            int currentTokens = (await _tokenCounter.EstimateTokenCountAsync(request.Model, request.Messages)).Tokens;
 
             // Account for completion tokens if MaxTokens is specified in the request
             int reservedCompletionTokens = request.MaxTokens ?? 0;
@@ -171,7 +172,7 @@ namespace ConduitLLM.Core.Services
                 trimmedMessages.RemoveAt(indexToRemove);
 
                 // Re-estimate token count after removal
-                currentTokens = await _tokenCounter.EstimateTokenCountAsync(request.Model, trimmedMessages);
+                currentTokens = (await _tokenCounter.EstimateTokenCountAsync(request.Model, trimmedMessages)).Tokens;
             }
 
             // If we removed messages, create a new request with trimmed messages
@@ -192,15 +193,46 @@ namespace ConduitLLM.Core.Services
                     Messages = trimmedMessages,
                     Temperature = request.Temperature,
                     MaxTokens = request.MaxTokens,
+                    MaxCompletionTokens = request.MaxCompletionTokens,
                     TopP = request.TopP,
+                    TopK = request.TopK,
                     N = request.N,
                     Stream = request.Stream,
+                    StreamOptions = request.StreamOptions,
                     Stop = request.Stop,
                     User = request.User,
+                    SessionId = request.SessionId,
                     Tools = request.Tools,
                     ToolChoice = request.ToolChoice,
+                    Functions = request.Functions,
+                    FunctionCall = request.FunctionCall,
                     ResponseFormat = request.ResponseFormat,
-                    Seed = request.Seed
+                    Reasoning = request.Reasoning,
+                    ReasoningEffort = request.ReasoningEffort,
+                    ParallelToolCalls = request.ParallelToolCalls,
+                    Modalities = request.Modalities,
+                    Audio = request.Audio,
+                    Prediction = request.Prediction,
+                    Logprobs = request.Logprobs,
+                    TopLogprobs = request.TopLogprobs,
+                    ServiceTier = request.ServiceTier,
+                    Store = request.Store,
+                    Metadata = request.Metadata,
+                    SafetyIdentifier = request.SafetyIdentifier,
+                    Verbosity = request.Verbosity,
+                    Moderation = request.Moderation,
+                    PromptCacheKey = request.PromptCacheKey,
+                    PromptCacheOptions = request.PromptCacheOptions,
+                    PromptCacheRetention = request.PromptCacheRetention,
+                    WebSearchOptions = request.WebSearchOptions,
+                    Seed = request.Seed,
+                    PresencePenalty = request.PresencePenalty,
+                    FrequencyPenalty = request.FrequencyPenalty,
+                    LogitBias = request.LogitBias,
+                    FunctionConfigurationIds = request.FunctionConfigurationIds,
+                    EnableAgenticMode = request.EnableAgenticMode,
+                    MaxAgenticIterations = request.MaxAgenticIterations,
+                    ExtensionData = request.ExtensionData
                 };
 
                 return newRequest;

@@ -1,5 +1,6 @@
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Core.Interfaces
 {
@@ -39,14 +40,14 @@ namespace ConduitLLM.Core.Interfaces
         Task<bool> ResetSpendAsync(int id);
 
         /// <summary>
-        /// Validates a virtual key for authentication
+        /// Validates a virtual key for authentication without checking balance
         /// </summary>
-        Task<VirtualKey?> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null);
+        Task<VirtualKeyValidationOutcome> ValidateVirtualKeyForAuthenticationAsync(string key, string? requestedModel = null);
 
         /// <summary>
-        /// Validates a virtual key with model support
+        /// Validates a virtual key for a balance-protected operation with optional model support
         /// </summary>
-        Task<VirtualKey?> ValidateVirtualKeyAsync(string key, string? requestedModel = null);
+        Task<VirtualKeyValidationOutcome> ValidateVirtualKeyAsync(string key, string? requestedModel = null);
 
         /// <summary>
         /// Updates the spend for a virtual key

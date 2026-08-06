@@ -1,4 +1,5 @@
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Core.Models;
 
 namespace ConduitLLM.Providers.Common.Models
@@ -27,7 +28,7 @@ namespace ConduitLLM.Providers.Common.Models
         /// <summary>
         /// Gets or sets the capabilities of this model.
         /// </summary>
-        public ModelCapabilities? Capabilities { get; set; }
+        public ModelCapabilitiesDto? Capabilities { get; set; }
 
         /// <summary>
         /// Gets or sets the token limits for this model.
@@ -92,7 +93,7 @@ namespace ConduitLLM.Providers.Common.Models
         /// </summary>
         /// <param name="capabilities">The capabilities of the model.</param>
         /// <returns>This instance for method chaining.</returns>
-        public ExtendedModelInfo WithCapabilities(ModelCapabilities capabilities)
+        public ExtendedModelInfo WithCapabilities(ModelCapabilitiesDto capabilities)
         {
             Capabilities = capabilities;
             return this;

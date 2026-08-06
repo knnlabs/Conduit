@@ -14,6 +14,8 @@ import {
 interface Capabilities {
   supportsChat?: boolean;
   supportsVision?: boolean;
+  supportsImageInput?: boolean;
+  supportsVideoInput?: boolean;
   supportsImageGeneration?: boolean;
   supportsVideoGeneration?: boolean;
   supportsAudioTranscription?: boolean;
@@ -32,7 +34,8 @@ interface CapabilityIconsProps {
 
 const capabilityConfig = [
   { key: 'supportsChat', label: 'Chat', Icon: IconMessageCircle },
-  { key: 'supportsVision', label: 'Vision', Icon: IconEye },
+  { key: 'supportsImageInput', label: 'Image Input', Icon: IconEye },
+  { key: 'supportsVideoInput', label: 'Video Input', Icon: IconVideo },
   { key: 'supportsImageGeneration', label: 'Image Generation', Icon: IconPhoto },
   { key: 'supportsVideoGeneration', label: 'Video Generation', Icon: IconVideo },
   { key: 'supportsFunctionCalling', label: 'Function Calling', Icon: IconCode },
@@ -44,7 +47,9 @@ export function CapabilityIcons({ capabilities, iconSize = 16, gap = 4 }: Capabi
   return (
     <Group gap={gap}>
       {capabilityConfig.map(({ key, label, Icon }) => {
-        const supported = capabilities[key as keyof Capabilities] === true;
+        const supported = key === 'supportsImageInput'
+          ? capabilities.supportsImageInput === true || capabilities.supportsVision === true
+          : capabilities[key as keyof Capabilities] === true;
         const iconProps = { 
           size: iconSize, 
           style: { opacity: supported ? 1 : 0.3 } 

@@ -17,28 +17,17 @@ namespace ConduitLLM.Providers.Replicate
 
             Logger.LogInformation("Creating image with Replicate for model '{ModelId}'", ProviderModelId);
 
-            try
+            return await ExecuteApiRequestAsync(async () =>
             {
-                // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToImageGenerationRequest(request);
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
 
-                // Poll until prediction completes or fails
-                var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
+                using var pollScope = BeginPollingScope("CreateImage");
+                var finalPrediction = await PollPredictionUntilCompletedAsync(
+                    predictionResponse.Id, apiKey, cancellationToken, pollScope);
 
-                // Process the final result
-                return MapToImageGenerationResponse(finalPrediction, request.Model);
-            }
-            catch (LLMCommunicationException)
-            {
-                // Re-throw LLMCommunicationException directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate image generation");
-                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-            }
+                return MapToImageGenerationResponse(finalPrediction, request.Model ?? ProviderModelId);
+            }, "CreateImage", cancellationToken);
         }
 
         /// <summary>
@@ -55,43 +44,29 @@ namespace ConduitLLM.Providers.Replicate
         {
             ValidateRequest(request, "CreateVideoAsync");
 
-            Logger.LogInformation("Creating video with Replicate for model '{ModelId}' with prompt: '{Prompt}'", 
+            Logger.LogInformation("Creating video with Replicate for model '{ModelId}' with prompt: '{Prompt}'",
                 ProviderModelId, request.Prompt);
 
-            try
+            return await ExecuteApiRequestAsync(async () =>
             {
-                // Map the request to Replicate format and start prediction
                 var predictionRequest = MapToVideoGenerationRequest(request);
-                
+
                 Logger.LogDebug("Video generation request mapped. Input parameters: {@InputParams}", predictionRequest.Input);
-                
+
                 var predictionResponse = await StartPredictionAsync(predictionRequest, apiKey, cancellationToken);
-                
-                Logger.LogInformation("Video generation prediction started with ID: {PredictionId}, Status: {Status}", 
+
+                Logger.LogInformation("Video generation prediction started with ID: {PredictionId}, Status: {Status}",
                     predictionResponse.Id, predictionResponse.Status);
 
-                // Poll until prediction completes or fails
-                var finalPrediction = await PollPredictionUntilCompletedAsync(predictionResponse.Id, apiKey, cancellationToken);
+                using var pollScope = BeginPollingScope("CreateVideo");
+                var finalPrediction = await PollPredictionUntilCompletedAsync(
+                    predictionResponse.Id, apiKey, cancellationToken, pollScope);
 
-                Logger.LogInformation("Video generation completed for prediction {PredictionId}. Final status: {Status}, Output: {@Output}", 
+                Logger.LogInformation("Video generation completed for prediction {PredictionId}. Final status: {Status}, Output: {@Output}",
                     finalPrediction.Id, finalPrediction.Status, finalPrediction.Output);
 
-                // Process the final result
                 return MapToVideoGenerationResponse(finalPrediction, request.Model);
-            }
-            catch (LLMCommunicationException ex)
-            {
-                Logger.LogError(ex, "Video generation failed with LLMCommunicationException for model {ModelId}, prompt: '{Prompt}'", 
-                    ProviderModelId, request.Prompt);
-                // Re-throw LLMCommunicationException directly
-                throw;
-            }
-            catch (Exception ex)
-            {
-                Logger.LogError(ex, "An unexpected error occurred while processing Replicate video generation for model {ModelId}, prompt: '{Prompt}'", 
-                    ProviderModelId, request.Prompt);
-                throw new LLMCommunicationException($"An unexpected error occurred: {ex.Message}", ex);
-            }
+            }, "CreateVideo", cancellationToken);
         }
 
         private ReplicatePredictionRequest MapToImageGenerationRequest(ImageGenerationRequest request)
@@ -133,37 +108,9 @@ namespace ConduitLLM.Providers.Replicate
             {
                 foreach (var kvp in request.ExtensionData)
                 {
-                    // Convert JsonElement to appropriate type
-                    object value;
-                    switch (kvp.Value.ValueKind)
-                    {
-                        case System.Text.Json.JsonValueKind.String:
-                            value = kvp.Value.GetString()!;
-                            break;
-                        case System.Text.Json.JsonValueKind.Number:
-                            if (kvp.Value.TryGetInt32(out var intValue))
-                                value = intValue;
-                            else if (kvp.Value.TryGetDouble(out var doubleValue))
-                                value = doubleValue;
-                            else
-                                value = kvp.Value.GetDecimal();
-                            break;
-                        case System.Text.Json.JsonValueKind.True:
-                            value = true;
-                            break;
-                        case System.Text.Json.JsonValueKind.False:
-                            value = false;
-                            break;
-                        case System.Text.Json.JsonValueKind.Null:
-                            continue; // Skip null values
-                        default:
-                            // For arrays and objects, use the raw JSON string
-                            value = kvp.Value.ToString();
-                            break;
-                    }
-                    
                     // Don't override values that were already set from explicit properties
-                    if (!input.ContainsKey(kvp.Key))
+                    var value = ConvertJsonElement(kvp.Value);
+                    if (value is not null && !input.ContainsKey(kvp.Key))
                     {
                         input[kvp.Key] = value;
                     }
@@ -256,37 +203,9 @@ namespace ConduitLLM.Providers.Replicate
             {
                 foreach (var kvp in request.ExtensionData)
                 {
-                    // Convert JsonElement to appropriate type
-                    object value;
-                    switch (kvp.Value.ValueKind)
-                    {
-                        case System.Text.Json.JsonValueKind.String:
-                            value = kvp.Value.GetString()!;
-                            break;
-                        case System.Text.Json.JsonValueKind.Number:
-                            if (kvp.Value.TryGetInt32(out var intValue))
-                                value = intValue;
-                            else if (kvp.Value.TryGetDouble(out var doubleValue))
-                                value = doubleValue;
-                            else
-                                value = kvp.Value.GetDecimal();
-                            break;
-                        case System.Text.Json.JsonValueKind.True:
-                            value = true;
-                            break;
-                        case System.Text.Json.JsonValueKind.False:
-                            value = false;
-                            break;
-                        case System.Text.Json.JsonValueKind.Null:
-                            continue; // Skip null values
-                        default:
-                            // For arrays and objects, use the raw JSON string
-                            value = kvp.Value.ToString();
-                            break;
-                    }
-                    
                     // Don't override values that were already set from explicit properties
-                    if (!input.ContainsKey(kvp.Key))
+                    var value = ConvertJsonElement(kvp.Value);
+                    if (value is not null && !input.ContainsKey(kvp.Key))
                     {
                         input[kvp.Key] = value;
                     }

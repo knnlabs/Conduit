@@ -128,6 +128,94 @@ namespace ConduitLLM.Tests.Core.Services
                 Times.Once);
         }
 
+        [Fact]
+        public async Task StoreVideoAsync_WithShortReads_FillsEveryNonFinalMultipartPart()
+        {
+            var totalLength = 105L * 1024 * 1024 + 123;
+            using var content = new ShortReadSeekableStream(totalLength, 1024 * 1024);
+            var metadata = new VideoMediaMetadata
+            {
+                ContentType = "video/mp4",
+                FileName = "short-reads.mp4"
+            };
+            var uploadedPartSizes = new List<long>();
+            _mockS3Client
+                .Setup(client => client.InitiateMultipartUploadAsync(
+                    It.IsAny<InitiateMultipartUploadRequest>(), default))
+                .ReturnsAsync(new InitiateMultipartUploadResponse
+                {
+                    BucketName = _options.BucketName,
+                    Key = "video/short-reads.mp4",
+                    UploadId = "short-read-upload"
+                });
+            _mockS3Client
+                .Setup(client => client.UploadPartAsync(It.IsAny<UploadPartRequest>(), default))
+                .Returns<UploadPartRequest, CancellationToken>((request, _) =>
+                {
+                    uploadedPartSizes.Add(request.InputStream.Length);
+                    return Task.FromResult(new UploadPartResponse { ETag = $"part-{request.PartNumber}" });
+                });
+            _mockS3Client
+                .Setup(client => client.CompleteMultipartUploadAsync(
+                    It.IsAny<CompleteMultipartUploadRequest>(), default))
+                .ReturnsAsync(new CompleteMultipartUploadResponse { ETag = "complete" });
+
+            var result = await _service.StoreVideoAsync(content, metadata);
+
+            Assert.Equal(totalLength, result.SizeBytes);
+            Assert.True(uploadedPartSizes.Count > 1);
+            Assert.All(uploadedPartSizes.SkipLast(1), size =>
+                Assert.Equal(_options.MultipartChunkSizeBytes, size));
+            Assert.InRange(uploadedPartSizes[^1], 1, _options.MultipartChunkSizeBytes);
+            Assert.Equal(totalLength, uploadedPartSizes.Sum());
+        }
+
+        private sealed class ShortReadSeekableStream(long length, int maximumReadSize) : Stream
+        {
+            private long _position;
+
+            public override bool CanRead => true;
+            public override bool CanSeek => true;
+            public override bool CanWrite => false;
+            public override long Length => length;
+            public override long Position
+            {
+                get => _position;
+                set => _position = value;
+            }
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                var bytesRead = (int)Math.Min(Math.Min(count, maximumReadSize), length - _position);
+                _position += bytesRead;
+                return bytesRead;
+            }
+
+            public override ValueTask<int> ReadAsync(
+                Memory<byte> buffer,
+                CancellationToken cancellationToken = default)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return ValueTask.FromResult(Read(buffer.Span));
+            }
+
+            public override long Seek(long offset, SeekOrigin origin)
+            {
+                _position = origin switch
+                {
+                    SeekOrigin.Begin => offset,
+                    SeekOrigin.Current => _position + offset,
+                    SeekOrigin.End => length + offset,
+                    _ => throw new ArgumentOutOfRangeException(nameof(origin))
+                };
+                return _position;
+            }
+
+            public override void Flush() { }
+            public override void SetLength(long value) => throw new NotSupportedException();
+            public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        }
+
         #endregion
 
         #region GetVideoStreamAsync Tests

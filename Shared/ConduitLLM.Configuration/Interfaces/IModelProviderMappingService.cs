@@ -11,6 +11,7 @@ namespace ConduitLLM.Configuration.Interfaces
         Task UpdateMappingAsync(Entities.ModelProviderMapping mapping);
         Task DeleteMappingAsync(int id);
         Task<Entities.ModelProviderMapping?> GetMappingByModelAliasAsync(string modelAlias);
+        Task<List<Entities.ModelProviderMapping>> GetMappingsByModelAliasAsync(string modelAlias);
 
         /// <summary>
         /// Validates and creates a new model provider mapping

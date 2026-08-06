@@ -1,13 +1,100 @@
 import { useRouter } from 'next/navigation';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { ApiKeyTestResult } from '@knn_labs/conduit-admin-client';
+import {
+  ApiKeyTestResult,
+  type ProviderConfigurationDefinition,
+  type ProviderSettingField,
+  type ProviderType
+} from '@/lib/admin-api';
 import type { ProviderFormData, ProviderFormLogicResult } from './ProviderFormLogic';
 
 interface UseProviderFormHandlersParams {
   mode: 'add' | 'edit';
   providerId?: number;
   logic: ProviderFormLogicResult;
+}
+
+/**
+ * Collects the structured settings map sent to the backend, or undefined to leave the stored value
+ * untouched (the update endpoint treats null as "no change" and any supplied map as a wholesale
+ * replace).
+ *
+ * Edit mode seeds the map from the values loaded off the provider rather than building it from
+ * scratch, so keys the running backend does not declare survive that wholesale replace.
+ * Clearing a declared field removes its key, which is how a value gets unset.
+ */
+function collectSettings(
+  values: ProviderFormData,
+  fields: ProviderSettingField[],
+  mode: 'add' | 'edit'
+): Record<string, string> | undefined {
+  const result: Record<string, string> = mode === 'edit' ? { ...(values.settings ?? {}) } : {};
+
+  for (const field of fields) {
+    const raw = values.settings?.[field.key]?.trim() ?? '';
+    if (raw) {
+      result[field.key] = raw;
+    } else {
+      delete result[field.key];
+    }
+  }
+
+  if (mode === 'edit') {
+    // Only manage settings for provider types that declare them; otherwise send nothing so an
+    // unrecognized type's stored settings are left alone.
+    return fields.length > 0 ? result : undefined;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
+ * Validates declared settings; returns a map of form-path -> error message.
+ *
+ * Required-ness is only enforced on create. An existing provider may legitimately carry no settings
+ * because its identifier is embedded in a raw base URL (the dual-read path), so blocking an edit on
+ * a missing value would be stricter than the backend, which decides by re-resolving the base URL.
+ */
+function validateSettings(
+  values: ProviderFormData,
+  fields: ProviderSettingField[],
+  mode: 'add' | 'edit'
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  for (const field of fields) {
+    const raw = values.settings?.[field.key]?.trim() ?? '';
+    if (!raw) {
+      if (field.required && mode === 'add') {
+        errors[`settings.${field.key}`] = `${field.label} is required`;
+      }
+      continue;
+    }
+    if (field.validationRegexSource) {
+      try {
+        if (!new RegExp(field.validationRegexSource).test(raw)) {
+          errors[`settings.${field.key}`] = `${field.label} is not in the expected format`;
+        }
+      } catch {
+        // Ignore a malformed regex source rather than blocking submission.
+      }
+    }
+  }
+  return errors;
+}
+
+function validateProviderConfiguration(
+  values: ProviderFormData,
+  configuration: ProviderConfigurationDefinition | undefined,
+  mode: 'add' | 'edit'
+): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (mode === 'add' && configuration?.requiresApiKey !== false && !values.apiKey.trim()) {
+    errors.apiKey = 'API key is required';
+  }
+  if (configuration?.requiresEndpoint && !values.apiEndpoint?.trim()) {
+    errors.apiEndpoint = 'API endpoint is required';
+  }
+  return errors;
 }
 
 export function useProviderFormHandlers({ mode, providerId, logic }: UseProviderFormHandlersParams) {
@@ -18,11 +105,22 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
     setIsTesting,
     setTestResult,
     availableProviders,
+    settingFields,
+    providerConfiguration,
   } = logic;
 
   const handleSubmit = async (values: ProviderFormData) => {
     setIsSubmitting(true);
     try {
+      const errors = {
+        ...validateProviderConfiguration(values, providerConfiguration, mode),
+        ...validateSettings(values, settingFields, mode),
+      };
+      if (Object.keys(errors).length > 0) {
+        Object.entries(errors).forEach(([path, message]) => form.setFieldError(path, message));
+        return;
+      }
+
       if (mode === 'add') {
         let providerName = values.providerName.trim();
         if (!providerName) {
@@ -32,10 +130,13 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
 
         // First create the provider without the API key
         const providerPayload = {
-          providerType: parseInt(values.providerType, 10),
+          providerType: values.providerType as ProviderType,
           providerName: providerName,
           baseUrl: values.apiEndpoint ?? undefined,
+          settings: collectSettings(values, settingFields, 'add'),
           isEnabled: values.isEnabled,
+          trustProviderReportedCosts: values.trustProviderReportedCosts,
+          providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
         };
 
         const createdProvider = await withAdminClient(client => 
@@ -49,7 +150,6 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
               client.providers.createKey(createdProvider.id, {
                 apiKey: values.apiKey,
                 keyName: 'Primary Key',
-                organization: values.organizationId ?? undefined,
                 isPrimary: true,
                 isEnabled: true,
               })
@@ -57,39 +157,29 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
           } catch (keyError) {
             // If key creation fails, we should inform the user
             console.warn('Failed to create API key:', keyError);
-            notifications.show({
-              title: 'Warning',
-              message: 'Provider created but failed to save API key. Please add it manually in the provider settings.',
-              color: 'orange',
-            });
+            notify.warning('Provider created but failed to save API key. Please add it manually in the provider settings.');
             router.push('/llm-providers');
             return;
           }
         }
 
-        notifications.show({
-          title: 'Success',
-          message: 'Provider and API key created successfully',
-          color: 'green',
-        });
+        notify.success('Provider and API key created successfully');
       } else {
         // Edit mode - Note: API keys cannot be updated here, only through the keys management page
         const payload = {
           providerName: values.providerName ?? undefined,
           baseUrl: values.apiEndpoint ?? undefined,
-          organization: values.organizationId ?? undefined,
+          settings: collectSettings(values, settingFields, 'edit'),
           isEnabled: values.isEnabled,
+          trustProviderReportedCosts: values.trustProviderReportedCosts,
+          providerCostMarkupMultiplier: values.providerCostMarkupMultiplier,
         };
 
         await withAdminClient(client => 
           client.providers.update(providerId as number, payload)
         );
 
-        notifications.show({
-          title: 'Success',
-          message: 'Provider updated successfully',
-          color: 'green',
-        });
+        notify.success('Provider updated successfully');
       }
       
       router.push('/llm-providers');
@@ -97,17 +187,9 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
       const errorMessage = error instanceof Error ? error.message : `Failed to ${mode} provider`;
       
       if (mode === 'add' && errorMessage.includes('already exists')) {
-        notifications.show({
-          title: 'Provider Already Exists',
-          message: `A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`,
-          color: 'orange',
-        });
+        notify.warning(`A provider of type "${values.providerType}" already exists. Please edit the existing provider or delete it first.`, 'Provider Already Exists');
       } else {
-        notifications.show({
-          title: 'Error',
-          message: errorMessage,
-          color: 'red',
-        });
+        notify.error(errorMessage);
       }
     } finally {
       setIsSubmitting(false);
@@ -120,19 +202,28 @@ export function useProviderFormHandlers({ mode, providerId, logic }: UseProvider
       return;
     }
 
+    const errors = {
+      ...validateProviderConfiguration(form.values, providerConfiguration, mode),
+      ...validateSettings(form.values, settingFields, mode),
+    };
+    if (Object.keys(errors).length > 0) {
+      Object.entries(errors).forEach(([path, message]) => form.setFieldError(path, message));
+      return;
+    }
+
     setIsTesting(true);
     setTestResult(null);
 
     try {
       let result;
-      
+
       if (mode === 'add') {
-        result = await withAdminClient(client => 
+        result = await withAdminClient(client =>
           client.providers.testConfig({
-            providerType: parseInt(form.values.providerType, 10),
+            providerType: form.values.providerType as ProviderType,
             apiKey: form.values.apiKey,
             baseUrl: form.values.apiEndpoint ?? undefined,
-            organizationId: form.values.organizationId ?? undefined,
+            settings: collectSettings(form.values, settingFields, 'add'),
           })
         );
       } else {

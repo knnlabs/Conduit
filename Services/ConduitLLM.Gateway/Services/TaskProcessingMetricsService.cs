@@ -1,7 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Prometheus;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Core.Interfaces;
+using ConduitLLM.Core.Services;
+using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -9,11 +10,13 @@ namespace ConduitLLM.Gateway.Services
     /// Service for tracking task processing metrics including queue depths,
     /// processing times, and success/failure rates.
     /// </summary>
-    public class TaskProcessingMetricsService : BackgroundService
+    public class TaskProcessingMetricsService : PeriodicCollectorBackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<TaskProcessingMetricsService> _logger;
-        private readonly TimeSpan _collectionInterval = TimeSpan.FromSeconds(30);
+        private readonly HashSet<(string TaskType, string Status)> _taskQueueLabels = [];
+        private readonly HashSet<string> _taskWaitLabels = [];
+        private readonly HashSet<string> _virtualKeySpendLabels = [];
 
         // Task queue metrics
         private static readonly Gauge TaskQueueDepth = Prometheus.Metrics
@@ -52,20 +55,11 @@ namespace ConduitLLM.Gateway.Services
                     LabelNames = new[] { "task_type", "provider" }
                 });
 
-        private static readonly Summary TaskWaitTime = Prometheus.Metrics
-            .CreateSummary("conduit_task_wait_time_seconds", "Time tasks spend waiting in queue",
-                new SummaryConfiguration
+        private static readonly Gauge TaskWaitTime = Prometheus.Metrics
+            .CreateGauge("conduit_task_wait_time_seconds", "Age in seconds of the oldest pending task",
+                new GaugeConfiguration
                 {
-                    LabelNames = new[] { "task_type" },
-                    Objectives = new[]
-                    {
-                        new QuantileEpsilonPair(0.5, 0.05),
-                        new QuantileEpsilonPair(0.9, 0.01),
-                        new QuantileEpsilonPair(0.95, 0.005),
-                        new QuantileEpsilonPair(0.99, 0.001)
-                    },
-                    MaxAge = TimeSpan.FromMinutes(5),
-                    AgeBuckets = 5
+                    LabelNames = new[] { "task_type" }
                 });
 
         private static readonly Counter WebhookDeliveries = Prometheus.Metrics
@@ -108,34 +102,24 @@ namespace ConduitLLM.Gateway.Services
         public TaskProcessingMetricsService(
             IServiceScopeFactory serviceScopeFactory,
             ILogger<TaskProcessingMetricsService> logger)
+            : base(logger, TimeSpan.FromSeconds(30))
         {
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override Task CollectOnceAsync(CancellationToken cancellationToken) =>
+            CollectMetricsAsync();
+
+        protected override void OnCollectionFailed(Exception exception)
         {
-            _logger.LogInformation("Task processing metrics service starting...");
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await CollectMetricsAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error collecting task processing metrics");
-                }
-
-                await Task.Delay(_collectionInterval, stoppingToken);
-            }
-
-            _logger.LogInformation("Task processing metrics service stopped");
+            MetricsCollectionInstrumentation.RecordFailure("task_processing");
+            _logger.LogError(exception, "Error collecting task processing metrics");
         }
 
-        private async Task CollectMetricsAsync()
+        internal async Task CollectMetricsAsync()
         {
+            using var collectionTimer = MetricsCollectionInstrumentation.Measure("task_processing");
             using var scope = _serviceScopeFactory.CreateScope();
 
             // Collect async task metrics
@@ -151,21 +135,74 @@ namespace ConduitLLM.Gateway.Services
             await CollectVirtualKeySpendMetrics(scope);
         }
 
-        private async Task CollectAsyncTaskMetrics(IServiceScope scope)
+        internal async Task CollectAsyncTaskMetrics(IServiceScope scope)
         {
             try
             {
-                var taskService = scope.ServiceProvider.GetService<IAsyncTaskService>();
-                if (taskService == null) return;
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<
+                    IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
+                await using var context = await dbContextFactory.CreateDbContextAsync();
 
-                // TODO: Implement task metrics collection when GetAllTasksAsync is available
-                // For now, we'll skip this as the IAsyncTaskService doesn't expose a method
-                // to get all tasks. This would need to be added to the interface.
-                
-                await Task.CompletedTask; // Keep async signature
+                // Queue depth only includes non-terminal tasks. Grouping and counting stay in the
+                // database, so collection cost is bounded by the number of task-type/state groups.
+                var queueDepths = await context.AsyncTasks
+                    .AsNoTracking()
+                    .Where(task => !task.IsArchived && (task.State == 0 || task.State == 1))
+                    .GroupBy(task => new { task.Type, task.State })
+                    .Select(group => new
+                    {
+                        TaskType = group.Key.Type,
+                        State = group.Key.State,
+                        Count = group.Count()
+                    })
+                    .ToListAsync();
+
+                var currentQueueLabels = queueDepths
+                    .Select(depth => (TaskType: depth.TaskType, Status: GetStatusFromState(depth.State)))
+                    .ToHashSet();
+                foreach (var staleLabel in _taskQueueLabels.Except(currentQueueLabels))
+                {
+                    TaskQueueDepth.RemoveLabelled(staleLabel.TaskType, staleLabel.Status);
+                }
+
+                foreach (var depth in queueDepths)
+                {
+                    TaskQueueDepth.WithLabels(depth.TaskType, GetStatusFromState(depth.State)).Set(depth.Count);
+                }
+                ReplaceLabels(_taskQueueLabels, currentQueueLabels);
+
+                // Oldest pending age is a stable queue-wait signal that requires one grouped MIN
+                // query rather than loading or sampling an unbounded set of task rows.
+                var oldestPendingTasks = await context.AsyncTasks
+                    .AsNoTracking()
+                    .Where(task => !task.IsArchived && task.State == 0)
+                    .GroupBy(task => task.Type)
+                    .Select(group => new
+                    {
+                        TaskType = group.Key,
+                        OldestCreatedAt = group.Min(task => task.CreatedAt)
+                    })
+                    .ToListAsync();
+
+                var currentWaitLabels = oldestPendingTasks
+                    .Select(task => task.TaskType)
+                    .ToHashSet(StringComparer.Ordinal);
+                foreach (var staleLabel in _taskWaitLabels.Except(currentWaitLabels))
+                {
+                    TaskWaitTime.RemoveLabelled(staleLabel);
+                }
+
+                var now = DateTime.UtcNow;
+                foreach (var task in oldestPendingTasks)
+                {
+                    var waitSeconds = Math.Max(0, (now - task.OldestCreatedAt).TotalSeconds);
+                    TaskWaitTime.WithLabels(task.TaskType).Set(waitSeconds);
+                }
+                ReplaceLabels(_taskWaitLabels, currentWaitLabels);
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("task_processing/async_tasks");
                 _logger.LogError(ex, "Error collecting async task metrics");
             }
         }
@@ -188,7 +225,7 @@ namespace ConduitLLM.Gateway.Services
                     {
                         State = g.Key.State,
                         Count = g.Count(),
-                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Count() > 0 
+                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Any() 
                             ? g.Where(t => t.CompletedAt.HasValue)
                                 .Average(t => (double)((t.CompletedAt!.Value - t.CreatedAt).TotalSeconds))
                             : (double?)null
@@ -209,9 +246,15 @@ namespace ConduitLLM.Gateway.Services
                             .Observe(stat.AvgDuration.Value);
                     }
                 }
+
+                if (!imageStats.Any(stat => GetStatusFromState(stat.State) == "processing"))
+                {
+                    TasksInProgress.RemoveLabelled("image", "unknown");
+                }
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("task_processing/images");
                 _logger.LogError(ex, "Error collecting image generation metrics");
             }
         }
@@ -234,7 +277,7 @@ namespace ConduitLLM.Gateway.Services
                     {
                         State = g.Key.State,
                         Count = g.Count(),
-                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Count() > 0 
+                        AvgDuration = g.Where(t => t.CompletedAt.HasValue).Any() 
                             ? g.Where(t => t.CompletedAt.HasValue)
                                 .Average(t => (double)((t.CompletedAt!.Value - t.CreatedAt).TotalSeconds))
                             : (double?)null
@@ -255,9 +298,15 @@ namespace ConduitLLM.Gateway.Services
                             .Observe(stat.AvgDuration.Value);
                     }
                 }
+
+                if (!videoStats.Any(stat => GetStatusFromState(stat.State) == "processing"))
+                {
+                    TasksInProgress.RemoveLabelled("video", "unknown");
+                }
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("task_processing/videos");
                 _logger.LogError(ex, "Error collecting video generation metrics");
             }
         }
@@ -272,6 +321,8 @@ namespace ConduitLLM.Gateway.Services
                 2 => "completed",
                 3 => "failed",
                 4 => "cancelled",
+                5 => "timed_out",
+                6 => "indeterminate",
                 _ => "unknown"
             };
         }
@@ -280,32 +331,53 @@ namespace ConduitLLM.Gateway.Services
         {
             try
             {
-                var spendHistoryRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
-                
-                // Get spend rate for top virtual keys in the last minute
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<
+                    IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
+                await using var context = await dbContextFactory.CreateDbContextAsync();
+
+                // Get spend rate for top virtual keys in the last minute. Aggregate and limit in
+                // the database so a busy minute never materializes every spend-history row.
                 var now = DateTime.UtcNow;
                 var oneMinuteAgo = now.AddMinutes(-1);
-                var recentSpends = await spendHistoryRepo.GetByDateRangeAsync(oneMinuteAgo, now);
-
-                var spendByKey = recentSpends
-                    .GroupBy(s => s.VirtualKeyId)
-                    .Select(g => new
+                var spendByKey = await context.VirtualKeySpendHistory
+                    .AsNoTracking()
+                    .Where(spend => spend.Timestamp >= oneMinuteAgo && spend.Timestamp < now)
+                    .GroupBy(spend => spend.VirtualKeyId)
+                    .Select(group => new
                     {
-                        VirtualKeyId = g.Key,
-                        TotalSpend = g.Sum(s => s.Amount)
+                        VirtualKeyId = group.Key,
+                        TotalSpend = group.Sum(spend => spend.Amount)
                     })
-                    .OrderByDescending(s => s.TotalSpend)
-                    .Take(100); // Top 100 spenders
+                    .OrderByDescending(spend => spend.TotalSpend)
+                    .Take(100)
+                    .ToListAsync();
+
+                var currentLabels = spendByKey
+                    .Select(spend => spend.VirtualKeyId.ToString())
+                    .ToHashSet(StringComparer.Ordinal);
+                foreach (var staleLabel in _virtualKeySpendLabels.Except(currentLabels))
+                {
+                    VirtualKeySpendRate.RemoveLabelled(staleLabel);
+                }
 
                 foreach (var spend in spendByKey)
                 {
                     VirtualKeySpendRate.WithLabels(spend.VirtualKeyId.ToString()).Set((double)spend.TotalSpend);
                 }
+                ReplaceLabels(_virtualKeySpendLabels, currentLabels);
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("task_processing/virtual_key_spend");
                 _logger.LogError(ex, "Error collecting virtual key spend metrics");
             }
+        }
+
+        private static void ReplaceLabels<T>(HashSet<T> target, HashSet<T> source)
+            where T : notnull
+        {
+            target.Clear();
+            target.UnionWith(source);
         }
 
         // Static methods to be called by task processing code

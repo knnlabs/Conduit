@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 using StackExchange.Redis;
@@ -302,7 +302,7 @@ public static class TestHelpers
                 sb.AppendLine();
             }
             
-            if (context.Errors.Count() > 0)
+            if (context.Errors.Any())
             {
                 sb.AppendLine("**Errors:**");
                 foreach (var error in context.Errors)

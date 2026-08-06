@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
-using CoreUtils = ConduitLLM.Core.Utilities;
 using ConduitLLM.Providers.OpenAI;
 
 namespace ConduitLLM.Providers.OpenAICompatible
@@ -52,6 +51,18 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     openAiRequest["response_format"] = request.ResponseFormat;
                 if (!string.IsNullOrEmpty(request.User))
                     openAiRequest["user"] = request.User;
+                if (!string.IsNullOrEmpty(request.Background))
+                    openAiRequest["background"] = request.Background;
+                if (!string.IsNullOrEmpty(request.Moderation))
+                    openAiRequest["moderation"] = request.Moderation;
+                if (request.OutputCompression.HasValue)
+                    openAiRequest["output_compression"] = request.OutputCompression.Value;
+                if (!string.IsNullOrEmpty(request.OutputFormat))
+                    openAiRequest["output_format"] = request.OutputFormat;
+                if (request.PartialImages.HasValue)
+                    openAiRequest["partial_images"] = request.PartialImages.Value;
+                if (request.Stream.HasValue)
+                    openAiRequest["stream"] = request.Stream.Value;
 
                 // Only include quality and style for DALL-E 3
                 var modelName = request.Model ?? ProviderModelId;
@@ -89,30 +100,25 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     request.Prompt?.Substring(0, Math.Min(50, request.Prompt?.Length ?? 0)), 
                     openAiRequest.GetValueOrDefault("size"), openAiRequest.GetValueOrDefault("response_format"));
                     
-                // Log a warning about potential quota issues if using OpenAI
-                if (ProviderName.Equals("openai", StringComparison.OrdinalIgnoreCase))
-                {
-                    Logger.LogWarning("Note: OpenAI image generation errors with null messages often indicate quota/billing issues");
-                }
-
-                var response = await CoreUtils.HttpClientHelper.SendJsonRequestAsync<Dictionary<string, object?>, ImageGenerationResponse>(
+                var response = await PostJsonAsync<Dictionary<string, object?>, ImageGenerationResponse>(
                     client,
-                    HttpMethod.Post,
                     endpoint,
                     openAiRequest,
-                    CreateStandardHeaders(apiKey),
-                    DefaultJsonOptions,
-                    Logger,
+                    apiKey,
                     cancellationToken);
 
                 return new CoreModels.ImageGenerationResponse
                 {
                     Created = response.Created,
+                    Background = request.Background,
+                    OutputFormat = request.OutputFormat,
+                    Quality = request.Quality,
+                    Size = request.Size,
                     Data = response.Data?.Select(d => new CoreModels.ImageData
                     {
                         Url = d.Url,
-                        B64Json = d.B64Json
-                        // Note: Core.Models.ImageData doesn't have RevisedPrompt property
+                        B64Json = d.B64Json,
+                        RevisedPrompt = d.RevisedPrompt
                     }).ToList() ?? new List<CoreModels.ImageData>()
                 };
             }, "CreateImage", cancellationToken);

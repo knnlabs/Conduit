@@ -2,9 +2,11 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json.Serialization;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
-    public class ModelSeries
+    public class ModelSeries : IEntity<int>
     {
         [Key]
         public int Id { get; set; }
@@ -20,10 +22,15 @@ namespace ConduitLLM.Configuration.Entities
         /// <remarks>
         /// JsonIgnore is applied to prevent circular reference during serialization.
         /// The cycle is: ModelSeries → Author → ModelSeries
+        /// Must not be initialized to a fresh instance: graph-traversing operations
+        /// (DbSet.Add/Update) would treat the phantom Author (Id = 0, Name = "") as a new
+        /// entity and insert a blank ModelAuthor row, colliding with
+        /// IX_ModelAuthor_Name_Unique on later saves (issue #1192).
+        /// Null until loaded via Include.
         /// </remarks>
         [ForeignKey("AuthorId")]
         [JsonIgnore]
-        public ModelAuthor Author { get; set; } = new ModelAuthor();
+        public ModelAuthor Author { get; set; } = null!;
 
         /// <summary>
         /// The name of the model series (e.g., GPT-4 Series, Claude Series, etc.)

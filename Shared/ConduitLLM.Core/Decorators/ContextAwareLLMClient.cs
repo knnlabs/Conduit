@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,44 +15,40 @@ namespace ConduitLLM.Core.Decorators
     /// <summary>
     /// Decorator that sets provider key context and tracks errors for LLM operations
     /// </summary>
-    public class ContextAwareLLMClient : ILLMClient
+    public class ContextAwareLLMClient : ILLMClient, ILLMClientDecorator, IAuthenticationVerifiable
     {
         private readonly ILLMClient _innerClient;
         private readonly int _keyId;
         private readonly int _providerId;
+        private readonly string? _providerName;
         private readonly IServiceProvider _serviceProvider;
         private readonly ILogger<ContextAwareLLMClient>? _logger;
 
         public ContextAwareLLMClient(
-            ILLMClient innerClient, 
-            int keyId, 
+            ILLMClient innerClient,
+            int keyId,
             int providerId,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            string? providerName = null)
         {
             _innerClient = innerClient ?? throw new ArgumentNullException(nameof(innerClient));
             _keyId = keyId;
             _providerId = providerId;
+            _providerName = providerName;
             _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
             _logger = serviceProvider.GetService<ILogger<ContextAwareLLMClient>>();
         }
+
+        /// <inheritdoc />
+        public ILLMClient InnerClient => _innerClient;
 
         public async Task<ChatCompletionResponse> CreateChatCompletionAsync(
             ChatCompletionRequest request,
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(
+                () => _innerClient.CreateChatCompletionAsync(request, apiKey, cancellationToken));
         }
 
         public async IAsyncEnumerable<ChatCompletionChunk> StreamChatCompletionAsync(
@@ -82,21 +77,17 @@ namespace ConduitLLM.Core.Decorators
                         }
                         catch (Exception ex)
                         {
-                            // For debugging - write to console if logger is null
-                            if (_logger == null)
-                            {
-                                Console.WriteLine($"[ContextAwareLLMClient] Logger is NULL! Exception: {ex.GetType().Name}");
-                            }
-                            
                             _logger?.LogWarning(
                                 "Caught exception in streaming: Type={ExceptionType}, Message={Message}, HasStatusCode={HasStatusCode}",
                                 ex.GetType().Name, ex.Message.Substring(0, Math.Min(ex.Message.Length, 200)), (ex as LLMCommunicationException)?.StatusCode);
-                            
+
+                            StampProviderName(ex);
+
                             // Track error only once per stream
                             if (!errorTracked)
                             {
                                 // Try to extract LLMCommunicationException from nested exceptions
-                                var llmEx = ExtractLLMCommunicationException(ex);
+                                var llmEx = LLMCommunicationException.FindWithStatus(ex);
                                 if (llmEx != null)
                                 {
                                     _logger?.LogWarning(
@@ -108,9 +99,6 @@ namespace ConduitLLM.Core.Decorators
                                 else
                                 {
                                     _logger?.LogWarning("Could not extract LLMCommunicationException from {ExceptionType}", ex.GetType().Name);
-                                    
-                                    // For debugging
-                                    Console.WriteLine($"[ContextAwareLLMClient] Failed to extract LLMCommunicationException from {ex.GetType().Name}");
                                 }
                             }
                             throw;
@@ -130,18 +118,7 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.ListModelsAsync(apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(() => _innerClient.ListModelsAsync(apiKey, cancellationToken));
         }
 
         public async Task<EmbeddingResponse> CreateEmbeddingAsync(
@@ -149,18 +126,8 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.CreateEmbeddingAsync(request, apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(
+                () => _innerClient.CreateEmbeddingAsync(request, apiKey, cancellationToken));
         }
 
         public async Task<ImageGenerationResponse> CreateImageAsync(
@@ -168,18 +135,8 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
-            {
-                try
-                {
-                    return await _innerClient.CreateImageAsync(request, apiKey, cancellationToken);
-                }
-                catch (LLMCommunicationException ex)
-                {
-                    await TrackErrorAsync(ex);
-                    throw;
-                }
-            }
+            return await TrackedAsync(
+                () => _innerClient.CreateImageAsync(request, apiKey, cancellationToken));
         }
 
         public async Task<VideoGenerationResponse> CreateVideoAsync(
@@ -187,96 +144,104 @@ namespace ConduitLLM.Core.Decorators
             string? apiKey = null,
             CancellationToken cancellationToken = default)
         {
-            using (ProviderKeyContext.Set(_keyId, _providerId))
+            return await TrackedAsync(async () =>
             {
-                try
+                // CreateVideoAsync is not on ILLMClient — only specific providers implement it.
+                // The inner client may itself be a decorator (e.g. PromptCachingLLMClient)
+                // that hides the provider's video capability, so unwrap the chain to the
+                // innermost provider client before reflecting (issue #976).
+                var providerClient = _innerClient.UnwrapInnermost();
+                var providerClientType = providerClient.GetType();
+                var createVideoMethod = providerClientType.GetMethod("CreateVideoAsync",
+                    new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
+
+                if (createVideoMethod == null)
                 {
-                    // Check if inner client supports video generation
-                    var innerClientType = _innerClient.GetType();
-                    var createVideoMethod = innerClientType.GetMethod("CreateVideoAsync",
-                        new[] { typeof(VideoGenerationRequest), typeof(string), typeof(CancellationToken) });
-                    
-                    if (createVideoMethod == null)
-                    {
-                        throw new NotSupportedException($"The underlying client {innerClientType.Name} does not support video generation");
-                    }
-                    
-                    // Invoke the method on the inner client
-                    var task = createVideoMethod.Invoke(_innerClient, new object?[] { request, apiKey, cancellationToken }) as Task<VideoGenerationResponse>;
-                    if (task != null)
-                    {
-                        return await task;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"CreateVideoAsync method on {innerClientType.Name} did not return expected Task<VideoGenerationResponse>");
-                    }
+                    throw new NotSupportedException(
+                        $"The underlying client {providerClientType.Name} does not support video generation");
                 }
-                catch (LLMCommunicationException ex)
+
+                var task = (Task<VideoGenerationResponse>?)createVideoMethod.Invoke(
+                    providerClient, new object?[] { request, apiKey, cancellationToken });
+
+                if (task == null)
                 {
-                    await TrackErrorAsync(ex);
-                    throw;
+                    throw new InvalidOperationException(
+                        $"CreateVideoAsync on {providerClientType.Name} returned null");
                 }
-                catch (Exception ex) when (!(ex is NotSupportedException || ex is InvalidOperationException))
+
+                return await task;
+            });
+        }
+
+        /// <summary>
+        /// Verifies authentication by delegating to the inner client if it supports
+        /// <see cref="IAuthenticationVerifiable"/>.
+        /// </summary>
+        public Task<AuthenticationResult> VerifyAuthenticationAsync(
+            string? apiKey = null,
+            string? baseUrl = null,
+            CancellationToken cancellationToken = default)
+        {
+            return Utilities.AuthenticationVerificationDelegator.VerifyAsync(
+                _innerClient,
+                _innerClient.GetType().Name,
+                apiKey,
+                baseUrl,
+                cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets the health check URL by delegating to the inner client if it supports
+        /// <see cref="IAuthenticationVerifiable"/>.
+        /// </summary>
+        public string GetHealthCheckUrl(string? baseUrl = null)
+        {
+            return Utilities.AuthenticationVerificationDelegator.GetHealthCheckUrl(_innerClient, baseUrl);
+        }
+
+        /// <summary>
+        /// Stamps this client's provider name on every <see cref="LLMCommunicationException"/>
+        /// in the chain so customer-facing translation (Internal mode) can name the provider.
+        /// Never overwrites a name set closer to the source.
+        /// </summary>
+        private void StampProviderName(Exception exception)
+        {
+            if (string.IsNullOrWhiteSpace(_providerName))
+            {
+                return;
+            }
+
+            for (Exception? current = exception; current is not null; current = current.InnerException)
+            {
+                if (current is LLMCommunicationException communicationException)
                 {
-                    _logger?.LogError(ex, "Error in CreateVideoAsync");
-                    throw;
+                    communicationException.ProviderName ??= _providerName;
                 }
             }
         }
 
-        public async Task<ProviderCapabilities> GetCapabilitiesAsync(string? modelId = null)
+        private async Task<T> TrackedAsync<T>(Func<Task<T>> operation)
         {
             using (ProviderKeyContext.Set(_keyId, _providerId))
             {
                 try
                 {
-                    return await _innerClient.GetCapabilitiesAsync(modelId);
+                    return await operation();
                 }
-                catch (LLMCommunicationException ex)
+                catch (Exception ex)
                 {
-                    await TrackErrorAsync(ex);
+                    StampProviderName(ex);
+
+                    var communicationException = LLMCommunicationException.FindWithStatus(ex);
+                    if (communicationException is not null)
+                    {
+                        await TrackErrorAsync(communicationException);
+                    }
+
                     throw;
                 }
             }
-        }
-
-        private LLMCommunicationException? ExtractLLMCommunicationException(Exception ex)
-        {
-            // Check if it's already an LLMCommunicationException with a StatusCode
-            if (ex is LLMCommunicationException llmEx && llmEx.StatusCode.HasValue)
-                return llmEx;
-            
-            // If it's an LLMCommunicationException without StatusCode, check its inner exceptions
-            if (ex is LLMCommunicationException outerLlmEx && outerLlmEx.InnerException != null)
-            {
-                var innerWithStatus = ExtractLLMCommunicationException(outerLlmEx.InnerException);
-                if (innerWithStatus != null)
-                    return innerWithStatus;
-            }
-            
-            // Check inner exceptions recursively for any LLMCommunicationException with StatusCode
-            var current = ex.InnerException;
-            while (current != null)
-            {
-                if (current is LLMCommunicationException innerLlmEx && innerLlmEx.StatusCode.HasValue)
-                    return innerLlmEx;
-                current = current.InnerException;
-            }
-            
-            // If we only found exceptions without StatusCode, return the first one we found
-            if (ex is LLMCommunicationException firstLlmEx)
-                return firstLlmEx;
-                
-            current = ex.InnerException;
-            while (current != null)
-            {
-                if (current is LLMCommunicationException innerLlmEx)
-                    return innerLlmEx;
-                current = current.InnerException;
-            }
-            
-            return null;
         }
 
         private async Task TrackErrorAsync(LLMCommunicationException ex)
@@ -296,10 +261,10 @@ namespace ConduitLLM.Core.Decorators
                     return;
                 }
 
-                var errorType = ClassifyError(ex.StatusCode);
+                var errorType = ProviderErrorClassifier.ClassifyException(ex);
                 
                 // Only track errors that are meaningful for provider health
-                if (errorType == ProviderErrorType.Unknown)
+                if (!ProviderErrorClassifier.ShouldTrack(errorType))
                 {
                     return;
                 }
@@ -312,7 +277,9 @@ namespace ConduitLLM.Core.Decorators
                     ErrorMessage = ex.Message,
                     HttpStatusCode = (int?)ex.StatusCode,
                     RetryAttempt = 0, // Direct error, not from retry
-                    RequestId = null
+                    RequestId = _serviceProvider
+                        .GetService<Microsoft.AspNetCore.Http.IHttpContextAccessor>()
+                        ?.HttpContext?.TraceIdentifier
                 });
 
                 _logger?.LogInformation(
@@ -326,21 +293,5 @@ namespace ConduitLLM.Core.Decorators
             }
         }
 
-        private static ProviderErrorType ClassifyError(HttpStatusCode? statusCode)
-        {
-            return statusCode switch
-            {
-                HttpStatusCode.Unauthorized => ProviderErrorType.InvalidApiKey,
-                HttpStatusCode.PaymentRequired => ProviderErrorType.InsufficientBalance,
-                HttpStatusCode.Forbidden => ProviderErrorType.AccessForbidden,
-                HttpStatusCode.TooManyRequests => ProviderErrorType.RateLimitExceeded,
-                HttpStatusCode.NotFound => ProviderErrorType.ModelNotFound,
-                HttpStatusCode.ServiceUnavailable => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.BadGateway => ProviderErrorType.ServiceUnavailable,
-                HttpStatusCode.GatewayTimeout => ProviderErrorType.Timeout,
-                HttpStatusCode.InternalServerError => ProviderErrorType.ServiceUnavailable,
-                _ => ProviderErrorType.Unknown
-            };
-        }
     }
 }

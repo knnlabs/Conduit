@@ -1,4 +1,7 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
+
+using ConduitLLM.Core.Utilities;
 
 namespace ConduitLLM.Core.Models;
 
@@ -60,15 +63,19 @@ public class ImageUrl
     /// Returns true if the URL is a base64 data URL
     /// </summary>
     [JsonIgnore]
-    public bool IsBase64DataUrl => Url.StartsWith("data:image/");
+    public bool IsBase64DataUrl =>
+        DataUrl.TryParse(Url, out var dataUrl) &&
+        dataUrl.IsBase64 &&
+        dataUrl.MediaType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Gets the MIME type from the data URL, or null if this is not a data URL
     /// </summary>
     [JsonIgnore]
-    public string? MimeType => IsBase64DataUrl
-        ? Url.Substring(5, Url.IndexOf(';') - 5)
-        : null;
+    public string? MimeType =>
+        DataUrl.TryParse(Url, out var dataUrl) && dataUrl.IsBase64
+            ? dataUrl.MediaType
+            : null;
 
     /// <summary>
     /// Gets the base64 data without the prefix, or null if this is not a data URL
@@ -78,14 +85,117 @@ public class ImageUrl
     {
         get
         {
-            if (!IsBase64DataUrl) return null;
-
-            int startIndex = Url.IndexOf("base64,");
-            if (startIndex < 0) return null;
-
-            return Url.Substring(startIndex + 7);
+            return DataUrl.TryParse(Url, out var dataUrl) && dataUrl.IsBase64
+                ? dataUrl.Data
+                : null;
         }
     }
+}
+
+/// <summary>
+/// Represents an audio input content part in a multimodal message.
+/// </summary>
+public class InputAudioContentPart
+{
+    [JsonPropertyName("type")]
+    public string Type => "input_audio";
+
+    [JsonPropertyName("input_audio")]
+    public required InputAudio InputAudio { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Base64-encoded audio and its container/sample format.</summary>
+public class InputAudio
+{
+    [JsonPropertyName("data")]
+    public required string Data { get; set; }
+
+    [JsonPropertyName("format")]
+    public required string Format { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Represents a document/file content part in a multimodal message.</summary>
+public class FileContentPart
+{
+    [JsonPropertyName("type")]
+    public string Type => "file";
+
+    [JsonPropertyName("file")]
+    public required FileContent File { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>
+/// A file supplied by URL/data URL or by a provider-bound uploaded file identifier.
+/// Exactly one of <see cref="FileData"/> and <see cref="FileId"/> must be set.
+/// </summary>
+public class FileContent
+{
+    [JsonPropertyName("filename")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Filename { get; set; }
+
+    [JsonPropertyName("file_data")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FileData { get; set; }
+
+    [JsonPropertyName("file_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FileId { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>
+/// Extensible provider content part for forward-compatible content types.
+/// Known providers may pass these through without Conduit discarding their fields.
+/// </summary>
+public class ProviderContentPart
+{
+    [JsonPropertyName("type")]
+    public required string Type { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>An OpenRouter-compatible parsed-file annotation.</summary>
+public class FileAnnotation
+{
+    [JsonPropertyName("type")]
+    public string Type => "file";
+
+    [JsonPropertyName("file")]
+    public required ParsedFileAnnotation File { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
+}
+
+/// <summary>Parsed file content that can be sent back to avoid parsing the same file again.</summary>
+public class ParsedFileAnnotation
+{
+    [JsonPropertyName("hash")]
+    public required string Hash { get; set; }
+
+    [JsonPropertyName("name")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("content")]
+    public required List<JsonElement> Content { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 /// <summary>
@@ -117,65 +227,10 @@ public static class ImageUrlExtensions
     }
 
     /// <summary>
-    /// Creates an ImageUrl by downloading an image from an external URL and converting it to a base64 data URL
-    /// </summary>
-    /// <param name="url">The HTTP URL of the image</param>
-    /// <param name="detail">Optional detail level for vision models</param>
-    /// <returns>An ImageUrl object with the image as a base64 data URL</returns>
-    public static async Task<ImageUrl> FromExternalUrlAsync(string url, string? detail = null)
-    {
-        if (string.IsNullOrEmpty(url))
-            throw new ArgumentException("URL cannot be null or empty", nameof(url));
-
-        if (url.StartsWith("data:"))
-            return new ImageUrl { Url = url, Detail = detail };
-
-        using var httpClient = new HttpClient();
-        byte[] imageBytes = await httpClient.GetByteArrayAsync(url);
-
-        // Try to determine MIME type from content or fall back to a default
-        string mimeType = "image/jpeg"; // Default fallback
-
-        // Check magic numbers for common image formats
-        if (imageBytes.Length >= 2)
-        {
-            if (imageBytes[0] == 0xFF && imageBytes[1] == 0xD8) // JPEG
-                mimeType = "image/jpeg";
-            else if (imageBytes.Length >= 8 &&
-                     imageBytes[0] == 0x89 && imageBytes[1] == 0x50 &&
-                     imageBytes[2] == 0x4E && imageBytes[3] == 0x47) // PNG
-                mimeType = "image/png";
-            else if (imageBytes.Length >= 3 &&
-                     imageBytes[0] == 0x47 && imageBytes[1] == 0x49 &&
-                     imageBytes[2] == 0x46) // GIF
-                mimeType = "image/gif";
-            else if (imageBytes.Length >= 4 &&
-                     (imageBytes[0] == 0x42 && imageBytes[1] == 0x4D)) // BMP
-                mimeType = "image/bmp";
-        }
-
-        string dataUrl = $"data:{mimeType};base64,{Convert.ToBase64String(imageBytes)}";
-
-        return new ImageUrl
-        {
-            Url = dataUrl,
-            Detail = detail
-        };
-    }
-
-    /// <summary>
     /// Gets a MIME type based on the file extension
     /// </summary>
     private static string GetMimeTypeFromFileExtension(string extension)
     {
-        return extension.ToLowerInvariant() switch
-        {
-            ".jpg" or ".jpeg" => "image/jpeg",
-            ".png" => "image/png",
-            ".gif" => "image/gif",
-            ".webp" => "image/webp",
-            ".bmp" => "image/bmp",
-            _ => "application/octet-stream" // Default fallback
-        };
+        return Utilities.MediaContentTypes.GetContentType(extension) ?? "application/octet-stream";
     }
 }

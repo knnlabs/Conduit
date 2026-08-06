@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack, HoverCard } from '@mantine/core';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { Table, TextInput, Select, Group, ActionIcon, Badge, Text, Tooltip, Stack, HoverCard, Pagination } from '@mantine/core';
+import { useDebouncedValue } from '@mantine/hooks';
 import {
   IconEdit,
   IconTrash,
@@ -13,16 +14,15 @@ import {
   IconCurrencyDollar,
   IconReceiptDollar
 } from '@tabler/icons-react';
-import { useAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { useAdminClient, withAdminClient } from '@/lib/client/adminClient';
+import { notify } from '@/lib/notifications';
 import { EditModelModal } from './EditModelModal';
 import { ViewModelModal } from './ViewModelModal';
-import { DeleteModelModal } from './DeleteModelModal';
+import { DeleteConfirmationModal } from '@/components/common/DeleteConfirmationModal';
 import { ModelCostPreviewModal } from './ModelCostPreviewModal';
 import { ModelCostEditorModal } from './ModelCostEditorModal';
-import { useModelSeries } from '@/hooks/useModelSeries';
 import { useModelMappings } from '@/hooks/useModelMappingsApi';
-import type { ModelCostDto, ModelDto } from '@knn_labs/conduit-admin-client';
+import type { ModelCostDto, ModelDto } from '@/lib/admin-api';
 import { extractCapabilities, getErrorMessage } from '@/utils/typeGuards';
 import { CapabilityIcons } from '@/components/common/CapabilityIcons';
 import { getTokenizerDisplayName } from '@/lib/utils/tokenizerTypes';
@@ -36,7 +36,7 @@ type ModelWithMappingStatus = ModelDto & {
     identifier: string;
     provider: number | null;
     isPrimary: boolean;
-    normalizedProvider?: number | null;
+    normalizedProvider?: string | null;
     providerName?: string | null;
   }>;
   seriesParameters?: string | null;
@@ -49,9 +49,9 @@ interface ModelsTableProps {
 
 export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const [models, setModels] = useState<ModelWithMappingStatus[]>([]);
-  const [filteredModels, setFilteredModels] = useState<ModelWithMappingStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch] = useDebouncedValue(search, 300);
   const [capabilityFilter, setCapabilityFilter] = useState<string | null>(null);
   const [providerFilter, setProviderFilter] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelDto | null>(null);
@@ -62,8 +62,14 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const [costEditorModalOpen, setCostEditorModalOpen] = useState(false);
   const [existingModelCost, setExistingModelCost] = useState<ModelCostDto | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const pageSize = 50;
+
   const { executeWithAdmin } = useAdminClient();
-  const { seriesNames } = useModelSeries(models);
+  const [seriesNames, setSeriesNames] = useState<Record<number, string>>({});
   const { mappings: modelMappings } = useModelMappings();
 
   // Build Set of model aliases for O(1) lookup
@@ -79,110 +85,71 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
     return mappedModelAliases.has(modelName.toLowerCase());
   };
 
-  const loadModels = async () => {
+  // Convert providerFilter to hasProviders boolean for the API
+  const getHasProviders = (filter: string | null): boolean | undefined => {
+    if (filter === 'with-provider') return true;
+    if (filter === 'without-provider') return false;
+    return undefined;
+  };
+  const hasProvidersParam = getHasProviders(providerFilter);
+
+  const loadModels = useCallback(async (page: number) => {
     try {
       setLoading(true);
-      const data = await executeWithAdmin(client => client.models.listWithMappingStatus());
-      
-      // Fetch series parameters for models with series IDs
-      const uniqueSeriesIds = Array.from(
-        new Set(
-          data
-            .map(model => model.modelSeriesId)
-            .filter((id): id is number => id !== undefined && id !== null)
-        )
-      );
-      
+      // Single paginated API call with server-side search/filter + series list in parallel
+      const [data, allSeries] = await Promise.all([
+        executeWithAdmin(client => client.models.listPaginated({
+          page,
+          pageSize,
+          search: debouncedSearch || undefined,
+          capability: capabilityFilter ?? undefined,
+          hasProviders: hasProvidersParam,
+        })),
+        executeWithAdmin(client => client.modelSeries.list()),
+      ]);
+
+      // Build lookup maps from the single series list call
       const seriesParametersMap: Record<number, string | null> = {};
-      
-      if (uniqueSeriesIds.length > 0) {
-        const seriesResults = await Promise.allSettled(
-          uniqueSeriesIds.map(async (seriesId) => {
-            const series = await executeWithAdmin(client => 
-              client.modelSeries.get(seriesId)
-            );
-            return { id: seriesId, parameters: series.parameters ?? null };
-          })
-        );
-        
-        seriesResults.forEach((result) => {
-          if (result.status === 'fulfilled') {
-            seriesParametersMap[result.value.id] = result.value.parameters;
-          }
-        });
+      const seriesNamesMap: Record<number, string> = {};
+      for (const series of allSeries) {
+        if (series.id) {
+          seriesParametersMap[series.id] = series.parameters
+            ? JSON.stringify(series.parameters)
+            : null;
+          seriesNamesMap[series.id] = series.name ?? `Series ${series.id}`;
+        }
       }
-      
+      setSeriesNames(seriesNamesMap);
+
       // Enhance models with series parameters
-      const enhancedModels = data.map(model => ({
+      const enhancedModels = data.items.map(model => ({
         ...model,
         seriesParameters: model.modelSeriesId ? seriesParametersMap[model.modelSeriesId] ?? null : null
       }));
-      
+
       setModels(enhancedModels);
-      setFilteredModels(enhancedModels);
+      setTotalPages(data.totalPages);
+      setTotalCount(data.totalCount);
     } catch (error) {
-      const errorMessage = getErrorMessage(error);
-      console.warn('Failed to load models:', errorMessage);
-      notifications.show({
-        title: 'Error',
-        message: `Failed to load models: ${errorMessage}`,
-        color: 'red',
-      });
+      console.warn('Failed to load models:', getErrorMessage(error));
+      notify.error(error, 'Failed to load models');
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, capabilityFilter, hasProvidersParam]);
+
+  // Reset to page 1 when filters change, then load
+  useEffect(() => {
+    setCurrentPage(1);
+    void loadModels(1);
+  }, [loadModels]);
+
+  // Load when page changes (but not on filter change — that's handled above)
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    void loadModels(page);
   };
-
-
-  useEffect(() => {
-    void loadModels();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    let filtered = [...models];
-
-    if (search) {
-      filtered = filtered.filter(model =>
-        (model.name?.toLowerCase().includes(search.toLowerCase()) ?? false)
-        // displayName doesn't exist in ModelDto
-      );
-    }
-
-    if (capabilityFilter) {
-      filtered = filtered.filter(model => {
-        const capabilities = extractCapabilities(model);
-        
-        switch (capabilityFilter) {
-          case 'chat':
-            return capabilities.supportsChat;
-          case 'vision':
-            return capabilities.supportsVision;
-          case 'image':
-            return capabilities.supportsImageGeneration;
-          case 'video':
-            return capabilities.supportsVideoGeneration;
-          default:
-            return true;
-        }
-      });
-    }
-
-    if (providerFilter) {
-      filtered = filtered.filter(model => {
-        switch (providerFilter) {
-          case 'with-provider':
-            return model.hasProviderMappings === true;
-          case 'without-provider':
-            return model.hasProviderMappings === false;
-          default:
-            return true;
-        }
-      });
-    }
-
-    setFilteredModels(filtered);
-  }, [search, capabilityFilter, providerFilter, models]);
 
   const handleEdit = (model: ModelDto) => {
     setSelectedModel(model);
@@ -239,7 +206,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
   const handleDeleteSuccess = () => {
     setDeleteModalOpen(false);
     setSelectedModel(null);
-    void loadModels();
+    void loadModels(currentPage);
     onRefresh?.();
   };
 
@@ -338,9 +305,12 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
 
   const capabilityOptions = [
     { value: 'chat', label: 'Text Chat' },
-    { value: 'vision', label: 'Text + Vision' },
-    { value: 'image', label: 'Image Generation' },
-    { value: 'video', label: 'Video Generation' }
+    { value: 'image_input', label: 'Image Input' },
+    { value: 'video_input', label: 'Video Input' },
+    { value: 'audio_input', label: 'Audio Input' },
+    { value: 'file_input', label: 'File Input' },
+    { value: 'image_generation', label: 'Image Generation' },
+    { value: 'video_generation', label: 'Video Generation' }
   ];
 
   const providerOptions = [
@@ -399,7 +369,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                 </Table.Tr>
               );
             }
-            if (filteredModels.length === 0) {
+            if (models.length === 0) {
               return (
                 <Table.Tr>
                   <Table.Td colSpan={7}>
@@ -408,7 +378,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                 </Table.Tr>
               );
             }
-            return filteredModels.map((model) => (
+            return models.map((model) => (
               <Table.Tr key={model.id}>
                 <Table.Td>
                   <Group gap="xs">
@@ -437,8 +407,8 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
                   )}
                 </Table.Td>
                 <Table.Td>
-                  <Tooltip label={getTokenizerDisplayName(model.tokenizerType ?? 0, false)}>
-                    <Text size="sm">{getTokenizerDisplayName(model.tokenizerType ?? 0, true)}</Text>
+                  <Tooltip label={getTokenizerDisplayName(model.tokenizerType ?? 'none', false)}>
+                    <Text size="sm">{getTokenizerDisplayName(model.tokenizerType ?? 'none', true)}</Text>
                   </Tooltip>
                 </Table.Td>
                 <Table.Td>
@@ -502,6 +472,19 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
         </Table.Tbody>
       </Table>
 
+      {totalPages > 1 && (
+        <Group justify="space-between">
+          <Text size="sm" c="dimmed">
+            Showing {models.length} of {totalCount} models
+          </Text>
+          <Pagination
+            total={totalPages}
+            value={currentPage}
+            onChange={handlePageChange}
+          />
+        </Group>
+      )}
+
       {selectedModel && (
         <>
           <EditModelModal
@@ -514,7 +497,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             onSuccess={() => {
               setEditModalOpen(false);
               setSelectedModel(null);
-              void loadModels();
+              void loadModels(currentPage);
               onRefresh?.();
             }}
           />
@@ -528,9 +511,15 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
             }}
           />
 
-          <DeleteModelModal
+          <DeleteConfirmationModal
             isOpen={deleteModalOpen}
-            model={selectedModel}
+            title="Delete Model"
+            itemLabel="model"
+            itemName={selectedModel.name ?? ''}
+            description="This will permanently remove the model from the system. Any model mappings referencing this model may be affected."
+            confirmButtonText="Delete Model"
+            successMessage={`Model "${selectedModel.name}" deleted successfully`}
+            deleteAction={() => withAdminClient(client => client.models.delete(selectedModel.id as number))}
             onClose={() => {
               setDeleteModalOpen(false);
               setSelectedModel(null);
@@ -560,7 +549,7 @@ export function ModelsTable({ onRefresh }: ModelsTableProps) {
               setCostEditorModalOpen(false);
               setExistingModelCost(null);
               setSelectedModel(null);
-              void loadModels();
+              void loadModels(currentPage);
               onRefresh?.();
             }}
           />

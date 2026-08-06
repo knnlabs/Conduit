@@ -1,22 +1,21 @@
-using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.Metrics;
+using ConduitLLM.Security.Middleware;
+using ISecurityService = ConduitLLM.Security.Interfaces.ISecurityService;
 
 namespace ConduitLLM.Admin.Middleware
 {
     /// <summary>
-    /// Unified security middleware for Admin API that handles authentication, rate limiting, and IP filtering
+    /// Unified security middleware for Admin API that handles authentication, rate limiting, and IP filtering.
+    /// Inherits from SecurityMiddlewareBase for common functionality.
     /// </summary>
-    public class SecurityMiddleware
+    public class SecurityMiddleware : SecurityMiddlewareBase
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<SecurityMiddleware> _logger;
-
         /// <summary>
         /// Initializes a new instance of the SecurityMiddleware
         /// </summary>
         public SecurityMiddleware(RequestDelegate next, ILogger<SecurityMiddleware> logger)
+            : base(next, logger)
         {
-            _next = next;
-            _logger = logger;
         }
 
         /// <summary>
@@ -24,34 +23,29 @@ namespace ConduitLLM.Admin.Middleware
         /// </summary>
         public async Task InvokeAsync(HttpContext context, ISecurityService securityService)
         {
-            var result = await securityService.IsRequestAllowedAsync(context);
+            await ProcessRequestAsync(context, ctx => securityService.IsRequestAllowedAsync(ctx));
+        }
 
-            if (!result.IsAllowed)
+        /// <summary>
+        /// Records Admin API security violation metrics.
+        /// </summary>
+        protected override void RecordViolationMetric(int statusCode)
+        {
+            switch (statusCode)
             {
-                _logger.LogWarning("Request blocked: {Reason} for path {Path} from IP {IP}", 
-                    result.Reason, 
-                    context.Request.Path,
-                    context.Connection.RemoteIpAddress);
-
-                context.Response.StatusCode = result.StatusCode ?? 403;
-                
-                // Add appropriate headers for rate limiting
-                if (result.StatusCode == 429)
-                {
-                    context.Response.Headers.Append("Retry-After", "60");
-                    context.Response.Headers.Append("X-RateLimit-Limit", "100"); // Will be made configurable
-                }
-
-                // Return JSON error response
-                await context.Response.WriteAsJsonAsync(new 
-                { 
-                    error = result.Reason,
-                    statusCode = result.StatusCode
-                });
-                return;
+                case StatusCodes.Status401Unauthorized:
+                    AdminSecurityMetrics.RecordAuthFailure();
+                    break;
+                case StatusCodes.Status429TooManyRequests:
+                    AdminSecurityMetrics.RecordRateLimitHit();
+                    break;
+                case StatusCodes.Status403Forbidden:
+                    AdminSecurityMetrics.RecordAccessDenied();
+                    break;
+                default:
+                    AdminSecurityMetrics.RecordBlocked();
+                    break;
             }
-
-            await _next(context);
         }
     }
 

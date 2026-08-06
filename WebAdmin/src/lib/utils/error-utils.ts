@@ -3,50 +3,17 @@
  * These utilities help extract properties from error objects while satisfying ESLint rules
  */
 
-import { HttpError } from '@knn_labs/conduit-admin-client';
+import {
+  getErrorMessage,
+  getErrorStatusCode,
+  isHttpError,
+} from '@/lib/conduit-common';
 
-/**
- * Safely extracts statusCode from an HttpError
- */
-export function getErrorStatusCode(error: unknown): number | undefined {
-  if (error instanceof HttpError && error.response) {
-    return error.response.status;
-  }
-  return undefined;
-}
-
-/**
- * Safely extracts message from any error type
- */
-export function getErrorMessage(error: unknown): string {
-  // Check HttpError response data first
-  if (error instanceof HttpError && error.response?.data) {
-    const data = error.response.data;
-    if (isObject(data)) {
-      // Try common error message fields
-      if (typeof data.message === 'string') return data.message;
-      if (typeof data.error === 'string') return data.error;
-      if (typeof data.details === 'string') return data.details;
-    }
-  }
-  
-  // Standard Error handling
-  if (error instanceof Error) {
-    return error.message;
-  }
-  
-  // String errors
-  if (typeof error === 'string') {
-    return error;
-  }
-  
-  // Objects with message property
-  if (isObject(error) && typeof error.message === 'string') {
-    return error.message;
-  }
-  
-  return 'Unknown error';
-}
+export {
+  getErrorMessage,
+  getErrorStatusCode,
+  isHttpError,
+};
 
 /**
  * Type guard to check if a value is a valid object
@@ -56,10 +23,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Safely extracts details from an HttpError
+ * Safely extracts details from a structured HTTP error
  */
 export function getErrorDetails(error: unknown): Record<string, unknown> {
-  if (error instanceof HttpError && error.response?.data) {
+  if (isHttpError(error) && error.response.data) {
     const data = error.response.data;
     if (isObject(data)) {
       return data;
@@ -70,24 +37,16 @@ export function getErrorDetails(error: unknown): Record<string, unknown> {
 }
 
 /**
- * Safely extracts context from an HttpError
- * Since HttpError doesn't have a context property, we extract from response data
+ * Safely extracts context from structured HTTP response data.
  */
 export function getErrorContext(error: unknown): Record<string, unknown> {
-  if (error instanceof HttpError && error.response?.data) {
+  if (isHttpError(error) && error.response.data) {
     const data = error.response.data;
     if (isObject(data) && isObject(data.context)) {
       return data.context;
     }
   }
   return {};
-}
-
-/**
- * Checks if an error is an HttpError
- */
-export function isHttpError(error: unknown): error is HttpError {
-  return error instanceof HttpError;
 }
 
 /**

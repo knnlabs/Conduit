@@ -1,5 +1,5 @@
-using System.Diagnostics;
-using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Routing;
+using ConduitLLM.Core.Middleware;
 using Prometheus;
 
 namespace ConduitLLM.Admin.Middleware
@@ -8,10 +8,9 @@ namespace ConduitLLM.Admin.Middleware
     /// Middleware for collecting HTTP metrics for the Admin API.
     /// Tracks request/response metrics including duration, size, and status codes.
     /// </summary>
-    public class AdminHttpMetricsMiddleware
+    public class AdminHttpMetricsMiddleware : HttpMetricsMiddlewareBase
     {
-        private readonly RequestDelegate _next;
-        private readonly ILogger<AdminHttpMetricsMiddleware> _logger;
+        private const string UnmatchedEndpointLabel = "__unmatched__";
 
         // Core HTTP metrics
         private static readonly Counter RequestsTotal = Prometheus.Metrics
@@ -59,130 +58,50 @@ namespace ConduitLLM.Admin.Middleware
                     LabelNames = new[] { "method", "endpoint", "status_code", "error_type" }
                 });
 
-        // Regex patterns for path normalization
-        private static readonly Regex GuidPattern = new Regex(@"\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b", RegexOptions.Compiled);
-        private static readonly Regex NumberPattern = new Regex(@"\b\d+\b", RegexOptions.Compiled);
-
-        /// <summary>
-        /// Initializes a new instance of the <see cref="AdminHttpMetricsMiddleware"/> class.
-        /// </summary>
-        /// <param name="next">The next middleware in the pipeline.</param>
-        /// <param name="logger">The logger instance.</param>
         public AdminHttpMetricsMiddleware(RequestDelegate next, ILogger<AdminHttpMetricsMiddleware> logger)
+            : base(next, logger) { }
+
+        protected override bool ShouldSkipMetrics(HttpContext context) => false;
+
+        protected override string GetNormalizedPath(HttpContext context)
         {
-            _next = next;
-            _logger = logger;
-        }
-
-        /// <summary>
-        /// Processes an individual request and records metrics.
-        /// </summary>
-        /// <param name="context">The HTTP context for the current request.</param>
-        /// <returns>A task that represents the asynchronous operation.</returns>
-        public async Task InvokeAsync(HttpContext context)
-        {
-            var stopwatch = Stopwatch.StartNew();
-            var path = NormalizePath(context.Request.Path.Value ?? "/");
-            var method = context.Request.Method;
-
-            // Track active requests
-            using (ActiveRequests.WithLabels(method, path).TrackInProgress())
+            if (context.GetEndpoint() is RouteEndpoint routeEndpoint)
             {
-                // Capture request size
-                if (context.Request.ContentLength.HasValue)
+                var routeTemplate = routeEndpoint.RoutePattern.RawText;
+                if (!string.IsNullOrWhiteSpace(routeTemplate))
                 {
-                    RequestSize.WithLabels(method, path).Observe(context.Request.ContentLength.Value);
-                }
-
-                // Store original response body stream
-                var originalBodyStream = context.Response.Body;
-                using var responseBody = new MemoryStream();
-                context.Response.Body = responseBody;
-
-                try
-                {
-                    await _next(context);
-
-                    // Capture response size
-                    var responseSize = responseBody.Length;
-                    ResponseSize.WithLabels(method, path, context.Response.StatusCode.ToString()).Observe(responseSize);
-
-                    // Copy the response body back to the original stream
-                    responseBody.Seek(0, SeekOrigin.Begin);
-                    await responseBody.CopyToAsync(originalBodyStream);
-                }
-                catch (TaskCanceledException)
-                {
-                    context.Response.StatusCode = 499; // Client closed request
-                    ErrorsTotal.WithLabels(method, path, "499", "client_cancelled").Inc();
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    var errorType = ex.GetType().Name;
-                    ErrorsTotal.WithLabels(method, path, context.Response.StatusCode.ToString(), errorType).Inc();
-                    _logger.LogError(ex, "Unhandled exception in request pipeline");
-                    throw;
-                }
-                finally
-                {
-                    context.Response.Body = originalBodyStream;
-
-                    // Record metrics
-                    stopwatch.Stop();
-                    var statusCode = context.Response.StatusCode.ToString();
-
-                    RequestsTotal.WithLabels(method, path, statusCode).Inc();
-                    RequestDuration.WithLabels(method, path, statusCode).Observe(stopwatch.Elapsed.TotalSeconds);
-
-                    // Log slow requests
-                    if (stopwatch.Elapsed.TotalSeconds > 5)
-                    {
-                        _logger.LogWarning("Slow request detected: {Method} {Path} took {Duration}s with status {StatusCode}",
-                            method, path, stopwatch.Elapsed.TotalSeconds, statusCode);
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Normalizes request paths to reduce cardinality in metrics.
-        /// Replaces GUIDs and numeric IDs with placeholders.
-        /// </summary>
-        private static string NormalizePath(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return "/";
-
-            // Normalize common Admin API endpoints
-            path = path.ToLowerInvariant();
-
-            // Replace GUIDs with {id}
-            path = GuidPattern.Replace(path, "{id}");
-
-            // Replace numeric IDs with {id}
-            path = NumberPattern.Replace(path, "{id}");
-
-            // Specific normalization for Admin API endpoints
-            var normalizations = new Dictionary<string, string>
-            {
-                { "/api/virtualkeys/{id}", "/api/virtualkeys/{id}" },
-                { "/api/providerhealth/{id}", "/api/providerhealth/{id}" },
-                { "/api/modelmappings/{id}", "/api/modelmappings/{id}" },
-                { "/api/providers/{id}", "/api/providers/{id}" },
-                { "/api/providers/{id}/test", "/api/providers/{id}/test" },
-                { "/api/providerhealth/providers/{id}", "/api/providerhealth/providers/{id}" }
-            };
-
-            foreach (var (pattern, normalized) in normalizations)
-            {
-                if (path.StartsWith(pattern.Replace("{id}", "")))
-                {
-                    return normalized;
+                    return routeTemplate.StartsWith('/')
+                        ? routeTemplate.ToLowerInvariant()
+                        : $"/{routeTemplate.ToLowerInvariant()}";
                 }
             }
 
-            return path;
+            // Never put the raw request path into a label. Prometheus retains every label tuple
+            // for the process lifetime, so arbitrary 404 paths must share one bounded bucket.
+            return UnmatchedEndpointLabel;
+        }
+
+        protected override void IncrementActiveRequests(string method, string path)
+            => ActiveRequests.WithLabels(method, path).Inc();
+
+        protected override void DecrementActiveRequests(string method, string path)
+            => ActiveRequests.WithLabels(method, path).Dec();
+
+        protected override void RecordRequestSize(string method, string path, long bytes)
+            => RequestSize.WithLabels(method, path).Observe(bytes);
+
+        protected override void RecordError(string method, string path, int statusCode, string errorType)
+            => ErrorsTotal.WithLabels(method, path, statusCode.ToString(), errorType).Inc();
+
+        protected override void RecordResponseMetrics(
+            string method, string path, int statusCode, double durationSeconds,
+            long responseBytes, HttpContext context)
+        {
+            var statusCodeStr = statusCode.ToString();
+
+            ResponseSize.WithLabels(method, path, statusCodeStr).Observe(responseBytes);
+            RequestsTotal.WithLabels(method, path, statusCodeStr).Inc();
+            RequestDuration.WithLabels(method, path, statusCodeStr).Observe(durationSeconds);
         }
     }
 }

@@ -4,6 +4,7 @@ using ConduitLLM.Gateway.Authentication;
 using ConduitLLM.Configuration.Entities;
 
 using ConduitLLM.Gateway.Interfaces;
+using ConduitLLM.Gateway.Utilities;
 namespace ConduitLLM.Gateway.Hubs
 {
     /// <summary>
@@ -206,16 +207,7 @@ namespace ConduitLLM.Gateway.Hubs
         /// <summary>
         /// Gets or creates a correlation ID for the current connection.
         /// </summary>
-        protected string GetOrCreateCorrelationId()
-        {
-            if (Context.Items.TryGetValue("CorrelationId", out var value) && value is string correlationId)
-            {
-                return correlationId;
-            }
-
-            correlationId = Guid.NewGuid().ToString();
-            Context.Items["CorrelationId"] = correlationId;
-            return correlationId;
-        }
+        protected string GetOrCreateCorrelationId() =>
+            HubContextHelpers.GetOrCreateCorrelationId(Context.Items);
     }
 }

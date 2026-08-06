@@ -64,7 +64,57 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateCost_PerVideo_MissingResolutionDuration_ThrowsException()
+        public async Task CalculateCost_PerVideo_CamelCaseJson_ReturnsConfiguredRate()
+        {
+            var modelId = "minimax/hailuo-camel-case";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 6,
+                VideoResolution = "768p"
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerVideo,
+                PricingConfiguration = "{\"rates\":{\"768p_6\":0.28}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.28m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerVideo_MissingExactKey_UsesHighestConfiguredRateAndMarksFallback()
+        {
+            var modelId = "video/measured-duration";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 6.2,
+                VideoResolution = "1280x720"
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerVideo,
+                PricingConfiguration = "{\"rates\":{\"720p_5\":0.25,\"1080p_10\":0.75}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.25m, cost);
+            Assert.Contains("Missing per-video rate '720p_6'", usage.PricingFallbackReason);
+            Assert.Contains("720p_5", usage.PricingFallbackReason);
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerVideo_MissingResolutionDuration_UsesConservativeFallback()
         {
             // Arrange
             var modelId = "minimax/hailuo-02";
@@ -93,9 +143,10 @@ namespace ConduitLLM.Tests.Core.Services
             _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
                 .ReturnsAsync(modelCost);
 
-            // Act & Assert
-            await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await _service.CalculateCostAsync(modelId, usage));
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.56m, cost);
+            Assert.NotNull(usage.PricingFallbackReason);
         }
 
         [Fact]
@@ -135,6 +186,32 @@ namespace ConduitLLM.Tests.Core.Services
 
             // Assert
             Assert.Equal(1.35m, cost); // 10 seconds * 0.09 * 1.5 = 1.35
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerSecondVideo_UnknownResolution_UsesHighestMultiplierAndMarksFallback()
+        {
+            var modelId = "video/unknown-resolution";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 10,
+                VideoResolution = "1440p"
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerSecondVideo,
+                PricingConfiguration = "{\"baseRate\":0.10,\"resolutionMultipliers\":{\"720p\":1.0,\"1080p\":1.5}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(1.50m, cost);
+            Assert.Contains("Unknown per-second video resolution '1440p'", usage.PricingFallbackReason);
+            Assert.Contains("1080p", usage.PricingFallbackReason);
         }
 
         [Fact]
@@ -212,6 +289,26 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateCost_InferenceSteps_CamelCaseJson_UsesConfiguredValues()
+        {
+            var modelId = "fireworks/sdxl-camel-case";
+            var usage = new Usage { ImageCount = 1 };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.InferenceSteps,
+                PricingConfiguration = "{\"costPerStep\":0.00013,\"defaultSteps\":30}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.0039m, cost);
+        }
+
+        [Fact]
         public async Task CalculateCost_TieredTokens_MiniMaxM1_Under200K()
         {
             // Arrange
@@ -245,7 +342,7 @@ namespace ConduitLLM.Tests.Core.Services
             var cost = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Total context: 180000 (under 200K)
+            // Prompt context: 150000 (under 200K)
             // Input: 150000 * 400 / 1000000 = 60
             // Output: 30000 * 2200 / 1000000 = 66
             Assert.Equal(126m, cost);
@@ -285,10 +382,123 @@ namespace ConduitLLM.Tests.Core.Services
             var cost = await _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            // Total context: 300000 (over 200K, use higher tier)
+            // Prompt context: 250000 (over 200K, use higher tier)
             // Input: 250000 * 1300 / 1000000 = 325
             // Output: 50000 * 2200 / 1000000 = 110
             Assert.Equal(435m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_CamelCaseJson_UsesConfiguredTier()
+        {
+            var modelId = "minimax/m1-camel-case";
+            var usage = new Usage
+            {
+                PromptTokens = 1_000,
+                CompletionTokens = 500
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration =
+                    "{\"tiers\":[{\"maxContext\":200000,\"inputCost\":10,\"outputCost\":20}]}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.02m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_SelectsTierFromPromptTokensOnly()
+        {
+            var modelId = "tiered/prompt-context";
+            var usage = new Usage { PromptTokens = 190000, CompletionTokens = 50000 };
+            var config = new TieredTokensPricingConfig
+            {
+                Tiers =
+                [
+                    new TokenPricingTier { MaxContext = 200000, InputCost = 1m, OutputCost = 2m },
+                    new TokenPricingTier { MaxContext = null, InputCost = 10m, OutputCost = 20m }
+                ]
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration = JsonSerializer.Serialize(config)
+            };
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default)).ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(0.29m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_UsesSortedHighestTierForOverLimitPrompt()
+        {
+            var modelId = "tiered/over-limit";
+            var usage = new Usage { PromptTokens = 300000, CompletionTokens = 10000 };
+            var config = new TieredTokensPricingConfig
+            {
+                Tiers =
+                [
+                    new TokenPricingTier { MaxContext = 200000, InputCost = 10m, OutputCost = 20m },
+                    new TokenPricingTier { MaxContext = 100000, InputCost = 1m, OutputCost = 2m }
+                ]
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration = JsonSerializer.Serialize(config)
+            };
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default)).ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            Assert.Equal(3.2m, cost);
+        }
+
+        [Fact]
+        public async Task CalculateCost_TieredTokens_PricesCachedReasoningAndSearchUsage()
+        {
+            var modelId = "tiered/additional-usage";
+            var usage = new Usage
+            {
+                PromptTokens = 1000,
+                CompletionTokens = 500,
+                CachedInputTokens = 400,
+                CachedWriteTokens = 200,
+                ReasoningTokens = 300,
+                SearchUnits = 10
+            };
+            var config = new TieredTokensPricingConfig
+            {
+                Tiers = [new TokenPricingTier { MaxContext = null, InputCost = 10m, OutputCost = 20m }]
+            };
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.TieredTokens,
+                PricingConfiguration = JsonSerializer.Serialize(config),
+                CachedInputCostPerMillionTokens = 2m,
+                CachedInputWriteCostPerMillionTokens = 15m,
+                ReasoningCostPerMillionTokens = 30m,
+                CostPerSearchUnit = 1m
+            };
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default)).ReturnsAsync(modelCost);
+
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // regular input .004 + cache read .0008 + cache write .003
+            // regular output .004 + reasoning .009 + search .01
+            Assert.Equal(0.0308m, cost);
         }
 
         [Fact]
@@ -338,6 +548,96 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
+        public async Task CalculateCost_PerImage_CamelCaseJson_ReturnsNonZeroCost()
+        {
+            // Regression test: documented/WebAdmin-produced PricingConfiguration is camelCase
+            // (e.g. {"baseRate":0.05}). Case-sensitive parsing silently yielded BaseRate=0
+            // and billed $0.00 for media generation.
+            // Arrange
+            var modelId = "minimax/image-01";
+            var usage = new Usage
+            {
+                ImageCount = 2
+            };
+
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerImage,
+                PricingConfiguration = "{\"baseRate\":0.05}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            Assert.Equal(0.10m, cost); // 2 images * 0.05 base rate
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerImage_CamelCaseJsonWithMultipliers_AppliesMultipliers()
+        {
+            // Arrange
+            var modelId = "replicate/flux-pro";
+            var usage = new Usage
+            {
+                ImageCount = 1,
+                ImageQuality = "hd",
+                ImageResolution = "1792x1024"
+            };
+
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerImage,
+                PricingConfiguration =
+                    "{\"baseRate\":0.04,\"qualityMultipliers\":{\"hd\":2.0},\"resolutionMultipliers\":{\"1792x1024\":1.5}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            Assert.Equal(0.12m, cost); // 1 image * 0.04 base * 2.0 quality * 1.5 resolution
+        }
+
+        [Fact]
+        public async Task CalculateCost_PerSecondVideo_CamelCaseJson_ReturnsNonZeroCost()
+        {
+            // Regression test: camelCase config must not deserialize BaseRate=0 (silent $0 billing).
+            // Arrange
+            var modelId = "replicate/minimax-video";
+            var usage = new Usage
+            {
+                VideoDurationSeconds = 10,
+                VideoResolution = "1080p"
+            };
+
+            var modelCost = new ModelCost
+            {
+                CostName = modelId,
+                PricingModel = PricingModel.PerSecondVideo,
+                PricingConfiguration =
+                    "{\"baseRate\":0.09,\"resolutionMultipliers\":{\"720p\":1.0,\"1080p\":1.5}}"
+            };
+
+            _mockModelCostService.Setup(x => x.GetCostForModelAsync(modelId, default))
+                .ReturnsAsync(modelCost);
+
+            // Act
+            var cost = await _service.CalculateCostAsync(modelId, usage);
+
+            // Assert
+            Assert.Equal(1.35m, cost); // 10 seconds * 0.09 * 1.5
+        }
+
+        [Fact]
         public async Task CalculateCost_Standard_WithBatchProcessing()
         {
             // Arrange
@@ -373,7 +673,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateCost_NoModelCost_ReturnsZero()
+        public async Task CalculateCost_NoModelCost_ThrowsForReconciliation()
         {
             // Arrange
             var modelId = "unknown/model";
@@ -387,10 +687,10 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync((ModelCost?)null);
 
             // Act
-            var cost = await _service.CalculateCostAsync(modelId, usage);
+            var act = () => _service.CalculateCostAsync(modelId, usage);
 
             // Assert
-            Assert.Equal(0m, cost);
+            await Assert.ThrowsAsync<InvalidOperationException>(act);
         }
 
         [Fact]

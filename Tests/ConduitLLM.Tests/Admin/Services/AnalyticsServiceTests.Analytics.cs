@@ -1,4 +1,4 @@
-using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.DTOs;
 
 using Moq;
 
@@ -14,54 +14,69 @@ namespace ConduitLLM.Tests.Admin.Services
         [Fact]
         public async Task GetAnalyticsSummaryAsync_CalculatesMetrics()
         {
-            // Arrange
-            var testLogs = new List<RequestLog>
+            // Arrange — mock database-level aggregation methods
+            var summary = new RequestLogSummary
             {
-                new() { 
-                    ModelName = "gpt-4", 
-                    Cost = 0.05m,
-                    InputTokens = 100,
-                    OutputTokens = 50,
-                    ResponseTimeMs = 1500,
-                    StatusCode = 200,
-                    Timestamp = DateTime.UtcNow,
-                    VirtualKeyId = 1
-                },
-                new() { 
-                    ModelName = "gpt-3.5-turbo", 
-                    Cost = 0.02m,
-                    InputTokens = 200,
-                    OutputTokens = 100,
-                    ResponseTimeMs = 800,
-                    StatusCode = 200,
-                    Timestamp = DateTime.UtcNow,
-                    VirtualKeyId = 2
-                },
-                new() { 
-                    ModelName = "gpt-4", 
-                    Cost = 0.00m,
-                    InputTokens = 50,
-                    OutputTokens = 0,
-                    ResponseTimeMs = 500,
-                    StatusCode = 429, // Error
-                    Timestamp = DateTime.UtcNow,
-                    VirtualKeyId = 1
+                TotalRequests = 3,
+                TotalCost = 0.07m,
+                TotalInputTokens = 350,
+                TotalOutputTokens = 150,
+                AverageResponseTimeMs = 933.33,
+                SuccessCount = 2,
+                ErrorCount = 1
+            };
+
+            var modelAggregations = new List<ModelAggregation>
+            {
+                new() { ModelName = "gpt-4", TotalCost = 0.05m, RequestCount = 2, InputTokens = 150, OutputTokens = 50 },
+                new() { ModelName = "gpt-3.5-turbo", TotalCost = 0.02m, RequestCount = 1, InputTokens = 200, OutputTokens = 100 }
+            };
+
+            var virtualKeyAggregations = new List<VirtualKeyAggregation>
+            {
+                new() { VirtualKeyId = 1, TotalCost = 0.05m, RequestCount = 2, LastUsed = DateTime.UtcNow, UniqueModels = 1 },
+                new() { VirtualKeyId = 2, TotalCost = 0.02m, RequestCount = 1, LastUsed = DateTime.UtcNow, UniqueModels = 1 }
+            };
+
+            var dailyStats = new List<DailyStatisticsAggregation>
+            {
+                new()
+                {
+                    Date = DateTime.UtcNow.Date,
+                    RequestCount = 3,
+                    Cost = 0.07m,
+                    InputTokens = 350,
+                    OutputTokens = 150,
+                    CachedInputTokens = 80,
+                    CachedWriteTokens = 20,
+                    AverageResponseTime = 933.33,
+                    ErrorCount = 1,
                 }
             };
-            
-            var virtualKeys = new List<VirtualKey>
-            {
-                new() { Id = 1, KeyName = "Production Key" },
-                new() { Id = 2, KeyName = "Development Key" }
-            };
-            
+
             _mockRequestLogRepository
-                .Setup(x => x.GetByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
-                .ReturnsAsync(testLogs);
-            
+                .Setup(x => x.GetSummaryAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(summary);
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetAggregatedByModelAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(modelAggregations);
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetAggregatedByVirtualKeyAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(virtualKeyAggregations);
+
+            _mockRequestLogRepository
+                .Setup(x => x.GetDailyStatisticsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(dailyStats);
+
             _mockVirtualKeyRepository
-                .Setup(x => x.GetAllAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(virtualKeys);
+                .Setup(x => x.GetKeyNamesByIdsAsync(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Dictionary<int, string>
+                {
+                    { 1, "Production Key" },
+                    { 2, "Development Key" }
+                });
 
             // Act
             var result = await _service.GetAnalyticsSummaryAsync();
@@ -77,6 +92,9 @@ namespace ConduitLLM.Tests.Admin.Services
             Assert.True(result.SuccessRate > 66 && result.SuccessRate < 67); // 2/3 success
             Assert.Equal(2, result.TopModels.Count);
             Assert.Equal(2, result.TopVirtualKeys.Count);
+            var daily = Assert.Single(result.DailyStats);
+            Assert.Equal(80, daily.CachedInputTokens);
+            Assert.Equal(20, daily.CachedWriteTokens);
         }
 
         #endregion

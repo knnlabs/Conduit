@@ -93,6 +93,12 @@ public interface IAnalyticsService
         DateTime? endDate = null,
         string? model = null,
         int? virtualKeyId = null);
+
+    /// <summary>
+    /// Invalidates all cached analytics results.
+    /// </summary>
+    /// <returns>The number of distinct cache keys invalidated.</returns>
+    int InvalidateCache();
 }
 
 /// <summary>
@@ -158,7 +164,7 @@ public class AnalyticsSummaryDto
     /// <summary>
     /// Comparison with previous period
     /// </summary>
-    public PeriodComparison? Comparison { get; set; }
+    public AnalyticsPeriodComparison? Comparison { get; set; }
 }
 
 /// <summary>
@@ -190,16 +196,16 @@ public class ModelUsageSummary
     /// Total output tokens generated
     /// </summary>
     public long OutputTokens { get; set; }
-    
+
     /// <summary>
-    /// Average response time in milliseconds
+    /// Average response time in milliseconds, or null when the aggregation does not measure it
     /// </summary>
-    public double AverageResponseTime { get; set; }
-    
+    public double? AverageResponseTime { get; set; }
+
     /// <summary>
-    /// Error rate as percentage (0-100)
+    /// Error rate as percentage (0-100), or null when the aggregation does not measure it
     /// </summary>
-    public double ErrorRate { get; set; }
+    public double? ErrorRate { get; set; }
 }
 
 /// <summary>
@@ -233,9 +239,9 @@ public class VirtualKeyUsageSummary
     public DateTime? LastUsed { get; set; }
     
     /// <summary>
-    /// List of model names used with this key
+    /// List of model names used with this key, or null when the aggregation does not provide it
     /// </summary>
-    public List<string> ModelsUsed { get; set; } = new();
+    public List<string>? ModelsUsed { get; set; }
 }
 
 /// <summary>
@@ -267,6 +273,16 @@ public class DailyStatistics
     /// Total output tokens for this date
     /// </summary>
     public long OutputTokens { get; set; }
+
+    /// <summary>
+    /// Total cached input tokens for this date
+    /// </summary>
+    public long CachedInputTokens { get; set; }
+
+    /// <summary>
+    /// Total cached write tokens for this date
+    /// </summary>
+    public long CachedWriteTokens { get; set; }
     
     /// <summary>
     /// Average response time for this date
@@ -282,7 +298,7 @@ public class DailyStatistics
 /// <summary>
 /// Period comparison for trend analysis
 /// </summary>
-public class PeriodComparison
+public class AnalyticsPeriodComparison
 {
     /// <summary>
     /// Absolute change in cost compared to previous period

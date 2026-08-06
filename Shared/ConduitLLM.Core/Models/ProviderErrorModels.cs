@@ -105,7 +105,7 @@ namespace ConduitLLM.Core.Models
         /// <summary>
         /// Whether this is a fatal error that should disable the key
         /// </summary>
-        public bool IsFatal => (int)ErrorType <= 9;
+        public bool IsFatal => ProviderErrorClassifier.IsFatal(ErrorType);
         
         /// <summary>
         /// Request ID for correlation
@@ -177,7 +177,9 @@ namespace ConduitLLM.Core.Models
         {
             [ProviderErrorType.InvalidApiKey] = new DisablePolicy
             {
-                DisableImmediately = true,
+                DisableImmediately = false,
+                RequiredOccurrences = 2,
+                TimeWindow = TimeSpan.FromSeconds(60),
                 RequiresManualReenable = true
             },
             

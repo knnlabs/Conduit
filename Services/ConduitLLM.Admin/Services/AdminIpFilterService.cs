@@ -1,3 +1,5 @@
+using ConduitLLM.Admin.Extensions;
+using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Admin.Interfaces;
@@ -8,7 +10,7 @@ using ConduitLLM.Configuration.Options;
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Services;
 
-using MassTransit;
+using ConduitLLM.Configuration.Messaging;
 using Microsoft.Extensions.Options;
 
 using ConduitLLM.Configuration.Interfaces;
@@ -36,15 +38,15 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     /// <param name="ipFilterRepository">The IP filter repository</param>
     /// <param name="globalSettingRepository">The global settings repository for persisting IP filter settings</param>
     /// <param name="ipFilterOptions">The IP filter options</param>
-    /// <param name="publishEndpoint">Optional event publishing endpoint (null if MassTransit not configured)</param>
+    /// <param name="eventBus">Optional event bus (null if not configured)</param>
     /// <param name="logger">The logger</param>
     public AdminIpFilterService(
         IIpFilterRepository ipFilterRepository,
         IGlobalSettingRepository globalSettingRepository,
         IOptionsMonitor<IpFilterOptions> ipFilterOptions,
-        IPublishEndpoint? publishEndpoint,
-        ILogger<AdminIpFilterService> logger)
-        : base(publishEndpoint, logger)
+        ILogger<AdminIpFilterService> logger,
+        IEventBus? eventBus = null)
+        : base(eventBus, logger)
     {
         _ipFilterRepository = ipFilterRepository ?? throw new ArgumentNullException(nameof(ipFilterRepository));
         _globalSettingRepository = globalSettingRepository ?? throw new ArgumentNullException(nameof(globalSettingRepository));
@@ -59,10 +61,12 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting all IP filters");
+            _logger.LogDebug("Getting all IP filters");
 
-            var filters = await _ipFilterRepository.GetAllAsync();
-            return filters.Select(MapToDto);
+            // Global IP filtering surface: return only global filters (VirtualKeyId == null). Per-key
+            // filters are managed via GetFiltersByVirtualKeyIdAsync.
+            var filters = await _ipFilterRepository.GetAllUnboundedAsync();
+            return filters.Where(f => f.VirtualKeyId == null).Select(f => f.ToDto());
         }
         catch (Exception ex)
         {
@@ -76,10 +80,10 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting enabled IP filters");
+            _logger.LogDebug("Getting enabled IP filters");
 
             var filters = await _ipFilterRepository.GetEnabledAsync();
-            return filters.Select(MapToDto);
+            return filters.Select(f => f.ToDto());
         }
         catch (Exception ex)
         {
@@ -93,10 +97,10 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting IP filter with ID: {FilterId}", id);
+            _logger.LogDebug("Getting IP filter with ID: {FilterId}", id);
 
             var filter = await _ipFilterRepository.GetByIdAsync(id);
-            return filter != null ? MapToDto(filter) : null;
+            return filter?.ToDto();
         }
         catch (Exception ex)
         {
@@ -106,11 +110,28 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     }
 
     /// <inheritdoc/>
+    public async Task<IEnumerable<IpFilterDto>> GetFiltersByVirtualKeyIdAsync(int virtualKeyId)
+    {
+        try
+        {
+            _logger.LogDebug("Getting IP filters for virtual key {VirtualKeyId}", virtualKeyId);
+
+            var filters = await _ipFilterRepository.GetByVirtualKeyIdAsync(virtualKeyId);
+            return filters.Select(f => f.ToDto());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting IP filters for virtual key {VirtualKeyId}", virtualKeyId);
+            return Enumerable.Empty<IpFilterDto>();
+        }
+    }
+
+    /// <inheritdoc/>
     public async Task<(bool Success, string? ErrorMessage, IpFilterDto? Filter)> CreateFilterAsync(CreateIpFilterDto createFilter)
     {
         try
         {
-            _logger.LogInformation("Creating new IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
+            _logger.LogDebug("Creating new IP filter for {IpAddress}", (LoggingSanitizer.S(createFilter.IpAddressOrCidr ?? "")));
 
             // Validate the IP address format
             if (string.IsNullOrWhiteSpace(createFilter.IpAddressOrCidr) || !IsValidIpAddressOrCidr(createFilter.IpAddressOrCidr))
@@ -123,8 +144,10 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             {
                 FilterType = createFilter.FilterType,
                 IpAddressOrCidr = createFilter.IpAddressOrCidr,
+                Name = createFilter.Name,
                 Description = createFilter.Description,
                 IsEnabled = createFilter.IsEnabled,
+                VirtualKeyId = createFilter.VirtualKeyId,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
@@ -148,8 +171,11 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 $"create IP filter {createdFilter.Id}",
                 new { IpAddressOrCidr = createdFilter.IpAddressOrCidr, FilterType = createdFilter.FilterType });
 
+            _logger.LogInformation("IP filter created: {FilterId} type={FilterType} target={IpAddress}",
+                createdFilter.Id, createdFilter.FilterType, LoggingSanitizer.S(createdFilter.IpAddressOrCidr));
+
             // Return the created filter
-            return (true, null, MapToDto(createdFilter));
+            return (true, null, createdFilter.ToDto());
         }
         catch (Exception ex)
         {
@@ -159,21 +185,48 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     }
 
     /// <inheritdoc/>
-    public async Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(UpdateIpFilterDto updateFilter)
+    public async Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(int id, UpdateIpFilterDto updateFilter)
     {
         try
         {
-            _logger.LogInformation("Updating IP filter with ID: {FilterId}", updateFilter.Id);
+            _logger.LogDebug("Updating IP filter with ID: {FilterId}", id);
 
             // Check if the filter exists
-            var existingFilter = await _ipFilterRepository.GetByIdAsync(updateFilter.Id);
+            var existingFilter = await _ipFilterRepository.GetByIdAsync(id);
             if (existingFilter == null)
             {
-                return (false, $"IP filter with ID {updateFilter.Id} not found");
+                return (false, $"IP filter with ID {id} not found");
             }
 
-            // Validate the IP address format
-            if (!IsValidIpAddressOrCidr(updateFilter.IpAddressOrCidr))
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.FilterType),
+                existingFilter.FilterType,
+                out string? filterType);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.IpAddressOrCidr),
+                existingFilter.IpAddressOrCidr,
+                out string? ipAddressOrCidr);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.Name),
+                existingFilter.Name,
+                out string? name);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.Description),
+                existingFilter.Description,
+                out string? description);
+            updateFilter.TryGetPatchedProperty(
+                nameof(updateFilter.IsEnabled),
+                existingFilter.IsEnabled,
+                out bool isEnabled);
+
+            if (updateFilter.IsDefined(nameof(updateFilter.FilterType)) &&
+                string.IsNullOrWhiteSpace(filterType))
+            {
+                return (false, "Filter type cannot be null or empty");
+            }
+            if (updateFilter.IsDefined(nameof(updateFilter.IpAddressOrCidr)) &&
+                (string.IsNullOrWhiteSpace(ipAddressOrCidr) ||
+                 !IsValidIpAddressOrCidr(ipAddressOrCidr)))
             {
                 return (false, "Invalid IP address or CIDR format");
             }
@@ -181,34 +234,47 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             // Track changes for event publishing
             var changedProperties = new List<string>();
 
-            if (existingFilter.FilterType != updateFilter.FilterType)
+            if (updateFilter.IsDefined(nameof(updateFilter.FilterType)) &&
+                existingFilter.FilterType != filterType)
             {
-                existingFilter.FilterType = updateFilter.FilterType;
+                existingFilter.FilterType = filterType!;
                 changedProperties.Add(nameof(existingFilter.FilterType));
             }
 
-            if (existingFilter.IpAddressOrCidr != updateFilter.IpAddressOrCidr)
+            if (updateFilter.IsDefined(nameof(updateFilter.IpAddressOrCidr)) &&
+                existingFilter.IpAddressOrCidr != ipAddressOrCidr)
             {
-                existingFilter.IpAddressOrCidr = updateFilter.IpAddressOrCidr;
+                existingFilter.IpAddressOrCidr = ipAddressOrCidr!;
                 changedProperties.Add(nameof(existingFilter.IpAddressOrCidr));
             }
 
-            if (existingFilter.Description != updateFilter.Description)
+            // Normalize null vs empty so a null-named legacy row and an unset ("") DTO field are not
+            // treated as a change (which would break the no-op-skip path).
+            if (updateFilter.IsDefined(nameof(updateFilter.Name)) &&
+                existingFilter.Name != name)
             {
-                existingFilter.Description = updateFilter.Description;
+                existingFilter.Name = name;
+                changedProperties.Add(nameof(existingFilter.Name));
+            }
+
+            if (updateFilter.IsDefined(nameof(updateFilter.Description)) &&
+                existingFilter.Description != description)
+            {
+                existingFilter.Description = description;
                 changedProperties.Add(nameof(existingFilter.Description));
             }
 
-            if (existingFilter.IsEnabled != updateFilter.IsEnabled)
+            if (updateFilter.IsDefined(nameof(updateFilter.IsEnabled)) &&
+                existingFilter.IsEnabled != isEnabled)
             {
-                existingFilter.IsEnabled = updateFilter.IsEnabled;
+                existingFilter.IsEnabled = isEnabled;
                 changedProperties.Add(nameof(existingFilter.IsEnabled));
             }
 
             // Only proceed if there are actual changes
-            if (changedProperties.Count() == 0)
+            if (!changedProperties.Any())
             {
-                _logger.LogDebug("No changes detected for IP filter {FilterId} - skipping update", updateFilter.Id);
+                _logger.LogDebug("No changes detected for IP filter {FilterId} - skipping update", id);
                 return (true, null);
             }
 
@@ -219,6 +285,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             if (success)
             {
+                _logger.LogInformation("IP filter updated: {FilterId} changed=[{ChangedProperties}]",
+                    existingFilter.Id, string.Join(", ", changedProperties));
+
                 // Publish IpFilterChanged event for cache invalidation and cross-service coordination
                 await PublishEventAsync(
                     new IpFilterChanged
@@ -239,22 +308,26 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             else
             {
+                _logger.LogWarning("Failed to update IP filter {FilterId} in database", id);
                 return (false, "Failed to update the IP filter");
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating IP filter with ID {FilterId}", updateFilter.Id);
+            _logger.LogError(ex, "Error updating IP filter with ID {FilterId}", id);
             return (false, "An unexpected error occurred");
         }
     }
+
+    public Task<(bool Success, string? ErrorMessage)> UpdateFilterAsync(UpdateIpFilterDto updateFilter) =>
+        UpdateFilterAsync(updateFilter.Id, updateFilter);
 
     /// <inheritdoc/>
     public async Task<(bool Success, string? ErrorMessage)> DeleteFilterAsync(int id)
     {
         try
         {
-            _logger.LogInformation("Deleting IP filter with ID: {FilterId}", id);
+            _logger.LogDebug("Deleting IP filter with ID: {FilterId}", id);
 
             // Check if the filter exists
             var existingFilter = await _ipFilterRepository.GetByIdAsync(id);
@@ -268,6 +341,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
 
             if (success)
             {
+                _logger.LogInformation("IP filter deleted: {FilterId} type={FilterType} target={IpAddress}",
+                    existingFilter.Id, existingFilter.FilterType, LoggingSanitizer.S(existingFilter.IpAddressOrCidr));
+
                 // Publish IpFilterChanged event for cache invalidation and cross-service coordination
                 await PublishEventAsync(
                     new IpFilterChanged
@@ -288,6 +364,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             }
             else
             {
+                _logger.LogWarning("Failed to delete IP filter {FilterId} from database", id);
                 return (false, "Failed to delete the IP filter");
             }
         }
@@ -303,7 +380,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Getting IP filter settings");
+            _logger.LogDebug("Getting IP filter settings");
 
             // Try to get settings from database first
             var enabledSetting = await _globalSettingRepository.GetByKeyAsync(SettingKeyEnabled);
@@ -360,8 +437,9 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
             var endpoints = System.Text.Json.JsonSerializer.Deserialize<List<string>>(json);
             return endpoints ?? new List<string> { "/api/v1/health" };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to deserialize excluded endpoints JSON, using defaults");
             return new List<string> { "/api/v1/health" };
         }
     }
@@ -371,7 +449,7 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     {
         try
         {
-            _logger.LogInformation("Updating IP filter settings: Enabled={Enabled}, DefaultAllow={DefaultAllow}",
+            _logger.LogDebug("Updating IP filter settings: Enabled={Enabled}, DefaultAllow={DefaultAllow}",
                 settings.IsEnabled, settings.DefaultAllow);
 
             // Validate settings
@@ -419,6 +497,24 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
                 "update IP filter settings",
                 new { IsEnabled = settings.IsEnabled, DefaultAllow = settings.DefaultAllow });
 
+            // Also publish GlobalSettingChanged so GlobalSettingsCacheService (used by the Gateway
+            // enforcement gate and the DefaultAllow policy) invalidates these keys live. Without this
+            // the WebAdmin toggle would not take effect until the process restarts.
+            foreach (var settingKey in new[] { SettingKeyEnabled, SettingKeyDefaultAllow })
+            {
+                await PublishEventAsync(
+                    new GlobalSettingChanged
+                    {
+                        SettingId = 0,
+                        SettingKey = settingKey,
+                        ChangeType = "Updated",
+                        ChangedProperties = Array.Empty<string>(),
+                        CorrelationId = Guid.NewGuid().ToString()
+                    },
+                    $"invalidate global setting {settingKey}",
+                    new { SettingKey = settingKey });
+            }
+
             return (true, null);
         }
         catch (Exception ex)
@@ -431,116 +527,64 @@ public class AdminIpFilterService : EventPublishingServiceBase, IAdminIpFilterSe
     /// <inheritdoc/>
     public async Task<IpCheckResult> CheckIpAddressAsync(string ipAddress)
     {
-        try
+        // GetIpFilterSettingsAsync has its own error handling and returns safe defaults on failure,
+        // so it will not throw; keep it outside the try below so DefaultAllow is available to the
+        // fail posture in the catch.
+        var settings = await GetIpFilterSettingsAsync();
+
+        // If IP filtering is disabled, allow all
+        if (!settings.IsEnabled)
         {
-            _logger.LogInformation("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
+            return new IpCheckResult { IsAllowed = true };
+        }
 
-            // Get current IP filter settings
-            var settings = await GetIpFilterSettingsAsync();
-
-            // If IP filtering is disabled, allow all
-            if (!settings.IsEnabled)
-            {
-                return new IpCheckResult { IsAllowed = true };
-            }
-
-            // Validate the IP format
-            if (!System.Net.IPAddress.TryParse(ipAddress, out _))
-            {
-                return new IpCheckResult
-                {
-                    IsAllowed = false,
-                    DeniedReason = "Invalid IP address format"
-                };
-            }
-
-            // Get all enabled IP filters
-            var filters = await GetEnabledFiltersAsync();
-            var filtersList = filters.ToList();
-
-            var hasWhitelist = filtersList.Any(f => f.FilterType == IpFilterConstants.WHITELIST);
-            var hasBlacklist = filtersList.Any(f => f.FilterType == IpFilterConstants.BLACKLIST);
-
-            // Check blacklist FIRST - if IP is blacklisted, deny immediately
-            // This is the correct order: blacklist takes precedence
-            if (hasBlacklist)
-            {
-                foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.BLACKLIST))
-                {
-                    if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
-                    {
-                        _logger.LogWarning("IP {IpAddress} is blacklisted by rule {Rule}",
-                            LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filter.IpAddressOrCidr));
-                        return new IpCheckResult
-                        {
-                            IsAllowed = false,
-                            DeniedReason = $"IP address matched deny filter: {filter.Description ?? filter.IpAddressOrCidr}"
-                        };
-                    }
-                }
-            }
-
-            // Check whitelist - if there's a whitelist, IP must be in it
-            if (hasWhitelist)
-            {
-                foreach (var filter in filtersList.Where(f => f.FilterType == IpFilterConstants.WHITELIST))
-                {
-                    if (IpAddressHelper.IsIpInRange(ipAddress, filter.IpAddressOrCidr))
-                    {
-                        _logger.LogDebug("IP {IpAddress} is whitelisted by rule {Rule}",
-                            LoggingSanitizer.S(ipAddress), LoggingSanitizer.S(filter.IpAddressOrCidr));
-                        return new IpCheckResult { IsAllowed = true };
-                    }
-                }
-
-                // Has whitelist but IP not in it
-                _logger.LogWarning("IP {IpAddress} is not in whitelist", LoggingSanitizer.S(ipAddress));
-                return new IpCheckResult
-                {
-                    IsAllowed = false,
-                    DeniedReason = "IP address did not match any allow filters"
-                };
-            }
-
-            // No whitelist and not blacklisted - use default policy
+        // Validate the IP format
+        if (!System.Net.IPAddress.TryParse(ipAddress, out _))
+        {
             return new IpCheckResult
             {
-                IsAllowed = settings.DefaultAllow,
-                DeniedReason = settings.DefaultAllow ? null : "IP address did not match any allow filters (default deny)"
+                IsAllowed = false,
+                DeniedReason = "Invalid IP address format"
+            };
+        }
+
+        try
+        {
+            _logger.LogDebug("Checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
+
+            // Load enabled rules as entities and evaluate with the shared precedence model, so the
+            // Admin control plane and the Gateway data plane decide identically.
+            var filters = (await _ipFilterRepository.GetEnabledAsync()).ToList();
+            var whitelist = filters.Where(f => f.FilterType == IpFilterConstants.WHITELIST).ToList();
+            var blacklist = filters.Where(f => f.FilterType == IpFilterConstants.BLACKLIST).ToList();
+
+            var decision = IpFilterEvaluator.Evaluate(ipAddress, whitelist, blacklist, settings.DefaultAllow);
+
+            if (!decision.IsAllowed)
+            {
+                _logger.LogWarning("IP {IpAddress} denied: {Reason}",
+                    LoggingSanitizer.S(ipAddress), decision.Reason);
+            }
+
+            return new IpCheckResult
+            {
+                IsAllowed = decision.IsAllowed,
+                DeniedReason = decision.IsAllowed ? null : decision.Reason
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking if IP address is allowed: {IpAddress}", LoggingSanitizer.S(ipAddress));
 
-            // On error, default to allowing the request (safer than potentially blocking all traffic)
+            // Nuanced fail posture: apply the default-allow policy. Fails OPEN when permissive
+            // (DefaultAllow=true) and CLOSED when restrictive (DefaultAllow=false), so a DB blip
+            // cannot silently disable an allowlist.
             return new IpCheckResult
             {
-                IsAllowed = true,
-                DeniedReason = "Error during IP check, allowed as a failsafe"
+                IsAllowed = settings.DefaultAllow,
+                DeniedReason = settings.DefaultAllow ? null : "Error during IP check; denied by default-deny policy"
             };
         }
-    }
-
-    /// <summary>
-    /// Maps an IP filter entity to a DTO
-    /// </summary>
-    /// <param name="entity">The entity to map</param>
-    /// <returns>The mapped DTO</returns>
-    private static IpFilterDto MapToDto(IpFilterEntity entity)
-    {
-        return new IpFilterDto
-        {
-            Id = entity.Id,
-            FilterType = entity.FilterType,
-            IpAddressOrCidr = entity.IpAddressOrCidr,
-            Description = entity.Description,
-            IsEnabled = entity.IsEnabled,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt,
-            CreatedBy = entity.CreatedBy,
-            UpdatedBy = entity.UpdatedBy
-        };
     }
 
     /// <summary>

@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
@@ -21,7 +23,17 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// A system notification
         /// </summary>
-        System
+        System,
+
+        /// <summary>
+        /// A provider credential was disabled.
+        /// </summary>
+        ProviderKeyDisabled,
+
+        /// <summary>
+        /// A provider credential was re-enabled.
+        /// </summary>
+        ProviderKeyReenabled
     }
 
     /// <summary>
@@ -48,7 +60,7 @@ namespace ConduitLLM.Configuration.Entities
     /// <summary>
     /// Represents a notification related to virtual keys
     /// </summary>
-    public class Notification
+    public class Notification : IEntity<int>
     {
         /// <summary>
         /// Unique identifier for the notification
@@ -66,6 +78,28 @@ namespace ConduitLLM.Configuration.Entities
         /// </summary>
         [ForeignKey("VirtualKeyId")]
         public virtual VirtualKey? VirtualKey { get; set; }
+
+        /// <summary>
+        /// ID of the provider related to this notification, if applicable.
+        /// </summary>
+        public int? ProviderId { get; set; }
+
+        /// <summary>
+        /// Provider related to this notification.
+        /// </summary>
+        [ForeignKey(nameof(ProviderId))]
+        public virtual Provider? Provider { get; set; }
+
+        /// <summary>
+        /// ID of the provider key credential related to this notification, if applicable.
+        /// </summary>
+        public int? ProviderKeyCredentialId { get; set; }
+
+        /// <summary>
+        /// Provider key credential related to this notification.
+        /// </summary>
+        [ForeignKey(nameof(ProviderKeyCredentialId))]
+        public virtual ProviderKeyCredential? ProviderKeyCredential { get; set; }
 
         /// <summary>
         /// Type of the notification

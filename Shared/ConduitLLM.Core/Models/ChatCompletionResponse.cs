@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -52,6 +53,16 @@ public class ChatCompletionResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Usage? Usage { get; set; }
 
+    /// <summary>The processing tier used for the request.</summary>
+    [JsonPropertyName("service_tier")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ServiceTier { get; set; }
+
+    /// <summary>Moderation information returned by the provider.</summary>
+    [JsonPropertyName("moderation")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public object? Moderation { get; set; }
+
     /// <summary>
     /// The original model alias used in routing, if different from the model name.
     /// </summary>
@@ -79,4 +90,12 @@ public class ChatCompletionResponse
     [JsonPropertyName("agentic_metrics")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AgenticExecutionMetrics? AgenticMetrics { get; set; }
+
+    /// <summary>Server-only evidence for provider-hosted tools such as browser search.</summary>
+    [JsonIgnore]
+    public ProviderToolUsage? ProviderToolUsage { get; set; }
+
+    /// <summary>Unknown provider response fields preserved for forward compatibility.</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Modal, TextInput, Button, Stack, Group } from '@mantine/core';
+import { useCallback, useEffect } from 'react';
+import { TextInput } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
-import type { ModelAuthorDto, UpdateModelAuthorDto } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
+import type { ModelAuthorDto, UpdateModelAuthorDto } from '@/lib/admin-api';
 
 
 interface EditModelAuthorModalProps {
@@ -16,9 +17,6 @@ interface EditModelAuthorModalProps {
 }
 
 export function EditModelAuthorModal({ isOpen, author, onClose, onSuccess }: EditModelAuthorModalProps) {
-  const [loading, setLoading] = useState(false);
-  const { executeWithAdmin } = useAdminClient();
-
   const form = useForm<UpdateModelAuthorDto>({
     initialValues: {
       name: author?.name ?? '',
@@ -47,69 +45,46 @@ export function EditModelAuthorModal({ isOpen, author, onClose, onSuccess }: Edi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [author]);
 
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  const handleSubmit = async (values: UpdateModelAuthorDto) => {
-    try {
-      setLoading(true);
+  const submitAction = useCallback(
+    async (values: UpdateModelAuthorDto) => {
       if (!author.id) throw new Error('Author ID is required');
-      await executeWithAdmin(client => client.modelAuthors.update(author.id as number, values));
-      notifications.show({
-        title: 'Success',
-        message: 'Author updated successfully',
-        color: 'green',
-      });
-      handleClose();
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to update author:', error);
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to update author',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+      await withAdminClient(client => client.modelAuthors.update(author.id as number, values));
+    },
+    [author.id]
+  );
+
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction,
+    successMessage: 'Author updated successfully',
+  });
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
       onClose={handleClose}
       title="Edit Author"
       size="md"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Update Author"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Author Name"
-            placeholder="e.g., OpenAI"
-            required
-            {...form.getInputProps('name')}
-          />
+      <TextInput
+        label="Author Name"
+        placeholder="e.g., OpenAI"
+        required
+        {...form.getInputProps('name')}
+      />
 
-          <TextInput
-            label="Website URL"
-            placeholder="https://..."
-            {...form.getInputProps('websiteUrl')}
-          />
+      <TextInput
+        label="Website URL"
+        placeholder="https://..."
+        {...form.getInputProps('websiteUrl')}
+      />
 
-          {/* isActive field doesn't exist in ModelAuthorDto */}
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading}>
-              Update Author
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      {/* isActive field doesn't exist in ModelAuthorDto */}
+    </EntityFormModal>
   );
 }

@@ -37,15 +37,7 @@ namespace ConduitLLM.Core.Data
                 msg => _logger.LogDebug(msg));
 
             // Validate the connection string
-            try
-            {
-                _connectionStringManager.ValidateConnectionString(_providerName, _connectionString);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Invalid connection string for provider: {Provider}", _providerName);
-                throw;
-            }
+            _connectionStringManager.ValidateConnectionString(_providerName, _connectionString);
         }
 
         /// <inheritdoc/>

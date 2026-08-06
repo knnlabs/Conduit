@@ -6,6 +6,32 @@ namespace ConduitLLM.Configuration.Utilities
     public static class RedisUrlParser
     {
         /// <summary>
+        /// Resolves the Redis connection string from environment variables.
+        /// Checks REDIS_URL first (parsing it into a StackExchange.Redis format),
+        /// then falls back to CONDUIT_REDIS_CONNECTION_STRING.
+        /// </summary>
+        /// <returns>The resolved connection string, or null if neither variable is set.</returns>
+        public static string? ResolveConnectionString()
+        {
+            var redisUrl = Environment.GetEnvironmentVariable("REDIS_URL");
+            var redisConnectionString = Environment.GetEnvironmentVariable("CONDUIT_REDIS_CONNECTION_STRING");
+
+            if (!string.IsNullOrEmpty(redisUrl))
+            {
+                try
+                {
+                    redisConnectionString = ParseRedisUrl(redisUrl);
+                }
+                catch
+                {
+                    // Failed to parse REDIS_URL, fall back to CONDUIT_REDIS_CONNECTION_STRING
+                }
+            }
+
+            return redisConnectionString;
+        }
+
+        /// <summary>
         /// Parses a Redis URL into a StackExchange.Redis compatible connection string
         /// </summary>
         /// <param name="redisUrl">Redis URL in format: redis://[username]:[password]@[hostname]:[port]</param>

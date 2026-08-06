@@ -48,7 +48,8 @@ namespace ConduitLLM.Core.Constants
             public const string VideoGenerationProgress = "VideoGenerationProgress";
             public const string VideoGenerationCompleted = "VideoGenerationCompleted";
             public const string VideoGenerationFailed = "VideoGenerationFailed";
-            
+            public const string VideoGenerationCancelled = "VideoGenerationCancelled";
+
             // Image generation specific events (legacy - kept for compatibility)
             public const string ImageGenerationStarted = "ImageGenerationStarted";
             public const string ImageGenerationProgress = "ImageGenerationProgress";
@@ -83,6 +84,15 @@ namespace ConduitLLM.Core.Constants
             /// Get group name for generic task
             /// </summary>
             public static string Task(string taskId) => $"task-{taskId}";
+
+            /// <summary>
+            /// Get the group name shared by webhook delivery publishers and subscribers.
+            /// </summary>
+            public static string Webhook(string webhookUrl)
+            {
+                var uri = new Uri(webhookUrl);
+                return $"webhook-{uri.Host.Replace(".", "-")}-{uri.AbsolutePath.Replace("/", "-")}";
+            }
             
             /// <summary>
             /// Group for all authenticated users

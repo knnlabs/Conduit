@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models
@@ -42,5 +43,10 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         [JsonPropertyName("code")]
         public string? Code { get; set; }
+
+        /// <summary>Provider error metadata safe to return to the caller.</summary>
+        [JsonPropertyName("metadata")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public JsonElement? Metadata { get; set; }
     }
 }

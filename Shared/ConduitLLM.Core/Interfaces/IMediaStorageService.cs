@@ -38,6 +38,15 @@ namespace ConduitLLM.Core.Interfaces
         Task<bool> DeleteAsync(string storageKey);
 
         /// <summary>
+        /// Deletes multiple media objects and reports a confirmed outcome for every key.
+        /// </summary>
+        /// <param name="storageKeys">Storage keys to delete.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task<MediaBulkDeleteResult> DeleteManyAsync(
+            IEnumerable<string> storageKeys,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Generates a URL for accessing the media file.
         /// </summary>
         /// <param name="storageKey">The unique storage key.</param>
@@ -51,6 +60,17 @@ namespace ConduitLLM.Core.Interfaces
         /// <param name="storageKey">The unique storage key.</param>
         /// <returns>True if the file exists, false otherwise.</returns>
         Task<bool> ExistsAsync(string storageKey);
+
+        /// <summary>
+        /// Lists one page of objects in the configured media store.
+        /// </summary>
+        /// <param name="continuationToken">Opaque token returned by the previous page.</param>
+        /// <param name="pageSize">Maximum number of objects to return.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task<MediaStorageObjectPage> ListObjectsAsync(
+            string? continuationToken = null,
+            int pageSize = 1000,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Stores video content with support for large files and progress tracking.

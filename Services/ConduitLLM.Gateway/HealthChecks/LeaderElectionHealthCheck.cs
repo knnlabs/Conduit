@@ -31,7 +31,6 @@ namespace ConduitLLM.Gateway.HealthChecks
                 "BillingAuditService",
                 "SpendNotificationService",
                 "BatchSpendUpdateService",
-                "MetricsAggregationService",
                 "WebhookDeliveryNotificationService"
             };
         }

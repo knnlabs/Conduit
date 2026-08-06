@@ -130,6 +130,7 @@ public partial class ExaClient
             ExecutionDuration = result.Duration,
             Metadata = new Dictionary<string, object>
             {
+                ["operation"] = "contents",
                 ["requestId"] = exaResponse.RequestId,
                 ["urlCount"] = exaResponse.Results.Count,
                 ["totalPages"] = totalPages

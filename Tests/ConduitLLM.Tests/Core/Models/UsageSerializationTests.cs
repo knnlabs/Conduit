@@ -2,7 +2,7 @@ using System.Text.Json;
 
 using ConduitLLM.Core.Models;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Core.Models;
 

@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
-using FluentAssertions;
+using AwesomeAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -126,8 +126,7 @@ public class ProviderBillingIntegrationTests : ProviderIntegrationTestBase
             _output.WriteLine($"  ⏳ Triggering batch spend flush via Admin API...");
             
             var flushResponse = await _apiClient.AdminPostAsync<object>(
-                "/api/batch-spending/flush",
-                new { reason = "Integration test billing verification", priority = "Normal" });
+                $"/v1/admin/batch-spending-jobs/flush?reason={Uri.EscapeDataString("Integration test billing verification")}&priority=Normal");
             
             if (!flushResponse.Success)
             {
@@ -143,7 +142,7 @@ public class ProviderBillingIntegrationTests : ProviderIntegrationTestBase
             }
             
             var balanceResponse = await _apiClient.AdminGetAsync<CreateVirtualKeyGroupResponse>(
-                $"/api/VirtualKeyGroups/{groupId}");
+                $"/v1/admin/virtual-key-groups/{groupId}");
             
             balanceResponse.Success.Should().BeTrue("Failed to fetch updated balance");
             balanceResponse.Data.Should().NotBeNull();

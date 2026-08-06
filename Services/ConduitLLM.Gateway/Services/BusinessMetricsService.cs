@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Prometheus;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Core.Services;
+using ConduitLLM.Gateway.Metrics;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -8,11 +10,12 @@ namespace ConduitLLM.Gateway.Services
     /// Service for tracking business metrics including virtual key usage,
     /// model usage patterns, costs, and revenue tracking.
     /// </summary>
-    public class BusinessMetricsService : BackgroundService
+    public class BusinessMetricsService : PeriodicCollectorBackgroundService
     {
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly ILogger<BusinessMetricsService> _logger;
-        private readonly TimeSpan _collectionInterval = TimeSpan.FromMinutes(1);
+        private readonly HashSet<string> _costRateLabels = [];
+        private readonly HashSet<string> _activeModelLabels = [];
 
         // Virtual Key metrics
         private static readonly Counter VirtualKeyRequests = Prometheus.Metrics
@@ -135,65 +138,39 @@ namespace ConduitLLM.Gateway.Services
         public BusinessMetricsService(
             IServiceScopeFactory serviceScopeFactory,
             ILogger<BusinessMetricsService> logger)
+            : base(logger, TimeSpan.FromMinutes(1))
         {
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override Task CollectOnceAsync(CancellationToken cancellationToken) =>
+            CollectMetricsAsync();
+
+        protected override void OnCollectionFailed(Exception exception)
         {
-            _logger.LogInformation("Business metrics service starting...");
-
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                try
-                {
-                    await CollectMetricsAsync();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error collecting business metrics");
-                }
-
-                await Task.Delay(_collectionInterval, stoppingToken);
-            }
-
-            _logger.LogInformation("Business metrics service stopped");
+            MetricsCollectionInstrumentation.RecordFailure("business");
+            _logger.LogError(exception, "Error collecting business metrics");
         }
 
-        private async Task CollectMetricsAsync()
+        internal async Task CollectMetricsAsync()
         {
+            using var collectionTimer = MetricsCollectionInstrumentation.Measure("business");
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
             using var scope = _serviceScopeFactory.CreateScope();
 
             var tasks = new[]
             {
-                CollectVirtualKeyMetrics(scope),
                 CollectModelUsageMetrics(scope),
                 CollectCostMetrics(scope),
                 CollectActiveEntityMetrics(scope)
             };
 
             await Task.WhenAll(tasks);
-        }
 
-        private async Task CollectVirtualKeyMetrics(IServiceScope scope)
-        {
-            try
-            {
-                var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var spendHistoryRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeySpendHistoryRepository>();
-
-                // Get all virtual keys and filter for active ones
-                var allKeys = await virtualKeyRepo.GetAllAsync();
-                var activeKeys = allKeys.Where(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow)).ToList();
-
-                // Note: Budget tracking is now at the group level
-                // Individual key metrics are no longer tracked for budget/spend
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error collecting virtual key metrics");
-            }
+            stopwatch.Stop();
+            _logger.LogDebug("Business metrics collection cycle completed in {ElapsedMs}ms", stopwatch.ElapsedMilliseconds);
         }
 
         private async Task CollectModelUsageMetrics(IServiceScope scope)
@@ -213,12 +190,9 @@ namespace ConduitLLM.Gateway.Services
                 // Get model usage statistics for the last 5 minutes to calculate current rates
                 var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
 
-                var requestLogs = await context.RequestLogs
+                var modelStats = await context.RequestLogs
+                    .AsNoTracking()
                     .Where(r => r.Timestamp >= fiveMinutesAgo)
-                    .ToListAsync();
-
-                // Use the new ProviderType field directly instead of parsing model names
-                var modelStats = requestLogs
                     .GroupBy(r => new { Model = r.ModelName, Provider = r.ProviderType ?? "unknown" })
                     .Select(g => new
                     {
@@ -229,7 +203,7 @@ namespace ConduitLLM.Gateway.Services
                         TotalCompletionTokens = g.Sum(r => r.OutputTokens),
                         AvgResponseTime = g.Average(r => r.ResponseTimeMs)
                     })
-                    .ToList();
+                    .ToListAsync();
 
                 _logger.LogDebug("Collected model usage metrics: {Count} model/provider combinations in last 5 minutes",
                     modelStats.Count);
@@ -246,6 +220,7 @@ namespace ConduitLLM.Gateway.Services
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("business/model_usage");
                 _logger.LogError(ex, "Error collecting model usage metrics");
             }
         }
@@ -264,19 +239,21 @@ namespace ConduitLLM.Gateway.Services
                 // Calculate cost rate per provider using the ProviderType field
                 var fiveMinutesAgo = DateTime.UtcNow.AddMinutes(-5);
 
-                var costLogs = await context.RequestLogs
-                    .Where(r => r.Timestamp >= fiveMinutesAgo && r.Cost > 0)
-                    .ToListAsync();
-
-                // Use the new ProviderType field directly
-                var costByProvider = costLogs
+                var costByProvider = await context.RequestLogs
+                    .AsNoTracking()
+                    .Where(r => (r.BilledAtUtc ?? r.Timestamp) >= fiveMinutesAgo && r.Cost > 0)
                     .GroupBy(r => r.ProviderType ?? "unknown")
                     .Select(g => new
                     {
                         Provider = g.Key,
                         TotalCost = g.Sum(r => r.Cost)
                     })
-                    .ToList();
+                    .ToListAsync();
+
+                var currentLabels = costByProvider
+                    .Select(providerCost => providerCost.Provider)
+                    .ToHashSet(StringComparer.Ordinal);
+                RemoveStaleLabels(CostRate, _costRateLabels, currentLabels);
 
                 foreach (var providerCost in costByProvider)
                 {
@@ -286,46 +263,72 @@ namespace ConduitLLM.Gateway.Services
                     // Update the rate gauge (this is safe to update periodically)
                     CostRate.WithLabels(provider).Set(costPerMinute);
                 }
+                ReplaceLabels(_costRateLabels, currentLabels);
 
                 _logger.LogDebug("Collected cost metrics: {Count} providers with costs in last 5 minutes",
                     costByProvider.Count);
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("business/cost");
                 _logger.LogError(ex, "Error collecting cost metrics");
             }
         }
 
-        private async Task CollectActiveEntityMetrics(IServiceScope scope)
+        internal async Task CollectActiveEntityMetrics(IServiceScope scope)
         {
             try
             {
                 var virtualKeyRepo = scope.ServiceProvider.GetRequiredService<IVirtualKeyRepository>();
-                var modelMappingService = scope.ServiceProvider.GetRequiredService<IModelProviderMappingService>();
+                var dbContextFactory = scope.ServiceProvider.GetRequiredService<
+                    IDbContextFactory<ConduitLLM.Configuration.ConduitDbContext>>();
 
-                // Count active virtual keys
-                var allKeys = await virtualKeyRepo.GetAllAsync();
-                var activeKeyCount = allKeys.Count(k => k.IsEnabled && (k.ExpiresAt == null || k.ExpiresAt > DateTime.UtcNow));
+                // Count active virtual keys using database-level count
+                var activeKeyCount = await virtualKeyRepo.CountActiveAsync();
                 ActiveVirtualKeys.Set(activeKeyCount);
 
-                // Count active model mappings by provider
-                var mappings = await modelMappingService.GetAllMappingsAsync();
-                // Group by provider type
-                // TODO: Fix IsEnabled check once we verify the return type
-                var mappingsByProvider = mappings
-                    // .Where(m => m.IsEnabled)
-                    .GroupBy(m => m.ProviderId.ToString())
-                    .Select(g => new { Provider = g.Key, Count = g.Count() });
+                await using var context = await dbContextFactory.CreateDbContextAsync();
+                // A mapping is active only when both the route and its provider are enabled.
+                var mappingsByProvider = await context.ModelProviderMappings
+                    .AsNoTracking()
+                    .Where(mapping => mapping.IsEnabled && mapping.Provider.IsEnabled)
+                    .GroupBy(mapping => mapping.ProviderId)
+                    .Select(group => new { ProviderId = group.Key, Count = group.Count() })
+                    .ToListAsync();
+
+                var currentLabels = mappingsByProvider
+                    .Select(group => group.ProviderId.ToString())
+                    .ToHashSet(StringComparer.Ordinal);
+                RemoveStaleLabels(ActiveModels, _activeModelLabels, currentLabels);
 
                 foreach (var group in mappingsByProvider)
                 {
-                    ActiveModels.WithLabels(group.Provider).Set((double)group.Count);
+                    ActiveModels.WithLabels(group.ProviderId.ToString()).Set(group.Count);
                 }
+                ReplaceLabels(_activeModelLabels, currentLabels);
             }
             catch (Exception ex)
             {
+                MetricsCollectionInstrumentation.RecordFailure("business/active_entities");
                 _logger.LogError(ex, "Error collecting active entity metrics");
             }
+        }
+
+        private static void RemoveStaleLabels(
+            Gauge gauge,
+            HashSet<string> previousLabels,
+            HashSet<string> currentLabels)
+        {
+            foreach (var staleLabel in previousLabels.Except(currentLabels))
+            {
+                gauge.RemoveLabelled(staleLabel);
+            }
+        }
+
+        private static void ReplaceLabels(HashSet<string> target, HashSet<string> source)
+        {
+            target.Clear();
+            target.UnionWith(source);
         }
 
         // Static methods to be called by application code
@@ -355,7 +358,8 @@ namespace ConduitLLM.Gateway.Services
             CostPerRequest.WithLabels(model, provider).Observe(costDollars);
         }
 
-        public static void RecordTokens(string model, string provider, int promptTokens, int completionTokens)
+        public static void RecordTokens(string model, string provider, int promptTokens, int completionTokens,
+            int? cachedInputTokens = null, int? cachedWriteTokens = null)
         {
             if (promptTokens > 0)
             {
@@ -364,6 +368,14 @@ namespace ConduitLLM.Gateway.Services
             if (completionTokens > 0)
             {
                 ModelTokensProcessed.WithLabels(model, provider, "completion").Inc(completionTokens);
+            }
+            if (cachedInputTokens.HasValue && cachedInputTokens.Value > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "cached_input").Inc(cachedInputTokens.Value);
+            }
+            if (cachedWriteTokens.HasValue && cachedWriteTokens.Value > 0)
+            {
+                ModelTokensProcessed.WithLabels(model, provider, "cached_write").Inc(cachedWriteTokens.Value);
             }
         }
 

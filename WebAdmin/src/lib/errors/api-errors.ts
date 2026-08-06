@@ -1,73 +1,79 @@
 import { NextResponse } from 'next/server';
+import { logger } from '@/lib/utils/logging';
+import { ConduitError } from '@/lib/conduit-common';
+import { 
+  getErrorStatusCode, 
+  getErrorMessage, 
+  getCombinedErrorDetails, 
+  isHttpError 
+} from '@/lib/utils/error-utils';
 
-export interface ApiError {
-  error: string;
-  message?: string;
-  details?: unknown;
-  timestamp: string;
-  requestId?: string;
-}
-
-/**
- * Standard API error response format
- */
-export function apiError(
-  error: string,
-  status: number,
-  details?: unknown
-): NextResponse<ApiError> {
-  const errorResponse: ApiError = {
-    error,
-    timestamp: new Date().toISOString(),
+// Map local API errors to appropriate HTTP responses.
+export function toApiErrorResponse(error: unknown): NextResponse {
+  const errorMessage = getErrorMessage(error);
+  const statusCode = getErrorStatusCode(error);
+  const errorType = statusCode ? String(statusCode) : 'unknown';
+  const errorStack = error instanceof Error ? error.stack : undefined;
+  
+  const errorInfo = {
+    error: errorMessage,
+    type: errorType,
+    stack: errorStack,
   };
+  logger.error('API operation failed', errorInfo);
 
-  if (details) {
-    if (details instanceof Error) {
-      errorResponse.message = details.message;
-    } else {
-      errorResponse.details = details;
-    }
+  // The SDK represents every backend response as a ConduitError. Preserve its
+  // status instead of maintaining an incomplete list of subclasses here.
+  if (error instanceof ConduitError) {
+    const responseStatusCode = statusCode && statusCode >= 100 && statusCode <= 599
+      ? statusCode
+      : 500;
+
+    return NextResponse.json(
+      { error: errorMessage },
+      { status: responseStatusCode }
+    );
   }
 
-  return NextResponse.json(errorResponse, { status });
-}
+  // Handle structured HTTP errors.
+  if (isHttpError(error)) {
+    const errorDetails = getCombinedErrorDetails(error);
+    const responseStatusCode = getErrorStatusCode(error) ?? 500;
 
-/**
- * Common error responses
- */
-export const errors = {
-  badRequest: (details?: unknown) => 
-    apiError('Bad Request', 400, details),
-    
-  unauthorized: (details?: unknown) => 
-    apiError('Unauthorized', 401, details),
-    
-  forbidden: (details?: unknown) => 
-    apiError('Forbidden', 403, details),
-    
-  notFound: (resource?: string) => 
-    apiError(resource ? `${resource} not found` : 'Not Found', 404),
-    
-  methodNotAllowed: (method: string) => 
-    apiError(`Method ${method} not allowed`, 405),
-    
-  conflict: (details?: unknown) => 
-    apiError('Conflict', 409, details),
-    
-  unprocessableEntity: (details?: unknown) => 
-    apiError('Unprocessable Entity', 422, details),
-    
-  tooManyRequests: (retryAfter?: number) => {
-    const response = apiError('Too Many Requests', 429);
-    if (retryAfter) {
-      response.headers.set('Retry-After', retryAfter.toString());
-    }
-    return response;
-  },
-    
-  internalServerError: (details?: unknown) => 
-    apiError('Internal Server Error', 500, details),
-    
-  serviceUnavailable: (details?: unknown) => 
-    apiError('Service Unavailable', 503, details),
-};
+    return NextResponse.json(
+      {
+        error: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { 
+          details: errorDetails,
+          statusCode: responseStatusCode
+        })
+      },
+      { status: responseStatusCode }
+    );
+  }
+
+  // Handle network errors from fetch.
+  const errorCode = error && typeof error === 'object' && 'code' in error 
+    ? (error as { code: string }).code 
+    : null;
+  if (errorCode === 'ECONNREFUSED' || errorCode === 'ENOTFOUND') {
+    return NextResponse.json(
+      { error: 'Service temporarily unavailable' },
+      { status: 503 }
+    );
+  }
+
+  if (errorCode === 'ETIMEDOUT') {
+    return NextResponse.json(
+      { error: 'Request timed out' },
+      { status: 504 }
+    );
+  }
+
+  // Unknown error
+  console.error('Unexpected error:', error);
+  return NextResponse.json(
+    { error: 'Internal server error' },
+    { status: 500 }
+  );
+}

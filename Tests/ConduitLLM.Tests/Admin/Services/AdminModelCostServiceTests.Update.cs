@@ -1,7 +1,7 @@
 using ConduitLLM.Configuration.DTOs;
 using ConduitLLM.Configuration.Entities;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 
@@ -17,10 +17,10 @@ namespace ConduitLLM.Tests.Admin.Services
             // Arrange
             var updateDto = new UpdateModelCostDto
             {
-                Id = 1,
                 CostName = "Updated Cost Name",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
+                ReasoningCostPerMillionTokens = 35.00m,
                 ModelProviderTypeAssociationIds = new List<int>()
             };
 
@@ -38,10 +38,11 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _service.UpdateModelCostAsync(updateDto);
+            var result = await _service.UpdateModelCostAsync(1, updateDto);
 
             // Assert
-            result.Should().BeTrue();
+            result.Should().NotBeNull();
+            existingCost.ReasoningCostPerMillionTokens.Should().Be(35.00m);
             _mockModelCostRepository.Verify(x => x.UpdateAsync(It.IsAny<ModelCost>(), It.IsAny<CancellationToken>()), Times.Once);
         }
 
@@ -52,7 +53,6 @@ namespace ConduitLLM.Tests.Admin.Services
             var newAssociationIds = new List<int> { 4, 5 };
             var updateDto = new UpdateModelCostDto
             {
-                Id = 1,
                 CostName = "Updated Cost",
                 InputCostPerMillionTokens = 15.00m,
                 OutputCostPerMillionTokens = 25.00m,
@@ -70,6 +70,8 @@ namespace ConduitLLM.Tests.Admin.Services
             // Add existing associations to test context
             using (var setupContext = CreateDbContext())
             {
+                AddModels(setupContext, 1, 2, 3, 4, 5);
+                setupContext.ModelCosts.Add(new ModelCost { Id = 1, CostName = "Original Cost" });
                 setupContext.ModelProviderTypeAssociations.AddRange(new[]
                 {
                     new ModelProviderTypeAssociation { Id = 1, ModelCostId = 1, Identifier = "gpt-4", ModelId = 1, IsEnabled = true },
@@ -87,10 +89,10 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync(true);
 
             // Act
-            var result = await _service.UpdateModelCostAsync(updateDto);
+            var result = await _service.UpdateModelCostAsync(1, updateDto);
 
             // Assert
-            result.Should().BeTrue();
+            result.Should().NotBeNull();
             
             // Verify old associations were cleared and new ones set
             using (var verifyContext = CreateDbContext())
@@ -112,7 +114,6 @@ namespace ConduitLLM.Tests.Admin.Services
             // Arrange
             var updateDto = new UpdateModelCostDto
             {
-                Id = 999,
                 CostName = "Non-existent",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m
@@ -122,10 +123,10 @@ namespace ConduitLLM.Tests.Admin.Services
                 .ReturnsAsync((ModelCost?)null);
 
             // Act
-            var result = await _service.UpdateModelCostAsync(updateDto);
+            var result = await _service.UpdateModelCostAsync(999, updateDto);
 
             // Assert
-            result.Should().BeFalse();
+            result.Should().BeNull();
             _mockModelCostRepository.Verify(x => x.UpdateAsync(It.IsAny<ModelCost>(), It.IsAny<CancellationToken>()), Times.Never);
         }
 
@@ -135,7 +136,6 @@ namespace ConduitLLM.Tests.Admin.Services
             // Arrange
             var updateDto = new UpdateModelCostDto
             {
-                Id = 1,
                 CostName = "Existing Other Cost",
                 InputCostPerMillionTokens = 10.00m,
                 OutputCostPerMillionTokens = 20.00m
@@ -162,7 +162,7 @@ namespace ConduitLLM.Tests.Admin.Services
 
             // Act & Assert
             await Assert.ThrowsAsync<InvalidOperationException>(
-                async () => await _service.UpdateModelCostAsync(updateDto));
+                async () => await _service.UpdateModelCostAsync(1, updateDto));
         }
 
         #endregion

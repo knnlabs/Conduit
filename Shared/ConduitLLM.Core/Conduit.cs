@@ -86,8 +86,8 @@ namespace ConduitLLM.Core
                 return await CreateChatCompletionWithFunctionsAsync(request, apiKey, virtualKeyId ?? 0, cancellationToken);
             }
 
-            // Get the appropriate client from the factory based on the model alias in the request
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            // Get a chat-routed client; non-chat APIs continue to use deterministic alias mapping.
+            ILLMClient client = await GetChatClientAsync(request, cancellationToken);
 
             // Call the client's method, passing the optional apiKey
             // Exceptions specific to providers (like communication errors) are expected to bubble up from the client.
@@ -113,7 +113,7 @@ namespace ConduitLLM.Core
             ChatCompletionRequest request,
             string? apiKey = null,
             int? virtualKeyId = null,
-            Func<object, CancellationToken, Task>? onToolExecutingEvent = null,
+            Func<ToolExecutionEvent, CancellationToken, Task>? onToolExecutingEvent = null,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             ArgumentNullException.ThrowIfNull(request);
@@ -139,7 +139,7 @@ namespace ConduitLLM.Core
             else
             {
                 // Standard streaming without function calling
-                ILLMClient client = _clientFactory.GetClient(request.Model);
+                ILLMClient client = await GetChatClientAsync(request, cancellationToken);
                 await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                 {
                     yield return chunk;
@@ -189,12 +189,13 @@ namespace ConduitLLM.Core
             };
 
             var iteration = 0;
-            // Defaults are now applied in ChatController from GlobalSettings, so these are just safety fallbacks
+            // Defaults are now applied by the Chat endpoints from GlobalSettings, so these are just safety fallbacks
             var maxIterations = request.MaxAgenticIterations ?? 20;
             var agenticModeEnabled = request.EnableAgenticMode ?? true;
 
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await GetChatClientAsync(request, cancellationToken);
             ChatCompletionResponse? response = null;
+            Usage? accumulatedUsage = null;
 
             while (iteration < maxIterations)
             {
@@ -205,12 +206,8 @@ namespace ConduitLLM.Core
 
                 // Call LLM
                 response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
-
-                // Track LLM cost
-                if (response.Usage != null)
-                {
-                    // Cost calculation would happen in middleware, we just track iterations here
-                }
+                CaptureProviderCall(agenticMetrics, iteration, response.Usage);
+                accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
 
                 // Check if LLM wants to call functions
                 var choice = response.Choices.FirstOrDefault();
@@ -240,6 +237,8 @@ namespace ConduitLLM.Core
 
                     // Make one more call to get a proper response
                     response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                    CaptureProviderCall(agenticMetrics, iteration + 1, response.Usage);
+                    accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
                     break;
                 }
 
@@ -294,6 +293,13 @@ namespace ConduitLLM.Core
 
                 // Make one final call to get a response
                 response = await client.CreateChatCompletionAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
+                CaptureProviderCall(agenticMetrics, iteration + 1, response.Usage);
+                accumulatedUsage = AggregateUsage(accumulatedUsage, response.Usage);
+            }
+
+            if (response != null)
+            {
+                response.Usage = accumulatedUsage;
             }
 
             // Attach agentic metrics to response
@@ -319,7 +325,7 @@ namespace ConduitLLM.Core
             ChatCompletionRequest request,
             string? apiKey,
             int virtualKeyId,
-            Func<object, CancellationToken, Task>? onToolExecutingEvent,
+            Func<ToolExecutionEvent, CancellationToken, Task>? onToolExecutingEvent,
             [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken)
         {
             if (_functionDiscoveryService == null || _agenticOrchestrationService == null)
@@ -344,12 +350,13 @@ namespace ConduitLLM.Core
             // Inject tools into request
             request.Tools = tools;
 
-            // Defaults are now applied in ChatController from GlobalSettings, so these are just safety fallbacks
+            // Defaults are now applied by the Chat endpoints from GlobalSettings, so these are just safety fallbacks
             var agenticModeEnabled = request.EnableAgenticMode ?? true;
             var maxIterations = request.MaxAgenticIterations ?? 5;
 
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await GetChatClientAsync(request, cancellationToken);
             var iteration = 0;
+            Usage? accumulatedUsage = null;
 
             // Track tool calls outside the loop for iteration limit check
             var accumulatedToolCalls = new Dictionary<int, ToolCall>();
@@ -362,10 +369,20 @@ namespace ConduitLLM.Core
                 accumulatedToolCalls.Clear();
                 string? finishReason = null;
                 var assistantMessageContent = "";
+                Usage? iterationUsage = null;
 
                 // Stream the LLM response
                 await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                 {
+                    if (chunk.Usage != null)
+                    {
+                        // Providers may repeat usage in multiple chunks. Keep the latest usage for
+                        // this provider call, while exposing the running total across prior calls.
+                        iterationUsage = chunk.Usage;
+                        chunk.ProviderCallUsage = new ProviderCallUsage { Iteration = iteration, Usage = iterationUsage };
+                        chunk.Usage = AggregateUsage(accumulatedUsage, iterationUsage);
+                    }
+
                     // Forward the chunk to the client
                     yield return chunk;
 
@@ -414,6 +431,8 @@ namespace ConduitLLM.Core
                     }
                 }
 
+                accumulatedUsage = AggregateUsage(accumulatedUsage, iterationUsage);
+
                 // Check if we have tool calls to execute
                 if (finishReason != FinishReason.ToolCalls || accumulatedToolCalls.Count == 0)
                 {
@@ -445,8 +464,16 @@ namespace ConduitLLM.Core
                     });
 
                     // Stream one more response
+                    Usage? finalCallUsage = null;
                     await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                     {
+                        if (chunk.Usage != null)
+                        {
+                            finalCallUsage = chunk.Usage;
+                            chunk.ProviderCallUsage = new ProviderCallUsage { Iteration = iteration + 1, Usage = finalCallUsage };
+                            chunk.Usage = AggregateUsage(accumulatedUsage, finalCallUsage);
+                        }
+
                         yield return chunk;
                     }
                     break;
@@ -468,11 +495,11 @@ namespace ConduitLLM.Core
                     {
                         try
                         {
-                            await onToolExecutingEvent(new
+                            await onToolExecutingEvent(new ToolExecutionEvent
                             {
-                                tool_call_id = toolCall.Id,
-                                function_name = toolCall.Function.Name,
-                                status = "started"
+                                ToolCallId = toolCall.Id,
+                                FunctionName = toolCall.Function.Name,
+                                Status = "started"
                             }, cancellationToken);
                         }
                         catch (Exception ex)
@@ -500,14 +527,14 @@ namespace ConduitLLM.Core
                     {
                         try
                         {
-                            await onToolExecutingEvent(new
+                            await onToolExecutingEvent(new ToolExecutionEvent
                             {
-                                tool_call_id = summary.ToolCallId,
-                                function_name = summary.FunctionName,
-                                status = summary.Success ? "completed" : "failed",
-                                cost = summary.Cost,
-                                error_message = summary.ErrorMessage,
-                                function_execution_id = summary.FunctionExecutionId
+                                ToolCallId = summary.ToolCallId,
+                                FunctionName = summary.FunctionName,
+                                Status = summary.Success ? "completed" : "failed",
+                                Cost = summary.Cost,
+                                ErrorMessage = summary.ErrorMessage,
+                                FunctionExecutionId = summary.FunctionExecutionId
                             }, cancellationToken);
                         }
                         catch (Exception ex)
@@ -575,10 +602,73 @@ namespace ConduitLLM.Core
 
                 await foreach (var chunk in client.StreamChatCompletionAsync(request, apiKey, cancellationToken))
                 {
+                    if (chunk.Usage != null)
+                    {
+                        var finalUsage = chunk.Usage;
+                        chunk.ProviderCallUsage = new ProviderCallUsage { Iteration = iteration + 1, Usage = finalUsage };
+                        chunk.Usage = AggregateUsage(accumulatedUsage, finalUsage);
+                    }
+
                     yield return chunk;
                 }
             }
         }
+
+        /// <summary>
+        /// Adds billable usage from one provider call to the usage accumulated for the request.
+        /// Non-additive descriptors are taken from the latest call.
+        /// </summary>
+        private static Usage? AggregateUsage(Usage? accumulated, Usage? current)
+        {
+            if (current == null)
+            {
+                return accumulated;
+            }
+
+            return new Usage
+            {
+                PromptTokens = Sum(accumulated?.PromptTokens, current.PromptTokens),
+                CompletionTokens = Sum(accumulated?.CompletionTokens, current.CompletionTokens),
+                TotalTokens = Sum(accumulated?.TotalTokens, current.TotalTokens),
+                ImageCount = Sum(accumulated?.ImageCount, current.ImageCount),
+                VideoDurationSeconds = Sum(accumulated?.VideoDurationSeconds, current.VideoDurationSeconds),
+                VideoResolution = current.VideoResolution ?? accumulated?.VideoResolution,
+                IsBatch = current.IsBatch ?? accumulated?.IsBatch,
+                ImageQuality = current.ImageQuality ?? accumulated?.ImageQuality,
+                ImageResolution = current.ImageResolution ?? accumulated?.ImageResolution,
+                CachedInputTokens = Sum(accumulated?.CachedInputTokens, current.CachedInputTokens),
+                CachedInputTokensIncludedInPrompt = current.CachedInputTokensIncludedInPrompt,
+                CachedWriteTokens = Sum(accumulated?.CachedWriteTokens, current.CachedWriteTokens),
+                SearchUnits = Sum(accumulated?.SearchUnits, current.SearchUnits),
+                SearchMetadata = current.SearchMetadata ?? accumulated?.SearchMetadata,
+                InferenceSteps = Sum(accumulated?.InferenceSteps, current.InferenceSteps),
+                ReasoningTokens = Sum(accumulated?.ReasoningTokens, current.ReasoningTokens),
+                AudioDurationSeconds = Sum(accumulated?.AudioDurationSeconds, current.AudioDurationSeconds),
+                TtsCharacters = Sum(accumulated?.TtsCharacters, current.TtsCharacters),
+                Metadata = current.Metadata ?? accumulated?.Metadata,
+                PricingParameters = current.PricingParameters ?? accumulated?.PricingParameters,
+                ProviderReportedCostUsd = Sum(accumulated?.ProviderReportedCostUsd, current.ProviderReportedCostUsd),
+                ProviderCostPolicy = current.ProviderCostPolicy ?? accumulated?.ProviderCostPolicy,
+                ExtensionData = current.ExtensionData ?? accumulated?.ExtensionData
+            };
+        }
+
+        private static void CaptureProviderCall(AgenticExecutionMetrics metrics, int iteration, Usage? usage)
+        {
+            if (usage != null)
+            {
+                metrics.ProviderCalls.Add(new ProviderCallUsage { Iteration = iteration, Usage = usage });
+            }
+        }
+
+        private static int? Sum(int? left, int? right) =>
+            left.HasValue || right.HasValue ? checked(left.GetValueOrDefault() + right.GetValueOrDefault()) : null;
+
+        private static double? Sum(double? left, double? right) =>
+            left.HasValue || right.HasValue ? left.GetValueOrDefault() + right.GetValueOrDefault() : null;
+
+        private static decimal? Sum(decimal? left, decimal? right) =>
+            left.HasValue || right.HasValue ? left.GetValueOrDefault() + right.GetValueOrDefault() : null;
 
         /// <summary>
         /// Applies context window management to trim message history if needed.
@@ -645,6 +735,18 @@ namespace ConduitLLM.Core
             return request;
         }
 
+        private async Task<ILLMClient> GetChatClientAsync(
+            ChatCompletionRequest request,
+            CancellationToken cancellationToken)
+        {
+            // Some third-party and test factories compiled against the legacy
+            // interface return null for an unconfigured default-interface call.
+            // Preserve single-route compatibility while provider-aware factories
+            // override GetClientForChatAsync.
+            return await _clientFactory.GetClientForChatAsync(request, cancellationToken)
+                ?? await _clientFactory.GetClientAsync(request.Model, cancellationToken);
+        }
+
         /// <summary>
         /// Creates an embedding using the configured LLM providers.
         /// </summary>
@@ -667,7 +769,7 @@ namespace ConduitLLM.Core
                 throw new ArgumentException("The request must specify a target Model alias.", "request.Model");
 
             // No router for embeddings (OpenAI spec does not support routing for embeddings)
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             return await client.CreateEmbeddingAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
         }
 
@@ -693,18 +795,19 @@ namespace ConduitLLM.Core
                 throw new ArgumentException("The request must specify a target Model alias.", "request.Model");
 
             // No router for image generation (OpenAI spec does not support routing for images)
-            ILLMClient client = _clientFactory.GetClient(request.Model);
+            ILLMClient client = await _clientFactory.GetClientAsync(request.Model, cancellationToken);
             return await client.CreateImageAsync(request, apiKey, cancellationToken).ConfigureAwait(false);
         }
 
         /// <summary>
-        /// Gets an LLM client for the specified model.
+        /// Asynchronously gets an LLM client for the specified model.
         /// </summary>
         /// <param name="modelAlias">The model alias to get a client for.</param>
+        /// <param name="cancellationToken">A token to cancel the operation.</param>
         /// <returns>The LLM client for the specified model.</returns>
-        public ILLMClient GetClient(string modelAlias)
+        public async Task<ILLMClient> GetClientAsync(string modelAlias, CancellationToken cancellationToken = default)
         {
-            return _clientFactory.GetClient(modelAlias);
+            return await _clientFactory.GetClientAsync(modelAlias, cancellationToken);
         }
 
         // Add other high-level methods as needed.

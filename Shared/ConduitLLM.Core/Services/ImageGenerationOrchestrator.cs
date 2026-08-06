@@ -10,10 +10,10 @@ using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Models;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelProviderMappingService;
+using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services.Abstractions;
 using ConduitLLM.Core.Services.Strategies;
 using ConduitLLM.Core.Validation;
-using MassTransit;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -26,8 +26,7 @@ namespace ConduitLLM.Core.Services
         ConduitLLM.Core.Models.ImageGenerationRequest,
         ConduitLLM.Core.Models.ImageGenerationResponse,
         ImageGenerationRequested>,
-        IConsumer<ImageGenerationRequested>,
-        IConsumer<ImageGenerationCancelled>
+        IEventHandler<ImageGenerationCancelled>
     {
         private readonly IMediaProcessingStrategy<ConduitLLM.Core.Models.ImageData> _base64Processor;
         private readonly IMediaProcessingStrategy<ConduitLLM.Core.Models.ImageData> _urlProcessor;
@@ -45,7 +44,7 @@ namespace ConduitLLM.Core.Services
             ILLMClientFactory clientFactory,
             IAsyncTaskService taskService,
             IMediaStorageService storageService,
-            IPublishEndpoint publishEndpoint,
+            IEventBus eventBus,
             IModelProviderMappingService modelMappingService,
             IVirtualKeyService virtualKeyService,
             ICostCalculationService costService,
@@ -54,16 +53,20 @@ namespace ConduitLLM.Core.Services
             IHttpClientFactory httpClientFactory,
             MinimalParameterValidator parameterValidator,
             MediaGenerationMetrics metrics,
-            ILogger<ImageGenerationOrchestrator> logger)
-            : base(clientFactory, taskService, storageService, publishEndpoint,
+            IProviderErrorTrackingService errorTrackingService,
+            ILogger<ImageGenerationOrchestrator> logger,
+            ConduitLLM.Configuration.Interfaces.IBatchSpendUpdateService? batchSpendService = null,
+            IProviderErrorTranslator? providerErrorTranslator = null)
+            : base(clientFactory, taskService, storageService, eventBus,
                    modelMappingService, virtualKeyService, costService, taskRegistry,
-                   webhookService, httpClientFactory, parameterValidator, metrics, logger)
+                   webhookService, httpClientFactory, parameterValidator, metrics,
+                   errorTrackingService, logger, batchSpendService, providerErrorTranslator)
         {
-            
+
             // Initialize processing strategies
-            _base64Processor = new Base64MediaProcessor(storageService, publishEndpoint, 
+            _base64Processor = new Base64MediaProcessor(storageService, eventBus,
                 logger as ILogger<Base64MediaProcessor> ?? new NullLogger<Base64MediaProcessor>());
-            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, publishEndpoint,
+            _urlProcessor = new UrlMediaProcessor(httpClientFactory, storageService, eventBus,
                 logger as ILogger<UrlMediaProcessor> ?? new NullLogger<UrlMediaProcessor>());
         }
 
@@ -80,8 +83,9 @@ namespace ConduitLLM.Core.Services
             VirtualKey virtualKey,
             CancellationToken cancellationToken)
         {
-            // Get the client for the model
-            var client = _clientFactory.GetClient(modelInfo.ModelId);
+            // Get the client via the already-resolved provider — modelInfo.ModelId is the
+            // provider's model id, not a model alias, so it must not be re-resolved by name
+            var client = await _clientFactory.GetClientByProviderIdAsync(modelInfo.ProviderId, modelInfo.ModelId, cancellationToken);
             
             // Generate images
             return await client.CreateImageAsync(request, cancellationToken: cancellationToken);
@@ -141,6 +145,10 @@ namespace ConduitLLM.Core.Services
                     }
                     return null;
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Failed to process image at index {Index}", index);
@@ -169,18 +177,9 @@ namespace ConduitLLM.Core.Services
             ImageGenerationRequested request,
             GenerationModelInfo modelInfo)
         {
-            return Task.FromResult(new ConduitLLM.Core.Models.ImageGenerationRequest
-            {
-                Prompt = request.Request.Prompt,
-                Model = modelInfo.ModelId,
-                N = request.Request.N,
-                Size = request.Request.Size,
-                Quality = request.Request.Quality,
-                Style = request.Request.Style,
-                ResponseFormat = request.Request.ResponseFormat ?? "url",
-                User = request.Request.User,
-                ExtensionData = request.Request.ExtensionData
-            });
+            request.Request.Model = modelInfo.ModelId;
+            request.Request.ResponseFormat ??= "url";
+            return Task.FromResult(request.Request);
         }
 
         protected override void ValidateModelSupport(GenerationModelInfo modelInfo, ImageGenerationRequested request)
@@ -190,12 +189,14 @@ namespace ConduitLLM.Core.Services
             // For now, we'll assume all models in image requests support images
         }
 
-        protected override Usage CreateUsageObject(ImageGenerationRequested request, ProcessedMedia media)
+        protected override Usage CreateUsageObject(ImageGenerationRequested request, ImageGenerationResponse response)
         {
+            var imageCount = response.Data?.Count ?? 0;
+
             // Build pricing parameters for rules-based pricing
             var pricingParameters = new Dictionary<string, object>
             {
-                ["count"] = media.Count
+                ["count"] = imageCount
             };
 
             // Add resolution/size if provided
@@ -220,7 +221,39 @@ namespace ConduitLLM.Core.Services
 
             return new Usage
             {
-                ImageCount = media.Count,
+                ImageCount = imageCount,
+                ImageResolution = request.Request.Size,
+                ImageQuality = request.Request.Quality,
+                PricingParameters = pricingParameters
+            };
+        }
+
+        protected override Usage CreateEstimatedUsageObject(ImageGenerationRequested request)
+        {
+            var imageCount = Math.Max(1, request.Request.N);
+            var pricingParameters = new Dictionary<string, object>
+            {
+                ["count"] = imageCount
+            };
+
+            if (!string.IsNullOrEmpty(request.Request.Size))
+            {
+                pricingParameters["resolution"] = request.Request.Size;
+                pricingParameters["image_resolution"] = request.Request.Size;
+            }
+            if (!string.IsNullOrEmpty(request.Request.Quality))
+            {
+                pricingParameters["quality"] = request.Request.Quality.ToLowerInvariant();
+                pricingParameters["image_quality"] = request.Request.Quality.ToLowerInvariant();
+            }
+            if (!string.IsNullOrEmpty(request.Request.Style))
+            {
+                pricingParameters["style"] = request.Request.Style.ToLowerInvariant();
+            }
+
+            return new Usage
+            {
+                ImageCount = imageCount,
                 ImageResolution = request.Request.Size,
                 ImageQuality = request.Request.Quality,
                 PricingParameters = pricingParameters
@@ -229,7 +262,7 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishStartedEventAsync(ImageGenerationRequested request)
         {
-            await _publishEndpoint.Publish(new ImageGenerationProgress
+            await _eventBus.PublishAsync(new ImageGenerationProgress
             {
                 TaskId = request.TaskId,
                 Status = "processing",
@@ -251,7 +284,7 @@ namespace ConduitLLM.Core.Services
                 Url = item.Url
             }).ToList();
 
-            await _publishEndpoint.Publish(new ImageGenerationCompleted
+            await _eventBus.PublishAsync(new ImageGenerationCompleted
             {
                 TaskId = request.TaskId,
                 VirtualKeyId = request.VirtualKeyId,
@@ -270,17 +303,17 @@ namespace ConduitLLM.Core.Services
 
         protected override async Task PublishFailedEventAsync(
             ImageGenerationRequested request,
-            Exception ex,
+            CustomerFacingProviderError customerError,
             bool isRetryable,
             int retryCount,
             int maxRetries)
         {
-            await _publishEndpoint.Publish(new ImageGenerationFailed
+            await _eventBus.PublishAsync(new ImageGenerationFailed
             {
                 TaskId = request.TaskId,
                 VirtualKeyId = request.VirtualKeyId,
-                Error = ex.Message,
-                ErrorCode = ex.GetType().Name,
+                Error = customerError.Message,
+                ErrorCode = customerError.ErrorCode,
                 Provider = request.Request.Model ?? "unknown",
                 IsRetryable = isRetryable,
                 AttemptCount = retryCount + 1,
@@ -294,7 +327,7 @@ namespace ConduitLLM.Core.Services
             int total,
             string status)
         {
-            await _publishEndpoint.Publish(new ImageGenerationProgress
+            await _eventBus.PublishAsync(new ImageGenerationProgress
             {
                 TaskId = request.TaskId,
                 Status = status,
@@ -356,10 +389,9 @@ namespace ConduitLLM.Core.Services
         /// <summary>
         /// Handles image generation cancellation events.
         /// </summary>
-        public async Task Consume(ConsumeContext<ImageGenerationCancelled> context)
+        public async Task HandleAsync(ImageGenerationCancelled cancellationEvent, IEventContext context)
         {
-            var cancellationEvent = context.Message;
-            _logger.LogInformation("Received cancellation request for image generation task {TaskId}", 
+            _logger.LogInformation("Received cancellation request for image generation task {TaskId}",
                 cancellationEvent.TaskId);
 
             // Cancel the task using the task registry
@@ -377,7 +409,7 @@ namespace ConduitLLM.Core.Services
                     error: "Task cancelled by user request");
                 
                 // Publish cancellation completed event
-                await _publishEndpoint.Publish(new ImageGenerationProgress
+                await _eventBus.PublishAsync(new ImageGenerationProgress
                 {
                     TaskId = cancellationEvent.TaskId,
                     Status = "cancelled",

@@ -10,6 +10,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Gateway.Services;
+using ConduitLLM.Tests.TestInfrastructure;
 using IVirtualKeyService = ConduitLLM.Core.Interfaces.IVirtualKeyService;
 
 namespace ConduitLLM.Tests.Http.Middleware.Fixtures
@@ -20,8 +21,8 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
     /// </summary>
     public class UsageTrackingMiddlewareTestFixture : IDisposable
     {
-        private readonly string _databaseName;
         private ConduitDbContext? _dbContext;
+        private readonly SqliteTestDatabase _database;
 
         /// <summary>
         /// Mock for the cost calculation service.
@@ -75,7 +76,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
         /// </summary>
         public UsageTrackingMiddlewareTestFixture()
         {
-            _databaseName = $"TestDb_{Guid.NewGuid()}";
+            _database = new SqliteTestDatabase();
             CapturedBillingEvents = new List<BillingAuditEvent>();
             CapturedRequestLogs = new List<LogRequestDto>();
 
@@ -97,10 +98,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
         {
             if (_dbContext == null)
             {
-                var options = new DbContextOptionsBuilder<ConduitDbContext>()
-                    .UseInMemoryDatabase(databaseName: _databaseName)
-                    .Options;
-                _dbContext = new ConduitDbContext(options);
+                _dbContext = _database.CreateContext();
             }
             return _dbContext;
         }
@@ -113,7 +111,10 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
         public IToolCostCalculationService GetRealToolCostService()
         {
             var loggerMock = new Mock<ILogger<ToolCostCalculationService>>();
-            return new ToolCostCalculationService(GetDbContext(), loggerMock.Object);
+            var factoryMock = new Mock<IDbContextFactory<ConduitDbContext>>();
+            factoryMock.Setup(f => f.CreateDbContextAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => _database.CreateContext());
+            return new ToolCostCalculationService(factoryMock.Object, loggerMock.Object);
         }
 
         /// <summary>
@@ -262,7 +263,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
             mock.Setup(x => x.CalculateToolCostsAsync(
                 It.IsAny<ToolUsageData>(),
                 It.IsAny<ProviderType>()))
-                .ReturnsAsync(0m);
+                .ReturnsAsync(new ToolCostResult { TotalCost = 0m });
             mock.Setup(x => x.SerializeToolUsage(It.IsAny<ToolUsageData>()))
                 .Returns<ToolUsageData>(data => System.Text.Json.JsonSerializer.Serialize(data));
             return mock;
@@ -292,6 +293,7 @@ namespace ConduitLLM.Tests.Http.Middleware.Fixtures
         public void Dispose()
         {
             _dbContext?.Dispose();
+            _database.Dispose();
             GC.SuppressFinalize(this);
         }
     }

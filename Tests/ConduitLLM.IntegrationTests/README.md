@@ -15,7 +15,7 @@ These integration tests verify the complete functionality of Conduit by:
 
 1. **Docker Environment Running**: Start the development environment:
    ```bash
-   ./scripts/start-dev.sh
+   ./scripts/dev.ps1
    ```
 
 2. **Services Health**: The tests will automatically wait for all services to be healthy:
@@ -54,6 +54,16 @@ provider:
 ```
 
 ## Running Tests
+
+### CI SignalR Suite
+
+The SignalR component is self-contained with Testcontainers and runs as a required CI gate:
+
+```bash
+dotnet test ConduitLLM.IntegrationTests.csproj --configuration Release --filter "Component=SignalR"
+```
+
+Provider and critical-path integration tests remain manual because they require running Conduit services and provider credentials.
 
 ### Run All Tests
 ```bash
@@ -196,15 +206,12 @@ Each test run uses minimal API credits (typically < $0.01):
 - Costs are tracked with micro-cent precision (6 decimal places)
 - Virtual key starts with $100 credit (configurable)
 
-## TODO: Future Enhancements
+## Verified Gaps
 
 - [ ] Parallel provider testing
 - [ ] Multimodal input testing (images)
 - [ ] Image generation verification
 - [ ] Video generation verification
-- [ ] Streaming response validation
-- [ ] Rate limiting tests
-- [ ] Error handling scenarios
 - [ ] Performance benchmarking
 - [ ] Load testing capabilities
 - [ ] CI/CD integration

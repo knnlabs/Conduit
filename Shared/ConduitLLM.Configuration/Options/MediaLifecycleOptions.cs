@@ -33,6 +33,37 @@ namespace ConduitLLM.Configuration.Options
         public int ScheduleIntervalMinutes { get; set; } = 60;
 
         /// <summary>
+        /// Enable cleanup of media whose explicit expiration time has passed.
+        /// </summary>
+        public bool EnableExpirationCleanup { get; set; } = true;
+
+        /// <summary>
+        /// Enable storage reconciliation for objects that have no MediaRecord.
+        /// </summary>
+        public bool EnableReconciliation { get; set; } = true;
+
+        /// <summary>
+        /// Minimum age in hours before an untracked storage object may be deleted.
+        /// Protects uploads that have not finished writing their MediaRecord.
+        /// </summary>
+        public int ReconciliationMinimumAgeHours { get; set; } = 48;
+
+        /// <summary>
+        /// Number of storage objects inspected per reconciliation page.
+        /// </summary>
+        public int ReconciliationPageSize { get; set; } = 1000;
+
+        /// <summary>
+        /// Enable cleanup based on virtual key group retention policies.
+        /// </summary>
+        public bool EnableRetentionCleanup { get; set; } = true;
+
+        /// <summary>
+        /// Enable permanent eviction when virtual-key groups exceed policy storage quotas.
+        /// </summary>
+        public bool EnableQuotaCleanup { get; set; } = true;
+
+        /// <summary>
         /// Enable soft delete with grace period before permanent deletion.
         /// </summary>
         public bool EnableSoftDelete { get; set; } = true;
@@ -59,10 +90,25 @@ namespace ConduitLLM.Configuration.Options
         public int LargeBatchThreshold { get; set; } = 100;
 
         /// <summary>
-        /// Maximum batch size for R2 operations.
-        /// Conservative for free tier.
+        /// Number of hours before a pending or unused approval must be re-evaluated.
         /// </summary>
-        public int MaxBatchSize { get; set; } = 50;
+        public int LargeBatchApprovalExpirationHours { get; set; } = 24;
+
+        /// <summary>
+        /// Maximum number of objects grouped into one cleanup batch.
+        /// S3-compatible bulk delete supports up to 1,000 keys.
+        /// </summary>
+        public int MaxBatchSize { get; set; } = 1000;
+
+        /// <summary>
+        /// Maximum number of media records loaded by one cleanup query.
+        /// </summary>
+        public int CleanupPageSize { get; set; } = 1000;
+
+        /// <summary>
+        /// Maximum media records considered across one scheduled cleanup run.
+        /// </summary>
+        public int MaxRecordsPerRun { get; set; } = 10_000;
 
         /// <summary>
         /// Delay between batches in milliseconds.
@@ -70,9 +116,14 @@ namespace ConduitLLM.Configuration.Options
         public int DelayBetweenBatchesMs { get; set; } = 500;
 
         /// <summary>
-        /// Maximum concurrent R2 delete operations.
+        /// Maximum retries after a storage throttle or per-call timeout.
         /// </summary>
-        public int MaxConcurrentBatches { get; set; } = 2;
+        public int DeleteThrottleMaxRetries { get; set; } = 5;
+
+        /// <summary>
+        /// Initial exponential backoff delay after storage throttling.
+        /// </summary>
+        public int DeleteThrottleInitialBackoffMs { get; set; } = 1000;
 
         /// <summary>
         /// Monthly delete operation budget for R2 free tier.
@@ -80,18 +131,31 @@ namespace ConduitLLM.Configuration.Options
         public int MonthlyDeleteBudget { get; set; } = 500_000;
 
         /// <summary>
-        /// Enable detailed audit logging for all media deletions.
+        /// Maximum number of permanent deletes reserved before each storage sub-chunk.
+        /// Smaller values reduce the accounting exposure if a process crashes after reservation.
         /// </summary>
-        public bool EnableAuditLogging { get; set; } = true;
+        public int BudgetReservationStride { get; set; } = 10;
 
         /// <summary>
-        /// Enable metrics collection for monitoring.
+        /// Behavior when the shared budget store cannot be read or updated.
         /// </summary>
-        public bool EnableMetrics { get; set; } = true;
+        public MediaBudgetFailureMode BudgetFailureMode { get; set; } =
+            MediaBudgetFailureMode.FailClosed;
+
+        /// <summary>
+        /// Percentage of the monthly delete budget that triggers an operational alert.
+        /// </summary>
+        public double BudgetAlertThresholdPercent { get; set; } = 90;
 
         /// <summary>
         /// Timeout for R2 operations in seconds.
         /// </summary>
         public int R2OperationTimeoutSeconds { get; set; } = 30;
+    }
+
+    public enum MediaBudgetFailureMode
+    {
+        FailClosed,
+        FailOpen
     }
 }

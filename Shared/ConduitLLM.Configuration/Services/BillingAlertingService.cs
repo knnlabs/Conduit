@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ConduitLLM.Configuration.Interfaces;
-using ConduitLLM.Configuration.DTOs.HealthMonitoring;
 using ConduitLLM.Configuration.Entities;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,8 +16,11 @@ namespace ConduitLLM.Configuration.Services
     {
         private readonly ILogger<BillingAlertingService> _logger;
         private readonly IBillingAuditService? _auditService;
-        private DateTime _lastAlertTime = DateTime.MinValue;
-        private readonly TimeSpan _alertCooldown = TimeSpan.FromMinutes(5);
+        private static readonly object AlertCooldownLock = new();
+        private static readonly Dictionary<AlertCooldownKey, DateTime> AlertCooldowns = new();
+        private static readonly TimeSpan AlertCooldown = TimeSpan.FromMinutes(5);
+        private static DateTime _nextCooldownPrune = DateTime.MinValue;
+        private const int MaxTrackedAlerts = 1024;
 
         /// <summary>
         /// Initializes a new instance of the BillingAlertingService
@@ -36,33 +38,45 @@ namespace ConduitLLM.Configuration.Services
         {
             try
             {
-                // Rate limit alerts to prevent spamming
-                if (DateTime.UtcNow - _lastAlertTime < _alertCooldown)
+                var now = DateTime.UtcNow;
+                var serializedContext = additionalContext != null
+                    ? JsonSerializer.Serialize(additionalContext)
+                    : null;
+
+                // Every failure must be durably recorded. Notification throttling below must not
+                // suppress billing audit data used for revenue-loss reporting.
+                if (_auditService != null)
+                {
+                    try
+                    {
+                        await _auditService.LogBillingEventAsync(new BillingAuditEvent
+                        {
+                            EventType = BillingAuditEventType.SpendUpdateFailed,
+                            VirtualKeyId = virtualKeyId,
+                            FailureReason = message,
+                            Timestamp = now,
+                            MetadataJson = serializedContext
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        // An audit-store outage must not prevent the outbound critical alert.
+                        _logger.LogError(ex, "Failed to record critical billing alert in the audit log");
+                    }
+                }
+
+                var alertKey = new AlertCooldownKey(message, virtualKeyId);
+                var shouldNotify = TryBeginCooldown(alertKey, now);
+
+                if (!shouldNotify)
                 {
                     _logger.LogWarning("Alert suppressed due to cooldown: {Message}", message);
                     return;
                 }
 
-                _lastAlertTime = DateTime.UtcNow;
-
-                // Log critical error
+                // Log critical error as the currently configured outbound notification.
                 _logger.LogCritical("BILLING SYSTEM CRITICAL ALERT: {Message} | VirtualKeyId: {VirtualKeyId} | Context: {Context}",
-                    message, virtualKeyId, additionalContext != null ? JsonSerializer.Serialize(additionalContext) : "N/A");
-
-                // Record in audit log if available
-                if (_auditService != null)
-                {
-                    await _auditService.LogBillingEventAsync(new BillingAuditEvent
-                    {
-                        EventType = BillingAuditEventType.SpendUpdateFailed,
-                        VirtualKeyId = virtualKeyId,
-                        FailureReason = message,
-                        Timestamp = DateTime.UtcNow,
-                        MetadataJson = additionalContext != null 
-                            ? JsonSerializer.Serialize(additionalContext)
-                            : null
-                    });
-                }
+                    message, virtualKeyId, serializedContext ?? "N/A");
 
                 // Additional notification mechanisms can be added here
                 // For example, sending to external monitoring systems, PagerDuty, etc.
@@ -72,6 +86,43 @@ namespace ConduitLLM.Configuration.Services
                 _logger.LogError(ex, "Failed to send critical billing alert");
             }
         }
+
+        private static bool TryBeginCooldown(AlertCooldownKey alertKey, DateTime now)
+        {
+            lock (AlertCooldownLock)
+            {
+                if (now >= _nextCooldownPrune || AlertCooldowns.Count >= MaxTrackedAlerts)
+                {
+                    var cutoff = now - AlertCooldown;
+                    foreach (var expiredKey in AlertCooldowns
+                        .Where(entry => entry.Value <= cutoff)
+                        .Select(entry => entry.Key)
+                        .ToList())
+                    {
+                        AlertCooldowns.Remove(expiredKey);
+                    }
+
+                    _nextCooldownPrune = now + AlertCooldown;
+                }
+
+                if (AlertCooldowns.TryGetValue(alertKey, out var lastAlert) &&
+                    now - lastAlert < AlertCooldown)
+                {
+                    return false;
+                }
+
+                if (!AlertCooldowns.ContainsKey(alertKey) && AlertCooldowns.Count >= MaxTrackedAlerts)
+                {
+                    var oldestKey = AlertCooldowns.MinBy(entry => entry.Value).Key;
+                    AlertCooldowns.Remove(oldestKey);
+                }
+
+                AlertCooldowns[alertKey] = now;
+                return true;
+            }
+        }
+
+        private readonly record struct AlertCooldownKey(string Message, int? VirtualKeyId);
 
     }
 }

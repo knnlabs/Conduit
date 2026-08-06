@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models;
@@ -15,7 +16,7 @@ public class Message
 
     /// <summary>
     /// The contents of the message. Can be a simple string or, for multimodal models,
-    /// a list containing text and image_url content parts.
+    /// a list containing text, image_url, video_url, audio, or file content parts.
     /// </summary>
     [JsonPropertyName("content")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -42,6 +43,35 @@ public class Message
     [JsonPropertyName("tool_call_id")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? ToolCallId { get; set; }
+
+    /// <summary>Provider annotations, including reusable parsed-file annotations.</summary>
+    [JsonPropertyName("annotations")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<JsonElement>? Annotations { get; set; }
+
+    /// <summary>Assistant audio output returned by a multimodal provider.</summary>
+    [JsonPropertyName("audio")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Audio { get; set; }
+
+    /// <summary>Assistant image output returned by a multimodal provider.</summary>
+    [JsonPropertyName("images")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? Images { get; set; }
+
+    /// <summary>Structured reasoning details returned by a provider.</summary>
+    [JsonPropertyName("reasoning_details")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public JsonElement? ReasoningDetails { get; set; }
+
+    /// <summary>Text reasoning returned alongside the visible assistant response.</summary>
+    [JsonPropertyName("reasoning")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Reasoning { get; set; }
+
+    /// <summary>Unknown provider fields retained for forward-compatible round trips.</summary>
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 
     /// <summary>
     /// The timestamp when this message was created. Used for UI display purposes only.

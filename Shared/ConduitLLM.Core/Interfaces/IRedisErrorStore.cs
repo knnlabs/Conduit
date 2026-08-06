@@ -41,15 +41,58 @@ namespace ConduitLLM.Core.Interfaces
         /// Get fatal error information for a key
         /// </summary>
         /// <param name="keyId">The key credential ID</param>
-        /// <returns>Fatal error data or null if not found</returns>
-        Task<FatalErrorData?> GetFatalErrorDataAsync(int keyId);
+        /// <returns>Fatal error information or null if not found</returns>
+        Task<FatalErrorInfo?> GetFatalErrorAsync(int keyId);
+
+        /// <summary>
+        /// Count distinct request IDs for an error type within a rolling window.
+        /// </summary>
+        Task<long> GetDistinctFatalRequestCountAsync(
+            int keyId,
+            ProviderErrorType errorType,
+            TimeSpan window);
+
+        /// <summary>
+        /// Acquire the short-lived single-writer guard for disabling a key.
+        /// </summary>
+        Task<bool> TryAcquireKeyDisableAsync(int keyId, TimeSpan ttl);
 
         /// <summary>
         /// Mark a key as disabled in Redis
         /// </summary>
         /// <param name="keyId">The key credential ID</param>
         /// <param name="disabledAt">When the key was disabled</param>
-        Task MarkKeyDisabledAsync(int keyId, DateTime disabledAt);
+        /// <param name="errorType">Classified error responsible for the disable</param>
+        Task MarkKeyDisabledAsync(
+            int keyId,
+            DateTime disabledAt,
+            ProviderErrorType errorType);
+
+        /// <summary>
+        /// Get disabled-key state used by the balance reprobe worker.
+        /// </summary>
+        Task<IReadOnlyList<DisabledKeyReprobeState>> GetDisabledKeyReprobeStatesAsync();
+
+        /// <summary>
+        /// Acquire the distributed single-prober guard for a key.
+        /// </summary>
+        Task<bool> TryAcquireKeyReprobeAsync(int keyId, TimeSpan ttl);
+
+        /// <summary>
+        /// Record a failed reprobe and its next eligible time.
+        /// </summary>
+        Task RecordKeyReprobeAttemptAsync(
+            int keyId,
+            int attemptCount,
+            DateTime attemptedAt,
+            DateTime nextAttemptAt);
+
+        /// <summary>
+        /// Reclassify a reprobe as requiring manual credential repair.
+        /// </summary>
+        Task MarkKeyReprobeRequiresManualAsync(
+            int keyId,
+            ProviderErrorType errorType);
 
         /// <summary>
         /// Update provider disabled status
@@ -60,11 +103,24 @@ namespace ConduitLLM.Core.Interfaces
         Task MarkProviderDisabledAsync(int providerId, DateTime disabledAt, string reason);
 
         /// <summary>
-        /// Add a key to the provider's disabled keys list
+        /// Clear the automatic provider-disabled marker after recovery.
+        /// </summary>
+        /// <param name="providerId">The provider ID</param>
+        Task ClearProviderDisabledAsync(int providerId);
+
+        /// <summary>
+        /// Add a key to the provider's disabled keys set
         /// </summary>
         /// <param name="providerId">The provider ID</param>
         /// <param name="keyId">The key credential ID</param>
         Task AddDisabledKeyToProviderAsync(int providerId, int keyId);
+
+        /// <summary>
+        /// Remove a key from the provider's disabled keys set (when re-enabled)
+        /// </summary>
+        /// <param name="providerId">The provider ID</param>
+        /// <param name="keyId">The key credential ID</param>
+        Task RemoveDisabledKeyFromProviderAsync(int providerId, int keyId);
 
         /// <summary>
         /// Get recent errors from the feed
@@ -83,45 +139,45 @@ namespace ConduitLLM.Core.Interfaces
         Task<Dictionary<int, ErrorCountInfo>> GetErrorCountsByKeysAsync(int providerId, IEnumerable<int> keyIds, TimeSpan window);
 
         /// <summary>
-        /// Clear all error data for a key
+        /// Clear all error data for a key and optionally remove from provider's disabled keys
         /// </summary>
         /// <param name="keyId">The key credential ID</param>
-        Task ClearErrorsForKeyAsync(int keyId);
+        /// <param name="providerId">Optional provider ID to also clean up the provider's disabled keys set</param>
+        Task ClearErrorsForKeyAsync(int keyId, int? providerId = null);
 
         /// <summary>
         /// Get all error data for a key
         /// </summary>
         /// <param name="keyId">The key credential ID</param>
-        /// <returns>Complete error data for the key</returns>
-        Task<KeyErrorData?> GetKeyErrorDataAsync(int keyId);
+        /// <returns>Complete error information for the key</returns>
+        Task<KeyErrorDetails?> GetKeyErrorDetailsAsync(int keyId);
 
         /// <summary>
         /// Get provider error summary
         /// </summary>
         /// <param name="providerId">The provider ID</param>
-        /// <returns>Provider summary data</returns>
-        Task<ProviderSummaryData?> GetProviderSummaryAsync(int providerId);
+        /// <returns>Provider error summary</returns>
+        Task<ProviderErrorSummary?> GetProviderSummaryAsync(int providerId);
 
         /// <summary>
         /// Get error statistics for a time window
         /// </summary>
         /// <param name="window">Time window to analyze</param>
         /// <returns>Statistics for the time period</returns>
-        Task<ErrorStatsData> GetErrorStatisticsAsync(TimeSpan window);
+        Task<ErrorStatistics> GetErrorStatisticsAsync(TimeSpan window);
     }
 
     /// <summary>
-    /// Fatal error data from Redis
+    /// Redis-backed state for an automatically disabled key awaiting a balance reprobe.
     /// </summary>
-    public class FatalErrorData
+    public class DisabledKeyReprobeState
     {
-        public string? ErrorType { get; set; }
-        public int Count { get; set; }
-        public DateTime? FirstSeen { get; set; }
-        public DateTime? LastSeen { get; set; }
-        public string? LastErrorMessage { get; set; }
-        public int? LastStatusCode { get; set; }
-        public DateTime? DisabledAt { get; set; }
+        public int KeyId { get; set; }
+        public ProviderErrorType ErrorType { get; set; }
+        public DateTime DisabledAt { get; set; }
+        public int AttemptCount { get; set; }
+        public DateTime? LastAttemptAt { get; set; }
+        public DateTime? NextAttemptAt { get; set; }
     }
 
     /// <summary>
@@ -145,47 +201,4 @@ namespace ConduitLLM.Core.Interfaces
         public DateTime LastSeen { get; set; }
     }
 
-    /// <summary>
-    /// Complete error data for a key
-    /// </summary>
-    public class KeyErrorData
-    {
-        public FatalErrorData? FatalError { get; set; }
-        public List<WarningData> RecentWarnings { get; set; } = new();
-    }
-
-    /// <summary>
-    /// Warning data
-    /// </summary>
-    public class WarningData
-    {
-        public string Type { get; set; } = string.Empty;
-        public string Message { get; set; } = string.Empty;
-        public DateTime Timestamp { get; set; }
-    }
-
-    /// <summary>
-    /// Provider summary data from Redis
-    /// </summary>
-    public class ProviderSummaryData
-    {
-        public int TotalErrors { get; set; }
-        public int FatalErrors { get; set; }
-        public int Warnings { get; set; }
-        public List<int> DisabledKeyIds { get; set; } = new();
-        public DateTime? LastError { get; set; }
-        public DateTime? ProviderDisabledAt { get; set; }
-        public string? ProviderDisableReason { get; set; }
-    }
-
-    /// <summary>
-    /// Error statistics data
-    /// </summary>
-    public class ErrorStatsData
-    {
-        public int TotalErrors { get; set; }
-        public int FatalErrors { get; set; }
-        public int Warnings { get; set; }
-        public Dictionary<string, int> ErrorsByType { get; set; } = new();
-    }
 }

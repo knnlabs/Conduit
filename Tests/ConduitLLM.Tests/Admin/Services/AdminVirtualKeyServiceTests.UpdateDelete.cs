@@ -1,6 +1,10 @@
+using ConduitLLM.Admin.Interfaces;
+using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Configuration.DTOs.VirtualKey;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Events;
+using ConduitLLM.Core.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 using Moq;
 
@@ -45,7 +49,7 @@ namespace ConduitLLM.Tests.Admin.Services
             {
                 KeyName = "Test Key", // Same name
                 IsEnabled = true, // Same status
-                AllowedModels = "gpt-4" // Same models
+                AllowedModels = ["gpt-4"] // Same models
             };
 
             // Act
@@ -78,7 +82,7 @@ namespace ConduitLLM.Tests.Admin.Services
             {
                 KeyName = "New Name",
                 IsEnabled = false,
-                AllowedModels = "gpt-4"
+                AllowedModels = ["gpt-4"]
             };
 
             // Act
@@ -87,7 +91,7 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.True(result);
             _mockVirtualKeyRepository.Verify(x => x.UpdateAsync(It.IsAny<VirtualKey>(), It.IsAny<CancellationToken>()), Times.Once);
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyUpdated>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
@@ -127,8 +131,12 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockVirtualKeyRepository.Setup(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
-                .ReturnsAsync(5); // 5 media files deleted
+            await SeedMediaRecordsAsync(1, 5);
+            _mockMediaDeletionEngine
+                .Setup(x => x.DeleteAsync(
+                    It.IsAny<MediaDeletionRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaDeletionEngineResult(FilesDeleted: 5));
 
             // Act
             var result = await _service.DeleteVirtualKeyAsync(1);
@@ -136,14 +144,18 @@ namespace ConduitLLM.Tests.Admin.Services
             // Assert
             Assert.True(result);
             _mockVirtualKeyRepository.Verify(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
-            _mockMediaLifecycleService.Verify(x => x.DeleteMediaForVirtualKeyAsync(1), Times.Once);
-            _mockPublishEndpoint.Verify(x => x.Publish(
+            _mockMediaDeletionEngine.Verify(x => x.DeleteAsync(
+                It.Is<MediaDeletionRequest>(request =>
+                    request.Operation.CleanupType == MediaCleanupTypes.VirtualKey &&
+                    request.MediaRecords.Count == 5),
+                It.IsAny<CancellationToken>()), Times.Once);
+            _mockPublishEndpoint.Verify(x => x.PublishAsync(
                 It.IsAny<VirtualKeyDeleted>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         }
 
         [Fact]
-        public async Task DeleteVirtualKeyAsync_MediaCleanupFails_StillDeletesKey()
+        public async Task DeleteVirtualKeyAsync_MediaCleanupThrows_BlocksKeyDeletion()
         {
             // Arrange
             var existingKey = new VirtualKey
@@ -159,15 +171,85 @@ namespace ConduitLLM.Tests.Admin.Services
             _mockVirtualKeyRepository.Setup(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(true);
 
-            _mockMediaLifecycleService.Setup(x => x.DeleteMediaForVirtualKeyAsync(1))
+            await SeedMediaRecordsAsync(1, 1);
+            _mockMediaDeletionEngine
+                .Setup(x => x.DeleteAsync(
+                    It.IsAny<MediaDeletionRequest>(),
+                    It.IsAny<CancellationToken>()))
                 .ThrowsAsync(new Exception("Media service error"));
 
-            // Act
-            var result = await _service.DeleteVirtualKeyAsync(1);
+            await Assert.ThrowsAsync<Exception>(() => _service.DeleteVirtualKeyAsync(1));
 
-            // Assert
-            Assert.True(result); // Key deletion should succeed despite media cleanup failure
-            _mockVirtualKeyRepository.Verify(x => x.DeleteAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+            _mockVirtualKeyRepository.Verify(
+                x => x.DeleteAsync(1, It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task DeleteVirtualKeyAsync_MediaCleanupReportsFailure_BlocksKeyDeletion()
+        {
+            var existingKey = new VirtualKey
+            {
+                Id = 1,
+                KeyName = "Test Key",
+                KeyHash = "hash123"
+            };
+            _mockVirtualKeyRepository.Setup(x => x.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(existingKey);
+            await SeedMediaRecordsAsync(1, 3);
+            _mockMediaDeletionEngine
+                .Setup(x => x.DeleteAsync(
+                    It.IsAny<MediaDeletionRequest>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new MediaDeletionEngineResult(FilesDeleted: 2, Failures: 1));
+
+            var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+                () => _service.DeleteVirtualKeyAsync(1));
+
+            Assert.Contains("failed=1", exception.Message);
+            _mockVirtualKeyRepository.Verify(
+                x => x.DeleteAsync(1, It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        private static List<MediaRecord> CreateMediaRecords(int virtualKeyId, int count) =>
+            Enumerable.Range(0, count)
+                .Select(index => new MediaRecord
+                {
+                    Id = Guid.NewGuid(),
+                    VirtualKeyId = virtualKeyId,
+                    StorageKey = $"media-{index}",
+                    MediaType = "image"
+                })
+                .ToList();
+
+        private async Task SeedMediaRecordsAsync(int virtualKeyId, int count)
+        {
+            await using var context = _database.CreateContext();
+            if (!await context.VirtualKeyGroups.AnyAsync(group => group.Id == 1))
+            {
+                context.VirtualKeyGroups.Add(new VirtualKeyGroup
+                {
+                    Id = 1,
+                    GroupName = "media-cleanup-tests",
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+            if (!await context.VirtualKeys.AnyAsync(key => key.Id == virtualKeyId))
+            {
+                context.VirtualKeys.Add(new VirtualKey
+                {
+                    Id = virtualKeyId,
+                    KeyName = "media-cleanup-key",
+                    KeyHash = $"media-cleanup-{virtualKeyId}",
+                    VirtualKeyGroupId = 1,
+                    IsEnabled = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            context.MediaRecords.AddRange(CreateMediaRecords(virtualKeyId, count));
+            await context.SaveChangesAsync();
         }
 
         #endregion

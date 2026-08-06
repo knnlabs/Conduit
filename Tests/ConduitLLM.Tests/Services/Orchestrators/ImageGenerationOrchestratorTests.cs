@@ -8,6 +8,7 @@ using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Configuration.Interfaces;
 using Moq;
 using Xunit;
 
@@ -22,6 +23,8 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         ConduitLLM.Core.Models.ImageGenerationResponse,
         ImageGenerationRequested>
     {
+        private Mock<ILLMClient>? _imageClientMock;
+
         protected override string GetRequestId(ImageGenerationRequested request) => request.TaskId;
         protected override string? GetWebhookUrl(ImageGenerationRequested request) => request.WebhookUrl;
 
@@ -35,7 +38,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 ClientFactoryMock.Object,
                 TaskServiceMock.Object,
                 StorageServiceMock.Object,
-                PublishEndpointMock.Object,
+                EventBusMock.Object,
                 ModelMappingServiceMock.Object,
                 VirtualKeyServiceMock.Object,
                 CostServiceMock.Object,
@@ -44,6 +47,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 HttpClientFactoryMock.Object,
                 ParameterValidatorMock.Object,
                 Metrics,
+                ErrorTrackingServiceMock.Object,
                 LoggerMock.Object as ILogger<ImageGenerationOrchestrator> ?? new Mock<ILogger<ImageGenerationOrchestrator>>().Object);
         }
 
@@ -53,7 +57,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             {
                 TaskId = "test-task-id",
                 VirtualKeyId = 1,
-                Request = new ConduitLLM.Core.Events.ImageGenerationRequest
+                Request = new ConduitLLM.Core.Models.ImageGenerationRequest
                 {
                     Model = "test-model",
                     Prompt = "Generate a test image",
@@ -90,15 +94,15 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         protected override void SetupSuccessfulGeneration(ConduitLLM.Core.Models.ImageGenerationResponse response)
         {
             // Mock client for image generation
-            var mockClient = new Mock<ILLMClient>();
-            mockClient.Setup(x => x.CreateImageAsync(
+            _imageClientMock = new Mock<ILLMClient>();
+            _imageClientMock.Setup(x => x.CreateImageAsync(
                 It.IsAny<ConduitLLM.Core.Models.ImageGenerationRequest>(),
                 It.IsAny<string?>(),
                 It.IsAny<CancellationToken>()))
                 .ReturnsAsync(response);
             
-            ClientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Returns(mockClient.Object);
+            ClientFactoryMock.Setup(x => x.GetClientByProviderIdAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(_imageClientMock.Object);
             
             StorageServiceMock.Setup(x => x.StoreAsync(
                 It.IsAny<Stream>(),
@@ -112,28 +116,53 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 });
         }
 
+        [Fact]
+        public async Task HandleAsync_PreservesImageEditAndNewRequestFields()
+        {
+            var request = CreateTestEventRequest();
+            request.Request.Image = "base64-image";
+            request.Request.Mask = "base64-mask";
+            request.Request.Operation = "edit";
+            request.Request.Background = "transparent";
+            request.Request.OutputFormat = "webp";
+            var response = CreateTestResponse();
+            SetupSuccessfulGeneration(response);
+
+            await Orchestrator.HandleAsync(request, CreateEventContext());
+
+            _imageClientMock!.Verify(client => client.CreateImageAsync(
+                It.Is<ConduitLLM.Core.Models.ImageGenerationRequest>(providerRequest =>
+                    providerRequest.Image == "base64-image" &&
+                    providerRequest.Mask == "base64-mask" &&
+                    providerRequest.Operation == "edit" &&
+                    providerRequest.Background == "transparent" &&
+                    providerRequest.OutputFormat == "webp"),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
         protected override void SetupFailedGeneration(Exception exception)
         {
             // Setup to simulate failure during orchestration
-            ClientFactoryMock.Setup(x => x.GetClient(It.IsAny<string>()))
-                .Throws(exception);
+            ClientFactoryMock.Setup(x => x.GetClientByProviderIdAsync(It.IsAny<int>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(exception);
         }
 
         [Fact]
-        public async Task Consume_WithMultipleImages_ShouldProcessAllInParallel()
+        public async Task HandleAsync_WithMultipleImages_ShouldProcessAllInParallel()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should publish progress event with correct counts
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<ImageGenerationProgress>(e =>
                     e.TaskId == request.TaskId &&
                     e.TotalImages == 2),
@@ -141,11 +170,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WithBase64Response_ShouldProcessCorrectly()
+        public async Task HandleAsync_WithBase64Response_ShouldProcessCorrectly()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             
             var response = new ConduitLLM.Core.Models.ImageGenerationResponse
             {
@@ -162,7 +191,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -175,11 +204,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WithUrlResponse_ShouldDownloadAndStore()
+        public async Task HandleAsync_WithUrlResponse_ShouldDownloadAndStore()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
@@ -190,7 +219,7 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 .Returns(httpClient);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
@@ -207,16 +236,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<ImageGenerationCompleted>(e =>
                     e.TaskId == request.TaskId &&
                     e.Images.Count == 2 &&
@@ -229,16 +258,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should publish initial progress
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<ImageGenerationProgress>(e =>
                     e.TaskId == request.TaskId &&
                     e.Status == "processing" &&
@@ -252,16 +281,16 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             var response = CreateTestResponse();
 
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert
-            PublishEndpointMock.Verify(x => x.Publish(
+            EventBusMock.Verify(x => x.PublishAsync(
                 It.Is<WebhookDeliveryRequested>(w =>
                     w.TaskId == request.TaskId &&
                     w.WebhookUrl == request.WebhookUrl),
@@ -269,11 +298,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
         }
 
         [Fact]
-        public async Task Consume_WithPartialImageFailure_ShouldProcessSuccessfulOnes()
+        public async Task HandleAsync_WithPartialImageFailure_ShouldProcessSuccessfulOnes()
         {
             // Arrange
             var request = CreateTestEventRequest();
-            var context = CreateConsumeContext(request);
+            var context = CreateEventContext();
             
             // Create response with one valid URL and one invalid
             var response = new ConduitLLM.Core.Models.ImageGenerationResponse
@@ -295,12 +324,140 @@ namespace ConduitLLM.Tests.Services.Orchestrators
             SetupSuccessfulGeneration(response);
 
             // Act
-            await Orchestrator.Consume(context.Object);
+            await Orchestrator.HandleAsync(request, context);
 
             // Assert - Should complete successfully with partial results
             TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
                 request.TaskId,
                 TaskState.Completed,
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenAllImageStorageFails_ShouldBillProviderGeneratedImages()
+        {
+            // Arrange
+            var request = CreateTestEventRequest();
+            var response = new ConduitLLM.Core.Models.ImageGenerationResponse
+            {
+                Created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                Data = Enumerable.Range(0, 2)
+                    .Select(_ => new ConduitLLM.Core.Models.ImageData
+                    {
+                        B64Json = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+                    })
+                    .ToList()
+            };
+            SetupSuccessfulGeneration(response);
+
+            StorageServiceMock.Setup(x => x.StoreAsync(
+                    It.IsAny<Stream>(),
+                    It.IsAny<MediaMetadata>(),
+                    It.IsAny<IProgress<long>>()))
+                .ThrowsAsync(new InvalidOperationException("Storage unavailable"));
+
+            // Act
+            await Orchestrator.HandleAsync(request, CreateEventContext());
+
+            // Assert: storage failures do not change the provider-generated usage or spend.
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                "provider-model-id",
+                It.Is<Usage>(usage => usage.ImageCount == 2),
+                It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<SpendUpdateRequested>(spend => spend.KeyId == 1 && spend.Amount == 0.01m),
+                It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<ImageGenerationCompleted>(completed =>
+                    completed.TaskId == request.TaskId &&
+                    completed.Images.Count == 0 &&
+                    completed.Cost == 0.01m),
+                It.IsAny<CancellationToken>()), Times.Once);
+            TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                request.TaskId,
+                TaskState.Completed,
+                It.IsAny<int?>(),
+                It.IsAny<object?>(),
+                It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenEstimatedCostCannotBeReserved_ShouldNotCallProvider()
+        {
+            // Arrange
+            var batchSpendService = new Mock<IBatchSpendUpdateService>();
+            batchSpendService
+                .Setup(x => x.TryReserveSpendAsync(1, 0.01m, "test-task-id"))
+                .ReturnsAsync(false);
+
+            var orchestrator = new ImageGenerationOrchestrator(
+                ClientFactoryMock.Object,
+                TaskServiceMock.Object,
+                StorageServiceMock.Object,
+                EventBusMock.Object,
+                ModelMappingServiceMock.Object,
+                VirtualKeyServiceMock.Object,
+                CostServiceMock.Object,
+                TaskRegistryMock.Object,
+                WebhookServiceMock.Object,
+                HttpClientFactoryMock.Object,
+                ParameterValidatorMock.Object,
+                Metrics,
+                ErrorTrackingServiceMock.Object,
+                LoggerMock.Object as ILogger<ImageGenerationOrchestrator>
+                    ?? new Mock<ILogger<ImageGenerationOrchestrator>>().Object,
+                batchSpendService.Object);
+
+            // Act
+            await orchestrator.HandleAsync(CreateTestEventRequest(), CreateEventContext());
+
+            // Assert
+            batchSpendService.Verify(
+                x => x.TryReserveSpendAsync(1, 0.01m, "test-task-id"),
+                Times.Once);
+            ClientFactoryMock.Verify(
+                x => x.GetClientByProviderIdAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<string>(),
+                    It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public async Task HandleAsync_WhenCancelledAfterProviderCompletes_ShouldStillPublishSpend()
+        {
+            // Arrange: cancel as soon as billing is published, before media download/storage starts.
+            using var cancellationSource = new CancellationTokenSource();
+            var request = CreateTestEventRequest();
+            var response = CreateTestResponse();
+            SetupSuccessfulGeneration(response);
+
+            HttpClientFactoryMock.Setup(x => x.CreateClient(It.IsAny<string>()))
+                .Returns(new System.Net.Http.HttpClient(new MockHttpMessageHandler()));
+            EventBusMock.Setup(x => x.PublishAsync(
+                    It.IsAny<SpendUpdateRequested>(),
+                    It.IsAny<CancellationToken>()))
+                .Callback(() => cancellationSource.Cancel())
+                .Returns(Task.CompletedTask);
+
+            // Act
+            await Orchestrator.HandleAsync(request, CreateEventContext(cancellationSource.Token));
+
+            // Assert: provider output is billed even though subsequent processing is cancelled.
+            CostServiceMock.Verify(x => x.CalculateCostAsync(
+                "provider-model-id",
+                It.Is<Usage>(usage => usage.ImageCount == 2),
+                It.IsAny<CancellationToken>()), Times.Once);
+            EventBusMock.Verify(x => x.PublishAsync(
+                It.Is<SpendUpdateRequested>(spend => spend.KeyId == 1 && spend.Amount == 0.01m),
+                It.IsAny<CancellationToken>()), Times.Once);
+            TaskServiceMock.Verify(x => x.UpdateTaskStatusAsync(
+                request.TaskId,
+                TaskState.Cancelled,
                 It.IsAny<int?>(),
                 It.IsAny<object?>(),
                 It.IsAny<string?>(),
@@ -313,6 +470,11 @@ namespace ConduitLLM.Tests.Services.Orchestrators
                 System.Net.Http.HttpRequestMessage request,
                 CancellationToken cancellationToken)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return Task.FromCanceled<System.Net.Http.HttpResponseMessage>(cancellationToken);
+                }
+
                 var response = new System.Net.Http.HttpResponseMessage(System.Net.HttpStatusCode.OK)
                 {
                     Content = new System.Net.Http.ByteArrayContent(new byte[] { 0x89, 0x50, 0x4E, 0x47 })

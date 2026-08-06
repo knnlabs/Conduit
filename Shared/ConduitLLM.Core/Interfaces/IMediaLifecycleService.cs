@@ -22,33 +22,6 @@ namespace ConduitLLM.Core.Interfaces
             MediaLifecycleMetadata metadata);
 
         /// <summary>
-        /// Deletes all media associated with a virtual key.
-        /// </summary>
-        /// <param name="virtualKeyId">The ID of the virtual key.</param>
-        /// <returns>Number of media files deleted.</returns>
-        Task<int> DeleteMediaForVirtualKeyAsync(int virtualKeyId);
-
-        /// <summary>
-        /// Cleans up expired media files.
-        /// </summary>
-        /// <returns>Number of media files cleaned up.</returns>
-        Task<int> CleanupExpiredMediaAsync();
-
-        /// <summary>
-        /// Cleans up orphaned media files (where virtual key no longer exists).
-        /// </summary>
-        /// <returns>Number of orphaned media files cleaned up.</returns>
-        Task<int> CleanupOrphanedMediaAsync();
-
-        /// <summary>
-        /// Prunes old media files based on retention policy.
-        /// </summary>
-        /// <param name="daysToKeep">Number of days to keep media files.</param>
-        /// <param name="respectRecentAccess">If true, skip files accessed recently.</param>
-        /// <returns>Number of media files pruned.</returns>
-        Task<int> PruneOldMediaAsync(int daysToKeep, bool respectRecentAccess = true);
-
-        /// <summary>
         /// Updates access statistics for a media file.
         /// </summary>
         /// <param name="storageKey">The storage key of the media file.</param>
@@ -186,7 +159,8 @@ namespace ConduitLLM.Core.Interfaces
         public int TotalFiles { get; set; }
 
         /// <summary>
-        /// Gets or sets the number of orphaned files.
+        /// Gets or sets the legacy database-orphan count. Database cascades keep this at zero;
+        /// storage drift is exposed by the Admin media-cleanup status endpoint.
         /// </summary>
         public int OrphanedFiles { get; set; }
 
@@ -196,7 +170,7 @@ namespace ConduitLLM.Core.Interfaces
         public Dictionary<string, long> ByProvider { get; set; } = new();
 
         /// <summary>
-        /// Gets or sets the storage breakdown by virtual key ID.
+        /// Gets or sets the storage breakdown for the 100 largest virtual keys by usage.
         /// </summary>
         public Dictionary<string, long> StorageByVirtualKey { get; set; } = new();
 
@@ -204,5 +178,11 @@ namespace ConduitLLM.Core.Interfaces
         /// Gets or sets the breakdown by media type.
         /// </summary>
         public Dictionary<string, MediaTypeStats> ByMediaType { get; set; } = new();
+
+        /// <summary>
+        /// Gets group-level usage and effective quotas.
+        /// </summary>
+        public IReadOnlyList<MediaGroupQuotaUsage> GroupQuotaUsage { get; set; } =
+            Array.Empty<MediaGroupQuotaUsage>();
     }
 }

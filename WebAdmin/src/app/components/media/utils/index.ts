@@ -1,31 +1,35 @@
+import { formatters } from '@/lib/utils/formatters';
+
 // Download utilities
 export {
   downloadMedia,
   createBlobFromBase64,
   createBlobFromUrl,
   triggerDownload,
-  formatFileSize,
   getMimeTypeFromFilename,
   validateUrl,
   getFileSizeFromUrl,
   getBase64Size
 } from './download';
+
+// File-size formatting comes straight from the canonical shared formatter.
+export const formatFileSize = formatters.fileSize;
 export type {
   MediaDownloadOptions,
   DownloadResult
 } from './download';
 
-// Metadata utilities
+// Metadata utilities (single source of truth in ../MediaMetadata)
 export {
   ImageMetadataExtractor,
   VideoMetadataExtractor,
   MetadataCache,
   normalizeBackendVideoResponse
-} from './metadata';
+} from '../MediaMetadata';
 export type {
   MetadataExtractor,
   BackendVideoResponse
-} from './metadata';
+} from '../MediaMetadata';
 
 // Type guards
 export {

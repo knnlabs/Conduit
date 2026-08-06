@@ -2,7 +2,7 @@ using System.Text.Json;
 
 using ConduitLLM.Admin.Models.ModelAuthors;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 namespace ConduitLLM.Tests.Admin.Models.ModelAuthors
 {
@@ -98,7 +98,8 @@ namespace ConduitLLM.Tests.Admin.Models.ModelAuthors
 
             // Assert
             deserialized.Should().NotBeNull();
-            deserialized!.Id.Should().Be(3);
+            json.Should().NotContain("\"Id\"");
+            deserialized!.Id.Should().Be(0);
             deserialized.Name.Should().Be("Updated Name");
             deserialized.WebsiteUrl.Should().BeNull();
             deserialized.Description.Should().Be("New description");

@@ -1,12 +1,14 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
+using ConduitLLM.Configuration.Entities.Interfaces;
+
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Represents an asynchronous task with persistent storage.
     /// </summary>
-    public class AsyncTask
+    public class AsyncTask : IEntity<string>, IAuditableEntity
     {
         /// <summary>
         /// Gets or sets the unique identifier for the task.
@@ -107,6 +109,24 @@ namespace ConduitLLM.Configuration.Entities
         /// Gets or sets when the lease on this task expires.
         /// </summary>
         public DateTime? LeaseExpiryTime { get; set; }
+
+        /// <summary>When the external provider invocation began.</summary>
+        public DateTime? ProviderInvocationStartedAt { get; set; }
+
+        /// <summary>When the external provider returned a definitive successful result.</summary>
+        public DateTime? ProviderInvocationCompletedAt { get; set; }
+
+        /// <summary>Provider operation identifier captured for reconciliation.</summary>
+        [MaxLength(200)]
+        public string? ProviderOperationId { get; set; }
+
+        /// <summary>
+        /// Identifies the operator retry command that most recently moved an
+        /// indeterminate task back to pending. Used to make command redelivery
+        /// idempotent across the database update and follow-on event publish.
+        /// </summary>
+        [MaxLength(64)]
+        public string? RetryDispatchId { get; set; }
 
         /// <summary>
         /// Gets or sets the version number for optimistic concurrency control.

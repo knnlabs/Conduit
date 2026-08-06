@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace ConduitLLM.Core.Models.Pricing;
@@ -180,7 +181,9 @@ public class PricingEvaluationResult
 public class ParameterDefinition
 {
     /// <summary>
-    /// Parameter type: "enum", "boolean", "integer", "number", or "string".
+    /// Parameter type from the persisted UI schema. Pricing validation recognizes both the
+    /// canonical types ("enum", "boolean", "integer", "number", "string") and UI control
+    /// aliases such as "select", "checkbox", "toggle", "slider", and "resolution".
     /// </summary>
     [JsonPropertyName("type")]
     public string Type { get; set; } = "string";
@@ -189,6 +192,7 @@ public class ParameterDefinition
     /// Allowed values for enum types.
     /// </summary>
     [JsonPropertyName("options")]
+    [JsonConverter(typeof(ParameterOptionValuesConverter))]
     public List<string>? Options { get; set; }
 
     /// <summary>
@@ -214,4 +218,60 @@ public class ParameterDefinition
     /// </summary>
     [JsonPropertyName("step")]
     public decimal? Step { get; set; }
+}
+
+/// <summary>
+/// Normalizes persisted UI-schema options, which may be primitive values or
+/// <c>{ "value": ..., "label": ... }</c> objects, into their comparable values.
+/// </summary>
+public sealed class ParameterOptionValuesConverter : JsonConverter<List<string>>
+{
+    /// <inheritdoc />
+    public override List<string>? Read(
+        ref Utf8JsonReader reader,
+        Type typeToConvert,
+        JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            return null;
+
+        if (reader.TokenType != JsonTokenType.StartArray)
+            throw new JsonException("Parameter options must be an array.");
+
+        using var document = JsonDocument.ParseValue(ref reader);
+        var values = new List<string>();
+        foreach (var option in document.RootElement.EnumerateArray())
+        {
+            var value = option.ValueKind == JsonValueKind.Object &&
+                option.TryGetProperty("value", out var objectValue)
+                    ? objectValue
+                    : option;
+
+            var normalized = value.ValueKind switch
+            {
+                JsonValueKind.String => value.GetString(),
+                JsonValueKind.Number => value.GetRawText(),
+                JsonValueKind.True => "true",
+                JsonValueKind.False => "false",
+                _ => null
+            };
+
+            if (normalized != null)
+                values.Add(normalized);
+        }
+
+        return values;
+    }
+
+    /// <inheritdoc />
+    public override void Write(
+        Utf8JsonWriter writer,
+        List<string> value,
+        JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        foreach (var option in value)
+            writer.WriteStringValue(option);
+        writer.WriteEndArray();
+    }
 }

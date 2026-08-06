@@ -2,7 +2,7 @@ using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 
-using FluentAssertions;
+using AwesomeAssertions;
 
 using Moq;
 
@@ -60,7 +60,7 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task CalculateCostByIdAsync_WithNonExistentModelCostId_ReturnsZero()
+        public async Task CalculateCostByIdAsync_WithNonExistentModelCostId_ThrowsForReconciliation()
         {
             // Arrange
             var modelCostId = 999;
@@ -75,10 +75,11 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync((ModelCost?)null);
 
             // Act
-            var result = await _service.CalculateCostByIdAsync(modelCostId, usage);
+            var act = () => _service.CalculateCostByIdAsync(modelCostId, usage);
 
             // Assert
-            result.Should().Be(0m);
+            await act.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage("*No active model cost configuration*999*");
         }
 
         [Fact]
@@ -164,7 +165,9 @@ namespace ConduitLLM.Tests.Core.Services
                 .ReturnsAsync((ModelCost?)null);
 
             // Act
-            await _service.CalculateCostByIdAsync(modelCostId, usage);
+            var act = () => _service.CalculateCostByIdAsync(modelCostId, usage);
+
+            await act.Should().ThrowAsync<InvalidOperationException>();
 
             // Assert
             _modelCostServiceMock.Verify(

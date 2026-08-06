@@ -7,8 +7,6 @@ import {
   Group,
   Button,
   Card,
-  SimpleGrid,
-  ThemeIcon,
   LoadingOverlay,
   Alert,
   Menu,
@@ -26,6 +24,7 @@ import {
   IconSearch,
   IconLayersLinked,
 } from '@tabler/icons-react';
+import { StatCardGrid } from '@/components/common/StatCardGrid';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDisclosure } from '@mantine/hooks';
 import { VirtualKeysTable } from '@/components/virtualkeys/VirtualKeysTable';
@@ -35,10 +34,10 @@ import {
   LazyViewVirtualKeyModal as ViewVirtualKeyModal
 } from '@/components/lazy/LazyModals';
 import { exportToCSV, exportToJSON, formatDateForExport } from '@/lib/utils/export';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
 import { TablePagination } from '@/components/common/TablePagination';
 import { usePaginatedData } from '@/hooks/usePaginatedData';
-import type { VirtualKeyDto, VirtualKeyGroupDto } from '@knn_labs/conduit-admin-client';
+import type { VirtualKeyDto, VirtualKeyGroupDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
 
 export default function VirtualKeysPage() {
@@ -75,10 +74,10 @@ export default function VirtualKeysPage() {
 
   const fetchVirtualKeyGroups = useCallback(async () => {
     try {
-      const groups = await withAdminClient(client => 
+      const groupsResult = await withAdminClient(client =>
         client.virtualKeyGroups.list()
       );
-      setVirtualKeyGroups(groups);
+      setVirtualKeyGroups(groupsResult.data ?? []);
     } catch (err) {
       console.warn('Error fetching virtual key groups:', err);
     }
@@ -150,29 +149,17 @@ export default function VirtualKeysPage() {
         client.virtualKeys.delete(keyId)
       );
       
-      notifications.show({
-        title: 'Success',
-        message: 'Virtual key deleted successfully',
-        color: 'green',
-      });
+      notify.success('Virtual key deleted successfully');
       void fetchVirtualKeys();
     } catch {
-      notifications.show({
-        title: 'Error',
-        message: 'Failed to delete virtual key',
-        color: 'red',
-      });
+      notify.error(new Error('Failed to delete virtual key'));
     }
   }, [fetchVirtualKeys]);
 
 
   const handleExportCSV = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no virtual keys to export',
-        color: 'orange',
-      });
+      notify.warning('There are no virtual keys to export', 'No data to export');
       return;
     }
 
@@ -189,7 +176,7 @@ export default function VirtualKeysPage() {
       currentBalance: groupBalanceMap.get(key.virtualKeyGroupId) ?? 0,
       status: key.isEnabled ? 'Active' : 'Disabled',
       createdAt: formatDateForExport(key.createdAt),
-      allowedModels: key.allowedModels ?? '',
+      allowedModels: key.allowedModels?.join(',') ?? '',
       expirationDate: key.expiresAt ? formatDateForExport(key.expiresAt) : '',
       rateLimitRpm: key.rateLimitRpm ?? '',
       rateLimitRpd: key.rateLimitRpd ?? '',
@@ -212,20 +199,12 @@ export default function VirtualKeysPage() {
       ]
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredKeys.length} virtual keys`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredKeys.length} virtual keys`, 'Export successful');
   }, [filteredKeys, virtualKeyGroups]);
 
   const handleExportJSON = useCallback(() => {
     if (!filteredKeys || filteredKeys.length === 0) {
-      notifications.show({
-        title: 'No data to export',
-        message: 'There are no virtual keys to export',
-        color: 'orange',
-      });
+      notify.warning('There are no virtual keys to export', 'No data to export');
       return;
     }
 
@@ -246,11 +225,7 @@ export default function VirtualKeysPage() {
       `virtual-keys-${new Date().toISOString().split('T')[0]}`
     );
 
-    notifications.show({
-      title: 'Export successful',
-      message: `Exported ${filteredKeys.length} virtual keys`,
-      color: 'green',
-    });
+    notify.success(`Exported ${filteredKeys.length} virtual keys`, 'Export successful');
   }, [filteredKeys, virtualKeyGroups]);
 
   const statCards = useMemo(() => stats ? [
@@ -335,25 +310,7 @@ export default function VirtualKeysPage() {
       </Group>
 
       {/* Statistics Cards */}
-      <SimpleGrid cols={{ base: 1, sm: 2, md: 4 }} spacing="lg">
-        {statCards.map((stat) => (
-          <Card key={stat.title} p="md" withBorder>
-            <Group justify="space-between">
-              <div>
-                <Text size="xs" tt="uppercase" fw={700} c="dimmed">
-                  {stat.title}
-                </Text>
-                <Text fw={700} size="xl">
-                  {stat.value}
-                </Text>
-              </div>
-              <ThemeIcon size="lg" variant="light" color={stat.color}>
-                <stat.icon size={20} />
-              </ThemeIcon>
-            </Group>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <StatCardGrid items={statCards} />
 
       {/* Virtual Keys Table */}
       <Card>
@@ -419,6 +376,7 @@ export default function VirtualKeysPage() {
         opened={viewModalOpened}
         onClose={closeViewModal}
         virtualKey={selectedKey}
+        virtualKeyGroup={virtualKeyGroups.find((group) => group.id === selectedKey?.virtualKeyGroupId)}
       />
     </Stack>
   );

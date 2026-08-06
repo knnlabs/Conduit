@@ -25,7 +25,7 @@ import {
   IconSettings,
   IconAdjustments,
 } from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   PricingModel,
   ModelType,
@@ -34,7 +34,7 @@ import {
   type ModelCostDto,
   type CreateModelCostDto,
   type UpdateModelCostDto,
-} from '@knn_labs/conduit-admin-client';
+} from '@/lib/admin-api';
 import { useAdminClient } from '@/lib/client/adminClient';
 import { extractCapabilities } from '@/utils/typeGuards';
 import { PricingModelSelector } from '@/app/model-costs/components/PricingModelSelector';
@@ -95,18 +95,8 @@ export function ModelCostEditorModal({
   const isEditing = !!existingCost;
   const inferredModelType = useMemo(() => getModelTypeFromCapabilities(model), [model]);
 
-  // Fetch existing mappings when editing a cost
-  const { data: existingMappings, isLoading: mappingsLoading } = useQuery({
-    queryKey: ['model-cost-mappings', existingCost?.id],
-    queryFn: async () => {
-      if (!existingCost?.id) return [];
-      const mappings = await executeWithAdmin(client =>
-        client.modelCosts.getMappingsByCostId(existingCost.id)
-      );
-      return mappings.map(m => m.modelProviderMappingId);
-    },
-    enabled: isOpen && !!existingCost?.id,
-  });
+  const existingMappings = existingCost?.modelProviderTypeAssociationIds ?? [];
+  const mappingsLoading = false;
 
   const form = useForm<FormValues>({
     initialValues: {
@@ -189,7 +179,6 @@ export function ModelCostEditorModal({
         if (isEditing && existingCost?.id) {
           // Update existing cost
           const updateData: UpdateModelCostDto = {
-            id: existingCost.id,
             costName: values.costName,
             modelType: values.modelType,
             priority: values.priority,
@@ -205,7 +194,7 @@ export function ModelCostEditorModal({
             pricingConfiguration: values.pricingModel !== PricingModel.Standard ? values.pricingConfiguration : undefined,
             supportsBatchProcessing: values.supportsBatchProcessing,
             batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
-            modelProviderMappingIds: values.modelProviderMappingIds,
+            modelProviderTypeAssociationIds: values.modelProviderMappingIds,
           };
 
           await executeWithAdmin(client =>
@@ -217,6 +206,7 @@ export function ModelCostEditorModal({
             costName: values.costName,
             modelType: values.modelType,
             priority: values.priority,
+            isActive: values.isActive,
             description: values.description || undefined,
             inputCostPerMillionTokens: values.inputCostPerMillionTokens,
             outputCostPerMillionTokens: values.outputCostPerMillionTokens,
@@ -228,7 +218,7 @@ export function ModelCostEditorModal({
             pricingConfiguration: values.pricingModel !== PricingModel.Standard ? values.pricingConfiguration : undefined,
             supportsBatchProcessing: values.supportsBatchProcessing,
             batchProcessingMultiplier: values.supportsBatchProcessing && values.batchProcessingMultiplier > 0 ? values.batchProcessingMultiplier : undefined,
-            modelProviderMappingIds: values.modelProviderMappingIds,
+            modelProviderTypeAssociationIds: values.modelProviderMappingIds,
           };
 
           await executeWithAdmin(client =>

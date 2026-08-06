@@ -18,6 +18,7 @@ export default tseslint.config(
       '.next/**',
       'out/**',
       'node_modules/**',
+      'src/generated/**',
       '*.js',
       '!*.config.js',
       '!eslint.config.mjs',
@@ -114,7 +115,7 @@ export default tseslint.config(
           format: ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'],
           leadingUnderscore: 'forbid',
           filter: {
-            regex: '^(Content-Type|Content-Disposition|content-type|content-disposition|max_tokens|top_p|presence_penalty|response_format|aspect_ratio|webhook_url|supportsFunctionCalling|supportsVision|supportsImageGeneration|supportsAudioTranscription|supportsTextToSpeech|supportsRealtimeAudio|supportsStreaming|supportsVideoGeneration|supportsEmbeddings|maxContextLength|maxOutputTokens|isDefault|defaultCapabilityType|_note)$',
+            regex: '^(Content-Type|Content-Disposition|content-type|content-disposition|X-Master-Key|X-API-Key|custom-rag|openai-compatible|deep-infra|eleven-labs|samba-nova|workers-ai|open-router|meta-ai|_retry|max_tokens|top_p|presence_penalty|response_format|aspect_ratio|webhook_url|supportsFunctionCalling|supportsVision|supportsImageGeneration|supportsAudioTranscription|supportsTextToSpeech|supportsRealtimeAudio|supportsStreaming|supportsVideoGeneration|supportsEmbeddings|maxContextLength|maxOutputTokens|isDefault|defaultCapabilityType|_note)$',
             match: false,
           },
         },
@@ -164,6 +165,27 @@ export default tseslint.config(
       globals: {
         ...globals.jest,
       },
+    },
+  },
+
+  // Localized shared primitives preserve the public Common package behavior.
+  {
+    files: ['src/lib/conduit-common/**/*.ts'],
+    rules: {
+      '@typescript-eslint/naming-convention': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/prefer-nullish-coalescing': 'off',
+    },
+  },
+
+  // These focused UI helpers were moved without semantic rewrites.
+  {
+    files: [
+      'src/lib/gateway-api/structured-content.ts',
+    ],
+    rules: {
+      '@typescript-eslint/naming-convention': 'off',
+      '@typescript-eslint/no-unused-vars': 'off',
     },
   }
 );

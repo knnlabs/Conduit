@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Modal, TextInput, NumberInput, Select, Switch, Button, Stack, Group, Textarea } from '@mantine/core';
+import { TextInput, NumberInput, Select, Switch, Textarea } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
-import { useAdminClient } from '@/lib/client/adminClient';
-import type { ProviderTool, UpdateProviderTool } from '@knn_labs/conduit-admin-client';
+import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
+import type { ProviderTool, UpdateProviderTool } from '@/lib/admin-api';
 
 interface EditProviderToolModalProps {
   isOpen: boolean;
@@ -15,9 +16,7 @@ interface EditProviderToolModalProps {
 }
 
 export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: EditProviderToolModalProps) {
-  const { executeWithAdmin } = useAdminClient();
   const [billingUnits, setBillingUnits] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const form = useForm<UpdateProviderTool>({
     initialValues: {
@@ -32,10 +31,27 @@ export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: Edit
     },
   });
 
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction: (values) =>
+      withAdminClient(client =>
+        client.providerTools.updateProviderTool(tool.id, {
+          ...values,
+          toolParameters: values.toolParameters?.trim() ?? null,
+          costDescription: values.costDescription?.trim() ?? null,
+          billingUnit: values.billingUnit?.trim() ?? null,
+        })
+      ),
+    successMessage: `Successfully updated ${tool.toolName}`,
+    resetOnClose: false,
+  });
+
   useEffect(() => {
     const loadBillingUnits = async () => {
       try {
-        const units = await executeWithAdmin(client => client.providerTools.getBillingUnits());
+        const units = await withAdminClient(client => client.providerTools.getBillingUnits());
         setBillingUnits(units);
       } catch (error) {
         console.error('Failed to load billing units:', error);
@@ -53,103 +69,64 @@ export function EditProviderToolModal({ isOpen, tool, onClose, onSuccess }: Edit
         costDescription: tool.costDescription ?? '',
       });
     }
-  }, [isOpen, tool, form, executeWithAdmin]);
-
-  const handleSubmit = async (values: UpdateProviderTool) => {
-    try {
-      setLoading(true);
-      await executeWithAdmin(client =>
-        client.providerTools.updateProviderTool(tool.id, {
-          ...values,
-          toolParameters: values.toolParameters?.trim() ?? null,
-          costDescription: values.costDescription?.trim() ?? null,
-          billingUnit: values.billingUnit?.trim() ?? null,
-        })
-      );
-      notifications.show({
-        title: 'Tool Updated',
-        message: `Successfully updated ${tool.toolName}`,
-        color: 'green',
-      });
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to update tool:', error);
-      notifications.show({
-        title: 'Update Failed',
-        message: error instanceof Error ? error.message : 'Failed to update provider tool',
-        color: 'red',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [isOpen, tool, form]);
 
   return (
-    <Modal
+    <EntityFormModal
       opened={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       title={`Edit ${tool.toolName}`}
       size="md"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Update Tool"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack>
-          <TextInput
-            label="Provider"
-            value={tool.providerName ?? 'Unknown'}
-            disabled
-          />
+      <TextInput
+        label="Provider"
+        value={tool.providerName ?? 'Unknown'}
+        disabled
+      />
 
-          <TextInput
-            label="Tool Name"
-            value={tool.toolName}
-            disabled
-          />
+      <TextInput
+        label="Tool Name"
+        value={tool.toolName}
+        disabled
+      />
 
-          <Textarea
-            label="Tool Parameters"
-            placeholder="Optional JSON parameters"
-            minRows={2}
-            {...form.getInputProps('toolParameters')}
-          />
+      <Textarea
+        label="Tool Parameters"
+        placeholder="Optional JSON parameters"
+        minRows={2}
+        {...form.getInputProps('toolParameters')}
+      />
 
-          <NumberInput
-            label="Cost Per Unit"
-            placeholder="0.0001"
-            min={0}
-            decimalScale={8}
-            step={0.0001}
-            {...form.getInputProps('costPerUnit')}
-          />
+      <NumberInput
+        label="Cost Per Unit"
+        placeholder="0.0001"
+        min={0}
+        decimalScale={8}
+        step={0.0001}
+        {...form.getInputProps('costPerUnit')}
+      />
 
-          <Select
-            label="Billing Unit"
-            placeholder="Select a billing unit"
-            data={billingUnits}
-            searchable
-            {...form.getInputProps('billingUnit')}
-          />
+      <Select
+        label="Billing Unit"
+        placeholder="Select a billing unit"
+        data={billingUnits}
+        searchable
+        {...form.getInputProps('billingUnit')}
+      />
 
-          <Textarea
-            label="Cost Description"
-            placeholder="Describe how the cost is calculated"
-            {...form.getInputProps('costDescription')}
-          />
+      <Textarea
+        label="Cost Description"
+        placeholder="Describe how the cost is calculated"
+        {...form.getInputProps('costDescription')}
+      />
 
-          <Switch
-            label="Active"
-            {...form.getInputProps('isActive', { type: 'checkbox' })}
-          />
-
-          <Group justify="flex-end">
-            <Button variant="subtle" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={loading}>
-              Update Tool
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <Switch
+        label="Active"
+        {...form.getInputProps('isActive', { type: 'checkbox' })}
+      />
+    </EntityFormModal>
   );
 }

@@ -1,9 +1,10 @@
 using ConduitLLM.Functions.Enums;
+using System.Text.Json;
 
 namespace ConduitLLM.Functions.DTOs;
 
 /// <summary>
-/// DTO for function execution data (Admin API)
+/// Canonical function execution resource shared by Gateway and Admin APIs.
 /// </summary>
 public class FunctionExecutionDto
 {
@@ -13,117 +14,78 @@ public class FunctionExecutionDto
     public Guid Id { get; set; }
 
     /// <summary>
-    /// Foreign key to the function configuration being executed
+    /// Function configuration that was executed.
     /// </summary>
-    public int FunctionConfigurationId { get; set; }
+    public int FunctionId { get; set; }
 
     /// <summary>
-    /// Foreign key to the virtual key used for authorization
+    /// Current lifecycle status.
     /// </summary>
-    public int VirtualKeyId { get; set; }
+    public ExecutionState Status { get; set; }
 
     /// <summary>
-    /// Execution mode for this specific execution (Synchronous or Asynchronous)
+    /// Structured input supplied to the function.
     /// </summary>
-    public ExecutionMode ExecutionMode { get; set; }
+    public Dictionary<string, JsonElement>? Input { get; set; }
 
     /// <summary>
-    /// Current state of the execution
+    /// Structured output returned by the function.
     /// </summary>
-    public ExecutionState State { get; set; }
+    public Dictionary<string, JsonElement>? Output { get; set; }
 
     /// <summary>
-    /// When the execution was requested/created
+    /// Error message when execution did not complete successfully.
     /// </summary>
-    public DateTime RequestedAt { get; set; }
+    public string? Error { get; set; }
 
     /// <summary>
-    /// When the execution actually started processing
+    /// When the execution was created.
+    /// </summary>
+    public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// When execution started.
     /// </summary>
     public DateTime? StartedAt { get; set; }
 
     /// <summary>
-    /// When the execution completed (success or failure)
+    /// When execution completed.
     /// </summary>
     public DateTime? CompletedAt { get; set; }
 
     /// <summary>
-    /// Execution duration in milliseconds (null if not completed)
+    /// Execution duration in integer milliseconds.
     /// </summary>
-    public double? Duration { get; set; }
+    public long? DurationMs { get; set; }
 
     /// <summary>
-    /// Input parameters for the function (stored as JSON)
+    /// Structured execution cost.
     /// </summary>
-    public string? RequestJson { get; set; }
+    public FunctionExecutionCostDto Cost { get; set; } = new();
+}
+
+/// <summary>
+/// Monetary details for a function execution.
+/// </summary>
+public class FunctionExecutionCostDto
+{
+    /// <summary>
+    /// Cost estimated before execution.
+    /// </summary>
+    public decimal? Estimated { get; set; }
 
     /// <summary>
-    /// Result data from the function (stored as JSON)
+    /// Final cost after execution.
     /// </summary>
-    public string? ResponseJson { get; set; }
+    public decimal? Actual { get; set; }
 
     /// <summary>
-    /// Error message if execution failed
+    /// ISO 4217 currency code.
     /// </summary>
-    public string? ErrorMessage { get; set; }
+    public string Currency { get; set; } = "USD";
 
     /// <summary>
-    /// Estimated cost before execution (for balance reservation)
+    /// Provider-specific structured cost calculation details.
     /// </summary>
-    public decimal? EstimatedCost { get; set; }
-
-    /// <summary>
-    /// Actual cost after execution (for final billing)
-    /// </summary>
-    public decimal? ActualCost { get; set; }
-
-    /// <summary>
-    /// Detailed cost calculation breakdown (stored as JSON)
-    /// </summary>
-    public string? CostCalculationDetails { get; set; }
-
-    /// <summary>
-    /// Number of retry attempts made for this execution
-    /// </summary>
-    public int RetryCount { get; set; }
-
-    /// <summary>
-    /// When the next retry should be attempted (for failed executions)
-    /// </summary>
-    public DateTime? NextRetryAt { get; set; }
-
-    /// <summary>
-    /// Worker instance ID that has leased this execution for processing
-    /// </summary>
-    public string? LeasedBy { get; set; }
-
-    /// <summary>
-    /// When the lease on this execution expires
-    /// </summary>
-    public DateTime? LeaseExpiryTime { get; set; }
-
-    /// <summary>
-    /// Version number for optimistic concurrency control
-    /// </summary>
-    public int Version { get; set; }
-
-    /// <summary>
-    /// Optional webhook URL to notify when execution completes
-    /// </summary>
-    public string? WebhookUrl { get; set; }
-
-    /// <summary>
-    /// Whether the webhook has been successfully delivered
-    /// </summary>
-    public bool WebhookDelivered { get; set; }
-
-    /// <summary>
-    /// Progress percentage (0-100) for long-running executions
-    /// </summary>
-    public int? ProgressPercentage { get; set; }
-
-    /// <summary>
-    /// Optional status message for progress updates
-    /// </summary>
-    public string? StatusMessage { get; set; }
+    public Dictionary<string, JsonElement>? Breakdown { get; set; }
 }

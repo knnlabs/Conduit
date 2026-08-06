@@ -7,7 +7,6 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { ErrorHandlerInitializer } from '@/components/error/ErrorHandlerInitializer';
-import { EnvironmentValidator } from '@/components/core/EnvironmentValidator';
 import { ConditionalLayout } from '@/components/layout/ConditionalLayout';
 import './globals.css';
 
@@ -39,7 +38,6 @@ export default function RootLayout({
           <MantineProvider>
             <ErrorBoundary>
               <ErrorHandlerInitializer />
-              <EnvironmentValidator />
               <ConditionalLayout>
                 {children}
               </ConditionalLayout>

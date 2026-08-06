@@ -99,7 +99,7 @@ namespace ConduitLLM.Tests.Admin.Services
             {
                 KeyName = "Test Key",
                 VirtualKeyGroupId = 1,
-                AllowedModels = "gpt-4",
+                AllowedModels = ["gpt-4"],
                 RateLimitRpm = 100
             };
 

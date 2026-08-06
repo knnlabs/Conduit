@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
+using ConduitLLM.Core.Utilities;
 
 using Microsoft.Extensions.Logging;
 
@@ -13,6 +14,16 @@ namespace ConduitLLM.Core.Services;
 /// </summary>
 public partial class CostCalculationService
 {
+    /// <summary>
+    /// Serializer options for parsing <see cref="ModelCost.PricingConfiguration"/> JSON.
+    /// Case-insensitive because documented configs and the WebAdmin UI produce camelCase
+    /// property names (e.g. "baseRate") while the config POCOs use PascalCase.
+    /// </summary>
+    private static readonly JsonSerializerOptions PricingConfigJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     private Task<decimal> CalculatePerVideoCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         if (!usage.VideoDurationSeconds.HasValue || string.IsNullOrEmpty(usage.VideoResolution))
@@ -27,7 +38,7 @@ public partial class CostCalculationService
         {
             try
             {
-                config = JsonSerializer.Deserialize<PerVideoPricingConfig>(modelCost.PricingConfiguration);
+                config = JsonSerializer.Deserialize<PerVideoPricingConfig>(modelCost.PricingConfiguration, PricingConfigJsonOptions);
             }
             catch (Exception ex)
             {
@@ -36,21 +47,43 @@ public partial class CostCalculationService
             }
         }
 
-        if (config == null || config.Rates == null || config.Rates.Count() == 0)
+        if (config == null || config.Rates == null || !config.Rates.Any())
         {
             _logger.LogError("No per-video pricing rates configured for model {ModelId}", modelId);
             throw new InvalidOperationException($"No per-video pricing rates configured for model {modelId}");
         }
 
-        // Build lookup key (e.g., "720p_6" for 720p resolution, 6 seconds)
+        // Build lookup key (e.g., "720p_6" for 720p resolution, 6 seconds).
+        // Providers sometimes return measured durations (for example 6.2s) that do not exactly
+        // match their discrete billable duration. Prefer the exact key, but never make a delivered
+        // generation free merely because the measured value was slightly different.
         var duration = (int)Math.Round(usage.VideoDurationSeconds.Value);
-        var lookupKey = $"{usage.VideoResolution}_{duration}";
+        var resolution = VideoUtils.NormalizeResolution(usage.VideoResolution);
+        var lookupKey = $"{resolution}_{duration}";
 
         if (!config.Rates.TryGetValue(lookupKey, out var flatRate))
         {
-            _logger.LogError("No pricing found for video {Resolution} {Duration}s for model {ModelId}", 
-                usage.VideoResolution, duration, modelId);
-            throw new InvalidOperationException($"No pricing available for {usage.VideoResolution} {duration}s video on model {modelId}");
+            // Use the highest rate for the requested resolution so an imprecise duration cannot
+            // undercharge without unexpectedly applying another resolution's premium. If the
+            // resolution itself is unknown, fall back to the highest configured rate overall.
+            // The usage marker is consumed by the Gateway to produce a reconciliation/audit event.
+            var resolutionPrefix = $"{resolution}_";
+            var resolutionRates = config.Rates
+                .Where(rate => rate.Key.StartsWith(resolutionPrefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            IEnumerable<KeyValuePair<string, decimal>> fallbackRates =
+                resolutionRates.Count > 0 ? resolutionRates : config.Rates;
+            var fallback = fallbackRates
+                .OrderByDescending(rate => rate.Value)
+                .First();
+            flatRate = fallback.Value;
+            usage.PricingFallbackReason =
+                $"Missing per-video rate '{lookupKey}'; used conservative rate '{fallback.Key}' (${fallback.Value:F6})";
+
+            _logger.LogError(
+                "BILLING ALERT: No exact pricing found for video {Resolution} {Duration}s for model {ModelId}. " +
+                "Using conservative fallback {FallbackKey} at ${FallbackRate:F6}",
+                resolution, duration, modelId, fallback.Key, fallback.Value);
         }
 
         _logger.LogInformation("Video generation cost calculated: Model={ModelId}, Resolution={Resolution}, Duration={Duration}s, Cost=${Cost:F4}",
@@ -73,7 +106,7 @@ public partial class CostCalculationService
         {
             try
             {
-                config = JsonSerializer.Deserialize<PerSecondVideoPricingConfig>(modelCost.PricingConfiguration);
+                config = JsonSerializer.Deserialize<PerSecondVideoPricingConfig>(modelCost.PricingConfiguration, PricingConfigJsonOptions);
             }
             catch (Exception ex)
             {
@@ -90,13 +123,27 @@ public partial class CostCalculationService
 
         var baseCost = (decimal)usage.VideoDurationSeconds.Value * config.BaseRate;
 
-        // Apply resolution multiplier if available
-        if (!string.IsNullOrEmpty(usage.VideoResolution) && 
-            config.ResolutionMultipliers != null &&
-            config.ResolutionMultipliers.TryGetValue(usage.VideoResolution, out var multiplier))
+        // Apply resolution multiplier if configured. Unknown supplied resolutions use the
+        // highest multiplier so a provider response cannot silently bypass the premium.
+        if (!string.IsNullOrEmpty(usage.VideoResolution) &&
+            config.ResolutionMultipliers is { Count: > 0 })
         {
+            var resolution = VideoUtils.NormalizeResolution(usage.VideoResolution);
+            if (!config.ResolutionMultipliers.TryGetValue(resolution, out var multiplier))
+            {
+                var fallback = config.ResolutionMultipliers.MaxBy(entry => entry.Value);
+                multiplier = fallback.Value;
+                usage.PricingFallbackReason =
+                    $"Unknown per-second video resolution '{resolution}'; used conservative multiplier '{fallback.Key}' ({fallback.Value})";
+
+                _logger.LogError(
+                    "BILLING ALERT: Unknown per-second video resolution {Resolution} for model {ModelId}. " +
+                    "Using conservative multiplier {FallbackResolution} ({Multiplier})",
+                    resolution, modelId, fallback.Key, multiplier);
+            }
+
             baseCost *= multiplier;
-            _logger.LogDebug("Applied video resolution multiplier {Multiplier} for {Resolution}", multiplier, usage.VideoResolution);
+            _logger.LogDebug("Applied video resolution multiplier {Multiplier} for {Resolution}", multiplier, resolution);
         }
 
         _logger.LogInformation("Video generation cost calculated (per-second): Model={ModelId}, Duration={Duration}s, BaseRate=${BaseRate:F4}, Resolution={Resolution}, TotalCost=${Cost:F4}",
@@ -113,7 +160,7 @@ public partial class CostCalculationService
         {
             try
             {
-                config = JsonSerializer.Deserialize<InferenceStepsPricingConfig>(modelCost.PricingConfiguration);
+                config = JsonSerializer.Deserialize<InferenceStepsPricingConfig>(modelCost.PricingConfiguration, PricingConfigJsonOptions);
             }
             catch (Exception ex)
             {
@@ -152,7 +199,7 @@ public partial class CostCalculationService
         {
             try
             {
-                config = JsonSerializer.Deserialize<TieredTokensPricingConfig>(modelCost.PricingConfiguration);
+                config = JsonSerializer.Deserialize<TieredTokensPricingConfig>(modelCost.PricingConfiguration, PricingConfigJsonOptions);
             }
             catch (Exception ex)
             {
@@ -161,22 +208,21 @@ public partial class CostCalculationService
             }
         }
 
-        if (config == null || config.Tiers == null || config.Tiers.Count() == 0)
+        if (config == null || config.Tiers == null || !config.Tiers.Any())
         {
             _logger.LogError("No tiered tokens pricing configuration for model {ModelId}", modelId);
             throw new InvalidOperationException($"No tiered tokens pricing configuration for model {modelId}");
         }
 
-        var inputTokens = usage.PromptTokens ?? 0;
-        var outputTokens = usage.CompletionTokens ?? 0;
-
-        // Find the appropriate tier based on total context length
-        var totalTokens = inputTokens + outputTokens;
+        var inputTokens = usage.PromptTokens.GetValueOrDefault();
+        var orderedTiers = config.Tiers.OrderBy(t => t.MaxContext ?? int.MaxValue).ToList();
         TokenPricingTier? tier = null;
 
-        foreach (var t in config.Tiers.OrderBy(t => t.MaxContext ?? int.MaxValue))
+        // Context-priced providers select the tier from the prompt/context presented to
+        // the model. Generated output does not move a request into a higher input tier.
+        foreach (var t in orderedTiers)
         {
-            if (!t.MaxContext.HasValue || totalTokens <= t.MaxContext.Value)
+            if (!t.MaxContext.HasValue || inputTokens <= t.MaxContext.Value)
             {
                 tier = t;
                 break;
@@ -185,17 +231,28 @@ public partial class CostCalculationService
 
         if (tier == null)
         {
-            tier = config.Tiers.Last(); // Use highest tier if none match
+            tier = orderedTiers.Last(); // Use the highest configured tier if none match
         }
 
-        var inputCost = (inputTokens * tier.InputCost) / 1_000_000m;
-        var outputCost = (outputTokens * tier.OutputCost) / 1_000_000m;
+        // Reuse the shared token-pricing math with the tier's input/output rates substituted.
+        // Embedding, audio and TTS rates are intentionally omitted: tiered pricing does not
+        // cover those modalities, so the helper skips them.
+        var tierRates = new TokenPricingRates
+        {
+            InputCostPerMillion = tier.InputCost,
+            OutputCostPerMillion = tier.OutputCost,
+            CachedInputCostPerMillion = modelCost.CachedInputCostPerMillionTokens,
+            CachedWriteCostPerMillion = modelCost.CachedInputWriteCostPerMillionTokens,
+            ReasoningCostPerMillion = modelCost.ReasoningCostPerMillionTokens,
+            CostPerThousandSearchUnits = modelCost.CostPerSearchUnit
+        };
+        var calculatedCost = ApplyTokenPricing(modelId, usage, tierRates).Total;
 
-        _logger.LogDebug("Tiered tokens cost for model {ModelId}: Context {TotalTokens}, Tier ≤{MaxContext}, " +
-            "Input: {InputTokens} × ${InputRate} + Output: {OutputTokens} × ${OutputRate} = ${TotalCost}",
-            modelId, totalTokens, tier.MaxContext, inputTokens, tier.InputCost, outputTokens, tier.OutputCost, inputCost + outputCost);
+        _logger.LogDebug("Tiered tokens cost for model {ModelId}: Input context {InputTokens}, Tier ≤{MaxContext}, " +
+            "Input rate ${InputRate}, Output rate ${OutputRate}, Total cost ${TotalCost}",
+            modelId, inputTokens, tier.MaxContext, tier.InputCost, tier.OutputCost, calculatedCost);
 
-        return Task.FromResult(inputCost + outputCost);
+        return Task.FromResult(calculatedCost);
     }
 
     private Task<decimal> CalculatePerImageCostAsync(string modelId, ModelCost modelCost, Usage usage)
@@ -212,7 +269,7 @@ public partial class CostCalculationService
         {
             try
             {
-                config = JsonSerializer.Deserialize<PerImagePricingConfig>(modelCost.PricingConfiguration);
+                config = JsonSerializer.Deserialize<PerImagePricingConfig>(modelCost.PricingConfiguration, PricingConfigJsonOptions);
             }
             catch (Exception ex)
             {
@@ -253,8 +310,6 @@ public partial class CostCalculationService
         return Task.FromResult(cost);
     }
 
-    // Audio calculation methods removed - audio functionality has been removed from the system
-
     private async Task<decimal> CalculateRulesBasedCostAsync(string modelId, ModelCost modelCost, Usage usage)
     {
         if (_pricingRulesEvaluator == null)
@@ -281,10 +336,7 @@ public partial class CostCalculationService
         {
             try
             {
-                config = JsonSerializer.Deserialize<PricingRulesConfig>(modelCost.PricingConfiguration, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                config = JsonSerializer.Deserialize<PricingRulesConfig>(modelCost.PricingConfiguration, PricingConfigJsonOptions);
                 _logger.LogDebug("Parsed pricing rules configuration directly for model {ModelId}", modelId);
             }
             catch (Exception ex)
@@ -307,7 +359,7 @@ public partial class CostCalculationService
         // This allows using rules-based pricing even when providers don't set PricingParameters
         if (!parameters.ContainsKey("resolution") && !string.IsNullOrEmpty(usage.VideoResolution))
         {
-            parameters["resolution"] = NormalizeResolution(usage.VideoResolution);
+            parameters["resolution"] = VideoUtils.NormalizeResolution(usage.VideoResolution);
         }
         if (!parameters.ContainsKey("image_resolution") && !string.IsNullOrEmpty(usage.ImageResolution))
         {
@@ -327,27 +379,5 @@ public partial class CostCalculationService
             result.MatchedRule?.Description ?? "none", result.UsedDefaultRate);
 
         return result.Cost;
-    }
-
-    /// <summary>
-    /// Normalizes video resolution to standard format (e.g., "1920x1080" -> "1080p").
-    /// </summary>
-    private static string NormalizeResolution(string resolution)
-    {
-        if (string.IsNullOrEmpty(resolution))
-            return resolution;
-
-        // Already normalized
-        if (resolution.EndsWith("p", StringComparison.OrdinalIgnoreCase))
-            return resolution.ToLowerInvariant();
-
-        // Parse "WIDTHxHEIGHT" format
-        var parts = resolution.ToLowerInvariant().Split('x');
-        if (parts.Length == 2 && int.TryParse(parts[1], out var height))
-        {
-            return $"{height}p";
-        }
-
-        return resolution;
     }
 }

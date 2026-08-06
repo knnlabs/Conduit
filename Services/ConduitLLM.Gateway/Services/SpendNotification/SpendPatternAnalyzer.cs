@@ -104,7 +104,9 @@ namespace ConduitLLM.Gateway.Services.SpendNotification
                 analysis.PatternType = "High Frequency";
                 analysis.Description = $"Unusually high request rate: {pattern.HourlyCount} requests in the last hour";
                 analysis.CurrentRate = pattern.HourlyCount;
-                analysis.NormalRate = 30; // Assumed normal rate
+                // Baseline from the key's own 24h history (average hourly request count),
+                // mirroring how the spending-spike branch derives its baseline
+                analysis.NormalRate = pattern.DailyCount / 24m;
             }
             // Spike detection (hourly spend > 10% of daily average)
             else if (pattern.DailyCount > 0 && pattern.HourlyTotal > (pattern.DailyTotal * SpendingSpikeThreshold))

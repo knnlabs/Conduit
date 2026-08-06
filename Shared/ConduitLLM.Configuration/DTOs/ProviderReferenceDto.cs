@@ -8,21 +8,25 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// The unique identifier of the provider - this is the canonical identifier
         /// </summary>
+        [System.ComponentModel.DataAnnotations.Required]
         public int Id { get; set; }
 
         /// <summary>
         /// The provider type (e.g., OpenAI, Anthropic)
         /// </summary>
+        [System.ComponentModel.DataAnnotations.Required]
         public ProviderType ProviderType { get; set; }
 
         /// <summary>
         /// Display name for the provider instance (e.g., "Production OpenAI", "Dev Azure OpenAI")
         /// </summary>
+        [System.ComponentModel.DataAnnotations.Required]
         public string DisplayName { get; set; } = string.Empty;
 
         /// <summary>
         /// Whether this provider is currently enabled
         /// </summary>
+        [System.ComponentModel.DataAnnotations.Required]
         public bool IsEnabled { get; set; }
     }
 }

@@ -1,21 +1,18 @@
 'use client';
 
 import {
-  Modal,
-  Stack,
   TextInput,
   NumberInput,
-  Button,
   Group,
   Text,
   Alert,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { notifications } from '@mantine/notifications';
 import { IconAlertCircle, IconLayersLinked } from '@tabler/icons-react';
-import { useState } from 'react';
-import type { CreateVirtualKeyGroupRequestDto } from '@knn_labs/conduit-admin-client';
+import type { CreateVirtualKeyGroupRequestDto } from '@/lib/admin-api';
 import { withAdminClient } from '@/lib/client/adminClient';
+import { useFormModal } from '@/hooks/useFormModal';
+import { EntityFormModal } from '@/components/common/EntityFormModal';
 
 interface CreateVirtualKeyGroupModalProps {
   opened: boolean;
@@ -24,8 +21,6 @@ interface CreateVirtualKeyGroupModalProps {
 }
 
 export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: CreateVirtualKeyGroupModalProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const form = useForm<CreateVirtualKeyGroupRequestDto>({
     initialValues: {
       groupName: '',
@@ -42,43 +37,22 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
     },
   });
 
-  const handleClose = () => {
-    form.reset();
-    onClose();
-  };
-
-  const handleSubmit = async (values: CreateVirtualKeyGroupRequestDto) => {
-    try {
-      setIsSubmitting(true);
-
-      await withAdminClient(client => 
+  const { loading, handleSubmit, handleClose } = useFormModal({
+    form,
+    onClose,
+    onSuccess,
+    submitAction: (values) =>
+      withAdminClient(client =>
         client.virtualKeyGroups.create({
           ...values,
           externalGroupId: values.externalGroupId?.trim() ?? undefined,
         })
-      );
-
-      notifications.show({
-        title: 'Success',
-        message: 'Virtual key group created successfully',
-        color: 'green',
-      });
-
-      handleClose();
-      onSuccess?.();
-    } catch (error) {
-      notifications.show({
-        title: 'Error',
-        message: error instanceof Error ? error.message : 'Failed to create virtual key group',
-        color: 'red',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      ),
+    successMessage: 'Virtual key group created successfully',
+  });
 
   return (
-    <Modal
+    <EntityFormModal
       opened={opened}
       onClose={handleClose}
       title={
@@ -88,50 +62,40 @@ export function CreateVirtualKeyGroupModal({ opened, onClose, onSuccess }: Creat
         </Group>
       }
       size="md"
+      onSubmit={form.onSubmit(handleSubmit)}
+      loading={loading}
+      submitLabel="Create Group"
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
-        <Stack gap="md">
-          <TextInput
-            label="Group Name"
-            placeholder="Enter a name for this group"
-            required
-            {...form.getInputProps('groupName')}
-          />
+      <TextInput
+        label="Group Name"
+        placeholder="Enter a name for this group"
+        required
+        {...form.getInputProps('groupName')}
+      />
 
-          <TextInput
-            label="External Group ID"
-            placeholder="Optional external identifier"
-            {...form.getInputProps('externalGroupId')}
-          />
+      <TextInput
+        label="External Group ID"
+        placeholder="Optional external identifier"
+        {...form.getInputProps('externalGroupId')}
+      />
 
-          <NumberInput
-            label="Initial Balance"
-            placeholder="0.00"
-            prefix="$"
-            min={0}
-            decimalScale={2}
-            fixedDecimalScale
-            thousandSeparator=","
-            {...form.getInputProps('initialBalance')}
-          />
+      <NumberInput
+        label="Initial Balance"
+        placeholder="0.00"
+        prefix="$"
+        min={0}
+        decimalScale={2}
+        fixedDecimalScale
+        thousandSeparator=","
+        {...form.getInputProps('initialBalance')}
+      />
 
-          <Alert icon={<IconAlertCircle size={16} />} color="blue">
-            <Text size="sm">
-              Virtual keys in this group will share the group&apos;s balance. 
-              You can add more credits later.
-            </Text>
-          </Alert>
-
-          <Group justify="flex-end" mt="md">
-            <Button variant="subtle" onClick={handleClose} disabled={isSubmitting}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={isSubmitting}>
-              Create Group
-            </Button>
-          </Group>
-        </Stack>
-      </form>
-    </Modal>
+      <Alert icon={<IconAlertCircle size={16} />} color="blue">
+        <Text size="sm">
+          Virtual keys in this group will share the group&apos;s balance.
+          You can add more credits later.
+        </Text>
+      </Alert>
+    </EntityFormModal>
   );
 }

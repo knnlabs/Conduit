@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ConduitLLM.Configuration.DTOs
 {
@@ -26,7 +27,7 @@ namespace ConduitLLM.Configuration.DTOs
         /// <summary>
         /// JSON configuration for complex pricing models
         /// </summary>
-        public string? PricingConfiguration { get; set; }
+        public Dictionary<string, JsonElement>? PricingConfiguration { get; set; }
 
         /// <summary>
         /// List of model provider type association IDs to associate with this cost
@@ -55,6 +56,11 @@ namespace ConduitLLM.Configuration.DTOs
         public string? Description { get; set; }
 
         /// <summary>
+        /// Indicates whether this cost configuration should be active when created.
+        /// </summary>
+        public bool IsActive { get; set; } = true;
+
+        /// <summary>
         /// Cost per million input tokens for chat/completion requests in USD
         /// </summary>
         [Range(0, double.MaxValue)]
@@ -65,6 +71,12 @@ namespace ConduitLLM.Configuration.DTOs
         /// </summary>
         [Range(0, double.MaxValue)]
         public decimal OutputCostPerMillionTokens { get; set; } = 0;
+
+        /// <summary>
+        /// Cost per million reasoning tokens in USD. When omitted, billing uses the output-token rate.
+        /// </summary>
+        [Range(0, double.MaxValue)]
+        public decimal? ReasoningCostPerMillionTokens { get; set; }
 
         /// <summary>
         /// Cost per million tokens for embedding requests in USD, if applicable
@@ -118,5 +130,11 @@ namespace ConduitLLM.Configuration.DTOs
         /// Documents over 500 tokens are split into chunks, each counting as a separate document.
         /// </remarks>
         public decimal? CostPerSearchUnit { get; set; }
+
+        /// <summary>Cost per minute of transcribed audio (speech-to-text).</summary>
+        public decimal? AudioCostPerMinute { get; set; }
+
+        /// <summary>Cost per thousand input characters synthesized (text-to-speech).</summary>
+        public decimal? AudioCostPerThousandCharacters { get; set; }
     }
 }

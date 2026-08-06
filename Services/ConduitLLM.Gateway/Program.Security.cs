@@ -1,9 +1,18 @@
+using Microsoft.AspNetCore.Authorization;
+
 using ConduitLLM.Gateway.Authentication;
+using ConduitLLM.Gateway.Extensions;
+using ConduitLLM.Security.Authorization;
+using ConduitLLM.Security.Extensions;
 
 public partial class Program
 {
     public static void ConfigureSecurityServices(WebApplicationBuilder builder)
     {
+        // Configure trusted-proxy forwarded-header processing so the client IP is derived
+        // securely (spoof-resistant). No-op unless CONDUIT_TRUSTED_PROXY_ENABLED=true.
+        builder.Services.AddTrustedProxyForwardedHeaders(builder.Configuration);
+
         // Add CORS support for WebAdmin requests
         builder.Services.AddCors(options =>
         {
@@ -70,6 +79,15 @@ public partial class Program
                 policy.AuthenticationSchemes.Add("Backend");
                 policy.RequireAuthenticatedUser();
             });
+
+            // Add policy for health endpoint access - allows private network OR valid health key
+            options.AddPolicy("HealthMonitoring", policy =>
+            {
+                policy.Requirements.Add(new HealthKeyRequirement());
+            });
         });
+
+        // Register the health key authorization handler
+        builder.Services.AddSingleton<IAuthorizationHandler, HealthKeyAuthorizationHandler>();
     }
 }

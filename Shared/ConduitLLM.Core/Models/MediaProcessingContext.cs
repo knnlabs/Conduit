@@ -33,6 +33,9 @@ namespace ConduitLLM.Core.Models
         /// </summary>
         public int VirtualKeyId { get; set; }
 
+        /// <summary>Optional caller identifier to persist as storage metadata.</summary>
+        public string? CreatedBy { get; set; }
+
         /// <summary>
         /// Gets or sets the request ID for tracking.
         /// </summary>
@@ -68,6 +71,19 @@ namespace ConduitLLM.Core.Models
         /// Gets or sets the provider entity.
         /// </summary>
         public Provider? Provider { get; set; }
+
+        /// <summary>
+        /// Gets or sets the ID of the ModelCost record linked to the resolved model association, if any.
+        /// When set, cost calculation uses a direct lookup instead of string matching on model ids.
+        /// </summary>
+        public int? ModelCostId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the canonical model identifier from the model's provider-type association.
+        /// Cost records are matched against this identifier during string-based cost lookup, so it is
+        /// preferred over <see cref="ModelId"/> (which may hold a stale legacy ProviderModelId value).
+        /// </summary>
+        public string? CostIdentifier { get; set; }
 
         /// <summary>
         /// Gets the provider name.

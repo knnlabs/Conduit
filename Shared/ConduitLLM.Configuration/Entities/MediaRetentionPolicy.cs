@@ -82,6 +82,12 @@ namespace ConduitLLM.Configuration.Entities
         public int? MaxFileCount { get; set; }
 
         /// <summary>
+        /// Controls generation behavior when a configured storage quota would be exceeded.
+        /// </summary>
+        public MediaQuotaExceededBehavior QuotaExceededBehavior { get; set; } =
+            MediaQuotaExceededBehavior.Reject;
+
+        /// <summary>
         /// When this policy was created.
         /// </summary>
         [Required]

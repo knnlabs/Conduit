@@ -13,7 +13,13 @@ namespace ConduitLLM.Configuration.DTOs
         Ignored,
         ProviderDown,
         RateLimited,
-        UnknownError
+        UnknownError,
+
+        /// <summary>
+        /// The provider is misconfigured (for example a required structured setting such as a
+        /// Cloudflare account ID is missing), so the test could not be attempted.
+        /// </summary>
+        Configuration
     }
 
     /// <summary>

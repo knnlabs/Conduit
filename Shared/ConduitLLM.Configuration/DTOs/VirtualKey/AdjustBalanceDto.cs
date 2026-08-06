@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace ConduitLLM.Configuration.DTOs.VirtualKey
 {
     /// <summary>
@@ -9,6 +11,7 @@ namespace ConduitLLM.Configuration.DTOs.VirtualKey
         /// Amount to adjust the balance by.
         /// Positive values add credits, negative values debit the account.
         /// </summary>
+        [Required]
         public decimal Amount { get; set; }
 
         /// <summary>

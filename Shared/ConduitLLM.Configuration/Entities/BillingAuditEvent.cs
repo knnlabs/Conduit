@@ -1,12 +1,13 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using ConduitLLM.Functions.Interfaces;
 
 namespace ConduitLLM.Configuration.Entities
 {
     /// <summary>
     /// Represents an audit event for billing operations, tracking all billing decisions and failures
     /// </summary>
-    public class BillingAuditEvent
+    public class BillingAuditEvent : IAuditEvent
     {
         /// <summary>
         /// Unique identifier for the audit event
@@ -28,6 +29,11 @@ namespace ConduitLLM.Configuration.Entities
         /// ID of the virtual key associated with this event
         /// </summary>
         public int? VirtualKeyId { get; set; }
+
+        /// <summary>
+        /// ID of the virtual key group associated with a group-level billing event.
+        /// </summary>
+        public int? VirtualKeyGroupId { get; set; }
 
         /// <summary>
         /// Model name used in the request
@@ -174,6 +180,36 @@ namespace ConduitLLM.Configuration.Entities
         /// <summary>
         /// Tool usage occurred but no cost config found
         /// </summary>
-        ToolUsageMissingCostConfig = 13
+        ToolUsageMissingCostConfig = 13,
+
+        /// <summary>
+        /// Model cost calculation failed; the request was retained for reconciliation.
+        /// </summary>
+        PricingCalculationFailed = 14,
+
+        /// <summary>
+        /// Request-log, ledger, or provider-cost totals diverged during reconciliation.
+        /// </summary>
+        BillingReconciliationMismatch = 15,
+
+        /// <summary>
+        /// A persisted pricing configuration violates current billing invariants.
+        /// </summary>
+        InvalidPricingConfiguration = 16,
+
+        /// <summary>
+        /// Positive usage was intentionally priced at zero by an active configuration.
+        /// </summary>
+        ConfiguredZeroCost = 17,
+
+        /// <summary>
+        /// Positive usage was observed without an applicable price.
+        /// </summary>
+        UnpricedUsage = 18,
+
+        /// <summary>
+        /// A synthetic active-model cost check failed or calculated a non-positive cost.
+        /// </summary>
+        ModelCostCanaryFailed = 19
     }
 }

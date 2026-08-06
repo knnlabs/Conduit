@@ -1,4 +1,5 @@
 using ConduitLLM.Core.Models;
+using ConduitLLM.Configuration.Services;
 
 namespace ConduitLLM.Core.Validation;
 
@@ -12,7 +13,7 @@ public class UsageValidator
     /// </summary>
     /// <param name="usage">The usage object to validate.</param>
     /// <returns>A validation result containing any errors found.</returns>
-    public ValidationResult Validate(Usage usage)
+    public ConduitValidationResult Validate(Usage usage)
     {
         var errors = new List<string>();
 
@@ -28,7 +29,7 @@ public class UsageValidator
         }
 
         // Validate cached tokens
-        if (usage.CachedInputTokens.HasValue && usage.PromptTokens.HasValue)
+        if (usage.CachedInputTokensIncludedInPrompt && usage.CachedInputTokens.HasValue && usage.PromptTokens.HasValue)
         {
             // Cached tokens should not exceed prompt tokens
             if (usage.CachedInputTokens.Value > usage.PromptTokens.Value)
@@ -37,7 +38,7 @@ public class UsageValidator
             }
         }
 
-        if (usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
+        if (usage.CachedWriteTokensIncludedInPrompt && usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
         {
             // Cache write tokens should not exceed prompt tokens
             if (usage.CachedWriteTokens.Value > usage.PromptTokens.Value)
@@ -46,7 +47,7 @@ public class UsageValidator
             }
         }
 
-        if (usage.CachedInputTokens.HasValue && usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
+        if (usage.CachedInputTokensIncludedInPrompt && usage.CachedWriteTokensIncludedInPrompt && usage.CachedInputTokens.HasValue && usage.CachedWriteTokens.HasValue && usage.PromptTokens.HasValue)
         {
             // Combined cached tokens should not exceed prompt tokens
             var totalCached = usage.CachedInputTokens.Value + usage.CachedWriteTokens.Value;
@@ -148,31 +149,12 @@ public class UsageValidator
             errors.Add("Cache write tokens cannot be negative");
         }
 
-        return new ValidationResult(errors);
-    }
-}
+        var result = new ConduitValidationResult();
+        foreach (var error in errors)
+        {
+            result.AddError(new ValidationError("usage", error));
+        }
 
-/// <summary>
-/// Represents the result of a validation operation.
-/// </summary>
-public class ValidationResult
-{
-    /// <summary>
-    /// List of validation errors found.
-    /// </summary>
-    public IReadOnlyList<string> Errors { get; }
-
-    /// <summary>
-    /// Indicates whether the validation passed (no errors).
-    /// </summary>
-    public bool IsValid => Errors.Count == 0;
-
-    /// <summary>
-    /// Creates a new validation result.
-    /// </summary>
-    /// <param name="errors">List of validation errors.</param>
-    public ValidationResult(List<string> errors)
-    {
-        Errors = errors.AsReadOnly();
+        return result;
     }
 }

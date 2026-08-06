@@ -148,6 +148,22 @@ export const badgeHelpers = {
   },
 
   /**
+   * Get color for a monetary balance (red when depleted, orange when low)
+   */
+  getBalanceColor: (balance: number): ColorTheme => {
+    if (balance <= 0) return 'red';
+    if (balance < 10) return 'orange';
+    return 'green';
+  },
+
+  /**
+   * Get Mantine badge variant for a monetary balance (filled when depleted)
+   */
+  getBalanceBadgeVariant: (balance: number): 'filled' | 'light' => {
+    return balance <= 0 ? 'filled' : 'light';
+  },
+
+  /**
    * Get complete status configuration
    */
   getStatusConfig: (
@@ -174,3 +190,9 @@ export const badgeHelpers = {
     };
   }
 };
+
+// Standalone re-exports for convenient named imports
+export const getBalanceColor = badgeHelpers.getBalanceColor;
+export const getBalanceBadgeVariant = badgeHelpers.getBalanceBadgeVariant;
+export const getHealthColor = badgeHelpers.getHealthColor;
+export const getPercentageColor = badgeHelpers.getPercentageColor;

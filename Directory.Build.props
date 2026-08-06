@@ -1,25 +1,41 @@
 <Project>
   <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
     <!-- Central version configuration for all projects -->
-    <Version>0.1.3</Version>
-    <AssemblyVersion>0.1.3</AssemblyVersion>
-    <FileVersion>0.1.3</FileVersion>
-    <InformationalVersion>0.1.3</InformationalVersion>
+    <Version>3.0.0</Version>
+    <AssemblyVersion>3.0.0</AssemblyVersion>
+    <FileVersion>3.0.0</FileVersion>
+    <InformationalVersion>3.0.0</InformationalVersion>
+
+    <!--
+      Reproducible service build identity. Release/container builds override these
+      values; local builds deliberately identify themselves as development builds.
+    -->
+    <ConduitCommitSha Condition="'$(ConduitCommitSha)' == ''">dev</ConduitCommitSha>
+    <ConduitBuildTimestamp Condition="'$(ConduitBuildTimestamp)' == ''">unknown</ConduitBuildTimestamp>
     
     <!-- Keep track of when releases occur -->
     <ReleaseDate>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd"))</ReleaseDate>
     
     <!-- Common properties for NuGet packages -->
     <!-- Don't set PackageId here as it needs to be unique per project -->
-    <PackageFamilyName>knnlabs.Conduit</PackageFamilyName>
+    <PackageFamilyName>nickna.Conduit</PackageFamilyName>
     <PackageName>Conduit</PackageName>
-    <Authors>KNN Labs, Inc.</Authors>
-    <Company>KNN Labs, Inc.</Company>
+    <Authors>Nick Nassiri</Authors>
+    <Company>Nick Nassiri</Company>
     <Product>Conduit</Product>
     <Description>A unified .NET client library for interacting with various LLM providers</Description>
-    <Copyright>© $([System.DateTime]::UtcNow.Year) KNN Labs, Inc.</Copyright>
-    <PackageProjectUrl>https://github.com/knnlabs/Conduit</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/knnlabs/Conduit</RepositoryUrl>
+    <Copyright>© $([System.DateTime]::UtcNow.Year) Nick Nassiri</Copyright>
+    <PackageProjectUrl>https://github.com/nickna/Conduit</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/nickna/Conduit</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="ConduitCommitSha" Value="$(ConduitCommitSha)" />
+    <AssemblyMetadata Include="ConduitBuildTimestamp" Value="$(ConduitBuildTimestamp)" />
+  </ItemGroup>
 </Project>

@@ -1,10 +1,13 @@
 import { useSecurityApi, type IpRule } from '@/hooks/useSecurityApi';
 import { withAdminClient } from '@/lib/client/adminClient';
-import { notifications } from '@mantine/notifications';
+import { notify } from '@/lib/notifications';
+import { downloadBlob, escapeCsvField } from '@/lib/utils/export';
+import type { IpFilterTemplate, IpTemplateRule } from '@/components/ip-filtering/ipFilterTemplates';
 
 export function useIpFilteringHandlers(
   fetchIpRules: () => Promise<void>,
-  setSelectedRules: React.Dispatch<React.SetStateAction<string[]>>
+  clearSelection: () => void,
+  deselectRule: (ruleId: string) => void,
 ) {
   const { updateIpRule, deleteIpRule, createIpRule } = useSecurityApi();
 
@@ -41,21 +44,12 @@ export function useIpFilteringHandlers(
 
       await Promise.all(promises);
 
-      notifications.show({
-        title: 'Success',
-        message: `Successfully ${operation}d ${selectedRules.length} rule(s)`,
-        color: 'green',
-      });
+      notify.success(`Successfully ${operation}d ${selectedRules.length} rule(s)`);
 
       await fetchIpRules();
-      setSelectedRules([]);
+      clearSelection();
     } catch (error) {
-      const message = error instanceof Error ? error.message : `Failed to ${operation} rules`;
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(error, `Failed to ${operation} rules`);
     }
   };
 
@@ -77,11 +71,8 @@ export function useIpFilteringHandlers(
         const headers = ['id', 'name', 'ipAddressOrCidr', 'filterType', 'isEnabled', 'description', 'createdAt'];
         const csvContent = [
           headers.join(','),
-          ...filters.map(filter => 
-            headers.map(header => {
-              const value = filter[header as keyof typeof filter];
-              return typeof value === 'string' ? `"${value}"` : String(value);
-            }).join(',')
+          ...filters.map(filter =>
+            headers.map(header => escapeCsvField(filter[header as keyof typeof filter])).join(',')
           )
         ].join('\n');
         content = csvContent;
@@ -92,27 +83,11 @@ export function useIpFilteringHandlers(
 
       // Create and download the file
       const blob = new Blob([content], { type: mimeType });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ip-rules.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      downloadBlob(blob, `ip-rules.${format}`);
 
-      notifications.show({
-        title: 'Success',
-        message: `IP rules exported as ${format.toUpperCase()}`,
-        color: 'green',
-      });
+      notify.success(`IP rules exported as ${format.toUpperCase()}`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to export IP rules';
-      notifications.show({
-        title: 'Error',
-        message,
-        color: 'red',
-      });
+      notify.error(error, 'Failed to export IP rules');
     }
   };
 
@@ -190,20 +165,11 @@ export function useIpFilteringHandlers(
           }
         }
 
-        notifications.show({
-          title: 'Success',
-          message: `Imported ${imported} rule(s) successfully${failed > 0 ? `, ${failed} failed` : ''}`,
-          color: 'green',
-        });
+        notify.success(`Imported ${imported} rule(s) successfully${failed > 0 ? `, ${failed} failed` : ''}`);
 
         await fetchIpRules();
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to import IP rules';
-        notifications.show({
-          title: 'Error',
-          message,
-          color: 'red',
-        });
+        notify.error(error, 'Failed to import IP rules');
       }
     };
 
@@ -214,7 +180,7 @@ export function useIpFilteringHandlers(
     try {
       await deleteIpRule(ruleId);
       await fetchIpRules();
-      setSelectedRules(prev => prev.filter(id => id !== ruleId));
+      deselectRule(ruleId);
     } catch (error) {
       console.error('Failed to delete IP rule:', error);
     }
@@ -256,6 +222,49 @@ export function useIpFilteringHandlers(
     }
   };
 
+  const handleApplyTemplate = async (
+    template: IpFilterTemplate,
+    rulesToCreate: IpTemplateRule[],
+    setIsSubmitting: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    if (rulesToCreate.length === 0) return;
+
+    setIsSubmitting(true);
+    let created = 0;
+    let failed = 0;
+
+    try {
+      for (const rule of rulesToCreate) {
+        try {
+          await withAdminClient(client =>
+            client.ipFilters.create({
+              name: rule.name,
+              ipAddressOrCidr: rule.ipAddressOrCidr,
+              filterType: 'whitelist',
+              isEnabled: true,
+              description: rule.description,
+            })
+          );
+          created++;
+        } catch {
+          failed++;
+        }
+      }
+
+      if (failed > 0) {
+        notify.warning(`Created ${created} rule${created !== 1 ? 's' : ''} from "${template.label}", ${failed} failed`);
+      } else {
+        notify.success(`Created ${created} rule${created !== 1 ? 's' : ''} from "${template.label}"`, 'Template Applied');
+      }
+
+      await fetchIpRules();
+    } catch (error) {
+      notify.error(error, 'Failed to apply template');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return {
     handleBulkOperation,
     handleExport,
@@ -263,5 +272,6 @@ export function useIpFilteringHandlers(
     handleDeleteRule,
     handleToggleRule,
     handleModalSubmit,
+    handleApplyTemplate,
   };
 }

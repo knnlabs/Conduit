@@ -34,6 +34,12 @@ export const createMockStore = () => {
     updateSettings: jest.fn(),
     removeTask: jest.fn(),
     clearHistory: jest.fn(),
+    getTaskById: jest.fn(() => undefined),
+    getCompletedTasks: jest.fn(() => []),
+    getFailedTasks: jest.fn(() => []),
+    getPendingTasks: jest.fn(() => []),
+    maxHistorySize: 50,
+    persistHistory: true,
   };
 
   return {
@@ -95,13 +101,5 @@ export const setupMocks = () => {
     },
   });
 
-  // Mock the video SignalR client to always fail connection so it falls back to polling
-  jest.doMock('@/lib/client/videoSignalRClient', () => ({
-    videoSignalRClient: {
-      connect: jest.fn().mockRejectedValue(new Error('Mocked SignalR connection failure')),
-      disconnect: jest.fn(),
-    },
-  }));
-  
   return storeMocks;
 };

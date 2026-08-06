@@ -66,7 +66,7 @@ namespace ConduitLLM.Tests.Core.Services
             var cacheKey = "discovery:models:all";
             var expectedResult = new DiscoveryModelsResult
             {
-                Data = new List<object> { new { id = "gpt-4", provider = "openai" } },
+                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(new { id = "gpt-4", provider = "openai" }) },
                 Count = 1,
                 CachedAt = DateTime.UtcNow
             };
@@ -108,7 +108,7 @@ namespace ConduitLLM.Tests.Core.Services
             // Arrange
             _options.EnableCaching = false;
             var service = CreateServiceWithOptions(_options);
-            var results = new DiscoveryModelsResult { Data = new List<object> { new { id = "test" } }, Count = 1 };
+            var results = new DiscoveryModelsResult { Data = new List<JsonElement> { JsonSerializer.SerializeToElement(new { id = "test" }) }, Count = 1 };
 
             // Act
             await service.SetDiscoveryResultsAsync("test-key", results);
@@ -124,7 +124,7 @@ namespace ConduitLLM.Tests.Core.Services
             var cacheKey = "discovery:models:capability:chat";
             var results = new DiscoveryModelsResult
             {
-                Data = new List<object> { new { id = "gpt-4", provider = "openai" } },
+                Data = new List<JsonElement> { JsonSerializer.SerializeToElement(new { id = "gpt-4", provider = "openai" }) },
                 Count = 1
             };
 
@@ -222,7 +222,7 @@ namespace ConduitLLM.Tests.Core.Services
             await _service.GetDiscoveryResultsAsync(cacheKey);
 
             // Setup for a hit
-            var result = new DiscoveryModelsResult { Data = new List<object>(), Count = 0 };
+            var result = new DiscoveryModelsResult { Data = new List<JsonElement>(), Count = 0 };
             _mockCacheManager
                 .Setup(x => x.GetAsync<DiscoveryModelsResult>(cacheKey, ConduitLLM.Core.Models.CacheRegion.ModelDiscovery, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(result);
@@ -234,9 +234,9 @@ namespace ConduitLLM.Tests.Core.Services
             var stats = await _service.GetStatisticsAsync();
 
             // Assert
-            Assert.Equal(1, stats.Hits);
-            Assert.Equal(1, stats.Misses);
-            Assert.Equal(50.0, stats.HitRate); // 1 hit / 2 total = 50%
+            Assert.Equal(1, stats.HitCount);
+            Assert.Equal(1, stats.MissCount);
+            Assert.Equal(0.5, stats.HitRate); // 1 hit / 2 total
         }
 
         [Theory]
@@ -254,12 +254,26 @@ namespace ConduitLLM.Tests.Core.Services
             Assert.Equal(expected, actual);
         }
 
+        [Theory]
+        [InlineData(null, null, "all:with_pricing")]
+        [InlineData("chat", null, "capability:chat:with_pricing")]
+        [InlineData(null, 123, "virtualkey:123:with_pricing")]
+        [InlineData("chat", 456, "virtualkey:456:capability:chat:with_pricing")]
+        public void BuildCacheKey_WithPricing_AppendsVariantSuffix(string capability, int? virtualKeyId, string expected)
+        {
+            // Act
+            var actual = DiscoveryCacheService.BuildCacheKey(capability, virtualKeyId, includePricing: true);
+
+            // Assert
+            Assert.Equal(expected, actual);
+        }
+
         [Fact]
         public async Task SetDiscoveryResultsAsync_Should_Use_CacheManager()
         {
             // Arrange
             var cacheKey = "test-key";
-            var results = new DiscoveryModelsResult { Data = new List<object>(), Count = 0 };
+            var results = new DiscoveryModelsResult { Data = new List<JsonElement>(), Count = 0 };
 
             // Act
             await _service.SetDiscoveryResultsAsync(cacheKey, results);

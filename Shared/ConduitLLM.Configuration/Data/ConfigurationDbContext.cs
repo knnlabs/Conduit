@@ -36,6 +36,8 @@ namespace ConduitLLM.Configuration
         /// </summary>
         public virtual DbSet<VirtualKeyGroupTransaction> VirtualKeyGroupTransactions { get; set; } = null!;
 
+        public virtual DbSet<RefundIdempotencyRecord> RefundIdempotencyRecords { get; set; } = null!;
+
         /// <summary>
         /// Database set for request logs
         /// </summary>
@@ -45,6 +47,9 @@ namespace ConduitLLM.Configuration
         /// Database set for billing audit events
         /// </summary>
         public virtual DbSet<BillingAuditEvent> BillingAuditEvents { get; set; } = null!;
+
+        /// <summary>Durable cursor for the billing reconciliation job.</summary>
+        public virtual DbSet<BillingReconciliationCheckpoint> BillingReconciliationCheckpoints { get; set; } = null!;
 
         /// <summary>
         /// Database set for pricing audit events (rules-based pricing)
@@ -81,6 +86,7 @@ namespace ConduitLLM.Configuration
         /// Database set for model provider mappings
         /// </summary>
         public virtual DbSet<ModelProviderMappingEntity> ModelProviderMappings { get; set; } = null!;
+        public virtual DbSet<ModelRoutePolicy> ModelRoutePolicies { get; set; } = null!;
         
         /// <summary>
         /// Database set for models
@@ -103,9 +109,24 @@ namespace ConduitLLM.Configuration
         public virtual DbSet<ModelProviderTypeAssociation> ModelProviderTypeAssociations { get; set; } = null!;
 
         /// <summary>
+        /// Database set for provider metadata sync runs (OpenRouter drift detection).
+        /// </summary>
+        public virtual DbSet<ProviderMetadataSyncRun> ProviderMetadataSyncRuns { get; set; } = null!;
+
+        /// <summary>
+        /// Database set for provider metadata drift items awaiting admin review.
+        /// </summary>
+        public virtual DbSet<ProviderMetadataDriftItem> ProviderMetadataDriftItems { get; set; } = null!;
+
+        /// <summary>
         /// Database set for media records
         /// </summary>
         public virtual DbSet<MediaRecord> MediaRecords { get; set; } = null!;
+
+        /// <summary>
+        /// Durable approvals for large scheduled media cleanup scopes.
+        /// </summary>
+        public virtual DbSet<MediaCleanupApproval> MediaCleanupApprovals { get; set; } = null!;
 
         /// <summary>
         /// Database set for media retention policies
@@ -147,16 +168,6 @@ namespace ConduitLLM.Configuration
         /// Database set for batch operation history
         /// </summary>
         public virtual DbSet<BatchOperationHistory> BatchOperationHistory { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for cache configurations
-        /// </summary>
-        public virtual DbSet<CacheConfiguration> CacheConfigurations { get; set; } = null!;
-
-        /// <summary>
-        /// Database set for cache configuration audit logs
-        /// </summary>
-        public virtual DbSet<CacheConfigurationAudit> CacheConfigurationAudits { get; set; } = null!;
 
         // Function-related DbSets
 
@@ -260,6 +271,9 @@ namespace ConduitLLM.Configuration
                       .WithMany(e => e.RequestLogs)
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasIndex(e => new { e.BilledAtUtc, e.VirtualKeyId });
+                entity.HasIndex(e => new { e.ModelProviderMappingId, e.Timestamp });
             });
 
             // Configure ModelCost entity
@@ -299,6 +313,13 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => new { e.FilterType, e.IpAddressOrCidr });
                 // Create an index for IsEnabled to quickly filter active rules
                 entity.HasIndex(e => e.IsEnabled);
+                // Per-key scoping: null VirtualKeyId = global filter; a set value scopes the filter to
+                // that key. Index it for the per-key enforcement query; cascade-delete with the key.
+                entity.HasIndex(e => e.VirtualKeyId);
+                entity.HasOne<VirtualKey>()
+                      .WithMany(vk => vk.IpFilters)
+                      .HasForeignKey(e => e.VirtualKeyId)
+                      .OnDelete(DeleteBehavior.Cascade);
             });
 
 
@@ -343,12 +364,28 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.VirtualKeyId);
                 entity.HasIndex(e => e.ExpiresAt);
                 entity.HasIndex(e => e.CreatedAt);
+                entity.HasIndex(e => e.DeletedAt);
                 entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
-                
+                entity.HasQueryFilter(e => e.DeletedAt == null);
+
+                // Keep cascade semantics for key deletion: the storage reconciliation sweep
+                // independently discovers and removes objects left behind in external storage.
                 entity.HasOne(e => e.VirtualKey)
                       .WithMany()
                       .HasForeignKey(e => e.VirtualKeyId)
                       .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<MediaCleanupApproval>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.Property(e => e.CleanupType).HasMaxLength(64);
+                entity.Property(e => e.Status).HasMaxLength(32);
+                entity.Property(e => e.DecidedBy).HasMaxLength(256);
+                entity.Property(e => e.ExecutionStatus).HasMaxLength(512);
+                entity.HasIndex(e => e.Status);
+                entity.HasIndex(e => new { e.CleanupType, e.VirtualKeyGroupId, e.Status });
+                entity.HasIndex(e => e.ExpiresAtUtc);
             });
 
             // MediaLifecycleRecord configuration removed - consolidated into MediaRecords
@@ -381,6 +418,7 @@ namespace ConduitLLM.Configuration
             modelBuilder.Entity<BatchOperationHistory>(entity =>
             {
                 entity.HasKey(e => e.OperationId);
+                entity.Ignore(e => e.Id);
                 entity.HasIndex(e => e.VirtualKeyId);
                 entity.HasIndex(e => e.OperationType);
                 entity.HasIndex(e => e.Status);
@@ -394,40 +432,6 @@ namespace ConduitLLM.Configuration
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // Configure CacheConfiguration entity
-            modelBuilder.Entity<CacheConfiguration>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-
-                // Apply filtered index only for non-test environments (PostgreSQL)
-                if (!IsTestEnvironment)
-                {
-                    entity.HasIndex(e => e.Region).IsUnique().HasFilter("\"IsActive\" = true");
-                }
-                else
-                {
-                    // For SQLite in tests, use a regular unique index
-                    entity.HasIndex(e => e.Region).IsUnique();
-                }
-
-                entity.HasIndex(e => new { e.Region, e.IsActive });
-                entity.HasIndex(e => e.UpdatedAt);
-                entity.Property(e => e.Version).IsConcurrencyToken();
-
-                // Global query filter for active configurations (EF Core 10 named query filter)
-                entity.HasQueryFilter("Active", c => c.IsActive);
-            });
-
-            // Configure CacheConfigurationAudit entity
-            modelBuilder.Entity<CacheConfigurationAudit>(entity =>
-            {
-                entity.HasKey(e => e.Id);
-                entity.HasIndex(e => e.Region);
-                entity.HasIndex(e => e.ChangedAt);
-                entity.HasIndex(e => new { e.Region, e.ChangedAt });
-                entity.HasIndex(e => e.ChangedBy);
-            });
-
             // Configure VirtualKeyGroupTransaction entity
             modelBuilder.Entity<VirtualKeyGroupTransaction>(entity =>
             {
@@ -438,6 +442,13 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => new { e.IsDeleted, e.CreatedAt });
                 entity.HasIndex(e => e.ReferenceType);
                 entity.HasIndex(e => e.TransactionType);
+                entity.HasIndex(e => new { e.BillingWindowStartUtc, e.VirtualKeyGroupId });
+
+                // Idempotency for at-least-once spend processing (#927): one ledger row
+                // per idempotency key. Filtered so the many rows without a key are exempt.
+                entity.HasIndex(e => e.IdempotencyKey)
+                      .IsUnique()
+                      .HasFilter("\"IdempotencyKey\" IS NOT NULL");
 
                 // Store enums as integers
                 entity.Property(e => e.TransactionType)
@@ -476,8 +487,30 @@ namespace ConduitLLM.Configuration
             // Apply BillingAuditEvent configuration
             modelBuilder.ApplyConfiguration(new EntityConfigurations.BillingAuditEventConfiguration());
 
+            modelBuilder.Entity<BillingReconciliationCheckpoint>(entity =>
+            {
+                entity.ToTable("BillingReconciliationCheckpoints");
+                entity.HasKey(e => e.Id);
+            });
+
+            modelBuilder.Entity<RefundIdempotencyRecord>(entity =>
+            {
+                entity.HasKey(e => e.Id);
+                entity.HasIndex(e => new { e.VirtualKeyGroupId, e.OperationId }).IsUnique();
+                entity.Property(e => e.ResponseJson).IsRequired();
+            });
+
             // Apply PricingAuditEvent configuration (rules-based pricing)
             modelBuilder.ApplyConfiguration(new EntityConfigurations.PricingAuditEventConfiguration());
+
+            // Apply ProviderMetadataDriftItem configuration (string enums + partial unique index)
+            modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderMetadataDriftItemConfiguration());
+
+            // Apply Provider configuration (structured Settings as jsonb)
+            modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderEntityConfiguration());
+
+            // Apply ProviderKeyCredential configuration (encrypted SecretSettings as jsonb)
+            modelBuilder.ApplyConfiguration(new EntityConfigurations.ProviderKeyCredentialEntityConfiguration());
 
             // Note: ModelProviderMapping and Provider are now included in test environments
             // as they are required by the application code during tests
