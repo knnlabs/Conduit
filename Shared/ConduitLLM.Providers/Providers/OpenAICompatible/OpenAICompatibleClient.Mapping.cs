@@ -1,6 +1,9 @@
+using System.Text.Json;
+
 using Microsoft.Extensions.Logging;
 using CoreModels = ConduitLLM.Core.Models;
 using ConduitLLM.Providers.OpenAI;
+using ConduitLLM.Providers.Serialization;
 using ProviderHelpers = ConduitLLM.Providers.Helpers;
 using ConduitLLM.Providers.Utilities;
 
@@ -58,20 +61,14 @@ namespace ConduitLLM.Providers.OpenAICompatible
                             ? ProviderHelpers.ContentHelper.GetContentAsString(m.Content)
                             : MapMultimodalContent(m.Content),
                     Name = m.Name,
-                    ToolCalls = m.ToolCalls?.Select(tc => new
-                    {
-                        id = tc.Id,
-                        type = tc.Type ?? "function",
-                        function = new
-                        {
-                            name = tc.Function?.Name,
-                            arguments = tc.Function?.Arguments
-                        }
-                    }).Cast<object>().ToList(),
+                    ToolCalls = m.ToolCalls,
                     ToolCallId = m.ToolCallId,
                     Annotations = m.Annotations is null
                         ? null
-                        : System.Text.Json.JsonSerializer.SerializeToElement(m.Annotations, DefaultJsonOptions),
+                        : JsonSerializer.SerializeToElement(
+                            m.Annotations,
+                            typeof(List<JsonElement>),
+                            ProvidersJsonContext.Default),
                     Audio = m.Audio,
                     Images = m.Images,
                     ReasoningDetails = m.ReasoningDetails,
@@ -312,17 +309,12 @@ namespace ConduitLLM.Providers.OpenAICompatible
                     return parts;
             }
 
-            // Fallback: try serialize/deserialize to preserve structure
-            try
+            // Value-type collections are not covariant to IEnumerable<object>.
+            if (content is IEnumerable<JsonElement> jsonElements)
             {
-                var json = System.Text.Json.JsonSerializer.Serialize(content);
-                var list = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object?>>>(json);
-                if (list != null && list.Count > 0)
-                    return list;
-            }
-            catch
-            {
-                // Fall through to MapMultimodalContent
+                var parts = jsonElements.Select(element => (object)element.Clone()).ToList();
+                if (parts.Count > 0)
+                    return parts;
             }
 
             return MapMultimodalContent(content);
@@ -375,10 +367,7 @@ namespace ConduitLLM.Providers.OpenAICompatible
                             Role = c.Message.Role ?? "assistant",
                             Content = c.Message.Content,
                             Name = c.Message.Name,
-                            ToolCalls = c.Message.ToolCalls != null
-                                ? System.Text.Json.JsonSerializer.Deserialize<List<CoreModels.ToolCall>>(
-                                    System.Text.Json.JsonSerializer.Serialize(c.Message.ToolCalls))
-                                : null,
+                            ToolCalls = c.Message.ToolCalls,
                             ToolCallId = c.Message.ToolCallId,
                             Annotations = c.Message.Annotations is { ValueKind: System.Text.Json.JsonValueKind.Array } annotations
                                 ? annotations.EnumerateArray().Select(annotation => annotation.Clone()).ToList()

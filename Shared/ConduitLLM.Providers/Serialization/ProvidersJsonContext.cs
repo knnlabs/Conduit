@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using ConduitLLM.Providers.Bedrock;
@@ -17,6 +18,7 @@ namespace ConduitLLM.Providers.Serialization;
 [JsonSerializable(typeof(BedrockConverseResponse))]
 [JsonSerializable(typeof(BedrockRawToolArguments))]
 [JsonSerializable(typeof(int))]
+[JsonSerializable(typeof(List<JsonElement>))]
 [JsonSerializable(typeof(BedrockListFoundationModelsResponse))]
 [JsonSerializable(typeof(BedrockStreamMessageStart))]
 [JsonSerializable(typeof(BedrockStreamContentBlockStart))]

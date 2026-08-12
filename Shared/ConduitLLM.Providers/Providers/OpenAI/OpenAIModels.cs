@@ -21,7 +21,7 @@ namespace ConduitLLM.Providers.OpenAI
 
         [JsonPropertyName("tool_calls")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public List<object>? ToolCalls { get; init; }
+        public List<ConduitLLM.Core.Models.ToolCall>? ToolCalls { get; init; }
 
         [JsonPropertyName("tool_call_id")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
