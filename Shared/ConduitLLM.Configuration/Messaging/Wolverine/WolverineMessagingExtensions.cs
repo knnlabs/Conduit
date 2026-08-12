@@ -5,6 +5,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+using System.Reflection;
+
 using Wolverine;
 using Wolverine.Postgresql;
 
@@ -112,6 +114,15 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
             var autoProvision = configuration.GetValue(AutoProvisionKey, false);
             var inMemory = UsesInMemoryTransport(configuration);
 
+#if CONDUIT_NATIVE_AOT
+            // JasperFx otherwise probes the entry assembly's references and walks the
+            // managed stack while AddWolverine registers its shared defaults. Neither
+            // reflection path exists in a NativeAOT image. Pinning the application
+            // assembly is JasperFx's public escape hatch and leaves JIT discovery intact.
+            JasperFxOptions.RememberedApplicationAssembly =
+                Assembly.GetEntryAssembly() ?? typeof(WolverineMessagingExtensions).Assembly;
+#endif
+
             return host.UseWolverine(opts =>
             {
                 opts.ServiceName = serviceName;
@@ -173,7 +184,7 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
                 opts.Discovery.DisableConventionalDiscovery();
 
                 configure?.Invoke(opts);
-            });
+            }, ExtensionDiscovery.ManualOnly);
         }
 
         /// <summary>

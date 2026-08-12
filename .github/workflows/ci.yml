@@ -304,6 +304,7 @@ jobs:
           dotnet build Services/ConduitLLM.Gateway
           dotnet build Services/ConduitLLM.Admin
           dotnet build tools/WolverineSmokePublisher
+          dotnet build tools/ConduitLLM.Migrator
 
       - name: Two-host listener assertion
         run: pwsh ./scripts/test/wolverine-two-host-smoke.ps1 -NoBuild

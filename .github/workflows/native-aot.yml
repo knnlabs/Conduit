@@ -21,6 +21,29 @@ jobs:
     timeout-minutes: 90
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:16
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: conduit
+          POSTGRES_PASSWORD: conduitpass
+          POSTGRES_DB: conduitdb
+        options: >-
+          --health-cmd "pg_isready -U conduit -d conduitdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -38,13 +61,29 @@ jobs:
         shell: pwsh
         run: ./scripts/aot/publish-native.ps1
 
-      # Phase 0 records native boot failures as measurements. Keep publishing the
-      # binaries and reports while later phases burn down runtime incompatibilities.
       - name: Launch native OpenAPI smokes
         id: native-smoke
-        continue-on-error: true
         shell: pwsh
         run: ./scripts/aot/native-smoke.ps1
+
+      - name: Build release-owned migration and message probes
+        run: |
+          dotnet build tools/ConduitLLM.Migrator --configuration Release
+          dotnet build tools/WolverineSmokePublisher --configuration Release
+
+      - name: Native two-host PostgreSQL and Wolverine proof
+        shell: pwsh
+        run: ./scripts/test/wolverine-two-host-smoke.ps1 -NoBuild -Configuration Release -NativeArtifactDirectory artifacts/native-aot
+        env:
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+          REDIS_URL: redis://localhost:6379
+
+      - name: Native Gateway supported protocol and infrastructure boundary
+        shell: pwsh
+        run: ./scripts/aot/gateway-native-parity.ps1 -NoBuild -ArtifactDirectory artifacts/native-aot
+        env:
+          DATABASE_URL: postgresql://conduit:conduitpass@localhost:5432/conduitdb
+          REDIS_URL: redis://localhost:6379
 
       - name: Publish native baseline summary
         if: always()

@@ -47,6 +47,10 @@
     <Compile Update="Internal\Generated\**\*.cs" Watch="false" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(PublishAot)' == 'true'">
+    <RdXmlFile Include="NativeAot.rd.xml" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="ConduitLLM.IntegrationTests" />
   </ItemGroup>

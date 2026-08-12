@@ -50,6 +50,7 @@ namespace ConduitLLM.Gateway.Serialization;
 [JsonSerializable(typeof(ModelListItemDto))]
 [JsonSerializable(typeof(OpenAIErrorResponse))]
 [JsonSerializable(typeof(RerankResponse))]
+[JsonSerializable(typeof(RuntimeCapabilitiesResponse))]
 [JsonSerializable(typeof(ResponseObject))]
 [JsonSerializable(typeof(VideoGenerationTaskStatus))]
 public partial class GatewayHttpJsonContext : JsonSerializerContext;

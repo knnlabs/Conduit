@@ -1,5 +1,7 @@
 # NativeAOT audit and CI baselines
 
+Gateway runtime feature support, exclusions, process gates, and the third-party risk ledger are defined in [gateway-native-aot-feature-matrix.md](gateway-native-aot-feature-matrix.md). A successful publish alone is not a claim that the full JIT data plane is supported.
+
 NativeAOT readiness is measured separately from the normal JIT developer loop. The
 production services remain framework-dependent until the persistence and runtime
 parity phases are complete.

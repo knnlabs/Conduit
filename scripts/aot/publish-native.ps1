@@ -74,6 +74,40 @@ foreach ($service in @("Admin", "Gateway")) {
     })
 }
 
+# Publish the JSON-only SignalR/HTTP parity client as native code too. This proves
+# the client-side protocol path used by the process harness is statically compiled.
+$probeProject = Join-Path $repoRoot "Tests/ConduitLLM.GatewayNativeAotTests/ConduitLLM.GatewayNativeAotTests.csproj"
+$probeDirectory = Join-Path $runtimeRoot "probe"
+$probeSymbolDirectory = Join-Path $symbolsRoot "probe"
+$probeLogPath = Join-Path $reportsRoot "probe-publish.log"
+New-Item -ItemType Directory -Force -Path $probeDirectory, $probeSymbolDirectory | Out-Null
+$probeArguments = @(
+    "publish"
+    $probeProject
+    "--configuration", "Release"
+    "--runtime", "linux-x64"
+    "--self-contained", "true"
+    "--output", $probeDirectory
+    "--nologo"
+    "--tl:off"
+    "--verbosity", "minimal"
+    "-p:PublishAot=true"
+    "-p:StripSymbols=true"
+    "-p:UseSharedCompilation=false"
+)
+if ($NoRestore) {
+    $probeArguments += "--no-restore"
+}
+Write-Host "Publishing the Gateway NativeAOT parity client for linux-x64..."
+& dotnet @probeArguments 2>&1 | Tee-Object -FilePath $probeLogPath
+if ($LASTEXITCODE -ne 0) {
+    throw "Gateway parity client NativeAOT publish failed with exit code $LASTEXITCODE."
+}
+
+Get-ChildItem -LiteralPath $probeDirectory -File |
+    Where-Object { $_.Extension -in @(".dbg", ".pdb") } |
+    Move-Item -Destination $probeSymbolDirectory -Force
+
 [ordered]@{
     schemaVersion = 1
     generatedAtUtc = [DateTime]::UtcNow.ToString("O")

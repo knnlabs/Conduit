@@ -216,6 +216,15 @@ namespace ConduitLLM.Configuration
         {
             base.OnModelCreating(modelBuilder);
 
+            // EF's experimental NativeAOT compiled-model generator cannot emit query
+            // filters. The generated native model therefore omits them; its query data
+            // plane is explicitly excluded. Normal/JIT model construction retains the
+            // filters unchanged.
+            var generateNativeCompiledModel = string.Equals(
+                Environment.GetEnvironmentVariable("CONDUIT_EF_COMPILED_MODEL"),
+                "true",
+                StringComparison.OrdinalIgnoreCase);
+
             // Configure VirtualKeyGroup entity
             modelBuilder.Entity<VirtualKeyGroup>(entity =>
             {
@@ -366,7 +375,10 @@ namespace ConduitLLM.Configuration
                 entity.HasIndex(e => e.CreatedAt);
                 entity.HasIndex(e => e.DeletedAt);
                 entity.HasIndex(e => new { e.VirtualKeyId, e.CreatedAt });
-                entity.HasQueryFilter(e => e.DeletedAt == null);
+                if (!generateNativeCompiledModel)
+                {
+                    entity.HasQueryFilter(e => e.DeletedAt == null);
+                }
 
                 // Keep cascade semantics for key deletion: the storage reconciliation sweep
                 // independently discovers and removes objects left behind in external storage.
@@ -458,7 +470,10 @@ namespace ConduitLLM.Configuration
                       .HasConversion<int>();
 
                 // Global query filter for soft deletes (EF Core 10 named query filter)
-                entity.HasQueryFilter("SoftDelete", t => !t.IsDeleted);
+                if (!generateNativeCompiledModel)
+                {
+                    entity.HasQueryFilter("SoftDelete", t => !t.IsDeleted);
+                }
             });
 
             // Configure ProviderTool entity

@@ -61,6 +61,10 @@
     <Compile Update="Internal\Generated\**\*.cs" Watch="false" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(PublishAot)' == 'true'">
+    <RdXmlFile Include="NativeAot.rd.xml" />
+  </ItemGroup>
+
   <!-- Exclude appsettings.json from being copied when referenced as a project dependency -->
   <ItemGroup>
     <Content Update="appsettings.json" CopyToPublishDirectory="Never" />

@@ -43,6 +43,12 @@
     <Compile Remove="Data\SimpleMigrationService.cs" />
   </ItemGroup>
 
+  <!-- The generated EF model is a native runtime artifact. Excluding it from JIT
+       builds keeps the existing model construction and query-filter behavior. -->
+  <ItemGroup Condition="'$(PublishAot)' != 'true'">
+    <Compile Remove="Data\CompiledModels\**\*.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="ConduitLLM.Tests" />
   </ItemGroup>
