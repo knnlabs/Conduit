@@ -61,3 +61,6 @@ executable and passed against PostgreSQL 16. This measures the fallback seam, no
 service or the EF workload. Replacing EF would touch at least the 37 inventoried query-owning files plus
 transaction and test infrastructure, so it is a multi-phase migration rather than a
 package swap. A new ADR is required before any production-native promotion.
+
+The parallel candidate-image and deferred-promotion procedure is documented in
+`docs/operations/native-aot-canary.md`; it does not supersede this decision.
