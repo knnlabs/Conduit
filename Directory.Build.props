@@ -34,6 +34,19 @@
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
+  <!--
+    Opt-in NativeAOT audit profile. This intentionally enables compatibility
+    analyzers without setting PublishAot: native linking remains service/RID
+    specific and is exercised by the dedicated native workflow.
+  -->
+  <PropertyGroup Condition="'$(ConduitAotAudit)' == 'true'">
+    <IsAotCompatible>true</IsAotCompatible>
+    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
+    <EnableConfigurationBindingGenerator>true</EnableConfigurationBindingGenerator>
+  </PropertyGroup>
+
   <ItemGroup>
     <AssemblyMetadata Include="ConduitCommitSha" Value="$(ConduitCommitSha)" />
     <AssemblyMetadata Include="ConduitBuildTimestamp" Value="$(ConduitBuildTimestamp)" />

@@ -1,0 +1,2040 @@
+{
+  "schemaVersion": 1,
+  "description": "Maximum first-party analyzer diagnostics by project, warning code, and source file. Counts may decrease without updating this file.",
+  "groups": [
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/DTOs/ResolveIndeterminateTaskDto.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/AdminEndpointHandlerBase.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/AdminResults.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ConfigurationEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/JsonMergePatch.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelCostsEndpoints.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelEndpoints.Identifiers.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelSeriesEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/PricingEndpoints.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/PricingEndpoints.Simulation.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/PromptCachingEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ValidationEndpointFilter.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Extensions/ServiceCollectionExtensions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Middleware/AdminExceptionMiddleware.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Program.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Program.Messaging.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/AdminIpFilterService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/AdminModelCostService.Parsers.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/AdminProviderSyncService.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/AnalyticsService.Helpers.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/MediaCleanupStatusService.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/ModelCostCanaryHostedService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/OpenRouterDriftDetectionService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/PricingConfigurationAuditHostedService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/RefundService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Admin/Services/ServiceHeartbeatStore.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2075",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ValidationEndpointFilter.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL2090",
+      "file": "Services/ConduitLLM.Admin/Endpoints/JsonMergePatch.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/AdminEndpointHandlerBase.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/AdminResults.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ConfigurationEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/JsonMergePatch.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelCostsEndpoints.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelEndpoints.Identifiers.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/ModelSeriesEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/PricingEndpoints.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/PricingEndpoints.Simulation.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Endpoints/PromptCachingEndpoints.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Middleware/AdminExceptionMiddleware.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Program.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Program.Messaging.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/AdminIpFilterService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/AdminModelCostService.Parsers.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/AdminProviderSyncService.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/AdminSystemInfoService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/AnalyticsService.Helpers.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/MediaCleanupStatusService.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/ModelCostCanaryHostedService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/OpenRouterDriftDetectionService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/PricingConfigurationAuditHostedService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/RefundService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Admin",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Admin/Services/ServiceHeartbeatStore.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Data/ConfigurationDbContext.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/BulkModelMappingDto.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/GlobalSettingDto.cs",
+      "count": 11
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/ModelCostDto.Create.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/ModelCostDto.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/ModelCostDto.Update.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/ProviderCreateUpdateDto.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/ProviderToolDto.cs",
+      "count": 8
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/VirtualKey/CreateVirtualKeyGroupRequestDto.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/VirtualKey/CreateVirtualKeyRequestDto.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/VirtualKey/UpdateVirtualKeyGroupRequestDto.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/DTOs/VirtualKey/UpdateVirtualKeyRequestDto.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/AsyncTask.cs",
+      "count": 6
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/BatchOperationHistory.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/BillingAuditEvent.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/GlobalSetting.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/IpFilterEntity.cs",
+      "count": 6
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/MediaRecord.cs",
+      "count": 6
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/MediaRetentionPolicy.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ModelAuthor.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ModelCost.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ModelProviderMapping.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ModelProviderTypeAssociation.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ModelRoutePolicy.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/Notification.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/PricingAuditEvent.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/Provider.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ProviderMetadataDriftItem.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ProviderMetadataSyncRun.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/ProviderTool.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/RefundIdempotencyRecord.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/RequestLog.cs",
+      "count": 7
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/VirtualKey.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/VirtualKeyGroup.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Entities/VirtualKeyGroupTransaction.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/EntityConfigurations/ProviderEntityConfiguration.cs",
+      "count": 10
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Extensions/ProviderMappingExtensions.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/ModelCatalogs/BundledModelCatalog.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Models/ModelCapabilityMetadata.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Options/BillingReconciliationOptions.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Repositories/ModelRepository.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Repositories/RequestLogRepository.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Services/BillingAlertingService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Services/RequestLogService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Utilities/JsonMetadataParser.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Configuration/Utilities/VirtualKeyUtilities.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2091",
+      "file": "Shared/ConduitLLM.Configuration/Messaging/MessagingServiceCollectionExtensions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL2093",
+      "file": "Shared/ConduitLLM.Configuration/Interceptors/RowCountingDataReader.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Data/ConfigurationDbContext.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Data/MigrationWaitService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Data/SimpleMigrationService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/EntityConfigurations/ProviderEntityConfiguration.cs",
+      "count": 10
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Extensions/ProviderMappingExtensions.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/ModelCatalogs/BundledModelCatalog.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Models/ModelCapabilityMetadata.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Repositories/ModelRepository.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Repositories/RequestLogRepository.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Services/BillingAlertingService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Services/RequestLogService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Utilities/JsonMetadataParser.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Configuration",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Configuration/Utilities/VirtualKeyUtilities.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Decorators/PromptCachingLLMClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Events/DomainEvents.ImageGeneration.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Extensions/SignalRConfigurationExtensions.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Helpers/WebhookPayloadHelper.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Middleware/OpenAIErrorMiddleware.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Models/OpenAiChatOptions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Models/PromptCachingConfig.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Models/ToolChoice.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/Abstractions/MediaGenerationOrchestrator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/AgenticOrchestrationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/CachedPricingRulesService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/CacheManager.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/CacheRegistry.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/ContextManager.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/CoordinatedConnectionPoolWarmer.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/CostCalculationService.PricingModels.cs",
+      "count": 6
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/EphemeralKeyServiceBase.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/FunctionDiscoveryService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Advanced.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Helpers.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Operations.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/ModelPricingConfigurationValidator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/ModelRateLimitPolicy.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/PricingRulesEvaluator.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/PricingRulesValidator.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/RedisCacheServiceBase.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/RedisErrorStore.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/RedisWebhookMetricsService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/TiktokenCounter.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/VideoGenerationOrchestrator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/VideoProgressTrackingOrchestrator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/VirtualKeyServiceBase.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Services/WebhookNotificationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Utilities/HttpClientHelper.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Utilities/MultimodalContentInspector.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Utilities/RateLimitResponseContract.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Core/Utilities/StreamHelper.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2070",
+      "file": "Shared/ConduitLLM.Core/Services/CacheRegistry.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Core/Decorators/ContextAwareLLMClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Core/Decorators/PerformanceTrackingLLMClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Core/Decorators/PromptCachingLLMClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Core/Services/Strategies/Base64MediaProcessor.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Core/Services/Strategies/UrlMediaProcessor.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Core/Services/UsageEstimationService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Core/Services/VideoGenerationOrchestrator.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL2091",
+      "file": "Shared/ConduitLLM.Core/Extensions/LeaderElectionServiceExtensions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Decorators/PromptCachingLLMClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Events/DomainEvents.ImageGeneration.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Extensions/SignalRConfigurationExtensions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Helpers/WebhookPayloadHelper.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Middleware/OpenAIErrorMiddleware.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Models/OpenAiChatOptions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Models/ToolChoice.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/Abstractions/MediaGenerationOrchestrator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/AgenticOrchestrationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/CachedPricingRulesService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/CacheManager.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/ContextManager.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/CoordinatedConnectionPoolWarmer.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/CostCalculationService.PricingModels.cs",
+      "count": 6
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/EphemeralKeyServiceBase.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/FunctionDiscoveryService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Advanced.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Helpers.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Operations.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/ModelPricingConfigurationValidator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/ModelRateLimitPolicy.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/PricingRulesEvaluator.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/PricingRulesValidator.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/RedisCacheServiceBase.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/RedisErrorStore.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/RedisWebhookMetricsService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/TiktokenCounter.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/VideoGenerationOrchestrator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/VideoProgressTrackingOrchestrator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/VirtualKeyServiceBase.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Services/WebhookNotificationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Utilities/HttpClientHelper.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Utilities/MultimodalContentInspector.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Utilities/RateLimitResponseContract.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Core",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Core/Utilities/StreamHelper.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/DTOs/CreateFunctionConfigurationRequest.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/DTOs/CreateFunctionCostRequest.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/DTOs/FunctionExecutionRequestDto.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/DTOs/UpdateFunctionConfigurationRequest.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Entities/FunctionCallAudit.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Entities/FunctionConfiguration.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Entities/FunctionCost.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Entities/FunctionCredential.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Entities/FunctionExecution.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Entities/FunctionExecutionAudit.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/Exa/ExaClient.Contents.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/Exa/ExaClient.Search.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/Exa/ExaClient.Usage.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/FunctionClientBase.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/Mcp/McpFunctionClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/Mcp/McpServerSettings.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/Tavily/TavilyClient.Search.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Providers/Tavily/TavilyClient.Usage.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionCostCalculationService.Estimation.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionCostCalculationService.Hybrid.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionCostCalculationService.Tiered.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionExecutionService.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionParameterValidationService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Utilities/HybridCacheAccessor.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Functions/Utilities/StructuredJson.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/Exa/ExaClient.Contents.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/Exa/ExaClient.Search.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/Exa/ExaClient.Usage.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/FunctionClientBase.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/Mcp/McpFunctionClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/Mcp/McpServerSettings.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/Tavily/TavilyClient.Search.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Providers/Tavily/TavilyClient.Usage.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionCostCalculationService.Estimation.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionCostCalculationService.Hybrid.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionCostCalculationService.Tiered.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionExecutionService.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Services/FunctionParameterValidationService.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Utilities/HybridCacheAccessor.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Functions",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Functions/Utilities/StructuredJson.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Authentication/SignalRAuthenticationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Consumers/WebhookDeliveryConsumer.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/AudioEndpoints.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ChatEndpoints.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ChatEndpoints.Streaming.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/DiscoveryEndpoints.cs",
+      "count": 6
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/FunctionsEndpoints.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/GatewayEndpointHandlerBase.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/GatewayResults.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ImagesEndpoints.Async.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ResponsesEndpoints.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/VideosEndpoints.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/EventHandlers/IndeterminateMediaTaskRetryRequestedHandler.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Extensions/BillingServicesExtensions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Extensions/ObservabilityExtensions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Middleware/BillingPolicyHandler.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Middleware/RedisAvailabilityMiddleware.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Middleware/UsageExtractor.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Middleware/UsageTrackingMiddleware.BillingAndMetrics.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Middleware/UsageTrackingMiddleware.TypedProcessing.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Options/GatewayJsonOptions.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Program.Configuration.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Program.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Program.Messaging.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/RateLimiting/RateLimitResponse.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Services/BillingReconciliationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Services/DiscoveryCacheWarmingService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Services/EnhancedSSEResponseWriter.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Services/RedisModelCostCache.Helpers.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Services/SpendNotification/SpendDataRepository.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Services/ToolCostCalculationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL2026",
+      "file": "Services/ConduitLLM.Gateway/Utilities/FunctionExecutionSerializer.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Authentication/SignalRAuthenticationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Consumers/WebhookDeliveryConsumer.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/AudioEndpoints.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ChatEndpoints.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ChatEndpoints.Streaming.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/DiscoveryEndpoints.cs",
+      "count": 6
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/FunctionsEndpoints.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/GatewayEndpointHandlerBase.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/GatewayResults.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ImagesEndpoints.Async.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/ResponsesEndpoints.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Endpoints/VideosEndpoints.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/EventHandlers/IndeterminateMediaTaskRetryRequestedHandler.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Middleware/BillingPolicyHandler.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Middleware/RedisAvailabilityMiddleware.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Middleware/UsageExtractor.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Middleware/UsageTrackingMiddleware.BillingAndMetrics.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Middleware/UsageTrackingMiddleware.TypedProcessing.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Options/GatewayJsonOptions.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Program.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Program.Messaging.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/RateLimiting/RateLimitResponse.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Services/BillingReconciliationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Services/DiscoveryCacheWarmingService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Services/EnhancedSSEResponseWriter.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Services/RedisModelCostCache.Helpers.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Services/SpendNotification/SpendDataRepository.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Services/ToolCostCalculationService.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Gateway",
+      "code": "IL3050",
+      "file": "Services/ConduitLLM.Gateway/Utilities/FunctionExecutionSerializer.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Helpers/ContentHelper.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Helpers/PromptCacheMarkerInjector.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/Bedrock/BedrockClient.Chat.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Images.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Models.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Chat.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.ModelsAndAuth.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Streaming.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Videos.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Audio.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Mapping.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Streaming.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterClient.Mapping.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterMultimodalValidator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Predictions.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Utilities.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Providers/Vertex/GoogleServiceAccountTokenProvider.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Providers/Streaming/GroqChunkConverter.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Providers/Helpers/ContentHelper.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL2075",
+      "file": "Shared/ConduitLLM.Providers/ProviderKeyFailoverLLMClient.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Helpers/ContentHelper.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Helpers/PromptCacheMarkerInjector.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/Bedrock/BedrockClient.Chat.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Images.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Models.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Chat.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.ModelsAndAuth.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Streaming.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Videos.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Audio.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Mapping.cs",
+      "count": 5
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Streaming.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterClient.Mapping.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterMultimodalValidator.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Predictions.cs",
+      "count": 3
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Utilities.cs",
+      "count": 2
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Providers/Vertex/GoogleServiceAccountTokenProvider.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Providers",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Providers/Streaming/GroqChunkConverter.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Security",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Security/Middleware/SecurityMiddlewareBase.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Security",
+      "code": "IL2026",
+      "file": "Shared/ConduitLLM.Security/Services/SecurityServiceBase.cs",
+      "count": 4
+    },
+    {
+      "project": "ConduitLLM.Security",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Security/Middleware/SecurityMiddlewareBase.cs",
+      "count": 1
+    },
+    {
+      "project": "ConduitLLM.Security",
+      "code": "IL3050",
+      "file": "Shared/ConduitLLM.Security/Services/SecurityServiceBase.cs",
+      "count": 4
+    }
+  ]
+}

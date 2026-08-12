@@ -1,0 +1,95 @@
+name: NativeAOT
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '23 8 * * 1'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-and-smoke:
+    name: linux-x64 publish and process smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install NativeAOT toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes clang zlib1g-dev
+
+      - name: Publish both native services
+        shell: pwsh
+        run: ./scripts/aot/publish-native.ps1
+
+      # Phase 0 records native boot failures as measurements. Keep publishing the
+      # binaries and reports while later phases burn down runtime incompatibilities.
+      - name: Launch native OpenAPI smokes
+        id: native-smoke
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/aot/native-smoke.ps1
+
+      - name: Publish native baseline summary
+        if: always()
+        shell: pwsh
+        run: |
+          $report = Get-Content artifacts/native-aot/reports/native-baselines.json -Raw | ConvertFrom-Json
+          @(
+            '# NativeAOT linux-x64 baselines'
+            ''
+            '| Service | Publish (s) | Executable (MiB) | OpenAPI ready (ms) | Peak working set (MiB) | Smoke |'
+            '|---|---:|---:|---:|---:|---|'
+          ) | Add-Content $env:GITHUB_STEP_SUMMARY
+          foreach ($service in $report.services) {
+            $publish = [Math]::Round($service.publishDurationMilliseconds / 1000, 2)
+            $size = [Math]::Round($service.executableBytes / 1MB, 2)
+            $memory = [Math]::Round($service.peakWorkingSetBytes / 1MB, 2)
+            "| $($service.service) | $publish | $size | $($service.openApiReadyMilliseconds) | $memory | $($service.smokeSucceeded) |" |
+              Add-Content $env:GITHUB_STEP_SUMMARY
+          }
+
+      - name: Upload Admin native runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: conduit-admin-linux-x64-native
+          path: artifacts/native-aot/runtime/admin
+          retention-days: 30
+
+      - name: Upload Gateway native runtime
+        uses: actions/upload-artifact@v4
+        with:
+          name: conduit-gateway-linux-x64-native
+          path: artifacts/native-aot/runtime/gateway
+          retention-days: 30
+
+      - name: Upload native symbols
+        uses: actions/upload-artifact@v4
+        with:
+          name: conduit-linux-x64-native-symbols
+          path: artifacts/native-aot/symbols
+          retention-days: 14
+
+      - name: Upload native diagnostics and baselines
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: conduit-linux-x64-native-reports
+          path: artifacts/native-aot/reports
+          retention-days: 90
