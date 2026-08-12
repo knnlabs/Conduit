@@ -455,12 +455,6 @@
     {
       "project": "ConduitLLM.Core",
       "code": "IL2026",
-      "file": "Shared/ConduitLLM.Core/Services/CostCalculationService.PricingModels.cs",
-      "count": 6
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL2026",
       "file": "Shared/ConduitLLM.Core/Services/EphemeralKeyServiceBase.cs",
       "count": 2
     },
@@ -649,12 +643,6 @@
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Core/Services/CoordinatedConnectionPoolWarmer.cs",
       "count": 2
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Core/Services/CostCalculationService.PricingModels.cs",
-      "count": 6
     },
     {
       "project": "ConduitLLM.Core",

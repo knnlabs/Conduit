@@ -40,11 +40,13 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **370** unique first-party diagnostics,
-down from 509 before the first epic-level cleanup. The first cleanup removed all
-139 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
-validation and an explicit collection-count validator. The production-assembly
-architecture test prevents that reflection-based attribute from returning.
+The 2026-08-12 post-phase audit contains **358** unique first-party diagnostics,
+down from 509 before the epic-level cleanups. The first cleanup removed all 139
+`MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
+validation and an explicit collection-count validator. The next cleanup removed 12
+paired `IL2026`/`IL3050` diagnostics from the closed pricing-configuration shapes by
+adding source-generated JSON metadata. Regression tests preserve both validation and
+persisted pricing-wire behavior.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next
