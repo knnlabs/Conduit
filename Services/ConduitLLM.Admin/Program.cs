@@ -4,14 +4,9 @@ using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Serialization;
 using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
-using ConduitLLM.Core.Converters;
 using ConduitLLM.Core.Extensions;
-using ConduitLLM.Core.Serialization;
 using ConduitLLM.Security.Extensions;
 using ConduitLLM.Security.Middleware;
-
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 using JasperFx;
 using Microsoft.AspNetCore.OpenApi;
@@ -49,10 +44,20 @@ public partial class Program
         // Add services to the container
         // Keep Minimal API JSON aligned with the established Admin contract.
         builder.Services.ConfigureHttpJsonOptions(options =>
-            ConfigureAdminJson(options.SerializerOptions));
+            AdminJsonOptions.Configure(options.SerializerOptions));
+        builder.Services.AddValidation();
         builder.Services.AddProblemDetails(options =>
             options.CustomizeProblemDetails = context =>
             {
+                if (context.ProblemDetails is HttpValidationProblemDetails validation)
+                {
+                    context.ProblemDetails.Detail = string.Join(
+                        "; ",
+                        validation.Errors.SelectMany(static entry =>
+                            entry.Value.Select(message => string.IsNullOrEmpty(entry.Key)
+                                ? message
+                                : $"{entry.Key}: {message}")));
+                }
                 context.ProblemDetails.Extensions["code"] =
                     AdminErrorCodes.ForStatus(context.ProblemDetails.Status);
                 context.ProblemDetails.Extensions["traceId"] = context.HttpContext.TraceIdentifier;
@@ -276,25 +281,6 @@ public partial class Program
         return await app.RunJasperFxCommands(args);
     }
 
-    private static void ConfigureAdminJson(JsonSerializerOptions options)
-    {
-        options.TypeInfoResolverChain.Insert(0, AdminHttpJsonContext.Default);
-        options.TypeInfoResolverChain.Insert(1, CoreHttpJsonContext.Default);
-        if (options.TypeInfoResolverChain.All(static resolver =>
-                resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
-        {
-            options.TypeInfoResolverChain.Add(
-                new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
-        }
-
-        options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-        options.DictionaryKeyPolicy = JsonNamingPolicy.CamelCase;
-        options.PropertyNameCaseInsensitive = true;
-        options.Converters.Add(
-            new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false));
-        options.Converters.Add(new UtcDateTimeConverter());
-        options.Converters.Add(new NullableUtcDateTimeConverter());
-    }
 }
 
 // Make Program accessible for testing

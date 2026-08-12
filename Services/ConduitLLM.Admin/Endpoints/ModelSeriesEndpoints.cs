@@ -19,7 +19,6 @@ public static class ModelSeriesEndpoints
         var group = app.MapGroup("/v1/admin/model-series")
             .RequireAuthorization("MasterKeyPolicy")
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
-            .AddEndpointFilter<ValidationEndpointFilter>()
             .WithTags("ModelSeries");
 
         group.MapGet("/", GetAll).WithName("ModelSeries_GetAll")

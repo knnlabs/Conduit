@@ -49,12 +49,6 @@ namespace ConduitLLM.Core.Extensions
                 resolverChain.Insert(
                     0,
                     ConfigurationSignalRJsonContext.Default);
-                if (resolverChain.All(static resolver =>
-                        resolver is not System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver))
-                {
-                    resolverChain.Add(
-                        new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver());
-                }
             });
 
             // Add MessagePack protocol support with LZ4 compression

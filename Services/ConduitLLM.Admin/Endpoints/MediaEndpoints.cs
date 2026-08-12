@@ -19,7 +19,6 @@ public static class MediaEndpoints
     {
         var media = app.MapGroup("/v1/admin/media-assets")
             .RequireAuthorization("MasterKeyPolicy")
-            .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Media");
 
@@ -69,7 +68,6 @@ public static class MediaEndpoints
 
         var cleanup = app.MapGroup("/v1/admin/media-cleanup-jobs")
             .RequireAuthorization("MasterKeyPolicy")
-            .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Media Cleanup");
 

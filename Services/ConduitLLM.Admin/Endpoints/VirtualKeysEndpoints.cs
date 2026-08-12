@@ -38,7 +38,6 @@ public partial class VirtualKeysEndpoints : AdminEndpointHandlerBase
     {
         var group = app.MapGroup("/v1/admin/virtual-keys")
             .AddEndpointFilter<VersionedResourceEndpointFilter>()
-            .AddEndpointFilter<ValidationEndpointFilter>()
             .AddEndpointFilter<OperationLoggingEndpointFilter>()
             .WithTags("Virtual Keys");
 

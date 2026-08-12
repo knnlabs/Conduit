@@ -1,5 +1,6 @@
 using System.Text.Json;
 
+using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Gateway.Options;
 
@@ -15,19 +16,19 @@ public sealed class GatewayJsonOptionsTests
     public void SerializerUsesSnakeCaseForPropertiesAndEnums()
     {
         var json = JsonSerializer.Serialize(
-            new WireSample("request-1", WireState.InProgress),
+            new AsyncTaskStatus { TaskId = "request-1", State = TaskState.Processing },
             GatewayJsonOptions.Create());
 
-        Assert.Equal(
-            """{"request_id":"request-1","state":"in_progress"}""",
-            json);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal("request-1", document.RootElement.GetProperty("task_id").GetString());
+        Assert.Equal("processing", document.RootElement.GetProperty("state").GetString());
     }
 
     [Fact]
     public void SerializerRejectsIntegerEnumValues()
     {
-        var deserialize = () => JsonSerializer.Deserialize<WireSample>(
-            """{"request_id":"request-1","state":1}""",
+        var deserialize = () => JsonSerializer.Deserialize<AsyncTaskStatus>(
+            """{"task_id":"request-1","state":1}""",
             GatewayJsonOptions.Create());
 
         Assert.Throws<JsonException>(deserialize);
@@ -67,13 +68,5 @@ public sealed class GatewayJsonOptionsTests
         Assert.Equal(
             "2026-07-26T12:30:00Z",
             document.RootElement.GetProperty("completed_at").GetString());
-    }
-
-    private sealed record WireSample(string RequestId, WireState State);
-
-    private enum WireState
-    {
-        Pending,
-        InProgress
     }
 }

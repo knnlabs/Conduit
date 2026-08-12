@@ -51,7 +51,7 @@ namespace ConduitLLM.Admin.Endpoints
 
         public static IEndpointRouteBuilder MapModelCostsEndpoints(IEndpointRouteBuilder app)
         {
-            var g = app.MapGroup("/v1/admin/model-costs").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<ValidationEndpointFilter>().AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Model Costs");
+            var g = app.MapGroup("/v1/admin/model-costs").RequireAuthorization("MasterKeyPolicy").AddEndpointFilter<OperationLoggingEndpointFilter>().WithTags("Model Costs");
             g.MapGet("/", ([FromServices] ModelCostsEndpoints e, int? page=null, int? pageSize=null, string? modelType=null, int? providerId=null, bool? isActive=null) => e.GetAllModelCosts(page,pageSize,modelType,providerId,isActive)).WithName("ModelCosts_GetAll").Produces<PagedResult<ModelCostDto>>();
             g.MapGet("/{id:int}", ([FromServices] ModelCostsEndpoints e,int id)=>e.GetModelCostById(id)).WithName("ModelCosts_GetById").Produces<ModelCostDto>().Produces(StatusCodes.Status404NotFound);
             g.MapGet("/provider/costs/{providerId:int}", ([FromServices] ModelCostsEndpoints e,int providerId)=>e.GetModelCostsByProvider(providerId)).WithName("ModelCosts_GetByProvider").Produces<IEnumerable<ModelCostDto>>();
