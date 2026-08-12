@@ -40,7 +40,7 @@
   <ItemGroup>
     <Compile Remove="Messaging\*.cs" />
     <Compile Remove="Messaging\Wolverine\*.cs" />
-    <Compile Remove="Data\MigrationCommand.cs" />
+    <Compile Remove="Data\SimpleMigrationService.cs" />
   </ItemGroup>
 
   <ItemGroup>

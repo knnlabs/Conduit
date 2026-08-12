@@ -21,10 +21,12 @@
     <Project Path="Tests/ConduitLLM.BillingInvariantTests/ConduitLLM.BillingInvariantTests.csproj" />
     <Project Path="Tests/ConduitLLM.FaultInjectionTests/ConduitLLM.FaultInjectionTests.csproj" />
     <Project Path="Tests/ConduitLLM.IntegrationTests/ConduitLLM.IntegrationTests.csproj" />
+    <Project Path="Tests/ConduitLLM.PersistenceAotTests/ConduitLLM.PersistenceAotTests.csproj" />
     <Project Path="Tests/ConduitLLM.SerializationTests/ConduitLLM.SerializationTests.csproj" />
     <Project Path="Tests/ConduitLLM.Tests/ConduitLLM.Tests.csproj" />
   </Folder>
   <Folder Name="/tools/">
+    <Project Path="tools/ConduitLLM.Migrator/ConduitLLM.Migrator.csproj" />
     <Project Path="tools/openapi/GenerateOpenApiSpecs/GenerateOpenApiSpecs.csproj" />
     <Project Path="tools/WolverineSmokePublisher/WolverineSmokePublisher.csproj" />
   </Folder>

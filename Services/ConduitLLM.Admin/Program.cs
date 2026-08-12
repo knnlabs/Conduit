@@ -2,7 +2,6 @@ using ConduitLLM.Admin.Endpoints;
 using ConduitLLM.Admin.DTOs;
 using ConduitLLM.Admin.Extensions;
 using ConduitLLM.Admin.Serialization;
-using ConduitLLM.Configuration.Data;
 using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Security.Extensions;
@@ -27,16 +26,9 @@ public partial class Program
     /// Application entry point that configures and starts the web application
     /// </summary>
     /// <param name="args">Command line arguments</param>
-    /// <returns>Process exit code (nonzero when the "migrate" verb fails)</returns>
+    /// <returns>Process exit code</returns>
     public static async Task<int> Main(string[] args)
     {
-        // "migrate" verb: run the standalone migrator (release-hook entry point)
-        // instead of the web host — e.g. `dotnet ConduitLLM.Admin.dll migrate`.
-        if (MigrationCommand.Matches(args))
-        {
-            return await MigrationCommand.RunAsync();
-        }
-
         var builder = WebApplication.CreateBuilder(args);
 
         // Create a startup logger for structured logging during service registration

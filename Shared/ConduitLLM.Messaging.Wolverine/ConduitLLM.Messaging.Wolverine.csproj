@@ -18,8 +18,6 @@
   <ItemGroup>
     <Compile Include="..\ConduitLLM.Configuration\Messaging\Wolverine\*.cs"
              Link="Wolverine\%(Filename)%(Extension)" />
-    <Compile Include="..\ConduitLLM.Configuration\Data\MigrationCommand.cs"
-             Link="Data\MigrationCommand.cs" />
     <Compile Include="..\ConduitLLM.Core\Messaging\ConduitMessagingTopology.cs"
              Link="Messaging\ConduitMessagingTopology.cs" />
     <Compile Include="..\ConduitLLM.Core\Extensions\SharedCacheInvalidationMessagingExtensions.cs"

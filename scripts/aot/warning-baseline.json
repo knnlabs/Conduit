@@ -705,10 +705,10 @@
       "count": 2
     },
     {
-      "project": "ConduitLLM.Core",
+      "project": "ConduitLLM.SignalR",
       "code": "IL2026",
       "file": "Shared/ConduitLLM.Core/Extensions/SignalRConfigurationExtensions.cs",
-      "count": 2
+      "count": 1
     },
     {
       "project": "ConduitLLM.Core",
@@ -861,7 +861,7 @@
       "count": 1
     },
     {
-      "project": "ConduitLLM.Core",
+      "project": "ConduitLLM.Tokenization",
       "code": "IL2026",
       "file": "Shared/ConduitLLM.Core/Services/TiktokenCounter.cs",
       "count": 1
@@ -1125,7 +1125,7 @@
       "count": 1
     },
     {
-      "project": "ConduitLLM.Core",
+      "project": "ConduitLLM.Tokenization",
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Core/Services/TiktokenCounter.cs",
       "count": 1

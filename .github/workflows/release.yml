@@ -122,11 +122,12 @@ jobs:
         # tag or GitHub Release is updated. Re-running the job is idempotent.
         run: |
           docker run --rm \
+            --entrypoint dotnet \
             --env DATABASE_URL \
             --env CONDUIT_MIGRATION_LOCK_TIMEOUT_SECONDS=600 \
             --env ConduitLLM__Messaging__Wolverine__AutoProvision=false \
             "${{ env.REGISTRY }}/nickna/conduit-admin:${{ needs.metadata.outputs.version }}-candidate" \
-            migrate
+            /app/migrator/ConduitLLM.Migrator.dll
 
   promote:
     name: Promote release images

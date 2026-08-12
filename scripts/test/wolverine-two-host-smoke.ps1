@@ -82,6 +82,7 @@ $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..' '..')
 $adminProject = Join-Path $repoRoot 'Services' 'ConduitLLM.Admin'
 $gatewayProject = Join-Path $repoRoot 'Services' 'ConduitLLM.Gateway'
 $publisherProject = Join-Path $repoRoot 'tools' 'WolverineSmokePublisher'
+$migratorProject = Join-Path $repoRoot 'tools' 'ConduitLLM.Migrator'
 $logDir = Join-Path ([System.IO.Path]::GetTempPath()) "wolverine-two-host-$PID"
 New-Item -ItemType Directory -Force $logDir | Out-Null
 
@@ -171,7 +172,7 @@ function Get-HostLog([string]$Name) {
 $env:DATABASE_URL = $DatabaseUrl
 if ($RedisUrl) { $env:REDIS_URL = $RedisUrl }
 $env:ConduitLLM__Messaging__Backend = 'Wolverine'
-$env:CONDUIT_MIGRATION_MODE = 'Skip'   # migrations are applied via the migrate verb below
+$env:CONDUIT_MIGRATION_MODE = 'Skip'   # migrations are applied by the standalone executable below
 $env:ASPNETCORE_ENVIRONMENT = 'Production'
 $env:CONDUIT_ENABLE_HTTPS_REDIRECTION = 'false'
 
@@ -183,11 +184,13 @@ if (-not $NoBuild) {
     if ($LASTEXITCODE -ne 0) { exit 1 }
     dotnet build $publisherProject -c $Configuration
     if ($LASTEXITCODE -ne 0) { exit 1 }
+    dotnet build $migratorProject -c $Configuration
+    if ($LASTEXITCODE -ne 0) { exit 1 }
 }
 
-Write-Host '== Applying EF migrations (migrate verb) =='
-dotnet (Join-Path $adminProject 'bin' $Configuration 'net10.0' 'ConduitLLM.Admin.dll') migrate
-if ($LASTEXITCODE -ne 0) { Write-Error 'migrate verb failed' }
+Write-Host '== Applying EF migrations (standalone migrator) =='
+dotnet (Join-Path $migratorProject 'bin' $Configuration 'net10.0' 'ConduitLLM.Migrator.dll')
+if ($LASTEXITCODE -ne 0) { Write-Error 'standalone migrator failed' }
 
 $admin = $null
 $gateway = $null

@@ -2,9 +2,12 @@ using System.Reflection;
 
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
+using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.OpenApi;
 using ConduitLLM.Core.Services;
+
+using Microsoft.EntityFrameworkCore;
 
 namespace ConduitLLM.Tests.Architecture;
 
@@ -76,6 +79,53 @@ public sealed class AotDependencyBoundaryTests
         Assert.Equal("ConduitLLM.OpenApi", typeof(OperationMetadataTransformer).Assembly.GetName().Name);
         Assert.Equal("ConduitLLM.Tokenization", typeof(TiktokenCounter).Assembly.GetName().Name);
         Assert.Equal("ConduitLLM.Media", typeof(S3MediaStorageService).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void WebServicesCannotReferenceSchemaMutationExecutable()
+    {
+        AssertDoesNotReference(typeof(ConduitLLM.Admin.Program).Assembly, "ConduitLLM.Migrator");
+        AssertDoesNotReference(Assembly.Load("ConduitLLM.Gateway"), "ConduitLLM.Migrator");
+        Assert.Equal("ConduitLLM.Migrator", typeof(ConduitLLM.Configuration.Data.SimpleMigrationService).Assembly.GetName().Name);
+    }
+
+    [Fact]
+    public void RepositoryAbstractionsDoNotExposeQueryable()
+    {
+        var repositoryInterfaces = typeof(IProviderRepository).Assembly
+            .GetExportedTypes()
+            .Where(type => type.IsInterface && type.Name.EndsWith("Repository", StringComparison.Ordinal));
+
+        foreach (var repositoryInterface in repositoryInterfaces)
+        {
+            foreach (var method in repositoryInterface.GetMethods())
+            {
+                Assert.False(ContainsQueryable(method.ReturnType), $"{repositoryInterface.Name}.{method.Name} returns IQueryable");
+                Assert.DoesNotContain(method.GetParameters(), parameter => ContainsQueryable(parameter.ParameterType));
+            }
+        }
+    }
+
+    [Fact]
+    public void CompiledSchemaVersionMatchesLatestMigration()
+    {
+        var options = new DbContextOptionsBuilder<ConduitLLM.Configuration.ConduitDbContext>()
+            .UseNpgsql("Host=localhost;Database=schema_inventory;Username=unused;Password=unused")
+            .Options;
+        using var context = new ConduitLLM.Configuration.ConduitDbContext(options);
+
+        Assert.Equal(ConduitLLM.Configuration.Data.ConduitSchemaVersion.Current, context.Database.GetMigrations().Last());
+    }
+
+    private static bool ContainsQueryable(Type type)
+    {
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IQueryable<>))
+        {
+            return true;
+        }
+
+        return type.HasElementType && ContainsQueryable(type.GetElementType()!)
+            || type.IsGenericType && type.GetGenericArguments().Any(ContainsQueryable);
     }
 
     private static void AssertDoesNotReference(Assembly assembly, params string[] forbiddenPrefixes)
