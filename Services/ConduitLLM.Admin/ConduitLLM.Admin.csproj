@@ -25,12 +25,12 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Scalar.AspNetCore" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Condition="'$(ConduitEfTooling)' == 'true'">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Build.Tasks.Core" />
-    <PackageReference Include="Microsoft.Build.Utilities.Core" />
+    <PackageReference Include="Microsoft.Build.Tasks.Core" PrivateAssets="all" Condition="'$(ConduitEfTooling)' == 'true'" />
+    <PackageReference Include="Microsoft.Build.Utilities.Core" PrivateAssets="all" Condition="'$(ConduitEfTooling)' == 'true'" />
     <PackageReference Include="System.Security.Cryptography.Xml" />
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" />
     <PackageReference Include="OpenTelemetry" />
@@ -48,6 +48,9 @@
     <ProjectReference Include="..\..\Shared\ConduitLLM.Core\ConduitLLM.Core.csproj" />
     <ProjectReference Include="..\..\Shared\ConduitLLM.Providers\ConduitLLM.Providers.csproj" />
     <ProjectReference Include="..\..\Shared\ConduitLLM.Security\ConduitLLM.Security.csproj" />
+    <ProjectReference Include="..\..\Shared\ConduitLLM.Media\ConduitLLM.Media.csproj" />
+    <ProjectReference Include="..\..\Shared\ConduitLLM.OpenApi\ConduitLLM.OpenApi.csproj" />
+    <ProjectReference Include="..\..\Shared\ConduitLLM.Messaging.Wolverine\ConduitLLM.Messaging.Wolverine.csproj" />
     <!-- WebAdmin reference removed, now using API client -->
   </ItemGroup>
 

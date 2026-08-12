@@ -60,7 +60,7 @@ namespace ConduitLLM.Configuration.Data
             {
                 throw new InvalidOperationException(
                     $"{ModeVariable}=Apply is no longer supported because web services never mutate the schema. " +
-                    $"Run the explicit migrator ('dotnet ConduitLLM.Admin.dll {MigrationCommand.Verb}') before rollout, " +
+                    $"Run the explicit migrator ('dotnet ConduitLLM.Admin.dll migrate') before rollout, " +
                     $"then use {ModeVariable}=Wait.");
             }
             else if (!Enum.TryParse(rawMode.Trim(), ignoreCase: true, out mode)

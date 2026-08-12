@@ -4,11 +4,17 @@
     <Project Path="Services/ConduitLLM.Gateway/ConduitLLM.Gateway.csproj" />
   </Folder>
   <Folder Name="/Shared/">
+    <Project Path="Shared/ConduitLLM.Contracts/ConduitLLM.Contracts.csproj" />
     <Project Path="Shared/ConduitLLM.Configuration/ConduitLLM.Configuration.csproj" />
     <Project Path="Shared/ConduitLLM.Core/ConduitLLM.Core.csproj" />
     <Project Path="Shared/ConduitLLM.Functions/ConduitLLM.Functions.csproj" />
+    <Project Path="Shared/ConduitLLM.Media/ConduitLLM.Media.csproj" />
+    <Project Path="Shared/ConduitLLM.Messaging.Wolverine/ConduitLLM.Messaging.Wolverine.csproj" />
+    <Project Path="Shared/ConduitLLM.OpenApi/ConduitLLM.OpenApi.csproj" />
     <Project Path="Shared/ConduitLLM.Providers/ConduitLLM.Providers.csproj" />
     <Project Path="Shared/ConduitLLM.Security/ConduitLLM.Security.csproj" />
+    <Project Path="Shared/ConduitLLM.SignalR/ConduitLLM.SignalR.csproj" />
+    <Project Path="Shared/ConduitLLM.Tokenization/ConduitLLM.Tokenization.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="Tests/ConduitLLM.Benchmarks/ConduitLLM.Benchmarks.csproj" />

@@ -155,6 +155,7 @@ public partial class Program
     /// </summary>
     public static void ConfigureContextManagementServices(WebApplicationBuilder builder)
     {
+        builder.Services.AddConduitTokenization();
         builder.Services.AddConduitContextManagement(builder.Configuration);
     }
 }
