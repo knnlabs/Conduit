@@ -198,28 +198,15 @@ namespace ConduitLLM.Configuration.Messaging.Wolverine
         public static void AddEventBridge<TEvent>(this WolverineOptions options)
             where TEvent : class
         {
-            options.AddEventBridge(typeof(TEvent));
-        }
-
-        /// <summary>
-        /// Non-generic overload of <see cref="AddEventBridge{TEvent}(WolverineOptions)"/>
-        /// for registering bridges from a shared event-type list.
-        /// </summary>
-        public static void AddEventBridge(this WolverineOptions options, Type eventType)
-        {
-            var bridgeType = typeof(WolverineHandlerBridge<>).MakeGenericType(eventType);
-
-            options.Discovery.IncludeType(bridgeType);
+            options.Discovery.IncludeType<WolverineHandlerBridge<TEvent>>();
 
             // The generated bridge adapter must resolve the scoped handler collection per
             // message. Some handlers behind that collection use opaque lambda factories,
             // typed clients, or IServiceScopeFactory, so Wolverine cannot safely inline
             // their complete construction graph. Keep the global service-location policy
             // at its strict default and opt in only this explicitly registered collection.
-            var handlersType = typeof(IEnumerable<>)
-                .MakeGenericType(typeof(IEventHandler<>).MakeGenericType(eventType));
-            options.CodeGeneration.AlwaysUseServiceLocationFor(handlersType);
-            options.Services.AddScoped(bridgeType);
+            options.CodeGeneration.AlwaysUseServiceLocationFor<IEnumerable<IEventHandler<TEvent>>>();
+            options.Services.AddScoped<WolverineHandlerBridge<TEvent>>();
         }
     }
 }

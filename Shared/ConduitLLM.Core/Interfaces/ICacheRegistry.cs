@@ -22,6 +22,11 @@ namespace ConduitLLM.Core.Interfaces
         void RegisterCustomRegion(string regionName, CacheRegionConfig config);
 
         /// <summary>
+        /// Registers a cache region and its compile-time usage metadata.
+        /// </summary>
+        void RegisterDescriptor(CacheRegionDescriptor descriptor);
+
+        /// <summary>
         /// Gets configuration for a specific region.
         /// </summary>
         /// <param name="region">The cache region.</param>
@@ -84,13 +89,6 @@ namespace ConduitLLM.Core.Interfaces
         Task<CacheRegionMetadata?> GetRegionMetadataAsync(CacheRegion region);
 
         /// <summary>
-        /// Discovers and registers cache regions from assemblies.
-        /// </summary>
-        /// <param name="assemblies">Assemblies to scan. If null, scans all loaded assemblies.</param>
-        /// <returns>Number of regions discovered and registered.</returns>
-        Task<int> DiscoverRegionsAsync(params System.Reflection.Assembly[]? assemblies);
-
-        /// <summary>
         /// Event raised when a region is registered.
         /// </summary>
         event EventHandler<CacheRegionEventArgs>? RegionRegistered;
@@ -105,6 +103,15 @@ namespace ConduitLLM.Core.Interfaces
         /// </summary>
         event EventHandler<CacheRegionEventArgs>? RegionUnregistered;
     }
+
+    /// <summary>
+    /// Static description of a cache region and its consumers.
+    /// </summary>
+    public sealed record CacheRegionDescriptor(
+        CacheRegion Region,
+        CacheRegionConfig Configuration,
+        IReadOnlyList<string>? Consumers = null,
+        IReadOnlyList<CacheRegion>? Dependencies = null);
 
     /// <summary>
     /// Metadata about cache region usage.

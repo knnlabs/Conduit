@@ -1,7 +1,5 @@
 using System.Collections.Concurrent;
-using System.Reflection;
 using Microsoft.Extensions.Logging;
-using ConduitLLM.Core.Attributes;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 
@@ -81,6 +79,25 @@ namespace ConduitLLM.Core.Services
                 IsCustomRegion = true,
                 CustomRegionName = regionName
             });
+        }
+
+        public void RegisterDescriptor(CacheRegionDescriptor descriptor)
+        {
+            ArgumentNullException.ThrowIfNull(descriptor);
+            RegisterRegion(descriptor.Region, descriptor.Configuration);
+
+            var metadata = _metadata[descriptor.Region];
+            foreach (var consumer in descriptor.Consumers ?? [])
+            {
+                if (!metadata.ConsumerServices.Contains(consumer, StringComparer.Ordinal))
+                    metadata.ConsumerServices.Add(consumer);
+            }
+
+            foreach (var dependency in descriptor.Dependencies ?? [])
+            {
+                if (!metadata.Dependencies.Contains(dependency))
+                    metadata.Dependencies.Add(dependency);
+            }
         }
 
         public CacheRegionConfig? GetRegionConfig(CacheRegion region)
@@ -186,267 +203,6 @@ namespace ConduitLLM.Core.Services
             }
 
             return metadata;
-        }
-
-        public async Task<int> DiscoverRegionsAsync(params Assembly[]? assemblies)
-        {
-            var targetAssemblies = assemblies?.Length > 0 
-                ? assemblies 
-                : AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.FullName) && 
-                            // Only scan ConduitLLM assemblies to avoid scanning all dependencies
-                            a.FullName.StartsWith("ConduitLLM", StringComparison.OrdinalIgnoreCase) &&
-                            // Skip test assemblies
-                            !a.FullName.Contains(".Tests", StringComparison.OrdinalIgnoreCase) &&
-                            !a.FullName.Contains(".Test.", StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-            var discoveredCount = 0;
-
-            foreach (var assembly in targetAssemblies)
-            {
-                try
-                {
-                    discoveredCount += await DiscoverInAssemblyAsync(assembly);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to discover cache regions in assembly {Assembly}", 
-                        assembly.FullName);
-                }
-            }
-
-            _logger.LogInformation("Discovered and registered {Count} cache regions from {AssemblyCount} assemblies",
-                discoveredCount, targetAssemblies.Length);
-
-            return discoveredCount;
-        }
-
-        private async Task<int> DiscoverInAssemblyAsync(Assembly assembly)
-        {
-            var count = 0;
-            var types = assembly.GetTypes();
-
-            foreach (var type in types)
-            {
-                // Check for CacheRegion attributes on the type
-                var regionAttrs = type.GetCustomAttributes<CacheRegionAttribute>();
-                foreach (var attr in regionAttrs)
-                {
-                    RegisterDiscoveredRegion(attr, type);
-                    count++;
-                }
-
-                // Check for CustomCacheRegion attributes
-                var customAttrs = type.GetCustomAttributes<CustomCacheRegionAttribute>();
-                foreach (var attr in customAttrs)
-                {
-                    RegisterDiscoveredCustomRegion(attr, type);
-                    count++;
-                }
-
-                // Check for CacheConfigurationProvider
-                var configProvider = type.GetCustomAttribute<CacheConfigurationProviderAttribute>();
-                if (configProvider != null)
-                {
-                    count += await RegisterFromConfigurationProviderAsync(type, configProvider);
-                }
-
-                // Check methods and properties
-                count += DiscoverInMembers(type);
-            }
-
-            return count;
-        }
-
-        private int DiscoverInMembers(Type type)
-        {
-            var count = 0;
-
-            // Check methods
-            var methods = type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            foreach (var method in methods)
-            {
-                var regionAttrs = method.GetCustomAttributes<CacheRegionAttribute>();
-                foreach (var attr in regionAttrs)
-                {
-                    RegisterDiscoveredRegion(attr, type, method.Name);
-                    count++;
-                }
-
-                // Track dependencies
-                var dependencies = method.GetCustomAttributes<CacheDependencyAttribute>();
-                foreach (var dep in dependencies)
-                {
-                    // Get the region from method's CacheRegionAttribute if available
-                    var methodRegion = regionAttrs.FirstOrDefault()?.Region ?? CacheRegion.Default;
-                    RegisterDependency(methodRegion, dep);
-                }
-            }
-
-            // Check properties
-            var properties = type.GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            foreach (var property in properties)
-            {
-                var regionAttrs = property.GetCustomAttributes<CacheRegionAttribute>();
-                foreach (var attr in regionAttrs)
-                {
-                    RegisterDiscoveredRegion(attr, type, property.Name);
-                    count++;
-                }
-            }
-
-            return count;
-        }
-
-        private void RegisterDiscoveredRegion(CacheRegionAttribute attr, Type consumerType, string? memberName = null)
-        {
-            // Get or create metadata
-            if (!_metadata.TryGetValue(attr.Region, out var metadata))
-            {
-                metadata = new CacheRegionMetadata
-                {
-                    Region = attr.Region,
-                    RegisteredAt = DateTime.UtcNow,
-                    IsActive = true
-                };
-                _metadata[attr.Region] = metadata;
-            }
-
-            // Track consumer
-            var consumerName = memberName != null 
-                ? $"{consumerType.Name}.{memberName}" 
-                : consumerType.Name;
-            
-            if (!metadata.ConsumerServices.Contains(consumerName))
-            {
-                metadata.ConsumerServices.Add(consumerName);
-            }
-
-            // Update configuration if not already registered
-            if (!_regions.ContainsKey(attr.Region))
-            {
-                var config = new CacheRegionConfig
-                {
-                    Region = attr.Region,
-                    Enabled = true,
-                    DefaultTTL = attr.SuggestedTtlSeconds > 0
-                        ? TimeSpan.FromSeconds(attr.SuggestedTtlSeconds)
-                        : TimeSpan.FromMinutes(15),
-                    UseDistributedCache = attr.RequiresDistributed,
-                    UseMemoryCache = true,
-                    Priority = attr.Priority,
-                    EvictionPolicy = CacheEvictionPolicy.LRU
-                };
-
-                RegisterRegion(attr.Region, config);
-            }
-
-            _logger.LogDebug("Discovered cache region {Region} usage in {Consumer}",
-                attr.Region, consumerName);
-        }
-
-        private void RegisterDiscoveredCustomRegion(CustomCacheRegionAttribute attr, Type consumerType)
-        {
-            var config = new CacheRegionConfig
-            {
-                Region = CacheRegion.Default, // Custom regions map to default
-                Enabled = true,
-                DefaultTTL = TimeSpan.FromSeconds(attr.DefaultTtlSeconds),
-                MaxTTL = attr.MaxTtlSeconds > 0
-                    ? TimeSpan.FromSeconds(attr.MaxTtlSeconds)
-                    : null,
-                UseDistributedCache = attr.UseDistributed,
-                UseMemoryCache = attr.UseMemory,
-                Priority = attr.Priority,
-                EvictionPolicy = Enum.TryParse<CacheEvictionPolicy>(attr.EvictionPolicy, out var policy)
-                    ? policy
-                    : CacheEvictionPolicy.LRU
-            };
-
-            RegisterCustomRegion(attr.RegionName, config);
-
-            _logger.LogDebug("Discovered custom cache region {RegionName} in {Consumer}",
-                attr.RegionName, consumerType.Name);
-        }
-
-        private async Task<int> RegisterFromConfigurationProviderAsync(Type type, CacheConfigurationProviderAttribute attr)
-        {
-            var count = 0;
-
-            try
-            {
-                // Try method first
-                if (!string.IsNullOrWhiteSpace(attr.ConfigurationMethodName))
-                {
-                    var method = type.GetMethod(attr.ConfigurationMethodName,
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-
-                    if (method != null)
-                    {
-                        var result = method.Invoke(null, null);
-                        count += ProcessConfigurationResult(result);
-                    }
-                }
-
-                // Try property
-                if (!string.IsNullOrWhiteSpace(attr.ConfigurationPropertyName))
-                {
-                    var property = type.GetProperty(attr.ConfigurationPropertyName,
-                        BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-
-                    if (property != null)
-                    {
-                        var result = property.GetValue(null);
-                        count += ProcessConfigurationResult(result);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to get configuration from provider {Type}", type.Name);
-            }
-
-            return await Task.FromResult(count);
-        }
-
-        private int ProcessConfigurationResult(object? result)
-        {
-            if (result == null)
-                return 0;
-
-            var count = 0;
-
-            if (result is CacheRegionConfig config)
-            {
-                RegisterRegion(config.Region, config);
-                count = 1;
-            }
-            else if (result is IEnumerable<CacheRegionConfig> configs)
-            {
-                foreach (var cfg in configs)
-                {
-                    RegisterRegion(cfg.Region, cfg);
-                    count++;
-                }
-            }
-
-            return count;
-        }
-
-        private void RegisterDependency(CacheRegion region, CacheDependencyAttribute dependency)
-        {
-            if (_metadata.TryGetValue(region, out var metadata))
-            {
-                if (!metadata.Dependencies.Contains(dependency.DependsOn))
-                {
-                    metadata.Dependencies.Add(dependency.DependsOn);
-                }
-
-                // Store dependency type in custom metadata
-                var depKey = $"dependency_{dependency.DependsOn}";
-                metadata.CustomMetadata[depKey] = dependency.DependencyType.ToString();
-            }
         }
 
         private void InitializeDefaultRegions()

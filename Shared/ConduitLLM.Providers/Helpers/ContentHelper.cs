@@ -230,10 +230,21 @@ namespace ConduitLLM.Providers.Helpers
                     if (part is ImageUrlContentPart or VideoUrlContentPart)
                         return false;
 
-                    // Check for type property dynamically for custom implementations
-                    var type = part.GetType().GetProperty("Type")?.GetValue(part)?.ToString();
-                    if (type is "image_url" or "video_url")
+                    if (part is ProviderContentPart
+                        {
+                            Type: "image_url" or "video_url"
+                        })
+                    {
                         return false;
+                    }
+
+                    if (part is JsonElement element &&
+                        element.ValueKind == JsonValueKind.Object &&
+                        element.TryGetProperty("type", out var typeElement) &&
+                        typeElement.GetString() is "image_url" or "video_url")
+                    {
+                        return false;
+                    }
                 }
 
                 return true;

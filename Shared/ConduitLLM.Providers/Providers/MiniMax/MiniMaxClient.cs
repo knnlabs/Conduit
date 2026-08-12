@@ -12,7 +12,11 @@ namespace ConduitLLM.Providers.MiniMax
     /// <summary>
     /// Client for interacting with MiniMax AI APIs.
     /// </summary>
-    public partial class MiniMaxClient : BaseLLMClient, IAuthenticationVerifiable
+    public partial class MiniMaxClient :
+        BaseLLMClient,
+        IVideoGenerationClient,
+        IVideoProgressCallbackClient,
+        IAuthenticationVerifiable
     {
         private readonly string _baseUrl;
         private Func<string, string, int, Task>? _progressCallback;

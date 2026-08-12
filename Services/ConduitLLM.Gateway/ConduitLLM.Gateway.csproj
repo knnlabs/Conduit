@@ -35,6 +35,9 @@
   <ItemGroup Condition="'$(ConduitWolverineCodegen)' == 'true'">
     <PackageReference Include="WolverineFx.RuntimeCompilation" PrivateAssets="all" />
   </ItemGroup>
+  <PropertyGroup Condition="'$(ConduitWolverineCodegen)' == 'true'">
+    <DefineConstants>$(DefineConstants);CONDUIT_WOLVERINE_CODEGEN</DefineConstants>
+  </PropertyGroup>
 
   <ItemGroup>
     <Compile Update="Internal\Generated\**\*.cs" Watch="false" />

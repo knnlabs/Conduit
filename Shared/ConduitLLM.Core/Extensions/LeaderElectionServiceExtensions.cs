@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System;
 using System.Linq;
 using ConduitLLM.Core.Interfaces;
@@ -51,7 +52,7 @@ namespace ConduitLLM.Core.Extensions
         /// <param name="services">The service collection</param>
         /// <param name="serviceName">Optional unique name for the service (defaults to type name)</param>
         /// <returns>The service collection for chaining</returns>
-        public static IServiceCollection AddLeaderElectedHostedService<TService>(
+        public static IServiceCollection AddLeaderElectedHostedService<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TService>(
             this IServiceCollection services,
             string? serviceName = null)
             where TService : class, IHostedService

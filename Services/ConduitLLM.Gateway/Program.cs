@@ -1,4 +1,6 @@
+#if CONDUIT_WOLVERINE_CODEGEN
 using JasperFx;
+#endif
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Extensions;
 using Microsoft.AspNetCore.OpenApi;
@@ -76,10 +78,13 @@ await Program.ConfigureMiddleware(app);
 // Configure endpoints
 Program.ConfigureEndpoints(app);
 
-// JasperFx command-line integration: with no arguments this runs the web host
-// exactly like app.Run(); the committed Wolverine adapters are regenerated with
-// `./scripts/generate-wolverine-code.ps1` and verified for drift in CI.
+#if CONDUIT_WOLVERINE_CODEGEN
+// Generation-only command path, enabled by scripts/generate-wolverine-code.ps1.
 return await app.RunJasperFxCommands(args);
+#else
+await app.RunAsync();
+return 0;
+#endif
 
 // Make Program class accessible for testing
 public partial class Program { }

@@ -594,11 +594,20 @@ namespace ConduitLLM.Admin.Endpoints
         /// </summary>
         private static string[] GetChangedProperties(UpdateModelDto dto)
         {
-            return typeof(UpdateModelDto)
-                .GetProperties()
-                .Where(property => JsonMergePatchState.IsDefined(dto, property.Name))
-                .Select(property => property.Name)
-                .ToArray();
+            string[] properties =
+            [
+                nameof(dto.Name), nameof(dto.ModelSeriesId), nameof(dto.InputModalities),
+                nameof(dto.OutputModalities), nameof(dto.CapabilitySource),
+                nameof(dto.CapabilitiesLastVerifiedAt), nameof(dto.ClearDirectionalCapabilities),
+                nameof(dto.SupportsChat), nameof(dto.SupportsVision),
+                nameof(dto.SupportsFunctionCalling), nameof(dto.SupportsStreaming),
+                nameof(dto.SupportsImageGeneration), nameof(dto.SupportsVideoGeneration),
+                nameof(dto.SupportsSpeechToText), nameof(dto.SupportsTextToSpeech),
+                nameof(dto.SupportsRerank), nameof(dto.SupportsEmbeddings),
+                nameof(dto.MaxInputTokens), nameof(dto.MaxOutputTokens),
+                nameof(dto.IsActive), nameof(dto.ModelParameters)
+            ];
+            return properties.Where(property => JsonMergePatchState.IsDefined(dto, property)).ToArray();
         }
 
         private static void ApplyBooleanPatch(

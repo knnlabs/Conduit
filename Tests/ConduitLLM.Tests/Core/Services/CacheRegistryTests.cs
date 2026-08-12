@@ -1,7 +1,5 @@
-using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Moq;
-using ConduitLLM.Core.Attributes;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Services;
@@ -152,98 +150,21 @@ namespace ConduitLLM.Tests.Core.Services
         }
 
         [Fact]
-        public async Task DiscoverRegionsAsync_DiscoversAttributedClasses()
+        public async Task RegisterDescriptor_RegistersConfigurationAndMetadata()
         {
-            // Arrange
-            var testAssembly = Assembly.GetExecutingAssembly();
+            _registry.RegisterDescriptor(new CacheRegionDescriptor(
+                CacheRegion.ModelMetadata,
+                new CacheRegionConfig { DefaultTTL = TimeSpan.FromMinutes(20) },
+                ["TestCacheService", "TestCacheService.GetRateLimitedData"],
+                [CacheRegion.AuthTokens]));
 
-            // Act
-            var count = await _registry.DiscoverRegionsAsync(testAssembly);
-
-            // Assert
-            Assert.True(count > 0);
-            // TestCacheService should be discovered
             var metadata = await _registry.GetRegionMetadataAsync(CacheRegion.ModelMetadata);
             Assert.NotNull(metadata);
             Assert.Contains("TestCacheService", metadata.ConsumerServices);
-        }
-
-        [Fact]
-        public async Task DiscoverRegionsAsync_DiscoversCustomRegions()
-        {
-            // Arrange
-            var testAssembly = Assembly.GetExecutingAssembly();
-
-            // Act
-            await _registry.DiscoverRegionsAsync(testAssembly);
-
-            // Assert
-            Assert.True(_registry.IsCustomRegionRegistered("TestCustomCache"));
-            var config = _registry.GetCustomRegionConfig("TestCustomCache");
-            Assert.NotNull(config);
-            Assert.Equal(TimeSpan.FromSeconds(1800), config.DefaultTTL);
-        }
-
-        [Fact]
-        public async Task DiscoverRegionsAsync_DiscoversMethodAttributes()
-        {
-            // Arrange
-            var testAssembly = Assembly.GetExecutingAssembly();
-
-            // Act
-            await _registry.DiscoverRegionsAsync(testAssembly);
-
-            // Assert
-            var metadata = await _registry.GetRegionMetadataAsync(CacheRegion.RateLimits);
-            Assert.NotNull(metadata);
             Assert.Contains("TestCacheService.GetRateLimitedData", metadata.ConsumerServices);
-        }
-
-        [Fact]
-        public async Task DiscoverRegionsAsync_DiscoversDependencies()
-        {
-            // Arrange
-            var testAssembly = Assembly.GetExecutingAssembly();
-
-            // Act
-            await _registry.DiscoverRegionsAsync(testAssembly);
-
-            // Assert
-            var metadata = await _registry.GetRegionMetadataAsync(CacheRegion.VirtualKeys);
-            Assert.NotNull(metadata);
             Assert.Contains(CacheRegion.AuthTokens, metadata.Dependencies);
+            Assert.Equal(TimeSpan.FromMinutes(20),
+                _registry.GetRegionConfig(CacheRegion.ModelMetadata)!.DefaultTTL);
         }
-    }
-
-    // Test classes for discovery
-    [CacheRegion(CacheRegion.ModelMetadata, Description = "Test cache usage")]
-    [CustomCacheRegion("TestCustomCache", DefaultTtlSeconds = 1800)]
-    public class TestCacheService
-    {
-        [CacheRegion(CacheRegion.RateLimits, SuggestedTtlSeconds = 300)]
-        public string GetRateLimitedData()
-        {
-            return "data";
-        }
-
-        [CacheRegion(CacheRegion.VirtualKeys)]
-        [CacheDependency(CacheRegion.AuthTokens)]
-        public void ProcessWithDependency()
-        {
-        }
-    }
-
-    [CacheConfigurationProvider(ConfigurationPropertyName = nameof(CacheConfigurations))]
-    public static class TestConfigProvider
-    {
-        public static CacheRegionConfig[] CacheConfigurations => new[]
-        {
-            new CacheRegionConfig
-            {
-                Region = CacheRegion.ProviderResponses,
-                DefaultTTL = TimeSpan.FromHours(2),
-                Priority = 75
-            }
-        };
     }
 }
