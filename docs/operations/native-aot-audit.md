@@ -38,6 +38,18 @@ inventory, regenerate it with:
 Do not update the baseline to hide a regression. The later NativeAOT phases should
 normally only reduce it.
 
+## Current ratchet
+
+The 2026-08-12 post-phase audit contains **370** unique first-party diagnostics,
+down from 509 before the first epic-level cleanup. The first cleanup removed all
+139 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
+validation and an explicit collection-count validator. The production-assembly
+architecture test prevents that reflection-based attribute from returning.
+
+The remaining inventory is dominated by reflection-based generic JSON overloads.
+Treat the generated `diagnostics.json` as the source of truth when selecting the next
+coherent cleanup; do not infer warning counts from duplicated native-linker output.
+
 ## Native publish lane
 
 `.github/workflows/native-aot.yml` publishes both services for `linux-x64` after

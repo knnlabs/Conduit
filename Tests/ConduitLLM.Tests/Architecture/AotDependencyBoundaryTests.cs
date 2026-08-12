@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
+using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Configuration.Interfaces;
@@ -115,6 +117,48 @@ public sealed class AotDependencyBoundaryTests
         using var context = new ConduitLLM.Configuration.ConduitDbContext(options);
 
         Assert.Equal(ConduitLLM.Configuration.Data.ConduitSchemaVersion.Current, context.Database.GetMigrations().Last());
+    }
+
+    [Fact]
+    public void ProductionAssembliesDoNotUseReflectionBasedMaxLengthValidation()
+    {
+        var assemblyNames = new[]
+        {
+            "ConduitLLM.Admin",
+            "ConduitLLM.Configuration",
+            "ConduitLLM.Core",
+            "ConduitLLM.Functions",
+            "ConduitLLM.Gateway",
+            "ConduitLLM.Providers",
+            "ConduitLLM.Security"
+        };
+        var offenders = assemblyNames
+            .Select(Assembly.Load)
+            .SelectMany(assembly => assembly.GetTypes())
+            .SelectMany(type => type.GetMembers(
+                BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic))
+            .Where(member => member.CustomAttributes.Any(attribute =>
+                attribute.AttributeType == typeof(MaxLengthAttribute)))
+            .Select(member => $"{member.DeclaringType?.FullName}.{member.Name}")
+            .OrderBy(name => name)
+            .ToArray();
+
+        Assert.Empty(offenders);
+    }
+
+    [Fact]
+    public void StringLengthValidationPreservesEfMaximumLengthMetadata()
+    {
+        var options = new DbContextOptionsBuilder<ConduitLLM.Configuration.ConduitDbContext>()
+            .UseNpgsql("Host=localhost;Database=schema_inventory;Username=unused;Password=unused")
+            .Options;
+        using var context = new ConduitLLM.Configuration.ConduitDbContext(options);
+
+        var keyName = context.Model.FindEntityType(typeof(VirtualKey))!
+            .FindProperty(nameof(VirtualKey.KeyName));
+
+        Assert.NotNull(keyName);
+        Assert.Equal(100, keyName.GetMaxLength());
     }
 
     private static bool ContainsQueryable(Type type)
