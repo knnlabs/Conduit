@@ -15,6 +15,8 @@ namespace ConduitLLM.Providers.Serialization;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(BedrockConverseRequest))]
 [JsonSerializable(typeof(BedrockConverseResponse))]
+[JsonSerializable(typeof(BedrockRawToolArguments))]
+[JsonSerializable(typeof(int))]
 [JsonSerializable(typeof(BedrockListFoundationModelsResponse))]
 [JsonSerializable(typeof(BedrockStreamMessageStart))]
 [JsonSerializable(typeof(BedrockStreamContentBlockStart))]
