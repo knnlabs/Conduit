@@ -6,6 +6,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
+using ConduitLLM.Gateway.Serialization;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -48,7 +49,10 @@ namespace ConduitLLM.Gateway.Services
 
             // Create cached version with pre-parsed configuration
             var cachedCost = ConvertToCachedModelCost(cost);
-            await SetCacheEntryAsync(patternKey, cachedCost);
+            await SetCacheEntryAsync(
+                patternKey,
+                cachedCost,
+                GatewayRedisJsonContext.Default.CachedModelCost);
 
             Logger.LogDebug("Model cost cached for cost name: {CostName}", cost.CostName);
         }

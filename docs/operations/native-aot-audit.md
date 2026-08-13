@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **276** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **270** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -66,6 +66,9 @@ enumerables instead of reflectively serializing arbitrary objects to inspect the
 The Vertex service-account cleanup removed another eight paired diagnostics with a
 generated credential/token/JWT contract, including explicit metadata for polymorphic
 JWT string and integer claim values.
+The shared Redis-cache cleanup removed another six paired diagnostics by requiring
+source-generated metadata at its generic read/write boundary and registering the
+Gateway provider, tool, and parsed-pricing cache shapes.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next
