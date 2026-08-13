@@ -3,6 +3,7 @@ using System.Text.Json;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Serialization;
 using ConduitLLM.Core.Utilities;
 using ConduitLLM.Core.Metrics;
 using ConduitLLM.Core.Services;
@@ -162,7 +163,8 @@ public class PromptCachingLLMClient :
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        return JsonSerializer.Deserialize<PromptCachingConfig>(
-            json, PromptCachingSerialization.Options);
+        var context = new CoreInternalJsonContext(
+            new JsonSerializerOptions(PromptCachingSerialization.Options));
+        return JsonSerializer.Deserialize(json, context.PromptCachingConfig);
     }
 }

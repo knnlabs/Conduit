@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **186** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **110** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -80,6 +80,10 @@ contracts, while making Replicate diagnostic formatting reflection-free.
 The function-subsystem cleanup removed all 46 remaining Functions diagnostics by
 generating built-in provider, pricing, execution-record, MCP, structured-JSON, and
 hybrid-cache contracts; model-capability cache callers now provide primitive metadata.
+The Core-boundary cleanup removed all 76 remaining Core diagnostics by generating
+closed cache, pricing, webhook, error, rate-limit, and orchestration contracts; generic
+HTTP and cache paths now resolve configured metadata, and ephemeral-key services pass
+their generated contracts into the shared base class.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next

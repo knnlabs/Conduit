@@ -17,4 +17,6 @@ namespace ConduitLLM.Core.Serialization;
 [JsonSerializable(typeof(TieredTokensPricingConfig))]
 [JsonSerializable(typeof(PerImagePricingConfig))]
 [JsonSerializable(typeof(PricingRulesConfig))]
+[JsonSerializable(typeof(PricingRule))]
+[JsonSerializable(typeof(Dictionary<string, ParameterDefinition>))]
 internal partial class CorePricingJsonContext : JsonSerializerContext;

@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using ConduitLLM.Configuration;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Options;
+using ConduitLLM.Core.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -204,7 +205,9 @@ namespace ConduitLLM.Core.Services
                             try
                             {
                                 var messageString = message.Message.ToString();
-                                var signal = JsonSerializer.Deserialize<WarmingSignal>(messageString);
+                                var signal = JsonSerializer.Deserialize(
+                                    messageString,
+                                    CoreInternalJsonContext.Default.ConnectionPoolWarmingSignal);
                                 if (signal != null && signal.ServiceType == _serviceType)
                                 {
                                     if (_options.VerboseLogging)
@@ -281,16 +284,16 @@ namespace ConduitLLM.Core.Services
         private async Task PublishWarmingSignalAsync(CancellationToken cancellationToken)
         {
             var channel = GetSignalChannel();
-            var signal = new WarmingSignal
-            {
-                InstanceId = _instanceId,
-                ServiceType = _serviceType,
-                Timestamp = DateTime.UtcNow,
-                ConnectionsWarmed = _connectionsToWarm
-            };
+            var signal = new ConnectionPoolWarmingSignal(
+                _instanceId,
+                _serviceType,
+                DateTime.UtcNow,
+                _connectionsToWarm);
 
             var subscriber = _redis!.GetSubscriber();
-            var message = JsonSerializer.Serialize(signal);
+            var message = JsonSerializer.Serialize(
+                signal,
+                CoreInternalJsonContext.Default.ConnectionPoolWarmingSignal);
 
             var subscribers = await subscriber.PublishAsync(
                 RedisChannel.Literal(channel),
@@ -395,15 +398,5 @@ namespace ConduitLLM.Core.Services
             };
         }
 
-        /// <summary>
-        /// Signal data published via Redis Pub/Sub when warming completes.
-        /// </summary>
-        private sealed class WarmingSignal
-        {
-            public string InstanceId { get; set; } = string.Empty;
-            public string ServiceType { get; set; } = string.Empty;
-            public DateTime Timestamp { get; set; }
-            public int ConnectionsWarmed { get; set; }
-        }
     }
 }

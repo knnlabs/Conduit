@@ -146,7 +146,10 @@ public class ToolChoiceConverter : JsonConverter<ToolChoice>
         else
         {
             // Serialize the object
-            JsonSerializer.Serialize(writer, serializedValue, options);
+            JsonSerializer.Serialize(
+                writer,
+                serializedValue,
+                options.GetTypeInfo(serializedValue.GetType()));
         }
     }
 }

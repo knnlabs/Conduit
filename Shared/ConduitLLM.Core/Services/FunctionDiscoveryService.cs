@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Serialization;
 using ConduitLLM.Functions.Enums;
 using ConduitLLM.Functions.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -254,7 +255,9 @@ public class FunctionDiscoveryService : IFunctionDiscoveryService
         {
             try
             {
-                parameters = JsonSerializer.Deserialize<JsonObject>(config.ParameterSchema);
+                parameters = JsonSerializer.Deserialize(
+                    config.ParameterSchema,
+                    AsyncTaskJsonContext.Default.JsonObject);
             }
             catch (JsonException ex)
             {

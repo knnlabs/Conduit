@@ -10,6 +10,7 @@ using IModelProviderMappingService = ConduitLLM.Configuration.Interfaces.IModelP
 using ConduitLLM.Core.Events;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Metrics;
+using ConduitLLM.Core.Serialization;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Services.Abstractions;
@@ -264,7 +265,9 @@ namespace ConduitLLM.Core.Services
                     }
                     else if (requestObj is System.Text.Json.JsonElement jsonReq)
                     {
-                        var videoRequest = System.Text.Json.JsonSerializer.Deserialize<VideoGenerationRequest>(jsonReq.GetRawText());
+                        var videoRequest = System.Text.Json.JsonSerializer.Deserialize(
+                            jsonReq.GetRawText(),
+                            AsyncTaskJsonContext.Default.VideoGenerationRequest);
                         if (videoRequest != null)
                         {
                             videoRequest.Model = modelInfo.ModelId;

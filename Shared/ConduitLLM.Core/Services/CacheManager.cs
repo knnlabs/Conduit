@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Serialization;
 
 namespace ConduitLLM.Core.Services
 {
@@ -77,7 +78,9 @@ namespace ConduitLLM.Core.Services
                     var distributedData = await _distributedCache.GetAsync(fullKey, cancellationToken);
                     if (distributedData != null)
                     {
-                        value = JsonSerializer.Deserialize<T>(distributedData);
+                        value = (T?)JsonSerializer.Deserialize(
+                            distributedData,
+                            CoreJsonTypeInfo.Require(typeof(T), ConduitJsonOptions.Compact));
                         found = true;
                         _logger.LogDebug("Distributed cache hit for key {Key} in region {Region}", key, region);
 
@@ -193,7 +196,9 @@ namespace ConduitLLM.Core.Services
                 // Set in distributed cache if enabled
                 if (config.UseDistributedCache && _useDistributedCache && _distributedCache != null)
                 {
-                    var serialized = JsonSerializer.SerializeToUtf8Bytes(value);
+                    var serialized = JsonSerializer.SerializeToUtf8Bytes(
+                        value,
+                        CoreJsonTypeInfo.Require(typeof(T), ConduitJsonOptions.Compact));
                     var distributedOptions = new DistributedCacheEntryOptions
                     {
                         AbsoluteExpirationRelativeToNow = expiry

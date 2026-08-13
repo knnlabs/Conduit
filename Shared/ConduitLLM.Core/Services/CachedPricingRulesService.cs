@@ -3,6 +3,7 @@ using ConduitLLM.Configuration.Constants;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.Models;
 using ConduitLLM.Core.Models.Pricing;
+using ConduitLLM.Core.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace ConduitLLM.Core.Services;
@@ -72,7 +73,8 @@ public class CachedPricingRulesService : ICachedPricingRulesService
 
         try
         {
-            var config = JsonSerializer.Deserialize<PricingRulesConfig>(pricingConfiguration, JsonOptions);
+            var context = new CorePricingJsonContext(new JsonSerializerOptions(JsonOptions));
+            var config = JsonSerializer.Deserialize(pricingConfiguration, context.PricingRulesConfig);
             if (config == null)
             {
                 _logger.LogWarning("Failed to deserialize pricing rules configuration for ModelCostId={ModelCostId}", modelCostId);

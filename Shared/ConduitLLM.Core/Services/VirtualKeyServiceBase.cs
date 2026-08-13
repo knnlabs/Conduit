@@ -9,6 +9,7 @@ using ConduitLLM.Core.Utilities;
 
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Core.Models;
+using ConduitLLM.Core.Serialization;
 
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -158,7 +159,9 @@ namespace ConduitLLM.Core.Services
                 VirtualKeyGroupId = existingGroup.Id,
                 IsEnabled = true,
                 ExpiresAt = request.ExpiresAt,
-                Metadata = request.Metadata is null ? null : JsonSerializer.Serialize(request.Metadata),
+                Metadata = request.Metadata is null
+                    ? null
+                    : JsonSerializer.Serialize(request.Metadata, CoreHttpJsonContext.Default.DictionaryStringJsonElement),
                 RateLimitRpm = request.RateLimitRpm,
                 RateLimitRpd = request.RateLimitRpd,
                 RateLimitTpm = request.RateLimitTpm,
@@ -296,7 +299,7 @@ namespace ConduitLLM.Core.Services
             {
                 var metadata = request.Metadata is null or { Count: 0 }
                     ? null
-                    : JsonSerializer.Serialize(request.Metadata);
+                    : JsonSerializer.Serialize(request.Metadata, CoreHttpJsonContext.Default.DictionaryStringJsonElement);
                 if (key.Metadata != metadata)
                 {
                     key.Metadata = metadata;

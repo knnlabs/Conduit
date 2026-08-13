@@ -246,7 +246,9 @@ namespace ConduitLLM.Core.Utilities
             // Add content if data is provided
             if (requestData != null)
             {
-                var requestJson = JsonSerializer.Serialize(requestData, options);
+                var requestJson = JsonSerializer.Serialize(
+                    requestData,
+                    options.GetTypeInfo(typeof(TRequest)));
                 logger?.LogDebug("Prepared JSON request body ({BodyLength} bytes)", Encoding.UTF8.GetByteCount(requestJson));
                 request.Content = new StringContent(requestJson, Encoding.UTF8, "application/json");
             }
@@ -339,7 +341,9 @@ namespace ConduitLLM.Core.Utilities
             // Deserialize from the string
             try
             {
-                return JsonSerializer.Deserialize<TResponse>(responseContent, options)
+                return (TResponse?)JsonSerializer.Deserialize(
+                        responseContent,
+                        options.GetTypeInfo(typeof(TResponse)))
                     ?? throw new LLMCommunicationException("Failed to deserialize response - result was null");
             }
             catch (JsonException ex)

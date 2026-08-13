@@ -828,7 +828,11 @@ namespace ConduitLLM.Core.Services.Abstractions
                 TaskType = GetMediaType().ToLowerInvariant(),
                 WebhookUrl = GetWebhookUrl(request)!,
                 EventType = eventType,
-                PayloadJson = System.Text.Json.JsonSerializer.Serialize(payload),
+                PayloadJson = System.Text.Json.JsonSerializer.Serialize(
+                    payload,
+                    Serialization.CoreJsonTypeInfo.Require(
+                        payload.GetType(),
+                        Serialization.ConduitJsonOptions.Compact)),
                 Headers = GetWebhookHeaders(request),
                 CorrelationId = GetCorrelationId(request) ?? Guid.NewGuid().ToString()
             });
