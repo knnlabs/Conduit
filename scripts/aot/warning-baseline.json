@@ -247,18 +247,6 @@
       "code": "IL3050",
       "file": "Services/ConduitLLM.Admin/Services/ServiceHeartbeatStore.cs",
       "count": 3
-    },
-    {
-      "project": "ConduitLLM.Security",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Security/Middleware/SecurityMiddlewareBase.cs",
-      "count": 1
-    },
-    {
-      "project": "ConduitLLM.Security",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Security/Middleware/SecurityMiddlewareBase.cs",
-      "count": 1
     }
   ]
 }

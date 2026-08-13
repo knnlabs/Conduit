@@ -8,4 +8,9 @@ namespace ConduitLLM.Security.Serialization;
 [JsonSourceGenerationOptions(GenerationMode = JsonSourceGenerationMode.Metadata)]
 [JsonSerializable(typeof(BannedIpInfo))]
 [JsonSerializable(typeof(FailedAuthData))]
+[JsonSerializable(typeof(SecurityErrorResponse))]
 public partial class SecurityCacheJsonContext : JsonSerializerContext;
+
+public sealed record SecurityErrorResponse(
+    [property: JsonPropertyName("error")] string? Error,
+    [property: JsonPropertyName("code")] int? Code);

@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **75** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **73** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -91,6 +91,8 @@ The final provider cleanup removed all 12 remaining Providers diagnostics and wi
 generated provider/Core resolvers through generic HTTP calls. OpenAI-compatible request
 maps now use statically described dictionaries, and provider response/stream contracts
 are registered end to end.
+The final Security cleanup removed its last paired diagnostic with a generated
+middleware error-response contract.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next
