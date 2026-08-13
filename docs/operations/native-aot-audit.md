@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **330** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **322** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -51,7 +51,8 @@ and generated metadata. The OpenAI-compatible mapping cleanup removed 10 more by
 typed tool-call contracts, generated annotation metadata, and explicit content-array
 handling. The media-cleanup cache cleanup removed another eight paired diagnostics
 with a dedicated source-generated Redis context. Regression tests preserve validation,
-provider-wire behavior, and legacy cache contracts.
+provider-wire behavior, and legacy cache contracts. Model-capability persistence then
+removed eight more with generated configuration metadata while retaining legacy reads.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next

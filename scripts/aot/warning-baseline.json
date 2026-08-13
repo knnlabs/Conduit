@@ -269,12 +269,6 @@
     {
       "project": "ConduitLLM.Configuration",
       "code": "IL2026",
-      "file": "Shared/ConduitLLM.Configuration/Models/ModelCapabilityMetadata.cs",
-      "count": 4
-    },
-    {
-      "project": "ConduitLLM.Configuration",
-      "code": "IL2026",
       "file": "Shared/ConduitLLM.Configuration/Options/BillingReconciliationOptions.cs",
       "count": 2
     },
@@ -325,12 +319,6 @@
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Configuration/Extensions/ProviderMappingExtensions.cs",
       "count": 2
-    },
-    {
-      "project": "ConduitLLM.Configuration",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Configuration/Models/ModelCapabilityMetadata.cs",
-      "count": 4
     },
     {
       "project": "ConduitLLM.Configuration",
