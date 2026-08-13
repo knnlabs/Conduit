@@ -100,7 +100,8 @@ public static class ServiceCollectionExtensions
 
         services.AddOptions<BillingCostCanaryOptions>()
             .BindConfiguration(BillingCostCanaryOptions.SectionName)
-            .ValidateDataAnnotations()
+            .Validate(options => options.IntervalMinutes is >= 1 and <= 1440,
+                "IntervalMinutes must be between 1 and 1440.")
             .ValidateOnStart();
         services.AddLeaderElectedHostedService<ModelCostCanaryHostedService>("ModelCostCanaryHostedService");
 

@@ -87,7 +87,7 @@ public static class ModelSeriesEndpoints
             Name = dto.Name,
             Description = dto.Description,
             TokenizerType = dto.TokenizerType,
-            Parameters = dto.Parameters is null ? "{}" : JsonSerializer.Serialize(dto.Parameters)
+            Parameters = dto.Parameters is null ? "{}" : AdminJson.Serialize(dto.Parameters)
         };
         await repository.CreateAsync(series);
         var reloaded = await repository.GetByIdWithAuthorAsync(series.Id)
@@ -144,7 +144,7 @@ public static class ModelSeriesEndpoints
                 StructuredJson.ParseObject(series.Parameters),
                 out Dictionary<string, JsonElement>? parameters))
         {
-            series.Parameters = JsonSerializer.Serialize(parameters ?? []);
+            series.Parameters = AdminJson.Serialize(parameters ?? []);
         }
         await repository.UpdateAsync(series);
         AdminAudit.Log(context, Logger(loggerFactory), "Updated", "ModelSeries", id,

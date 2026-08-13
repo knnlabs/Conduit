@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **73** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **0** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -93,10 +93,13 @@ maps now use statically described dictionaries, and provider response/stream con
 are registered end to end.
 The final Security cleanup removed its last paired diagnostic with a generated
 middleware error-response contract.
+The final Admin cleanup removed all 73 remaining diagnostics by routing persisted
+and HTTP JSON through generated contracts, replacing reflective options validation,
+and removing redundant query conversion.
 
-The remaining inventory is dominated by reflection-based generic JSON overloads.
-Treat the generated `diagnostics.json` as the source of truth when selecting the next
-coherent cleanup; do not infer warning counts from duplicated native-linker output.
+The first-party inventory is now empty. Treat the generated `diagnostics.json` as the
+source of truth when checking for regressions; do not infer warning counts from
+duplicated native-linker output.
 
 ## Native publish lane
 

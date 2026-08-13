@@ -295,7 +295,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 Name = dto.Name,
                 ModelSeriesId = dto.ModelSeriesId,
-                ModelParameters = dto.ModelParameters is null ? null : JsonSerializer.Serialize(dto.ModelParameters),
+                ModelParameters = dto.ModelParameters is null ? null : AdminJson.Serialize(dto.ModelParameters),
                 InputModalitiesJson = ModelModalities.Serialize(dto.InputModalities),
                 OutputModalitiesJson = ModelModalities.Serialize(dto.OutputModalities),
                 CapabilitySource = dto.CapabilitySource ??
@@ -422,7 +422,7 @@ namespace ConduitLLM.Admin.Endpoints
             {
                 var newParams = modelParameters is null or { Count: 0 }
                     ? null
-                    : JsonSerializer.Serialize(modelParameters);
+                    : AdminJson.Serialize(modelParameters);
                 if (model.ModelParameters != newParams)
                     changes.Add(("ModelParameters", model.ModelParameters ?? "null", newParams ?? "null"));
                 model.ModelParameters = newParams;

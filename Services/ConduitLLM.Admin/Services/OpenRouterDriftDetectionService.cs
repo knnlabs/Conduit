@@ -106,7 +106,7 @@ namespace ConduitLLM.Admin.Services
             response.EnsureSuccessStatusCode();
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            var parsed = JsonSerializer.Deserialize<OpenRouterCatalogResponse>(json, JsonOptions);
+            var parsed = AdminJson.Deserialize<OpenRouterCatalogResponse>(json, JsonOptions);
             var models = parsed?.Data ?? new List<OpenRouterCatalogModel>();
 
             // The full list is returned when offset/limit are omitted; a suspiciously round count may
@@ -141,7 +141,9 @@ namespace ConduitLLM.Admin.Services
 
             if (catalog == null)
             {
-                detected[DriftType.ModelRemoved] = ("{}", Json(new { removed = true }));
+                detected[DriftType.ModelRemoved] = (
+                    "{}",
+                    Json(new Dictionary<string, object?> { ["removed"] = true }));
             }
             else
             {
@@ -150,7 +152,9 @@ namespace ConduitLLM.Admin.Services
                 ComputeCapabilitiesDrift(catalog, mpta, model, detected);
 
                 if (!string.IsNullOrEmpty(catalog.ExpirationDate))
-                    detected[DriftType.ModelDeprecated] = ("{}", Json(new { expirationDate = catalog.ExpirationDate }));
+                    detected[DriftType.ModelDeprecated] = (
+                        "{}",
+                        Json(new Dictionary<string, object?> { ["expirationDate"] = catalog.ExpirationDate }));
             }
 
             foreach (var driftType in Enum.GetValues<DriftType>())
@@ -319,7 +323,7 @@ namespace ConduitLLM.Admin.Services
         private static decimal? Round4(decimal value) => Math.Round(value, 4);
         private static decimal? Round4(decimal? value) => value.HasValue ? Math.Round(value.Value, 4) : null;
 
-        private static string Json(object value) => JsonSerializer.Serialize(value, JsonOptions);
+        private static string Json(object value) => AdminJson.Serialize(value, JsonOptions);
 
         private static ProviderSyncRunDto MapRun(ProviderMetadataSyncRun run) => new()
         {

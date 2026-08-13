@@ -345,7 +345,7 @@ namespace ConduitLLM.Admin.Endpoints
             // Validate the pricing document once before adding diagnostics from every distinct
             // persisted model schema. Caller-provided schemas are intentionally ignored here:
             // the model-cost-scoped endpoint treats the database associations as authoritative.
-            var result = _pricingRulesValidator.ValidateJson(JsonSerializer.Serialize(request.PricingConfiguration));
+            var result = _pricingRulesValidator.ValidateJson(AdminJson.Serialize(request.PricingConfiguration));
             if (result.ParsedConfig == null)
             {
                 return Results.Ok(result);
@@ -481,8 +481,8 @@ namespace ConduitLLM.Admin.Endpoints
             await Task.CompletedTask;
 
             var result = _pricingRulesValidator.ValidateJson(
-                JsonSerializer.Serialize(request.PricingConfiguration),
-                request.ParameterSchema is null ? null : JsonSerializer.Serialize(request.ParameterSchema));
+                AdminJson.Serialize(request.PricingConfiguration),
+                request.ParameterSchema is null ? null : AdminJson.Serialize(request.ParameterSchema));
             return Results.Ok(result);
         }
 

@@ -107,7 +107,7 @@ namespace ConduitLLM.Admin.Endpoints
 
             try
             {
-                config = JsonSerializer.Deserialize<T>(json, CaseInsensitiveJsonOptions);
+                config = AdminJson.Deserialize<T>(json, CaseInsensitiveJsonOptions);
             }
             catch (JsonException ex)
             {
