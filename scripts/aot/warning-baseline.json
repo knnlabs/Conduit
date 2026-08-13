@@ -443,24 +443,6 @@
     {
       "project": "ConduitLLM.Core",
       "code": "IL2026",
-      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Advanced.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Helpers.cs",
-      "count": 4
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Operations.cs",
-      "count": 4
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL2026",
       "file": "Shared/ConduitLLM.Core/Services/ModelPricingConfigurationValidator.cs",
       "count": 1
     },
@@ -631,24 +613,6 @@
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Core/Services/FunctionDiscoveryService.cs",
       "count": 1
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Advanced.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Helpers.cs",
-      "count": 4
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Core/Services/HybridAsyncTaskService.Operations.cs",
-      "count": 4
     },
     {
       "project": "ConduitLLM.Core",
