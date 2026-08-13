@@ -965,12 +965,6 @@
     {
       "project": "ConduitLLM.Providers",
       "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/Vertex/GoogleServiceAccountTokenProvider.cs",
-      "count": 4
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
       "file": "Shared/ConduitLLM.Providers/Streaming/GroqChunkConverter.cs",
       "count": 1
     },
@@ -1051,12 +1045,6 @@
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Utilities.cs",
       "count": 2
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/Vertex/GoogleServiceAccountTokenProvider.cs",
-      "count": 4
     },
     {
       "project": "ConduitLLM.Providers",
