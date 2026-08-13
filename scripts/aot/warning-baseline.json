@@ -863,12 +863,6 @@
     {
       "project": "ConduitLLM.Providers",
       "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Helpers/PromptCacheMarkerInjector.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
       "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Images.cs",
       "count": 3
     },
@@ -943,12 +937,6 @@
       "code": "IL2026",
       "file": "Shared/ConduitLLM.Providers/Streaming/GroqChunkConverter.cs",
       "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Helpers/PromptCacheMarkerInjector.cs",
-      "count": 3
     },
     {
       "project": "ConduitLLM.Providers",
