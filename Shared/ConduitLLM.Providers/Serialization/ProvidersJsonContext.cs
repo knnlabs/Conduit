@@ -18,6 +18,7 @@ namespace ConduitLLM.Providers.Serialization;
 [JsonSerializable(typeof(BedrockConverseResponse))]
 [JsonSerializable(typeof(BedrockRawToolArguments))]
 [JsonSerializable(typeof(int))]
+[JsonSerializable(typeof(JsonElement))]
 [JsonSerializable(typeof(List<JsonElement>))]
 [JsonSerializable(typeof(BedrockListFoundationModelsResponse))]
 [JsonSerializable(typeof(BedrockStreamMessageStart))]

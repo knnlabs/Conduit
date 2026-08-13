@@ -367,5 +367,11 @@ namespace ConduitLLM.Providers.MiniMax
             [System.Text.Json.Serialization.JsonPropertyName("resolution")]
             public string? Resolution { get; set; }
         }
+
+        [System.Text.Json.Serialization.JsonSourceGenerationOptions(
+            GenerationMode = System.Text.Json.Serialization.JsonSourceGenerationMode.Metadata)]
+        [System.Text.Json.Serialization.JsonSerializable(typeof(MiniMaxStreamChunk))]
+        private sealed partial class MiniMaxStreamJsonContext
+            : System.Text.Json.Serialization.JsonSerializerContext;
     }
 }

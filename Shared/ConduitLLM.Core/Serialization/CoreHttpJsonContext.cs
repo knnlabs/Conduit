@@ -25,6 +25,7 @@ namespace ConduitLLM.Core.Serialization;
 [JsonSerializable(typeof(VideoGenerationRequest))]
 [JsonSerializable(typeof(OpenAIErrorResponse))]
 [JsonSerializable(typeof(Dictionary<string, JsonElement>))]
+[JsonSerializable(typeof(JsonElement))]
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSerializable(typeof(List<object>))]
 [JsonSerializable(typeof(object[]))]

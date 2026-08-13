@@ -114,8 +114,8 @@ namespace ConduitLLM.Providers.OpenAICompatible
 
             await foreach (var chunk in CoreUtils.StreamHelper.ProcessSseStreamAsync<JsonElement>(
                 response,
+                Serialization.ProvidersJsonContext.Default.JsonElement,
                 Logger,
-                DefaultJsonOptions,
                 cancellationToken))
             {
                 if (cancellationToken.IsCancellationRequested)

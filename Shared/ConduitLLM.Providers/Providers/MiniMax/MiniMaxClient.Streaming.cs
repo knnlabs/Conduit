@@ -62,8 +62,8 @@ namespace ConduitLLM.Providers.MiniMax
             await foreach (var chunk in Core.Utilities.StreamHelper
                 .ProcessSseStreamAsync<MiniMaxStreamChunk>(
                     response,
+                    MiniMaxStreamJsonContext.Default.MiniMaxStreamChunk,
                     Logger,
-                    null,
                     cancellationToken)
                 .WithCancellation(cancellationToken))
             {

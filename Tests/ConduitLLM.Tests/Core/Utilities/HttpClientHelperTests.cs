@@ -84,6 +84,7 @@ public class HttpClientHelperTests
 
         await foreach (var _ in StreamHelper.ProcessSseStreamAsync<JsonElement>(
             response,
+            ConduitLLM.Core.Serialization.CoreHttpJsonContext.Default.JsonElement,
             logger.Object))
         {
         }

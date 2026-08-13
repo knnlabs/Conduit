@@ -520,12 +520,6 @@
     },
     {
       "project": "ConduitLLM.Core",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Core/Utilities/StreamHelper.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Core",
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Core/Decorators/PromptCachingLLMClient.cs",
       "count": 1
@@ -685,12 +679,6 @@
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Core/Utilities/RateLimitResponseContract.cs",
       "count": 1
-    },
-    {
-      "project": "ConduitLLM.Core",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Core/Utilities/StreamHelper.cs",
-      "count": 3
     },
     {
       "project": "ConduitLLM.Functions",
