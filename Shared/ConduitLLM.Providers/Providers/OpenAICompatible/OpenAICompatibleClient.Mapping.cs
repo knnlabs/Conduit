@@ -29,16 +29,17 @@ namespace ConduitLLM.Providers.OpenAICompatible
             List<object>? openAiTools = null;
             if (request.Tools != null && request.Tools.Any())
             {
-                openAiTools = request.Tools.Select(t => new
-                {
-                    type = t.Type ?? "function",
-                    function = new
+                openAiTools = request.Tools.Select(t =>
+                    (object)new Dictionary<string, object?>
                     {
-                        name = t.Function?.Name ?? "unknown",
-                        description = t.Function?.Description,
-                        parameters = t.Function?.Parameters
-                    }
-                }).Cast<object>().ToList();
+                        ["type"] = t.Type ?? "function",
+                        ["function"] = new Dictionary<string, object?>
+                        {
+                            ["name"] = t.Function?.Name ?? "unknown",
+                            ["description"] = t.Function?.Description,
+                            ["parameters"] = t.Function?.Parameters
+                        }
+                    }).ToList();
             }
 
             // Map tool choice if present
@@ -168,7 +169,10 @@ namespace ConduitLLM.Providers.OpenAICompatible
             if (request.Stream != null)
                 openAiRequest["stream"] = request.Stream;
             if (request.StreamOptions != null)
-                openAiRequest["stream_options"] = new { include_usage = request.StreamOptions.IncludeUsage };
+                openAiRequest["stream_options"] = new Dictionary<string, object?>
+                {
+                    ["include_usage"] = request.StreamOptions.IncludeUsage
+                };
 
             // Pass through any extension data (model-specific parameters)
             if (request.ExtensionData != null)
@@ -210,10 +214,10 @@ namespace ConduitLLM.Providers.OpenAICompatible
             {
                 if (!string.IsNullOrEmpty(text))
                 {
-                    contentParts.Add(new
+                    contentParts.Add(new Dictionary<string, object?>
                     {
-                        type = "text",
-                        text = text
+                        ["type"] = "text",
+                        ["text"] = text
                     });
                 }
             }
@@ -222,30 +226,30 @@ namespace ConduitLLM.Providers.OpenAICompatible
             var imageUrls = ProviderHelpers.ContentHelper.ExtractImageUrls(content);
             foreach (var imageUrl in imageUrls)
             {
-                contentParts.Add(new
+                contentParts.Add(new Dictionary<string, object?>
                 {
-                    type = "image_url",
-                    image_url = new
+                    ["type"] = "image_url",
+                    ["image_url"] = new Dictionary<string, object?>
                     {
-                        url = imageUrl.Url,
-                        detail = string.IsNullOrEmpty(imageUrl.Detail) ? "auto" : imageUrl.Detail
+                        ["url"] = imageUrl.Url,
+                        ["detail"] = string.IsNullOrEmpty(imageUrl.Detail) ? "auto" : imageUrl.Detail
                     }
                 });
             }
 
             foreach (var videoUrl in ProviderHelpers.ContentHelper.ExtractVideoUrls(content))
             {
-                contentParts.Add(new
+                contentParts.Add(new Dictionary<string, object?>
                 {
-                    type = "video_url",
-                    video_url = new
+                    ["type"] = "video_url",
+                    ["video_url"] = new Dictionary<string, object?>
                     {
-                        url = videoUrl.Url,
-                        detail = videoUrl.Detail,
-                        max_frames = videoUrl.MaxFrames,
-                        sample_rate = videoUrl.SampleRate,
-                        start_time = videoUrl.StartTime,
-                        end_time = videoUrl.EndTime
+                        ["url"] = videoUrl.Url,
+                        ["detail"] = videoUrl.Detail,
+                        ["max_frames"] = videoUrl.MaxFrames,
+                        ["sample_rate"] = videoUrl.SampleRate,
+                        ["start_time"] = videoUrl.StartTime,
+                        ["end_time"] = videoUrl.EndTime
                     }
                 });
             }

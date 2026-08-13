@@ -136,13 +136,13 @@ namespace ConduitLLM.Providers.OpenRouter
                 _ => JobState.InProgress   // pending / in_progress / queued / unknown → keep polling
             };
 
-        private record OpenRouterVideoSubmitResponse
+        internal record OpenRouterVideoSubmitResponse
         {
             [JsonPropertyName("id")]
             public string? Id { get; init; }
         }
 
-        private record OpenRouterVideoStatus
+        internal record OpenRouterVideoStatus
         {
             [JsonPropertyName("id")]
             public string? Id { get; init; }
@@ -160,7 +160,7 @@ namespace ConduitLLM.Providers.OpenRouter
             public OpenRouterVideoUsage? Usage { get; init; }
         }
 
-        private record OpenRouterVideoUsage
+        internal record OpenRouterVideoUsage
         {
             [JsonPropertyName("cost")]
             public decimal? Cost { get; init; }

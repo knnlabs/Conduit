@@ -41,7 +41,9 @@ namespace ConduitLLM.Providers.MiniMax
 
             if (Logger.IsEnabled(LogLevel.Debug))
             {
-                var requestJson = System.Text.Json.JsonSerializer.Serialize(miniMaxRequest);
+                var requestJson = System.Text.Json.JsonSerializer.Serialize(
+                    miniMaxRequest,
+                    MiniMaxStreamJsonContext.Default.MiniMaxChatCompletionRequest);
                 Logger.LogDebug(
                     "MiniMax Streaming Request to {Endpoint}: {Request}",
                     endpoint,
