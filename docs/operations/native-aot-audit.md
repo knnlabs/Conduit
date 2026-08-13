@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **110** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **87** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -84,6 +84,9 @@ The Core-boundary cleanup removed all 76 remaining Core diagnostics by generatin
 closed cache, pricing, webhook, error, rate-limit, and orchestration contracts; generic
 HTTP and cache paths now resolve configured metadata, and ephemeral-key services pass
 their generated contracts into the shared base class.
+The configuration cleanup removed all 23 remaining Configuration diagnostics with
+generated persistence contracts, statically analyzable collection/range validation,
+the checked-in compiled EF model boundary, and removal of a redundant LINQ conversion.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next

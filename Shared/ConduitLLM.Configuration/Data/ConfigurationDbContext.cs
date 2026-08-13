@@ -4,6 +4,7 @@ using ConduitLLM.Configuration.EntityConfigurations;
 using ModelProviderMappingEntity = ConduitLLM.Configuration.Entities.ModelProviderMapping;
 
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics.CodeAnalysis;
 
 using ConduitLLM.Configuration.Interfaces;
 namespace ConduitLLM.Configuration
@@ -17,6 +18,14 @@ namespace ConduitLLM.Configuration
         /// Initializes a new instance of the ConfigurationDbContext
         /// </summary>
         /// <param name="options">The options to be used by the context</param>
+        [UnconditionalSuppressMessage(
+            "Trimming",
+            "IL2026",
+            Justification = "Production registration supplies the checked-in ConfigurationDbContextModel compiled EF model.")]
+        [UnconditionalSuppressMessage(
+            "AOT",
+            "IL3050",
+            Justification = "Production registration supplies the checked-in ConfigurationDbContextModel compiled EF model.")]
         public ConduitDbContext(DbContextOptions<ConduitDbContext> options) : base(options)
         {
         }
