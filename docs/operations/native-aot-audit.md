@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **300** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **292** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -57,6 +57,9 @@ The async-task boundary cleanup removed another 22 paired diagnostics by generat
 the persisted metadata/cache contracts and replacing anonymous result payloads with
 statically described models or JSON DOM values. It also makes progress updates work
 against the `JsonElement` values produced when persisted results are read back.
+The shared security-cache cleanup removed another eight paired diagnostics by passing
+generated contracts through its generic cache helpers and deleting an unused dynamic
+value helper.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next
