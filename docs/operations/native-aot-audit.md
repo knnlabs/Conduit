@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **338** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **330** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -49,7 +49,9 @@ adding source-generated JSON metadata. The Bedrock Converse cleanup removed anot
 10 paired diagnostics by replacing dynamic JSON conversion with typed content handling
 and generated metadata. The OpenAI-compatible mapping cleanup removed 10 more by using
 typed tool-call contracts, generated annotation metadata, and explicit content-array
-handling. Regression tests preserve validation and provider-wire behavior.
+handling. The media-cleanup cache cleanup removed another eight paired diagnostics
+with a dedicated source-generated Redis context. Regression tests preserve validation,
+provider-wire behavior, and legacy cache contracts.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next

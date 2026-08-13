@@ -101,12 +101,6 @@
     {
       "project": "ConduitLLM.Admin",
       "code": "IL2026",
-      "file": "Services/ConduitLLM.Admin/Services/MediaCleanupStatusService.cs",
-      "count": 4
-    },
-    {
-      "project": "ConduitLLM.Admin",
-      "code": "IL2026",
       "file": "Services/ConduitLLM.Admin/Services/ModelCostCanaryHostedService.cs",
       "count": 2
     },
@@ -223,12 +217,6 @@
       "code": "IL3050",
       "file": "Services/ConduitLLM.Admin/Services/AnalyticsService.Helpers.cs",
       "count": 1
-    },
-    {
-      "project": "ConduitLLM.Admin",
-      "code": "IL3050",
-      "file": "Services/ConduitLLM.Admin/Services/MediaCleanupStatusService.cs",
-      "count": 4
     },
     {
       "project": "ConduitLLM.Admin",
