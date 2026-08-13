@@ -3,6 +3,8 @@ using System.Text.Json.Serialization;
 
 using ConduitLLM.Providers.Bedrock;
 using ConduitLLM.Providers.OpenRouter;
+using ConduitLLM.Providers.Cloudflare;
+using ConduitLLM.Providers.Replicate;
 
 namespace ConduitLLM.Providers.Serialization;
 
@@ -27,4 +29,13 @@ namespace ConduitLLM.Providers.Serialization;
 [JsonSerializable(typeof(BedrockStreamMessageStop))]
 [JsonSerializable(typeof(BedrockStreamMetadata))]
 [JsonSerializable(typeof(OpenRouterCatalogResponse))]
+[JsonSerializable(typeof(CloudflareImageResponse))]
+[JsonSerializable(typeof(ReplicatePredictionRequest))]
+[JsonSerializable(typeof(ReplicatePredictionResponse))]
+[JsonSerializable(typeof(Dictionary<string, object>))]
+[JsonSerializable(typeof(string))]
+[JsonSerializable(typeof(bool))]
+[JsonSerializable(typeof(long))]
+[JsonSerializable(typeof(double))]
+[JsonSerializable(typeof(decimal))]
 internal partial class ProvidersJsonContext : JsonSerializerContext;

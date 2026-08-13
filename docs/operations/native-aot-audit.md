@@ -40,7 +40,7 @@ normally only reduce it.
 
 ## Current ratchet
 
-The 2026-08-12 post-phase audit contains **258** unique first-party diagnostics,
+The 2026-08-12 post-phase audit contains **232** unique first-party diagnostics,
 down from 509 before the epic-level cleanups. The first cleanup removed all 139
 `MaxLengthAttribute` `IL2026` diagnostics by using statically analyzable string
 validation and an explicit collection-count validator. The next cleanup removed 12
@@ -74,6 +74,9 @@ metadata for generic SSE/custom-stream parsing and registering the OpenAI-compat
 and MiniMax stream contracts.
 The prompt-cache marker cleanup removed another six paired diagnostics by converting
 known HTTP content through generated metadata and cloning existing JSON DOM nodes.
+The provider-wire cleanup removed another 26 diagnostics by generating Cloudflare
+image, Replicate prediction, OpenAI-compatible audio/chunk, and MiniMax chat/video
+contracts, while making Replicate diagnostic formatting reflection-free.
 
 The remaining inventory is dominated by reflection-based generic JSON overloads.
 Treat the generated `diagnostics.json` as the source of truth when selecting the next

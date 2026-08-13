@@ -72,7 +72,9 @@ namespace ConduitLLM.Providers.OpenAICompatible
         protected virtual CoreModels.ChatCompletionChunk? MapStreamingChunk(JsonElement chunk)
         {
             var chunkJson = TransformChunkJson(chunk);
-            return JsonSerializer.Deserialize<CoreModels.ChatCompletionChunk>(chunkJson, DefaultJsonOptions);
+            return JsonSerializer.Deserialize(
+                chunkJson,
+                Core.Serialization.CoreHttpJsonContext.Default.ChatCompletionChunk);
         }
 
         /// <summary>

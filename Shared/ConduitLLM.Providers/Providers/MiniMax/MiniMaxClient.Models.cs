@@ -371,6 +371,8 @@ namespace ConduitLLM.Providers.MiniMax
         [System.Text.Json.Serialization.JsonSourceGenerationOptions(
             GenerationMode = System.Text.Json.Serialization.JsonSourceGenerationMode.Metadata)]
         [System.Text.Json.Serialization.JsonSerializable(typeof(MiniMaxStreamChunk))]
+        [System.Text.Json.Serialization.JsonSerializable(typeof(MiniMaxChatCompletionRequest))]
+        [System.Text.Json.Serialization.JsonSerializable(typeof(MiniMaxVideoStatusResponse))]
         private sealed partial class MiniMaxStreamJsonContext
             : System.Text.Json.Serialization.JsonSerializerContext;
     }

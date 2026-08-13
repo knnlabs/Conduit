@@ -863,19 +863,7 @@
     {
       "project": "ConduitLLM.Providers",
       "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Images.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
       "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Models.cs",
-      "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Chat.cs",
       "count": 1
     },
     {
@@ -893,24 +881,6 @@
     {
       "project": "ConduitLLM.Providers",
       "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Videos.cs",
-      "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Audio.cs",
-      "count": 2
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Streaming.cs",
-      "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
       "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterClient.Mapping.cs",
       "count": 1
     },
@@ -919,18 +889,6 @@
       "code": "IL2026",
       "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterMultimodalValidator.cs",
       "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Predictions.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL2026",
-      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Utilities.cs",
-      "count": 2
     },
     {
       "project": "ConduitLLM.Providers",
@@ -941,19 +899,7 @@
     {
       "project": "ConduitLLM.Providers",
       "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Images.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
       "file": "Shared/ConduitLLM.Providers/Providers/Cloudflare/CloudflareClient.Models.cs",
-      "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Chat.cs",
       "count": 1
     },
     {
@@ -971,24 +917,6 @@
     {
       "project": "ConduitLLM.Providers",
       "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/MiniMax/MiniMaxClient.Videos.cs",
-      "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Audio.cs",
-      "count": 2
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/OpenAICompatible/OpenAICompatibleClient.Streaming.cs",
-      "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
       "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterClient.Mapping.cs",
       "count": 1
     },
@@ -997,18 +925,6 @@
       "code": "IL3050",
       "file": "Shared/ConduitLLM.Providers/Providers/OpenRouter/OpenRouterMultimodalValidator.cs",
       "count": 1
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Predictions.cs",
-      "count": 3
-    },
-    {
-      "project": "ConduitLLM.Providers",
-      "code": "IL3050",
-      "file": "Shared/ConduitLLM.Providers/Providers/Replicate/ReplicateClient.Utilities.cs",
-      "count": 2
     },
     {
       "project": "ConduitLLM.Providers",
