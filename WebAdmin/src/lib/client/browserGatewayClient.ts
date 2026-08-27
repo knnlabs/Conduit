@@ -26,9 +26,6 @@ export async function getBrowserGatewayClient(): Promise<InstanceType<typeof Con
   return browserClient;
 }
 
-// Backward-compatible alias
-export const getBrowserCoreClient = getBrowserGatewayClient;
-
 /**
  * Clear the cached browser client.
  * Call this when user logs out or needs to refresh.

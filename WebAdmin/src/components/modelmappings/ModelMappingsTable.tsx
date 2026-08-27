@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   Table,
   Group,
@@ -32,14 +31,10 @@ import type { ModelProviderMappingDto } from '@/lib/admin-api';
 import { useBulkSelection } from '@/hooks/useBulkSelection';
 import { BulkActionsBar } from './BulkActionsBar';
 
-interface ModelMappingsTableProps {
-  onRefresh?: () => void;
-}
-
 const getMappingId = (mapping: ModelProviderMappingDto) => mapping.id;
 
-export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
-  const { mappings, isLoading, error, refetch } = useModelMappings();
+export function ModelMappingsTable() {
+  const { mappings, isLoading, error } = useModelMappings();
   const deleteMapping = useDeleteModelMapping();
   const bulkDelete = useBulkDeleteModelMappings();
   const bulkEnable = useBulkEnableModelMappings();
@@ -79,13 +74,6 @@ export function ModelMappingsTable({ onRefresh }: ModelMappingsTableProps) {
       handleClearSelection();
     });
   };
-
-  // Refresh data when onRefresh changes
-  useEffect(() => {
-    if (onRefresh) {
-      void refetch();
-    }
-  }, [onRefresh, refetch]);
 
   const handleEdit = (mapping: ModelProviderMappingDto) => {
     router.push(`/model-mappings/edit/${mapping.id}`);
