@@ -1,12 +1,17 @@
 param(
     [string]$ArtifactDirectory,
     [string]$Runtime = "linux-x64",
-    [switch]$NoRestore
+    [switch]$NoRestore,
+    [string]$WarningBaselinePath,
+    [switch]$UpdateWarningBaseline
 )
 
 $ErrorActionPreference = "Stop"
 
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "../..")
+if ([string]::IsNullOrWhiteSpace($WarningBaselinePath)) {
+    $WarningBaselinePath = Join-Path $PSScriptRoot "linker-warning-baseline.json"
+}
 if ([string]::IsNullOrWhiteSpace($ArtifactDirectory)) {
     $ArtifactDirectory = Join-Path $repoRoot "artifacts/native-aot"
 }
@@ -14,6 +19,7 @@ $artifactRoot = [IO.Path]::GetFullPath($ArtifactDirectory)
 $runtimeRoot = Join-Path $artifactRoot "runtime"
 $symbolsRoot = Join-Path $artifactRoot "symbols"
 $reportsRoot = Join-Path $artifactRoot "reports"
+$warningBaselineFile = [IO.Path]::GetFullPath($WarningBaselinePath)
 New-Item -ItemType Directory -Force -Path $runtimeRoot, $symbolsRoot, $reportsRoot | Out-Null
 
 $metrics = [Collections.Generic.List[object]]::new()
@@ -114,6 +120,16 @@ if ($LASTEXITCODE -ne 0) {
 Get-ChildItem -LiteralPath $probeDirectory -File |
     Where-Object { $_.Extension -in @(".dbg", ".pdb") } |
     Move-Item -Destination $probeSymbolDirectory -Force
+
+$linkerAuditArguments = @{
+    ReportDirectory = $reportsRoot
+    BaselinePath = $warningBaselineFile
+    Runtime = $Runtime
+}
+if ($UpdateWarningBaseline) {
+    $linkerAuditArguments.UpdateBaseline = $true
+}
+& (Join-Path $PSScriptRoot "evaluate-native-linker-warnings.ps1") @linkerAuditArguments
 
 [ordered]@{
     schemaVersion = 1
