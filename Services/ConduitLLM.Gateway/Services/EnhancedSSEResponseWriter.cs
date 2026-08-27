@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using ConduitLLM.Gateway.Serialization;
 
 namespace ConduitLLM.Gateway.Services
 {
@@ -63,7 +64,7 @@ namespace ConduitLLM.Gateway.Services
             await EnsureHeadersWrittenAsync(cancellationToken);
             
             // OpenAI format uses just "data:" without event type
-            var json = JsonSerializer.Serialize(data, _jsonOptions);
+            var json = JsonSerializer.Serialize(data, GatewayJsonTypeInfo.Require<T>(_jsonOptions));
             var eventData = $"data: {json}\n\n";
             var bytes = Encoding.UTF8.GetBytes(eventData);
             await _response.Body.WriteAsync(bytes, cancellationToken);
@@ -154,7 +155,7 @@ namespace ConduitLLM.Gateway.Services
             
             await EnsureHeadersWrittenAsync(cancellationToken);
             
-            var json = JsonSerializer.Serialize(data, _jsonOptions);
+            var json = JsonSerializer.Serialize(data, GatewayJsonTypeInfo.Require<T>(_jsonOptions));
             var eventData = new StringBuilder();
             
             // Add event type if specified

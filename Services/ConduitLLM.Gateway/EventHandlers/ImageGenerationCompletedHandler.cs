@@ -45,7 +45,7 @@ namespace ConduitLLM.Gateway.EventHandlers
                 var images = new JsonArray();
                 foreach (var image in message.Images)
                 {
-                    images.Add(new JsonObject
+                    images.Add((JsonNode?)new JsonObject
                     {
                         ["url"] = image.Url,
                         ["revisedPrompt"] = image.RevisedPrompt

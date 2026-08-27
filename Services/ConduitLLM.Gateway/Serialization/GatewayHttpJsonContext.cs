@@ -53,6 +53,7 @@ namespace ConduitLLM.Gateway.Serialization;
 [JsonSerializable(typeof(RerankResponse))]
 [JsonSerializable(typeof(RuntimeCapabilitiesResponse))]
 [JsonSerializable(typeof(ResponseObject))]
+[JsonSerializable(typeof(ResponseStreamEvent))]
 [JsonSerializable(typeof(SseErrorEvent))]
 [JsonSerializable(typeof(SseReasoningEvent))]
 [JsonSerializable(typeof(VideoGenerationTaskStatus))]

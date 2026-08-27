@@ -25,7 +25,11 @@ namespace ConduitLLM.Core.Serialization;
 [JsonSerializable(typeof(global::ConduitLLM.Core.Models.Rerank.RerankRequest))]
 [JsonSerializable(typeof(global::ConduitLLM.Core.Models.Responses.CreateResponseRequest))]
 [JsonSerializable(typeof(VideoGenerationRequest))]
+[JsonSerializable(typeof(VideoGenerationResponse))]
+[JsonSerializable(typeof(List<ToolCall>))]
 [JsonSerializable(typeof(OpenAIErrorResponse))]
+[JsonSerializable(typeof(ProviderErrorDetail))]
+[JsonSerializable(typeof(Usage))]
 [JsonSerializable(typeof(Dictionary<string, ProviderErrorDetail>))]
 [JsonSerializable(typeof(Dictionary<string, string>))]
 [JsonSerializable(typeof(List<string>))]
@@ -34,4 +38,6 @@ namespace ConduitLLM.Core.Serialization;
 [JsonSerializable(typeof(Dictionary<string, object>))]
 [JsonSerializable(typeof(List<object>))]
 [JsonSerializable(typeof(object[]))]
+[JsonSerializable(typeof(object))]
+[JsonSerializable(typeof(string))]
 public partial class CoreHttpJsonContext : JsonSerializerContext;

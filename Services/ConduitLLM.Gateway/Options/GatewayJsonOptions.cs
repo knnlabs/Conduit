@@ -16,6 +16,7 @@ public static class GatewayJsonOptions
     {
         options.TypeInfoResolverChain.Insert(0, GatewayHttpJsonContext.Default);
         options.TypeInfoResolverChain.Insert(1, CoreHttpJsonContext.Default);
+        options.TypeInfoResolverChain.Insert(2, GatewayInternalJsonContext.Default);
 
         options.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
         options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
