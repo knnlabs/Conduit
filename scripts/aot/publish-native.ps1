@@ -1,5 +1,6 @@
 param(
     [string]$ArtifactDirectory,
+    [string]$Runtime = "linux-x64",
     [switch]$NoRestore
 )
 
@@ -28,11 +29,12 @@ foreach ($service in @("Admin", "Gateway")) {
         "publish"
         $project
         "--configuration", "Release"
-        "--runtime", "linux-x64"
+        "--runtime", $Runtime
         "--self-contained", "true"
         "--output", $publishDirectory
         "--nologo"
         "--tl:off"
+        "--maxcpucount:1"
         "--verbosity", "minimal"
         "-p:PublishAot=true"
         "-p:ConduitAotAudit=true"
@@ -43,7 +45,7 @@ foreach ($service in @("Admin", "Gateway")) {
         $arguments += "--no-restore"
     }
 
-    Write-Host "Publishing ConduitLLM.$service for linux-x64 NativeAOT..."
+    Write-Host "Publishing ConduitLLM.$service for $Runtime NativeAOT..."
     $stopwatch = [Diagnostics.Stopwatch]::StartNew()
     & dotnet @arguments 2>&1 | Tee-Object -FilePath $logPath
     $publishExitCode = $LASTEXITCODE
@@ -56,7 +58,11 @@ foreach ($service in @("Admin", "Gateway")) {
         Where-Object { $_.Extension -in @(".dbg", ".pdb") } |
         Move-Item -Destination $symbolDirectory
 
-    $executable = Join-Path $publishDirectory "ConduitLLM.$service"
+    $executableName = "ConduitLLM.$service"
+    if ($Runtime.StartsWith("win-", [StringComparison]::OrdinalIgnoreCase)) {
+        $executableName += ".exe"
+    }
+    $executable = Join-Path $publishDirectory $executableName
     if (!(Test-Path -LiteralPath $executable -PathType Leaf)) {
         throw "$service native executable was not produced: $executable"
     }
@@ -67,7 +73,7 @@ foreach ($service in @("Admin", "Gateway")) {
     ).Sum
     $metrics.Add([ordered]@{
         service = $service
-        rid = "linux-x64"
+        rid = $Runtime
         publishDurationMilliseconds = $stopwatch.ElapsedMilliseconds
         executableBytes = (Get-Item -LiteralPath $executable).Length
         runtimeArtifactBytes = [long]$runtimeBytes
@@ -85,11 +91,12 @@ $probeArguments = @(
     "publish"
     $probeProject
     "--configuration", "Release"
-    "--runtime", "linux-x64"
+    "--runtime", $Runtime
     "--self-contained", "true"
     "--output", $probeDirectory
     "--nologo"
     "--tl:off"
+    "--maxcpucount:1"
     "--verbosity", "minimal"
     "-p:PublishAot=true"
     "-p:StripSymbols=true"
@@ -98,7 +105,7 @@ $probeArguments = @(
 if ($NoRestore) {
     $probeArguments += "--no-restore"
 }
-Write-Host "Publishing the Gateway NativeAOT parity client for linux-x64..."
+Write-Host "Publishing the Gateway NativeAOT parity client for $Runtime..."
 & dotnet @probeArguments 2>&1 | Tee-Object -FilePath $probeLogPath
 if ($LASTEXITCODE -ne 0) {
     throw "Gateway parity client NativeAOT publish failed with exit code $LASTEXITCODE."

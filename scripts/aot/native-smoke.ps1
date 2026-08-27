@@ -23,7 +23,6 @@ $failures = [Collections.Generic.List[string]]::new()
 
 foreach ($service in @("Admin", "Gateway")) {
     $serviceSlug = $service.ToLowerInvariant()
-    $executable = Join-Path $runtimeRoot "$serviceSlug/ConduitLLM.$service"
     $openApiOutput = Join-Path $reportsRoot "$serviceSlug-openapi.json"
     $stdoutPath = Join-Path $reportsRoot "$serviceSlug-smoke.stdout.log"
     $stderrPath = Join-Path $reportsRoot "$serviceSlug-smoke.stderr.log"
@@ -31,6 +30,11 @@ foreach ($service in @("Admin", "Gateway")) {
     if ($null -eq $result) {
         throw "Native publish metrics are missing $service."
     }
+    $executableName = "ConduitLLM.$service"
+    if ($result.rid.StartsWith("win-", [StringComparison]::OrdinalIgnoreCase)) {
+        $executableName += ".exe"
+    }
+    $executable = Join-Path $runtimeRoot "$serviceSlug/$executableName"
 
     $process = $null
     $stopwatch = [Diagnostics.Stopwatch]::StartNew()
@@ -51,6 +55,9 @@ foreach ($service in @("Admin", "Gateway")) {
         $startInfo.Environment["CONDUIT_OPENAPI_OUTPUT"] = $openApiOutput
         $startInfo.Environment["CONDUIT_ENABLE_HTTPS_REDIRECTION"] = "false"
         $startInfo.Environment["DOTNET_EnableDiagnostics"] = "0"
+        if ($IsWindows) {
+            $startInfo.Environment["Logging__EventLog__LogLevel__Default"] = "None"
+        }
 
         Write-Host "Launching $service native OpenAPI smoke..."
         $process = [Diagnostics.Process]::Start($startInfo)
