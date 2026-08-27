@@ -83,7 +83,9 @@ namespace ConduitLLM.Providers.MiniMax
                     GuidanceType =
                         request.ResponseFormat.Type == "json_object" ? "json_schema" : null,
                     JsonSchema =
-                        request.ResponseFormat.Type == "json_object" ? new { type = "object" } : null
+                        request.ResponseFormat.Type == "json_object"
+                            ? new Dictionary<string, string> { ["type"] = "object" }
+                            : null
                 } : null
             };
     }

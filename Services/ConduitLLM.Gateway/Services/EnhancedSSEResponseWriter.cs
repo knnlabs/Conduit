@@ -3,6 +3,12 @@ using System.Text.Json;
 
 namespace ConduitLLM.Gateway.Services
 {
+    public sealed record SseErrorEvent(
+        string Error,
+        ConduitLLM.Core.Interfaces.ProviderErrorDetail? ProviderError = null);
+
+    public sealed record SseReasoningEvent(string Content);
+
     /// <summary>
     /// Enhanced Server-Sent Events writer that supports multiple event types for streaming responses.
     /// </summary>
@@ -86,7 +92,7 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public async Task WriteErrorEventAsync(string error, CancellationToken cancellationToken = default)
         {
-            await WriteEventAsync("error", new { error }, cancellationToken);
+            await WriteEventAsync("error", new SseErrorEvent(error), cancellationToken);
         }
 
         /// <summary>
@@ -106,7 +112,10 @@ namespace ConduitLLM.Gateway.Services
                 return;
             }
 
-            await WriteEventAsync("error", new { error, provider_error = providerError }, cancellationToken);
+            await WriteEventAsync(
+                "error",
+                new SseErrorEvent(error, providerError),
+                cancellationToken);
         }
 
         /// <summary>
@@ -115,7 +124,7 @@ namespace ConduitLLM.Gateway.Services
         /// </summary>
         public async Task WriteReasoningEventAsync(string reasoning, CancellationToken cancellationToken = default)
         {
-            await WriteEventAsync("reasoning", new { content = reasoning }, cancellationToken);
+            await WriteEventAsync("reasoning", new SseReasoningEvent(reasoning), cancellationToken);
         }
 
         /// <summary>

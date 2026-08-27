@@ -373,6 +373,9 @@ namespace ConduitLLM.Providers.MiniMax
         [System.Text.Json.Serialization.JsonSerializable(typeof(MiniMaxStreamChunk))]
         [System.Text.Json.Serialization.JsonSerializable(typeof(MiniMaxChatCompletionRequest))]
         [System.Text.Json.Serialization.JsonSerializable(typeof(MiniMaxVideoStatusResponse))]
+        [System.Text.Json.Serialization.JsonSerializable(typeof(Dictionary<string, object?>))]
+        [System.Text.Json.Serialization.JsonSerializable(typeof(Dictionary<string, string?>))]
+        [System.Text.Json.Serialization.JsonSerializable(typeof(List<object>))]
         private sealed partial class MiniMaxStreamJsonContext
             : System.Text.Json.Serialization.JsonSerializerContext;
     }

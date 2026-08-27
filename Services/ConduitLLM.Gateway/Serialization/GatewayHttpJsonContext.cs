@@ -10,6 +10,7 @@ using ConduitLLM.Functions.DTOs;
 using ConduitLLM.Gateway.DTOs;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.Models;
+using ConduitLLM.Gateway.Services;
 
 namespace ConduitLLM.Gateway.Serialization;
 
@@ -52,5 +53,7 @@ namespace ConduitLLM.Gateway.Serialization;
 [JsonSerializable(typeof(RerankResponse))]
 [JsonSerializable(typeof(RuntimeCapabilitiesResponse))]
 [JsonSerializable(typeof(ResponseObject))]
+[JsonSerializable(typeof(SseErrorEvent))]
+[JsonSerializable(typeof(SseReasoningEvent))]
 [JsonSerializable(typeof(VideoGenerationTaskStatus))]
 public partial class GatewayHttpJsonContext : JsonSerializerContext;

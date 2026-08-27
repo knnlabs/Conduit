@@ -89,8 +89,9 @@ namespace ConduitLLM.Providers.MiniMax
                 HttpMethod.Post,
                 endpoint,
                 request,
+                GetRequiredJsonTypeInfo<TRequest>(jsonOptions),
+                GetRequiredJsonTypeInfo<TResponse>(jsonOptions),
                 headers: null,
-                jsonOptions,
                 Logger,
                 cancellationToken);
         }
