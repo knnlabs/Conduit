@@ -98,8 +98,6 @@ public partial class Program
             });
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(serviceProvider =>
                 serviceProvider.GetRequiredService<CachedApiVirtualKeyService>());
-            builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyRuntimeService>(serviceProvider =>
-                serviceProvider.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyService>());
         }
         else
         {
@@ -116,12 +114,20 @@ public partial class Program
             });
             builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyService>(sp =>
                 sp.GetRequiredService<DirectApiVirtualKeyService>());
-            builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyRuntimeService>(sp =>
-                sp.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyService>());
 
             // Register PostgreSQL distributed lock service (works even without Redis)
             builder.Services.AddSingleton<ConduitLLM.Core.Interfaces.IDistributedLockService, ConduitLLM.Core.Services.PostgresDistributedLockService>();
         }
+
+#if CONDUIT_NATIVE_AOT
+        // Native request processing selects the fixed-shape store. Management callers
+        // continue to resolve IVirtualKeyService until their CRUD surface is extracted.
+        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyRuntimeService,
+            StoreBackedVirtualKeyRuntimeService>();
+#else
+        builder.Services.AddScoped<ConduitLLM.Core.Interfaces.IVirtualKeyRuntimeService>(sp =>
+            sp.GetRequiredService<ConduitLLM.Core.Interfaces.IVirtualKeyService>());
+#endif
 
         // Register Webhook Delivery Tracker for deduplication and statistics
         if (!string.IsNullOrEmpty(redisConnectionString))

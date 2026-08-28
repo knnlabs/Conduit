@@ -65,6 +65,14 @@ Npgsql credential writes use one provider-row lock order. The shared PostgreSQL
 contract deliberately forces a failed disabled-key promotion and proves the old
 primary survives the transaction rollback.
 
+The next slice is the Gateway virtual-key runtime boundary. It hydrates a complete key
+and group snapshot, preserves pending-spend balance checks, and owns atomic group balance
+plus ledger writes. Native Gateway builds select its typed-Npgsql implementation only for
+`IVirtualKeyRuntimeService`; JIT builds and Admin management CRUD retain the existing EF
+services. This is the first service-host selection of an alternate adapter, but the
+native feature matrix remains excluded until downstream provider, logging, task, and media
+dependencies have equivalent boundaries and process coverage.
+
 ## Options considered
 
 1. **Wait for production-supported EF NativeAOT.** Rejected as the only plan: it
@@ -93,9 +101,10 @@ Each slice must provide:
   alternate backend.
 
 The extracted global-settings, IP-filter, and provider/credential slices remain
-registered to EF in Gateway and Admin. Their rollback is therefore the previous JIT
-artifact; the Npgsql implementations are evidence for the seam and are not selected
-in production by this decision.
+registered to EF in Gateway and Admin. Their Npgsql implementations are evidence for
+the seam and are not selected in production by this decision. The virtual-key runtime
+slice is selected only by a native Gateway build; rollback is the JIT artifact, whose
+request-time and management contracts both continue to resolve to the legacy EF service.
 
 ## Consequences
 

@@ -34,16 +34,20 @@ EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT
 
 Gateway request-time consumers now depend on `IVirtualKeyRuntimeService`, while
 Admin-style key management remains behind the broader `IVirtualKeyService`. Both
-contracts resolve to the same scoped JIT implementation today. This is the replacement
-seam for a typed native authentication/billing adapter; it does not remove any exclusion
-above until the adapter and native process parity tests are complete.
+contracts resolve to the same scoped implementation in JIT builds. Native builds now
+resolve the request-time contract to `StoreBackedVirtualKeyRuntimeService`, while the
+management contract remains on the legacy service. This selection alone does not remove
+any exclusion above until authenticated native process parity is complete.
 
 The persistence side of that seam is also explicit: `IVirtualKeyRuntimeStore` returns
 backend-neutral key/group snapshots and performs atomic balance-plus-ledger updates.
 Its fixed-query EF reference adapter and typed Npgsql adapter pass the same PostgreSQL
 contract, including concurrent writers, idempotent redelivery, and conflict detection,
-and the Npgsql adapter runs from the published native persistence probe. Gateway does
-not select the native adapter yet, so the exclusions remain authoritative.
+and the Npgsql adapter runs from the published native persistence probe. The native
+Gateway now selects that adapter for virtual-key lookup, hydrated group limits, balance
+validation, and direct spend fallback. The broader authenticated data plane still has
+EF-backed provider, logging, task, and media dependencies, so the exclusions remain
+authoritative.
 
 The compiled model is checked in under `Shared/ConduitLLM.Configuration/Data/CompiledModels`. Regenerate it whenever the EF model changes:
 

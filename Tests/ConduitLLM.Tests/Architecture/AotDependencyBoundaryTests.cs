@@ -13,6 +13,7 @@ using ConduitLLM.Gateway.Authentication;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.EventHandlers;
 using ConduitLLM.Gateway.Middleware;
+using ConduitLLM.Persistence.Interfaces;
 using ConduitLLM.Persistence.Npgsql;
 
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,14 @@ public sealed class AotDependencyBoundaryTests
             "ConduitLLM.Gateway",
             "Microsoft.EntityFrameworkCore",
             "Wolverine");
+    }
+
+    [Fact]
+    public void JitGatewayDoesNotRootTypedNpgsqlRuntimeAdapter()
+    {
+        AssertDoesNotReference(
+            Assembly.Load("ConduitLLM.Gateway"),
+            "ConduitLLM.Persistence.Npgsql");
     }
 
     [Fact]
@@ -193,6 +202,22 @@ public sealed class AotDependencyBoundaryTests
             Assert.Contains(typeof(IVirtualKeyRuntimeService), parameters);
             Assert.DoesNotContain(typeof(IVirtualKeyService), parameters);
         }
+    }
+
+    [Fact]
+    public void StoreBackedVirtualKeyRuntimeServiceUsesOnlyFixedShapePersistence()
+    {
+        var constructorParameters = typeof(StoreBackedVirtualKeyRuntimeService)
+            .GetConstructors()
+            .Single()
+            .GetParameters()
+            .Select(parameter => parameter.ParameterType)
+            .ToArray();
+
+        Assert.Contains(typeof(IVirtualKeyRuntimeStore), constructorParameters);
+        Assert.DoesNotContain(typeof(IVirtualKeyRepository), constructorParameters);
+        Assert.DoesNotContain(typeof(IVirtualKeyGroupRepository), constructorParameters);
+        Assert.DoesNotContain(typeof(IVirtualKeySpendHistoryRepository), constructorParameters);
     }
 
     [Fact]
