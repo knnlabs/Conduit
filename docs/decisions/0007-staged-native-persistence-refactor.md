@@ -53,6 +53,12 @@ The first vertical slice is global settings. It is startup-critical, has a small
 query surface, and exercises ordered reads, key/id lookups, inserts, updates, upserts,
 and deletes without requiring dynamic query composition.
 
+The second vertical slice is IP-filter access policy. It is read on the request path,
+has fixed global and virtual-key scopes, and extends the shared contract suite with
+audit metadata, nullable columns, foreign-key scoping, and optimistic concurrency.
+Provider and provider-key credentials remain together for a later slice because their
+primary-key selection and encryption behavior form one transactional boundary.
+
 ## Options considered
 
 1. **Wait for production-supported EF NativeAOT.** Rejected as the only plan: it
@@ -80,9 +86,9 @@ Each slice must provide:
 - an explicit production registration change and rollback plan before traffic uses the
   alternate backend.
 
-The global-settings slice remains registered to EF in Gateway and Admin. Its rollback
-is therefore the previous JIT artifact; the Npgsql implementation is evidence for the
-seam and is not selected in production by this decision.
+The global-settings and IP-filter slices remain registered to EF in Gateway and Admin.
+Their rollback is therefore the previous JIT artifact; the Npgsql implementations are
+evidence for the seam and are not selected in production by this decision.
 
 ## Consequences
 

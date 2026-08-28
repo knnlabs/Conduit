@@ -19,6 +19,9 @@ The Repository pattern is being implemented gradually in the Conduit codebase. T
 - ✅ `IGlobalSettingRepository` - extracted to the EF-free persistence abstractions
 - ✅ `GlobalSettingRepository` - explicit-operation EF reference implementation
 - ✅ `NpgsqlGlobalSettingRepository` - typed-Npgsql parity implementation
+- ✅ `IIpFilterRepository` - extracted explicit contract for global/per-key access policy
+- ✅ `IpFilterRepository` - explicit-operation EF reference implementation
+- ✅ `NpgsqlIpFilterRepository` - typed-Npgsql parity implementation
 - ❌ Other repositories - Planned
 
 ## Usage Example
