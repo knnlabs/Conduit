@@ -110,6 +110,10 @@ Write-Host 'Applying migrations before native process startup...'
 dotnet (Join-Path $migratorProject 'bin/Release/net10.0/ConduitLLM.Migrator.dll')
 if ($LASTEXITCODE -ne 0) { throw 'Standalone migrator failed.' }
 
+Write-Host 'Seeding typed-store authentication and IP-filter fixtures...'
+dotnet (Join-Path $probeProject 'bin/Release/net10.0/ConduitLLM.GatewayNativeAotTests.dll') --seed
+if ($LASTEXITCODE -ne 0) { throw 'Native Gateway parity fixture seed failed.' }
+
 $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
 try {
     $adminExecutable = Get-NativeExecutable 'Admin'

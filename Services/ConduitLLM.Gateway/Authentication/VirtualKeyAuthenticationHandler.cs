@@ -146,6 +146,7 @@ namespace ConduitLLM.Gateway.Authentication
                 // Store virtual key info in HttpContext for usage tracking
                 Context.Items["VirtualKeyId"] = keyEntity.Id;
                 Context.Items["VirtualKey"] = virtualKey;
+                Context.Items["VirtualKeyEntity"] = keyEntity;
                 Context.Items["RequestStartTime"] = DateTime.UtcNow;
 
                 // Store rate-limit config so VirtualKeyRateLimitMiddleware can enforce limits

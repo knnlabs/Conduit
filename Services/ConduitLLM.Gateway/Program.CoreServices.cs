@@ -87,6 +87,9 @@ public partial class Program
         // ========== Repositories ==========
 
         builder.Services.AddRepositories();
+#if CONDUIT_NATIVE_AOT
+        builder.Services.UseNativeRuntimePersistence();
+#endif
 
         // ========== Model Services ==========
 
