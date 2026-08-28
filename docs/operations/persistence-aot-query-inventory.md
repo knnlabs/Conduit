@@ -67,9 +67,11 @@ the broad `ModelProviderMappingRepository` graph. The runtime contract includes 
 ID, provider, and canonical-model lookups; deterministic pages; provider and canonical
 capability metadata; series data; optional pricing; and route policy. A fixed-query EF
 reference and typed-Npgsql adapter pass the same real-PostgreSQL contract, and the
-typed adapter runs in the published persistence NativeAOT probe. No native host selects
-it yet, so provider routing remains excluded until the request-time service adapter and
-provider HTTP/SSE process coverage land.
+typed adapter runs in the published persistence NativeAOT probe. Native Gateway now
+selects a read-only compatibility adapter over this store and resolves persisted route
+policy through it. The two-Gateway native process gate proves authenticated model list,
+retrieval, and capability metadata; provider HTTP/SSE remains excluded until its
+downstream persistence and cancellation boundaries are covered.
 
 ## Exit criteria for revisiting the decision
 

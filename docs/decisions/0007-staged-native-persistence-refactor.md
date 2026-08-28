@@ -85,8 +85,11 @@ mapping and provider configuration, canonical and provider-specific capabilities
 series metadata, optional costs, deterministic paging, and per-alias route policy. Its
 EF reference and fixed-query typed-Npgsql adapters share a real-PostgreSQL parity test,
 and the typed adapter runs inside the published persistence NativeAOT probe. This slice
-deliberately stops before host selection; native routing remains excluded until the
-request-time repository/service adapter and provider HTTP process gate are in place.
+first lands independently of host selection. Native Gateway then selects a read-only
+compatibility adapter over the runtime store and resolves persisted route policy through
+the same boundary. JIT and Admin retain the full EF repository. Authenticated model
+discovery is process-tested; provider HTTP/SSE remains excluded until its downstream
+persistence and cancellation boundaries are covered.
 
 ## Options considered
 
@@ -117,7 +120,8 @@ Each slice must provide:
 
 The extracted global-settings, IP-filter, provider/credential, and virtual-key runtime
 slices are selected only by a native Gateway build. The extracted model-routing store
-is parity-tested but not selected yet. JIT Gateway and Admin registrations remain EF.
+is also selected behind a read-only native Gateway adapter. JIT Gateway and Admin
+registrations remain EF.
 Rollback is therefore the JIT artifact, whose request-time and management contracts
 continue to resolve to the legacy services.
 

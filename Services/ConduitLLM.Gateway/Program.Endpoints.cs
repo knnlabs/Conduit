@@ -22,6 +22,7 @@ public partial class Program
                     "redis-data-protection",
                     "json-signalr-negotiate-routing",
                     "unauthenticated-request-rejection",
+                    "authenticated-model-discovery",
                     "forwarded-headers",
                     "liveness-metrics-opentelemetry"
                 ]
@@ -43,7 +44,6 @@ public partial class Program
                 ? [
                     "signalr-messagepack",
                     "ef-core-query-data-plane",
-                    "authenticated-http-data-plane",
                     "authenticated-signalr-connections",
                     "redis-virtual-key-cache-and-rate-limits",
                     "provider-routing-and-streaming",

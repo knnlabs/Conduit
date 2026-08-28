@@ -5,6 +5,7 @@ using ConduitLLM.Configuration.Entities;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Configuration.Interfaces;
+using ConduitLLM.Configuration.Repositories;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.OpenApi;
@@ -116,6 +117,8 @@ public sealed class AotDependencyBoundaryTests
         services.AddScoped<IProviderRepository>(_ => null!);
         services.AddScoped<IProviderKeyCredentialRepository>(_ => null!);
         services.AddScoped<IVirtualKeyRuntimeStore>(_ => null!);
+        services.AddScoped<IModelProviderMappingRuntimeStore>(_ => null!);
+        services.AddScoped<IModelProviderMappingRepository>(_ => null!);
 
         services.UseNativeRuntimePersistence();
 
@@ -124,6 +127,8 @@ public sealed class AotDependencyBoundaryTests
         AssertNativeSingleton<IProviderRepository, NpgsqlProviderRepository>(services);
         AssertNativeSingleton<IProviderKeyCredentialRepository, NpgsqlProviderKeyCredentialRepository>(services);
         AssertNativeSingleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>(services);
+        AssertNativeSingleton<IModelProviderMappingRuntimeStore, NpgsqlModelProviderMappingRuntimeStore>(services);
+        AssertNativeSingleton<IModelProviderMappingRepository, StoreBackedModelProviderMappingRepository>(services);
     }
 #endif
 
@@ -245,6 +250,19 @@ public sealed class AotDependencyBoundaryTests
         Assert.DoesNotContain(typeof(IVirtualKeyRepository), constructorParameters);
         Assert.DoesNotContain(typeof(IVirtualKeyGroupRepository), constructorParameters);
         Assert.DoesNotContain(typeof(IVirtualKeySpendHistoryRepository), constructorParameters);
+    }
+
+    [Fact]
+    public void StoreBackedModelRoutingAdapterUsesOnlyFixedShapePersistence()
+    {
+        var constructorParameters = typeof(StoreBackedModelProviderMappingRepository)
+            .GetConstructors()
+            .Single()
+            .GetParameters()
+            .Select(parameter => parameter.ParameterType)
+            .ToArray();
+
+        Assert.Equal([typeof(IModelProviderMappingRuntimeStore)], constructorParameters);
     }
 
     [Fact]

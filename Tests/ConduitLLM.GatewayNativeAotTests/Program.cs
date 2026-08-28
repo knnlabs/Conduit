@@ -97,12 +97,19 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
             .EnumerateArray().Select(value => value.GetString()).ToArray();
         True(protocols.SequenceEqual(["json"]), "native SignalR protocol is JSON-only");
 
+        var supported = GetProperty(capabilities.RootElement, "included_features")
+            .EnumerateArray().Select(value => value.GetString()).ToHashSet();
+        True(supported.Contains("authenticated-model-discovery"),
+            "authenticated model discovery is advertised");
+
         var exclusions = GetProperty(capabilities.RootElement, "excluded_features")
             .EnumerateArray().Select(value => value.GetString()).ToHashSet();
         True(exclusions.Contains("signalr-messagepack"), "MessagePack exclusion is observable");
         True(exclusions.Contains("ef-core-query-data-plane"), "EF query data-plane exclusion is observable");
         True(exclusions.Contains("authenticated-signalr-connections"),
             "authenticated SignalR exclusion is observable");
+        True(!exclusions.Contains("authenticated-http-data-plane"),
+            "authenticated HTTP is no longer excluded as one undifferentiated boundary");
 
         await ExpectAsync(await _admin.GetAsync("health/live"), HttpStatusCode.OK, "Admin liveness");
         await ExpectAsync(await _gateway.GetAsync("health/live"), HttpStatusCode.OK, "Gateway liveness");
@@ -116,6 +123,34 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
 
         await ExpectAsync(await _gateway.GetAsync("v1/models"), HttpStatusCode.Unauthorized,
             "unauthenticated data-plane request is rejected before EF");
+
+        foreach (var gateway in new[] { _gateway, _secondaryGateway })
+        {
+            using var listRequest = AuthorizedRequest(HttpMethod.Get, "v1/models");
+            using var listResponse = await gateway.SendAsync(listRequest);
+            await ExpectAsync(listResponse, HttpStatusCode.OK, "typed-store authenticated model list");
+            var listBody = await listResponse.Content.ReadAsStringAsync();
+            True(listBody.Contains(NativeParityFixture.ModelAlias, StringComparison.Ordinal),
+                "model list contains seeded native alias");
+
+            using var retrieveRequest = AuthorizedRequest(
+                HttpMethod.Get,
+                $"v1/models/{NativeParityFixture.ModelAlias}");
+            using var retrieveResponse = await gateway.SendAsync(retrieveRequest);
+            await ExpectAsync(retrieveResponse, HttpStatusCode.OK, "typed-store model retrieval");
+        }
+
+        using var metadataRequest = AuthorizedRequest(
+            HttpMethod.Get,
+            $"v1/conduit/models/{NativeParityFixture.ModelAlias}/metadata");
+        using var metadataResponse = await _gateway.SendAsync(metadataRequest);
+        await ExpectAsync(metadataResponse, HttpStatusCode.OK, "typed-store model capability metadata");
+        using var metadataDocument = JsonDocument.Parse(
+            await metadataResponse.Content.ReadAsStringAsync());
+        var metadata = GetProperty(metadataDocument.RootElement, "metadata");
+        var capabilitiesGraph = GetProperty(metadata, "capabilities");
+        True(GetProperty(capabilitiesGraph, "chat").GetBoolean(),
+            "model metadata contains effective chat capability");
     }
 
     private async Task AssertSignalRAndRedisAsync()
@@ -157,6 +192,15 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
         BaseAddress = baseAddress,
         Timeout = TimeSpan.FromSeconds(30)
     };
+
+    private static HttpRequestMessage AuthorizedRequest(HttpMethod method, string path)
+    {
+        var request = new HttpRequestMessage(method, path);
+        request.Headers.Authorization = new AuthenticationHeaderValue(
+            "Bearer",
+            NativeParityFixture.VirtualKey);
+        return request;
+    }
 
     private static async Task ExpectAsync(HttpResponseMessage response, HttpStatusCode expected, string name)
     {
@@ -201,6 +245,7 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
 internal static class NativeParityFixture
 {
     public const string VirtualKey = "condt_native_aot_parity";
+    public const string ModelAlias = "native-aot-model";
     private const string FixtureOwner = "native-aot-parity";
 
     public static async Task SeedAsync(string connectionString)
@@ -215,9 +260,126 @@ internal static class NativeParityFixture
         var groupId = await UpsertGroupAsync(connection, transaction, now);
         var keyId = await UpsertVirtualKeyAsync(connection, transaction, groupId, now);
         await ReplaceIpFiltersAsync(connection, transaction, keyId, now);
+        await UpsertModelRoutingAsync(connection, transaction, now);
 
         await transaction.CommitAsync();
-        Console.WriteLine("Seeded native Gateway virtual-key and IP-filter parity fixture.");
+        Console.WriteLine("Seeded native Gateway virtual-key, IP-filter, and model-routing parity fixture.");
+    }
+
+    private static async Task UpsertModelRoutingAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        DateTime now)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO "Providers" (
+                "Id", "ProviderType", "ProviderName", "BaseUrl", "Settings", "IsEnabled",
+                "TrustProviderReportedCosts", "ProviderCostMarkupMultiplier", "CreatedAt", "UpdatedAt")
+            VALUES (-9001, 1, 'Native AOT parity provider', NULL, '{"region":"native"}'::jsonb,
+                true, true, 1.125, @now, @now)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "ProviderType" = EXCLUDED."ProviderType",
+                "ProviderName" = EXCLUDED."ProviderName",
+                "Settings" = EXCLUDED."Settings",
+                "IsEnabled" = true,
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+
+            INSERT INTO "ModelAuthors" ("Id", "Name", "Description", "WebsiteUrl")
+            VALUES (-9002, 'Native AOT parity author', 'Native process fixture', NULL)
+            ON CONFLICT ("Id") DO UPDATE SET "Name" = EXCLUDED."Name";
+
+            INSERT INTO "ModelSeries" (
+                "Id", "AuthorId", "Name", "Description", "TokenizerType", "Parameters")
+            VALUES (-9003, -9002, 'Native AOT parity series', NULL, 0, '{"temperature":{}}')
+            ON CONFLICT ("Id") DO UPDATE SET
+                "AuthorId" = EXCLUDED."AuthorId",
+                "Name" = EXCLUDED."Name",
+                "Parameters" = EXCLUDED."Parameters";
+
+            INSERT INTO "Models" (
+                "Id", "Name", "Version", "Description", "ModelCardUrl", "ModelSeriesId",
+                "SupportsVision", "SupportsImageGeneration", "SupportsVideoGeneration",
+                "SupportsEmbeddings", "SupportsSpeechToText", "SupportsTextToSpeech",
+                "SupportsRerank", "SupportsChat", "SupportsFunctionCalling", "SupportsStreaming",
+                "InputModalities", "OutputModalities", "CapabilitySource",
+                "CapabilitiesLastVerifiedAt", "TokenizerType", "MaxInputTokens", "MaxOutputTokens",
+                "IsActive", "Parameters", "CreatedAt", "UpdatedAt")
+            VALUES (-9004, 'Native AOT parity model', 'v1', 'Native process routing fixture', NULL, -9003,
+                true, false, false, false, false, false, false, true, true, true,
+                '["text","image"]'::jsonb, '["text"]'::jsonb, 2, @now, 0, 64000, 8192,
+                true, NULL, @now, @now)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "Name" = EXCLUDED."Name",
+                "ModelSeriesId" = EXCLUDED."ModelSeriesId",
+                "SupportsVision" = true,
+                "SupportsChat" = true,
+                "SupportsFunctionCalling" = true,
+                "SupportsStreaming" = true,
+                "InputModalities" = EXCLUDED."InputModalities",
+                "OutputModalities" = EXCLUDED."OutputModalities",
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+
+            INSERT INTO "ModelCosts" (
+                "Id", "CostName", "PricingModel", "PricingConfiguration",
+                "InputCostPerMillionTokens", "OutputCostPerMillionTokens",
+                "EmbeddingCostPerMillionTokens", "CreatedAt", "UpdatedAt", "ModelType",
+                "IsActive", "EffectiveDate", "ExpiryDate", "Description", "Priority",
+                "BatchProcessingMultiplier", "SupportsBatchProcessing",
+                "CachedInputCostPerMillionTokens", "CachedInputWriteCostPerMillionTokens",
+                "CostPerSearchUnit", "AudioCostPerMinute", "AudioCostPerThousandCharacters",
+                "ReasoningCostPerMillionTokens")
+            VALUES (-9005, 'Native AOT parity cost', 0, NULL, 2.5, 10, NULL,
+                @now, @now, 'chat', true, @now, NULL, NULL, 0, 0.5, true,
+                0.25, NULL, NULL, NULL, NULL, NULL)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "InputCostPerMillionTokens" = EXCLUDED."InputCostPerMillionTokens",
+                "OutputCostPerMillionTokens" = EXCLUDED."OutputCostPerMillionTokens",
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+
+            INSERT INTO "ModelIdentifiers" (
+                "Id", "ModelId", "IsEnabled", "MaxInputTokens", "MaxOutputTokens",
+                "InputModalities", "OutputModalities", "OperationalCapabilities",
+                "CapabilitySource", "CapabilitiesLastVerifiedAt", "ProviderVariation",
+                "QualityScore", "SpeedScore", "Identifier", "Provider", "ModelCostId",
+                "IsPrimary", "Metadata")
+            VALUES (-9006, -9004, true, 32000, 4096, '["text","image"]'::jsonb,
+                '["text"]'::jsonb, '{"supports_json_schema":true}'::jsonb, 2, @now,
+                NULL, 0.95, 1.5, 'native-aot-provider-model', 1, -9005, true, NULL)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "ModelId" = EXCLUDED."ModelId",
+                "IsEnabled" = true,
+                "OperationalCapabilities" = EXCLUDED."OperationalCapabilities",
+                "ModelCostId" = EXCLUDED."ModelCostId";
+
+            INSERT INTO "ModelProviderMappings" (
+                "Id", "ModelAlias", "ProviderModelId", "ProviderId", "IsEnabled",
+                "RoutingPriority", "RoutingWeight", "ProviderOptions", "CreatedAt", "UpdatedAt",
+                "ModelProviderTypeAssociationId")
+            VALUES (-9007, @alias, 'native-aot-provider-model', -9001, true,
+                10, 1.25, '{"route":"fallback"}', @now, @now, -9006)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "ModelAlias" = EXCLUDED."ModelAlias",
+                "ProviderId" = EXCLUDED."ProviderId",
+                "IsEnabled" = true,
+                "ModelProviderTypeAssociationId" = EXCLUDED."ModelProviderTypeAssociationId",
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+
+            INSERT INTO "ModelRoutePolicies" (
+                "Id", "ModelAlias", "Strategy", "CostWeight", "SpeedWeight", "QualityWeight",
+                "CacheAffinityEnabled", "AffinityTtlSeconds", "MaxAffinityScorePenalty",
+                "IsEnabled", "CreatedAt", "UpdatedAt")
+            VALUES (-9008, @alias, 'Balanced', 0.5, 0.3, 0.2, true, 900, 0.075,
+                true, @now, @now)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "ModelAlias" = EXCLUDED."ModelAlias",
+                "IsEnabled" = true,
+                "UpdatedAt" = EXCLUDED."UpdatedAt";
+            """;
+        command.Parameters.AddWithValue("alias", NpgsqlDbType.Varchar, ModelAlias);
+        command.Parameters.AddWithValue("now", NpgsqlDbType.TimestampTz, now);
+        await command.ExecuteNonQueryAsync();
     }
 
     private static async Task UpsertSettingAsync(

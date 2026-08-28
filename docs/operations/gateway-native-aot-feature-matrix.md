@@ -14,6 +14,7 @@ The running Gateway exposes the same information at `GET /health/runtime-capabil
 | SignalR protocol surface | JSON is the only protocol. Negotiate routes for all eight Gateway hubs are present on both Gateway hosts. | The native probe negotiates every hub route on both processes. |
 | Authentication boundary | Requests without a virtual key are rejected before the EF-backed data plane. | `GET /v1/models` returns 401 without credentials. |
 | Typed request persistence | Virtual-key lookup plus global and per-key IP policy use typed Npgsql repositories in the native Gateway. | With default-deny IP filtering enabled, a seeded virtual key negotiates all eight hub routes on both native Gateway processes. |
+| Authenticated model discovery | Model list, retrieval, and effective capability metadata use the fixed-query typed Npgsql model-routing graph. | A seeded alias is listed and retrieved on both native Gateways, and its canonical/provider capability graph is returned by the metadata endpoint. |
 | Operations | Liveness, Prometheus metrics, forwarded-header middleware, and OpenTelemetry startup are supported. | Native liveness and metrics endpoints are exercised. |
 
 SignalR MessagePack is deliberately not registered by a NativeAOT publish and is unreachable to the native linker. A normal JIT build still references and enables MessagePack by default, and still honors `SIGNALR_MESSAGEPACK_ENABLED=false`.
@@ -24,14 +25,13 @@ The following features are excluded from the first native image and appear in `e
 
 - `signalr-messagepack`
 - `ef-core-query-data-plane`
-- `authenticated-http-data-plane`
 - `authenticated-signalr-connections`
 - `redis-virtual-key-cache-and-rate-limits`
 - `provider-routing-and-streaming`
 - `s3-media-api-workflows`
 - `readiness-and-database-health`
 
-EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, and virtual keys. Model routing now has a parity-tested typed persistence seam, but the native host does not select it yet; request logging, tasks, and media persistence also remain unextracted. Those boundaries still block end-to-end provider HTTP/SSE, cancellation, authenticated SignalR, and S3 media workflows. Those behaviors remain fully available in the JIT image.
+EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, virtual keys, and model discovery/routing metadata. Request logging, tasks, and media persistence remain unextracted. Those boundaries still block end-to-end provider HTTP/SSE, cancellation, authenticated SignalR, and S3 media workflows. Those behaviors remain fully available in the JIT image.
 
 Gateway request-time consumers now depend on `IVirtualKeyRuntimeService`, while
 Admin-style key management remains behind the broader `IVirtualKeyService`. Both
@@ -52,8 +52,10 @@ validation, and direct spend fallback. The same native-only registration replace
 global-setting, IP-filter, provider, and provider-credential repositories with their
 already parity-tested typed-Npgsql implementations. A complete model-routing runtime
 graph now has fixed-query EF and typed-Npgsql stores plus real-PostgreSQL and native
-probe coverage, but it is not registered in the native Gateway in this slice. Logging,
-task, and media dependencies remain EF-backed, so the exclusions remain authoritative.
+probe coverage. Native Gateway registers a read-only adapter over that store while JIT
+and Admin retain the full EF repository; persisted route policy is read through the same
+store. Logging, task, and media dependencies remain EF-backed, so the remaining
+exclusions remain authoritative.
 
 The compiled model is checked in under `Shared/ConduitLLM.Configuration/Data/CompiledModels`. Regenerate it whenever the EF model changes:
 
@@ -68,7 +70,7 @@ The generator currently needs the three `Model = ConduitLLM.Configuration.Entiti
 
 ## Native process gate
 
-CI runs `scripts/aot/gateway-native-parity.ps1` after native publishing. It requires PostgreSQL, Redis, the standalone migrator, and the published native artifacts. The gate provisions a default-deny global IP policy, a virtual key with its own allowlist, and then negotiates every hub on both native Gateways with that key. The supported-boundary probe intentionally does not provision S3 or a provider because those paths are downstream of the excluded EF query data plane.
+CI runs `scripts/aot/gateway-native-parity.ps1` after native publishing. It requires PostgreSQL, Redis, the standalone migrator, and the published native artifacts. The gate provisions a default-deny global IP policy, a virtual key with its own allowlist, and a complete model-routing graph. It negotiates every hub and exercises authenticated model list/retrieval on both native Gateways, then verifies effective capability metadata. The supported-boundary probe intentionally does not provision S3 or provider credentials because provider execution and media paths are downstream of the remaining excluded persistence boundaries.
 
 The separate `scripts/test/wolverine-two-host-smoke.ps1 -NativeArtifactDirectory <artifact>` gate exercises cross-host Wolverine delivery with native Admin/Gateway processes.
 
