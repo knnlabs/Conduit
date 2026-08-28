@@ -86,9 +86,17 @@ $env:ConduitEfTooling = 'true'
 $env:CONDUIT_EF_COMPILED_MODEL = 'true'
 $env:DATABASE_URL = 'postgresql://user:password@localhost:5432/conduitdb'
 dotnet ef dbcontext optimize --project Shared/ConduitLLM.Configuration --startup-project Shared/ConduitLLM.Configuration --context ConduitDbContext --output-dir Data/CompiledModels --namespace ConduitLLM.Configuration.Data.CompiledModels --nativeaot --configuration Release
+./scripts/aot/normalize-compiled-model.ps1
 ```
 
 The generator currently needs the three `Model = ConduitLLM.Configuration.Entities.Model` aliases retained in generated files because the domain entity name collides with an EF internal type.
+
+Normalization also reapplies 22 exact `IL3050` exceptions to generated `Create`
+methods whose closed enum and array types are statically named and rooted by the
+compiled model. It does not suppress the warning category or any application method.
+Each exception names the database/runtime owner, EF NativeAOT tracking issue, and
+removal condition. CI runs the script with `-Check` so regeneration cannot silently
+drop or broaden the reviewed set.
 
 ## Native process gate
 
@@ -107,6 +115,5 @@ The separate `scripts/test/wolverine-two-host-smoke.ps1 -NativeArtifactDirectory
 
 First-party linker warnings remain tracked by the parent epic's warning ratchet and are
 a production-promotion blocker. Reducing that ratchet to zero requires resolving the
-remaining Admin and Gateway EF query shapes plus generated compiled-model diagnostics.
-This ledger records third-party runtime/AOT boundaries specific to protocol and
-infrastructure parity.
+remaining Admin and Gateway EF query shapes. This ledger records third-party
+runtime/AOT boundaries specific to protocol and infrastructure parity.

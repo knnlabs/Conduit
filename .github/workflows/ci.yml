@@ -86,6 +86,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Verify generated compiled-model normalization
+        shell: pwsh
+        run: ./scripts/aot/normalize-compiled-model.ps1 -Check
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

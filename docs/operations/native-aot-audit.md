@@ -131,12 +131,20 @@ callable against existing publish logs:
   -BaselinePath scripts/aot/linker-warning-baseline.json
 ```
 
-The 2026-08-28 `win-x64` native publish contains **139** unique first-party linker
-diagnostics: 37 `IL2026` warnings from EF query expression generation and 102
-`IL3050` warnings from the generated EF compiled model. The same publish contains no
-first-party JSON metadata or security middleware diagnostics. These 139 warnings are
-an explicit burn-down baseline, not an acceptance waiver. The latest reduction removed
-the media-quota and Gateway batch-spend query paths from the linker inventory.
+EF Core 10's compiled-model generator emits closed enum and array mappings through
+APIs annotated for arbitrary runtime types. The 22 affected generated `Create`
+methods carry exact `IL3050` exceptions with an owner, upstream issue, and removal
+condition. `scripts/aot/normalize-compiled-model.ps1` reapplies and verifies that
+bounded set after regeneration; no application method or warning category is covered.
+
+The post-normalization 2026-08-28 `win-x64` native publish contains **37** unique
+first-party linker diagnostics, all `IL2026` warnings from EF query expression
+generation. It contains no first-party `IL3050`, JSON metadata, or security middleware
+diagnostics. The 37 query warnings are an explicit burn-down baseline, not an
+acceptance waiver. The latest reductions removed the media-quota and Gateway
+batch-spend query paths from the linker inventory, then converted the 102 duplicate
+Admin/Gateway compiled-model diagnostics into the 22 reviewed generator exceptions
+described above.
 NativeAOT readiness still requires a successful `linux-x64` publish with this baseline
 reduced to zero, followed by the full feature-parity and canary gates described in the
 feature matrix and promotion policy.
