@@ -31,7 +31,7 @@ The following features are excluded from the first native image and appear in `e
 - `s3-media-api-workflows`
 - `readiness-and-database-health`
 
-EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, and virtual keys. Dynamic model mapping, request logging, tasks, and media persistence still block end-to-end authenticated workflows, including provider HTTP/SSE, cancellation, authenticated SignalR, and S3 media APIs. Those behaviors remain fully available in the JIT image.
+EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, and virtual keys. Model routing now has a parity-tested typed persistence seam, but the native host does not select it yet; request logging, tasks, and media persistence also remain unextracted. Those boundaries still block end-to-end provider HTTP/SSE, cancellation, authenticated SignalR, and S3 media workflows. Those behaviors remain fully available in the JIT image.
 
 Gateway request-time consumers now depend on `IVirtualKeyRuntimeService`, while
 Admin-style key management remains behind the broader `IVirtualKeyService`. Both
@@ -50,7 +50,9 @@ and the Npgsql adapter runs from the published native persistence probe. The nat
 Gateway now selects that adapter for virtual-key lookup, hydrated group limits, balance
 validation, and direct spend fallback. The same native-only registration replaces the
 global-setting, IP-filter, provider, and provider-credential repositories with their
-already parity-tested typed-Npgsql implementations. Dynamic model mapping, logging,
+already parity-tested typed-Npgsql implementations. A complete model-routing runtime
+graph now has fixed-query EF and typed-Npgsql stores plus real-PostgreSQL and native
+probe coverage, but it is not registered in the native Gateway in this slice. Logging,
 task, and media dependencies remain EF-backed, so the exclusions remain authoritative.
 
 The compiled model is checked in under `Shared/ConduitLLM.Configuration/Data/CompiledModels`. Regenerate it whenever the EF model changes:

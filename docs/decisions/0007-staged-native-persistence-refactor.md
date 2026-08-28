@@ -3,7 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-27
 - Decision owners: database/runtime maintainers
-- Related: #1368, #1372, #1373
+- Related: #1368, #1372, #1373, #1374
 - Extends: ADR 0006
 
 ## Context
@@ -79,6 +79,15 @@ services. This is the first service-host selection of an alternate adapter, but 
 native feature matrix remains excluded until downstream provider, logging, task, and media
 dependencies have equivalent boundaries and process coverage.
 
+Model routing follows the same request-time pattern without moving the broad Admin
+repository. `IModelProviderMappingRuntimeStore` materializes a complete route graph:
+mapping and provider configuration, canonical and provider-specific capabilities,
+series metadata, optional costs, deterministic paging, and per-alias route policy. Its
+EF reference and fixed-query typed-Npgsql adapters share a real-PostgreSQL parity test,
+and the typed adapter runs inside the published persistence NativeAOT probe. This slice
+deliberately stops before host selection; native routing remains excluded until the
+request-time repository/service adapter and provider HTTP process gate are in place.
+
 ## Options considered
 
 1. **Wait for production-supported EF NativeAOT.** Rejected as the only plan: it
@@ -107,9 +116,10 @@ Each slice must provide:
   alternate backend.
 
 The extracted global-settings, IP-filter, provider/credential, and virtual-key runtime
-slices are selected only by a native Gateway build. JIT Gateway and Admin registrations
-remain EF. Rollback is therefore the JIT artifact, whose request-time and management
-contracts continue to resolve to the legacy services.
+slices are selected only by a native Gateway build. The extracted model-routing store
+is parity-tested but not selected yet. JIT Gateway and Admin registrations remain EF.
+Rollback is therefore the JIT artifact, whose request-time and management contracts
+continue to resolve to the legacy services.
 
 ## Consequences
 
