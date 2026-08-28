@@ -136,6 +136,7 @@ public sealed class AotDependencyBoundaryTests
         services.AddScoped<IModelProviderMappingRuntimeStore>(_ => null!);
         services.AddScoped<IModelProviderMappingRepository>(_ => null!);
 
+        services.AddBillingAndPricingServices();
         services.UseNativeRuntimePersistence();
 
         AssertNativeSingleton<IGlobalSettingRepository, NpgsqlGlobalSettingRepository>(services);
@@ -147,6 +148,11 @@ public sealed class AotDependencyBoundaryTests
         AssertNativeSingleton<IRequestLogRuntimeWriter, StoreBackedRequestLogRuntimeWriter>(services);
         AssertNativeSingleton<IModelProviderMappingRuntimeStore, NpgsqlModelProviderMappingRuntimeStore>(services);
         AssertNativeSingleton<IModelProviderMappingRepository, StoreBackedModelProviderMappingRepository>(services);
+        var modelCost = Assert.Single(
+            services,
+            candidate => candidate.ServiceType == typeof(IModelCostService));
+        Assert.Equal(ServiceLifetime.Scoped, modelCost.Lifetime);
+        Assert.Equal(typeof(StoreBackedModelCostService), modelCost.ImplementationType);
     }
 #endif
 

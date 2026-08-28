@@ -18,6 +18,34 @@ public sealed class NpgsqlModelProviderMappingRuntimeStore : IModelProviderMappi
     private const int DefaultPageSize = 20;
     private const int MaxPageSize = 100;
 
+    private const string SelectCost = """
+        SELECT
+            cost."Id" AS cost_id,
+            cost."CostName" AS cost_name,
+            cost."PricingModel" AS cost_pricing_model,
+            cost."PricingConfiguration" AS cost_pricing_configuration,
+            cost."InputCostPerMillionTokens" AS cost_input,
+            cost."OutputCostPerMillionTokens" AS cost_output,
+            cost."EmbeddingCostPerMillionTokens" AS cost_embedding,
+            cost."CreatedAt" AS cost_created_at,
+            cost."UpdatedAt" AS cost_updated_at,
+            cost."ModelType" AS cost_model_type,
+            cost."IsActive" AS cost_active,
+            cost."EffectiveDate" AS cost_effective_at,
+            cost."ExpiryDate" AS cost_expires_at,
+            cost."Description" AS cost_description,
+            cost."Priority" AS cost_priority,
+            cost."BatchProcessingMultiplier" AS cost_batch_multiplier,
+            cost."SupportsBatchProcessing" AS cost_supports_batch,
+            cost."CachedInputCostPerMillionTokens" AS cost_cached_input,
+            cost."CachedInputWriteCostPerMillionTokens" AS cost_cached_write,
+            cost."CostPerSearchUnit" AS cost_search_unit,
+            cost."AudioCostPerMinute" AS cost_audio_minute,
+            cost."AudioCostPerThousandCharacters" AS cost_audio_characters,
+            cost."ReasoningCostPerMillionTokens" AS cost_reasoning
+        FROM "ModelCosts" AS cost
+        """;
+
     private const string SelectRuntimeGraph = """
         SELECT
             mapping."Id" AS mapping_id,
@@ -233,6 +261,51 @@ public sealed class NpgsqlModelProviderMappingRuntimeStore : IModelProviderMappi
         };
     }
 
+    /// <inheritdoc />
+    public async Task<ModelCostRuntimeRecord?> GetModelCostByIdAsync(
+        int modelCostId,
+        CancellationToken cancellationToken = default) =>
+        await ReadCostAsync(
+            $"{SelectCost} WHERE cost.\"Id\" = @modelCostId",
+            command => command.Parameters.AddWithValue(
+                "modelCostId",
+                NpgsqlDbType.Integer,
+                modelCostId),
+            cancellationToken);
+
+    /// <inheritdoc />
+    public async Task<ModelCostRuntimeRecord?> GetModelCostForIdentifierAsync(
+        string modelIdentifier,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelIdentifier);
+        return await ReadCostAsync(
+            $"""
+            {SelectCost}
+            INNER JOIN "ModelIdentifiers" AS association
+                ON association."ModelCostId" = cost."Id"
+            WHERE association."Identifier" = @modelIdentifier
+              AND association."IsEnabled" = true
+              AND cost."IsActive" = true
+              AND cost."EffectiveDate" <= @now
+              AND (cost."ExpiryDate" IS NULL OR cost."ExpiryDate" > @now)
+            ORDER BY cost."Priority" DESC, cost."EffectiveDate" DESC
+            LIMIT 1
+            """,
+            command =>
+            {
+                command.Parameters.AddWithValue(
+                    "modelIdentifier",
+                    NpgsqlDbType.Varchar,
+                    modelIdentifier);
+                command.Parameters.AddWithValue(
+                    "now",
+                    NpgsqlDbType.TimestampTz,
+                    DateTime.UtcNow);
+            },
+            cancellationToken);
+    }
+
     private async Task<ModelProviderMappingRuntimePage> ReadPageAsync(
         int? providerId,
         int page,
@@ -285,6 +358,19 @@ public sealed class NpgsqlModelProviderMappingRuntimeStore : IModelProviderMappi
             mappings.Add(ReadMapping(reader));
         }
         return mappings;
+    }
+
+    private async Task<ModelCostRuntimeRecord?> ReadCostAsync(
+        string sql,
+        Action<NpgsqlCommand> addParameters,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        addParameters(command);
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        return await reader.ReadAsync(cancellationToken) ? ReadCost(reader) : null;
     }
 
     private static ModelProviderMappingRuntimeRecord ReadMapping(NpgsqlDataReader reader) => new()

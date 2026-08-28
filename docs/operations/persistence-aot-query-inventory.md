@@ -69,9 +69,10 @@ capability metadata; series data; optional pricing; and route policy. A fixed-qu
 reference and typed-Npgsql adapter pass the same real-PostgreSQL contract, and the
 typed adapter runs in the published persistence NativeAOT probe. Native Gateway now
 selects a read-only compatibility adapter over this store and resolves persisted route
-policy through it. The two-Gateway native process gate proves authenticated model list,
-retrieval, and capability metadata; provider HTTP/SSE remains excluded until its
-downstream persistence and cancellation boundaries are covered.
+policy through it. Fixed-shape reads by cost ID and provider model identifier supply the
+native billing path while JIT and Admin retain the full model-cost management service.
+The two-Gateway native process gate proves authenticated model list, retrieval,
+capability metadata, provider pricing, and routing to a separately hosted native provider.
 
 Request accounting now has a fixed-shape write boundary as well. The backend-neutral
 record covers provider/routing attribution, prompt-cache accounting, token counts,
@@ -83,6 +84,13 @@ supplies `IVirtualKeyRuntimeStore` to the batched spend service, so key/group lo
 idempotent balance-and-ledger writes, fallback charges, and cache invalidation hashes no
 longer re-enter scoped EF services in the native runtime. Request-log reporting,
 retention, and management queries are intentionally still owned by the JIT path.
+
+The native provider process gate closes the corresponding transport checkpoint. It
+exercises non-stream JSON, SSE chunks and terminal usage, customer-safe provider error
+translation, and downstream cancellation propagation. Successful requests must produce
+the exact request-log, virtual-key balance, lifetime-spend, and ledger values in real
+PostgreSQL. Provider chat transport and accounting are therefore included in the native
+capability contract; task, media, and authenticated hub execution remain excluded.
 
 ## Exit criteria for revisiting the decision
 

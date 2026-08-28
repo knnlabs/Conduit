@@ -23,6 +23,11 @@ public partial class Program
                     "json-signalr-negotiate-routing",
                     "unauthenticated-request-rejection",
                     "authenticated-model-discovery",
+                    "provider-http",
+                    "sse-streaming",
+                    "provider-error-translation",
+                    "provider-cancellation",
+                    "request-accounting-and-spend-settlement",
                     "forwarded-headers",
                     "liveness-metrics-opentelemetry"
                 ]
@@ -46,7 +51,6 @@ public partial class Program
                     "ef-core-query-data-plane",
                     "authenticated-signalr-connections",
                     "redis-virtual-key-cache-and-rate-limits",
-                    "provider-routing-and-streaming",
                     "s3-media-api-workflows",
                     "readiness-and-database-health"
                 ]

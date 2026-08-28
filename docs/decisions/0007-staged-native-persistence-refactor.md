@@ -87,9 +87,10 @@ EF reference and fixed-query typed-Npgsql adapters share a real-PostgreSQL parit
 and the typed adapter runs inside the published persistence NativeAOT probe. This slice
 first lands independently of host selection. Native Gateway then selects a read-only
 compatibility adapter over the runtime store and resolves persisted route policy through
-the same boundary. JIT and Admin retain the full EF repository. Authenticated model
-discovery is process-tested; provider HTTP/SSE remains excluded until its downstream
-persistence and cancellation boundaries are covered.
+the same boundary. Native request billing also resolves model costs by fixed ID or
+provider identifier through this store. JIT and Admin retain the full EF repository and
+model-cost management service. Authenticated model discovery and provider pricing are
+covered by the native process gate.
 
 Request accounting is the next downstream boundary. Request-time middleware now
 depends on `IRequestLogRuntimeWriter`, which maps the existing DTO onto a complete,
@@ -99,8 +100,17 @@ native Gateway selects an immediate typed-Npgsql writer. The same change routes
 invalidation hash lookup through `IVirtualKeyRuntimeStore` when the Gateway supplies
 one. EF remains the fallback for legacy constructors and non-Gateway hosts. The write
 contract has real-PostgreSQL EF/Npgsql parity and published NativeAOT process coverage.
-Reporting, retention, and management queries over request logs remain JIT-only; this
-slice does not yet claim provider HTTP/SSE support without its end-to-end process gate.
+Reporting, retention, and management queries over request logs remain JIT-only.
+
+The next promotion checkpoint proves the ordinary provider data plane rather than adding
+another broad repository. A separate native OpenAI-compatible provider process validates
+resolved credentials and exercises non-stream JSON, SSE chunks and final usage, translated
+provider errors, and downstream cancellation propagation. Successful requests are priced
+through the fixed-shape model-cost lookup, persisted through the request-log writer, and
+settled through the typed virtual-key store. Exact token, cost, balance, lifetime-spend,
+and ledger values are asserted in real PostgreSQL. These paths are therefore included in
+the native capability contract; task, media, and authenticated hub execution remain
+excluded until their own downstream boundaries are proven.
 
 ## Options considered
 

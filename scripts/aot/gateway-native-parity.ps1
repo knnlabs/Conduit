@@ -16,6 +16,7 @@ param(
     [int]$GatewayPort = 15100,
     [int]$SecondaryGatewayPort = 15101,
     [int]$AdminPort = 15102,
+    [int]$ProviderPort = 15103,
     [int]$TimeoutSeconds = 240,
     [switch]$NoBuild
 )
@@ -91,8 +92,10 @@ if (-not $NoBuild) {
 $env:DATABASE_URL = $DatabaseUrl
 $env:REDIS_URL = $RedisUrl
 $env:CONDUIT_MASTER_KEY = $MasterKey
+$env:CONDUIT_NATIVE_PROVIDER_URL = "http://127.0.0.1:$ProviderPort"
 $env:CONDUIT_MIGRATION_MODE = 'Skip'
 $env:ConduitLLM__Messaging__Backend = 'Wolverine'
+$env:BatchSpending__FlushIntervalSeconds = '1'
 $env:ASPNETCORE_ENVIRONMENT = 'Production'
 $env:CONDUIT_ENABLE_HTTPS_REDIRECTION = 'false'
 $env:CONDUIT_TRUSTED_PROXY_ENABLED = 'true'
@@ -116,6 +119,18 @@ if ($LASTEXITCODE -ne 0) { throw 'Native Gateway parity fixture seed failed.' }
 
 $processes = [Collections.Generic.List[Diagnostics.Process]]::new()
 try {
+    $probeName = if ($IsWindows) { 'ConduitLLM.GatewayNativeAotTests.exe' } else { 'ConduitLLM.GatewayNativeAotTests' }
+    $nativeProbe = Join-Path $runtimeRoot 'probe' $probeName
+    if (Test-Path -LiteralPath $nativeProbe -PathType Leaf) {
+        $provider = Start-LoggedProcess 'provider' $nativeProbe @('--mock-provider') (Split-Path $nativeProbe) $null
+    } else {
+        $dotnet = (Get-Command dotnet).Source
+        $probeDll = Join-Path $probeProject 'bin/Release/net10.0/ConduitLLM.GatewayNativeAotTests.dll'
+        $provider = Start-LoggedProcess 'provider' $dotnet @($probeDll, '--mock-provider') $probeProject $null
+    }
+    $processes.Add($provider)
+    Wait-ForHttp "http://127.0.0.1:$ProviderPort/health" 'OpenAI-compatible provider stub'
+
     $adminExecutable = Get-NativeExecutable 'Admin'
     $admin = Start-LoggedProcess 'admin' $adminExecutable @() (Split-Path $adminExecutable) "http://127.0.0.1:$AdminPort"
     $processes.Add($admin)
@@ -133,8 +148,6 @@ try {
     $env:CONDUIT_NATIVE_ADMIN_URL = "http://127.0.0.1:$AdminPort"
     $env:CONDUIT_NATIVE_GATEWAY_URL = "http://127.0.0.1:$GatewayPort"
     $env:CONDUIT_NATIVE_GATEWAY_SECONDARY_URL = "http://127.0.0.1:$SecondaryGatewayPort"
-    $probeName = if ($IsWindows) { 'ConduitLLM.GatewayNativeAotTests.exe' } else { 'ConduitLLM.GatewayNativeAotTests' }
-    $nativeProbe = Join-Path $runtimeRoot 'probe' $probeName
     if (Test-Path -LiteralPath $nativeProbe -PathType Leaf) {
         & $nativeProbe
     } else {

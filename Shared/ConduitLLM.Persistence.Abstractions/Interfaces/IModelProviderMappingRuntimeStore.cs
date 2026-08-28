@@ -37,4 +37,12 @@ public interface IModelProviderMappingRuntimeStore
     Task<ModelRoutePolicyRuntimeRecord?> GetRoutePolicyAsync(
         string modelAlias,
         CancellationToken cancellationToken = default);
+
+    Task<ModelCostRuntimeRecord?> GetModelCostByIdAsync(
+        int modelCostId,
+        CancellationToken cancellationToken = default);
+
+    Task<ModelCostRuntimeRecord?> GetModelCostForIdentifierAsync(
+        string modelIdentifier,
+        CancellationToken cancellationToken = default);
 }

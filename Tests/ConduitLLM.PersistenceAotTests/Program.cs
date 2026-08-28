@@ -808,6 +808,10 @@ static async Task ExerciseModelRoutingRuntimeStoreAsync(
         "model-routing pagination failed");
     Ensure(await store.GetCanonicalModelIdForAssociationAsync(905) == 903,
         "model-routing canonical model lookup failed");
+    Ensure((await store.GetModelCostByIdAsync(904))?.OutputCostPerMillionTokens == 10m,
+        "model-cost ID lookup failed");
+    Ensure((await store.GetModelCostForIdentifierAsync("provider/native-route"))?.Id == 904,
+        "model-cost identifier lookup failed");
     var policy = await store.GetRoutePolicyAsync("native-route");
     Ensure(policy is { Strategy: "Balanced", CacheAffinityEnabled: true, AffinityTtlSeconds: 900 },
         "model-routing route policy failed");
