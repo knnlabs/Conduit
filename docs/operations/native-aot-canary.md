@@ -10,11 +10,10 @@ request accounting, async tasks, S3 media, PostgreSQL/Wolverine, Redis, and JSON
 SignalR paths. It continues to exclude MessagePack, broad EF query execution, the
 Redis virtual-key authentication cache, and full readiness/database-health parity.
 
-Promotion remains blocked because the EF-backed Admin path is not approved for
-production NativeAOT, the verified linker ratchet still contains 37 first-party EF
-query diagnostics, and no digest-pinned production benchmark, ordered soak, or
-rollback evidence has been collected. A synthetic benchmark alone cannot clear these
-blockers.
+The first-party linker ratchet is now empty. Promotion nevertheless remains blocked
+because the EF-backed Admin path is not approved for production NativeAOT and no
+digest-pinned production benchmark, ordered soak, or rollback evidence has been
+collected. A synthetic benchmark alone cannot clear these blockers.
 
 The release workflow therefore publishes only immutable candidate tags:
 

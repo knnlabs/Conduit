@@ -139,6 +139,14 @@ provider-generated PNG through quota enforcement, MinIO storage, durable ownersh
 cross-host metadata, and authenticated download. S3-compatible media workflows are
 therefore included in the native capability contract.
 
+Gateway operational metrics are the final extracted reporting slice in this phase.
+`IGatewayMetricsStore` exposes only the bounded model usage, provider cost, active
+entity, task queue, generation-duration, and top-key-spend aggregates consumed by the
+Prometheus collectors. JIT Gateway uses an EF reference adapter; native Gateway uses
+fixed typed-Npgsql queries. Both implementations pass the same real-PostgreSQL
+aggregate contract. Broader Admin reporting and retention queries remain on EF and
+outside ADR 0006's supported NativeAOT data plane.
+
 ## Options considered
 
 1. **Wait for production-supported EF NativeAOT.** Rejected as the only plan: it
@@ -167,11 +175,11 @@ Each slice must provide:
   alternate backend.
 
 The extracted global-settings, IP-filter, provider/credential, virtual-key runtime,
-model-routing, and request-accounting slices are selected only by a native Gateway
-build. Model routing is selected behind a read-only compatibility adapter, while
-request-log writes use a narrow runtime writer and authenticated hubs share the
-virtual-key runtime snapshot. JIT Gateway and Admin registrations retain their existing
-EF-backed services.
+model-routing, request-accounting, async-task, media, and Gateway-metrics slices are
+selected only by a native Gateway build. Model routing is selected behind a read-only
+compatibility adapter, while request-log writes use a narrow runtime writer and
+authenticated hubs share the virtual-key runtime snapshot. JIT Gateway and Admin
+registrations retain their existing EF-backed services.
 Rollback is therefore the JIT artifact, whose request-time and management contracts
 continue to resolve to the legacy services.
 

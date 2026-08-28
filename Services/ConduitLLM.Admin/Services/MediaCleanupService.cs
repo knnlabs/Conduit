@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using ConduitLLM.Admin.DTOs;
@@ -334,6 +335,10 @@ namespace ConduitLLM.Admin.Services
             }
         }
 
+        [UnconditionalSuppressMessage(
+            "Trimming",
+            "IL2026",
+            Justification = "Admin EF queries are outside the supported NativeAOT data-plane contract (ADR 0006). Owner: database/runtime. Upstream: dotnet/efcore#29754. Remove when this query uses a fixed-shape native store or EF expression construction is trim-safe.")]
         private async Task<MediaDeletionEngineResult> ProcessPurgeAsync(
             IConfigurationDbContext context,
             IMediaDeletionEngine deletionEngine,
@@ -472,6 +477,10 @@ namespace ConduitLLM.Admin.Services
             return result;
         }
 
+        [UnconditionalSuppressMessage(
+            "Trimming",
+            "IL2026",
+            Justification = "Admin EF queries are outside the supported NativeAOT data-plane contract (ADR 0006). Owner: database/runtime. Upstream: dotnet/efcore#29754. Remove when this query uses a fixed-shape native store or EF expression construction is trim-safe.")]
         private async Task<MediaDeletionEngineResult> ProcessQuotaMediaAsync(
             IConfigurationDbContext context,
             IMediaQuotaService quotaService,
@@ -758,6 +767,10 @@ namespace ConduitLLM.Admin.Services
             return (retentionDays, policy.RespectRecentAccess, policy.RecentAccessWindowDays);
         }
 
+        [UnconditionalSuppressMessage(
+            "Trimming",
+            "IL2026",
+            Justification = "Admin EF queries are outside the supported NativeAOT data-plane contract (ADR 0006). Owner: database/runtime. Upstream: dotnet/efcore#29754. Remove when this query uses a fixed-shape native store or EF expression construction is trim-safe.")]
         private async Task<MediaDeletionEngineResult> ProcessPagedMediaAsync(
             IQueryable<MediaRecord> eligibleQuery,
             IMediaDeletionEngine deletionEngine,

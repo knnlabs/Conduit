@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 using ConduitLLM.Configuration.Entities;
@@ -23,6 +24,8 @@ using ConduitLLM.Persistence.Npgsql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
+using AdminConfigurationEndpoints = ConduitLLM.Admin.Endpoints.ConfigurationEndpoints;
+
 namespace ConduitLLM.Tests.Architecture;
 
 /// <summary>
@@ -32,6 +35,82 @@ namespace ConduitLLM.Tests.Architecture;
 /// </summary>
 public sealed class AotDependencyBoundaryTests
 {
+    [Fact]
+    public void AdminEfQueryTrimExceptionsRemainMethodScopedAndAllowlisted()
+    {
+        var expected = new[]
+        {
+            "ConduitLLM.Admin.Endpoints.ConfigurationEndpoints.GetProviderEndpoints",
+            "ConduitLLM.Admin.Endpoints.ConfigurationEndpoints.GetRoutingConfig",
+            "ConduitLLM.Admin.Endpoints.ConfigurationEndpoints.GetRoutingStatistics",
+            "ConduitLLM.Admin.Endpoints.HealthMonitoringEndpoints.QueryErrorSpikes",
+            "ConduitLLM.Admin.Endpoints.HealthMonitoringEndpoints.QueryHealthIntervals",
+            "ConduitLLM.Admin.Endpoints.MediaEndpoints.QueryPruneCandidatesAsync",
+            "ConduitLLM.Admin.Endpoints.MediaRetentionEndpoints.GetPolicies",
+            "ConduitLLM.Admin.Endpoints.PromptCachingEndpoints.GetAnalytics",
+            "ConduitLLM.Admin.Endpoints.VirtualKeyGroupsEndpoints.GetTransactionHistory",
+            "ConduitLLM.Admin.Endpoints.VirtualKeyGroupsEndpoints.InvalidateGroupKeyCachesAsync",
+            "ConduitLLM.Admin.Services.AdminVirtualKeyService.PerformMaintenanceAsync",
+            "ConduitLLM.Admin.Services.MediaCleanupService.ProcessPagedMediaAsync",
+            "ConduitLLM.Admin.Services.MediaCleanupService.ProcessPurgeAsync",
+            "ConduitLLM.Admin.Services.MediaCleanupService.ProcessQuotaMediaAsync",
+            "ConduitLLM.Admin.Services.MediaCleanupStatusService.GetStatusAsync",
+            "ConduitLLM.Configuration.Repositories.MediaRecordRepository.GetAggregateStorageStatsAsync",
+            "ConduitLLM.Configuration.Repositories.MediaRecordRepository.GetStorageStatsByMediaTypeAsync",
+            "ConduitLLM.Configuration.Repositories.MediaRecordRepository.GetStorageStatsByProviderAsync",
+            "ConduitLLM.Configuration.Repositories.RequestLogRepository.GetAggregatedByModelAsync",
+            "ConduitLLM.Configuration.Repositories.RequestLogRepository.GetAggregatedByModelForVirtualKeyAsync",
+            "ConduitLLM.Configuration.Repositories.RequestLogRepository.GetAggregatedByVirtualKeyAsync",
+            "ConduitLLM.Configuration.Repositories.RequestLogRepository.GetCostsByDateAsync",
+            "ConduitLLM.Configuration.Repositories.RequestLogRepository.GetDailyStatisticsAsync",
+            "ConduitLLM.Configuration.Repositories.RequestLogRepository.GetSummaryAsync",
+            "ConduitLLM.Configuration.Repositories.RequestLogRepository.GetSummaryForVirtualKeyAsync"
+        };
+        var assemblies = new[]
+        {
+            typeof(AdminConfigurationEndpoints).Assembly,
+            typeof(MediaRecordRepository).Assembly
+        }
+            .Distinct()
+            .ToArray();
+        var types = assemblies.SelectMany(assembly => assembly.GetTypes()).ToArray();
+        var actual = types
+            .SelectMany(type => type.GetMethods(
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.Static |
+                BindingFlags.Instance |
+                BindingFlags.DeclaredOnly))
+            .Where(method => method
+                .GetCustomAttributes<UnconditionalSuppressMessageAttribute>()
+                .Any(attribute =>
+                    attribute.Category == "Trimming" &&
+                    attribute.CheckId == "IL2026" &&
+                    attribute.Justification?.StartsWith(
+                        "Admin EF queries are outside the supported NativeAOT data-plane contract",
+                        StringComparison.Ordinal) == true))
+            .Select(method => $"{method.DeclaringType!.FullName}.{method.Name}")
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expected.OrderBy(name => name, StringComparer.Ordinal), actual);
+        Assert.DoesNotContain(
+            assemblies.SelectMany(assembly =>
+                assembly.GetCustomAttributes<UnconditionalSuppressMessageAttribute>()),
+            IsAdminEfQueryException);
+        Assert.DoesNotContain(
+            types.SelectMany(type =>
+                type.GetCustomAttributes<UnconditionalSuppressMessageAttribute>()),
+            IsAdminEfQueryException);
+
+        static bool IsAdminEfQueryException(UnconditionalSuppressMessageAttribute attribute) =>
+            attribute.Category == "Trimming" &&
+            attribute.CheckId == "IL2026" &&
+            attribute.Justification?.StartsWith(
+                "Admin EF queries are outside the supported NativeAOT data-plane contract",
+                StringComparison.Ordinal) == true;
+    }
+
     [Fact]
     public void ContractsRemainTransportAndPersistenceNeutral()
     {
