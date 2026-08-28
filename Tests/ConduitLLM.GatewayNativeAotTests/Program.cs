@@ -128,7 +128,10 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
                      "sse-streaming",
                      "provider-error-translation",
                      "provider-cancellation",
-                     "request-accounting-and-spend-settlement"
+                     "request-accounting-and-spend-settlement",
+                     "authenticated-signalr-json-connections",
+                     "redis-signalr-backplane-and-rate-limits",
+                     "redis-ephemeral-key-cache"
                  })
         {
             True(supported.Contains(feature), $"{feature} is advertised");
@@ -138,8 +141,10 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
             .EnumerateArray().Select(value => value.GetString()).ToHashSet();
         True(exclusions.Contains("signalr-messagepack"), "MessagePack exclusion is observable");
         True(exclusions.Contains("ef-core-query-data-plane"), "EF query data-plane exclusion is observable");
-        True(exclusions.Contains("authenticated-signalr-connections"),
-            "authenticated SignalR exclusion is observable");
+        True(exclusions.Contains("redis-virtual-key-authentication-cache"),
+            "Redis virtual-key authentication cache exclusion is observable");
+        True(!exclusions.Contains("authenticated-signalr-connections"),
+            "process-tested authenticated SignalR is no longer excluded");
         True(!exclusions.Contains("authenticated-http-data-plane"),
             "authenticated HTTP is no longer excluded as one undifferentiated boundary");
         True(!exclusions.Contains("provider-routing-and-streaming"),
@@ -406,14 +411,201 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
             }
         }
 
+        await AssertAuthenticatedSignalRConnectionsAsync();
+        await AssertPublicSignalRConnectionAsync();
+
         await using var redis = await ConnectionMultiplexer.ConnectAsync(settings.RedisConnectionString);
+        var database = redis.GetDatabase();
         var endpoint = redis.GetEndPoints().Single();
         var server = redis.GetServer(endpoint);
         var channels = server.SubscriptionChannels(
             new RedisChannel("conduit_signalr:*", RedisChannel.PatternMode.Pattern));
         True(channels.Length > 0, "Redis SignalR backplane subscriptions");
-        True(await redis.GetDatabase().KeyExistsAsync("Conduit-DataProtection-Keys"),
+        True(await database.KeyExistsAsync("Conduit-DataProtection-Keys"),
             "Redis data-protection key ring");
+        True(await database.KeyExistsAsync($"signalr:vk:{NativeParityFixture.VirtualKeyHash}:rpm"),
+            "Redis SignalR per-minute method rate limit");
+        True(await database.KeyExistsAsync($"signalr:vk:{NativeParityFixture.VirtualKeyHash}:rpd"),
+            "Redis SignalR per-day method rate limit");
+        await WaitForSignalRConnectionCountAsync(
+            database,
+            expected: 0,
+            "Redis SignalR connection count returns to zero after disconnects");
+    }
+
+    private async Task AssertAuthenticatedSignalRConnectionsAsync()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        await using (var primary = await NativeSignalRClient.ConnectAsync(
+                         settings.Gateway,
+                         "/hubs/notifications",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        await using (var secondary = await NativeSignalRClient.ConnectAsync(
+                         settings.SecondaryGateway,
+                         "/hubs/notifications",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        {
+            True(true, "authenticated JSON SignalR clients connect to both native Gateways");
+            await using var redis = await ConnectionMultiplexer.ConnectAsync(
+                settings.RedisConnectionString);
+            await WaitForSignalRConnectionCountAsync(
+                redis.GetDatabase(),
+                expected: 2,
+                "Redis observes both live native SignalR connections");
+            await AssertDistributedSignalRConnectionLimitAsync(timeout.Token);
+
+            await primary.InvokeAsync(
+                "SystemAnnouncement",
+                """["native cross-host notification",1]""",
+                timeout.Token);
+            var notification = await secondary.WaitForTargetAsync(
+                "Onsystem_announcement",
+                timeout.Token);
+            True(notification.Contains("native cross-host notification", StringComparison.Ordinal),
+                "Redis backplane delivers a JSON hub message across native Gateways");
+        }
+
+        await using (var video = await NativeSignalRClient.ConnectAsync(
+                         settings.Gateway,
+                         "/hubs/video-generation",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        {
+            await video.InvokeAsync("UnsubscribeFromTask", """["native-video-task"]""", timeout.Token);
+            True(true, "authenticated VideoGenerationHub JSON invocation");
+        }
+
+        await using (var image = await NativeSignalRClient.ConnectAsync(
+                         settings.Gateway,
+                         "/hubs/image-generation",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        {
+            await image.InvokeAsync("UnsubscribeFromTask", """["native-image-task"]""", timeout.Token);
+            True(true, "authenticated ImageGenerationHub JSON invocation");
+        }
+
+        await using (var tasks = await NativeSignalRClient.ConnectAsync(
+                         settings.Gateway,
+                         "/hubs/tasks",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        {
+            await tasks.InvokeAsync("SubscribeToTaskType", """["native-probe"]""", timeout.Token);
+            await tasks.InvokeAsync("UnsubscribeFromTaskType", """["native-probe"]""", timeout.Token);
+            True(true, "authenticated TaskHub JSON group invocations");
+        }
+
+        await using (var spend = await NativeSignalRClient.ConnectAsync(
+                         settings.Gateway,
+                         "/hubs/spend",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        {
+            True(true, "authenticated SpendNotificationHub JSON connection");
+        }
+
+        await using (var webhooks = await NativeSignalRClient.ConnectAsync(
+                         settings.Gateway,
+                         "/hubs/webhooks",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        {
+            const string webhookArguments = """[["https://native.invalid/hook"]]""";
+            await webhooks.InvokeAsync("SubscribeToWebhooks", webhookArguments, timeout.Token);
+            await webhooks.InvokeAsync("UnsubscribeFromWebhooks", webhookArguments, timeout.Token);
+            True(true, "authenticated WebhookDeliveryHub Redis-backed invocations");
+        }
+
+        await using (var management = await NativeSignalRClient.ConnectAsync(
+                         settings.Gateway,
+                         "/hubs/virtual-key-management",
+                         NativeParityFixture.VirtualKey,
+                         timeout.Token))
+        {
+            var status = await management.WaitForTargetAsync("VirtualKeyStatus", timeout.Token);
+            True(status.Contains("Native AOT parity key", StringComparison.Ordinal),
+                "VirtualKeyManagementHub sends typed-store key and group status");
+        }
+    }
+
+    private async Task AssertDistributedSignalRConnectionLimitAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await using var rejected = await NativeSignalRClient.ConnectAsync(
+                settings.Gateway,
+                "/hubs/notifications",
+                NativeParityFixture.VirtualKey,
+                cancellationToken);
+            var close = await rejected.WaitForServerCloseAsync(cancellationToken);
+            True(close.Contains("close", StringComparison.OrdinalIgnoreCase) ||
+                 close.Contains("limit", StringComparison.OrdinalIgnoreCase),
+                "Redis rejects a third cross-host SignalR connection at the distributed ceiling");
+        }
+        catch (InvalidOperationException exception) when (
+            exception.Message.Contains("closed", StringComparison.OrdinalIgnoreCase))
+        {
+            True(true, "Redis rejects a third cross-host SignalR connection at the distributed ceiling");
+        }
+    }
+
+    private async Task AssertPublicSignalRConnectionAsync()
+    {
+        using var request = AuthorizedRequest(HttpMethod.Post, "v1/conduit/auth/ephemeral-key");
+        request.Content = new StringContent("{}", Encoding.UTF8, "application/json");
+        using var response = await _gateway.SendAsync(request);
+        await ExpectAsync(response, HttpStatusCode.OK, "native Redis ephemeral key creation");
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var ephemeralKey = GetString(document.RootElement, "ephemeral_key");
+
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        await using var publicVideo = await NativeSignalRClient.ConnectAsync(
+            settings.Gateway,
+            "/hubs/public/video-generation",
+            bearerToken: null,
+            timeout.Token);
+        await publicVideo.InvokeAsync(
+            "SubscribeToTask",
+            $$"""["native-public-video-task","{{ephemeralKey}}"]""",
+            timeout.Token);
+        var subscribed = await publicVideo.WaitForTargetAsync("taskSubscribed", timeout.Token);
+        True(subscribed.Contains("native-public-video-task", StringComparison.Ordinal),
+            "public JSON SignalR subscription validates its Redis ephemeral key");
+        await publicVideo.InvokeAsync(
+            "UnsubscribeFromTask",
+            """["native-public-video-task"]""",
+            timeout.Token);
+    }
+
+    private static async Task WaitForSignalRConnectionCountAsync(
+        IDatabase database,
+        long expected,
+        string name)
+    {
+        var key = $"signalr:vk:{NativeParityFixture.VirtualKeyHash}:connections";
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        long latest = -1;
+        while (DateTime.UtcNow < deadline)
+        {
+            var value = await database.HashGetAsync(key, "count");
+            latest = value.HasValue && long.TryParse(value.ToString(), out var count)
+                ? count
+                : 0;
+            if (latest == expected)
+            {
+                True(true, name);
+                return;
+            }
+
+            await Task.Delay(100);
+        }
+
+        throw new InvalidOperationException(
+            $"Redis SignalR connection count did not reach {expected}; latest value was {latest}.");
     }
 
     private static HttpClient CreateClient(Uri baseAddress) => new()
@@ -503,6 +695,9 @@ internal static class NativeParityFixture
     public const string VirtualKey = "condt_native_aot_parity";
     public const string ModelAlias = "native-aot-model";
     public const string FixtureOwner = "native-aot-parity";
+    public static string VirtualKeyHash => Convert.ToHexString(
+            SHA256.HashData(Encoding.UTF8.GetBytes(VirtualKey)))
+        .ToLowerInvariant();
 
     public static async Task SeedAsync(
         string connectionString,
@@ -697,9 +892,13 @@ internal static class NativeParityFixture
         var database = redis.GetDatabase();
         var endpoint = redis.GetEndPoints().Single();
         var server = redis.GetServer(endpoint);
-        var keys = server.Keys(
-                database.Database,
-                pattern: $"*group:{groupId}*")
+        var keys = new[]
+            {
+                $"*group:{groupId}*",
+                $"signalr:vk:{VirtualKeyHash}:*"
+            }
+            .SelectMany(pattern => server.Keys(database.Database, pattern: pattern))
+            .Distinct()
             .ToArray();
         if (keys.Length > 0)
         {
@@ -777,20 +976,21 @@ internal static class NativeParityFixture
         int groupId,
         DateTime now)
     {
-        var keyHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(VirtualKey)))
-            .ToLowerInvariant();
+        var keyHash = VirtualKeyHash;
         await using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
             INSERT INTO "VirtualKeys" (
                 "KeyName", "KeyHash", "Description", "IsEnabled", "VirtualKeyGroupId",
-                "CreatedAt", "UpdatedAt")
-            VALUES (@name, @hash, @description, true, @groupId, @now, @now)
+                "RateLimitRpm", "RateLimitRpd", "CreatedAt", "UpdatedAt")
+            VALUES (@name, @hash, @description, true, @groupId, 100, 1000, @now, @now)
             ON CONFLICT ("KeyHash") DO UPDATE
             SET "KeyName" = EXCLUDED."KeyName",
                 "Description" = EXCLUDED."Description",
                 "IsEnabled" = true,
                 "VirtualKeyGroupId" = EXCLUDED."VirtualKeyGroupId",
+                "RateLimitRpm" = EXCLUDED."RateLimitRpm",
+                "RateLimitRpd" = EXCLUDED."RateLimitRpd",
                 "UpdatedAt" = EXCLUDED."UpdatedAt"
             RETURNING "Id"
             """;

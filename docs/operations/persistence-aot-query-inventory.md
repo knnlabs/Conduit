@@ -90,7 +90,16 @@ exercises non-stream JSON, SSE chunks and terminal usage, customer-safe provider
 translation, and downstream cancellation propagation. Successful requests must produce
 the exact request-log, virtual-key balance, lifetime-spend, and ledger values in real
 PostgreSQL. Provider chat transport and accounting are therefore included in the native
-capability contract; task, media, and authenticated hub execution remain excluded.
+capability contract.
+
+The SignalR checkpoint reuses these extracted request-time seams rather than adding a
+hub-specific persistence path. Published native clients connect to every hub family;
+the virtual-key management hub sends status from the hydrated runtime snapshot; and
+Redis supplies distributed admission, method counters, webhook tracking, cross-host
+backplane delivery, and ephemeral-key validation for the public video hub. This removes
+authenticated JSON hub execution from the native exclusion list. Task group operations
+do not read task rows, so task and media persistence remain excluded until their own
+operation-specific stores and PostgreSQL parity suites land.
 
 ## Exit criteria for revisiting the decision
 

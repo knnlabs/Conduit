@@ -109,8 +109,16 @@ provider errors, and downstream cancellation propagation. Successful requests ar
 through the fixed-shape model-cost lookup, persisted through the request-log writer, and
 settled through the typed virtual-key store. Exact token, cost, balance, lifetime-spend,
 and ledger values are asserted in real PostgreSQL. These paths are therefore included in
-the native capability contract; task, media, and authenticated hub execution remain
-excluded until their own downstream boundaries are proven.
+the native capability contract.
+
+Authenticated JSON SignalR is the next downstream checkpoint. Real clients connect to
+all eight hub routes across two published native Gateways. The process gate proves
+typed-store authentication and initial virtual-key status, atomic Redis admission at a
+cross-host connection ceiling, method RPM/RPD counters, webhook subscription state,
+backplane delivery, and the public hub's Redis ephemeral-key flow. Hub wire payloads
+are named source-generated contracts, and connection-filter rejections propagate to
+the transport. Task group methods are supported, but task persistence and media/S3
+workflows remain excluded until their operation-specific stores are extracted.
 
 ## Options considered
 
@@ -142,8 +150,9 @@ Each slice must provide:
 The extracted global-settings, IP-filter, provider/credential, virtual-key runtime,
 model-routing, and request-accounting slices are selected only by a native Gateway
 build. Model routing is selected behind a read-only compatibility adapter, while
-request-log writes use a narrow runtime writer. JIT Gateway and Admin registrations
-retain their existing EF-backed services.
+request-log writes use a narrow runtime writer and authenticated hubs share the
+virtual-key runtime snapshot. JIT Gateway and Admin registrations retain their existing
+EF-backed services.
 Rollback is therefore the JIT artifact, whose request-time and management contracts
 continue to resolve to the legacy services.
 

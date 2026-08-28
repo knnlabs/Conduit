@@ -96,6 +96,7 @@ $env:CONDUIT_NATIVE_PROVIDER_URL = "http://127.0.0.1:$ProviderPort"
 $env:CONDUIT_MIGRATION_MODE = 'Skip'
 $env:ConduitLLM__Messaging__Backend = 'Wolverine'
 $env:BatchSpending__FlushIntervalSeconds = '1'
+$env:SignalR__ConnectionLimits__MaxConnectionsPerVirtualKey = '2'
 $env:ASPNETCORE_ENVIRONMENT = 'Production'
 $env:CONDUIT_ENABLE_HTTPS_REDIRECTION = 'false'
 $env:CONDUIT_TRUSTED_PROXY_ENABLED = 'true'

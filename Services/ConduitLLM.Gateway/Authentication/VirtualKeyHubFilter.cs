@@ -37,6 +37,14 @@ namespace ConduitLLM.Gateway.Authentication
             HubInvocationContext invocationContext,
             Func<HubInvocationContext, ValueTask<object?>> next)
         {
+            // The public video hub authenticates each subscription with a short-lived
+            // ephemeral key. Applying connection-level virtual-key authentication here
+            // made that intentionally public browser flow unreachable.
+            if (invocationContext.Hub is Hubs.PublicVideoGenerationHub)
+            {
+                return await next(invocationContext);
+            }
+
             var httpContext = invocationContext.Context.GetHttpContext();
             
             // Check if already authenticated
@@ -85,6 +93,12 @@ namespace ConduitLLM.Gateway.Authentication
         /// </summary>
         public async Task OnConnectedAsync(HubLifetimeContext context, Func<HubLifetimeContext, Task> next)
         {
+            if (context.Hub is Hubs.PublicVideoGenerationHub)
+            {
+                await next(context);
+                return;
+            }
+
             var httpContext = context.Context.GetHttpContext();
             var virtualKey = ExtractVirtualKey(httpContext);
             

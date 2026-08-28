@@ -10,8 +10,8 @@ The running Gateway exposes the same information at `GET /health/runtime-capabil
 |---|---|---|
 | Host topology | One native Admin and two native Gateway processes start together. | Each process is launched and its liveness/capability endpoint returns 200. |
 | PostgreSQL / Wolverine | Wolverine 6.14 PostgreSQL persistence and transport initialize in every host. Static application assembly selection and bounded generic metadata avoid runtime-codegen startup failures. | Real PostgreSQL migration, two-host startup, queue assignment, representative static handler-adapter dispatch, and settled request spend. |
-| Redis / SignalR | Redis SignalR backplane and the Redis data-protection key ring initialize. | Backplane subscriptions and `Conduit-DataProtection-Keys` are observed through Redis. |
-| SignalR protocol surface | JSON is the only protocol. Negotiate routes for all eight Gateway hubs are present on both Gateway hosts. | The native probe negotiates every hub route on both processes. |
+| Redis / SignalR | Redis supplies the SignalR backplane, distributed connection and method limits, webhook subscription state, ephemeral keys, and the data-protection key ring. | The probe observes both live connections, rejects a third at the shared ceiling, checks RPM/RPD keys and zero-count teardown, exercises Redis-backed webhook and ephemeral-key operations, and observes `Conduit-DataProtection-Keys`. |
+| SignalR protocol surface | JSON is the only protocol. All eight Gateway hub routes accept real native clients; the public video hub authenticates each subscription with an ephemeral key. | The probe connects and invokes every hub, receives typed virtual-key status, and carries a notification between two native Gateway hosts through the Redis backplane. |
 | Authentication boundary | Requests without a virtual key are rejected before the EF-backed data plane. | `GET /v1/models` returns 401 without credentials. |
 | Typed request persistence | Virtual-key lookup plus global and per-key IP policy use typed Npgsql repositories in the native Gateway. | With default-deny IP filtering enabled, a seeded virtual key negotiates all eight hub routes on both native Gateway processes. |
 | Authenticated model discovery | Model list, retrieval, and effective capability metadata use the fixed-query typed Npgsql model-routing graph. | A seeded alias is listed and retrieved on both native Gateways, and its canonical/provider capability graph is returned by the metadata endpoint. |
@@ -27,21 +27,20 @@ The following features are excluded from the first native image and appear in `e
 
 - `signalr-messagepack`
 - `ef-core-query-data-plane`
-- `authenticated-signalr-connections`
-- `redis-virtual-key-cache-and-rate-limits`
+- `redis-virtual-key-authentication-cache`
 - `s3-media-api-workflows`
 - `readiness-and-database-health`
 
-EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, virtual keys, model discovery/routing metadata, model-cost reads, request-log writes, and virtual-key spend settlement. Request-log reporting/retention, tasks, and media persistence remain unextracted. OpenAI-compatible provider chat HTTP/SSE, translated errors, cancellation, and request accounting are process-tested and supported. Authenticated SignalR connections and S3 media workflows are still blocked by their own downstream boundaries. All excluded features remain available in the JIT image.
+EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, virtual keys, model discovery/routing metadata, model-cost reads, request-log writes, and virtual-key spend settlement. Request-log reporting/retention, task persistence, and media persistence remain unextracted. OpenAI-compatible provider chat HTTP/SSE, translated errors, cancellation, request accounting, authenticated JSON SignalR, Redis backplane/rate limiting, and public ephemeral-key subscriptions are process-tested and supported. S3 media workflows are still blocked by their downstream persistence boundary. All excluded features remain available in the JIT image.
 
 Gateway request-time consumers now depend on `IVirtualKeyRuntimeService`, while
 Admin-style key management remains behind the broader `IVirtualKeyService`. Both
 contracts resolve to the same scoped implementation in JIT builds. Native builds now
 resolve the request-time contract to `StoreBackedVirtualKeyRuntimeService`, while the
 management contract remains on the legacy service. The native process gate proves this
-request-time path through authenticated SignalR negotiation and IP policy. It does not
-yet claim authenticated hub connections or an authenticated HTTP data plane, which
-remain excluded downstream.
+request-time path through authenticated HTTP and SignalR execution. The management hub
+reuses the hydrated runtime snapshot for its initial status message rather than
+re-entering the broad EF repository.
 
 The persistence side of that seam is also explicit: `IVirtualKeyRuntimeStore` returns
 backend-neutral key/group snapshots and performs atomic balance-plus-ledger updates.
@@ -61,8 +60,11 @@ cache decorator. Request-time logging now uses a narrow runtime writer: JIT reta
 EF implementation, while native builds select the parity-tested typed-Npgsql writer.
 The Gateway's batch-spend service is also supplied with the selected virtual-key store,
 covering key/group lookup, idempotent ledger debits, fallback charges, and invalidation
-hashes without scoped EF resolution. Request-log queries/retention, task, and media
-dependencies remain EF-backed, so the remaining exclusions remain authoritative.
+hashes without scoped EF resolution. Authenticated hub connections use that same
+runtime service, while Redis owns cross-host delivery, admission/method limits,
+webhook subscriptions, and ephemeral-key validation. Request-log queries/retention,
+task persistence, and media persistence remain EF-backed, so the remaining exclusions
+remain authoritative.
 
 The compiled model is checked in under `Shared/ConduitLLM.Configuration/Data/CompiledModels`. Regenerate it whenever the EF model changes:
 
@@ -77,7 +79,7 @@ The generator currently needs the three `Model = ConduitLLM.Configuration.Entiti
 
 ## Native process gate
 
-CI runs `scripts/aot/gateway-native-parity.ps1` after native publishing. It requires PostgreSQL, Redis, the standalone migrator, and the published native artifacts. The gate provisions a default-deny global IP policy, a virtual key with its own allowlist, a complete model-routing/cost graph, and a provider credential targeting a separate native OpenAI-compatible stub. It negotiates every hub, exercises authenticated model discovery on both native Gateways, and verifies non-stream chat, SSE chat, error translation, cancellation propagation, request-log persistence, and batch spend settlement. S3 is intentionally not provisioned because media workflows remain excluded.
+CI runs `scripts/aot/gateway-native-parity.ps1` after native publishing. It requires PostgreSQL, Redis, the standalone migrator, and the published native artifacts. The gate provisions a default-deny global IP policy, a rate-limited virtual key with its own allowlist, a complete model-routing/cost graph, and a provider credential targeting a separate native OpenAI-compatible stub. It negotiates every hub; opens authenticated JSON connections to all hub families; verifies distributed admission, method counters, cross-host delivery, webhook tracking, typed management status, and public ephemeral-key subscription; exercises authenticated model discovery on both native Gateways; and verifies non-stream chat, SSE chat, error translation, cancellation propagation, request-log persistence, and batch spend settlement. S3 is intentionally not provisioned because media workflows remain excluded.
 
 The separate `scripts/test/wolverine-two-host-smoke.ps1 -NativeArtifactDirectory <artifact>` gate exercises cross-host Wolverine delivery with native Admin/Gateway processes.
 
