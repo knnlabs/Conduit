@@ -85,8 +85,67 @@ mapping and provider configuration, canonical and provider-specific capabilities
 series metadata, optional costs, deterministic paging, and per-alias route policy. Its
 EF reference and fixed-query typed-Npgsql adapters share a real-PostgreSQL parity test,
 and the typed adapter runs inside the published persistence NativeAOT probe. This slice
-deliberately stops before host selection; native routing remains excluded until the
-request-time repository/service adapter and provider HTTP process gate are in place.
+first lands independently of host selection. Native Gateway then selects a read-only
+compatibility adapter over the runtime store and resolves persisted route policy through
+the same boundary. Native request billing also resolves model costs by fixed ID or
+provider identifier through this store. JIT and Admin retain the full EF repository and
+model-cost management service. Authenticated model discovery and provider pricing are
+covered by the native process gate.
+
+Request accounting is the next downstream boundary. Request-time middleware now
+depends on `IRequestLogRuntimeWriter`, which maps the existing DTO onto a complete,
+backend-neutral `RequestLogRuntimeRecord`. JIT Gateway retains the batched EF writer;
+native Gateway selects an immediate typed-Npgsql writer. The same change routes
+`BatchSpendUpdateService` key/group lookup, atomic debit, idempotency, and cache-
+invalidation hash lookup through `IVirtualKeyRuntimeStore` when the Gateway supplies
+one. EF remains the fallback for legacy constructors and non-Gateway hosts. The write
+contract has real-PostgreSQL EF/Npgsql parity and published NativeAOT process coverage.
+Reporting, retention, and management queries over request logs remain JIT-only.
+
+The next promotion checkpoint proves the ordinary provider data plane rather than adding
+another broad repository. A separate native OpenAI-compatible provider process validates
+resolved credentials and exercises non-stream JSON, SSE chunks and final usage, translated
+provider errors, and downstream cancellation propagation. Successful requests are priced
+through the fixed-shape model-cost lookup, persisted through the request-log writer, and
+settled through the typed virtual-key store. Exact token, cost, balance, lifetime-spend,
+and ledger values are asserted in real PostgreSQL. These paths are therefore included in
+the native capability contract.
+
+Authenticated JSON SignalR is the next downstream checkpoint. Real clients connect to
+all eight hub routes across two published native Gateways. The process gate proves
+typed-store authentication and initial virtual-key status, atomic Redis admission at a
+cross-host connection ceiling, method RPM/RPD counters, webhook subscription state,
+backplane delivery, and the public hub's Redis ephemeral-key flow. Hub wire payloads
+are named source-generated contracts, and connection-filter rejections propagate to
+the transport.
+
+Async-task persistence is the next extracted state boundary. `IAsyncTaskRuntimeStore`
+defines backend-neutral task snapshots plus the exact lifecycle, claim, provider-phase,
+lease, indeterminate-reconciliation, and retention operations used by Gateway. JIT uses
+an EF adapter over the established repository, as do non-Gateway hosts; native Gateway
+selects fixed SQL through typed Npgsql. The two implementations share a real-PostgreSQL
+behavioral contract, the typed implementation runs in the published persistence probe,
+and the two-host process gate reads and cancels a task across native Gateways before
+verifying the durable row.
+
+Media-record persistence is the next operation-specific boundary. `IMediaRuntimeStore`
+covers durable ownership, storage-key lookup, access statistics, active storage
+aggregates, and quota snapshots without exposing EF navigation graphs. JIT and Admin
+use the EF reference adapter; native Gateway selects fixed SQL through typed Npgsql.
+Both implementations pass the same real-PostgreSQL contract, including tombstones,
+group filtering, and assigned unlimited-policy semantics. The published persistence
+probe exercises the typed implementation, and the two-Gateway process gate carries a
+provider-generated PNG through quota enforcement, MinIO storage, durable ownership,
+cross-host metadata, and authenticated download. S3-compatible media workflows are
+therefore included in the native capability contract.
+
+Gateway operational metrics are the final extracted reporting slice in this phase.
+`IGatewayMetricsStore` exposes only the bounded model usage, provider cost, active
+entity, task queue, generation-duration, and top-key-spend aggregates consumed by the
+Prometheus collectors. JIT Gateway uses an EF reference adapter; native Gateway uses
+fixed typed-Npgsql queries. Both implementations pass the same real-PostgreSQL
+aggregate contract. Broader Admin reporting and retention queries remain on EF and
+outside ADR 0006's supported NativeAOT data plane.
 
 ## Options considered
 
@@ -115,9 +174,12 @@ Each slice must provide:
 - an explicit production registration change and rollback plan before traffic uses the
   alternate backend.
 
-The extracted global-settings, IP-filter, provider/credential, and virtual-key runtime
-slices are selected only by a native Gateway build. The extracted model-routing store
-is parity-tested but not selected yet. JIT Gateway and Admin registrations remain EF.
+The extracted global-settings, IP-filter, provider/credential, virtual-key runtime,
+model-routing, request-accounting, async-task, media, and Gateway-metrics slices are
+selected only by a native Gateway build. Model routing is selected behind a read-only
+compatibility adapter, while request-log writes use a narrow runtime writer and
+authenticated hubs share the virtual-key runtime snapshot. JIT Gateway and Admin
+registrations retain their existing EF-backed services.
 Rollback is therefore the JIT artifact, whose request-time and management contracts
 continue to resolve to the legacy services.
 

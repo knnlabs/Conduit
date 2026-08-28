@@ -19,7 +19,7 @@ public partial class UsageTrackingMiddleware
         HttpContext context,
         ICostCalculationService costCalculationService,
         IBatchSpendUpdateService batchSpendService,
-        IRequestLogService requestLogService,
+        IRequestLogRuntimeWriter requestLogService,
         IVirtualKeyRuntimeService virtualKeyService,
         IBillingAuditService billingAuditService,
         IToolCostCalculationService toolCostCalculationService)
@@ -82,7 +82,7 @@ public partial class UsageTrackingMiddleware
         RequestAccountingSnapshot snapshot,
         ICostCalculationService costCalculationService,
         IBatchSpendUpdateService batchSpendService,
-        IRequestLogService requestLogService,
+        IRequestLogRuntimeWriter requestLogService,
         IVirtualKeyRuntimeService virtualKeyService,
         IBillingAuditService billingAuditService,
         IToolCostCalculationService toolCostCalculationService)
@@ -245,7 +245,7 @@ public partial class UsageTrackingMiddleware
         RequestAccountingSnapshot snapshot,
         ICostCalculationService costCalculationService,
         IBatchSpendUpdateService batchSpendService,
-        IRequestLogService requestLogService,
+        IRequestLogRuntimeWriter requestLogService,
         IVirtualKeyRuntimeService virtualKeyService,
         IBillingAuditService billingAuditService)
     {
@@ -308,7 +308,7 @@ public partial class UsageTrackingMiddleware
         HttpContext context,
         RequestAccountingSnapshot snapshot,
         IBatchSpendUpdateService batchSpendService,
-        IRequestLogService requestLogService,
+        IRequestLogRuntimeWriter requestLogService,
         IVirtualKeyRuntimeService virtualKeyService,
         IBillingAuditService billingAuditService)
     {

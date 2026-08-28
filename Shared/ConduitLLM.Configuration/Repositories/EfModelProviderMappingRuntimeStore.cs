@@ -142,6 +142,38 @@ public sealed class EfModelProviderMappingRuntimeStore : IModelProviderMappingRu
             .SingleOrDefaultAsync(cancellationToken);
     }
 
+    /// <inheritdoc />
+    public async Task<ModelCostRuntimeRecord?> GetModelCostByIdAsync(
+        int modelCostId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var cost = await context.ModelCosts
+            .AsNoTracking()
+            .SingleOrDefaultAsync(candidate => candidate.Id == modelCostId, cancellationToken);
+        return cost is null ? null : MapCost(cost);
+    }
+
+    /// <inheritdoc />
+    public async Task<ModelCostRuntimeRecord?> GetModelCostForIdentifierAsync(
+        string modelIdentifier,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(modelIdentifier);
+        var now = DateTime.UtcNow;
+        await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        var cost = await context.ModelCosts
+            .AsNoTracking()
+            .Where(candidate => candidate.IsActive && candidate.EffectiveDate <= now)
+            .Where(candidate => !candidate.ExpiryDate.HasValue || candidate.ExpiryDate > now)
+            .Where(candidate => candidate.ModelProviderTypeAssociations.Any(association =>
+                association.Identifier == modelIdentifier && association.IsEnabled))
+            .OrderByDescending(candidate => candidate.Priority)
+            .ThenByDescending(candidate => candidate.EffectiveDate)
+            .FirstOrDefaultAsync(cancellationToken);
+        return cost is null ? null : MapCost(cost);
+    }
+
     private static IQueryable<ModelProviderMapping> RuntimeGraph(ConduitDbContext context) =>
         context.ModelProviderMappings
             .AsNoTracking()

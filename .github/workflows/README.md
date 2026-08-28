@@ -23,6 +23,8 @@ CI publishes nothing. Docker images are published from a `v*` tag by the Release
 **What it does:**
 - Publishes Admin and Gateway as `linux-x64` NativeAOT executables
 - Launches each executable through the infrastructure-free OpenAPI path
+- Runs the published two-Gateway boundary against PostgreSQL, Redis, and pinned MinIO,
+  including provider transport, accounting, task persistence, SignalR, and S3 media
 - Builds both parallel NativeAOT runtime images and verifies that they are non-root,
   directly executable, health checked, and free of build/debug content
 - Retains publish duration, executable size, OpenAPI readiness, peak working set,

@@ -19,6 +19,10 @@ public interface IVirtualKeyRuntimeStore
         VirtualKeyBalanceAdjustment adjustment,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<string>> GetKeyHashesByGroupIdAsync(
+        int groupId,
+        CancellationToken cancellationToken = default);
+
     Task<bool> TouchAsync(
         int id,
         DateTime updatedAt,

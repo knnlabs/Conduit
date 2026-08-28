@@ -68,6 +68,8 @@ public sealed class ModelProviderMappingRuntimePersistenceParityTests
         (await store.GetByAliasAsync("missing")).Should().BeEmpty();
         (await store.GetCanonicalModelIdForAssociationAsync(-1)).Should().BeNull();
         (await store.GetRoutePolicyAsync("missing")).Should().BeNull();
+        (await store.GetModelCostByIdAsync(-1)).Should().BeNull();
+        (await store.GetModelCostForIdentifierAsync("missing")).Should().BeNull();
 
         var routes = await store.GetByAliasAsync("ROUTE-MODEL");
         routes.Should().HaveCount(2);
@@ -107,6 +109,13 @@ public sealed class ModelProviderMappingRuntimePersistenceParityTests
         route.Association.ModelCost.OutputCostPerMillionTokens.Should().Be(10m);
         route.Association.ModelCost.CachedInputCostPerMillionTokens.Should().Be(0.25m);
         route.Association.ModelCost.AudioCostPerMinute.Should().BeNull();
+
+        var costById = await store.GetModelCostByIdAsync(ids.CostId);
+        costById.Should().NotBeNull();
+        costById!.InputCostPerMillionTokens.Should().Be(2.5m);
+        costById.OutputCostPerMillionTokens.Should().Be(10m);
+        (await store.GetModelCostForIdentifierAsync("provider/secondary"))
+            .Should().BeEquivalentTo(costById);
 
         var primary = await store.GetByIdAsync(ids.PrimaryMappingId);
         primary.Should().NotBeNull();
@@ -285,6 +294,7 @@ public sealed class ModelProviderMappingRuntimePersistenceParityTests
 
         return new SeedIds(
             model.Id,
+            cost.Id,
             primaryAssociation.Id,
             secondaryAssociation.Id,
             primaryMapping.Id,
@@ -311,6 +321,7 @@ public sealed class ModelProviderMappingRuntimePersistenceParityTests
 
     private sealed record SeedIds(
         int ModelId,
+        int CostId,
         int PrimaryAssociationId,
         int SecondaryAssociationId,
         int PrimaryMappingId,

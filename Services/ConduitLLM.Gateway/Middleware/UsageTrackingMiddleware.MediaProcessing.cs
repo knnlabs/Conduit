@@ -26,7 +26,7 @@ public partial class UsageTrackingMiddleware
         MediaProcessingContext media,
         ICostCalculationService costCalculationService,
         IBatchSpendUpdateService batchSpendService,
-        IRequestLogService requestLogService,
+        IRequestLogRuntimeWriter requestLogService,
         IVirtualKeyRuntimeService virtualKeyService,
         IBillingAuditService billingAuditService)
     {

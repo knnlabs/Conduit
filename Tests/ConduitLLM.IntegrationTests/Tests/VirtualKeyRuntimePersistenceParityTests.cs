@@ -93,6 +93,9 @@ public sealed class VirtualKeyRuntimePersistenceParityTests
         key.Group.MaxParallelRequests.Should().Be(20);
 
         (await store.GetByIdAsync(ids.KeyId))!.KeyHash.Should().Be("sha256:test-key");
+        (await store.GetKeyHashesByGroupIdAsync(ids.GroupId)).Should()
+            .Equal("sha256:test-key");
+        (await store.GetKeyHashesByGroupIdAsync(-1)).Should().BeEmpty();
         var touchedAt = DateTime.UtcNow.AddMinutes(1);
         (await store.TouchAsync(ids.KeyId, touchedAt)).Should().BeTrue();
         (await store.TouchAsync(-1, touchedAt)).Should().BeFalse();

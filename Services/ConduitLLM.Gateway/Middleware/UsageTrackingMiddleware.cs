@@ -30,7 +30,7 @@ public partial class UsageTrackingMiddleware
         HttpContext context,
         ICostCalculationService costCalculationService,
         IBatchSpendUpdateService batchSpendService,
-        IRequestLogService requestLogService,
+        IRequestLogRuntimeWriter requestLogService,
         IVirtualKeyRuntimeService virtualKeyService,
         IBillingAuditService billingAuditService,
         IToolCostCalculationService toolCostCalculationService)
