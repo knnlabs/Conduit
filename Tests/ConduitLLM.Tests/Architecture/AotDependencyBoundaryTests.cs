@@ -12,11 +12,15 @@ using ConduitLLM.Core.Services;
 using ConduitLLM.Gateway.Authentication;
 using ConduitLLM.Gateway.Endpoints;
 using ConduitLLM.Gateway.EventHandlers;
+using ConduitLLM.Gateway.Extensions;
 using ConduitLLM.Gateway.Middleware;
 using ConduitLLM.Persistence.Interfaces;
 using ConduitLLM.Persistence.Npgsql;
 
 using Microsoft.EntityFrameworkCore;
+#if CONDUIT_NATIVE_AOT
+using Microsoft.Extensions.DependencyInjection;
+#endif
 
 namespace ConduitLLM.Tests.Architecture;
 
@@ -92,6 +96,7 @@ public sealed class AotDependencyBoundaryTests
             "Wolverine");
     }
 
+#if !CONDUIT_NATIVE_AOT
     [Fact]
     public void JitGatewayDoesNotRootTypedNpgsqlRuntimeAdapter()
     {
@@ -99,6 +104,28 @@ public sealed class AotDependencyBoundaryTests
             Assembly.Load("ConduitLLM.Gateway"),
             "ConduitLLM.Persistence.Npgsql");
     }
+#endif
+
+#if CONDUIT_NATIVE_AOT
+    [Fact]
+    public void NativeGatewayReplacesEveryExtractedRuntimeRepository()
+    {
+        var services = new ServiceCollection();
+        services.AddScoped<IGlobalSettingRepository>(_ => null!);
+        services.AddScoped<IIpFilterRepository>(_ => null!);
+        services.AddScoped<IProviderRepository>(_ => null!);
+        services.AddScoped<IProviderKeyCredentialRepository>(_ => null!);
+        services.AddScoped<IVirtualKeyRuntimeStore>(_ => null!);
+
+        services.UseNativeRuntimePersistence();
+
+        AssertNativeSingleton<IGlobalSettingRepository, NpgsqlGlobalSettingRepository>(services);
+        AssertNativeSingleton<IIpFilterRepository, NpgsqlIpFilterRepository>(services);
+        AssertNativeSingleton<IProviderRepository, NpgsqlProviderRepository>(services);
+        AssertNativeSingleton<IProviderKeyCredentialRepository, NpgsqlProviderKeyCredentialRepository>(services);
+        AssertNativeSingleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>(services);
+    }
+#endif
 
     [Fact]
     public void AdminDoesNotDirectlyOwnGatewayOnlyAdapters()
@@ -283,6 +310,15 @@ public sealed class AotDependencyBoundaryTests
         return type.HasElementType && ContainsQueryable(type.GetElementType()!)
             || type.IsGenericType && type.GetGenericArguments().Any(ContainsQueryable);
     }
+
+#if CONDUIT_NATIVE_AOT
+    private static void AssertNativeSingleton<TService, TImplementation>(IServiceCollection services)
+    {
+        var descriptor = Assert.Single(services, value => value.ServiceType == typeof(TService));
+        Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
+        Assert.Equal(typeof(TImplementation), descriptor.ImplementationType);
+    }
+#endif
 
     private static void AssertDoesNotReference(Assembly assembly, params string[] forbiddenPrefixes)
     {

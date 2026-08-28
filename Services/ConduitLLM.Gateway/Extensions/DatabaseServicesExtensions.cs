@@ -1,10 +1,6 @@
 using ConduitLLM.Configuration;
 using ConduitLLM.Configuration.Interceptors;
 using ConduitLLM.Core.Data;
-#if CONDUIT_NATIVE_AOT
-using ConduitLLM.Persistence.Interfaces;
-using ConduitLLM.Persistence.Npgsql;
-#endif
 using Microsoft.EntityFrameworkCore;
 #if CONDUIT_NATIVE_AOT
 using Npgsql;
@@ -34,11 +30,10 @@ public static class DatabaseServicesExtensions
         }
 
 #if CONDUIT_NATIVE_AOT
-        // Native request paths use fixed-shape Npgsql stores rather than EF query
-        // composition. Other Gateway slices still register EF while their stores are
+        // Native request paths use fixed-shape Npgsql repositories rather than EF query
+        // composition. Other Gateway slices still register EF while their boundaries are
         // extracted incrementally, so keep this data source independent for now.
         services.AddSingleton(_ => NpgsqlDataSource.Create(dbConnectionString));
-        services.AddSingleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>();
 #endif
 
         // Register DbContext Factory with query monitoring interceptor

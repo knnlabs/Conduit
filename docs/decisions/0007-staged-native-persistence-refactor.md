@@ -65,6 +65,12 @@ Npgsql credential writes use one provider-row lock order. The shared PostgreSQL
 contract deliberately forces a failed disabled-key promotion and proves the old
 primary survives the transaction rollback.
 
+Native Gateway builds now select the typed-Npgsql global-setting, IP-filter, provider,
+and provider-credential repositories after the normal service graph is assembled. JIT
+Gateway and all Admin builds retain EF. Replacing the descriptors as one host-level set
+ensures request authentication, security policy, and provider credential resolution do
+not silently fall back to an earlier EF registration.
+
 The next slice is the Gateway virtual-key runtime boundary. It hydrates a complete key
 and group snapshot, preserves pending-spend balance checks, and owns atomic group balance
 plus ledger writes. Native Gateway builds select its typed-Npgsql implementation only for
@@ -100,11 +106,10 @@ Each slice must provide:
 - an explicit production registration change and rollback plan before traffic uses the
   alternate backend.
 
-The extracted global-settings, IP-filter, and provider/credential slices remain
-registered to EF in Gateway and Admin. Their Npgsql implementations are evidence for
-the seam and are not selected in production by this decision. The virtual-key runtime
-slice is selected only by a native Gateway build; rollback is the JIT artifact, whose
-request-time and management contracts both continue to resolve to the legacy EF service.
+The extracted global-settings, IP-filter, provider/credential, and virtual-key runtime
+slices are selected only by a native Gateway build. JIT Gateway and Admin registrations
+remain EF. Rollback is therefore the JIT artifact, whose request-time and management
+contracts continue to resolve to the legacy services.
 
 ## Consequences
 
