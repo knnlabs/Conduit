@@ -16,7 +16,9 @@ The Repository pattern is being implemented gradually in the Conduit codebase. T
 ## Current Implementation Status
 
 - ✅ `IVirtualKeyRepository` and `VirtualKeyRepository` - Complete
-- ⏳ `IGlobalSettingRepository` and `GlobalSettingRepository` - In progress
+- ✅ `IGlobalSettingRepository` - extracted to the EF-free persistence abstractions
+- ✅ `GlobalSettingRepository` - explicit-operation EF reference implementation
+- ✅ `NpgsqlGlobalSettingRepository` - typed-Npgsql parity implementation
 - ❌ Other repositories - Planned
 
 ## Usage Example

@@ -8,6 +8,7 @@ using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.OpenApi;
 using ConduitLLM.Core.Services;
+using ConduitLLM.Persistence.Npgsql;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -60,6 +61,32 @@ public sealed class AotDependencyBoundaryTests
     }
 
     [Fact]
+    public void PersistenceAbstractionsRemainBackendNeutral()
+    {
+        AssertDoesNotReference(
+            typeof(IGlobalSettingRepository).Assembly,
+            "ConduitLLM.Configuration",
+            "ConduitLLM.Functions",
+            "Microsoft.EntityFrameworkCore",
+            "Npgsql",
+            "Wolverine",
+            "Microsoft.AspNetCore.SignalR");
+    }
+
+    [Fact]
+    public void TypedNpgsqlPersistenceDoesNotRootEfOrServiceImplementations()
+    {
+        AssertDoesNotReference(
+            typeof(NpgsqlGlobalSettingRepository).Assembly,
+            "ConduitLLM.Configuration",
+            "ConduitLLM.Functions",
+            "ConduitLLM.Admin",
+            "ConduitLLM.Gateway",
+            "Microsoft.EntityFrameworkCore",
+            "Wolverine");
+    }
+
+    [Fact]
     public void AdminDoesNotDirectlyOwnGatewayOnlyAdapters()
     {
         AssertDoesNotReference(
@@ -94,8 +121,13 @@ public sealed class AotDependencyBoundaryTests
     [Fact]
     public void RepositoryAbstractionsDoNotExposeQueryable()
     {
-        var repositoryInterfaces = typeof(IProviderRepository).Assembly
-            .GetExportedTypes()
+        var repositoryInterfaces = new[]
+            {
+                typeof(IProviderRepository).Assembly,
+                typeof(IGlobalSettingRepository).Assembly
+            }
+            .Distinct()
+            .SelectMany(assembly => assembly.GetExportedTypes())
             .Where(type => type.IsInterface && type.Name.EndsWith("Repository", StringComparison.Ordinal));
 
         foreach (var repositoryInterface in repositoryInterfaces)
