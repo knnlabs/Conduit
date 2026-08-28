@@ -75,6 +75,115 @@ try
         CREATE UNIQUE INDEX "IX_PKC_OnePrimary"
             ON "{schema}"."ProviderKeyCredentials" ("ProviderId", "IsPrimary")
             WHERE "IsPrimary" = true;
+        CREATE TABLE "{schema}"."ModelSeries" (
+            "Id" integer PRIMARY KEY,
+            "AuthorId" integer NOT NULL,
+            "Name" text NOT NULL,
+            "Description" text NULL,
+            "TokenizerType" integer NOT NULL,
+            "Parameters" text NOT NULL
+        );
+        CREATE TABLE "{schema}"."Models" (
+            "Id" integer PRIMARY KEY,
+            "Name" text NOT NULL,
+            "Version" text NULL,
+            "Description" text NULL,
+            "ModelCardUrl" text NULL,
+            "ModelSeriesId" integer NOT NULL REFERENCES "{schema}"."ModelSeries" ("Id"),
+            "SupportsVision" boolean NOT NULL,
+            "SupportsImageGeneration" boolean NOT NULL,
+            "SupportsVideoGeneration" boolean NOT NULL,
+            "SupportsEmbeddings" boolean NOT NULL,
+            "SupportsSpeechToText" boolean NOT NULL,
+            "SupportsTextToSpeech" boolean NOT NULL,
+            "SupportsRerank" boolean NOT NULL,
+            "SupportsChat" boolean NOT NULL,
+            "SupportsFunctionCalling" boolean NOT NULL,
+            "SupportsStreaming" boolean NOT NULL,
+            "InputModalities" jsonb NULL,
+            "OutputModalities" jsonb NULL,
+            "CapabilitySource" integer NOT NULL,
+            "CapabilitiesLastVerifiedAt" timestamptz NULL,
+            "TokenizerType" integer NOT NULL,
+            "MaxInputTokens" integer NULL,
+            "MaxOutputTokens" integer NULL,
+            "IsActive" boolean NOT NULL,
+            "Parameters" text NULL,
+            "CreatedAt" timestamptz NOT NULL,
+            "UpdatedAt" timestamptz NOT NULL
+        );
+        CREATE TABLE "{schema}"."ModelCosts" (
+            "Id" integer PRIMARY KEY,
+            "CostName" text NOT NULL,
+            "PricingModel" integer NOT NULL,
+            "PricingConfiguration" text NULL,
+            "InputCostPerMillionTokens" numeric NOT NULL,
+            "OutputCostPerMillionTokens" numeric NOT NULL,
+            "EmbeddingCostPerMillionTokens" numeric NULL,
+            "CreatedAt" timestamptz NOT NULL,
+            "UpdatedAt" timestamptz NOT NULL,
+            "ModelType" text NOT NULL,
+            "IsActive" boolean NOT NULL,
+            "EffectiveDate" timestamptz NOT NULL,
+            "ExpiryDate" timestamptz NULL,
+            "Description" text NULL,
+            "Priority" integer NOT NULL,
+            "BatchProcessingMultiplier" numeric NULL,
+            "SupportsBatchProcessing" boolean NOT NULL,
+            "CachedInputCostPerMillionTokens" numeric NULL,
+            "CachedInputWriteCostPerMillionTokens" numeric NULL,
+            "CostPerSearchUnit" numeric NULL,
+            "AudioCostPerMinute" numeric NULL,
+            "AudioCostPerThousandCharacters" numeric NULL,
+            "ReasoningCostPerMillionTokens" numeric NULL
+        );
+        CREATE TABLE "{schema}"."ModelIdentifiers" (
+            "Id" integer PRIMARY KEY,
+            "ModelId" integer NOT NULL REFERENCES "{schema}"."Models" ("Id"),
+            "IsEnabled" boolean NOT NULL,
+            "MaxInputTokens" integer NULL,
+            "MaxOutputTokens" integer NULL,
+            "InputModalities" jsonb NULL,
+            "OutputModalities" jsonb NULL,
+            "OperationalCapabilities" jsonb NULL,
+            "CapabilitySource" integer NULL,
+            "CapabilitiesLastVerifiedAt" timestamptz NULL,
+            "ProviderVariation" text NULL,
+            "QualityScore" numeric NULL,
+            "SpeedScore" numeric NULL,
+            "Identifier" text NOT NULL,
+            "Provider" integer NULL,
+            "ModelCostId" integer NULL REFERENCES "{schema}"."ModelCosts" ("Id"),
+            "IsPrimary" boolean NOT NULL,
+            "Metadata" text NULL
+        );
+        CREATE TABLE "{schema}"."ModelProviderMappings" (
+            "Id" integer PRIMARY KEY,
+            "ModelAlias" text NOT NULL,
+            "ProviderModelId" text NOT NULL,
+            "ProviderId" integer NOT NULL REFERENCES "{schema}"."Providers" ("Id"),
+            "IsEnabled" boolean NOT NULL,
+            "RoutingPriority" integer NOT NULL,
+            "RoutingWeight" numeric NOT NULL,
+            "ProviderOptions" text NULL,
+            "CreatedAt" timestamptz NOT NULL,
+            "UpdatedAt" timestamptz NOT NULL,
+            "ModelProviderTypeAssociationId" integer NOT NULL REFERENCES "{schema}"."ModelIdentifiers" ("Id")
+        );
+        CREATE TABLE "{schema}"."ModelRoutePolicies" (
+            "Id" integer PRIMARY KEY,
+            "ModelAlias" text NOT NULL,
+            "Strategy" text NOT NULL,
+            "CostWeight" numeric NOT NULL,
+            "SpeedWeight" numeric NOT NULL,
+            "QualityWeight" numeric NOT NULL,
+            "CacheAffinityEnabled" boolean NOT NULL,
+            "AffinityTtlSeconds" integer NOT NULL,
+            "MaxAffinityScorePenalty" numeric NOT NULL,
+            "IsEnabled" boolean NOT NULL,
+            "CreatedAt" timestamptz NOT NULL,
+            "UpdatedAt" timestamptz NOT NULL
+        );
         CREATE TABLE "{schema}"."VirtualKeyGroups" (
             "Id" integer PRIMARY KEY,
             "ExternalGroupId" character varying(100) NULL,
@@ -220,10 +329,13 @@ try
         await ExerciseProviderPersistenceAsync(
             new NpgsqlProviderRepository(dataSource),
             new NpgsqlProviderKeyCredentialRepository(dataSource));
+        await ExerciseModelRoutingRuntimeStoreAsync(
+            dataSource,
+            new NpgsqlModelProviderMappingRuntimeStore(dataSource));
         await ExerciseVirtualKeyRuntimeStoreAsync(new NpgsqlVirtualKeyRuntimeStore(dataSource));
     }
 
-    Console.WriteLine("Native persistence probe passed: reads, writes, rollback, concurrency, retry, PostgreSQL mappings, and the global-settings, IP-filter, provider/credential, and virtual-key runtime stores.");
+    Console.WriteLine("Native persistence probe passed: reads, writes, rollback, concurrency, retry, PostgreSQL mappings, and the global-settings, IP-filter, provider/credential, model-routing, and virtual-key runtime stores.");
     return 0;
 }
 finally
@@ -525,6 +637,87 @@ static async Task ExerciseVirtualKeyRuntimeStoreAsync(IVirtualKeyRuntimeStore st
         VirtualKeyBalanceReferenceType.Manual));
     Ensure(credit.NewBalance == 25m && credit.LifetimeSpent == 4m,
         "virtual-key runtime credit or lifetime counters failed");
+}
+
+static async Task ExerciseModelRoutingRuntimeStoreAsync(
+    NpgsqlDataSource dataSource,
+    IModelProviderMappingRuntimeStore store)
+{
+    await using (var connection = await dataSource.OpenConnectionAsync())
+    {
+        await ExecuteAsync(connection, $$$"""
+            INSERT INTO "Providers" (
+                "Id", "ProviderType", "ProviderName", "BaseUrl", "Settings", "IsEnabled",
+                "TrustProviderReportedCosts", "ProviderCostMarkupMultiplier", "CreatedAt", "UpdatedAt")
+            VALUES (901, {{{(int)ProviderType.OpenRouter}}}, 'native route provider', NULL,
+                '{"region":"west"}', true, true, 1.125, now(), now());
+            INSERT INTO "ModelSeries" ("Id", "AuthorId", "Name", "Description", "TokenizerType", "Parameters")
+            VALUES (902, 1, 'native route series', NULL, 0, '{"temperature":{}}');
+            INSERT INTO "Models" (
+                "Id", "Name", "Version", "Description", "ModelCardUrl", "ModelSeriesId",
+                "SupportsVision", "SupportsImageGeneration", "SupportsVideoGeneration",
+                "SupportsEmbeddings", "SupportsSpeechToText", "SupportsTextToSpeech",
+                "SupportsRerank", "SupportsChat", "SupportsFunctionCalling", "SupportsStreaming",
+                "InputModalities", "OutputModalities", "CapabilitySource",
+                "CapabilitiesLastVerifiedAt", "TokenizerType", "MaxInputTokens", "MaxOutputTokens",
+                "IsActive", "Parameters", "CreatedAt", "UpdatedAt")
+            VALUES (903, 'native route model', 'v1', NULL, NULL, 902,
+                true, false, false, false, false, false, false, true, true, true,
+                '["text","image"]', '["text"]', 1, now(), 0, 64000, 8192,
+                true, NULL, now(), now());
+            INSERT INTO "ModelCosts" (
+                "Id", "CostName", "PricingModel", "PricingConfiguration",
+                "InputCostPerMillionTokens", "OutputCostPerMillionTokens",
+                "EmbeddingCostPerMillionTokens", "CreatedAt", "UpdatedAt", "ModelType",
+                "IsActive", "EffectiveDate", "ExpiryDate", "Description", "Priority",
+                "BatchProcessingMultiplier", "SupportsBatchProcessing",
+                "CachedInputCostPerMillionTokens", "CachedInputWriteCostPerMillionTokens",
+                "CostPerSearchUnit", "AudioCostPerMinute", "AudioCostPerThousandCharacters",
+                "ReasoningCostPerMillionTokens")
+            VALUES (904, 'native route cost', 0, NULL, 2.5, 10, NULL, now(), now(), 'chat',
+                true, now(), NULL, NULL, 0, 0.5, true, 0.25, NULL, NULL, NULL, NULL, NULL);
+            INSERT INTO "ModelIdentifiers" (
+                "Id", "ModelId", "IsEnabled", "MaxInputTokens", "MaxOutputTokens",
+                "InputModalities", "OutputModalities", "OperationalCapabilities",
+                "CapabilitySource", "CapabilitiesLastVerifiedAt", "ProviderVariation",
+                "QualityScore", "SpeedScore", "Identifier", "Provider", "ModelCostId",
+                "IsPrimary", "Metadata")
+            VALUES (905, 903, true, 32000, 4096, '["text"]', '["text"]',
+                '{"supports_json_schema":true}', 1, now(), NULL, 0.95, 1.5,
+                'provider/native-route', {{{(int)ProviderType.OpenRouter}}}, 904, true, NULL);
+            INSERT INTO "ModelProviderMappings" (
+                "Id", "ModelAlias", "ProviderModelId", "ProviderId", "IsEnabled",
+                "RoutingPriority", "RoutingWeight", "ProviderOptions", "CreatedAt", "UpdatedAt",
+                "ModelProviderTypeAssociationId")
+            VALUES (906, 'native-route', 'provider/native-route', 901, true,
+                10, 1.25, '{"route":"fallback"}', now(), now(), 905);
+            INSERT INTO "ModelRoutePolicies" (
+                "Id", "ModelAlias", "Strategy", "CostWeight", "SpeedWeight", "QualityWeight",
+                "CacheAffinityEnabled", "AffinityTtlSeconds", "MaxAffinityScorePenalty",
+                "IsEnabled", "CreatedAt", "UpdatedAt")
+            VALUES (907, 'native-route', 'Balanced', 0.5, 0.3, 0.2, true, 900, 0.075,
+                true, now(), now());
+            """);
+    }
+
+    var routes = await store.GetByAliasAsync("NATIVE-ROUTE");
+    Ensure(routes.Count == 1 && routes[0].Id == 906, "model-routing alias lookup failed");
+    var route = routes[0];
+    Ensure(route.Provider.Settings?["region"] == "west", "model-routing provider graph failed");
+    Ensure(route.Association.Model.SupportsChat, "model-routing capability graph failed");
+    Ensure(route.Association.Model.Series.Name == "native route series",
+        "model-routing series graph failed");
+    Ensure(route.Association.ModelCost?.InputCostPerMillionTokens == 2.5m,
+        "model-routing cost graph failed");
+    Ensure((await store.GetByIdAsync(906))?.ProviderModelId == "provider/native-route",
+        "model-routing ID lookup failed");
+    Ensure((await store.GetPaginatedAsync(1, 10)).TotalCount == 1,
+        "model-routing pagination failed");
+    Ensure(await store.GetCanonicalModelIdForAssociationAsync(905) == 903,
+        "model-routing canonical model lookup failed");
+    var policy = await store.GetRoutePolicyAsync("native-route");
+    Ensure(policy is { Strategy: "Balanced", CacheAffinityEnabled: true, AffinityTtlSeconds: 900 },
+        "model-routing route policy failed");
 }
 
 static void Ensure(bool condition, string message)

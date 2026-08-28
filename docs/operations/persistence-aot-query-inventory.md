@@ -41,9 +41,11 @@ typed-Npgsql fallback seam; it does not claim parity for the 37-file EF workload
 ADR 0007 adopts operation-specific dual backends rather than a big-bang rewrite.
 Global settings, IP-filter access policy, and the provider/provider-credential
 consistency boundary are extracted: their models and repository contracts live in
-`ConduitLLM.Persistence.Abstractions`, the JIT production registrations remain EF, and
-typed-Npgsql implementations are exercised by PostgreSQL contract tests and the
-published NativeAOT persistence probe. The parity surface now includes global/per-key
+`ConduitLLM.Persistence.Abstractions`, JIT Gateway and Admin registrations remain EF,
+and typed-Npgsql implementations are exercised by PostgreSQL contract tests and the
+published NativeAOT persistence probe. Native Gateway builds now replace all four
+repository descriptors after the ordinary service graph is assembled. The parity
+surface includes global/per-key
 scoping, audit and nullable mappings, optimistic concurrency, JSONB settings, bounded
 decimals, graph hydration, foreign-key cascades, primary-key rotation, transaction
 rollback, and deterministic lock ordering in the typed adapter. These slices are not
@@ -55,8 +57,19 @@ Phase 5 adds a narrower request-time boundary rather than moving the VirtualKey 
 navigation graph: `IVirtualKeyRuntimeStore` exposes hydrated authentication/rate-limit
 snapshots, timestamp touches, and atomic balance/ledger adjustments. Its EF adapter uses
 fixed projections and updates, while its typed-Npgsql adapter is covered by the shared
-PostgreSQL contract and published native probe. The JIT Gateway has not switched to this
-store yet, so it is evidence for the next data-plane step rather than a support claim.
+PostgreSQL contract and published native probe. Native Gateway builds select this store;
+the JIT Gateway retains its cached/direct EF-backed services. This selection is a bounded
+data-plane step rather than a full native support claim because unextracted model mapping,
+logging, task, and media queries remain.
+
+The next extracted boundary enumerates Gateway model-routing reads instead of exposing
+the broad `ModelProviderMappingRepository` graph. The runtime contract includes alias,
+ID, provider, and canonical-model lookups; deterministic pages; provider and canonical
+capability metadata; series data; optional pricing; and route policy. A fixed-query EF
+reference and typed-Npgsql adapter pass the same real-PostgreSQL contract, and the
+typed adapter runs in the published persistence NativeAOT probe. No native host selects
+it yet, so provider routing remains excluded until the request-time service adapter and
+provider HTTP/SSE process coverage land.
 
 ## Exit criteria for revisiting the decision
 
