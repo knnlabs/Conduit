@@ -22,6 +22,9 @@ The Repository pattern is being implemented gradually in the Conduit codebase. T
 - ✅ `IIpFilterRepository` - extracted explicit contract for global/per-key access policy
 - ✅ `IpFilterRepository` - explicit-operation EF reference implementation
 - ✅ `NpgsqlIpFilterRepository` - typed-Npgsql parity implementation
+- ✅ `IProviderRepository` / `IProviderKeyCredentialRepository` - extracted provider consistency contracts
+- ✅ EF provider repositories - explicit-operation production/reference implementations
+- ✅ typed-Npgsql provider repositories - JSONB, graph, cascade, and primary-rotation parity
 - ❌ Other repositories - Planned
 
 ## Usage Example
