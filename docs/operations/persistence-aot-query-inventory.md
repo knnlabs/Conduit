@@ -36,6 +36,17 @@ JSONB/UUID/decimal/timestamp mappings, rollback, optimistic concurrency, connect
 retry, and a database-generated `40001` retry. This proves the test harness and a
 typed-Npgsql fallback seam; it does not claim parity for the 37-file EF workload.
 
+## Incremental extraction status
+
+ADR 0007 adopts operation-specific dual backends rather than a big-bang rewrite.
+Global settings are the first extracted slice: their model and repository contract live
+in `ConduitLLM.Persistence.Abstractions`, the JIT production registration remains EF,
+and a typed-Npgsql implementation is exercised by both PostgreSQL contract tests and
+the published NativeAOT persistence probe. The slice is not evidence that the other 36
+query-owning files are native-ready, and the EF reference implementation remains one
+of the 37 query owners until a native host can select alternate backends for every
+operation it needs.
+
 ## Exit criteria for revisiting the decision
 
 1. EF Core and Npgsql document the selected NativeAOT path as production-supported.
