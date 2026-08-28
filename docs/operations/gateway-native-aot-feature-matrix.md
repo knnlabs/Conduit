@@ -38,6 +38,13 @@ contracts resolve to the same scoped JIT implementation today. This is the repla
 seam for a typed native authentication/billing adapter; it does not remove any exclusion
 above until the adapter and native process parity tests are complete.
 
+The persistence side of that seam is also explicit: `IVirtualKeyRuntimeStore` returns
+backend-neutral key/group snapshots and performs atomic balance-plus-ledger updates.
+Its fixed-query EF reference adapter and typed Npgsql adapter pass the same PostgreSQL
+contract, including concurrent writers, idempotent redelivery, and conflict detection,
+and the Npgsql adapter runs from the published native persistence probe. Gateway does
+not select the native adapter yet, so the exclusions remain authoritative.
+
 The compiled model is checked in under `Shared/ConduitLLM.Configuration/Data/CompiledModels`. Regenerate it whenever the EF model changes:
 
 ```powershell

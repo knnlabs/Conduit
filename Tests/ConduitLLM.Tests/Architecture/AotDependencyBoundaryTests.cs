@@ -124,7 +124,7 @@ public sealed class AotDependencyBoundaryTests
     }
 
     [Fact]
-    public void RepositoryAbstractionsDoNotExposeQueryable()
+    public void PersistenceAbstractionsDoNotExposeQueryable()
     {
         var repositoryInterfaces = new[]
             {
@@ -133,7 +133,9 @@ public sealed class AotDependencyBoundaryTests
             }
             .Distinct()
             .SelectMany(assembly => assembly.GetExportedTypes())
-            .Where(type => type.IsInterface && type.Name.EndsWith("Repository", StringComparison.Ordinal));
+            .Where(type => type.IsInterface &&
+                (type.Name.EndsWith("Repository", StringComparison.Ordinal) ||
+                 type.Name.EndsWith("Store", StringComparison.Ordinal)));
 
         foreach (var repositoryInterface in repositoryInterfaces)
         {
