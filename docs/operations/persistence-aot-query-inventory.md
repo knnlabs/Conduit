@@ -62,6 +62,15 @@ the JIT Gateway retains its cached/direct EF-backed services. This selection is 
 data-plane step rather than a full native support claim because unextracted model mapping,
 logging, task, and media queries remain.
 
+The next extracted boundary enumerates Gateway model-routing reads instead of exposing
+the broad `ModelProviderMappingRepository` graph. The runtime contract includes alias,
+ID, provider, and canonical-model lookups; deterministic pages; provider and canonical
+capability metadata; series data; optional pricing; and route policy. A fixed-query EF
+reference and typed-Npgsql adapter pass the same real-PostgreSQL contract, and the
+typed adapter runs in the published persistence NativeAOT probe. No native host selects
+it yet, so provider routing remains excluded until the request-time service adapter and
+provider HTTP/SSE process coverage land.
+
 ## Exit criteria for revisiting the decision
 
 1. EF Core and Npgsql document the selected NativeAOT path as production-supported.
