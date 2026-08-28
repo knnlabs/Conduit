@@ -118,10 +118,30 @@ public sealed class AotDependencyBoundaryTests
             candidate => candidate.ServiceType == typeof(IVirtualKeyRuntimeStore));
         Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
         Assert.Equal(typeof(EfVirtualKeyRuntimeStore), descriptor.ImplementationType);
+
+        var asyncTaskDescriptor = Assert.Single(
+            services,
+            candidate => candidate.ServiceType == typeof(IAsyncTaskRuntimeStore));
+        Assert.Equal(ServiceLifetime.Scoped, asyncTaskDescriptor.Lifetime);
+        Assert.Equal(typeof(EfAsyncTaskRuntimeStore), asyncTaskDescriptor.ImplementationType);
     }
 #endif
 
 #if CONDUIT_NATIVE_AOT
+    [Fact]
+    public void NativeNonGatewayRepositoryGraphRetainsEfAsyncTaskRuntimeStore()
+    {
+        var services = new ServiceCollection();
+
+        services.AddRepositories();
+
+        var descriptor = Assert.Single(
+            services,
+            candidate => candidate.ServiceType == typeof(IAsyncTaskRuntimeStore));
+        Assert.Equal(ServiceLifetime.Scoped, descriptor.Lifetime);
+        Assert.Equal(typeof(EfAsyncTaskRuntimeStore), descriptor.ImplementationType);
+    }
+
     [Fact]
     public void NativeGatewayReplacesEveryExtractedRuntimeRepository()
     {
@@ -131,6 +151,7 @@ public sealed class AotDependencyBoundaryTests
         services.AddScoped<IProviderRepository>(_ => null!);
         services.AddScoped<IProviderKeyCredentialRepository>(_ => null!);
         services.AddScoped<IVirtualKeyRuntimeStore>(_ => null!);
+        services.AddScoped<IAsyncTaskRuntimeStore>(_ => null!);
         services.AddScoped<IRequestLogRuntimeStore>(_ => null!);
         services.AddScoped<IRequestLogRuntimeWriter>(_ => null!);
         services.AddScoped<IModelProviderMappingRuntimeStore>(_ => null!);
@@ -144,6 +165,7 @@ public sealed class AotDependencyBoundaryTests
         AssertNativeSingleton<IProviderRepository, NpgsqlProviderRepository>(services);
         AssertNativeSingleton<IProviderKeyCredentialRepository, NpgsqlProviderKeyCredentialRepository>(services);
         AssertNativeSingleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>(services);
+        AssertNativeSingleton<IAsyncTaskRuntimeStore, NpgsqlAsyncTaskRuntimeStore>(services);
         AssertNativeSingleton<IRequestLogRuntimeStore, NpgsqlRequestLogRuntimeStore>(services);
         AssertNativeSingleton<IRequestLogRuntimeWriter, StoreBackedRequestLogRuntimeWriter>(services);
         AssertNativeSingleton<IModelProviderMappingRuntimeStore, NpgsqlModelProviderMappingRuntimeStore>(services);
@@ -303,6 +325,19 @@ public sealed class AotDependencyBoundaryTests
         Assert.DoesNotContain(typeof(IVirtualKeyRepository), constructorParameters);
         Assert.DoesNotContain(typeof(IVirtualKeyGroupRepository), constructorParameters);
         Assert.DoesNotContain(typeof(IVirtualKeySpendHistoryRepository), constructorParameters);
+    }
+
+    [Fact]
+    public void AsyncTaskRuntimeServiceUsesOnlyFixedShapePersistence()
+    {
+        var constructorParameters = typeof(HybridAsyncTaskService)
+            .GetConstructors()
+            .SelectMany(constructor => constructor.GetParameters())
+            .Select(parameter => parameter.ParameterType)
+            .ToArray();
+
+        Assert.Contains(typeof(IAsyncTaskRuntimeStore), constructorParameters);
+        Assert.DoesNotContain(typeof(IAsyncTaskRepository), constructorParameters);
     }
 
     [Fact]

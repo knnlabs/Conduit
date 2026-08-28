@@ -1,5 +1,5 @@
-using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Core.Metrics;
+using ConduitLLM.Persistence.Interfaces;
 
 namespace ConduitLLM.Gateway.Services;
 
@@ -28,8 +28,8 @@ public sealed class MediaTaskLeaseRecoveryService : BackgroundService
             try
             {
                 using var scope = _scopeFactory.CreateScope();
-                var repository = scope.ServiceProvider.GetRequiredService<IAsyncTaskRepository>();
-                var result = await repository.RecoverExpiredMediaTasksAsync(stoppingToken);
+                var store = scope.ServiceProvider.GetRequiredService<IAsyncTaskRuntimeStore>();
+                var result = await store.RecoverExpiredMediaTasksAsync(stoppingToken);
                 if (result.ResetToPending > 0) SafeRecoveries.Add(result.ResetToPending);
                 if (result.MarkedIndeterminate > 0)
                 {

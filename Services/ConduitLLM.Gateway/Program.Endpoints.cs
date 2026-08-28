@@ -30,6 +30,7 @@ public partial class Program
                     "provider-error-translation",
                     "provider-cancellation",
                     "request-accounting-and-spend-settlement",
+                    "async-task-persistence",
                     "forwarded-headers",
                     "liveness-metrics-opentelemetry"
                 ]

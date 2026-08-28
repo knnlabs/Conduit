@@ -54,6 +54,7 @@ namespace ConduitLLM.Configuration.Extensions
 
             // Register async task repository
             services.AddScoped<IAsyncTaskRepository, AsyncTaskRepository>();
+            services.AddScoped<IAsyncTaskRuntimeStore, EfAsyncTaskRuntimeStore>();
 
             // Register media record repository
             services.AddScoped<IMediaRecordRepository, MediaRecordRepository>();

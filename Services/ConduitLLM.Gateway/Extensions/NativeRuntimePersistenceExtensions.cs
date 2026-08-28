@@ -26,6 +26,7 @@ public static class NativeRuntimePersistenceExtensions
         services.Replace(ServiceDescriptor.Singleton<IProviderRepository, NpgsqlProviderRepository>());
         services.Replace(ServiceDescriptor.Singleton<IProviderKeyCredentialRepository, NpgsqlProviderKeyCredentialRepository>());
         services.Replace(ServiceDescriptor.Singleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>());
+        services.Replace(ServiceDescriptor.Singleton<IAsyncTaskRuntimeStore, NpgsqlAsyncTaskRuntimeStore>());
         services.Replace(ServiceDescriptor.Singleton<IModelProviderMappingRuntimeStore, NpgsqlModelProviderMappingRuntimeStore>());
         services.Replace(ServiceDescriptor.Singleton<IModelProviderMappingRepository, StoreBackedModelProviderMappingRepository>());
         services.Replace(ServiceDescriptor.Singleton<IRequestLogRuntimeStore, NpgsqlRequestLogRuntimeStore>());

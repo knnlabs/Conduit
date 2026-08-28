@@ -297,6 +297,34 @@ try
             "VirtualKeyId" integer NULL REFERENCES "{schema}"."VirtualKeys" ("Id") ON DELETE CASCADE,
             "RowVersion" bytea NULL
         );
+        CREATE TABLE "{schema}"."AsyncTasks" (
+            "Id" character varying(50) PRIMARY KEY,
+            "Type" character varying(100) NOT NULL,
+            "State" integer NOT NULL,
+            "Payload" text NULL,
+            "Progress" integer NOT NULL,
+            "ProgressMessage" character varying(500) NULL,
+            "Result" text NULL,
+            "Error" text NULL,
+            "CreatedAt" timestamptz NOT NULL,
+            "UpdatedAt" timestamptz NOT NULL,
+            "CompletedAt" timestamptz NULL,
+            "VirtualKeyId" integer NOT NULL,
+            "Metadata" text NULL,
+            "IsArchived" boolean NOT NULL,
+            "ArchivedAt" timestamptz NULL,
+            "LeasedBy" character varying(100) NULL,
+            "LeaseExpiryTime" timestamptz NULL,
+            "ProviderInvocationStartedAt" timestamptz NULL,
+            "ProviderInvocationCompletedAt" timestamptz NULL,
+            "ProviderOperationId" character varying(200) NULL,
+            "RetryDispatchId" character varying(64) NULL,
+            "Version" integer NOT NULL,
+            "RetryCount" integer NOT NULL,
+            "MaxRetries" integer NOT NULL,
+            "IsRetryable" boolean NOT NULL,
+            "NextRetryAt" timestamptz NULL
+        );
         """);
 
     var id = Guid.NewGuid();
@@ -365,12 +393,13 @@ try
             dataSource,
             new NpgsqlModelProviderMappingRuntimeStore(dataSource));
         await ExerciseVirtualKeyRuntimeStoreAsync(new NpgsqlVirtualKeyRuntimeStore(dataSource));
+        await ExerciseAsyncTaskRuntimeStoreAsync(new NpgsqlAsyncTaskRuntimeStore(dataSource));
         await ExerciseRequestLogRuntimeStoreAsync(
             dataSource,
             new NpgsqlRequestLogRuntimeStore(dataSource));
     }
 
-    Console.WriteLine("Native persistence probe passed: reads, writes, rollback, concurrency, retry, PostgreSQL mappings, and the global-settings, IP-filter, provider/credential, model-routing, virtual-key, and request-log runtime stores.");
+    Console.WriteLine("Native persistence probe passed: reads, writes, rollback, concurrency, retry, PostgreSQL mappings, and the global-settings, IP-filter, provider/credential, model-routing, virtual-key, async-task, and request-log runtime stores.");
     return 0;
 }
 finally
@@ -675,6 +704,49 @@ static async Task ExerciseVirtualKeyRuntimeStoreAsync(IVirtualKeyRuntimeStore st
         VirtualKeyBalanceReferenceType.Manual));
     Ensure(credit.NewBalance == 25m && credit.LifetimeSpent == 4m,
         "virtual-key runtime credit or lifetime counters failed");
+}
+
+static async Task ExerciseAsyncTaskRuntimeStoreAsync(IAsyncTaskRuntimeStore store)
+{
+    var now = DateTime.UtcNow;
+    var task = new AsyncTaskRuntimeRecord
+    {
+        Id = "native-task",
+        Type = "image_generation",
+        State = 0,
+        CreatedAt = now,
+        UpdatedAt = now,
+        VirtualKeyId = 1,
+        Metadata = "{\"virtualKeyId\":1}",
+        MaxRetries = 3,
+        IsRetryable = true
+    };
+    Ensure(await store.CreateAsync(task) == task.Id, "async-task create failed");
+    Ensure((await store.GetByIdAsync(task.Id))?.Type == task.Type, "async-task read failed");
+    Ensure((await store.GetPendingTasksAsync()).Count == 1, "async-task pending query failed");
+    Ensure(
+        await store.TryClaimTaskAsync(task.Id, "native-worker", TimeSpan.FromMinutes(1)) ==
+            AsyncTaskRuntimeClaimStatus.Claimed,
+        "async-task claim failed");
+    Ensure(
+        await store.MarkProviderInvocationStartedAsync(task.Id, "native-worker"),
+        "async-task provider start failed");
+    Ensure(
+        await store.MarkProviderInvocationCompletedAsync(
+            task.Id,
+            "native-worker",
+            "native-operation"),
+        "async-task provider completion failed");
+
+    var status = await store.GetByIdAsync(task.Id);
+    Ensure(status?.ProviderOperationId == "native-operation", "async-task provider state failed");
+    status!.State = 2;
+    status.CompletedAt = DateTime.UtcNow.AddDays(-2);
+    Ensure(await store.UpdateAsync(status), "async-task update failed");
+    Ensure(
+        await store.ArchiveOldTasksAsync(TimeSpan.FromDays(1)) == 1,
+        "async-task archive failed");
+    Ensure(await store.DeleteAsync(task.Id), "async-task delete failed");
 }
 
 static async Task ExerciseRequestLogRuntimeStoreAsync(

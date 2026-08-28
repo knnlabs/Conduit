@@ -117,8 +117,18 @@ typed-store authentication and initial virtual-key status, atomic Redis admissio
 cross-host connection ceiling, method RPM/RPD counters, webhook subscription state,
 backplane delivery, and the public hub's Redis ephemeral-key flow. Hub wire payloads
 are named source-generated contracts, and connection-filter rejections propagate to
-the transport. Task group methods are supported, but task persistence and media/S3
-workflows remain excluded until their operation-specific stores are extracted.
+the transport.
+
+Async-task persistence is the next extracted state boundary. `IAsyncTaskRuntimeStore`
+defines backend-neutral task snapshots plus the exact lifecycle, claim, provider-phase,
+lease, indeterminate-reconciliation, and retention operations used by Gateway. JIT uses
+an EF adapter over the established repository, as do non-Gateway hosts; native Gateway
+selects fixed SQL through typed Npgsql. The two implementations share a real-PostgreSQL
+behavioral contract, the typed implementation runs in the published persistence probe,
+and the two-host process gate reads and cancels a task across native Gateways before
+verifying the durable row.
+Media-record persistence and S3 workflows remain excluded until their operation-specific
+store is extracted.
 
 ## Options considered
 

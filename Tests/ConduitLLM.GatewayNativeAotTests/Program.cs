@@ -102,6 +102,7 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
     public async Task RunAsync()
     {
         await AssertRuntimeAndOperationsAsync();
+        await AssertAsyncTaskPersistenceAsync();
         await AssertProviderTransportAsync();
         await AssertSignalRAndRedisAsync();
         Console.WriteLine("Gateway NativeAOT supported protocol/infrastructure probe: PASS");
@@ -129,6 +130,7 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
                      "provider-error-translation",
                      "provider-cancellation",
                      "request-accounting-and-spend-settlement",
+                     "async-task-persistence",
                      "authenticated-signalr-json-connections",
                      "redis-signalr-backplane-and-rate-limits",
                      "redis-ephemeral-key-cache"
@@ -190,6 +192,61 @@ internal sealed class GatewayNativeParityProbe(ProbeSettings settings)
         var capabilitiesGraph = GetProperty(metadata, "capabilities");
         True(GetProperty(capabilitiesGraph, "chat").GetBoolean(),
             "model metadata contains effective chat capability");
+    }
+
+    private async Task AssertAsyncTaskPersistenceAsync()
+    {
+        using (var request = AuthorizedRequest(
+                   HttpMethod.Get,
+                   $"v1/conduit/tasks/{NativeParityFixture.TaskId}"))
+        using (var response = await _gateway.SendAsync(request))
+        {
+            await ExpectAsync(response, HttpStatusCode.OK, "native async-task read");
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Equal(
+                NativeParityFixture.TaskId,
+                GetString(document.RootElement, "task_id"),
+                "native async-task identity");
+            Equal("pending", GetString(document.RootElement, "state"),
+                "native async-task initial state");
+        }
+
+        using (var request = AuthorizedRequest(
+                   HttpMethod.Post,
+                   $"v1/conduit/tasks/{NativeParityFixture.TaskId}/cancel"))
+        using (var response = await _secondaryGateway.SendAsync(request))
+        {
+            await ExpectAsync(response, HttpStatusCode.NoContent, "native async-task cancellation");
+        }
+
+        using (var request = AuthorizedRequest(
+                   HttpMethod.Get,
+                   $"v1/conduit/tasks/{NativeParityFixture.TaskId}"))
+        using (var response = await _gateway.SendAsync(request))
+        {
+            await ExpectAsync(response, HttpStatusCode.OK, "native async-task updated read");
+            using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Equal("cancelled", GetString(document.RootElement, "state"),
+                "native async-task cancellation state");
+        }
+
+        await using var dataSource = NpgsqlDataSource.Create(settings.DatabaseConnectionString);
+        await using var connection = await dataSource.OpenConnectionAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT "State", "CompletedAt" IS NOT NULL, "LeasedBy" IS NULL,
+                "LeaseExpiryTime" IS NULL
+            FROM "AsyncTasks" WHERE "Id" = @taskId
+            """;
+        command.Parameters.AddWithValue(
+            "taskId",
+            NpgsqlDbType.Varchar,
+            NativeParityFixture.TaskId);
+        await using var reader = await command.ExecuteReaderAsync();
+        True(await reader.ReadAsync(), "native async-task row persists");
+        True(reader.GetInt32(0) == 4 && reader.GetBoolean(1) &&
+             reader.GetBoolean(2) && reader.GetBoolean(3),
+            "native async-task cancellation is durable");
     }
 
     private async Task AssertProviderTransportAsync()
@@ -694,6 +751,7 @@ internal static class NativeParityFixture
 {
     public const string VirtualKey = "condt_native_aot_parity";
     public const string ModelAlias = "native-aot-model";
+    public const string TaskId = "task_native_aot_parity";
     public const string FixtureOwner = "native-aot-parity";
     public static string VirtualKeyHash => Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(VirtualKey)))
@@ -720,11 +778,12 @@ internal static class NativeParityFixture
             providerUri.GetLeftPart(UriPartial.Authority).TrimEnd('/'),
             now);
         await ResetAccountingAsync(connection, transaction, groupId, keyId);
+        await UpsertAsyncTaskAsync(connection, transaction, keyId, now);
 
         await transaction.CommitAsync();
         await ResetRedisAsync(redisConnectionString, groupId);
         Console.WriteLine(
-            "Seeded native Gateway virtual-key, IP-filter, model-routing, provider, and accounting parity fixture.");
+            "Seeded native Gateway virtual-key, IP-filter, model-routing, provider, accounting, and async-task parity fixture.");
     }
 
     private static async Task UpsertModelRoutingAsync(
@@ -886,6 +945,58 @@ internal static class NativeParityFixture
         await command.ExecuteNonQueryAsync();
     }
 
+    private static async Task UpsertAsyncTaskAsync(
+        NpgsqlConnection connection,
+        NpgsqlTransaction transaction,
+        int keyId,
+        DateTime now)
+    {
+        await using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = """
+            INSERT INTO "AsyncTasks" (
+                "Id", "Type", "State", "Progress", "CreatedAt", "UpdatedAt",
+                "VirtualKeyId", "Metadata", "IsArchived", "Version", "RetryCount",
+                "MaxRetries", "IsRetryable")
+            VALUES (
+                @taskId, 'image_generation', 0, 0, @now, @now,
+                @keyId, @metadata, false, 0, 0, 3, true)
+            ON CONFLICT ("Id") DO UPDATE SET
+                "Type" = EXCLUDED."Type",
+                "State" = 0,
+                "Payload" = NULL,
+                "Progress" = 0,
+                "ProgressMessage" = NULL,
+                "Result" = NULL,
+                "Error" = NULL,
+                "UpdatedAt" = EXCLUDED."UpdatedAt",
+                "CompletedAt" = NULL,
+                "VirtualKeyId" = EXCLUDED."VirtualKeyId",
+                "Metadata" = EXCLUDED."Metadata",
+                "IsArchived" = false,
+                "ArchivedAt" = NULL,
+                "LeasedBy" = NULL,
+                "LeaseExpiryTime" = NULL,
+                "ProviderInvocationStartedAt" = NULL,
+                "ProviderInvocationCompletedAt" = NULL,
+                "ProviderOperationId" = NULL,
+                "RetryDispatchId" = NULL,
+                "Version" = 0,
+                "RetryCount" = 0,
+                "MaxRetries" = 3,
+                "IsRetryable" = true,
+                "NextRetryAt" = NULL
+            """;
+        command.Parameters.AddWithValue("taskId", NpgsqlDbType.Varchar, TaskId);
+        command.Parameters.AddWithValue("keyId", NpgsqlDbType.Integer, keyId);
+        command.Parameters.AddWithValue(
+            "metadata",
+            NpgsqlDbType.Text,
+            $$"""{"VirtualKeyId":{{keyId}},"Model":"{{ModelAlias}}"}""");
+        command.Parameters.AddWithValue("now", NpgsqlDbType.TimestampTz, now);
+        await command.ExecuteNonQueryAsync();
+    }
+
     private static async Task ResetRedisAsync(string connectionString, int groupId)
     {
         await using var redis = await ConnectionMultiplexer.ConnectAsync(connectionString);
@@ -895,7 +1006,8 @@ internal static class NativeParityFixture
         var keys = new[]
             {
                 $"*group:{groupId}*",
-                $"signalr:vk:{VirtualKeyHash}:*"
+                $"signalr:vk:{VirtualKeyHash}:*",
+                $"async:task:{TaskId}"
             }
             .SelectMany(pattern => server.Keys(database.Database, pattern: pattern))
             .Distinct()
