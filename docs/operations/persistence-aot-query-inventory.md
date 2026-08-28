@@ -39,12 +39,14 @@ typed-Npgsql fallback seam; it does not claim parity for the 37-file EF workload
 ## Incremental extraction status
 
 ADR 0007 adopts operation-specific dual backends rather than a big-bang rewrite.
-Global settings are the first extracted slice: their model and repository contract live
-in `ConduitLLM.Persistence.Abstractions`, the JIT production registration remains EF,
-and a typed-Npgsql implementation is exercised by both PostgreSQL contract tests and
-the published NativeAOT persistence probe. The slice is not evidence that the other 36
-query-owning files are native-ready, and the EF reference implementation remains one
-of the 37 query owners until a native host can select alternate backends for every
+Global settings and IP-filter access policy are the first extracted slices: their
+models and repository contracts live in `ConduitLLM.Persistence.Abstractions`, the JIT
+production registrations remain EF, and typed-Npgsql implementations are exercised by
+PostgreSQL contract tests and the published NativeAOT persistence probe. IP filters add
+global/per-key scoping, audit fields, nullable mappings, and an optimistic-concurrency
+predicate to the parity surface. These slices are not evidence that the other 35
+query-owning files are native-ready, and their EF reference implementations remain
+among the 37 query owners until a native host can select alternate backends for every
 operation it needs.
 
 ## Exit criteria for revisiting the decision
