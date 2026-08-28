@@ -130,6 +130,12 @@ public sealed class AotDependencyBoundaryTests
             candidate => candidate.ServiceType == typeof(IMediaRuntimeStore));
         Assert.Equal(ServiceLifetime.Scoped, mediaDescriptor.Lifetime);
         Assert.Equal(typeof(EfMediaRuntimeStore), mediaDescriptor.ImplementationType);
+
+        var metricsDescriptor = Assert.Single(
+            services,
+            candidate => candidate.ServiceType == typeof(IGatewayMetricsStore));
+        Assert.Equal(ServiceLifetime.Scoped, metricsDescriptor.Lifetime);
+        Assert.Equal(typeof(EfGatewayMetricsStore), metricsDescriptor.ImplementationType);
     }
 #endif
 
@@ -163,6 +169,7 @@ public sealed class AotDependencyBoundaryTests
         services.AddScoped<IProviderRepository>(_ => null!);
         services.AddScoped<IProviderKeyCredentialRepository>(_ => null!);
         services.AddScoped<IVirtualKeyRuntimeStore>(_ => null!);
+        services.AddScoped<IGatewayMetricsStore>(_ => null!);
         services.AddScoped<IAsyncTaskRuntimeStore>(_ => null!);
         services.AddScoped<IMediaRuntimeStore>(_ => null!);
         services.AddScoped<IRequestLogRuntimeStore>(_ => null!);
@@ -178,6 +185,7 @@ public sealed class AotDependencyBoundaryTests
         AssertNativeSingleton<IProviderRepository, NpgsqlProviderRepository>(services);
         AssertNativeSingleton<IProviderKeyCredentialRepository, NpgsqlProviderKeyCredentialRepository>(services);
         AssertNativeSingleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>(services);
+        AssertNativeSingleton<IGatewayMetricsStore, NpgsqlGatewayMetricsStore>(services);
         AssertNativeSingleton<IAsyncTaskRuntimeStore, NpgsqlAsyncTaskRuntimeStore>(services);
         AssertNativeSingleton<IMediaRuntimeStore, NpgsqlMediaRuntimeStore>(services);
         AssertNativeSingleton<IRequestLogRuntimeStore, NpgsqlRequestLogRuntimeStore>(services);
