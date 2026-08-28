@@ -2,10 +2,12 @@ using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 
 using ConduitLLM.Configuration.Entities;
+using ConduitLLM.Configuration.Extensions;
 using ConduitLLM.Configuration.Messaging;
 using ConduitLLM.Configuration.Messaging.Wolverine;
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Core.Extensions;
 using ConduitLLM.Core.Interfaces;
 using ConduitLLM.Core.OpenApi;
@@ -19,9 +21,7 @@ using ConduitLLM.Persistence.Interfaces;
 using ConduitLLM.Persistence.Npgsql;
 
 using Microsoft.EntityFrameworkCore;
-#if CONDUIT_NATIVE_AOT
 using Microsoft.Extensions.DependencyInjection;
-#endif
 
 namespace ConduitLLM.Tests.Architecture;
 
@@ -105,6 +105,20 @@ public sealed class AotDependencyBoundaryTests
             Assembly.Load("ConduitLLM.Gateway"),
             "ConduitLLM.Persistence.Npgsql");
     }
+
+    [Fact]
+    public void JitRepositoryGraphRegistersTheEfVirtualKeyRuntimeStore()
+    {
+        var services = new ServiceCollection();
+
+        services.AddRepositories();
+
+        var descriptor = Assert.Single(
+            services,
+            candidate => candidate.ServiceType == typeof(IVirtualKeyRuntimeStore));
+        Assert.Equal(ServiceLifetime.Singleton, descriptor.Lifetime);
+        Assert.Equal(typeof(EfVirtualKeyRuntimeStore), descriptor.ImplementationType);
+    }
 #endif
 
 #if CONDUIT_NATIVE_AOT
@@ -117,6 +131,8 @@ public sealed class AotDependencyBoundaryTests
         services.AddScoped<IProviderRepository>(_ => null!);
         services.AddScoped<IProviderKeyCredentialRepository>(_ => null!);
         services.AddScoped<IVirtualKeyRuntimeStore>(_ => null!);
+        services.AddScoped<IRequestLogRuntimeStore>(_ => null!);
+        services.AddScoped<IRequestLogRuntimeWriter>(_ => null!);
         services.AddScoped<IModelProviderMappingRuntimeStore>(_ => null!);
         services.AddScoped<IModelProviderMappingRepository>(_ => null!);
 
@@ -127,6 +143,8 @@ public sealed class AotDependencyBoundaryTests
         AssertNativeSingleton<IProviderRepository, NpgsqlProviderRepository>(services);
         AssertNativeSingleton<IProviderKeyCredentialRepository, NpgsqlProviderKeyCredentialRepository>(services);
         AssertNativeSingleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>(services);
+        AssertNativeSingleton<IRequestLogRuntimeStore, NpgsqlRequestLogRuntimeStore>(services);
+        AssertNativeSingleton<IRequestLogRuntimeWriter, StoreBackedRequestLogRuntimeWriter>(services);
         AssertNativeSingleton<IModelProviderMappingRuntimeStore, NpgsqlModelProviderMappingRuntimeStore>(services);
         AssertNativeSingleton<IModelProviderMappingRepository, StoreBackedModelProviderMappingRepository>(services);
     }
@@ -233,6 +251,35 @@ public sealed class AotDependencyBoundaryTests
 
             Assert.Contains(typeof(IVirtualKeyRuntimeService), parameters);
             Assert.DoesNotContain(typeof(IVirtualKeyService), parameters);
+        }
+    }
+
+    [Fact]
+    public void GatewayAccountingPathsUseFixedShapeRuntimeContracts()
+    {
+        Assert.Contains(
+            typeof(IVirtualKeyRuntimeStore),
+            typeof(BatchSpendUpdateService).GetConstructors()
+                .SelectMany(constructor => constructor.GetParameters())
+                .Select(parameter => parameter.ParameterType));
+
+        var requestPathTypes = new[]
+        {
+            typeof(UsageTrackingMiddleware)
+        };
+        foreach (var requestPathType in requestPathTypes)
+        {
+            var parameterTypes = requestPathType.GetMethods(
+                    BindingFlags.Instance |
+                    BindingFlags.Static |
+                    BindingFlags.Public |
+                    BindingFlags.NonPublic |
+                    BindingFlags.DeclaredOnly)
+                .SelectMany(method => method.GetParameters())
+                .Select(parameter => parameter.ParameterType)
+                .ToArray();
+            Assert.Contains(typeof(IRequestLogRuntimeWriter), parameterTypes);
+            Assert.DoesNotContain(typeof(IRequestLogService), parameterTypes);
         }
     }
 

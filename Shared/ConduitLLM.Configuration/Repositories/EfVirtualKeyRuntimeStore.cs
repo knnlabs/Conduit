@@ -212,6 +212,20 @@ public sealed class EfVirtualKeyRuntimeStore : IVirtualKeyRuntimeStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetKeyHashesByGroupIdAsync(
+        int groupId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.VirtualKeys
+            .AsNoTracking()
+            .Where(key => key.VirtualKeyGroupId == groupId)
+            .OrderBy(key => key.Id)
+            .Select(key => key.KeyHash)
+            .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> TouchAsync(
         int id,
         DateTime updatedAt,

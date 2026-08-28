@@ -1,6 +1,7 @@
 #if CONDUIT_NATIVE_AOT
 using ConduitLLM.Configuration.Interfaces;
 using ConduitLLM.Configuration.Repositories;
+using ConduitLLM.Configuration.Services;
 using ConduitLLM.Persistence.Interfaces;
 using ConduitLLM.Persistence.Npgsql;
 
@@ -27,6 +28,8 @@ public static class NativeRuntimePersistenceExtensions
         services.Replace(ServiceDescriptor.Singleton<IVirtualKeyRuntimeStore, NpgsqlVirtualKeyRuntimeStore>());
         services.Replace(ServiceDescriptor.Singleton<IModelProviderMappingRuntimeStore, NpgsqlModelProviderMappingRuntimeStore>());
         services.Replace(ServiceDescriptor.Singleton<IModelProviderMappingRepository, StoreBackedModelProviderMappingRepository>());
+        services.Replace(ServiceDescriptor.Singleton<IRequestLogRuntimeStore, NpgsqlRequestLogRuntimeStore>());
+        services.Replace(ServiceDescriptor.Singleton<IRequestLogRuntimeWriter, StoreBackedRequestLogRuntimeWriter>());
         return services;
     }
 }

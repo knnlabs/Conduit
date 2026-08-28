@@ -91,6 +91,17 @@ the same boundary. JIT and Admin retain the full EF repository. Authenticated mo
 discovery is process-tested; provider HTTP/SSE remains excluded until its downstream
 persistence and cancellation boundaries are covered.
 
+Request accounting is the next downstream boundary. Request-time middleware now
+depends on `IRequestLogRuntimeWriter`, which maps the existing DTO onto a complete,
+backend-neutral `RequestLogRuntimeRecord`. JIT Gateway retains the batched EF writer;
+native Gateway selects an immediate typed-Npgsql writer. The same change routes
+`BatchSpendUpdateService` key/group lookup, atomic debit, idempotency, and cache-
+invalidation hash lookup through `IVirtualKeyRuntimeStore` when the Gateway supplies
+one. EF remains the fallback for legacy constructors and non-Gateway hosts. The write
+contract has real-PostgreSQL EF/Npgsql parity and published NativeAOT process coverage.
+Reporting, retention, and management queries over request logs remain JIT-only; this
+slice does not yet claim provider HTTP/SSE support without its end-to-end process gate.
+
 ## Options considered
 
 1. **Wait for production-supported EF NativeAOT.** Rejected as the only plan: it
@@ -118,10 +129,11 @@ Each slice must provide:
 - an explicit production registration change and rollback plan before traffic uses the
   alternate backend.
 
-The extracted global-settings, IP-filter, provider/credential, and virtual-key runtime
-slices are selected only by a native Gateway build. The extracted model-routing store
-is also selected behind a read-only native Gateway adapter. JIT Gateway and Admin
-registrations remain EF.
+The extracted global-settings, IP-filter, provider/credential, virtual-key runtime,
+model-routing, and request-accounting slices are selected only by a native Gateway
+build. Model routing is selected behind a read-only compatibility adapter, while
+request-log writes use a narrow runtime writer. JIT Gateway and Admin registrations
+retain their existing EF-backed services.
 Rollback is therefore the JIT artifact, whose request-time and management contracts
 continue to resolve to the legacy services.
 

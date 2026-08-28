@@ -73,6 +73,17 @@ policy through it. The two-Gateway native process gate proves authenticated mode
 retrieval, and capability metadata; provider HTTP/SSE remains excluded until its
 downstream persistence and cancellation boundaries are covered.
 
+Request accounting now has a fixed-shape write boundary as well. The backend-neutral
+record covers provider/routing attribution, prompt-cache accounting, token counts,
+billing method and timestamps, response metadata, and JSONB request metadata. Its EF
+reference and typed-Npgsql implementations write equivalent rows in the shared real-
+PostgreSQL contract, and the typed writer runs in the published NativeAOT persistence
+probe. Native Gateway request middleware selects that writer. Gateway construction also
+supplies `IVirtualKeyRuntimeStore` to the batched spend service, so key/group lookup,
+idempotent balance-and-ledger writes, fallback charges, and cache invalidation hashes no
+longer re-enter scoped EF services in the native runtime. Request-log reporting,
+retention, and management queries are intentionally still owned by the JIT path.
+
 ## Exit criteria for revisiting the decision
 
 1. EF Core and Npgsql document the selected NativeAOT path as production-supported.

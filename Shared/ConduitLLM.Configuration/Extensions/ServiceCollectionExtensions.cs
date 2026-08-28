@@ -8,6 +8,7 @@ using ConduitLLM.Functions.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using ConduitLLM.Persistence.Interfaces;
 
 namespace ConduitLLM.Configuration.Extensions
 {
@@ -30,6 +31,9 @@ namespace ConduitLLM.Configuration.Extensions
             // Register repositories
             services.AddScoped<IVirtualKeyRepository, VirtualKeyRepository>();
             services.AddScoped<IVirtualKeyGroupRepository, VirtualKeyGroupRepository>();
+#if !CONDUIT_NATIVE_AOT
+            services.AddSingleton<IVirtualKeyRuntimeStore, EfVirtualKeyRuntimeStore>();
+#endif
             services.AddScoped<IProviderRepository, ProviderRepository>();
             services.AddScoped<IProviderKeyCredentialRepository, ProviderKeyCredentialRepository>();
             services.AddScoped<IGlobalSettingRepository, GlobalSettingRepository>();

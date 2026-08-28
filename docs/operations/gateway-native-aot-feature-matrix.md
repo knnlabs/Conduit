@@ -31,7 +31,7 @@ The following features are excluded from the first native image and appear in `e
 - `s3-media-api-workflows`
 - `readiness-and-database-health`
 
-EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, virtual keys, and model discovery/routing metadata. Request logging, tasks, and media persistence remain unextracted. Those boundaries still block end-to-end provider HTTP/SSE, cancellation, authenticated SignalR, and S3 media workflows. Those behaviors remain fully available in the JIT image.
+EF Core 10 can generate the compiled `ConduitDbContext` model, but its NativeAOT query precompiler rejects Conduit's repository abstractions as dynamic LINQ. Extracted request-time operations now bypass those queries for global settings, IP filters, provider/credential reads, virtual keys, model discovery/routing metadata, request-log writes, and virtual-key spend settlement. Request-log reporting/retention, tasks, and media persistence remain unextracted. Provider HTTP/SSE and cancellation remain excluded until their end-to-end native process gate proves the newly extracted accounting path. Authenticated SignalR connections and S3 media workflows are still blocked by their own downstream boundaries. All remain available in the JIT image.
 
 Gateway request-time consumers now depend on `IVirtualKeyRuntimeService`, while
 Admin-style key management remains behind the broader `IVirtualKeyService`. Both
@@ -54,8 +54,13 @@ already parity-tested typed-Npgsql implementations. A complete model-routing run
 graph now has fixed-query EF and typed-Npgsql stores plus real-PostgreSQL and native
 probe coverage. Native Gateway registers a read-only adapter over that store while JIT
 and Admin retain the full EF repository; persisted route policy is read through the same
-store. Logging, task, and media dependencies remain EF-backed, so the remaining
-exclusions remain authoritative.
+store. Request-time logging now uses a narrow runtime writer: JIT retains the batched
+EF implementation, while native builds select the parity-tested typed-Npgsql writer.
+The Gateway's batch-spend service is also supplied with the selected virtual-key store,
+covering key/group lookup, idempotent ledger debits, fallback charges, and invalidation
+hashes without scoped EF resolution. Request-log queries/retention, task, and media
+dependencies remain EF-backed, and provider execution has not yet passed its native
+process gate, so the remaining exclusions remain authoritative.
 
 The compiled model is checked in under `Shared/ConduitLLM.Configuration/Data/CompiledModels`. Regenerate it whenever the EF model changes:
 

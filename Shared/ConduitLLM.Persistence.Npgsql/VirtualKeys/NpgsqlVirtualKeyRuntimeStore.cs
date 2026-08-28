@@ -140,6 +140,30 @@ public sealed class NpgsqlVirtualKeyRuntimeStore : IVirtualKeyRuntimeStore
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<string>> GetKeyHashesByGroupIdAsync(
+        int groupId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _dataSource.OpenConnectionAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT "KeyHash"
+            FROM "VirtualKeys"
+            WHERE "VirtualKeyGroupId" = @groupId
+            ORDER BY "Id"
+            """;
+        command.Parameters.AddWithValue("groupId", NpgsqlDbType.Integer, groupId);
+
+        var hashes = new List<string>();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            hashes.Add(reader.GetString(0));
+        }
+        return hashes;
+    }
+
+    /// <inheritdoc />
     public async Task<bool> TouchAsync(
         int id,
         DateTime updatedAt,
